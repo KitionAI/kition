@@ -428,7 +428,10 @@ macro_rules! document_store_command {
         pub async fn $name(app: AppHandle, request: Option<Value>) -> CommandResult {
             blocking(move || {
                 let state = app.state::<Desktop>();
-                $op(&state.workspace_root(), &state.guarded, &req(request))
+                let root = state.workspace_root();
+                // Only the Kition holding the store lock writes (one writer per store).
+                let access = docstore::Access::of(&state.store_locks.lock_for(&root));
+                $op(&root, &state.guarded, access, &req(request))
             })
             .await
         }
@@ -440,6 +443,24 @@ document_store_command!(write_document_store, docstore::write_entry_request);
 document_store_command!(delete_document_store, docstore::delete_entry_request);
 document_store_command!(read_document_index, docstore::read_index_request);
 document_store_command!(write_document_index, docstore::write_index_request);
+document_store_command!(read_document_history, docstore::read_history_request);
+document_store_command!(
+    record_document_checkpoint,
+    docstore::record_checkpoint_request
+);
+document_store_command!(read_document_checkpoint, docstore::read_checkpoint_request);
+
+/// `{ writable, holder }`: whether this Kition writes the workspace's document
+/// store, or which Kition does.
+#[tauri::command]
+pub async fn document_store_status(app: AppHandle) -> CommandResult {
+    blocking(move || {
+        let state = app.state::<Desktop>();
+        let root = state.workspace_root();
+        Ok(state.store_locks.lock_for(&root).status())
+    })
+    .await
+}
 
 #[tauri::command]
 pub async fn open_workspace_file(

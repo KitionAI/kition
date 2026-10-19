@@ -12,6 +12,7 @@ use crate::env::DesktopEnv;
 use crate::proxy::ProxyManager;
 use crate::secure_store::SecureStore;
 use crate::supervisor::Supervisor;
+use crate::workspace::docstore::StoreLocks;
 use crate::workspace::files;
 use crate::workspace::guarded::GuardedWrites;
 use crate::workspace::registry::Registry;
@@ -19,6 +20,8 @@ use crate::workspace::watcher::WorkspaceWatcher;
 
 pub const MAIN_WINDOW: &str = "main";
 pub const DOCUMENT_EXTERNAL_CHANGE_EVENT: &str = "desktop:document:external-change";
+/// Sent when this Kition's access to the workspace's document store changes.
+pub const DOCUMENT_STORE_ACCESS_EVENT: &str = "desktop:document-store:access";
 
 pub struct Desktop {
     env: RwLock<DesktopEnv>,
@@ -31,6 +34,8 @@ pub struct Desktop {
     pub proxy: Mutex<ProxyManager>,
     watcher: Mutex<Option<WorkspaceWatcher>>,
     pub guarded: GuardedWrites,
+    /// The active workspace's document store lock (one writer per store).
+    pub store_locks: Arc<StoreLocks>,
     pub workspace_window_request: Option<String>,
 }
 
@@ -73,6 +78,7 @@ impl Desktop {
             active_workspace: RwLock::default(),
             watcher: Mutex::default(),
             guarded: GuardedWrites::default(),
+            store_locks: Arc::default(),
             workspace_window_request,
         }
     }

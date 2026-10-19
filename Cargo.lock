@@ -3384,6 +3384,7 @@ dependencies = [
  "block2",
  "chrono",
  "futures-util",
+ "gethostname",
  "gtk",
  "hex",
  "image",

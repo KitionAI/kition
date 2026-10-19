@@ -23,7 +23,7 @@ mod workspace_window;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tauri::{AppHandle, Manager, RunEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 use crate::desktop::{Desktop, MAIN_WINDOW};
 use crate::env::{DesktopEnv, env_value};
@@ -73,6 +73,15 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     let desktop = app.state::<Desktop>();
     desktop.restore_workspace();
+    // A Kition that takes the store lock over, or loses it, tells the renderer.
+    let notices = handle.clone();
+    desktop.store_locks.on_change(move |status| {
+        let _ = notices.emit_to(
+            desktop::MAIN_WINDOW,
+            desktop::DOCUMENT_STORE_ACCESS_EVENT,
+            status,
+        );
+    });
     let is_workspace_window = desktop.workspace_window_request.is_some();
     app.state::<UpdateManager>().set_proxy(
         desktop
@@ -124,6 +133,7 @@ fn on_exit_requested(app: &AppHandle, code: Option<i32>, api: &tauri::ExitReques
     tauri::async_runtime::spawn(async move {
         let desktop = app.state::<Desktop>();
         desktop.stop_watcher();
+        desktop.store_locks.release();
         desktop.supervisor.stop().await;
         CLEANED_UP.store(true, Ordering::SeqCst);
         app.exit(code.unwrap_or(0));
@@ -258,6 +268,10 @@ pub fn run() {
             commands::delete_document_store,
             commands::read_document_index,
             commands::write_document_index,
+            commands::read_document_history,
+            commands::record_document_checkpoint,
+            commands::read_document_checkpoint,
+            commands::document_store_status,
             commands::create_workspace_document,
             commands::create_workspace_folder,
             commands::move_workspace_document,
