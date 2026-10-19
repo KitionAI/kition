@@ -36,6 +36,7 @@ export {
   type CommentThread,
   type NewComment,
 } from './comment'
+export { ChangeAudit, touchesOnlyComments, type Touched } from './touched'
 export { diffIsEmpty, diffStates, type ObjectChange, type StateDiff, type TextChange } from './diff'
 export { KdmError, type KdmErrorReason } from './errors'
 export { newDocId, newObjectId, NodeRef, randomActor, uuidFromBytes, uuidToBytes, uuidV7, type ObjectId, type TreeEntry } from './ids'

@@ -8,7 +8,7 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 type BlobRef = { hash: string; mime: string; size: number }
 
 /** kit.sheet: registered with @kition/sdk when this module loads. */
-export const sheetsKit: KitDescriptor = registerKit({ id: "kit.sheet", schema: {"kdm":1,"kit":"kit.sheet","schemaVersion":2,"root":"Workbook","types":{"Workbook":{"fields":{"props":{"kind":"json","optional":true},"theme":{"kind":"json","optional":true},"customLists":{"kind":"json","optional":true},"cellStyles":{"kind":"json","optional":true},"styles":{"kind":"map"},"names":{"kind":"list","of":"Name"},"sheets":{"kind":"list","of":"Sheet"}}},"Name":{"fields":{"name":{"kind":"string"},"scope":{"kind":"ref","of":"Sheet","optional":true},"formula":{"kind":"string"},"props":{"kind":"json","optional":true}}},"Sheet":{"fields":{"name":{"kind":"string"},"props":{"kind":"json","optional":true},"rows":{"kind":"list","of":"Row"},"cols":{"kind":"list","of":"Col"},"cells":{"kind":"map"},"comments":{"kind":"map"},"hyperlinks":{"kind":"map"},"features":{"kind":"json","optional":true},"images":{"kind":"list","of":"Image"}}},"Cell":{"fields":{"input":{"kind":"string","optional":true},"text":{"kind":"text","marks":{"bold":{"expand":"after"},"italic":{"expand":"after"},"underline":{"expand":"after"},"strike":{"expand":"after"},"font":{"expand":"after"},"size":{"expand":"after"},"color":{"expand":"after"},"vertAlign":{"expand":"after"}}},"style":{"kind":"string","optional":true},"array":{"kind":"string","optional":true},"picture":{"kind":"json","optional":true},"by":{"kind":"string","optional":true},"key":{"kind":"string","optional":true}}},"Row":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Col":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Image":{"fields":{"props":{"kind":"json","optional":true},"blob":{"kind":"blob","optional":true}}}}} })
+export const sheetsKit: KitDescriptor = registerKit({ id: "kit.sheet", schema: {"kdm":1,"kit":"kit.sheet","schemaVersion":2,"root":"Workbook","types":{"Workbook":{"fields":{"props":{"kind":"json","optional":true},"theme":{"kind":"json","optional":true},"customLists":{"kind":"json","optional":true},"cellStyles":{"kind":"json","optional":true},"styles":{"kind":"map"},"names":{"kind":"list","of":"Name"},"sheets":{"kind":"list","of":"Sheet"}}},"Name":{"fields":{"name":{"kind":"string"},"scope":{"kind":"ref","of":"Sheet","optional":true},"formula":{"kind":"string"},"props":{"kind":"json","optional":true}}},"Sheet":{"fields":{"name":{"kind":"string"},"props":{"kind":"json","optional":true},"rows":{"kind":"list","of":"Row"},"cols":{"kind":"list","of":"Col"},"cells":{"kind":"map"},"comments":{"kind":"map"},"hyperlinks":{"kind":"map"},"features":{"kind":"json","optional":true},"images":{"kind":"list","of":"Image"}}},"Cell":{"fields":{"input":{"kind":"string","optional":true},"text":{"kind":"text","marks":{"bold":{"expand":"after"},"italic":{"expand":"after"},"underline":{"expand":"after"},"strike":{"expand":"after"},"font":{"expand":"after"},"size":{"expand":"after"},"color":{"expand":"after"},"vertAlign":{"expand":"after"},"family":{"expand":"after"},"charset":{"expand":"after"},"scheme":{"expand":"after"},"extra":{"expand":"after"}}},"style":{"kind":"string","optional":true},"array":{"kind":"string","optional":true},"picture":{"kind":"json","optional":true},"by":{"kind":"string","optional":true},"key":{"kind":"string","optional":true},"merged":{"kind":"json","optional":true}}},"Row":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Col":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Image":{"fields":{"props":{"kind":"json","optional":true},"blob":{"kind":"blob","optional":true}}}}} })
 
 /** The fields a new `Workbook` takes (`list.add(fields)`). */
 export type WorkbookFields = {
@@ -75,6 +75,7 @@ export type CellFields = {
   picture?: Json | null
   by?: string | null
   key?: string | null
+  merged?: Json | null
 }
 
 /** A `Cell` of kit.sheet. */
@@ -87,6 +88,7 @@ export interface Cell extends ModelObject {
   picture: Json | null
   by: string | null
   key: string | null
+  merged: Json | null
 }
 
 /** The fields a new `Row` takes (`list.add(fields)`). */
@@ -147,8 +149,10 @@ export interface SheetsCommands extends CommandMap {
   "file.properties": { /** author (no type given) */ author?: Json; /** company (no type given) */ company?: Json; /** description (no type given) */ description?: Json; /** keywords (no type given) */ keywords?: Json; /** subject (no type given) */ subject?: Json; title?: string }
   /** Switch Window. Params: {index} */
   "window.activate": { index?: number }
-  /** Enter Cell. Params: {cell?: "B2", input: "text, number or =formula", sheet?, array?: bool}. Changes the document. */
-  "cell.set": { array?: boolean; /** like B2 */ cell?: string; /** like text, number or =formula */ input?: string; /** sheet (no type given) */ sheet?: Json }
+  /** Enter Cell. Params: {cell?: "B2", input: "text, number or =formula", sheet?, array?: bool, runs?: [{text, font}] (a text's rich text runs, as cell.get answers them)}. Changes the document. */
+  "cell.set": { array?: boolean; /** like B2 */ cell?: string; /** like text, number or =formula */ input?: string; /** a text's rich text runs, as cell.get answers them */ runs?: Array<{ font?: string; text?: string }>; /** sheet (no type given) */ sheet?: Json }
+  /** Format Characters. Params: {cell?: "B2", sheet?, start?: 0, end?: (characters, end exclusive; the whole text by default), bold?, italic?, strike?, underline?: true|"double"|"none", vertAlign?: superscript|subscript|baseline, size?, name?, color?: "#C00000"|{theme, tint}|"auto", toggle?: bold|italic|underline|strike|superscript|subscript} ? {cell, start, end, runs}: formats part of a text cell's characters (rich text). Changes the document. */
+  "cell.formatText": { /** bold (no type given) */ bold?: Json; /** like B2 */ cell?: string; /** "#C00000"|{theme, tint}|"auto" */ color?: Json; /** (characters, end exclusive; the whole text by default); characters, end exclusive; the whole text by default */ end?: Json; /** italic (no type given) */ italic?: Json; name?: string; /** sheet (no type given) */ sheet?: Json; size?: number; start?: number; /** strike (no type given) */ strike?: Json; toggle?: "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript"; /** true|"double"|"none" */ underline?: Json; vertAlign?: "superscript" | "subscript" | "baseline" }
   /** Set Values. Params: {range?: "A1", values: [[...]] (rows of numbers/strings/bools/null; strings starting with = are formulas)}. Changes the document. */
   "range.setValues": { /** like A1 */ range?: string; /** rows of numbers/strings/bools/null; strings starting with = are formulas */ values?: Array<Array<Json>> }
   /** Fill Range With Input. Params: {range?, input}: enters the same input in every selected cell (relative formulas adjust). Changes the document. */

@@ -294,6 +294,26 @@
         "serverValidation": {
           "type": "boolean",
           "description": "Whether a server should validate pushed changes with the kit's headless engine."
+        },
+        "comments": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "commands"
+          ],
+          "description": "How the kit's comment threads are written (standard 2.0 rule M23).",
+          "properties": {
+            "commands": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$"
+              },
+              "description": "The engine commands that write only CommentThread and Comment objects: what a commenter's read-only session runs (Kit UI protocol document.comments)."
+            }
+          }
         }
       }
     },
