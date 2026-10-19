@@ -46,13 +46,13 @@
   },
   "pdf": {
     "repository": "KitionAI/kition-pdf",
-    "version": "0.3.6",
-    "tag": "package-v0.3.6",
-    "asset": "kition-pdf-0.3.6.tgz",
-    "size": 12215488,
-    "sha256": "6a0350981203721f48de43fcc62bf637ed44db3400194ca574a3005b235584c8",
-    "commit": "de6b69845475481a3cd9bb802f7deac4ad0c7ad9",
-    "sdkCommit": "342a4e4d8ba3a76d948e2cf73a2dd486ebf7b0ee",
+    "version": "0.3.7",
+    "tag": "package-v0.3.7",
+    "asset": "kition-pdf-0.3.7.tgz",
+    "size": 12215075,
+    "sha256": "0534cce39cb426c107ced50bd203b8b21df3bb12c1cfdc704f68e4d33f88314a",
+    "commit": "c3278703fa9715203b8de9847a524b89ea6f51c9",
+    "sdkCommit": "3d8458f58943e9a3aece032df4660227d960dd3b",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "photo": {
@@ -90,13 +90,13 @@
   },
   "vector": {
     "repository": "KitionAI/kition-vector",
-    "version": "0.3.6",
-    "tag": "package-v0.3.6",
-    "asset": "kition-vector-0.3.6.tgz",
-    "size": 14408446,
-    "sha256": "baa3e7ac680348b586774b8c48fb630be0396babd82829a397a8190b1a19af92",
-    "commit": "f3a2be221ecf9656196f0cf477e3b13ee6cf39e2",
-    "sdkCommit": "342a4e4d8ba3a76d948e2cf73a2dd486ebf7b0ee",
+    "version": "0.3.7",
+    "tag": "package-v0.3.7",
+    "asset": "kition-vector-0.3.7.tgz",
+    "size": 14412968,
+    "sha256": "e0c927ac49cedddbc31c327a19b33d94fcfcc67f19978c1ec26284b894af7ed3",
+    "commit": "ecd4cb774519f9a4b8bb6a59b2f32df8b89e58e4",
+    "sdkCommit": "3d8458f58943e9a3aece032df4660227d960dd3b",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "word": {
