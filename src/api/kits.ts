@@ -11,11 +11,12 @@ import type {
   KitsBridgeDocumentApplyParams,
   KitsBridgeDocumentApplyResult,
   KitsBridgeDocumentReadResult,
+  KitsBridgeDraftInfo,
   KitsBridgeLiveDocument,
   KitsBridgeRunStep,
 } from './generated/kits'
 
-export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDocumentApplyParams, KitsBridgeDocumentApplyResult, KitsBridgeDocumentReadResult, KitsBridgeLiveDocument, KitsBridgeRunStep }
+export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDocumentApplyParams, KitsBridgeDocumentApplyResult, KitsBridgeDocumentReadResult, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep }
 
 /**
  * Replaces a workspace file a kit edits with `bytes`; the in-page editors save through it. The

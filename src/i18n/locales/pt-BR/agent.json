@@ -323,5 +323,12 @@
     "view": "View",
     "modifiedArtifact": "Modified {{path}}",
     "imageResult": "Image result"
+  },
+  "kitEditMode": {
+    "label": "Edição de kits",
+    "live": "Ao vivo",
+    "draft": "Rascunho",
+    "liveHint": "O agente edita diretamente os documentos de kit abertos; você pode desfazer as edições.",
+    "draftHint": "O agente edita um rascunho dos documentos de kit abertos; você revisa e mescla ou descarta."
   }
 }

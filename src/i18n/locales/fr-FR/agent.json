@@ -323,5 +323,12 @@
     "view": "View",
     "modifiedArtifact": "Modified {{path}}",
     "imageResult": "Image result"
+  },
+  "kitEditMode": {
+    "label": "Modifications des kits",
+    "live": "En direct",
+    "draft": "Brouillon",
+    "liveHint": "L'agent modifie directement les documents de kit ouverts ; vous pouvez annuler ses modifications.",
+    "draftHint": "L'agent modifie un brouillon des documents de kit ouverts ; vous le relisez puis le fusionnez ou l'abandonnez."
   }
 }

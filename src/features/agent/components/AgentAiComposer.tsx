@@ -8,6 +8,7 @@ import type { AgentLocalSource } from '@/api/agent'
 import { AgentContextAddMenu } from '@/features/agent/components/AgentContextAddMenu'
 import { AgentComposerContext } from '@/features/agent/components/AgentComposerContext'
 import { AgentModelPicker } from '@/features/agent/components/AgentModelPicker'
+import { AgentKitEditModeToggle } from '@/features/agent/components/AgentKitEditModeToggle'
 import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAccount'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
 import {
@@ -395,6 +396,7 @@ export function AgentAiComposer({
           onRequestDocumentReference={requestDocumentReference}
         />
         {imageControls}
+        <AgentKitEditModeToggle disabled={busy} />
         <AgentModelPicker
           className="agent-ai-model-picker"
           variant="compact"

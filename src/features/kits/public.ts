@@ -7,6 +7,7 @@
 export { createKitFile } from './sdk/createKitFile'
 export type { KitSdkManifest } from './sdk/kitSdk'
 export { KitFrame, type EmbeddedKit } from './kition/KitFrame'
+export { KitDraftTabMark } from './kition/KitDraftTabMark'
 export { KITION_KIT_HOST } from './kition/kitionHost'
 export { kitionTheme } from './kition/kitionTheme'
 export { activeKitDocument, followKitConnections, mountedKitDocument, type MountedKitDocument } from './kition/kitConnections'

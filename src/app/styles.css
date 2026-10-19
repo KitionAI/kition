@@ -1879,6 +1879,111 @@
     @apply mr-1 text-xs tabular-nums text-muted-foreground;
   }
 
+  /* The agent's draft of a kit document: its banner above the kit, and the review sheet. */
+  .kit-draft-review {
+    @apply flex flex-col gap-4;
+  }
+
+  .kit-draft-review__loading,
+  .kit-draft-review__failure,
+  .kit-draft-review__empty {
+    @apply flex items-center gap-2 text-sm text-muted-foreground;
+  }
+
+  .kit-draft-review__failure {
+    @apply text-destructive;
+  }
+
+  .kit-draft-review__sides {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .kit-draft-side {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+
+  .kit-draft-side figcaption {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+
+  .kit-draft-side img,
+  .kit-draft-side__empty {
+    @apply w-full rounded-lg border border-border bg-background object-contain;
+    aspect-ratio: 4 / 3;
+  }
+
+  .kit-draft-side__empty {
+    @apply flex items-center justify-center text-xs text-muted-foreground;
+  }
+
+  .kit-draft-review__counts {
+    @apply flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground;
+  }
+
+  .kit-draft-review__objects {
+    @apply flex flex-col divide-y divide-border rounded-xl border border-border bg-card;
+  }
+
+  .kit-draft-review__objects li {
+    @apply flex min-w-0 items-baseline gap-2 px-3 py-2 text-sm;
+  }
+
+  .kit-draft-review__change {
+    @apply shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-xs font-medium text-primary;
+  }
+
+  .kit-draft-review__objects li[data-change='deleted'] .kit-draft-review__change {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  .kit-draft-review__type {
+    @apply shrink-0 font-medium text-foreground;
+  }
+
+  .kit-draft-review__fields {
+    @apply truncate text-xs text-muted-foreground;
+  }
+
+  .kit-draft-review__more {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .kit-draft-review__texts {
+    @apply flex flex-col gap-2;
+  }
+
+  .kit-draft-review__texts h3 {
+    @apply text-xs font-semibold text-muted-foreground;
+  }
+
+  .kit-draft-review__text {
+    @apply flex flex-col gap-1 rounded-lg border border-border p-2 text-sm;
+  }
+
+  .kit-draft-review__text del {
+    @apply text-muted-foreground line-through;
+  }
+
+  .kit-draft-review__text ins {
+    @apply no-underline text-foreground;
+  }
+
+  .kit-draft-review__footer {
+    @apply flex w-full flex-col gap-3;
+  }
+
+  .kit-draft-review__footer p {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .kit-draft-review__actions {
+    @apply flex justify-end gap-2;
+  }
+
+  .document-tab-draft-mark {
+    @apply ml-1 shrink-0 rounded-md bg-accent px-1 text-[10px] font-medium leading-4 text-primary;
+  }
+
   .document-revision-review__scroller {
     @apply min-h-0 flex-1 overflow-y-auto;
     background: var(--document-main-surface, hsl(var(--background)));
@@ -3989,6 +4094,14 @@
   .agent-ai-configure {
     @apply h-8 shrink-0 rounded-lg border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-ring/40;
     border-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-ai-kit-edit-mode {
+    @apply inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .agent-ai-kit-edit-mode.is-draft {
+    @apply bg-accent font-medium text-primary;
   }
 
   .agent-ai-send {

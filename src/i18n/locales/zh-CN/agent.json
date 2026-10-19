@@ -323,5 +323,12 @@
     "view": "查看",
     "modifiedArtifact": "已修改 {{path}}",
     "imageResult": "图片结果"
+  },
+  "kitEditMode": {
+    "label": "套件编辑",
+    "live": "实时",
+    "draft": "草稿",
+    "liveHint": "智能体直接编辑打开的套件文档，你可以撤销其编辑。",
+    "draftHint": "智能体编辑打开的套件文档的草稿，由你审阅后合并或丢弃。"
   }
 }

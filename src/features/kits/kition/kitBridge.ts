@@ -1,4 +1,4 @@
-import type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeLiveDocument, KitsBridgeRunStep } from '@/api/kits'
+import type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep } from '@/api/kits'
 import { runtimeBridge, type BridgeChannel } from '@/services/runtimeBridge'
 
 /**
@@ -17,13 +17,21 @@ export type BridgeEditor = {
   kitId: string
   revision: () => number
   dirty: () => boolean
-  /** The document as the agent sees it; an embedded kit UI answers asynchronously. */
-  inspect: () => KitsBridgeLiveDocument | Promise<KitsBridgeLiveDocument>
+  /** The document as the agent sees it (or its draft, with `draft`); an embedded kit UI answers asynchronously. */
+  inspect: (options?: DraftOption) => KitsBridgeLiveDocument | Promise<KitsBridgeLiveDocument>
   commands: (query: string) => Promise<KitsBridgeCommand[]>
-  run: (steps: Array<{ command: string; params?: Record<string, unknown> }>, save: boolean) => Promise<{ completed: KitsBridgeRunStep[]; saved: boolean }>
-  /** A PNG of the whole document, at most `maxSize` pixels on its longer side, as base64. */
-  preview: (maxSize: number) => Promise<string>
+  run: (steps: Array<{ command: string; params?: Record<string, unknown> }>, save: boolean, options?: DraftOption) => Promise<{ completed: KitsBridgeRunStep[]; saved: boolean }>
+  /** A PNG of the whole document (or its draft), at most `maxSize` pixels on its longer side, as base64. */
+  preview: (maxSize: number, options?: DraftOption) => Promise<string>
+  /**
+   * The agent's draft (Kit Standard 2.0 A12), when the kit keeps drafts: the agent may ask for
+   * review or take a draft back. Merging and discarding are the person's, never the bridge's.
+   */
+  draft?: { ready: () => Promise<KitsBridgeDraftInfo>; reopen: () => Promise<KitsBridgeDraftInfo> }
 }
+
+/** `draft: true` works on the agent's draft of the document instead of the document. */
+type DraftOption = { draft?: boolean }
 
 const editors = new Map<string, BridgeEditor>()
 let close: (() => void) | null = null
@@ -49,9 +57,10 @@ async function handle(method: string, params: Record<string, unknown>) {
     case 'kit/call': {
       const editor = editorFor(params)
       const args = (params.arguments ?? {}) as Record<string, unknown>
+      const onDraft: DraftOption = args.draft === true ? { draft: true } : {}
       switch (params.tool) {
         case 'inspect':
-          return { document: await editor.inspect() }
+          return { document: await editor.inspect(onDraft) }
         case 'commands': {
           const commands = await editor.commands(String(args.query ?? ''))
           return { commands, total: commands.length }
@@ -59,15 +68,21 @@ async function handle(method: string, params: Record<string, unknown>) {
         case 'run': {
           const steps = Array.isArray(args.steps) ? (args.steps as Array<{ command: string; params?: Record<string, unknown> }>) : []
           if (!steps.length) throw new Error('`steps` must be a non-empty array')
-          const { completed, saved } = await editor.run(steps, args.save !== false)
-          return { completed, saved, document: await editor.inspect() }
+          if (onDraft.draft && !editor.draft) throw new Error(`${editor.path} is open in an editor that keeps no drafts; edit it live`)
+          const { completed, saved } = await editor.run(steps, !onDraft.draft && args.save !== false, onDraft)
+          return { completed, saved, document: await editor.inspect(onDraft) }
+        }
+        case 'draft_ready':
+        case 'draft_reopen': {
+          if (!editor.draft) throw new Error(`${editor.path} is open in an editor that keeps no drafts`)
+          return params.tool === 'draft_ready' ? editor.draft.ready() : editor.draft.reopen()
         }
         default:
           throw new Error(`unknown kit tool ${String(params.tool)}`)
       }
     }
     case 'kit/preview':
-      return { png: await editorFor(params).preview(Math.max(1, Number(params.maxSize) || 1024)) }
+      return { png: await editorFor(params).preview(Math.max(1, Number(params.maxSize) || 1024), params.draft === true ? { draft: true } : {}) }
     default:
       throw new Error(`unknown bridge method ${method}`)
   }

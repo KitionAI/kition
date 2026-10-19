@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getAgentKitEditMode } from '@/features/agent/lib/agentKitEditMode'
 import i18next from 'i18next'
 import type {
   AgentExecutionMode,
@@ -848,6 +849,7 @@ export function useWorkspaceAgent({
         taskMode: turnContext?.taskMode,
         imageGenerationIntent: followup?.imageGenerationIntent,
         executionMode,
+        kitEditMode: getAgentKitEditMode(),
         tablePlanContext: followup?.tablePlanContext,
         shellApproval: followup?.shellApproval,
         hideUserMessage: followup?.hideUserMessage === true,

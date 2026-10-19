@@ -68,4 +68,63 @@ describe('kitBridge on the shared bridge stream', () => {
     close()
     expect(stream.closed).toBe(true)
   })
+
+  it("runs the agent's draft calls on the editor's draft, and offers no merge or discard", async () => {
+    const { registerBridgeEditor } = await import('./kitBridge')
+    const calls: unknown[] = []
+    const live = { path: 'talks/a.pptx', summary: '1 slide', dirty: false, canUndo: false, canRedo: false, details: {} }
+    const withdraw = registerBridgeEditor({
+      path: 'talks/a.pptx',
+      kitId: 'kit.slide',
+      revision: () => 1,
+      dirty: () => false,
+      inspect: (options) => ({ ...live, summary: options?.draft ? '2 slides, draft' : live.summary }),
+      commands: async () => [],
+      run: async (steps, save, options) => {
+        calls.push(['run', steps.length, save, options])
+        return { completed: [{ command: 'slide.add', changed: true, result: null }], saved: false }
+      },
+      preview: async (maxSize, options) => (options?.draft ? `draft ${maxSize}` : `live ${maxSize}`),
+      draft: {
+        ready: async () => ({ state: 'ready', revision: 2 }),
+        reopen: async () => ({ state: 'open', revision: 2 }),
+      },
+    })
+    const withdrawPlain = registerBridgeEditor({
+      path: 'art/b.kitionvector',
+      kitId: 'kit.vector',
+      revision: () => 1,
+      dirty: () => false,
+      inspect: () => live,
+      commands: async () => [],
+      run: async () => ({ completed: [], saved: false }),
+      preview: async () => '',
+    })
+    const stream = FakeEventSource.streams.at(-1)!
+    stream.emit({ method: 'bridge.ready', params: { session: 8 } })
+    const call = (id: number, tool: string, args: Record<string, unknown> = {}, path = 'talks/a.pptx', kit = 'kit.slide') => stream.emit({ id, method: 'kit/call', params: { path, kit, tool, arguments: args } })
+    call(11, 'run', { steps: [{ command: 'slide.add' }], save: true, draft: true })
+    call(12, 'draft_ready')
+    call(13, 'draft_reopen')
+    stream.emit({ id: 14, method: 'kit/preview', params: { path: 'talks/a.pptx', maxSize: 64, draft: true } })
+    call(15, 'draft_merge')
+    call(16, 'run', { steps: [{ command: 'shape.ellipse' }], draft: true }, 'art/b.kitionvector', 'kit.vector')
+    call(17, 'run', { steps: [{ command: 'slide.add' }] })
+    await settle()
+    await settle()
+    const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message
+    expect(byId(11)?.result).toMatchObject({ saved: false, document: { summary: '2 slides, draft' } })
+    expect(byId(12)?.result).toEqual({ state: 'ready', revision: 2 })
+    expect(byId(13)?.result).toEqual({ state: 'open', revision: 2 })
+    expect(byId(14)?.result).toEqual({ png: 'draft 64' })
+    expect(byId(15)?.error).toMatchObject({ message: expect.stringContaining('unknown kit tool') })
+    expect(byId(16)?.error).toMatchObject({ message: expect.stringContaining('keeps no drafts') })
+    // A draft is never saved; a live run saves by default.
+    expect(calls).toEqual([
+      ['run', 1, false, { draft: true }],
+      ['run', 1, true, {}],
+    ])
+    withdraw()
+    withdrawPlain()
+  })
 })

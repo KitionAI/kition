@@ -9,6 +9,7 @@ import type { AgentSessionEventsPage } from './generated/agent-session-events'
 import type {
   AgentCapabilities,
   AgentExecutionMode,
+  AgentKitEditMode,
   AgentLocalSource,
   AgentPaneContext,
   AgentSession,
@@ -162,6 +163,8 @@ export async function streamAgentMessage(options: {
   paneContext?: AgentPaneContext
   executionMode?: AgentExecutionMode
   taskMode?: AgentTaskMode
+  /** How kit tools edit open kit documents: live (the default) or as drafts to review. */
+  kitEditMode?: AgentKitEditMode
   imageGenerationIntent?: AgentImageGenerationIntent
   whiteboardContext?: AgentWhiteboardContext
   designContext?: AgentDesignContext
@@ -193,6 +196,7 @@ export async function streamAgentMessage(options: {
       pane_context: options.paneContext || '',
       execution_mode: options.executionMode || 'apply',
       task_mode: options.taskMode || 'auto',
+      kit_edit_mode: options.kitEditMode || 'live',
       image_generation_intent: options.imageGenerationIntent || undefined,
       whiteboard_context: options.whiteboardContext || undefined,
       design_context: options.designContext || undefined,

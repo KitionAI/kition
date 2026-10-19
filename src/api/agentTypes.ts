@@ -8,6 +8,8 @@ export type {
 
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
 export type AgentTaskMode = 'auto' | 'browse' | 'table'
+/** How the agent edits open kit documents (Kit Standard 2.0 A12). */
+export type AgentKitEditMode = 'live' | 'draft'
 
 import type { AgentLocalSource } from '@/types/agentLocalSource'
 
