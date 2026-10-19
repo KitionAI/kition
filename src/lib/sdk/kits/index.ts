@@ -3,6 +3,7 @@
 // @kition/sdk, so `openDocument` (and an extension host) works on documents of any of them. The
 // typings stay per kit (`@kition/sdk/kits/<kit>`): their type names overlap.
 import type { KitDescriptor } from '../kits'
+import { boardKit } from './board'
 import { cadKit } from './cad'
 import { effectKit } from './effect'
 import { filmKit } from './film'
@@ -14,9 +15,9 @@ import { tableKit } from './table'
 import { vectorKit } from './vector'
 import { wordKit } from './word'
 
-export { cadKit, effectKit, filmKit, pdfKit, photoKit, sheetsKit, slidesKit, tableKit, vectorKit, wordKit }
+export { boardKit, cadKit, effectKit, filmKit, pdfKit, photoKit, sheetsKit, slidesKit, tableKit, vectorKit, wordKit }
 
 /** Every generated kit's descriptor, by kit id. */
 export const KITS: Readonly<Record<string, KitDescriptor>> = Object.fromEntries(
-  [wordKit, slidesKit, sheetsKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit].map((kit) => [kit.id, kit]),
+  [wordKit, slidesKit, sheetsKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit, boardKit].map((kit) => [kit.id, kit]),
 )
