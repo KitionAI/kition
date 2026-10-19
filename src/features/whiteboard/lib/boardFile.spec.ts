@@ -4,10 +4,8 @@ import {
   listWorkspaceDocuments,
   writeWorkspaceDocument,
 } from '@/services/desktop'
-import { decodeBoardFile } from '../kdm/boardKdmFile'
-import { readBoardRecords, readBoardTitle } from '../kdm/boardKdmRead'
+import { decodeBoardFile, instantiateWhiteboardTemplate, readBoardRecords, readBoardTitle } from '@kition/board-editor/model'
 import { createBoardWorkspaceFile } from './boardFile'
-import { instantiateWhiteboardTemplate } from './whiteboardTemplates'
 
 function decodeWritten() {
   const content = String(vi.mocked(writeWorkspaceDocument).mock.calls.at(-1)?.[1])

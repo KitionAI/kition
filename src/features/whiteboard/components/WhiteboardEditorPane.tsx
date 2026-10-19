@@ -4,39 +4,41 @@ import type {
   ImagePromptAspectRatio,
   ImagePromptTextMode,
 } from '@/features/media-generation/lib/imagePromptTemplates'
-import { WhiteboardAgentPreviewControls } from '@/features/whiteboard/components/WhiteboardAgentPreview'
-import { WhiteboardAgentScopeControl } from '@/features/whiteboard/components/WhiteboardAgentScopeControl'
-import { WhiteboardCanvas } from '@/features/whiteboard/components/WhiteboardCanvas'
+import { BoardHostProvider, type WhiteboardPoint } from '@kition/board-editor'
+import {
+  buildEditableImageTextOverlay,
+  buildWhiteboardAgentContext,
+  getEditableImageTextOverlay,
+  getGeneratedImageCenters,
+  getGeneratedImagePlacementSize,
+  useWhiteboardAgentPatch,
+  useWhiteboardEditor,
+  WhiteboardAgentPreviewControls,
+  WhiteboardAgentScopeControl,
+  WhiteboardCanvas,
+  WhiteboardMinimap,
+  WhiteboardSelectionToolbar,
+  WhiteboardStylePanel,
+  WhiteboardToolbar,
+  WhiteboardTopActions,
+  type WhiteboardAgentScope,
+} from '@kition/board-editor/editor'
 import {
   WhiteboardImageStudio,
   type WhiteboardImageStudioContext,
   type WhiteboardImageStudioGenerationState,
 } from '@/features/whiteboard/components/WhiteboardImageStudio'
-import { WhiteboardSelectionToolbar } from '@/features/whiteboard/components/WhiteboardSelectionToolbar'
-import { WhiteboardMinimap } from '@/features/whiteboard/components/WhiteboardMinimap'
-import { WhiteboardToolbar } from '@/features/whiteboard/components/WhiteboardToolbar'
-import { WhiteboardStylePanel } from '@/features/whiteboard/components/WhiteboardStylePanel'
-import { WhiteboardTopActions } from '@/features/whiteboard/components/WhiteboardTopActions'
 import {
   BOARD_FILE_PROBLEM_MESSAGES,
   WhiteboardFileNotice,
 } from '@/features/whiteboard/components/WhiteboardFileNotice'
-import { useWhiteboardAgentPatch } from '@/features/whiteboard/hooks/useWhiteboardAgentPatch'
 import { isBoardSaveConflict, useBoardDocument } from '@/features/whiteboard/hooks/useBoardDocument'
-import { useWhiteboardEditor } from '@/features/whiteboard/hooks/useWhiteboardEditor'
-import { buildWhiteboardAgentContext, type WhiteboardAgentScope } from '@/features/whiteboard/lib/whiteboardAgentContext'
+import { kitionBoardHost } from '@/features/whiteboard/host/kitionBoardHost'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
-import {
-  buildEditableImageTextOverlay,
-  getEditableImageTextOverlay,
-  getGeneratedImageCenters,
-  getGeneratedImagePlacementSize,
-} from '@/features/whiteboard/lib/whiteboardGeneratedImages'
 import type {
   WhiteboardImageGenerationRequest,
   WhiteboardImageGenerationStartResult,
 } from '@/features/whiteboard/lib/whiteboardImageGeneration'
-import type { WhiteboardPoint } from '@/features/whiteboard/lib/whiteboardTypes'
 import {
   cloneWhiteboardTestRecords,
   installWhiteboardTestBridge,
@@ -45,18 +47,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 
-import './whiteboard.css'
-
-export function WhiteboardEditorPane({
-  agentAvailable = false,
-  agentBusy = false,
-  onAgentBridgeChange,
-  onCancelAgent,
-  onGenerateImage,
-  onOpenAgent,
-  path,
-  title,
-}: {
+type WhiteboardEditorPaneProps = {
   agentAvailable?: boolean
   agentBusy?: boolean
   onAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
@@ -65,7 +56,27 @@ export function WhiteboardEditorPane({
   onOpenAgent?: () => void
   path: string
   title: string
-}) {
+}
+
+/** The board editor in a workspace tab, over Kition's files (`kitionBoardHost`). */
+export function WhiteboardEditorPane(props: WhiteboardEditorPaneProps) {
+  return (
+    <BoardHostProvider value={kitionBoardHost}>
+      <WhiteboardEditorPaneContent {...props} />
+    </BoardHostProvider>
+  )
+}
+
+function WhiteboardEditorPaneContent({
+  agentAvailable = false,
+  agentBusy = false,
+  onAgentBridgeChange,
+  onCancelAgent,
+  onGenerateImage,
+  onOpenAgent,
+  path,
+  title,
+}: WhiteboardEditorPaneProps) {
   const { t } = useTranslation('workspace')
   const { t: ti } = useTranslation('imageGeneration')
   const controller = useWhiteboardEditor()

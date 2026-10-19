@@ -4,7 +4,7 @@ import workspaceCopy from '../src/i18n/locales/en-US/workspace.json' with { type
 import {
   createBoardElementRecord,
   type BoardElementRecord,
-} from '../src/features/whiteboard/lib/boardRecords'
+} from '../packages/board-editor/src/lib/boardRecords'
 import {
   addRecordsToWhiteboardFileExternally,
   countWhiteboardFileWrites,

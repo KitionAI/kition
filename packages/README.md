@@ -6,6 +6,7 @@ Source packages that Kition builds from `src/` and that run outside Kition too.
 | --- | --- | --- |
 | `@kition/app-ui` | `packages/app-ui/` | Shared UI primitives: the `src/index.tsx` controls (Button, Card, Input, Select, Disclosure, …), the shadcn-style `button`, `command`, `dialog`, `input`, `popover`, `spinner`, `switch`, `tooltip`, `confirm`, `RightSheet`, their hooks, and `cn` (`utils`). |
 | `@kition/table-editor` | `packages/table-editor/` | The table and dashboard editor, behind `TableDataSource` and `TableHost`. |
+| `@kition/board-editor` | `packages/board-editor/` | The board (Whiteboard): its model on the Kit Data Model and its editor, behind `BoardHost`. |
 
 ## How Kition uses them
 
@@ -16,7 +17,9 @@ Source packages that Kition builds from `src/` and that run outside Kition too.
 - `tooling/tailwind.config.ts` scans `packages/*/src`, `tsc`, ESLint, knip, dependency-cruiser,
   `scripts/check-i18n.py`, and Vitest (`packages/*/src/**/*.spec.ts(x)`) cover them like `src/`.
 - Packages import nothing from `src/` (dependency-cruiser rule
-  `packages-import-nothing-from-the-app`), and `@kition/app-ui` imports no other package.
+  `packages-import-nothing-from-the-app`) but the Kit Data Model, which they import as
+  `@kition/kdm`: Kition resolves it to its copy in `src/lib/kdm/` (`scripts/sync-kit-host.mjs`), a
+  kit's build to kition-sdk's `packages/kdm`. `@kition/app-ui` imports no other package.
 
 ## `@kition/table-editor`
 
@@ -57,3 +60,23 @@ The packages ship no stylesheet; they use the host's. The editor needs:
 
 A host outside Kition builds these from Kition's checkout until the editor's classes move into a
 package stylesheet. Visual rules follow `docs/design.md`.
+
+## `@kition/board-editor`
+
+Entries (the app imports only these; rule `app-uses-board-editor-entries`):
+
+- `@kition/board-editor`: the agent's board wire types (`AgentWhiteboardPatch`, …), `BoardHost` and
+  its provider, and the record and element types. It loads neither the KDM nor the editor.
+- `@kition/board-editor/model`: the board on the KDM: `boardSchema` (`kit.board`), the `.kiboard`
+  file (`encodeBoardFile`, `decodeBoardFile`, …), `BoardStore` and `BoardCommandRegistry`,
+  previews, and templates.
+- `@kition/board-editor/editor`: the editor's canvas, toolbars, and panels, `useWhiteboardEditor`,
+  and its stylesheet.
+
+The editor's root needs a `BoardHostProvider`; every `BoardHost` member is optional and a missing
+one hides what needs it (the image button needs `importImage`, Create design `designFromFrame`;
+images show only self-contained URLs without `resolveFileURL`). Kition's host is
+`src/features/whiteboard/host/kitionBoardHost.ts`; the file binding, image generation, and the
+agent bridge stay in `src/features/whiteboard`. Its strings are Kition's `workspace` and
+`imageGeneration` namespaces, and its styles Kition's, as for the table editor. The Board kit
+(`packages/board-kit`) is this editor and model packaged as a standard kit.

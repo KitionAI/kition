@@ -5,8 +5,7 @@
  */
 import { randomActor, Replica } from '@/lib/kdm'
 import { writeWorkspaceDocument } from '@/services/desktop'
-import { encodeBoardFile } from './boardKdmFile'
-import { boardSchema } from './boardSchema'
+import { boardSchema, encodeBoardFile } from '@kition/board-editor/model'
 
 /**
  * Writes the board `bytes` (a KDM snapshot or a full change export) to `path`, where there must be

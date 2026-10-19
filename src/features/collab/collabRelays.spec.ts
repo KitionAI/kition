@@ -102,7 +102,7 @@ describe('startCollab for documents Kition edits itself', () => {
   }
 
   async function openBoard(path: string) {
-    const { BoardStore } = await import('@/features/whiteboard/lib/boardStore')
+    const { BoardStore } = await import('@kition/board-editor/model')
     const { registerOpenBoard } = await import('@/features/whiteboard/lib/openBoards')
     const store = new BoardStore()
     const withdraw = registerOpenBoard({ path, replica: () => store.getReplica(), importChanges: (changes) => store.importChanges(changes), subscribe: store.subscribe, save: async () => undefined })

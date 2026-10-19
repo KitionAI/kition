@@ -4,9 +4,7 @@ import { startRelay, type ConnectionState, type RelaySync, type RoomJoinResult }
 import { LORO_REPLICA_VERSIONS } from '@/lib/sync/replicaVersions'
 import { createDocumentReplica, documentBody } from '@/features/document/kdm/documentText'
 import { DOCUMENT_BODY } from '@/features/document/kdm/documentSchema'
-import { BoardStore } from '@/features/whiteboard/lib/boardStore'
-import { createBoardElementRecord } from '@/features/whiteboard/lib/boardRecords'
-import { boardSchema } from '@/features/whiteboard/kdm/boardSchema'
+import { BoardStore, boardSchema, createBoardElementRecord } from '@kition/board-editor/model'
 import { kdmRelayReplica, type KdmReplicaHost } from './kdmRelayReplica'
 
 const rect = (id: string, index: number, pageId: string) => ({

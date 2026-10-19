@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 
-import type { WhiteboardTemplateCreationSelection } from '@/features/whiteboard/lib/whiteboardTemplates'
+import type { WhiteboardTemplateCreationSelection } from '@kition/board-editor'
 import { loadBoardFile } from '@/features/whiteboard/public'
 import { notify } from '@/lib/notify'
 

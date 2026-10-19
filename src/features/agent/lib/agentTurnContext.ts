@@ -1,7 +1,7 @@
 import type { AgentPaneContext, AgentTaskMode } from '@/api/agent'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import type { DataDocument, DataTable } from '@kition/table-editor'
-import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentDesignContext } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } from '@/features/document/public'
 

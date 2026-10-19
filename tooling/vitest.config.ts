@@ -16,6 +16,10 @@ export default defineConfig({
       { find: /^@kition\/app-ui\//, replacement: `${resolve(repositoryDir, 'packages/app-ui/src')}/` },
       { find: /^@kition\/table-editor$/, replacement: resolve(repositoryDir, 'packages/table-editor/src/index.ts') },
       { find: /^@kition\/table-editor\//, replacement: `${resolve(repositoryDir, 'packages/table-editor/src')}/` },
+      { find: /^@kition\/board-editor$/, replacement: resolve(repositoryDir, 'packages/board-editor/src/index.ts') },
+      { find: /^@kition\/board-editor\//, replacement: `${resolve(repositoryDir, 'packages/board-editor/src')}/` },
+      // kition-sdk's @kition/kdm, which Kition carries as src/lib/kdm (scripts/sync-kit-host.mjs).
+      { find: /^@kition\/kdm$/, replacement: resolve(repositoryDir, 'src/lib/kdm/index.ts') },
     ],
   },
   test: {

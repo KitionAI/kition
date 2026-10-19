@@ -13,8 +13,8 @@ import {
   versionIncludes,
   type BoardFileCopy,
   type BoardFileProblem,
-} from '@/features/whiteboard/kdm/boardKdmFile'
-import type { BoardStore } from '@/features/whiteboard/lib/boardStore'
+} from '@kition/board-editor/model'
+import type { BoardStore } from '@kition/board-editor/model'
 import { registerOpenBoard } from '@/features/whiteboard/lib/openBoards'
 import {
   listWorkspaceDocuments,

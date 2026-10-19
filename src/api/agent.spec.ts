@@ -4,7 +4,7 @@ import { expectMatchesContract } from '@/test/contracts'
 import { streamAgentMessage } from './agent'
 import type { RuntimeWritingModel } from '@/types'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
-import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardContext } from '@kition/board-editor'
 
 vi.mock('@/services/desktop', () => ({
   getApiBaseURL: () => 'http://runtime.test',

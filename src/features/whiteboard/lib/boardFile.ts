@@ -5,14 +5,15 @@ import {
   type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
 import { randomActor } from '@/lib/kdm'
-import { createBoardFromRecords, decodeBoardFile, encodeBoardFile } from '../kdm/boardKdmFile'
-import { readBoardRecords } from '../kdm/boardKdmRead'
+import type { BoardRecord, WhiteboardTemplateInstance } from '@kition/board-editor'
 import {
-  DEFAULT_BOARD_PAGE_ID,
   createBoardElementRecord,
-  type BoardRecord,
-} from './boardRecords'
-import type { WhiteboardTemplateInstance } from './whiteboardTemplates'
+  createBoardFromRecords,
+  decodeBoardFile,
+  DEFAULT_BOARD_PAGE_ID,
+  encodeBoardFile,
+  readBoardRecords,
+} from '@kition/board-editor/model'
 
 const BOARD_FILE_EXTENSION = '.kiboard'
 

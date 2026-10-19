@@ -1,11 +1,11 @@
 import type { Replica } from '@/lib/kdm'
 
-import type { BoardRecord } from '../lib/boardRecords'
 import type {
+  BoardRecord,
   WhiteboardElementStyle,
   WhiteboardTool,
   WhiteboardViewport,
-} from '../lib/whiteboardTypes'
+} from '@kition/board-editor'
 
 export type WhiteboardTestSnapshot = {
   activeStyle: WhiteboardElementStyle

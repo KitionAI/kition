@@ -6,7 +6,7 @@ import {
   type AgentTurnContext,
 } from '@/features/agent/public'
 import { loadMarkdownImageInsertionResolver, type MarkdownImageInsertionSnapshot } from '@/features/document/public'
-import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentDesignContext } from '@/types/designAgent'
 
 type BuildTurnContextInput = Parameters<typeof buildAgentTurnContext>[0]

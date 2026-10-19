@@ -3,7 +3,7 @@ import { resolveApiURL } from '@/services/desktop'
 import { readAgentMessageStream, type AgentStreamNotification } from './agentStream'
 import type { RuntimeWritingModel } from '@/types'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
-import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentDesignContext } from '@/types/designAgent'
 import type { AgentSessionEventsPage } from './generated/agent-session-events'
 import type {

@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { installDocumentStoreBridge } from './helpers/documentStore'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
-import { createBoardRecordsFromElements } from '../src/features/whiteboard/lib/boardRecords'
+import { createBoardRecordsFromElements } from '../packages/board-editor/src/lib/boardRecords'
 
 const CAPTURE_ENABLED = process.env.KITION_CAPTURE_README_ASSETS === '1'
 const VAULT_PATH = '/tmp/Kition Demo'
@@ -14,7 +14,7 @@ const BOARD_PATH = 'Product Launch.kiboard'
 const WELCOME_CONTENT = readFileSync(new URL('../public/onboarding/welcome.md', import.meta.url), 'utf8')
 const LOGO_CONTENT = readFileSync(new URL('../public/onboarding/logo.png', import.meta.url))
 /** Encoded by the page through the Vite dev server: Playwright's TypeScript transform cannot load the KDM. */
-const BOARD_FILE_MODULE = '/src/features/whiteboard/kdm/boardKdmFile.ts'
+const BOARD_FILE_MODULE = '/packages/board-editor/src/kdm/boardKdmFile.ts'
 const KDM_MODULE = '/src/lib/kdm/index.ts'
 const BOARD_RECORDS = createBoardRecordsFromElements([
   {

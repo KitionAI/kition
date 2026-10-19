@@ -12,13 +12,19 @@ import {
 } from '@/services/desktop'
 import { notify } from '@/lib/notify'
 import { discardWorkspaceEditSessions, flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
-import { boardRootId, readBoardRecords } from '../kdm/boardKdmRead'
-import { writeBoardDiff } from '../kdm/boardKdmWrite'
-import { createBoardFromRecords, decodeBoardFile, encodeBoardFile } from '../kdm/boardKdmFile'
-import { boardSchema } from '../kdm/boardSchema'
-import { createBoardElementRecord, createBoardRecordsFromElements } from '../lib/boardRecords'
-import type { WhiteboardElement } from '../lib/whiteboardTypes'
-import { useWhiteboardEditor } from './useWhiteboardEditor'
+import type { WhiteboardElement } from '@kition/board-editor'
+import { useWhiteboardEditor } from '@kition/board-editor/editor'
+import {
+  boardRootId,
+  boardSchema,
+  createBoardElementRecord,
+  createBoardFromRecords,
+  createBoardRecordsFromElements,
+  decodeBoardFile,
+  encodeBoardFile,
+  readBoardRecords,
+  writeBoardDiff,
+} from '@kition/board-editor/model'
 import { useBoardDocument } from './useBoardDocument'
 
 vi.mock('@/lib/notify', () => ({

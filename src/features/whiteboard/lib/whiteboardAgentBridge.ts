@@ -1,7 +1,7 @@
 import type {
   AgentWhiteboardContext,
   AgentWhiteboardPatch,
-} from '@/types/whiteboardAgent'
+} from '@kition/board-editor'
 import type {
   WhiteboardImageGenerationCompletion,
   WhiteboardImageGenerationDelivery,

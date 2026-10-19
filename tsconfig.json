@@ -28,7 +28,10 @@
       "@kition/app-ui": ["packages/app-ui/src/index.tsx"],
       "@kition/app-ui/*": ["packages/app-ui/src/*"],
       "@kition/table-editor": ["packages/table-editor/src/index.ts"],
-      "@kition/table-editor/*": ["packages/table-editor/src/*"]
+      "@kition/table-editor/*": ["packages/table-editor/src/*"],
+      "@kition/board-editor": ["packages/board-editor/src/index.ts"],
+      "@kition/board-editor/*": ["packages/board-editor/src/*"],
+      "@kition/kdm": ["src/lib/kdm/index.ts"]
     }
   },
   "include": [

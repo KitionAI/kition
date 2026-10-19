@@ -1,0 +1,13 @@
+{
+  "name": "@kition/board-editor",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Kition's board: its model on the Kit Data Model and its editor, behind the BoardHost seam",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model": "./src/model.ts",
+    "./editor": "./src/editor.ts"
+  }
+}

@@ -2,9 +2,14 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { readBoardRecords, readBoardTitle } from '@/features/whiteboard/kdm/boardKdmRead'
-import { createBoardFromRecords, decodeBoardFile, encodeBoardFile } from '@/features/whiteboard/kdm/boardKdmFile'
-import { createBoardRecordsFromElements } from '@/features/whiteboard/lib/boardRecords'
+import {
+  createBoardFromRecords,
+  createBoardRecordsFromElements,
+  decodeBoardFile,
+  encodeBoardFile,
+  readBoardRecords,
+  readBoardTitle,
+} from '@kition/board-editor/model'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/desktop'
 import { useWorkspaceTreeNodeActions } from './useWorkspaceTreeNodeActions'

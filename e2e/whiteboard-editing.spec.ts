@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import type { BoardElementRecord } from '../src/features/whiteboard/lib/boardRecords'
+import type { BoardElementRecord } from '../packages/board-editor/src/lib/boardRecords'
 
 import {
   openWhiteboardFixture,

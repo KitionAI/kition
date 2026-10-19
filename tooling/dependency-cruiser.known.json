@@ -1,13 +1,10 @@
 [
   {
     "type": "cycle",
-    "from": "src/features/analytics/lib/productAnalytics.ts",
-    "to": "src/services/desktopUpdates.ts",
-    "unresolvedTo": "@/services/desktopUpdates",
+    "from": "packages/board-editor/src/lib/boardBindingEngine.ts",
+    "to": "packages/board-editor/src/lib/boardStore.ts",
+    "unresolvedTo": "./boardStore",
     "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
       "local",
       "type-only",
       "import"
@@ -18,115 +15,17 @@
     },
     "cycle": [
       {
-        "name": "src/services/desktopUpdates.ts",
-        "dependencyTypes": [
-          "aliased",
-          "aliased-tsconfig",
-          "aliased-tsconfig-paths",
-          "local",
-          "type-only",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/analytics/lib/productAnalytics.ts",
-        "dependencyTypes": [
-          "aliased",
-          "aliased-tsconfig",
-          "aliased-tsconfig-paths",
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/features/document/editor/menu/Menu.ts",
-    "to": "src/features/document/editor/menu/MenuRenderer.tsx",
-    "unresolvedTo": "./MenuRenderer",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/document/editor/menu/MenuRenderer.tsx",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/document/editor/menu/Menu.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/features/document/lib/documentTemplates.ts",
-    "to": "src/features/document/lib/extendedDocumentTemplates.ts",
-    "unresolvedTo": "./extendedDocumentTemplates",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/document/lib/extendedDocumentTemplates.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/document/lib/documentTemplates.ts",
+        "name": "packages/board-editor/src/lib/boardStore.ts",
         "dependencyTypes": [
           "local",
           "type-only",
           "import"
         ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/features/formSync/api.ts",
-    "to": "src/features/formSync/localDrafts.ts",
-    "unresolvedTo": "./localDrafts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/formSync/localDrafts.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
       },
       {
-        "name": "src/features/formSync/api.ts",
+        "name": "packages/board-editor/src/lib/boardBindingEngine.ts",
         "dependencyTypes": [
           "local",
-          "type-only",
           "import"
         ]
       }
@@ -13387,6 +13286,139 @@
   },
   {
     "type": "cycle",
+    "from": "src/features/analytics/lib/productAnalytics.ts",
+    "to": "src/services/desktopUpdates.ts",
+    "unresolvedTo": "@/services/desktopUpdates",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/services/desktopUpdates.ts",
+        "dependencyTypes": [
+          "aliased",
+          "aliased-tsconfig",
+          "aliased-tsconfig-paths",
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/features/analytics/lib/productAnalytics.ts",
+        "dependencyTypes": [
+          "aliased",
+          "aliased-tsconfig",
+          "aliased-tsconfig-paths",
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/features/document/editor/menu/Menu.ts",
+    "to": "src/features/document/editor/menu/MenuRenderer.tsx",
+    "unresolvedTo": "./MenuRenderer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/features/document/editor/menu/MenuRenderer.tsx",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/features/document/editor/menu/Menu.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/features/document/lib/documentTemplates.ts",
+    "to": "src/features/document/lib/extendedDocumentTemplates.ts",
+    "unresolvedTo": "./extendedDocumentTemplates",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/features/document/lib/extendedDocumentTemplates.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/features/document/lib/documentTemplates.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/features/formSync/api.ts",
+    "to": "src/features/formSync/localDrafts.ts",
+    "unresolvedTo": "./localDrafts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/features/formSync/localDrafts.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/features/formSync/api.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
     "from": "src/features/table/templates/batchProductDesignerTemplate.ts",
     "to": "src/features/table/templates/kitableTemplates.ts",
     "unresolvedTo": "./kitableTemplates",
@@ -13537,38 +13569,6 @@
         "dependencyTypes": [
           "local",
           "type-only",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/features/whiteboard/lib/boardBindingEngine.ts",
-    "to": "src/features/whiteboard/lib/boardStore.ts",
-    "unresolvedTo": "./boardStore",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/whiteboard/lib/boardStore.ts",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/whiteboard/lib/boardBindingEngine.ts",
-        "dependencyTypes": [
-          "local",
           "import"
         ]
       }
@@ -14761,24 +14761,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/whiteboard/lib/whiteboardGeneratedImages.ts",
-    "to": "src/features/media-generation/lib/imagePromptTemplates.ts",
-    "unresolvedTo": "@/features/media-generation/lib/imagePromptTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/whiteboard/lib/whiteboardImageGeneration.ts",
     "to": "src/features/media-generation/lib/generatedImageArtifacts.ts",
     "unresolvedTo": "@/features/media-generation/lib/generatedImageArtifacts",
@@ -15958,24 +15940,6 @@
       "aliased-tsconfig",
       "aliased-tsconfig-paths",
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useWorkspaceBoardCreation.ts",
-    "to": "src/features/whiteboard/lib/whiteboardTemplates.ts",
-    "unresolvedTo": "@/features/whiteboard/lib/whiteboardTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {

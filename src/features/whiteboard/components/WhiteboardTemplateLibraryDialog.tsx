@@ -20,14 +20,14 @@ import {
   DialogContent,
 } from '@kition/app-ui/dialog'
 
+import type { WhiteboardTemplateCreationSelection } from '@kition/board-editor'
+import { WhiteboardTemplatePreview } from '@kition/board-editor/editor'
 import {
   instantiateWhiteboardTemplate,
   WHITEBOARD_TEMPLATES,
   type WhiteboardTemplateCategory,
-  type WhiteboardTemplateCreationSelection,
   type WhiteboardTemplateDefinition,
-} from '../lib/whiteboardTemplates'
-import { WhiteboardTemplatePreview } from './WhiteboardTemplateGallery'
+} from '@kition/board-editor/model'
 
 export function WhiteboardTemplateLibraryDialog({
   busy = false,

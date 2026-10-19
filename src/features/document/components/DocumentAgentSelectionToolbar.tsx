@@ -9,7 +9,7 @@ import {
   ActionMenuLabel,
   ActionMenuSeparator,
   ActionMenuTrigger,
-} from '@/components/ActionMenu'
+} from '@kition/app-ui/action-menu'
 import { Button } from '@kition/app-ui/button'
 import type { DocumentAgentAction } from '@/features/document/lib/documentAgentActions'
 import {

@@ -10,4 +10,4 @@ export { findOpenBoard, followOpenBoards, type OpenBoard } from './lib/openBoard
 /** Loads the writer of `.kiboard` files from shared boards; it carries the KDM. */
 export const loadBoardSharedFile = () => import('./kdm/boardSharedFile')
 /** Loads the drawing of a board at a point of its history (version history); it carries the KDM. */
-export const loadBoardPreview = () => import('./kdm/boardPreview')
+export const loadBoardPreview = () => import('@kition/board-editor/model')

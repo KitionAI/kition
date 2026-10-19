@@ -3,7 +3,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuTrigger } from '@/components/ActionMenu'
+import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuTrigger } from '@kition/app-ui/action-menu'
 import { Skeleton } from '@/components/states'
 import type { DocumentTranslationState } from '@/features/document/hooks/useDocumentTranslation'
 import {

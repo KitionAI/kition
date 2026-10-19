@@ -4,8 +4,8 @@ import { getWorkspaceStorageKey } from '../../src/features/onboarding/workspaceS
 import {
   createBoardRecordsFromElements,
   type BoardRecord,
-} from '../../src/features/whiteboard/lib/boardRecords'
-import type { WhiteboardElement } from '../../src/features/whiteboard/lib/whiteboardTypes'
+} from '../../packages/board-editor/src/lib/boardRecords'
+import type { WhiteboardElement } from '../../packages/board-editor/src/lib/whiteboardTypes'
 import type { WhiteboardTestSnapshot } from '../../src/features/whiteboard/testing/whiteboardTestBridge'
 import { mockLocalWorkspaceApi } from './mockApi'
 
@@ -17,9 +17,9 @@ const BOARD_TITLE = 'Whiteboard E2E'
  * The app's `.kiboard` encoder, imported by the page from the Vite dev server: Playwright's own
  * TypeScript transform cannot load the KDM, so fixtures are encoded in the browser.
  */
-const BOARD_FILE_MODULE = '/src/features/whiteboard/kdm/boardKdmFile.ts'
-const BOARD_READ_MODULE = '/src/features/whiteboard/kdm/boardKdmRead.ts'
-const BOARD_WRITE_MODULE = '/src/features/whiteboard/kdm/boardKdmWrite.ts'
+const BOARD_FILE_MODULE = '/packages/board-editor/src/kdm/boardKdmFile.ts'
+const BOARD_READ_MODULE = '/packages/board-editor/src/kdm/boardKdmRead.ts'
+const BOARD_WRITE_MODULE = '/packages/board-editor/src/kdm/boardKdmWrite.ts'
 const KDM_MODULE = '/src/lib/kdm/index.ts'
 /** The event name the mock desktop bridge raises for a change to the board file on disk. */
 const EXTERNAL_CHANGE_EVENT = 'kition-e2e:whiteboard-document-change'

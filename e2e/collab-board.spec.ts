@@ -28,7 +28,7 @@ type BoardSnapshot = { docId: string; kdmVersion: string; records: Array<{ recor
 async function emptyBoardText(page: Page, title: string) {
   return page.evaluate(async (name) => {
     const load = (module: string) => import(/* @vite-ignore */ new URL(module, window.location.href).href)
-    const [{ createEmptyBoard, encodeBoardFile }, { randomActor }] = await Promise.all([load('/src/features/whiteboard/kdm/boardKdmFile.ts'), load('/src/lib/kdm/index.ts')])
+    const [{ createEmptyBoard, encodeBoardFile }, { randomActor }] = await Promise.all([load('/packages/board-editor/src/kdm/boardKdmFile.ts'), load('/src/lib/kdm/index.ts')])
     return encodeBoardFile(createEmptyBoard(name, randomActor())) as string
   }, title)
 }
@@ -209,7 +209,7 @@ test('without a Kition Pro session a board opens and saves as before, with no sy
       const text = await fs.readFile(path.join(host.root, 'Plan.kiboard'), 'utf8')
       return page.evaluate(async ({ text: file, id }) => {
         const load = (module: string) => import(/* @vite-ignore */ new URL(module, window.location.href).href)
-        const [{ decodeBoardFile }, { randomActor }] = await Promise.all([load('/src/features/whiteboard/kdm/boardKdmFile.ts'), load('/src/lib/kdm/index.ts')])
+        const [{ decodeBoardFile }, { randomActor }] = await Promise.all([load('/packages/board-editor/src/kdm/boardKdmFile.ts'), load('/src/lib/kdm/index.ts')])
         const decoded = decodeBoardFile(file, randomActor())
         return decoded.kind === 'board' && decoded.replica.exists(id)
       }, { text, id: drawn })

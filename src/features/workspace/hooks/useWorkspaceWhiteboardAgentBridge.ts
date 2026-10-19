@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/public'
 import { runtimeSupportsWhiteboard } from '@/features/whiteboard/public'
 import { getDesktopBackendStatus } from '@/services/desktop'
-import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardPatch } from '@kition/board-editor'
 
 /**
  * Registry of the whiteboard editors' Agent bridges, keyed by board path.

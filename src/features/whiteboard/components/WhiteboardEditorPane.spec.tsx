@@ -10,10 +10,8 @@ import {
 } from '@/services/desktop'
 import { ConfirmProvider } from '@kition/app-ui/confirm'
 import { newDocId, Replica, system } from '@/lib/kdm'
-import { createBoardFromRecords, encodeBoardFile } from '../kdm/boardKdmFile'
-import { boardSchema } from '../kdm/boardSchema'
-import { createBoardRecordsFromElements } from '../lib/boardRecords'
-import type { WhiteboardElement } from '../lib/whiteboardTypes'
+import type { WhiteboardElement } from '@kition/board-editor'
+import { boardSchema, createBoardFromRecords, createBoardRecordsFromElements, encodeBoardFile } from '@kition/board-editor/model'
 import { WhiteboardEditorPane } from './WhiteboardEditorPane'
 import type { WhiteboardAgentBridge } from '../lib/whiteboardAgentBridge'
 

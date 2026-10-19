@@ -6,7 +6,7 @@ import { runtimeSupportsWhiteboard } from './whiteboardCapabilities'
 import {
   AGENT_WHITEBOARD_CAPABILITY,
   AGENT_WHITEBOARD_PATCH_OPERATION_LIMIT,
-} from '@/types/whiteboardAgent'
+} from '@kition/board-editor'
 
 describe('AI Whiteboard public boundary', () => {
   it('keeps the capability and patch limit in lockstep with the public schema', () => {

@@ -11,7 +11,7 @@ vi.mock('@/features/whiteboard/public', () => ({
 
 import { getDesktopBackendStatus } from '@/services/desktop'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/public'
-import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardPatch } from '@kition/board-editor'
 
 import { useWorkspaceWhiteboardAgentBridge } from './useWorkspaceWhiteboardAgentBridge'
 

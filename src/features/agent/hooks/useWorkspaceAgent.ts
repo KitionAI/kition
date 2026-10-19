@@ -71,8 +71,8 @@ import type { DesktopSettingsState } from '@/types/desktopSettings'
 import type {
   AgentImageGenerationIntent,
 } from '@/types/imageGeneration'
-import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
-import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardContext } from '@kition/board-editor'
+import type { AgentWhiteboardPatch } from '@kition/board-editor'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 import {

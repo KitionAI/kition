@@ -30,7 +30,7 @@ normative in `kition-sdk`, not in Kition.
 ## The `kit.board` schema
 
 The whiteboard's KDM schema lives in
-`src/features/whiteboard/kdm/boardSchema.ts` under the kit name `kit.board`.
+`packages/board-editor/src/kdm/boardSchema.ts` under the kit name `kit.board`.
 Its root type is `Board`:
 
 - **`Board`** — `title` (string) and `pages` (an ordered list of `Page`).
@@ -63,15 +63,15 @@ merge via the list CRDT.
 
 ## `BoardStore`: the replica's view
 
-`src/features/whiteboard/lib/boardStore.ts` exposes `BoardStore`, which keeps
+`packages/board-editor/src/lib/boardStore.ts` exposes `BoardStore`, which keeps
 its existing public API (`getRecords`, `transact`, `undo`, `redo`, …) but is
 now a materialized view over a KDM `Replica`. The pieces:
 
 - **Commit → field-level transaction.** A `BoardStore` transaction collects a
   `BoardRecordDiff` (added/updated/removed records) from the view, then
-  `BoardReplicaHistory.commit` (`src/features/whiteboard/kdm/boardReplicaBridge.ts`)
+  `BoardReplicaHistory.commit` (`packages/board-editor/src/kdm/boardReplicaBridge.ts`)
   writes it as one KDM transaction via `writeBoardDiff`
-  (`src/features/whiteboard/kdm/boardKdmWrite.ts`), which sets only the
+  (`packages/board-editor/src/kdm/boardKdmWrite.ts`), which sets only the
   fields that actually changed and turns order changes into list moves. This
   is what makes concurrent edits of different fields, or of different
   elements' order, merge instead of conflict.
@@ -109,7 +109,7 @@ repair so they do not have to materialize the whole board).
 
 Every object (element, page) gets a **UUID v7** (`newObjectId` in
 `src/lib/kdm/ids.ts`, wrapped by
-`src/features/whiteboard/lib/whiteboardElementId.ts`): unique across replicas
+`packages/board-editor/src/lib/whiteboardElementId.ts`): unique across replicas
 without coordination, and roughly creation-ordered. A KDM transaction's
 `create` also accepts a caller-chosen id (`tx.create(type, fields, { id })`),
 which the whiteboard's file creation and template code use when it needs a
@@ -117,7 +117,7 @@ specific root or page id.
 
 The AI agent names elements it creates with short ids of its own choosing
 (such as `n2`), meaningful only within one patch.
-`src/features/whiteboard/lib/whiteboardAgentPatch.ts` turns every such name
+`packages/board-editor/src/lib/whiteboardAgentPatch.ts` turns every such name
 into a real object id before it reaches the document
 (`remapAgentCreatedIds`), rewriting every reference — parents, source
 references, connector bindings — to match. Once a patch is accepted, its
@@ -132,7 +132,7 @@ to create a new element is rejected.
 The current page and the camera viewport are **view state**, not part of the
 document: they are never written to the replica and never an undo step, so
 they do not create undo noise and do not conflict between users sharing a
-file. `src/features/whiteboard/hooks/useBoardViewState.ts` keeps them in
+file. `packages/board-editor/src/hooks/useBoardViewState.ts` keeps them in
 `localStorage` under the key `kition.board.view.<docId>` (debounced, flushed
 on unmount or document switch). `BoardStore.setActivePage` mirrors the active
 page into an in-memory `meta` record for convenience, but that record is
@@ -150,7 +150,7 @@ as a base64-encoded snapshot:
 
 There is no record JSON and no viewport in the file — the KDM snapshot *is*
 the document, and viewport/current-page live in per-user view state (above).
-`src/features/whiteboard/kdm/boardKdmFile.ts` is the file's API:
+`packages/board-editor/src/kdm/boardKdmFile.ts` is the file's API:
 
 - `createEmptyBoard` / `createBoardFromRecords` build a new replica (the
   latter for templates: its records are written in the replica's creating
@@ -264,9 +264,9 @@ native entry for `loro-crdt` (`tooling/vitest.config.ts` has no such alias).
 ## Testing pointers
 
 - Unit specs sit alongside the modules they cover:
-  `src/features/whiteboard/kdm/boardKdmFile.spec.ts`,
+  `packages/board-editor/src/kdm/boardKdmFile.spec.ts`,
   `boardKdmRead.spec.ts`, `boardKdmWrite.spec.ts`, and
-  `src/features/whiteboard/lib/boardStore.kdm.spec.ts`,
+  `packages/board-editor/src/lib/boardStore.kdm.spec.ts`,
   `boardRecordEquality.spec.ts`, `whiteboardAgentPatch.spec.ts`, among others.
 - `e2e/helpers/whiteboard.ts` builds `.kiboard` fixtures for Playwright specs
   using the v2 envelope (`encodeBoardFile`/`createBoardFromRecords`) rather
