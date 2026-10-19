@@ -363,6 +363,29 @@ development build opens `.kiboard` files in the kit when
 natively. The shell's Undo and Redo follow the engine; the board's own Undo is
 in the editor.
 
+The Board kit is L6: `packages/board-kit/src/engine/boardConvergence.spec.ts`
+runs kition-sdk's TypeScript convergence suite (`@kition/convergence`,
+Kition's copy in `src/lib/convergence`) on `BoardDocument`. Its adapter
+drives replicas through the board's commands and the contract 2 replica
+members; random edits come from the whole command catalogue (elements,
+connectors with bindings, groups and frames, pages); the probe's label is the
+text field the text scenarios type into (its lines are the paragraphs), and
+reparent swaps two frames, whose `parent` reference must end without a cycle.
+Its view check compares the store with a fresh read of the replica and holds
+the board's invariants in the view and the state. Every scenario passes but
+`blobs-late` (an image names a workspace file, so the schema has no blob
+field). `KITION_CONVERGENCE_REPORT=<file>` writes the report for
+`check-manifest.mjs --convergence`. The suite found four board bugs, fixed in
+`packages/board-editor` with regression tests in `boardStore.kdm.spec.ts`:
+a page or element deleted while another replica moved it in its list left a
+list entry naming nothing; elements added to (or moved onto) a page another
+replica deleted stayed in the document on no page, some naming deleted
+parents (they are now deleted, as the page deletion deleted the others); a
+command could store a parent the reader drops (a frame nested in its own
+child, a cycle), so reopening the file changed it; and the store's indexes
+after a deletion were not positions, so the next regroup could write another
+order than the view showed.
+
 ### The Document kit
 
 `kit.document` (`packages/document-kit`) packages Kition's Markdown document
@@ -453,7 +476,11 @@ Kit repository:
    WebAssembly parity check with `KITION_WASM_ENGINE` set, and meet the
    collaboration budgets in section 7 (`tests/perf.rs`). `node
    tools/check-manifest.mjs kit.json --convergence <report.json>` then
-   reports L6.
+   reports L6. A `ts-worker` engine runs the same scenarios with kition-sdk's
+   TypeScript harness, `@kition/convergence`: a `KitEngineAdapter` subclass
+   over its `kitEngineClass` document in a vitest spec, asserting
+   `report.level6()` and writing `report.toJsonText()` to
+   `KITION_CONVERGENCE_REPORT` (the Board kit's `boardConvergence.spec.ts`).
 3. Add the headless executable `apps/kit-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
    Add `"headless": { "executable": "kit-<kit>", "protocol": "kition-kit/1" }`

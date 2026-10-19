@@ -14,6 +14,7 @@
     "src/features/kits/host/*.ts",
     "src/lib/kdm/*.ts",
     "src/lib/kit-engine/*.ts",
+    "src/lib/convergence/*.ts",
     "packages/board-kit/src/engine/module.ts",
     "packages/document-kit/src/engine/module.ts",
     "src/lib/sync/*.ts",
