@@ -47,6 +47,12 @@ vi.mock('@/features/document/components/MarkdownSourceEditor', () => ({
   },
 }))
 
+// The comments rail reads a real document session (text, replica, comment subscriptions); these
+// tests pass a stand-in session, so the rail is a stub here (e2e/collab-comments.spec.ts covers it).
+vi.mock('@/features/document/components/DocumentComments', () => ({
+  DocumentComments: () => <div data-testid="mock-document-comments" />,
+}))
+
 vi.mock('@/features/whiteboard/components/WhiteboardEditorPane', () => ({
   WhiteboardEditorPane: () => (
     <svg data-testid="whiteboard-svg-scene" role="img" aria-label="Board" />

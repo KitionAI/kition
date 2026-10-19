@@ -280,7 +280,12 @@ describe('AgentChatPanel composer controls', () => {
     expect(addButton?.getAttribute('aria-label')).toBe('Add context')
     expect(container.querySelector('.agent-composer-context')).toBeNull()
     expect(footer?.firstElementChild).toBe(addButton?.parentElement)
-    expect(addButton?.parentElement?.nextElementSibling).toBe(modelPicker)
+    // The kit edit mode toggle (live or draft) sits with the left-hand composer controls, between
+    // the plus button and the model picker.
+    const kitEditMode = container.querySelector('[data-testid="agent-kit-edit-mode"]')
+    expect(kitEditMode).not.toBeNull()
+    expect(addButton?.parentElement?.nextElementSibling).toBe(kitEditMode)
+    expect(kitEditMode?.nextElementSibling).toBe(modelPicker)
     await act(async () => addButton?.click())
     const localFolder = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
       .find((button) => button.textContent?.includes('Local folder'))
