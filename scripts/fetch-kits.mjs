@@ -5,6 +5,11 @@
 //   node scripts/fetch-kits.mjs          fetch the packages that are missing or not the pinned ones
 //   node scripts/fetch-kits.mjs --check  only compare public/kits with the lock
 //
+// A fetched package gets a stamp (.kition-package.json) with its lock entry. A package without
+// it, or with another one (a local build by scripts/build-kit-ui.sh, or another package), is not
+// the pinned one even when its version matches, so it is fetched again and `--check` fails. Set
+// KITION_KEEP_LOCAL_KITS=1 to keep local builds of the pinned version and commit instead.
+//
 // The packages are Release assets of the private kit repositories, downloaded with
 // `gh release download`: locally with your gh login, in CI with GH_TOKEN set to a token that can
 // read those repositories. Each download is checked against the pinned size and SHA-256.
@@ -14,7 +19,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { kitPackageProblem, readKitLock } from './lib/kitPackages.mjs'
+import { kitPackageProblem, publishedKitPackageStamp, readKitLock, writeKitPackageStamp } from './lib/kitPackages.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const kitsDir = path.join(repoRoot, 'public', 'kits')
@@ -40,6 +45,7 @@ function fetchKit(kit, pinned) {
     fs.mkdirSync(kitsDir, { recursive: true })
     // The archive by its bare name: GNU tar reads a drive letter in it as a remote host.
     run('tar', ['-xzf', pinned.asset, '-C', kitsDir], { cwd: scratch })
+    writeKitPackageStamp(kitsDir, kit, publishedKitPackageStamp(pinned))
     const problem = kitPackageProblem(kitsDir, kit, pinned)
     if (problem) throw new Error(problem)
     console.log(`fetched ${kit} ${pinned.version}`)
@@ -49,11 +55,14 @@ function fetchKit(kit, pinned) {
 }
 
 const checkOnly = process.argv.includes('--check')
+const keepLocal = process.env.KITION_KEEP_LOCAL_KITS === '1'
 let problems = 0
 for (const [kit, pinned] of Object.entries(lock)) {
   const problem = kitPackageProblem(kitsDir, kit, pinned)
   if (!problem) {
     console.log(`${kit} ${pinned.version}: up to date`)
+  } else if (!checkOnly && keepLocal && !kitPackageProblem(kitsDir, kit, pinned, { stamp: false })) {
+    console.warn(`${problem}; kept (KITION_KEEP_LOCAL_KITS=1)`)
   } else if (checkOnly) {
     console.error(problem)
     problems += 1

@@ -63,7 +63,8 @@ CARGO_TARGET_DIR="$kit_repo/target" KIT_REPO="$scratch/kition-$kit" KITION_DIR="
 version="$(node -p "require('$scratch/kition-$kit/kit.json').version")"
 tag="package-v$version"
 asset="kition-$kit-$version.tgz"
-tar -C "$repo_root/public/kits" -czf "$scratch/$asset" "$kit-ui"
+# Without build-kit-ui.sh's local-build stamp: the package's own files only.
+tar -C "$repo_root/public/kits" --exclude .kition-package.json -czf "$scratch/$asset" "$kit-ui"
 sha256="$(shasum -a 256 "$scratch/$asset" | cut -d ' ' -f 1)"
 size="$(wc -c < "$scratch/$asset" | tr -d ' ')"
 echo "packed $asset: $size bytes, sha256 $sha256, from $repository $kit_commit"
@@ -90,5 +91,10 @@ lock[process.env.KIT] = JSON.parse(process.env.ENTRY)
 const { \$comment, ...kits } = lock
 const sorted = Object.fromEntries(Object.keys(kits).sort().map((key) => [key, kits[key]]))
 fs.writeFileSync(file, JSON.stringify({ \$comment, ...sorted }, null, 2) + '\n')
+"
+# public/kits/<kit>-ui now holds exactly the published package: stamp it as fetch-kits.mjs would.
+KIT="$kit" node --input-type=module -e "
+import { publishedKitPackageStamp, readKitLock, writeKitPackageStamp } from '$repo_root/scripts/lib/kitPackages.mjs'
+writeKitPackageStamp('$repo_root/public/kits', process.env.KIT, publishedKitPackageStamp(readKitLock('$repo_root')[process.env.KIT]))
 "
 echo "published $repository $tag and pinned it in kits/kits.lock.json"

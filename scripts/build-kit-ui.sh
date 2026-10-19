@@ -43,4 +43,8 @@ kit_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$kit_repo/
 version="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$kit_repo/kit.json','utf8')).version)")"
 commit="$(git -C "$kit_repo" rev-parse HEAD)"
 printf '{ "kitId": "%s", "version": "%s", "commit": "%s", "entry": "index.html", "protocol": "kition-kit-ui/1" }\n' "$kit_id" "$version" "$commit" > "$out/kit-ui.json"
+# Marks the package as a local build, so scripts/fetch-kits.mjs never takes it for the published
+# one of the same version (docs/kit-sdk.md, section 4b). publish-kit.sh leaves it out of the .tgz.
+sdk_commit="$(git -C "${KITION_SDK_REPO:-$kit_repo/../kition-sdk}" rev-parse HEAD 2>/dev/null || echo unknown)"
+printf '{ "local": true, "kitCommit": "%s", "sdkCommit": "%s", "builtAt": "%s" }\n' "$commit" "$sdk_commit" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$out/.kition-package.json"
 echo "built $kit_id $version into public/kits/$kit-ui"

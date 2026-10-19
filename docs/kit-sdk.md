@@ -334,7 +334,13 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
 - **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads the
   pinned packages into `public/kits/` with `gh release download`, checks size
   and SHA-256, and checks the extracted `kit-ui.json` (kit id, version,
-  commit). `--check` only compares. Locally it uses your gh login; the release
+  commit). Each fetched package gets a stamp, `<kit>-ui/.kition-package.json`
+  with its lock entry (version, SHA-256, commit, kition-sdk commit);
+  `scripts/build-kit-ui.sh` stamps a local build instead, so a package whose
+  stamp is missing, local, or differs from the lock is fetched again even at
+  the pinned version (`KITION_KEEP_LOCAL_KITS=1` keeps local builds of the
+  pinned version and commit), and `--check` and the release build's
+  `dist/kits` check report it. `--check` only compares. Locally it uses your gh login; the release
   workflow uses the `KITION_KITS_TOKEN` secret, a read-only token for the kit
   repositories' contents. The kit repositories stay private.
 - **Releasing**: Kition's release workflow (a public repository, so its CI is

@@ -17,15 +17,61 @@ function installedKitPackage(kitsDir, kit) {
   }
 }
 
-/** Why the package in `kitsDir` is not the pinned one, or null when it is. */
-export function kitPackageProblem(kitsDir, kit, pinned) {
+/**
+ * The stamp in a kit package's folder that says where the package came from. It is not part of
+ * the published `.tgz`: scripts/fetch-kits.mjs writes the published package's lock entry,
+ * scripts/build-kit-ui.sh marks a local build (`"local": true`), and scripts/publish-kit.sh
+ * removes it before packing.
+ */
+export const KIT_PACKAGE_STAMP = '.kition-package.json'
+
+/** The stamp a fetched package gets: the lock entry it was downloaded and checked against. */
+export function publishedKitPackageStamp(pinned) {
+  return { version: pinned.version, asset: pinned.asset, sha256: pinned.sha256, commit: pinned.commit, sdkCommit: pinned.sdkCommit }
+}
+
+/** Writes the stamp of the kit package `kit` in `kitsDir`. */
+export function writeKitPackageStamp(kitsDir, kit, stamp) {
+  fs.writeFileSync(path.join(kitsDir, `${kit}-ui`, KIT_PACKAGE_STAMP), `${JSON.stringify(stamp, null, 2)}\n`)
+}
+
+function readKitPackageStamp(kitsDir, kit) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(kitsDir, `${kit}-ui`, KIT_PACKAGE_STAMP), 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+/** Why the stamp of the package in `kitsDir` does not show the pinned published package, or null. */
+function kitPackageStampProblem(kitsDir, kit, pinned) {
+  const stamp = readKitPackageStamp(kitsDir, kit)
+  if (!stamp) return `${kit}: not a fetched package (no ${KIT_PACKAGE_STAMP}); run node scripts/fetch-kits.mjs`
+  if (stamp.local) {
+    return `${kit}: a local build (scripts/build-kit-ui.sh, kit ${stamp.kitCommit ?? 'unknown commit'}), not the published ${pinned.asset}`
+  }
+  const expected = publishedKitPackageStamp(pinned)
+  const differences = Object.keys(expected).filter((key) => stamp[key] !== expected[key])
+  if (differences.length) {
+    return `${kit}: differs from the lock (${differences.map((key) => `${key} ${stamp[key] ?? 'missing'} instead of ${expected[key]}`).join(', ')})`
+  }
+  return null
+}
+
+/**
+ * Why the package in `kitsDir` is not the pinned one, or null when it is. A package counts as
+ * the pinned one only when its `kit-ui.json` and its stamp both match the lock, so a local build
+ * of the same version is never taken for the published package. `{ stamp: false }` checks
+ * `kit-ui.json` only.
+ */
+export function kitPackageProblem(kitsDir, kit, pinned, { stamp = true } = {}) {
   const installed = installedKitPackage(kitsDir, kit)
   if (!installed) return `${kit}: not in ${kitsDir}`
   if (installed.kitId !== `kit.${kit}`) return `${kit}: the package is ${installed.kitId}`
   if (installed.version !== pinned.version || installed.commit !== pinned.commit) {
     return `${kit}: ${installed.version} (${installed.commit ?? 'no commit'}) instead of ${pinned.version} (${pinned.commit})`
   }
-  return null
+  return stamp ? kitPackageStampProblem(kitsDir, kit, pinned) : null
 }
 
 /**
