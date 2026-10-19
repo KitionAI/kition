@@ -8,7 +8,7 @@ import { ChangeSet, StateEffect, type Extension } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { createDocumentRevisionComparison } from '@/features/document/lib/documentRevision'
 import type { TextDelta } from '@/lib/kdm'
-import { deltaToChanges } from './codeMirrorBinding'
+import { deltaToChanges } from '@kition/document-editor/model'
 
 /** What an agent's edit changed, positioned in the current text. */
 export type AgentReviewMarks = {

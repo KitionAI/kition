@@ -2,7 +2,7 @@ import { ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { parseWikilinks } from '../lib/wikilink-parser'
+import { parseWikilinks } from '@kition/document-editor'
 import { loadVaultMarkdownFiles } from '../vault/vault-files'
 
 export type DocumentOutgoingLinksPanelProps = {

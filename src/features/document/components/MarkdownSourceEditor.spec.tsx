@@ -3,7 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createReplicaTextSource } from '@/features/document/kdm/documentTextSource'
+import { createReplicaTextSource } from '@kition/document-editor/model'
 import { MarkdownSourceEditor } from './MarkdownSourceEditor'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

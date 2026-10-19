@@ -24,9 +24,9 @@ import { DocumentOutlinePanel, parseOutlineHeadings } from '@/features/document/
 import { DocumentRecentsPanel } from '@/features/document/editor/components/DocumentRecentsPanel'
 import { DocumentTagsPanel } from '@/features/document/editor/components/DocumentTagsPanel'
 import { appendToDailyNote, ensureDailyNote, ensureDailyNoteFor } from '@/features/document/editor/daily-note'
-import { DocumentEditor, type CursorInfo } from '@/features/document/editor/editor/DocumentEditor'
+import { DocumentEditor, type CursorInfo } from '@kition/document-editor/editor'
 import { DocumentCommandPalette, type PaletteExtra } from '@/features/document/editor/editor/DocumentCommandPalette'
-import { buildSectionLinkText, ensureBlockIdAtCursor, exportOutlineToText, getHeadingAtCursor } from '@/features/document/editor/editor/commands'
+import { buildSectionLinkText, ensureBlockIdAtCursor, exportOutlineToText, getHeadingAtCursor } from '@kition/document-editor/commands'
 import { DocumentTemplatesPicker } from '@/features/document/editor/editor/DocumentTemplatesPicker'
 import { DocumentVaultStatsDialog } from '@/features/document/editor/editor/DocumentVaultStatsDialog'
 import { DocumentLocalGraphDialog } from '@/features/document/editor/editor/DocumentLocalGraphDialog'
@@ -47,8 +47,8 @@ import { DocumentWordFrequencyDialog } from '@/features/document/editor/editor/D
 import type {
   DocumentImagePreviewRequest,
   SuggestProviders,
-} from '@/features/document/editor/editor/extensions'
-import { documentTitleHostExtension } from '@/features/document/editor/editor/extensions'
+} from '@kition/document-editor/editor'
+import { documentTitleHostExtension } from '@kition/document-editor/editor'
 import { useVaultSuggestProviders } from '@/features/document/editor/hooks/useVaultSuggestProviders'
 import { useVaultEmbedLoader } from '@/features/document/editor/hooks/useVaultEmbedLoader'
 import {
@@ -65,7 +65,7 @@ import { clearVaultFileCache } from '@/features/document/editor/vault/vault-file
 import { person } from '@/lib/kdm'
 import { LOCAL_PERSON } from '@/features/document/kdm/documentSession'
 import { writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
-import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
+import type { DocumentTextSource } from '@kition/document-editor/model'
 import { DocumentEditorToolbar } from '@/features/document/editor/editor/DocumentEditorToolbar'
 import { DocumentTitleHostPortal } from '@/features/document/components/DocumentTitleHostPortal'
 import {
@@ -73,7 +73,7 @@ import {
   copyDocumentMarkdownForPublishing,
 } from '@/features/document/lib/documentPublishingClipboard'
 import { useMarkdownLinkNavigation } from '@/features/document/hooks/useMarkdownLinkNavigation'
-import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
+import type { DocumentAskAgentRequest } from '@kition/document-editor'
 import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { notify } from '@/lib/notify'
 import { cn } from '@kition/app-ui/utils'

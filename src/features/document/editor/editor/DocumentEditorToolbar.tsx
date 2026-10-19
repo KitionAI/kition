@@ -1,4 +1,4 @@
-import { redoDocument as redo, undoDocument as undo } from '@/features/document/kdm/documentHistory'
+import { redoDocument as redo, undoDocument as undo } from '@kition/document-editor/model'
 import { openSearchPanel } from '@codemirror/search'
 import type { EditorView } from '@codemirror/view'
 import {
@@ -59,7 +59,7 @@ import {
   toggleQuote,
   toggleStrike,
   toggleTodoList,
-} from './commands'
+} from '@kition/document-editor/commands'
 
 export type DocumentEditorToolbarProps = {
 

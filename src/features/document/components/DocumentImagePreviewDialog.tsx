@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import type { DocumentImagePreviewRequest } from '@/features/document/editor/editor/extensions/image-widget-actions'
+import type { DocumentImagePreviewRequest } from '@kition/document-editor/editor'
 import './DocumentImagePreviewDialog.css'
 
 export function DocumentImagePreviewDialog({

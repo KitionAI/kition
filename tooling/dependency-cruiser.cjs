@@ -49,7 +49,7 @@ module.exports = {
       name: 'packages-import-nothing-from-the-app',
       severity: 'error',
       comment:
-        'A package under packages/ runs outside Kition too (the table editor in the Table kit, the board editor in the Board kit), so it imports nothing from src/ but the KDM copy (as @kition/kdm). The board editor uses app services through BoardHost (packages/board-editor/src/host.tsx), implemented in src/features/whiteboard/host. The table editor reads and writes its data through TableDataSource and uses app services through TableHost (packages/table-editor/src/table/ports); add what it needs there and implement it in src/features/table/host.',
+        'A package under packages/ runs outside Kition too (the table editor in the Table kit, the board editor in the Board kit, the document editor in the Document kit), so it imports nothing from src/ but the KDM copy (as @kition/kdm). The board editor uses app services through BoardHost (packages/board-editor/src/host.tsx), implemented in src/features/whiteboard/host. The document editor uses them through DocumentHost (packages/document-editor/src/host.ts), implemented in src/features/document/host. The table editor reads and writes its data through TableDataSource and uses app services through TableHost (packages/table-editor/src/table/ports); add what it needs there and implement it in src/features/table/host.',
       from: { path: '^packages/' },
       // src/lib/kdm and src/lib/kit-engine are kition-sdk's @kition/kdm and @kition/kit-engine,
       // which Kition carries (scripts/sync-kit-host.mjs); packages import them by those names, which
@@ -78,6 +78,14 @@ module.exports = {
         'Import the board through its entries: @kition/board-editor (agent types, host seam, record and element types), @kition/board-editor/model (the board on the KDM), or @kition/board-editor/editor (the editor). Export what the app needs from packages/board-editor/src/{index,model,editor}.ts.',
       from: { path: '^src/' },
       to: { path: '^packages/board-editor/src/', pathNot: '^packages/board-editor/src/(index|model|editor)\\.ts$' },
+    },
+    {
+      name: 'app-uses-document-editor-entries',
+      severity: 'error',
+      comment:
+        'Import the Markdown document through its entries: @kition/document-editor (host seam, agent action types, image import, parsers), /model (the document on the KDM), /editor (the editor), /commands, /clipboard, /markdown, or /mermaid. Export what the app needs from packages/document-editor/src/{index,model,editor,commands,clipboard,markdown,mermaid}.ts.',
+      from: { path: '^src/' },
+      to: { path: '^packages/document-editor/src/', pathNot: '^packages/document-editor/src/(index|model|editor|commands|clipboard|markdown|mermaid)\\.ts$' },
     },
     {
       name: 'shared-layers-do-not-import-features',

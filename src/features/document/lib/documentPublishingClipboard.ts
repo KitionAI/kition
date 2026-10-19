@@ -1,5 +1,5 @@
-import { inlineMermaidBlocksInHtml } from '@/services/mermaid'
-import { markdownToHtml } from '@/services/markdownRenderer'
+import { inlineMermaidBlocksInHtml } from '@kition/document-editor/mermaid'
+import { markdownToHtml } from '@kition/document-editor/markdown'
 import { copyDocumentHtmlToClipboard, isDesktopRuntime } from '@/services/desktop'
 import { resolveWorkspaceImageURL } from '@/services/workspaceFiles'
 

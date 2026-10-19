@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { persistBlobImageLinks } from '@/features/document/lib/documentAssetPersistence'
+import { persistBlobImageLinks } from '@kition/document-editor'
 import { inferDocumentPlatform, readWorkspaceDocumentDraft } from '@/features/document/lib/documentDraft'
 import type { DocumentPlatform } from '@/features/document/lib/documentCreation'
 import {

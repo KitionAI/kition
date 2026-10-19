@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 
-import type { EmbedLoader } from '@/features/document/editor/editor/extensions'
+import type { EmbedLoader } from '@kition/document-editor/editor'
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
 import { readWorkspaceDocument } from '@/services/desktop'
 

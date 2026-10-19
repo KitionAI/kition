@@ -10,7 +10,7 @@ import {
 } from '@kition/app-ui/dialog'
 import { readWorkspaceDocument } from '@/services/desktop'
 
-import { parseWikilinks } from '../lib/wikilink-parser'
+import { parseWikilinks } from '@kition/document-editor'
 import { loadVaultMarkdownFiles } from '../vault/vault-files'
 
 const SCAN_LIMIT = 400

@@ -12,7 +12,7 @@ import {
 } from '@kition/app-ui/dialog'
 import { readWorkspaceMarkdown, updateWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 
-import { parseTags } from '../lib/tag-parser'
+import { parseTags } from '@kition/document-editor'
 import { loadVaultMarkdownFiles } from '../vault/vault-files'
 
 const SCAN_LIMIT = 600

@@ -13,7 +13,7 @@ import {
 } from '@kition/app-ui/dialog'
 import { Input } from '@kition/app-ui/input'
 
-import { addSnippet, removeSnippet, useSnippets } from '../hooks/useSnippets'
+import { addSnippet, removeSnippet, useSnippets } from '@kition/document-editor/editor'
 
 export type DocumentSnippetsDialogProps = {
   open: boolean

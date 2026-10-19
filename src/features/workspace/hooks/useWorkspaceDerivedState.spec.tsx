@@ -38,7 +38,7 @@ describe('useWorkspaceDerivedState', () => {
 
     await act(async () => {
       root.render(createElement(DerivedStateProbe, { editorMode: 'preview' }))
-      await import('@/services/markdownRenderer')
+      await import('@kition/document-editor/markdown')
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
     expect(container.querySelector('output')?.textContent).toContain('<h1>Example</h1>')

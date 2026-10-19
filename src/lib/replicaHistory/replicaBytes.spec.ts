@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { person, randomActor, Replica } from '@/lib/kdm'
-import { createDocumentReplica, documentBody } from '@/features/document/kdm/documentText'
-import { documentSchema } from '@/features/document/kdm/documentSchema'
-import { applyTextEdits, diffText } from '@/features/document/kdm/documentMerge'
+import { createDocumentReplica, documentBody } from '@kition/document-editor/model'
+import { documentSchema } from '@kition/document-editor/model'
+import { applyTextEdits, diffText } from '@kition/document-editor/model'
 import { changesSince, fromHex, holdsVersion, includesVersion, mergeReplica, replicaIdOf, revertTo, stateAt, toHex, versionOf } from './replicaBytes'
 
 const typing = person('user:test', 'typing')

@@ -3,8 +3,8 @@ import { useEffect, useRef, type MouseEvent } from 'react'
 import {
   markdownToHtml,
   markdownToInteractiveHtml,
-} from '@/services/markdownRenderer'
-import { hydrateMermaidBlocks } from '@/services/mermaid'
+} from '@kition/document-editor/markdown'
+import { hydrateMermaidBlocks } from '@kition/document-editor/mermaid'
 
 export function InteractiveAgentMarkdown({
   content,

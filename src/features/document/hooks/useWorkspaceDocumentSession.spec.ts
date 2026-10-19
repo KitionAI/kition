@@ -58,9 +58,9 @@ vi.mock('@/services/desktop', async (importOriginal) => ({
 
 // A store faithful to the contract in `documentStore.ts`, without the private store files.
 vi.mock('@/features/document/kdm/documentStore', async () => {
-  const { createDocumentReplica, documentBody, renderText } = await import('@/features/document/kdm/documentText')
-  const { mergeExternalText } = await import('@/features/document/kdm/documentMerge')
-  const { analyzeText } = await import('@/features/document/kdm/documentText')
+  const { createDocumentReplica, documentBody, renderText } = await import('@kition/document-editor/model')
+  const { mergeExternalText } = await import('@kition/document-editor/model')
+  const { analyzeText } = await import('@kition/document-editor/model')
   const desktop = await import('@/services/desktop')
   return {
     openDocument: vi.fn(async (path: string, fileText: string, actor: bigint) => {

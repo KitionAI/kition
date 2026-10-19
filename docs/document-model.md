@@ -12,6 +12,16 @@ document, [table-document.md](table-document.md) for the Table's (a relational p
 KDM replica, rather than a direct view of it), and [kit-sdk.md](kit-sdk.md) for the separate Kit
 SDK system; a Markdown document is a built-in document type, not a kit.
 
+## Where the code lives
+
+The document's model on the KDM (its schema, the file text as the replica keeps it, merges, the
+CodeMirror binding, undo and redo) and its editor (`DocumentEditor` and its extensions) are the
+package `packages/document-editor` (`@kition/document-editor`, see
+[packages/README.md](../packages/README.md)), which runs outside Kition too: app services reach it
+through `DocumentHost` (Kition's is `src/features/document/host`). The session that binds a
+replica to its `.md` file, the replica store, version history, agent review, comments, and the
+panes around the editor stay in `src/features/document`.
+
 ## Where the KDM comes from
 
 `@kition/kdm` is not an installed dependency: it is a copy of `packages/kdm/src/*.ts` from the
@@ -24,7 +34,7 @@ then `node scripts/sync-kit-host.mjs`.
 
 ## The `kit.document` schema
 
-`src/features/document/kdm/documentSchema.ts` defines the schema under the kit name
+`packages/document-editor/src/kdm/documentSchema.ts` defines the schema under the kit name
 `kit.document`. Its root type is `Document`, with exactly one field:
 
 - **`Document`** — `body`, a KDM `text` field: the whole Markdown file.
@@ -63,7 +73,7 @@ to it, and says so. Stores of the earlier layout (one `snapshot.bin` and one `bl
 readable and are migrated by the writer, keeping the old files until the new layout reads back the
 same.
 
-`src/features/document/kdm/documentText.ts` is the text side of this: `analyzeText` reads a file's
+`packages/document-editor/src/kdm/documentText.ts` is the text side of this: `analyzeText` reads a file's
 raw text into the replica's normalised form (`\n` line endings, no byte order mark) plus a
 `LineStyle` recording how to write it back (`eol`, `bom`, `finalNewline`); `renderText` is the
 inverse. `createDocumentReplica` builds a new replica from a file's text in its **creating commit**
@@ -117,7 +127,7 @@ Each open Markdown document is one `DocumentSession`
 `src/features/document/kdm/documentSessions.ts` for as long as its tab stays open (even in the
 background) — so its replica and undo history survive switching tabs and remounting the editor.
 Within a session there is exactly **one replica**; every editor view bound to it gets its own
-`TextBinding` (`src/features/document/kdm/codeMirrorBinding.ts`), tracked in the session's
+`TextBinding` (`packages/document-editor/src/kdm/codeMirrorBinding.ts`), tracked in the session's
 `bindings` set, so a split view or a remounted pane never duplicates the document's state — only
 the view.
 
@@ -140,7 +150,7 @@ never interrupt a composition or a dispatch in progress; a local edit made meanw
 published at the position it lands at once the pending changes are accounted for.
 
 **Undo lives in the replica, not in CodeMirror.** `documentHistoryExtension`
-(`src/features/document/kdm/documentHistory.ts`) replaces CodeMirror's `history()` entirely: Mod-Z
+(`packages/document-editor/src/kdm/documentHistory.ts`) replaces CodeMirror's `history()` entirely: Mod-Z
 and Mod-Y/Mod-Shift-Z run the replica's `undo()`/`redo()` instead. This is also why the desktop
 shell's own Edit ▸ Undo and Redo (and a context menu's, or `execCommand('undo')`) work correctly on
 a bound editor: the browser delivers those as `beforeinput` events with `inputType`
@@ -199,7 +209,7 @@ own is simply followed again.
 
 When the workspace reports a change to an open document's file (another program, Git, a sync tool),
 the session **merges** it rather than ever overwriting local edits in either direction:
-`mergeExternalText` (`src/features/document/kdm/documentMerge.ts`) three-way merges `base → incoming`
+`mergeExternalText` (`packages/document-editor/src/kdm/documentMerge.ts`) three-way merges `base → incoming`
 (the file's last-known text to its text now) into `current` (the replica's text, which may already
 hold local edits made since `base`): base text survives where neither side touched it, every
 insertion from both sides is kept (the local one first where both insert at the same place), and an
@@ -342,11 +352,11 @@ for the detail, which is shared by every KDM document type in this repository.
 ## Testing pointers
 
 - Unit specs sit beside the modules they cover:
-  `src/features/document/kdm/documentText.spec.ts`, `documentMerge.spec.ts`,
+  `packages/document-editor/src/kdm/documentText.spec.ts`, `documentMerge.spec.ts`,
   `codeMirrorBinding.spec.ts`, `documentStore.spec.ts`, `documentSession.spec.ts`,
   `documentAgentBridge.spec.ts`, and `documentAgentReview.spec.ts`.
 - `documentKdm.bench.spec.ts` is a manual, opt-in benchmark
-  (`KITION_DOC_BENCH=1 pnpm vitest run --config tooling/vitest.config.ts src/features/document/kdm/documentKdm.bench.spec.ts`),
+  (`KITION_DOC_BENCH=1 pnpm vitest run --config tooling/vitest.config.ts packages/document-editor/src/kdm/documentKdm.bench.spec.ts`),
   not a correctness test: it measures import, open, a real keystroke, a paste, an external merge
   (with and without coalescing), save, and undo across realistic 100 KB, 1 MB, and 5 MB documents,
   and prints its numbers rather than enforcing them.

@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs'
 import { mockDesktopBridge } from './helpers/markdownDocument'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 
-const hawkHtml = readFileSync(new URL('../src/features/document/lib/fixtures/hawkClipboard.html', import.meta.url), 'utf8')
-const hawkTableHtml = readFileSync(new URL('../src/features/document/lib/fixtures/hawkTable.html', import.meta.url), 'utf8')
+const hawkHtml = readFileSync(new URL('../packages/document-editor/src/lib/fixtures/hawkClipboard.html', import.meta.url), 'utf8')
+const hawkTableHtml = readFileSync(new URL('../packages/document-editor/src/lib/fixtures/hawkTable.html', import.meta.url), 'utf8')
 
 test('retains pasted text and retries failed images locally without copying again', async ({ page }) => {
   await mockLocalWorkspaceApi(page)

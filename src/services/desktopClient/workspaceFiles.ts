@@ -3,7 +3,7 @@
  */
 import { type CopyDocumentHtmlRequest, type SavePdfFileRequest, type WorkspaceAsset, type WorkspaceFileChooseResponse, type WorkspaceFileImportRequest, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
-import { ImageImportError, imageImportFailure } from '@/lib/imageImportError'
+import { ImageImportError, imageImportFailure } from '@kition/document-editor'
 
 export async function openWorkspaceFile(path: string) {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)

@@ -48,7 +48,7 @@ describe('kit replicas in Kition', () => {
 
 describe('kit replicas as appended changes', () => {
   it('appends only what a save adds, opens snapshot and changes as one replica, and compacts on close', async () => {
-    const { createDocumentReplica } = await import('@/features/document/kdm/documentText')
+    const { createDocumentReplica } = await import('@kition/document-editor/model')
     const { readDocumentStore, readDocumentHistory } = await import('@/services/desktop')
     const { person, randomActor } = await import('@/lib/kdm')
     const { replica, rootId } = createDocumentReplica('one\n', randomActor())
@@ -66,8 +66,8 @@ describe('kit replicas as appended changes', () => {
     const read = await readKitReplica('art/a.psd', 'kit.photo')
     expect(read?.fileStamp).toBe('v2')
     const { Replica } = await import('@/lib/kdm')
-    const { documentSchema } = await import('@/features/document/kdm/documentSchema')
-    const { documentBody } = await import('@/features/document/kdm/documentText')
+    const { documentSchema } = await import('@kition/document-editor/model')
+    const { documentBody } = await import('@kition/document-editor/model')
     const opened = Replica.load(documentSchema, new Uint8Array(read!.snapshot), randomActor())
     expect(documentBody(opened, rootId)).toBe('one\ntwo\n')
 

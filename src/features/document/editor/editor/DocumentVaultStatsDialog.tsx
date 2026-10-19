@@ -11,8 +11,8 @@ import {
 import { readWorkspaceDocument } from '@/services/desktop'
 import { getCurrentLocale } from '@/i18n'
 
-import { parseTags } from '../lib/tag-parser'
-import { parseWikilinks } from '../lib/wikilink-parser'
+import { parseTags } from '@kition/document-editor'
+import { parseWikilinks } from '@kition/document-editor'
 import { loadVaultMarkdownFiles } from '../vault/vault-files'
 
 const SCAN_LIMIT = 500

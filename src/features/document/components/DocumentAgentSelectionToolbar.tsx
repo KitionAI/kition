@@ -11,7 +11,7 @@ import {
   ActionMenuTrigger,
 } from '@kition/app-ui/action-menu'
 import { Button } from '@kition/app-ui/button'
-import type { DocumentAgentAction } from '@/features/document/lib/documentAgentActions'
+import type { DocumentAgentAction } from '@kition/document-editor'
 import {
   TRANSLATION_LANGUAGES,
   translationLanguageEndonym,

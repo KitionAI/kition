@@ -1,16 +1,16 @@
-import { notifyImageImportFailure } from '../lib/documentImageImportFeedback'
+import { notifyImageImportFailure } from '@kition/document-editor'
 import { markdown as markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { forwardRef, useCallback, useMemo } from 'react'
-import { useDocumentBinding } from '@/features/document/editor/hooks/useDocumentBinding'
-import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
+import { useDocumentBinding } from '@kition/document-editor/editor'
+import type { DocumentTextSource } from '@kition/document-editor/model'
 import {
   canPasteNativeDocumentClipboardImage,
   collectDocumentClipboardImages,
   documentClipboardImagesFromFiles,
   importDocumentClipboardImages,
-} from '@/features/document/lib/documentImagePaste'
+} from '@kition/document-editor'
 import { cn } from '@kition/app-ui/utils'
 
 const basicSetup = {

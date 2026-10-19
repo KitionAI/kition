@@ -33,6 +33,36 @@
   },
   {
     "type": "cycle",
+    "from": "packages/document-editor/src/menu/Menu.ts",
+    "to": "packages/document-editor/src/menu/MenuRenderer.tsx",
+    "unresolvedTo": "./MenuRenderer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "packages/document-editor/src/menu/MenuRenderer.tsx",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "packages/document-editor/src/menu/Menu.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
     "from": "packages/table-editor/src/table/grid/CellScroller.tsx",
     "to": "packages/table-editor/src/table/grid/configs/index.ts",
     "unresolvedTo": "./configs",
@@ -13327,36 +13357,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/features/document/editor/menu/Menu.ts",
-    "to": "src/features/document/editor/menu/MenuRenderer.tsx",
-    "unresolvedTo": "./MenuRenderer",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/document/editor/menu/MenuRenderer.tsx",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/document/editor/menu/Menu.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/features/document/lib/documentTemplates.ts",
     "to": "src/features/document/lib/extendedDocumentTemplates.ts",
     "unresolvedTo": "./extendedDocumentTemplates",
@@ -14029,23 +14029,6 @@
     "from": "src/features/document/components/DocumentTemplateLibraryDialog.tsx",
     "to": "src/features/workspace/components/WorkspaceTemplateLibraryFrame.tsx",
     "unresolvedTo": "@/features/workspace/components/WorkspaceTemplateLibraryFrame",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/editor/editor/DocumentEditor.tsx",
-    "to": "src/features/search/ui/searchHitFlash.ts",
-    "unresolvedTo": "@/features/search/ui/searchHitFlash",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -15328,24 +15311,6 @@
     "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
     "to": "src/features/document/editor/editor/markdown-image-insertion.ts",
     "unresolvedTo": "@/features/document/editor/editor/markdown-image-insertion",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/lib/documentAgentActions.ts",
-    "unresolvedTo": "@/features/document/lib/documentAgentActions",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

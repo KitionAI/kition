@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { person, Replica } from '@/lib/kdm'
 import * as desktop from '@/services/desktop'
-import { DOCUMENT_BODY } from './documentSchema'
-import { documentBody } from './documentText'
+import { DOCUMENT_BODY } from '@kition/document-editor/model'
+import { documentBody } from '@kition/document-editor/model'
 import {
   childFolderPath,
   compactStoredDocument,

@@ -28,7 +28,7 @@ test('downloads an image without CORS and writes its exact bytes through the des
     expect(saved.root).toBe(host.root)
     expect(await readFile(path.join(saved.root, saved.file))).toEqual(bytes)
     const snippets = await page.evaluate(async (url) => {
-      const modulePath = '/src/features/document/lib/documentImagePaste.ts'
+      const modulePath = '/packages/document-editor/src/lib/documentImagePaste.ts'
       const { importDocumentClipboardImages } = await import(/* @vite-ignore */ modulePath)
       return Promise.all(['Team A/Plan.md', 'Team B/Plan.md'].map((documentPath) =>
         importDocumentClipboardImages([{ kind: 'source', source: url, alt: 'Diagram' }], { documentPath }),

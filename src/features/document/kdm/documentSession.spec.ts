@@ -4,7 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readWorkspaceDocument, writeWorkspaceDocument, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { flushWorkspaceEditSessions, discardWorkspaceEditSessions } from '@/services/workspaceEditSessions'
-import { redoDocument, undoDocument } from './documentHistory'
+import { redoDocument, undoDocument } from '@kition/document-editor/model'
 import { DocumentSession, isDocumentFileMissing, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
 import { compactStoredDocument, openDocument } from './documentStore'
 import {
@@ -54,8 +54,8 @@ vi.mock('@/services/desktop', async (importOriginal) => ({
 
 // A store faithful to the contract in `documentStore.ts`, without the private store files.
 vi.mock('./documentStore', async () => {
-  const { analyzeText, createDocumentReplica, documentBody, renderText } = await import('./documentText')
-  const { mergeExternalText } = await import('./documentMerge')
+  const { analyzeText, createDocumentReplica, documentBody, renderText } = await import('@kition/document-editor/model')
+  const { mergeExternalText } = await import('@kition/document-editor/model')
   const desktop = await import('@/services/desktop')
   return {
     openDocument: vi.fn(async (path: string, fileText: string, actor: bigint) => {

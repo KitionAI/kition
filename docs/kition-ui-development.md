@@ -19,6 +19,8 @@ src/
 packages/
   app-ui/        @kition/app-ui: shared UI primitives (buttons, dialogs, popovers, form controls, `cn`)
   table-editor/  @kition/table-editor: the table and dashboard editor (packages/README.md)
+  board-editor/  @kition/board-editor: the board's model and editor
+  document-editor/  @kition/document-editor: the Markdown document's model and editor
 ```
 
 Editor workspace layout should follow a consistent chrome:
@@ -46,7 +48,7 @@ Recommended ownership for editor content panes:
 Current feature split:
 
 - `src/features/agent`: AI chat, agent execution timeline, model selection, and agent-only interaction flows
-- `src/features/document`: rich-text document editing and document workspace flows, with Markdown files on a KDM-backed document model (see [document-model.md](document-model.md))
+- `src/features/document`: rich-text document editing and document workspace flows, with Markdown files on a KDM-backed document model (see [document-model.md](document-model.md)); the model and the Markdown editor itself are `packages/document-editor`
 - `src/features/table` and `packages/table-editor`: structured table editing and table-specific panels, with `.kitable` files on a KDM-backed document model (see [table-document.md](table-document.md))
 - `src/features/whiteboard`: the Whiteboard in a workspace tab (file binding, image generation, agent bridge); its editor and KDM-backed document model are `packages/board-editor` (see [whiteboard-document.md](whiteboard-document.md))
 - `src/features/workspace`: editor chrome, workspace navigation, tabs, tree, and media navigation

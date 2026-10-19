@@ -6,7 +6,7 @@ import type {
   DocumentAgentAction,
   DocumentAgentActionRequest,
   DocumentAskAgentRequest,
-} from '@/features/document/lib/documentAgentActions'
+} from '@kition/document-editor'
 
 type UseDocumentAgentActionsOptions = {
   documentPath: string

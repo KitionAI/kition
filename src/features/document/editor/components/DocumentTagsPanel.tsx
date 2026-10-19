@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { parseTags, type TagParsed } from '@/features/document/editor/lib/tag-parser'
+import { parseTags, type TagParsed } from '@kition/document-editor'
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
 import { readWorkspaceDocument } from '@/services/desktop'
 import { cn } from '@kition/app-ui/utils'

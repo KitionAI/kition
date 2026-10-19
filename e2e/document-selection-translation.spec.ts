@@ -76,7 +76,7 @@ test('translates a selection inline, replaces it, and undoes in one step', async
     const view = (document.querySelector('.cm-editor .cm-content') as any).cmTile.root.view
     const history: any = await import(/* @vite-ignore */ new URL(modulePath, window.location.href).href)
     return history.undoDocument(view)
-  }, '/src/features/document/kdm/documentHistory.ts')
+  }, '/packages/document-editor/src/kdm/documentHistory.ts')
   expect(undone).toBe(true)
   await expect.poll(() => readDoc(page)).toContain(SOURCE)
   expect(await readDoc(page)).not.toContain(TRANSLATION)

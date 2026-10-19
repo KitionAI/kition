@@ -24,9 +24,9 @@ import {
   type DocumentStoreWritten,
   type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
-import { DOCUMENT_KIT, documentSchema } from './documentSchema'
-import { analyzeText, createDocumentReplica, documentBody, documentRootId, renderText, type LineStyle } from './documentText'
-import { mergeExternalText } from './documentMerge'
+import { DOCUMENT_KIT, documentSchema } from '@kition/document-editor/model'
+import { analyzeText, createDocumentReplica, documentBody, documentRootId, renderText, type LineStyle } from '@kition/document-editor/model'
+import { mergeExternalText } from '@kition/document-editor/model'
 
 /** The origin of file imports and merges of external changes (not undo steps). */
 export const FILE_IMPORT_ORIGIN: Origin = { kind: 'import', principal: 'file' }

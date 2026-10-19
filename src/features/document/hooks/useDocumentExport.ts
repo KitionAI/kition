@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
-import { inlineMermaidBlocksInHtml } from '@/services/mermaid'
+import { inlineMermaidBlocksInHtml } from '@kition/document-editor/mermaid'
 import {
   isDesktopRuntime,
   savePdfFile,
@@ -133,7 +133,7 @@ export function useDocumentExport({
       }
 
       if (exportFormat === 'html') {
-        const { markdownToHtml } = await import('@/services/markdownRenderer')
+        const { markdownToHtml } = await import('@kition/document-editor/markdown')
         const bodyHtml = await inlineMermaidBlocksInHtml(
           resolveWorkspaceImageSources(markdownToHtml(content), activeDocument.path),
         )
@@ -150,7 +150,7 @@ export function useDocumentExport({
           onError(t('export.scaleError'))
           return
         }
-        const { markdownToHtml } = await import('@/services/markdownRenderer')
+        const { markdownToHtml } = await import('@kition/document-editor/markdown')
         const bodyHtml = await inlineMermaidBlocksInHtml(
           resolveWorkspaceImageSources(markdownToHtml(content), activeDocument.path),
         )

@@ -17,7 +17,7 @@ import { addThread, commentThreads, deleteComment, person, relocateAnchorRange, 
 import { notify } from '@/lib/notify'
 import { useDocumentCommentAccess } from '@/services/documentComments'
 import type { DocumentSession } from '@/features/document/kdm/documentSession'
-import { DOCUMENT_BODY, DOCUMENT_ROOT } from '@/features/document/kdm/documentSchema'
+import { DOCUMENT_BODY, DOCUMENT_ROOT } from '@kition/document-editor/model'
 
 const QUOTE_LIMIT = 500
 

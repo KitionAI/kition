@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { parseBlockIds } from '@/features/document/editor/lib/block-id-parser'
-import { parseTags } from '@/features/document/editor/lib/tag-parser'
+import { parseTags } from '@kition/document-editor'
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
 import { parseOutlineHeadings } from '@/features/document/editor/components/DocumentOutlinePanel'
 import { listRecentFiles } from '@/features/document/editor/hooks/useRecentFiles'
@@ -11,7 +11,7 @@ import type {
   SuggestProviders,
   TagSuggestion,
   WikilinkSuggestion,
-} from '@/features/document/editor/editor/extensions'
+} from '@kition/document-editor/editor'
 import { readWorkspaceDocument } from '@/services/desktop'
 
 function flattenTree(items: VaultTreeItem[], out: VaultTreeItem[] = []): VaultTreeItem[] {

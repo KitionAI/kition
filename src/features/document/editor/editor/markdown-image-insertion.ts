@@ -1,7 +1,7 @@
 import type { SyntaxNode } from '@lezer/common'
 import { GFM, parser as baseMarkdownParser } from '@lezer/markdown'
 
-import { parseFrontmatter } from '@/features/document/editor/lib/frontmatter-parser'
+import { parseFrontmatter } from '@kition/document-editor'
 
 export type MarkdownImageInsertionStrategy =
   | 'cursor-blank-line'

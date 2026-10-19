@@ -13,12 +13,12 @@ import {
 } from '@kition/app-ui/dialog'
 import { Input } from '@kition/app-ui/input'
 
-import { parseFrontmatter } from '../lib/frontmatter-parser'
+import { parseFrontmatter } from '@kition/document-editor'
 import {
   applyFrontmatter,
   fieldsFromParsed,
   type EditableField,
-} from '../lib/frontmatter-serialize'
+} from '@kition/document-editor'
 
 export type DocumentPropertiesDialogProps = {
   open: boolean

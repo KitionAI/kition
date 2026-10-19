@@ -46,7 +46,7 @@ export function useWorkspaceDerivedState({
 
     let cancelled = false
     setEditorPreviewHtml('')
-    void import('@/services/markdownRenderer').then(({ markdownToHtml }) => {
+    void import('@kition/document-editor/markdown').then(({ markdownToHtml }) => {
       if (cancelled) return
       setEditorPreviewHtml(
         resolveWorkspaceImageSources(markdownToHtml(deferredDraftContent), activeDocument?.path || ''),

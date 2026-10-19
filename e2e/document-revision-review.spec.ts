@@ -88,7 +88,7 @@ const undoInEditor = (page: Page) => page.evaluate(async (modulePath) => {
   const view = (document.querySelector('.cm-editor .cm-content') as any).cmTile.root.view
   const history: any = await import(/* @vite-ignore */ new URL(modulePath, window.location.href).href)
   return history.undoDocument(view) as boolean
-}, '/src/features/document/kdm/documentHistory.ts')
+}, '/packages/document-editor/src/kdm/documentHistory.ts')
 
 const readStored = (page: Page, path = DEFAULT_DOC_PATH) => page.evaluate(async (target) => (await (window as any).kitionDesktop.ReadWorkspaceDocument({ path: target })).content as string, path)
 

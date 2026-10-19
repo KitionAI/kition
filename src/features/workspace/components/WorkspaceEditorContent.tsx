@@ -11,7 +11,7 @@ import type {
   DocumentRevisionDecision,
   PendingDocumentRevision,
 } from '@/features/document/lib/documentRevision'
-import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
+import type { DocumentAskAgentRequest } from '@kition/document-editor'
 import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import type { MarkdownCursorSnapshot } from '@/features/document/components/MarkdownSourceEditor'
 import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'

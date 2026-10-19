@@ -22,7 +22,7 @@ import {
   CommandList,
 } from '@kition/app-ui/command'
 
-import { isSpellcheckOn, setSpellcheck } from './extensions/spellcheck'
+import { isSpellcheckOn, setSpellcheck } from '@kition/document-editor/editor'
 
 import {
   insertCallout,
@@ -1108,7 +1108,7 @@ import {
   paragraphsToPressHeadlineCandidates,
   normalizeEmptyBulletItems,
   insertSprintDashboardTemplate,
-} from './commands'
+} from '@kition/document-editor/commands'
 
 type PaletteCommand = {
   id: string

@@ -2,13 +2,13 @@ import { EditorView } from '@codemirror/view'
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MarkdownSourceEditor, type MarkdownCursorSnapshot } from './MarkdownSourceEditor'
-import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
+import type { DocumentTextSource } from '@kition/document-editor/model'
 import {
   clampSplitEditorRatio,
   readSplitEditorRatio,
   writeSplitEditorRatio,
 } from '@/features/workspace/lib/workspacePersistence'
-import { hydrateMermaidBlocks } from '@/services/mermaid'
+import { hydrateMermaidBlocks } from '@kition/document-editor/mermaid'
 
 export function DocumentSplitEditorPane({
   source,

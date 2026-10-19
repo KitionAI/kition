@@ -12,7 +12,7 @@ import {
 import { notify } from '@/lib/notify'
 import { readWorkspaceMarkdown, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 
-import { parseWikilinks } from '../lib/wikilink-parser'
+import { parseWikilinks } from '@kition/document-editor'
 import { clearVaultFileCache, loadVaultMarkdownFiles } from '../vault/vault-files'
 
 const SCAN_LIMIT = 600

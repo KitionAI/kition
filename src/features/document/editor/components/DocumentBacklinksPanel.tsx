@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { parseWikilinks } from '@/features/document/editor/lib/wikilink-parser'
+import { parseWikilinks } from '@kition/document-editor'
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
 import { readWorkspaceDocument } from '@/services/desktop'
 import { cn } from '@kition/app-ui/utils'
