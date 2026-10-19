@@ -2304,10 +2304,10 @@
     @apply shrink-0 text-muted-foreground;
   }
 
-  /* The workspace's create menu: Kition's file types and the kits in groups, two columns. */
+  /* The workspace's create menu: every file type grouped by what it is for, two columns. */
   .document-create-menu--grouped,
   .document-create-menu--grouped.document-create-menu--portal {
-    @apply w-80 p-1.5;
+    @apply w-[26rem] p-1.5;
   }
 
   .document-create-menu__group + .document-create-menu__group {
@@ -2324,6 +2324,11 @@
 
   .document-create-menu__grid .document-create-option span {
     @apply min-w-0 truncate;
+  }
+
+  /* The portable format beside a label (`.docx`), quieter than the label. */
+  .document-create-menu__grid .document-create-option .document-create-option__format {
+    @apply ml-auto shrink-0 overflow-visible pl-1 text-[11px] font-normal text-muted-foreground;
   }
 
   .document-create-menu__separator {

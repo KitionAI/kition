@@ -133,7 +133,7 @@ describe('WorkspaceSidebar', () => {
 
     const options = Array.from(document.body.querySelectorAll('.document-create-option'))
       .map((option) => option.textContent?.trim())
-    expect(options).toEqual(['Document', 'Table', 'Folder'])
+    expect(options).toEqual(['Document.md', 'Table', 'Folder'])
     expect(document.body.textContent).not.toContain('Import file')
   })
 

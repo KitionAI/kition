@@ -97,6 +97,7 @@ export function useWorkspaceCreateMenu({
       label: kit.label,
       kit: kit.kit,
       group: kit.group,
+      extension: kit.extension,
       onCreate: () => {
         onCloseProfile?.()
         closeCreateMenu()

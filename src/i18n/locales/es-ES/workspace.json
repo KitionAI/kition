@@ -23,9 +23,10 @@
     "newTable": "Nueva tabla",
     "newWorkflow": "Nuevo flujo de trabajo",
     "group": {
-      "kition": "Kition",
-      "office": "Oficina",
-      "creative": "Creatividad"
+      "documents": "Documentos",
+      "data": "Datos",
+      "visual": "Visual",
+      "media": "Multimedia"
     }
   },
   "emptyState": {

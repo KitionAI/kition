@@ -23,9 +23,10 @@
     "newTable": "Новая таблица",
     "newWorkflow": "Новый процесс",
     "group": {
-      "kition": "Kition",
-      "office": "Офис",
-      "creative": "Творчество"
+      "documents": "Документы",
+      "data": "Данные",
+      "visual": "Графика",
+      "media": "Медиа"
     }
   },
   "emptyState": {

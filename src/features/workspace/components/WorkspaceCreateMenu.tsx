@@ -14,12 +14,26 @@ type WorkspaceCreateMenuPlacement = 'top' | 'bottom'
 // content/fonts but these are close enough to pick a side without flicker.
 const ESTIMATED_MENU_WIDTH = 192
 const ESTIMATED_MENU_HEIGHT = 240
-// The workspace menu: three groups in two columns.
-const ESTIMATED_GROUPED_MENU_WIDTH = 320
-const ESTIMATED_GROUPED_MENU_HEIGHT = 420
+// The workspace menu: four groups in two columns.
+const ESTIMATED_GROUPED_MENU_WIDTH = 416
+const ESTIMATED_GROUPED_MENU_HEIGHT = 440
 
-/** The kit groups after Kition's own file types, in menu order. */
-const KIT_GROUPS: readonly KitCreateGroup[] = ['office', 'creative']
+/** The workspace menu's groups, by what the new file is for, in menu order. */
+const CREATE_GROUPS: readonly KitCreateGroup[] = ['documents', 'data', 'visual', 'media']
+/** Item order within the groups. Kition's own file types and the kits mix
+ *  freely; a kit not listed here goes last in its group. */
+const CREATE_ORDER: readonly string[] = ['markdown', 'word', 'pdf', 'layout', 'table', 'spreadsheet', 'slide', 'board', 'design', 'drawing', 'image', 'cad', 'video', 'motion']
+
+type CreateItem = {
+  id: string
+  group: KitCreateGroup
+  label: string
+  icon: ReactNode
+  /** Shown beside the label when the file is a portable format other apps open. */
+  extension?: string
+  testId?: string
+  onClick: () => void
+}
 
 export function WorkspaceCreateMenu({
   open,
@@ -66,6 +80,31 @@ export function WorkspaceCreateMenu({
   if (!open) {
     return null
   }
+
+  const createItems: CreateItem[] = [
+    ...documentCreateFormatOptions.map<CreateItem>((item) => {
+      const FormatIcon = resolveWorkspaceCreateIcon(item.value)
+      return {
+        id: item.value,
+        group: item.value === 'table' ? 'data' : 'documents',
+        label: t('createMenu.format.' + item.value),
+        icon: <FormatIcon className="size-4" />,
+        extension: item.value === 'markdown' ? 'md' : undefined,
+        onClick: () => (item.value === 'table' ? onCreateTable() : onCreateDocument(item.value)),
+      }
+    }),
+    ...(onCreateBoard ? [{ id: 'board', group: 'visual', label: t('createMenu.format.board'), icon: <KitIcon kit="board" small className="size-4" />, testId: 'workspace-create-board', onClick: onCreateBoard } satisfies CreateItem] : []),
+    ...(onCreateDesign ? [{ id: 'design', group: 'visual', label: t('design:suite'), icon: <KitIcon kit="design" small className="size-4" />, testId: 'workspace-create-design', onClick: onCreateDesign } satisfies CreateItem] : []),
+    ...(kitCreations ?? []).map<CreateItem>((kit) => ({
+      id: kit.id,
+      group: kit.group,
+      label: t(kit.label),
+      icon: <KitIcon kit={kit.kit} small className="size-4" />,
+      extension: portableExtension(kit.extension),
+      testId: `workspace-create-${kit.id}`,
+      onClick: kit.onCreate,
+    })),
+  ].sort((a, b) => createRank(a.id) - createRank(b.id))
 
   const content: ReactNode = variant === 'kitable' ? (
     // Inside a .kitable the inline `+` menu creates tables and — when the
@@ -116,51 +155,18 @@ export function WorkspaceCreateMenu({
       ) : null}
     </>
   ) : (
-    // Kition's own file types, then the kits by group, in two columns; Folder last.
+    // Every file type by what it is for, in two columns; Folder last.
     <>
-      <CreateMenuGroup label={t('createMenu.group.kition')}>
-        {documentCreateFormatOptions.map((item) => {
-          const FormatIcon = resolveWorkspaceCreateIcon(item.value)
-          return (
-            <button
-              key={item.value}
-              type="button"
-              className="document-create-option"
-              onClick={() => {
-                if (item.value === 'table') {
-                  onCreateTable()
-                  return
-                }
-                onCreateDocument(item.value)
-              }}
-            >
-              <FormatIcon className="size-4" />
-              <span>{t('createMenu.format.' + item.value)}</span>
-            </button>
-          )
-        })}
-        {onCreateBoard ? (
-          <button type="button" className="document-create-option" data-testid="workspace-create-board" onClick={onCreateBoard}>
-            <KitIcon kit="board" small className="size-4" />
-            <span>{t('createMenu.format.board')}</span>
-          </button>
-        ) : null}
-        {onCreateDesign ? (
-          <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
-            <KitIcon kit="design" small className="size-4" />
-            <span>{t('design:suite')}</span>
-          </button>
-        ) : null}
-      </CreateMenuGroup>
-      {KIT_GROUPS.map((group) => {
-        const items = kitCreations?.filter((kit) => kit.group === group) ?? []
+      {CREATE_GROUPS.map((group) => {
+        const items = createItems.filter((item) => item.group === group)
         if (!items.length) return null
         return (
           <CreateMenuGroup key={group} label={t(`createMenu.group.${group}`)}>
-            {items.map((kit) => (
-              <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
-                <KitIcon kit={kit.kit} small className="size-4" />
-                <span>{t(kit.label)}</span>
+            {items.map((item) => (
+              <button key={item.id} type="button" className="document-create-option" data-testid={item.testId} onClick={item.onClick}>
+                {item.icon}
+                <span>{item.label}</span>
+                {item.extension ? <span className="document-create-option__format" aria-hidden="true">.{item.extension}</span> : null}
               </button>
             ))}
           </CreateMenuGroup>
@@ -220,6 +226,17 @@ function CreateMenuGroup({ label, children }: { label: string; children: ReactNo
       <div className="document-create-menu__grid">{children}</div>
     </div>
   )
+}
+
+function createRank(id: string) {
+  const rank = CREATE_ORDER.indexOf(id)
+  return rank === -1 ? CREATE_ORDER.length : rank
+}
+
+/** Kition's own formats (`.kitionslide`, `.kitable`, …) say nothing to a
+ *  reader; portable ones (`.docx`, `.psd`) tell Word from Document. */
+function portableExtension(extension: string) {
+  return /^kit/.test(extension) ? undefined : extension
 }
 
 function resolveWorkspaceCreateIcon(format: DocumentCreateFormat) {

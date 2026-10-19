@@ -10,8 +10,8 @@ test('makes a new image with the engine in the Photo kit’s package and opens i
   try {
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
     // The kits sit in their groups of the create menu.
-    await expect(page.getByRole('group', { name: 'Creative' }).getByTestId('workspace-create-image')).toBeVisible()
-    await expect(page.getByRole('group', { name: 'Office' }).getByTestId('workspace-create-word')).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Visual' }).getByTestId('workspace-create-image')).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Documents' }).getByTestId('workspace-create-word')).toBeVisible()
     await page.locator('.document-create-menu--portal').screenshot({ path: testInfo.outputPath('create-menu.png') })
     await page.getByTestId('workspace-create-image').click()
 

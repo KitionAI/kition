@@ -23,9 +23,10 @@
     "newTable": "新建表格",
     "newWorkflow": "新建工作流",
     "group": {
-      "kition": "Kition",
-      "office": "办公",
-      "creative": "创意"
+      "documents": "文档",
+      "data": "数据",
+      "visual": "视觉",
+      "media": "影音"
     }
   },
   "emptyState": {
