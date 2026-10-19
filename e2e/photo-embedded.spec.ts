@@ -87,6 +87,17 @@ test('keeps a PSD’s replica across a save and a reopen, and opens a file chang
     await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
     await expect(reopened.getByTestId('photo-unsaved')).toHaveCount(0)
 
+    // A second save appends only its changes after the stored snapshot; reopened, the image is both.
+    await reopened.getByTestId('photo-layer-new').click()
+    await expect(reopened.getByTestId('photo-status')).toContainText('4 layers')
+    await reopened.getByTestId('photo-save').click()
+    await expect(reopened.getByTestId('photo-unsaved')).toHaveCount(0, { timeout: 30_000 })
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).changes?.length ?? 0, { timeout: 15_000 }).toBe(1)
+    const appended = await replicaVersion(page, name)
+    const again = await reopen()
+    await expect(again.getByTestId('photo-status')).toContainText('4 layers', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(appended)
+
     // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
     await fs.writeFile(path.join(host.root, name), await posterFixture(96, 64))
     const changed = await reopen()
