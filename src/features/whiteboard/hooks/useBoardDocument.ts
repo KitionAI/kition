@@ -24,6 +24,7 @@ import {
   type WorkspaceDocumentExternalChange,
 } from '@/services/desktop'
 import { registerWorkspaceEditSession } from '@/services/workspaceEditSessions'
+import { loadDocumentStore } from '@/features/document/public'
 
 type BoardDocumentStatus = 'loading' | 'ready' | 'saving' | 'error'
 
@@ -55,6 +56,15 @@ const SAVE_CONFLICT = 'DESIGN_SAVE_CONFLICT'
 const SAVE_HELD_BACK = 'BOARD_SAVE_HELD_BACK'
 /** A flush refused because the file on disk is no longer this board. */
 const SAVE_REFUSED = 'BOARD_SAVE_REFUSED'
+
+/** While editing, a save records a checkpoint in the board's version history at most this often. */
+const CHECKPOINT_EVERY_MS = 5 * 60_000
+
+function versionHex(version: Version) {
+  let out = ''
+  for (const byte of version.encode()) out += byte.toString(16).padStart(2, '0')
+  return out
+}
 
 const INITIAL_STATE: BoardDocumentState = { status: 'loading', error: '', problem: null, saveRefused: null }
 
@@ -88,6 +98,8 @@ class BoardDocumentSession {
   private problem: BoardDocumentProblem | null = null
   private state = INITIAL_STATE
   private saveTimer: ReturnType<typeof setTimeout> | undefined
+  /** When the board's last checkpoint was recorded (its version history on this device). */
+  private lastCheckpointAt = 0
   private retryTimer: ReturnType<typeof setTimeout> | undefined
   private retries = 0
   /** The running save; it saves edits made meanwhile itself, or its retry does. */
@@ -281,8 +293,19 @@ class BoardDocumentSession {
     this.setState({ status: 'ready', error: '', problem: null, saveRefused: null })
     this.changeStore(() => this.host.load(decoded.replica))
     this.setOpen(true)
+    this.checkpoint('open', decoded.replica.version())
     // A repair while the store adopted the replica changed it: save that.
     if (this.isDirty()) this.schedule(SAVE_DELAY_MS)
+  }
+
+  /** Records `version` in the board's version history (the file holds the replica, so only the version). */
+  private checkpoint(origin: 'open' | 'edit', version: Version) {
+    this.lastCheckpointAt = Date.now()
+    const path = this.path
+    const root = this.root
+    void loadDocumentStore()
+      .then((store) => store.recordFileCheckpoint(path, { origin, author: 'user:local', version: versionHex(version) }, { expectedRoot: root }))
+      .catch(() => undefined)
   }
 
   /** Runs a change this session makes to the store (a load, a merge): it is not an edit to save. */
@@ -420,6 +443,7 @@ class BoardDocumentSession {
       }
       this.fileText = text
       this.fileVersion = version
+      if (Date.now() - this.lastCheckpointAt >= CHECKPOINT_EVERY_MS) this.checkpoint('edit', version)
       this.retries = 0
       clearTimeout(this.retryTimer)
       this.setState({ status: 'ready', error: '', saveRefused: null })
