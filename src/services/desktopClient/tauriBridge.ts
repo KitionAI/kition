@@ -10,6 +10,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 const DESKTOP_MENU_EVENT = 'desktop:menu'
 const DESKTOP_UPDATES_EVENT = 'desktop:updates:state'
 const DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT = 'desktop:document:external-change'
+const DESKTOP_DOCUMENT_STORE_ACCESS_EVENT = 'desktop:document-store:access'
 
 /** Values the native shell injects before any renderer module runs. */
 export type TauriDesktopGlobals = {
@@ -49,6 +50,7 @@ export function createTauriBridge(
     menuEvent: DESKTOP_MENU_EVENT,
     updatesEvent: DESKTOP_UPDATES_EVENT,
     documentExternalChangeEvent: DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT,
+    documentStoreAccessEvent: DESKTOP_DOCUMENT_STORE_ACCESS_EVENT,
     DesktopInfo: () => command('desktop_info'),
     BackendStatus: () => command('backend_status'),
     RetryBackendStart: () => command('retry_backend_start'),
@@ -85,6 +87,10 @@ export function createTauriBridge(
     DeleteDocumentStore: request('delete_document_store'),
     ReadDocumentIndex: request('read_document_index'),
     WriteDocumentIndex: request('write_document_index'),
+    ReadDocumentHistory: request('read_document_history'),
+    RecordDocumentCheckpoint: request('record_document_checkpoint'),
+    ReadDocumentCheckpoint: request('read_document_checkpoint'),
+    DocumentStoreStatus: () => command('document_store_status'),
     CreateWorkspaceFolder: request('create_workspace_folder'),
     MoveWorkspaceDocument: request('move_workspace_document'),
     MoveWorkspaceFolder: request('move_workspace_folder'),

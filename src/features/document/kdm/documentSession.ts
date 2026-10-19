@@ -8,7 +8,7 @@
 import { isolateHistory } from '@codemirror/commands'
 import { Transaction } from '@codemirror/state'
 import { VersionVector } from 'loro-crdt'
-import { agent, person, randomActor, system, type Origin, type Replica, type TextDelta, type Version } from '@/lib/kdm'
+import { agent, person, randomActor, system, type Origin, type Replica, type TextDelta, type Tx, type Version } from '@/lib/kdm'
 import { readWorkspaceDocument, subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { registerWorkspaceEditSession } from '@/services/workspaceEditSessions'
 import { TextBinding } from './codeMirrorBinding'
@@ -18,7 +18,8 @@ import { documentHistoryExtension, type DocumentHistory } from './documentHistor
 import { applyTextEdits, diffText, mergeEdits } from './documentMerge'
 import { registerOpenMarkdownDocument } from './openDocumentSessions'
 import { DOCUMENT_BODY } from './documentSchema'
-import { mergeFileIntoReplica, openDocument, saveDocument, type OpenedDocument } from './documentStore'
+import { compactStoredDocument, mergeFileIntoReplica, openDocument, saveDocument, versionHex, type OpenedDocument } from './documentStore'
+import { recordDocumentCheckpoint, type DocumentCheckpointInput } from '@/services/desktop'
 import { analyzeText, createDocumentReplica, documentBody, renderText } from './documentText'
 
 /** The principal of edits made in this window. */
@@ -82,6 +83,10 @@ export const SAVE_DELAY_MS = 300
 export const TYPING_GROUP_MS = 500
 /** Retries after a failed save; edits start new attempts as well. */
 const RETRY_DELAYS_MS = [1000, 2000, 4000] as const
+/** While editing, a save records a checkpoint in the document's version history at most this often. */
+export const CHECKPOINT_EVERY_MS = 5 * 60_000
+/** The origin of restoring a version from the history: one undo step of the person's. */
+const restoreOrigin: Origin = person(LOCAL_PERSON, 'restore')
 /** Writes per save, each after merging the file a conflict showed changed. */
 const MAX_SAVE_ATTEMPTS = 3
 /** The guarded write's refusal (the file is not what this session last read or wrote). */
@@ -149,6 +154,8 @@ export class DocumentSession {
   private readonly cleanups: Array<() => void> = []
   private unregisterFlush: (() => void) | null = null
   private readonly textListeners = new Set<() => void>()
+  /** Hear changes of the replica beyond the text: comment threads (rule M23), ours or merged. */
+  private readonly commentListeners = new Set<() => void>()
   private readonly stateListeners = new Set<(state: DocumentSessionState) => void>()
   private readonly bindings = new Set<TextBinding>()
   /** The open typing undo group, if any. */
@@ -160,6 +167,10 @@ export class DocumentSession {
   private unregisterAgent: (() => void) | null = null
   /** Withdraws the document from the open documents (`openDocumentSessions.ts`). */
   private withdrawOpen: (() => void) | null = null
+  /** When the last checkpoint was recorded; a save records the next one `CHECKPOINT_EVERY_MS` later. */
+  private lastCheckpointAt = 0
+  /** A checkpoint the next save records whenever it comes (an agent's edit). */
+  private pendingCheckpoint: DocumentCheckpointInput | null = null
   readonly history: DocumentHistory = {
     undo: () => this.undo(),
     redo: () => this.redo(),
@@ -217,6 +228,7 @@ export class DocumentSession {
     window.addEventListener('beforeunload', beforeUnload)
     this.cleanups.push(() => window.removeEventListener('beforeunload', beforeUnload))
     this.setState({ status: 'ready', error: '', dirty: this.isDirty() })
+    this.checkpointOpened()
     // The store held edits the file does not have (or the open merged a file change): save them.
     if (this.isDirty()) this.schedule(SAVE_DELAY_MS)
     // The file may have changed between its read and now (no change event reaches a session not yet open).
@@ -244,6 +256,25 @@ export class DocumentSession {
     return () => {
       this.textListeners.delete(listener)
     }
+  }
+
+  /** Calls `listener` after the document's comment threads may have changed. */
+  subscribeComments(listener: () => void) {
+    this.commentListeners.add(listener)
+    return () => {
+      this.commentListeners.delete(listener)
+    }
+  }
+
+  /**
+   * Writes comment threads (Kit Standard 2.0 rule M23) in one transaction with `origin`: they are
+   * beside the text, so the editors do not change, but the session saves the replica and
+   * co-editing sends the change. Answers what `run` answered.
+   */
+  transactComments<R>(origin: Origin, run: (tx: Tx) => R): R {
+    const result = this.requireOpened().replica.transact(origin, run)
+    this.afterReplicaChange()
+    return result
   }
 
   subscribeState(listener: (state: DocumentSessionState) => void) {
@@ -297,6 +328,27 @@ export class DocumentSession {
   }
 
   /**
+   * Restores `text` (the document as it was at a checkpoint) as one change of the person's, one undo step, after
+   * recording where the document was before it. Answers whether the text changed.
+   */
+  restoreText(text: string, label?: string): boolean {
+    const opened = this.requireOpened()
+    const before = versionHex(opened.replica)
+    void recordDocumentCheckpoint(opened.meta.docId, { origin: 'before-restore', author: LOCAL_PERSON, version: before }, { expectedRoot: this.root }).catch(() => undefined)
+    const changed = this.replaceText(text, restoreOrigin)
+    if (changed) {
+      this.pendingCheckpoint = { origin: 'restore', author: LOCAL_PERSON, ...(label ? { label } : {}) }
+      this.schedule(0)
+    }
+    return changed
+  }
+
+  /** The document's id in the store (its version history's). */
+  storeId(): string | null {
+    return this.opened?.meta.docId ?? null
+  }
+
+  /**
    * Applies `next`, a text made from the earlier text `base` (a dialog opened on it, an agent's edit
    * under review, a rewrite before a save), as a three-way merge onto the text as it is now: the
    * change `base → next` is applied and edits that reached the text since `base` (typing, merged
@@ -326,6 +378,7 @@ export class DocumentSession {
     } finally {
       this.applyingAgent = false
     }
+    if (changed) this.pendingCheckpoint = { origin: 'agent', author: LOCAL_AGENT, ...(meta.tool ? { label: meta.tool } : {}) }
     if (changed) this.reviewEdit(before, meta, 1)
     await this.flush()
     return { applied: true, content: this.fileText ?? this.read() }
@@ -418,7 +471,21 @@ export class DocumentSession {
    * like a merged file change, they are no undo step, and the session saves them to the file.
    */
   importRemoteChanges(changes: Uint8Array) {
-    this.requireOpened().replica.importChanges(changes)
+    const opened = this.requireOpened()
+    const before = opened.replica.version()
+    opened.replica.importChanges(changes)
+    // A change beside the text (a comment) reaches no text listener: save and show it too.
+    if (!opened.replica.version().equals(before)) this.afterReplicaChange()
+  }
+
+  /** The replica changed beyond what the text listeners heard: tell comment listeners, and save. */
+  private afterReplicaChange() {
+    if (this.disposed) return
+    for (const listener of [...this.commentListeners]) listener()
+    this.retries = 0
+    this.setState({ dirty: this.isDirty() })
+    if (this.saveRun) return
+    if (this.isDirty()) this.schedule(SAVE_DELAY_MS)
   }
 
   /** Merges what the file holds now (after another writer changed it); local edits are kept. */
@@ -491,7 +558,12 @@ export class DocumentSession {
    */
   dispose() {
     if (this.disposed) return
-    const final = this.flush()
+    const opened = this.opened
+    const root = this.root
+    // The final save, then the change log folded into a snapshot (a clean close compacts the store).
+    const final = this.flush().then(() => {
+      if (opened && !this.discarded) void compactStoredDocument(opened, { expectedRoot: root })
+    })
     this.disposed = true
     this.endTyping()
     for (const binding of this.bindings) binding.dispose()
@@ -501,6 +573,7 @@ export class DocumentSession {
     this.unregisterAgent = null
     this.withdrawOpen = null
     this.textListeners.clear()
+    this.commentListeners.clear()
     this.stateListeners.clear()
     this.reviewListeners.clear()
     final.catch((reason: unknown) => this.host.closedSaveFailed?.(this.pathValue, reason))
@@ -552,6 +625,21 @@ export class DocumentSession {
     this.cleanups.push(unregister)
   }
 
+  /** Records where the document starts this session in its version history (best effort). */
+  private checkpointOpened() {
+    const opened = this.opened
+    if (!opened || !opened.stored) return
+    this.lastCheckpointAt = Date.now()
+    void recordDocumentCheckpoint(opened.meta.docId, { origin: 'open', author: LOCAL_PERSON, version: versionHex(opened.replica) }, { expectedRoot: this.root }).catch(() => undefined)
+  }
+
+  /** The checkpoint a save records now, if any: an agent's edit, or editing past `CHECKPOINT_EVERY_MS`. */
+  private dueCheckpoint(): DocumentCheckpointInput | undefined {
+    if (this.pendingCheckpoint) return this.pendingCheckpoint
+    if (Date.now() - this.lastCheckpointAt >= CHECKPOINT_EVERY_MS) return { origin: 'edit', author: LOCAL_PERSON }
+    return undefined
+  }
+
   /** Announces the document as open for editing under its current path (co-editing follows it). */
   private announceOpen() {
     this.dropCleanup(this.withdrawOpen)
@@ -559,8 +647,17 @@ export class DocumentSession {
       path: this.pathValue,
       replica: () => this.requireOpened().replica,
       importChanges: (changes) => this.importRemoteChanges(changes),
-      subscribe: (listener) => this.subscribeText(listener),
+      subscribe: (listener) => {
+        const stopText = this.subscribeText(listener)
+        const stopComments = this.subscribeComments(listener)
+        return () => {
+          stopText()
+          stopComments()
+        }
+      },
       save: () => this.flush(),
+      storeId: () => this.storeId(),
+      restoreText: (text, label) => this.restoreText(text, label),
     })
     this.withdrawOpen = withdraw
     this.cleanups.push(withdraw)
@@ -766,10 +863,12 @@ export class DocumentSession {
       const recreate = this.fileMissing
       this.setState({ status: 'saving', error: '' })
       let saved: { fileText: string; meta: OpenedDocument['meta'] }
+      const checkpoint = this.dueCheckpoint()
       try {
         saved = await saveDocument({
           path: this.pathValue,
           opened,
+          ...(checkpoint ? { checkpoint } : {}),
           // `null`: the file must still be missing.
           expectedFileText: recreate ? null : this.fileText,
           expectedRoot: this.root,
@@ -796,6 +895,10 @@ export class DocumentSession {
       this.fileMissing = false
       this.fileText = saved.fileText
       opened.meta = saved.meta
+      if (checkpoint) {
+        this.lastCheckpointAt = Date.now()
+        if (this.pendingCheckpoint === checkpoint) this.pendingCheckpoint = null
+      }
       this.savedVersion = version
       this.retries = 0
       clearTimeout(this.retryTimer)

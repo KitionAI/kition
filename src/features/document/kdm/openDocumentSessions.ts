@@ -18,6 +18,10 @@ export type OpenMarkdownDocument = {
   subscribe: (listener: () => void) => () => void
   /** Saves a pending change now. */
   save: () => Promise<void>
+  /** The document's id in the replica store (its version history's), once open. */
+  storeId: () => string | null
+  /** Restores `text` (the document as it was at a checkpoint) as one undo step; answers whether it changed. */
+  restoreText: (text: string, label?: string) => boolean
 }
 
 const documents = createOpenDocumentRegistry<OpenMarkdownDocument>()

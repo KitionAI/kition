@@ -31,10 +31,16 @@ type KitionDesktopBridge = {
   WriteWorkspaceDocument?: (request: WorkspaceDocumentWriteRequest) => Promise<WorkspaceDocument>
   CreateWorkspaceDocument?: (request: WorkspaceDocumentCreateRequest) => Promise<WorkspaceDocument>
   ReadDocumentStore?: (request: DocumentStoreRequest) => Promise<DocumentStorePayload | null>
-  WriteDocumentStore?: (request: DocumentStoreWriteRequest) => Promise<void | null>
+  WriteDocumentStore?: (request: DocumentStoreWriteRequest) => Promise<DocumentStoreWritten | void | null>
   DeleteDocumentStore?: (request: DocumentStoreRequest) => Promise<void | null>
   ReadDocumentIndex?: (request: DocumentIndexRequest) => Promise<DocumentIndexPayload>
   WriteDocumentIndex?: (request: DocumentIndexWriteRequest) => Promise<{ version: string }>
+  ReadDocumentHistory?: (request: DocumentStoreRequest) => Promise<{ checkpoints: DocumentCheckpoint[] }>
+  RecordDocumentCheckpoint?: (request: DocumentStoreRequest & { checkpoint: DocumentCheckpointInput }) => Promise<{ checkpoint: DocumentCheckpoint }>
+  ReadDocumentCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: DocumentCheckpoint; blobs_base64?: string } | null>
+  DocumentStoreStatus?: () => Promise<DocumentStoreStatus>
+  /** The event the shell sends with a new `DocumentStoreStatus` when this window takes the store lock over or loses it. */
+  documentStoreAccessEvent?: string
   CreateWorkspaceFolder?: (request: WorkspaceFolderCreateRequest) => Promise<WorkspaceFolderCreateResponse>
   MoveWorkspaceDocument?: (request: WorkspaceDocumentMoveRequest) => Promise<WorkspaceDocument>
   MoveWorkspaceFolder?: (request: WorkspaceFolderMoveRequest) => Promise<WorkspaceFolderMoveResponse>
@@ -233,16 +239,84 @@ export type KitReplicaMeta = {
 export type DocumentStoreRequest = {
   expected_root?: string
   doc_id: string
+  /** Read only the stored meta and head (`seq`, `version`), not the replica's bytes. */
+  head_only?: boolean
 }
 
+/**
+ * A stored replica: load `snapshot_base64`, then import `changes_base64` in order. `seq` and `version` name the stored
+ * version (a later write appends after `seq`); `complete` is false when a change or blob the store names is missing or
+ * damaged, and the entry then holds what came before it, without blobs. Stores before append support answer only
+ * `meta` and `snapshot_base64` (and `blobs_base64`).
+ */
 export type DocumentStorePayload = {
   meta: DocumentStoreMeta | KitReplicaMeta
   snapshot_base64: string
-  /** A kit replica's blobs (`blobs.bin`). */
+  changes_base64?: string[]
+  /** A kit replica's blob bundle. */
   blobs_base64?: string
+  seq?: number
+  version?: string | null
+  complete?: boolean
 }
 
-export type DocumentStoreWriteRequest = DocumentStoreRequest & DocumentStorePayload
+/** What the renderer asks to record in a document's version history. */
+export type DocumentCheckpointInput = {
+  /** `save`, `agent`, `script`, `edit`, `open`, `restore`, `before-restore`. */
+  origin: string
+  author?: string
+  label?: string
+  /** The replica version (hex); a write's checkpoint defaults to the written version. */
+  version?: string
+  time?: number
+}
+
+/** A point in a document's version history on this device, newest first in lists. */
+export type DocumentCheckpoint = {
+  id: string
+  /** Milliseconds since the Unix epoch. */
+  time: number
+  origin: string
+  author?: string
+  label?: string
+  version?: string
+  seq?: number
+  /** The store kept the blobs the replica named then (a kit replica's). */
+  hasBlobs: boolean
+}
+
+/**
+ * A replica write: a whole `snapshot_base64` (a first write, a compaction, a replica of a new lineage), or the
+ * `changes_base64` since the stored `base_seq`, which fails with `DOCUMENT_STORE_CONFLICT` when the store is not there.
+ */
+export type DocumentStoreWriteRequest = Omit<DocumentStoreRequest, 'head_only'> & {
+  meta: DocumentStoreMeta | KitReplicaMeta
+  snapshot_base64?: string
+  changes_base64?: string
+  base_seq?: number
+  version?: string
+  blobs_base64?: string
+  /** The replica does not continue the stored one: its version history starts over. */
+  lineage?: 'new'
+  checkpoint?: DocumentCheckpointInput
+}
+
+/** `compact`: the next write should carry a snapshot (the change log is due for compaction). */
+export type DocumentStoreWritten = {
+  seq: number
+  version: string | null
+  compact: boolean
+  checkpoint?: DocumentCheckpoint
+}
+
+/**
+ * Whether this window writes the workspace's document store: one Kition does (the one holding its lock file); any
+ * other opens it read-only. `holder` names the one that does.
+ */
+export type DocumentStoreStatus = {
+  writable: boolean
+  holder: { host: string; pid: number; started: number; heartbeat: number; sameHost: boolean } | null
+}
 
 export type DocumentIndexRequest = {
   expected_root?: string

@@ -5,6 +5,7 @@ import { DOCUMENT_BODY } from './documentSchema'
 import { documentBody } from './documentText'
 import {
   childFolderPath,
+  compactStoredDocument,
   duplicateDocumentIdentity,
   forgetDocument,
   forgetDocumentFolder,
@@ -29,6 +30,7 @@ vi.mock('@/services/desktop', async (importOriginal) => {
     ...actual,
     readDocumentStore: vi.fn(actual.readDocumentStore),
     writeDocumentStore: vi.fn(actual.writeDocumentStore),
+    appendDocumentStore: vi.fn(actual.appendDocumentStore),
     deleteDocumentStore: vi.fn(actual.deleteDocumentStore),
     readDocumentIndex: vi.fn(actual.readDocumentIndex),
     writeDocumentIndex: vi.fn(actual.writeDocumentIndex),
@@ -55,6 +57,11 @@ function type(opened: Pick<OpenedDocument, 'replica' | 'rootId'>, at: number, te
 
 async function save(path: string, opened: OpenedDocument, onStoreError?: (error: unknown) => void) {
   return saveDocument({ path, opened, expectedFileText: opened.fileText, expectedRoot: ROOT, onStoreError })
+}
+
+/** Saves over what the file holds now. */
+async function saveNow(opened: OpenedDocument) {
+  return saveDocument({ path: 'Plan.md', opened, expectedFileText: await fileText('Plan.md'), expectedRoot: ROOT })
 }
 
 beforeEach(() => {
@@ -290,13 +297,61 @@ describe('saveDocument', () => {
     await writeFile('Plan.md', 'one\n')
     const opened = await open('Plan.md')
     type(opened, 0, 'zero\n')
-    vi.mocked(desktop.writeDocumentStore).mockRejectedValueOnce(new Error('disk full'))
+    // The save appends its changes to what the store holds.
+    vi.mocked(desktop.appendDocumentStore).mockRejectedValueOnce(new Error('disk full'))
     const onStoreError = vi.fn()
 
     const saved = await save('Plan.md', opened, onStoreError)
     expect(onStoreError).toHaveBeenCalledWith(expect.objectContaining({ message: 'disk full' }))
     expect(saved.fileText).toBe('zero\none\n')
     expect(await fileText('Plan.md')).toBe('zero\none\n')
+  })
+
+  it('appends only the changes since the stored version, and reopens from the snapshot and the changes', async () => {
+    await writeFile('Plan.md', 'one\n')
+    const opened = await open('Plan.md')
+    expect(opened.stored?.seq).toBe(1)
+    type(opened, 4, 'two\n')
+    await saveNow(opened)
+    type(opened, 8, 'three\n')
+    await saveNow(opened)
+    expect(desktop.writeDocumentStore).toHaveBeenCalledTimes(1)
+    expect(desktop.appendDocumentStore).toHaveBeenCalledTimes(2)
+    const entry = await desktop.readDocumentStore(opened.meta.docId)
+    expect(entry?.changes).toHaveLength(2)
+    expect(entry?.seq).toBe(3)
+
+    const again = await open('Plan.md', 2n)
+    expect(again.merged).toBe(false)
+    expect(documentBody(again.replica, again.rootId)).toBe('one\ntwo\nthree\n')
+    expect(again.stored).toMatchObject({ seq: 3, snapshotSeq: 1 })
+
+    // A compaction (on close, or when the store asks) writes one snapshot.
+    await compactStoredDocument(again, { expectedRoot: ROOT })
+    const compacted = await desktop.readDocumentStore(opened.meta.docId)
+    expect(compacted?.changes).toEqual([])
+    expect(again.stored).toMatchObject({ seq: 4, snapshotSeq: 4 })
+    again.stored = { ...again.stored!, compact: true }
+    type(again, 0, 'zero\n')
+    await saveNow(again)
+    expect((await desktop.readDocumentStore(opened.meta.docId))?.changes).toEqual([])
+  })
+
+  it('writes a snapshot after another writer moved the store on', async () => {
+    await writeFile('Plan.md', 'one\n')
+    const opened = await open('Plan.md')
+    const other = await open('Plan.md', 2n)
+    type(other, 4, 'two\n')
+    await save('Plan.md', other)
+    type(opened, 0, 'zero\n')
+    await saveDocument({ path: 'Plan.md', opened, expectedFileText: 'one\ntwo\n', expectedRoot: ROOT })
+    // The append conflicted: nothing stored now, a snapshot next.
+    expect(opened.stored).toBeNull()
+    type(opened, 0, 'a')
+    await saveDocument({ path: 'Plan.md', opened, expectedFileText: (await fileText('Plan.md')), expectedRoot: ROOT })
+    expect(opened.stored?.seq).toBe(3)
+    const again = await open('Plan.md', 3n)
+    expect(documentBody(again.replica, again.rootId)).toBe(documentBody(opened.replica, opened.rootId))
   })
 
   it('stores exactly the replica it wrote, not edits made while the file was written', async () => {
