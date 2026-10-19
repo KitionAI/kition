@@ -234,6 +234,8 @@ export type KitReplicaMeta = {
   kit: string
   path: string
   fileStamp: string
+  /** The replica's own KDM document id (hex): a later save that continues it appends only its new changes. */
+  replicaId?: string
 }
 
 export type DocumentStoreRequest = {

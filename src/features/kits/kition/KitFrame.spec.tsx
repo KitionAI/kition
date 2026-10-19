@@ -140,6 +140,7 @@ vi.mock('./kitionHost', () => ({
   writeKitReplica: async (_path: string, _kitId: string, replica: { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: string }) => {
     store.replica = replica
   },
+  compactKitReplica: async () => undefined,
 }))
 
 const writes: string[] = []

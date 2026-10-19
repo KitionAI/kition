@@ -7,7 +7,7 @@ import { useDocumentReadOnly } from '@/services/documentAccess'
 import { mountKit, type KitConnection } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
-import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
+import { compactKitReplica, KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { registerKitTestFrame } from './kitTestBridge'
@@ -109,6 +109,8 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
     let mounted: KitConnection | null = null
     let closed = false
     let state = { dirty: false, revision: 0 }
+    // Who made the last edit: a save after an agent's edits is the agent's checkpoint in the history.
+    let lastBy: 'agent' | 'person' = 'person'
     let withdraw: (() => void) | null = null
     // Leases and conflict notices for co-editing (Kit UI protocol sections 7b and 7c).
     const collab = kitCollabHandlers(path, openedReadOnly, () => latest.current.t)
@@ -157,11 +159,13 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
               fromCarried = null
               return replica ?? readKitReplica(checked, kit.kitId)
             },
-            replicaWrite: ({ path: wanted, ...replica }) => writeKitReplica(documentPath(wanted, path), kit.kitId, replica),
+            replicaWrite: ({ path: wanted, ...replica }) =>
+              writeKitReplica(documentPath(wanted, path), kit.kitId, replica, { checkpoint: { origin: lastBy === 'agent' ? 'agent' : 'save', author: lastBy === 'agent' ? 'agent:kition' : 'user:local' } }),
             openAgent: latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
             changed: (next) => {
               const agentEdit = next.by === 'agent'
               state = { dirty: next.dirty, revision: next.revision }
+              lastBy = agentEdit ? 'agent' : 'person'
               reportBridgeChange({ path, revision: next.revision, by: agentEdit ? 'agent' : 'person' })
             },
             notify: (notice) => {
@@ -236,6 +240,8 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
       withdraw?.()
       mounted?.close()
       setConnection(null)
+      // A clean close folds the changes saved since the stored snapshot into a new one.
+      void compactKitReplica(path)
     }
   }, [i18n, kit.kitId, path, openedReadOnly, reopened])
 

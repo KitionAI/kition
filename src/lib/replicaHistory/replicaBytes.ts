@@ -4,7 +4,7 @@
  * the document as of a version in its history. Every replica holds its whole history, so a version it ever had can be
  * read again (`stateAt`) and restored as one new change (`revertTo`). Loaded on demand: it carries the CRDT engine.
  */
-import { LoroDoc, VersionVector } from 'loro-crdt'
+import { decodeImportBlobMeta, LoroDoc, VersionVector } from 'loro-crdt'
 import { openEnvelope } from '@/lib/kdm'
 import { wrap } from '@/lib/kdm/envelope'
 
@@ -41,6 +41,7 @@ function load(parts: readonly Uint8Array[]): { doc: LoroDoc; docId: Uint8Array }
 
 /** The version (an encoded version vector) `bytes` brings a replica to. */
 export function versionOf(parts: readonly Uint8Array[]): Uint8Array {
+  if (parts.length === 1) return decodeImportBlobMeta(openEnvelope(parts[0]).engine, false).partialEndVersionVector.encode()
   return load(parts).doc.oplogVersion().encode()
 }
 
@@ -49,9 +50,9 @@ export function versionOf(parts: readonly Uint8Array[]): Uint8Array {
  * `snapshot` itself when there are no changes.
  */
 export function mergeReplica(snapshot: Uint8Array, changes: readonly Uint8Array[]): { bytes: Uint8Array; version: Uint8Array } {
+  if (!changes.length) return { bytes: snapshot, version: versionOf([snapshot]) }
   const { doc, docId } = load([snapshot, ...changes])
   const version = doc.oplogVersion().encode()
-  if (!changes.length) return { bytes: snapshot, version }
   return { bytes: wrap(docId, doc.export({ mode: 'snapshot' })), version }
 }
 
