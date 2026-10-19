@@ -543,6 +543,33 @@ pub(crate) async fn call(
     Ok(result)
 }
 
+/// A failure reported inside a stream that already returned HTTP 200.
+fn stream_failure(message: String) -> AiError {
+    AiError::Provider {
+        message,
+        retryable: true,
+        reason: "stream_error".into(),
+        retry_after: std::time::Duration::ZERO,
+    }
+}
+
+/// The message of an `error` event or a failed response.
+fn stream_error_message(value: &Value) -> String {
+    let error = value.get("error").unwrap_or(value);
+    let message = trimmed(error.get("message"));
+    if message.is_empty() {
+        "the model stream reported an error".into()
+    } else {
+        message
+    }
+}
+
+fn has_actionable_item(output: &[Value]) -> bool {
+    output
+        .iter()
+        .any(|item| !matches!(text_of(item.get("type")), "" | "reasoning"))
+}
+
 async fn parse_stream(
     mut lines: SseLines,
     prompt: &str,
@@ -555,6 +582,7 @@ async fn parse_stream(
     let mut usage_raw: Option<Value> = None;
     let mut status = String::new();
     let mut events = 0;
+    let mut finished = false;
     // Argument deltas name their output item; the call is logged under its
     // `call_id`, so each function call item maps one to the other.
     let mut calls: std::collections::HashMap<String, (String, String)> =
@@ -624,13 +652,22 @@ async fn parse_stream(
                     emit_output_item_done(item, index, stream);
                 }
             }
-            "response.completed" => {
+            "error" => {
+                let event = Value::Object(payload);
+                return Err(stream_failure(stream_error_message(&event)));
+            }
+            "response.failed" => {
+                let response = payload.get("response").unwrap_or(&Value::Null);
+                return Err(stream_failure(stream_error_message(response)));
+            }
+            "response.completed" | "response.incomplete" => {
                 let Some(Value::Object(response)) = payload.get("response") else {
                     continue;
                 };
                 if response.is_empty() {
                     continue;
                 }
+                finished = true;
                 if let Some(Value::Array(items)) = response.get("output") {
                     output = items.clone();
                     for (index, item) in items.iter().enumerate() {
@@ -659,6 +696,13 @@ async fn parse_stream(
     let mut content = content.trim().to_owned();
     if content.is_empty() {
         content = text_from_output(&output);
+    }
+    // A stream that stops before its final event, with nothing usable, was
+    // cut off upstream; retrying beats reporting an empty reply.
+    if !finished && content.is_empty() && !has_actionable_item(&output) {
+        return Err(stream_failure(
+            "the model stream ended before the response completed".into(),
+        ));
     }
     Ok(ChatResult {
         usage: usage_from(usage_raw.as_ref(), prompt, &content, started, false),
@@ -718,6 +762,62 @@ mod tests {
                 ("fc_2".to_owned(), String::new()),
             ]
         );
+    }
+
+    async fn parse_events(events: &[Value]) -> AiResult<ChatResult> {
+        let body: String = events
+            .iter()
+            .map(|event| format!("data: {event}\n\n"))
+            .collect();
+        parse_stream(SseLines::from_text(&body), "", "m", Instant::now(), None).await
+    }
+
+    fn reasoning_done() -> Value {
+        json!({ "type": "response.output_item.done", "output_index": 0,
+            "item": { "type": "reasoning", "id": "rs_1", "summary": [] } })
+    }
+
+    #[tokio::test]
+    async fn a_stream_cut_off_after_reasoning_is_a_retryable_error() {
+        let error = parse_events(&[reasoning_done()]).await.err();
+        let error = error.unwrap_or_else(|| panic!("a cut-off stream must fail"));
+        assert!(error.retry_info().0, "{error}");
+        assert!(error.to_string().contains("ended before"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn stream_error_events_carry_the_provider_message() {
+        for event in [
+            json!({ "type": "error", "message": "upstream overloaded" }),
+            json!({ "type": "response.failed",
+                "response": { "status": "failed", "error": { "message": "upstream overloaded" } } }),
+        ] {
+            let error = parse_events(&[reasoning_done(), event]).await.err();
+            let error = error.unwrap_or_else(|| panic!("a failed stream must fail"));
+            assert_eq!(error.to_string(), "upstream overloaded");
+            assert!(error.retry_info().0);
+        }
+    }
+
+    #[tokio::test]
+    async fn an_incomplete_response_keeps_its_output_and_status() {
+        let result = parse_events(&[json!({ "type": "response.incomplete", "response": {
+            "status": "incomplete",
+            "output": [{ "type": "message", "content": [{ "type": "output_text", "text": "partial" }] }],
+        } })])
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(result.stop_reason, "incomplete");
+        assert_eq!(result.content, "partial");
+    }
+
+    #[tokio::test]
+    async fn a_stream_with_output_but_no_final_event_still_succeeds() {
+        let result =
+            parse_events(&[json!({ "type": "response.output_text.delta", "delta": "hi" })])
+                .await
+                .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(result.content, "hi");
     }
 
     #[test]
