@@ -192,7 +192,8 @@ class Room implements ModelBackend, DocumentEventSource {
     try {
       this.replica.importChanges(changes)
     } catch (error) {
-      ;(this.options.onError ?? ((failure: unknown) => console.error('[kition-sdk] a change from the room did not import', failure)))(error)
+      const report = this.options.onError ?? ((failure: unknown) => console.error('[kition-sdk] a change from the room did not import', failure))
+      report(error)
     }
     // A catch-up after a reconnect carries no `seq`, and reaches the room's latest.
     this.reach(seq ?? Number.MAX_SAFE_INTEGER)
