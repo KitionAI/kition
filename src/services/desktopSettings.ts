@@ -25,6 +25,9 @@ const SETTINGS_UPDATED_EVENT = 'desktop-settings-updated'
 const SYSTEM_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)'
 const PROVIDER_SECRET_FIELDS = ['apiKey', 'accessToken', 'refreshToken'] as const
 const LEGACY_KITION_CLOUD_MODELS = new Set(['gpt-5.5', 'gpt-image-1', 'dall-e-3'])
+// Kition Cloud no longer serves these text models; selections move to the default.
+const RETIRED_KITION_CLOUD_TEXT_MODELS = new Set(['gpt-5.5', 'gpt-5.4-mini'])
+const KITION_CLOUD_DEFAULT_TEXT_MODEL = 'gpt-5.6-sol'
 
 let removeSystemThemeListener: (() => void) | null = null
 
@@ -300,11 +303,12 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
     const rawDiscovered = Array.isArray(current?.discoveredModels)
       ? Array.from(new Set(current.discoveredModels.map((model) => String(model || '').trim()).filter(Boolean)))
       : []
-    const discoveredModels = descriptor.kind === 'kition_console'
-      && rawDiscovered.length === LEGACY_KITION_CLOUD_MODELS.size
-      && rawDiscovered.every((model) => LEGACY_KITION_CLOUD_MODELS.has(model))
-      ? []
-      : rawDiscovered
+    const discoveredModels = descriptor.kind !== 'kition_console'
+      ? rawDiscovered
+      : rawDiscovered.length === LEGACY_KITION_CLOUD_MODELS.size
+        && rawDiscovered.every((model) => LEGACY_KITION_CLOUD_MODELS.has(model))
+        ? []
+        : rawDiscovered.filter((model) => !RETIRED_KITION_CLOUD_TEXT_MODELS.has(model))
     providerMap[descriptor.kind] = {
       ...providerMap[descriptor.kind],
       ...(current || {}),
@@ -329,7 +333,19 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
   const selectedModelByProvider = {
     ...(input?.models?.selectedModelByProvider || {}),
   }
+  const retiredCloudModel = (model?: string) => RETIRED_KITION_CLOUD_TEXT_MODELS.has(String(model || '').trim())
+  if (retiredCloudModel(selectedModelByProvider.kition_console)) {
+    selectedModelByProvider.kition_console = KITION_CLOUD_DEFAULT_TEXT_MODEL
+  }
+  const preferredModels = {
+    preferredDefaultModel: input?.models?.preferredDefaultModel,
+    preferredChatModel: input?.models?.preferredChatModel,
+    preferredWritingModel: input?.models?.preferredWritingModel,
+  }
   if (activeProvider === 'kition_console') {
+    for (const key of Object.keys(preferredModels) as Array<keyof typeof preferredModels>) {
+      if (retiredCloudModel(preferredModels[key])) preferredModels[key] = KITION_CLOUD_DEFAULT_TEXT_MODEL
+    }
     providerMap.kition_console.enabled = true
     const cloudModels = providerMap.kition_console.discoveredModels
     const selectedCloudModel = selectedModelByProvider.kition_console || ''
@@ -357,6 +373,7 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
     models: {
       ...fallback.models,
       ...(input?.models || {}),
+      ...Object.fromEntries(Object.entries(preferredModels).filter(([, model]) => model !== undefined)),
       activeProvider,
       selectedModelByProvider,
     },

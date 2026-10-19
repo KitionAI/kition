@@ -29,7 +29,7 @@ pub use types::*;
 pub const KITION_CLOUD_PROVIDER: &str = "kition_console";
 const CLOUD_LLM_PATH: &str = "/api/llm/v1";
 const CLOUD_TOPUP_PATH: &str = "/app/billing";
-const CLOUD_TEXT_MODEL: &str = "gpt-5.5";
+const CLOUD_TEXT_MODEL: &str = "gpt-5.6-sol";
 
 /// Resolves the Kition Cloud endpoint for the signed-in account.
 pub type CloudResolver = Arc<dyn Fn() -> AiResult<ConsoleRuntime> + Send + Sync>;

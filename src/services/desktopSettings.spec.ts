@@ -246,7 +246,7 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
       providers: {
         kition_console: {
           enabled: true,
-          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
+          discoveredModels: ['gpt-5.6-sol', 'gpt-image-2'],
         },
       } as any,
       models: {
@@ -258,8 +258,47 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     })
 
     expect(result.providers.kition_console.enabled).toBe(true)
-    expect(result.providers.kition_console.discoveredModels).toEqual(['gpt-5.5', 'gpt-image-2'])
-    expect(result.models.selectedModelByProvider.kition_console).toBe('gpt-5.5')
+    expect(result.providers.kition_console.discoveredModels).toEqual(['gpt-5.6-sol', 'gpt-image-2'])
+    expect(result.models.selectedModelByProvider.kition_console).toBe('gpt-5.6-sol')
+  })
+
+  it('moves retired Kition Cloud text models to the default model', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const result = normalizeDesktopSettings({
+      providers: {
+        kition_console: {
+          enabled: true,
+          discoveredModels: ['gpt-5.4-mini', 'gpt-5.5', 'gpt-5.6-luna', 'gpt-5.6-sol', 'gpt-image-2'],
+        },
+      } as any,
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: { kition_console: 'gpt-5.5' },
+        preferredDefaultModel: 'gpt-5.5',
+        preferredChatModel: 'gpt-5.4-mini',
+        preferredWritingModel: 'gpt-5.6-luna',
+      } as any,
+    })
+
+    expect(result.providers.kition_console.discoveredModels).toEqual(['gpt-5.6-luna', 'gpt-5.6-sol', 'gpt-image-2'])
+    expect(result.models.selectedModelByProvider.kition_console).toBe('gpt-5.6-sol')
+    expect(result.models.preferredDefaultModel).toBe('gpt-5.6-sol')
+    expect(result.models.preferredChatModel).toBe('gpt-5.6-sol')
+    expect(result.models.preferredWritingModel).toBe('gpt-5.6-luna')
+  })
+
+  it('keeps gpt-5.5 preferences for other providers', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const result = normalizeDesktopSettings({
+      models: {
+        activeProvider: 'openai',
+        selectedModelByProvider: { openai: 'gpt-5.5' },
+        preferredChatModel: 'gpt-5.5',
+      } as any,
+    })
+
+    expect(result.models.selectedModelByProvider.openai).toBe('gpt-5.5')
+    expect(result.models.preferredChatModel).toBe('gpt-5.5')
   })
 
   it('does not invent a Kition Cloud catalog before discovery', async () => {
