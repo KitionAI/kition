@@ -79,6 +79,9 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   optimizeDeps: {
+    // The app's page only: the dependency scan reads every HTML file under the root otherwise,
+    // including a kit's own editor (packages/board-kit/web), whose imports resolve in its build.
+    entries: ['index.html'],
     // Search runs in a worker and starts on idle, so Vite's cold-start scanner
     // cannot discover these dependencies from index.html. Pre-bundle them to
     // prevent a full-page reload when the worker starts during renderer E2E.
