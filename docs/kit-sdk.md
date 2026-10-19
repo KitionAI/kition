@@ -65,6 +65,17 @@ server also serves documents as resources (`resources.rs`): `kit://<document>/de
 segment, with `resources/list` (the documents open now) and `resources/templates/list`; no
 subscriptions.
 
+External agents' clients reach Kition's agent over the Agent Client Protocol (standard D3,
+`crates/kition-acp`): an editor launches `kition-acp --url http://127.0.0.1:<port>/api/v1
+--model-file <model.json>` as its ACP agent (protocol version 1, stdio). It serves `initialize`,
+`authenticate`, `session/new`, `session/prompt` (text, resource links, embedded text resources),
+and `session/cancel`, projects each turn's stream (`session.event`, `agent/assistant-stream`) onto
+`session/update` (`agent_message_chunk`, `tool_call`, `tool_call_update`, `plan`), and asks
+`session/request_permission` when a command needs approval, resuming the turn with the answer.
+Not served: `session/load`, session modes, the client's file system and terminal methods, images
+and audio in prompts, and the client's MCP servers. The model file is Kition's `RuntimeModel`
+JSON, since the person's model settings live in Kition's window; keep it outside any repository.
+
 When the agent edits a co-edited document through the bridge, the person's presence state carries
 `agent: { name: "Agent", origin: "agent" }` until the agent has been quiet for 30 seconds
 (`src/services/agentPresence.ts`, `features/collab/collabRelays.ts`), and every viewer's tab shows
