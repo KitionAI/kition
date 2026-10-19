@@ -46,6 +46,23 @@ that folder loses only history: the next open just imports the file's current te
 replica. The store's own `.gitignore` keeps `.kition/docs/` out of the workspace's Git history, and
 nothing under it is ever shown in the document tree.
 
+The store (`src-tauri/src/workspace/docstore/`) keeps each replica as `snapshot.bin` plus the
+changes saved after it, `changes/<seq>.bin`, append-only: a save writes only the changes since the
+stored version (`appendDocumentStore`, rule P5), and the snapshot is rewritten only when the change
+log is compacted (the store asks after 64 changes or 8 MB, and a closing document compacts). A
+manifest, `meta.json`, names every file with its hash, so a crash or a store synced in part reads as
+a version that was stored, never a mix; a kit replica's blobs are content-addressed files,
+`blobs/<sha256>`. `history.json` is the document's version history on this device: checkpoints at
+open, every few minutes of editing, after an agent's edits, on a kit's save, and around a restore,
+each naming a replica version. The version history dialog (`src/features/history/`) shows a
+checkpoint from the open replica's own history and restores it as one new change (one undo step in
+a Markdown document). One Kition writes a workspace's store, the one holding `store.lock` (a
+heartbeat that goes stale after two minutes, or at once when its process has ended); another Kition
+— a second window, or another device that syncs the workspace — reads the store but writes nothing
+to it, and says so. Stores of the earlier layout (one `snapshot.bin` and one `blobs.bin`) stay
+readable and are migrated by the writer, keeping the old files until the new layout reads back the
+same.
+
 `src/features/document/kdm/documentText.ts` is the text side of this: `analyzeText` reads a file's
 raw text into the replica's normalised form (`\n` line endings, no byte order mark) plus a
 `LineStyle` recording how to write it back (`eol`, `bom`, `finalNewline`); `renderText` is the
