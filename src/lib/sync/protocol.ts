@@ -150,6 +150,30 @@ export type LeaseReleaseParams = { docId: string; scope: string }
 /** Server to client, notification: replaces the room's lease list. */
 export type LeaseChangedParams = { docId: string; leases: Lease[] }
 
+/** The capability a server lists in `sync/hello` when it runs kits headless (protocol 1.7, section 8a). */
+export const HEADLESS_CAPABILITY = 'headless'
+
+/**
+ * `preview/get` (protocol 1.7): a picture of the room's document as of its latest change, rendered
+ * by the kit on the server. `page` is zero-based, for a kit that pages; `size` the longest side in
+ * pixels (the server's default when omitted, and capped).
+ */
+export type PreviewGetParams = { docId: string; page?: number; size?: number }
+export type PreviewGetResult = { image: Uint8Array; mimeType: string; width: number; height: number; seq: number }
+
+/** `export/get` (protocol 1.7): the room's document as a file in `format` (the kit's native one when omitted). */
+export type ExportGetParams = { docId: string; format?: string }
+export type ExportGetResult = { data: Uint8Array; name: string; format: string; seq: number }
+
+/**
+ * `agent/run` (protocol 1.7): an object-model batch (`{ ops, load? }`) the server runs on the
+ * joined room's document in its headless kit, as an agent acting for the caller (an owner or
+ * editor); the server sets the origin. What it changed arrives as `changes/pull` like anyone
+ * else's change; `seq` is that change's (`null` when the batch changed nothing).
+ */
+export type AgentRunParams = { docId: string; batch: unknown; prompt?: string }
+export type AgentRunResult = { seq: number | null; result: unknown }
+
 /** A JSON-RPC error; `data.code` is an [[ErrorCode]] for every error this protocol itself defines. */
 export class SyncRpcError extends Error {
   constructor(readonly code: number, message: string, readonly data?: unknown) {

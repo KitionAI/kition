@@ -12,15 +12,18 @@ import { SyncLeases } from './leases'
 import {
   SYNC_PROTOCOL,
   SyncRpcError,
+  type AgentRunResult,
   type BlobGetResult,
   type BlobHasResult,
   type ChangesPushResult,
   type ClientInfo,
+  type ExportGetResult,
   type HelloResult,
   type HistoryGetResult,
   type HistoryListResult,
   type HistoryRestoreResult,
   type Presence,
+  type PreviewGetResult,
   type Role,
   type RoomCreateResult,
   type RoomJoinResult,
@@ -279,6 +282,41 @@ export class SyncClient {
    */
   restore(docId: string, seq: number): Promise<HistoryRestoreResult> {
     return this.request('history/restore', () => ({ docId, seq }), (value) => value as HistoryRestoreResult)
+  }
+
+  /**
+   * A picture of `docId`'s room as of its latest change, rendered by the kit on a server that runs
+   * kits headless (protocol 1.7, `preview/get`; the server lists `headless`).
+   */
+  preview(docId: string, options: { page?: number; size?: number } = {}): Promise<PreviewGetResult> {
+    return this.request(
+      'preview/get',
+      () => ({ docId, ...options }),
+      (value, bins) => ({
+        image: readBin(value.image, bins),
+        mimeType: value.mimeType as string,
+        width: value.width as number,
+        height: value.height as number,
+        seq: value.seq as number,
+      }),
+    )
+  }
+
+  /** `docId`'s room as a file in `format`, saved by the kit on the server (protocol 1.7, `export/get`). */
+  exportFile(docId: string, format?: string): Promise<ExportGetResult> {
+    return this.request(
+      'export/get',
+      () => (format === undefined ? { docId } : { docId, format }),
+      (value, bins) => ({ data: readBin(value.data, bins), name: value.name as string, format: value.format as string, seq: value.seq as number }),
+    )
+  }
+
+  /**
+   * Runs an object-model batch on the joined room's document in the server's headless kit, as an
+   * agent acting for this person (protocol 1.7, `agent/run`); the change arrives as `changes/pull`.
+   */
+  runAgent(docId: string, batch: unknown, prompt?: string): Promise<AgentRunResult> {
+    return this.request('agent/run', () => (prompt === undefined ? { docId, batch } : { docId, batch, prompt }), (value) => value as AgentRunResult)
   }
 
   // -- connection lifecycle --------------------------------------------------------------------

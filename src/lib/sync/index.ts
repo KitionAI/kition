@@ -11,8 +11,10 @@ export { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntr
 export { SyncClient, type SyncClientOptions, type SyncToken } from './client'
 export type { Bin, Frame } from './framing'
 export {
+  HEADLESS_CAPABILITY,
   SYNC_PROTOCOL,
   SyncRpcError,
+  type AgentRunResult,
   type BlobGetResult,
   type BlobHasResult,
   type ChangesPullParams,
@@ -20,6 +22,7 @@ export {
   type ChangesPushResult,
   type ClientInfo,
   type ErrorCode,
+  type ExportGetResult,
   type HelloParams,
   type HelloResult,
   type HistoryGetResult,
@@ -34,6 +37,7 @@ export {
   type LeaseChangedParams,
   type Presence,
   type PresenceUpdateParams,
+  type PreviewGetResult,
   type Principal,
   type Role,
   type RoomCreateResult,
