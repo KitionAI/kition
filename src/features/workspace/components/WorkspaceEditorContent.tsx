@@ -1,5 +1,5 @@
 import type { DocumentAgentReview, DocumentSession, DocumentTranslationSupport, OpenedDocumentEntry } from '@/features/document/public'
-import { loadDocumentAgentReviewBar } from '@/features/document/public'
+import { loadDocumentAgentReviewBar, loadDocumentComments } from '@/features/document/public'
 import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen } from 'lucide-react'
@@ -45,6 +45,7 @@ const DocumentSplitEditorPane = lazy(() =>
 const DocumentAgentReviewBar = lazy(() =>
   loadDocumentAgentReviewBar().then((module) => ({ default: module.DocumentAgentReviewBar })),
 )
+const DocumentComments = lazy(() => loadDocumentComments().then((module) => ({ default: module.DocumentComments })))
 const DocumentRevisionReview = lazy(() =>
   import('@/features/document/components/DocumentRevisionReview').then((module) => ({ default: module.DocumentRevisionReview })),
 )
@@ -573,6 +574,11 @@ export function WorkspaceEditorContent({
             </>
           ) : null}
           <div className="workspace-document-shell__body">
+            {activeDocumentSession && hasActiveDocument ? (
+              <Suspense fallback={null}>
+                <DocumentComments key={activeDocumentSession.path} session={activeDocumentSession} path={activeDocumentSession.path} readOnly={editorLocked} />
+              </Suspense>
+            ) : null}
             {editorMode === 'split' && !activeDocumentSession ? <EditorPaneFallback /> : null}
             {editorMode === 'split' && activeDocumentSession ? (
               <EditorPaneBoundary>

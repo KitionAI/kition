@@ -1278,5 +1278,26 @@
     "fileMissing": "O arquivo deste documento foi excluído fora do Kition",
     "fileMissingDescription": "Seu texto continua aberto aqui. Salve-o para criar o arquivo de novo ou feche a aba para descartá-lo.",
     "recreate": "Salvar para recriar"
+  },
+  "comments": {
+    "toggle": "Comentários",
+    "title": "Comentários",
+    "new": "Novo comentário na seleção",
+    "close": "Fechar comentários",
+    "placeholder": "Adicione um comentário…",
+    "comment": "Comentar",
+    "reply": "Responder",
+    "replyPlaceholder": "Responder…",
+    "cancel": "Cancelar",
+    "resolve": "Resolver",
+    "reopen": "Reabrir",
+    "resolved": "Resolvido",
+    "delete": "Excluir comentário",
+    "you": "Você",
+    "empty": "Ainda não há comentários. Selecione um texto e adicione um comentário.",
+    "emptyReadOnly": "Ainda não há comentários.",
+    "history": "Comentário compartilhado: somente leitura sem coedição",
+    "quoteGone": "“{{quote}}” (não está mais no texto)",
+    "failed": "Não foi possível salvar o comentário"
   }
 }

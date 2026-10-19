@@ -1278,5 +1278,26 @@
     "fileMissing": "Le fichier de ce document a été supprimé en dehors de Kition",
     "fileMissingDescription": "Votre texte est toujours ouvert ici. Enregistrez-le pour recréer le fichier, ou fermez l’onglet pour l’abandonner.",
     "recreate": "Enregistrer pour recréer"
+  },
+  "comments": {
+    "toggle": "Commentaires",
+    "title": "Commentaires",
+    "new": "Nouveau commentaire sur la sélection",
+    "close": "Fermer les commentaires",
+    "placeholder": "Ajouter un commentaire…",
+    "comment": "Commenter",
+    "reply": "Répondre",
+    "replyPlaceholder": "Répondre…",
+    "cancel": "Annuler",
+    "resolve": "Résoudre",
+    "reopen": "Rouvrir",
+    "resolved": "Résolu",
+    "delete": "Supprimer le commentaire",
+    "you": "Vous",
+    "empty": "Aucun commentaire. Sélectionnez du texte et ajoutez un commentaire.",
+    "emptyReadOnly": "Aucun commentaire.",
+    "history": "Commentaire partagé : lecture seule hors coédition",
+    "quoteGone": "« {{quote}} » (n’est plus dans le texte)",
+    "failed": "Impossible d’enregistrer le commentaire"
   }
 }

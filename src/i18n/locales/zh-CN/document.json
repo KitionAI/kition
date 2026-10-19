@@ -1278,5 +1278,26 @@
     "fileMissing": "此文档的文件已在 Kition 之外被删除",
     "fileMissingDescription": "你的文本仍在这里打开。保存即可重新创建文件，或关闭标签页以放弃它。",
     "recreate": "保存以重新创建"
+  },
+  "comments": {
+    "toggle": "评论",
+    "title": "评论",
+    "new": "对所选内容添加评论",
+    "close": "关闭评论",
+    "placeholder": "添加评论…",
+    "comment": "评论",
+    "reply": "回复",
+    "replyPlaceholder": "回复…",
+    "cancel": "取消",
+    "resolve": "解决",
+    "reopen": "重新打开",
+    "resolved": "已解决",
+    "delete": "删除评论",
+    "you": "你",
+    "empty": "还没有评论。选中文本即可添加评论。",
+    "emptyReadOnly": "还没有评论。",
+    "history": "共享评论：未协同编辑时只读",
+    "quoteGone": "“{{quote}}”（已不在正文中）",
+    "failed": "无法保存评论"
   }
 }

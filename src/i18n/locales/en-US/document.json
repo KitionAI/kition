@@ -1278,5 +1278,26 @@
     "fileMissing": "This document’s file was deleted outside Kition",
     "fileMissingDescription": "Your text is still open here. Save it to create the file again, or close the tab to discard it.",
     "recreate": "Save to recreate"
+  },
+  "comments": {
+    "toggle": "Comments",
+    "title": "Comments",
+    "new": "New comment on the selection",
+    "close": "Close comments",
+    "placeholder": "Add a comment…",
+    "comment": "Comment",
+    "reply": "Reply",
+    "replyPlaceholder": "Reply…",
+    "cancel": "Cancel",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "resolved": "Resolved",
+    "delete": "Delete comment",
+    "you": "You",
+    "empty": "No comments yet. Select text and add a comment.",
+    "emptyReadOnly": "No comments yet.",
+    "history": "Shared comment: read-only while not co-editing",
+    "quoteGone": "“{{quote}}” (no longer in the text)",
+    "failed": "Could not save the comment"
   }
 }

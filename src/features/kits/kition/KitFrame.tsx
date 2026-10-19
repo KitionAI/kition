@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
+import { documentCommentAccess } from '@/services/documentComments'
 import { mountKit, type KitConnection } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
@@ -84,7 +85,19 @@ async function unusedPath(path: string) {
  * Kit UI protocol. Kition serves its files, theme, language, and shortcuts, and forwards the Kit
  * AI bridge to it.
  */
-export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit; path: string; active: boolean; onOpenAgent?: () => void }) {
+/** Who comments in the kit and how (Kit UI protocol `document.comments`), as the kit opens. */
+function kitCommentAccess(path: string, readOnly: boolean) {
+  const { me, name, canComment, othersReadOnly } = documentCommentAccess(path, readOnly)
+  return { me, ...(name ? { name } : {}), canComment, othersReadOnly }
+}
+
+/**
+ * A replica a kit shows instead of its document's file (the document at a point of its version history): the kit
+ * opens it read-only, saves nothing, and is no editor of the file (no agent, co-editing, or bridge registration).
+ */
+export type KitPreview = { snapshot: ArrayBuffer; blobs: ArrayBuffer }
+
+export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: EmbeddedKit; path: string; active: boolean; onOpenAgent?: () => void; preview?: KitPreview }) {
   const { t, i18n } = useTranslation('workspace')
   const frame = useRef<HTMLIFrameElement>(null)
   const [connection, setConnection] = useState<KitConnection | null>(null)
@@ -93,7 +106,8 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   latest.current = { onOpenAgent, t }
   // A co-edited document this person may only view opens read-only; the kit is opened again
   // when that becomes known after it opened (the role arrives with the room, or changes).
-  const readOnly = useDocumentReadOnly(path)
+  const documentReadOnly = useDocumentReadOnly(path)
+  const readOnly = documentReadOnly || Boolean(preview)
   // The read-only state the kit is open with: it follows `readOnly` once the open kit's replica
   // has been taken (`carried`), so that no edit made before the change is lost when the kit is
   // opened again. The kit opened next takes it (see `Carried`) before anything relays it.
@@ -113,7 +127,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
     let lastBy: 'agent' | 'person' = 'person'
     let withdraw: (() => void) | null = null
     // Leases and conflict notices for co-editing (Kit UI protocol sections 7b and 7c).
-    const collab = kitCollabHandlers(path, openedReadOnly, () => latest.current.t)
+    const collab = preview ? null : kitCollabHandlers(path, openedReadOnly, () => latest.current.t)
     // A run of this effect that is cleaned up (StrictMode's first run, a closed tab) must not take
     // the kit's one handshake from the run that replaces it.
     const abandon = new AbortController()
@@ -124,7 +138,8 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
         // Opened again from the carried replica, the kit gets no file bytes, so that the replica
         // alone is the document (as when a shared document's file is made), and reads the
         // replica as the one saved with the file as it is now.
-        const carry = carried.current
+        // A preview opens its replica alone, like a kit opened again from a carried replica.
+        const carry: Carried | null = preview ? { changes: preview.snapshot, blobs: preview.blobs, open: 'replica' } : carried.current
         const fileStamp = carry?.open === 'replica' ? (stamp ?? (await KITION_KIT_HOST.stamp(path))) : null
         if (closed) return
         let fromCarried = carry && fileStamp ? { snapshot: carry.changes, blobs: carry.blobs, fileStamp } : null
@@ -133,7 +148,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}) },
+          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -160,19 +175,19 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
               return replica ?? readKitReplica(checked, kit.kitId)
             },
             replicaWrite: ({ path: wanted, ...replica }) =>
-              writeKitReplica(documentPath(wanted, path), kit.kitId, replica, { checkpoint: { origin: lastBy === 'agent' ? 'agent' : 'save', author: lastBy === 'agent' ? 'agent:kition' : 'user:local' } }),
-            openAgent: latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
+              preview ? undefined : writeKitReplica(documentPath(wanted, path), kit.kitId, replica, { checkpoint: { origin: lastBy === 'agent' ? 'agent' : 'save', author: lastBy === 'agent' ? 'agent:kition' : 'user:local' } }),
+            openAgent: !preview && latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
             changed: (next) => {
               const agentEdit = next.by === 'agent'
               state = { dirty: next.dirty, revision: next.revision }
               lastBy = agentEdit ? 'agent' : 'person'
-              reportBridgeChange({ path, revision: next.revision, by: agentEdit ? 'agent' : 'person' })
+              if (!preview) reportBridgeChange({ path, revision: next.revision, by: agentEdit ? 'agent' : 'person' })
             },
             notify: (notice) => {
               const show = notice.level === 'error' ? notify.error : notice.level === 'success' ? notify.success : notice.level === 'warning' ? notify.warning : notify.info
               show(notice.title, notice.description ? { description: notice.description } : undefined)
             },
-            ...collab.handlers,
+            ...collab?.handlers,
             // Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here.
             shortcut: (key) => {
               window.dispatchEvent(new KeyboardEvent('keydown', { key: key.key, code: key.code, metaKey: key.meta, ctrlKey: key.ctrl, shiftKey: key.shift, altKey: key.alt, bubbles: true }))
@@ -207,6 +222,10 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
         }
         if (carry?.open === 'replica' && !fileStamp) console.warn('[kit] could not open the kit again with its edits: the file has no stamp')
         carried.current = null
+        if (preview) {
+          setConnection(mounted)
+          return
+        }
         const withdrawEditor = registerBridgeEditor({
           path,
           kitId: kit.kitId,
@@ -219,7 +238,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
         const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })
-        const detachCollab = collab.attach(mounted)
+        const detachCollab = collab?.attach(mounted) ?? (() => undefined)
         withdraw = () => {
           detachCollab()
           withdrawEditor()
@@ -241,9 +260,9 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
       mounted?.close()
       setConnection(null)
       // A clean close folds the changes saved since the stored snapshot into a new one.
-      void compactKitReplica(path)
+      if (!preview) void compactKitReplica(path)
     }
-  }, [i18n, kit.kitId, path, openedReadOnly, reopened])
+  }, [i18n, kit.kitId, path, openedReadOnly, reopened, preview])
 
   useEffect(() => {
     if (readOnly === openedReadOnly) return undefined
@@ -268,13 +287,13 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   }, [connection, i18n.language])
 
   useEffect(() => {
-    if (!active || !connection) return
+    if (!active || !connection || preview) return
     connection.focus()
     markKitDocumentShown(path)
-  }, [active, connection, path])
+  }, [active, connection, path, preview])
 
   return (
-    <div className="kit-frame relative h-full min-h-0" data-active={active ? 'true' : undefined} data-testid="kit-frame">
+    <div className="kit-frame relative h-full min-h-0" data-active={active ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
       <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="size-full border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
       {failure ? (
