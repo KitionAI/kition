@@ -8,7 +8,8 @@
  * It also keeps the documents this person may only view (`viewer` rooms) read-only in every
  * editor (`@/services/documentAccess`).
  */
-import { startRelay, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
+import { DocumentLeases, SyncRpcError, leaseHolder, startRelay, type Lease, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
+import { DocumentLeaseRefused, setDocumentLeaseProvider, type DocumentLease, type DocumentLeaseProvider } from '@/services/documentLeases'
 import { setReadOnlyDocuments } from '@/services/documentAccess'
 import { followCollabDocuments, type CollabDocument, type CollabReplica } from './collabDocuments'
 import { loadCollabToken, onCollabSettingsChanged, syncServerUrl } from './collabSettings'
@@ -16,7 +17,7 @@ import { setDocumentCollab, setDocumentPeers, setDocumentRole } from './collabSt
 import { fromHex, onRoomsChanged, readRoom, toHex, updateRoom, viewerPaths, type CollabRoom } from './rooms'
 import { closeSyncClient, collabConfigured, syncClient } from './syncConnection'
 
-type CollabClient = RelaySync & Pick<SyncClient, 'setPresence' | 'onPresence' | 'principal'>
+type CollabClient = RelaySync & Pick<SyncClient, 'setPresence' | 'onPresence' | 'principal'> & Partial<Pick<SyncClient, 'leases'>>
 
 export type CollabDependencies = {
   configured: () => Promise<boolean>
@@ -47,6 +48,31 @@ async function resumeSeq(room: CollabRoom, replica: CollabReplica, versions: Rep
   return versions.includes(version, fromHex(room.seen.version)) ? room.seen.seq : null
 }
 
+/**
+ * The lease provider of one co-edited document (Kit UI protocol section 7b): its kit's leases on
+ * the room's scopes, held renewed until released or the document stops relaying.
+ */
+function leaseProvider(leases: DocumentLeases): DocumentLeaseProvider & { dispose: () => void } {
+  const asDocumentLease = (lease: Lease): DocumentLease => ({ scope: lease.scope, holder: { principalId: lease.principalId, name: lease.name, self: leases.mine(lease) } })
+  return {
+    acquire: async (scope, ttl) => {
+      try {
+        const lease = await leases.acquire(scope, ttl)
+        return lease ? asDocumentLease(lease) : null
+      } catch (error) {
+        const holder = leaseHolder(error)
+        if (holder) throw new DocumentLeaseRefused('held', asDocumentLease(holder))
+        if (error instanceof SyncRpcError && error.reason === 'forbidden') throw new DocumentLeaseRefused('read-only', null)
+        throw error
+      }
+    },
+    release: (scope) => leases.release(scope),
+    list: () => leases.list().map(asDocumentLease),
+    subscribe: (listener) => leases.onChanged(() => listener()),
+    dispose: () => leases.dispose(),
+  }
+}
+
 function follow(document: CollabDocument, dependencies: CollabDependencies) {
   const { path } = document
   let stopped = false
@@ -55,6 +81,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
   let docId: string | null = null
   let relay: Relay | null = null
   let stopPresence: (() => void) | null = null
+  let stopLeases: (() => void) | null = null
 
   let again = false
   const start = async (): Promise<void> => {
@@ -82,6 +109,14 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
       const showPeers = (peers: Presence[]) => setDocumentPeers(path, peers, client.principal?.id)
       setDocumentCollab(path, { docId: id, peers: [], role: room.role })
       stopPresence = client.onPresence(id, showPeers)
+      if (client.leases) {
+        const provider = leaseProvider(new DocumentLeases(client.leases, id))
+        const withdraw = setDocumentLeaseProvider(path, provider)
+        stopLeases = () => {
+          withdraw()
+          provider.dispose()
+        }
+      }
       relay = startRelay({
         docId: id,
         replica,
@@ -113,6 +148,8 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
   return () => {
     stopped = true
     stopRooms()
+    // Leases first, while the room is still joined.
+    stopLeases?.()
     relay?.stop()
     stopPresence?.()
     replica?.dispose()

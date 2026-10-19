@@ -662,6 +662,9 @@
     "unavailableBody": "Images open in Kition when the Photo engine is included."
   },
   "kitEditor": {
+    "conflictsTitle": "Some edits could not be merged",
+    "conflictsBody_one": "{{count}} edit made by someone else at the same time could not be merged. It is kept in the document until it is resolved.",
+    "conflictsBody_other": "{{count}} edits made by someone else at the same time could not be merged. They are kept in the document until they are resolved.",
     "openFailed": "Could not open this file",
     "opening": "Opening…"
   },

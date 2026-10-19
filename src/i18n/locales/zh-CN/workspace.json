@@ -662,6 +662,9 @@
     "unavailableBody": "包含 Photo 引擎时，图片可在 Kition 中打开。"
   },
   "kitEditor": {
+    "conflictsTitle": "部分编辑无法合并",
+    "conflictsBody_one": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
+    "conflictsBody_other": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
     "openFailed": "无法打开这个文件",
     "opening": "正在打开…"
   },

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
@@ -97,6 +97,73 @@ test('co-edits a Photo document between two windows: live, and merging edits mad
     await expect.poll(async () => (await canvas(a.kit)).equals(aliceOffline), { timeout: 5_000 }).toBe(false)
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
+  } finally {
+    await alice.close()
+    await bob.close()
+    await server.stop()
+  }
+})
+
+/** Whether the Photo kit package takes layer leases (its engine answers `layerObjectIds`). */
+function photoPackageHasLeases() {
+  const glue = path.join(process.cwd(), 'public', 'kits', 'photo-ui', 'engine', 'kition_photo_sdk.js')
+  return existsSync(glue) && readFileSync(glue, 'utf8').includes('layerObjectIds')
+}
+
+test('a layer one window paints is locked in the other until its painter lets it go', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Photo kit editor is not built into public/kits/photo-ui')
+  test.skip(!photoPackageHasLeases(), 'the Photo kit package predates layer leases; build it locally with scripts/build-kit-ui.sh photo')
+  const unavailable = kitionProSkipReason()
+  test.skip(Boolean(unavailable), unavailable ?? '')
+  test.setTimeout(300_000)
+  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const alice = await browser.newContext()
+  const bob = await browser.newContext()
+  try {
+    const pageA = await alice.newPage()
+    await useSyncServer(pageA, server.url)
+    const a = await openInKitFrame(pageA, baseURL!, 'Poster.psd', await posterFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    await expect(a.kit.getByTestId('photo-status')).toContainText('2 layers', { timeout: 60_000 })
+    const link = await shareFromTab(pageA, 'Poster')
+    const pageB = await bob.newPage()
+    await useSyncServer(pageB, server.url)
+    await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
+    await openSharedLink(pageB, link)
+    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(kitB.getByTestId('photo-status')).toContainText('2 layers', { timeout: 60_000 })
+    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
+    await expect.poll(() => sameReplicas(pageA, 'Poster.psd', pageB, 'Shared/Poster.psd'), { timeout: 15_000 }).toBe('same')
+    const leaseOnBobsSide = kitB.locator('[data-testid^="photo-layer-lease-"]')
+    await expect(leaseOnBobsSide).toHaveCount(0)
+
+    // Alice presses on the canvas with the brush and keeps painting: she holds the layer's lease.
+    const region = (await a.kit.getByTestId('photo-canvas-region').boundingBox())!
+    await pageA.mouse.move(region.x + region.width * 0.3, region.y + region.height * 0.4)
+    await pageA.mouse.down()
+    await pageA.mouse.move(region.x + region.width * 0.35, region.y + region.height * 0.45, { steps: 4 })
+    // Bob sees the layer locked, with who paints it.
+    await expect(leaseOnBobsSide).toHaveAttribute('data-holder', 'Alice', { timeout: 10_000 })
+    await pageB.screenshot({ path: testInfo.outputPath('bob-locked.png') })
+
+    // Bob's stroke on that layer is refused, saying who paints it: nothing reaches either replica.
+    const before = JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.psd'))
+    await stroke(pageB, kitB, 0.6, 0.6)
+    // Away from the canvas, so the brush's hover outline is not in the comparison.
+    await pageB.mouse.move(1, 1)
+    await expect(kitB.getByText(/Alice is painting this layer/)).toBeVisible()
+    await pageB.waitForTimeout(1_000)
+    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.psd'))).toBe(before)
+
+    // Alice lets go; her stroke lands, and a moment later the layer is free again.
+    await pageA.mouse.up()
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.psd')), { timeout: 10_000 }).not.toBe(before)
+    await expect(leaseOnBobsSide).toHaveCount(0, { timeout: 20_000 })
+    const freed = JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.psd'))
+    await stroke(pageB, kitB, 0.6, 0.6)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.psd')), { timeout: 10_000 }).not.toBe(freed)
+    // Now Alice sees Bob holding it.
+    await expect(a.kit.locator('[data-testid^="photo-layer-lease-"]')).toHaveAttribute('data-holder', 'Bob', { timeout: 10_000 })
+    await expect.poll(() => sameReplicas(pageA, 'Poster.psd', pageB, 'Shared/Poster.psd'), { timeout: 30_000 }).toBe('same')
   } finally {
     await alice.close()
     await bob.close()

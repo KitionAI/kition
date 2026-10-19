@@ -6,6 +6,7 @@ import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { mountKit, type KitConnection } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
+import { kitCollabHandlers } from './kitLeases'
 import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
@@ -109,6 +110,8 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
     let closed = false
     let state = { dirty: false, revision: 0 }
     let withdraw: (() => void) | null = null
+    // Leases and conflict notices for co-editing (Kit UI protocol sections 7b and 7c).
+    const collab = kitCollabHandlers(path, openedReadOnly, () => latest.current.t)
     // A run of this effect that is cleaned up (StrictMode's first run, a closed tab) must not take
     // the kit's one handshake from the run that replaces it.
     const abandon = new AbortController()
@@ -165,6 +168,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
               const show = notice.level === 'error' ? notify.error : notice.level === 'success' ? notify.success : notice.level === 'warning' ? notify.warning : notify.info
               show(notice.title, notice.description ? { description: notice.description } : undefined)
             },
+            ...collab.handlers,
             // Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here.
             shortcut: (key) => {
               window.dispatchEvent(new KeyboardEvent('keydown', { key: key.key, code: key.code, metaKey: key.meta, ctrlKey: key.ctrl, shiftKey: key.shift, altKey: key.alt, bubbles: true }))
@@ -211,7 +215,9 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
         const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })
+        const detachCollab = collab.attach(mounted)
         withdraw = () => {
+          detachCollab()
           withdrawEditor()
           withdrawTest()
           withdrawConnection()

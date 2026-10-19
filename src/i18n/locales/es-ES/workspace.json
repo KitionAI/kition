@@ -662,6 +662,9 @@
     "unavailableBody": "Las imágenes se abren en Kition cuando se incluye el motor Photo."
   },
   "kitEditor": {
+    "conflictsTitle": "Algunas ediciones no se pudieron combinar",
+    "conflictsBody_one": "No se pudo combinar {{count}} edición hecha por otra persona al mismo tiempo. Se conserva en el documento hasta que se resuelva.",
+    "conflictsBody_other": "No se pudieron combinar {{count}} ediciones hechas por otra persona al mismo tiempo. Se conservan en el documento hasta que se resuelvan.",
     "openFailed": "No se pudo abrir este archivo",
     "opening": "Abriendo…"
   },

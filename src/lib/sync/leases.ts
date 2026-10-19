@@ -58,7 +58,11 @@ export class SyncLeases {
   /** Takes (or renews) the lease on `scope` for `ttl` ms. Rejects `conflict` (see `leaseHolder`) when another session holds it. */
   async acquire(docId: string, scope: string, ttl?: number): Promise<Lease> {
     const result = (await this.link.request('lease/acquire', ttl === undefined ? { docId, scope } : { docId, scope, ttl })) as { lease: Lease }
+    const learned = this.session !== result.lease.session
     this.session = result.lease.session
+    // The server tells the room of a new lease before it answers the acquire: a list heard then
+    // could not tell this session's leases yet, so its listeners hear it again now that it can.
+    if (learned) for (const [heard, leases] of [...this.lists]) for (const listener of [...(this.listeners.get(heard) ?? [])]) listener(leases)
     return result.lease
   }
 

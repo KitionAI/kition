@@ -662,6 +662,9 @@
     "unavailableBody": "Imagens abrem no Kition quando o mecanismo Photo está incluído."
   },
   "kitEditor": {
+    "conflictsTitle": "Algumas edições não puderam ser mescladas",
+    "conflictsBody_one": "{{count}} edição feita por outra pessoa ao mesmo tempo não pôde ser mesclada. Ela fica no documento até ser resolvida.",
+    "conflictsBody_other": "{{count}} edições feitas por outra pessoa ao mesmo tempo não puderam ser mescladas. Elas ficam no documento até serem resolvidas.",
     "openFailed": "Não foi possível abrir este arquivo",
     "opening": "Abrindo…"
   },

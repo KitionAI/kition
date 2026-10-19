@@ -11,6 +11,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
 
 pub mod batch;
+pub mod conflict;
 mod error;
 mod ids;
 mod marks;
