@@ -36,13 +36,20 @@ export function WorkspaceTabContextMenu({
       }
     }
 
+    // The page scrolling moves the tab away from the menu; the tab list itself scrolls as a tab is pressed (the
+    // right-click that opens the menu), which must not close it.
+    function handleScroll(event: Event) {
+      if (event.target instanceof Element && event.target.closest('.document-tab-list')) return
+      onClose()
+    }
+
     window.addEventListener('mousedown', handlePointerDown)
     window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('scroll', onClose, true)
+    window.addEventListener('scroll', handleScroll, true)
     return () => {
       window.removeEventListener('mousedown', handlePointerDown)
       window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('scroll', onClose, true)
+      window.removeEventListener('scroll', handleScroll, true)
     }
   }, [onClose])
 

@@ -156,7 +156,8 @@ test('keeps a Word document’s replica across a save and a reopen, and opens a 
     await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
     const docId = (await readJson('index.json')).entries[name] as string
     await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.word')
-    expect(await fs.stat(path.join(store, docId, 'blobs.bin'))).toBeTruthy()
+    // The replica's blobs, one content-addressed file each.
+    expect((await fs.stat(path.join(store, docId, 'blobs'))).isDirectory()).toBe(true)
     const saved = await replicaVersion(page, name)
     expect(saved).not.toBe('')
 

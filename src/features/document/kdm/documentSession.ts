@@ -18,7 +18,7 @@ import { documentHistoryExtension, type DocumentHistory } from './documentHistor
 import { applyTextEdits, diffText, mergeEdits } from './documentMerge'
 import { registerOpenMarkdownDocument } from './openDocumentSessions'
 import { DOCUMENT_BODY } from './documentSchema'
-import { compactStoredDocument, mergeFileIntoReplica, openDocument, saveDocument, versionHex, type OpenedDocument } from './documentStore'
+import { compactStoredDocument, mergeFileIntoReplica, openDocument, saveDocument, type OpenedDocument } from './documentStore'
 import { recordDocumentCheckpoint, type DocumentCheckpointInput } from '@/services/desktop'
 import { analyzeText, createDocumentReplica, documentBody, renderText } from './documentText'
 
@@ -84,7 +84,23 @@ export const TYPING_GROUP_MS = 500
 /** Retries after a failed save; edits start new attempts as well. */
 const RETRY_DELAYS_MS = [1000, 2000, 4000] as const
 /** While editing, a save records a checkpoint in the document's version history at most this often. */
-export const CHECKPOINT_EVERY_MS = 5 * 60_000
+const CHECKPOINT_EVERY_MS = 5 * 60_000
+/** The replica's version as the store's history records it (lowercase hex). */
+function versionHex(replica: Replica): string {
+  let out = ''
+  for (const byte of replica.version().encode()) out += byte.toString(16).padStart(2, '0')
+  return out
+}
+
+/** Records a checkpoint in the document's history; best effort, never in the way of editing. */
+function recordCheckpoint(docId: string, input: DocumentCheckpointInput, root: string) {
+  try {
+    void recordDocumentCheckpoint(docId, input, { expectedRoot: root }).catch(() => undefined)
+  } catch {
+    // No store to record in.
+  }
+}
+
 /** The origin of restoring a version from the history: one undo step of the person's. */
 const restoreOrigin: Origin = person(LOCAL_PERSON, 'restore')
 /** Writes per save, each after merging the file a conflict showed changed. */
@@ -334,7 +350,7 @@ export class DocumentSession {
   restoreText(text: string, label?: string): boolean {
     const opened = this.requireOpened()
     const before = versionHex(opened.replica)
-    void recordDocumentCheckpoint(opened.meta.docId, { origin: 'before-restore', author: LOCAL_PERSON, version: before }, { expectedRoot: this.root }).catch(() => undefined)
+    recordCheckpoint(opened.meta.docId, { origin: 'before-restore', author: LOCAL_PERSON, version: before }, this.root)
     const changed = this.replaceText(text, restoreOrigin)
     if (changed) {
       this.pendingCheckpoint = { origin: 'restore', author: LOCAL_PERSON, ...(label ? { label } : {}) }
@@ -630,7 +646,7 @@ export class DocumentSession {
     const opened = this.opened
     if (!opened || !opened.stored) return
     this.lastCheckpointAt = Date.now()
-    void recordDocumentCheckpoint(opened.meta.docId, { origin: 'open', author: LOCAL_PERSON, version: versionHex(opened.replica) }, { expectedRoot: this.root }).catch(() => undefined)
+    recordCheckpoint(opened.meta.docId, { origin: 'open', author: LOCAL_PERSON, version: versionHex(opened.replica) }, this.root)
   }
 
   /** The checkpoint a save records now, if any: an agent's edit, or editing past `CHECKPOINT_EVERY_MS`. */

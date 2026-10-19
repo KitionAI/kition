@@ -9,7 +9,7 @@ import { mountedKitDocument } from '@/features/kits/public'
 import { findOpenBoard } from '@/features/whiteboard/public'
 import { Version } from '@/lib/kdm'
 
-export type HistoryKind = 'document' | 'board' | 'kit'
+type HistoryKind = 'document' | 'board' | 'kit'
 
 export type HistoryDocument = {
   path: string

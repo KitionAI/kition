@@ -27,7 +27,7 @@ export type HistoryEntry = DeviceEntry | ServerEntry
 export type HistoryPreview = { snapshot: Uint8Array; blobs: Uint8Array; text?: string; svg?: string }
 
 /** The document's id in the store (its history's), or `null` when the store has none for its path. */
-export async function storeIdFor(path: string): Promise<string | null> {
+async function storeIdFor(path: string): Promise<string | null> {
   return (await readDocumentIndex()).entries[path] ?? null
 }
 

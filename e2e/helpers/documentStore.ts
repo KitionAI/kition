@@ -14,6 +14,10 @@ const STORAGE_KEY = 'kition.e2e.document-store'
 export type DocumentStoreE2EState = {
   entries: Record<string, { meta: DocumentStoreMeta; snapshotBase64: string }>
   index: { entries: Record<string, string>; version: string | null }
+  /** Per entry: the stored `seq` and version, and the changes appended after its snapshot (base64), as the desktop store keeps them. */
+  heads: Record<string, { seq: number; version: string | null; changes: string[] }>
+  /** Per entry: its version history, oldest first. */
+  histories: Record<string, Array<{ id: string; time: number; origin: string; author?: string; label?: string; version?: string; seq?: number; hasBlobs: boolean }>>
   /** `WriteDocumentStore` calls, refused ones included. */
   entryWrites: number
   /** `WriteDocumentIndex` calls, refused ones included. */
@@ -47,6 +51,8 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
     if (!bridge) return
     const empty = {
       entries: {},
+      heads: {},
+      histories: {},
       index: { entries: {}, version: null },
       entryWrites: 0,
       indexWrites: 0,
@@ -64,8 +70,8 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
     const store = { ...empty, ...saved, failWrites: null, failIndexWrites: null } as DocumentStoreE2E
     let versions = 0
     const persist = () => {
-      const { entries, index, entryWrites, indexWrites, deletes } = store
-      window.localStorage.setItem(storageKey, JSON.stringify({ entries, index, entryWrites, indexWrites, deletes }))
+      const { entries, heads, histories, index, entryWrites, indexWrites, deletes } = store
+      window.localStorage.setItem(storageKey, JSON.stringify({ entries, heads, histories, index, entryWrites, indexWrites, deletes }))
     }
     const nextVersion = () => {
       versions += 1
@@ -78,6 +84,21 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
     window.__KITION_DOCUMENT_STORE_E2E__ = store
 
     const docIdPattern = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/
+    /** Records a checkpoint at the entry's stored version, like the desktop store; the same version twice is one. */
+    const record = (docId: string, input: { origin: string; author?: string; label?: string; version?: string }) => {
+      const history = store.histories[docId] ?? []
+      const head = store.heads[docId]
+      const version = input.version ?? head?.version ?? undefined
+      const last = history[history.length - 1]
+      if (last && version && last.version === version) return last
+      const checkpoint = {
+        id: crypto.randomUUID(), time: Date.now(), origin: input.origin, hasBlobs: false,
+        ...(input.author ? { author: input.author } : {}), ...(input.label ? { label: input.label } : {}),
+        ...(version ? { version } : {}), ...(head ? { seq: head.seq } : {}),
+      }
+      store.histories[docId] = [...history, checkpoint].slice(-200)
+      return checkpoint
+    }
     const checkRoot = (request: { expected_root?: string } | null | undefined) => {
       if (request?.expected_root && request.expected_root !== root) throw new Error('DESIGN_WORKSPACE_CHANGED')
     }
@@ -91,29 +112,67 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
       && path.split('/').every((part) => part !== '' && part !== '.' && part !== '..' && part.trim() === part)
 
     Object.assign(bridge, {
-      ReadDocumentStore: async (request: { doc_id: string; expected_root?: string }) => {
+      ReadDocumentStore: async (request: { doc_id: string; expected_root?: string; head_only?: boolean }) => {
         checkRoot(request)
-        const stored = store.entries[checkDocId(request?.doc_id)]
-        return stored ? { meta: JSON.parse(JSON.stringify(stored.meta)), snapshot_base64: stored.snapshotBase64 } : null
+        const docId = checkDocId(request?.doc_id)
+        const stored = store.entries[docId]
+        if (!stored) return null
+        const head = store.heads[docId] ?? { seq: 0, version: null, changes: [] }
+        const meta = JSON.parse(JSON.stringify(stored.meta))
+        if (request.head_only) return { meta, seq: head.seq, version: head.version }
+        return { meta, snapshot_base64: stored.snapshotBase64, changes_base64: [...head.changes], seq: head.seq, version: head.version, complete: true }
       },
-      WriteDocumentStore: async (request: { doc_id: string; meta: DocumentStoreMeta; snapshot_base64: string; expected_root?: string }) => {
+      WriteDocumentStore: async (request: {
+        doc_id: string; meta: DocumentStoreMeta; snapshot_base64?: string; changes_base64?: string; base_seq?: number; version?: string
+        lineage?: string; checkpoint?: { origin: string; author?: string; label?: string; version?: string }; expected_root?: string
+      }) => {
         store.entryWrites += 1
         persist()
         if (store.failWrites !== null) throw new Error(store.failWrites)
         checkRoot(request)
         const docId = checkDocId(request?.doc_id)
         if (request.meta?.docId !== docId) throw new Error('document store meta names another document')
-        if (typeof request.snapshot_base64 !== 'string') throw new Error('document store snapshot is not base64')
-        store.entries[docId] = { meta: JSON.parse(JSON.stringify(request.meta)), snapshotBase64: request.snapshot_base64 }
+        const head = store.heads[docId] ?? { seq: 0, version: null, changes: [] }
+        if (typeof request.changes_base64 === 'string') {
+          if (!store.entries[docId] || head.seq !== request.base_seq) throw new Error('DOCUMENT_STORE_CONFLICT')
+          store.entries[docId] = { ...store.entries[docId], meta: JSON.parse(JSON.stringify(request.meta)) }
+          store.heads[docId] = { seq: head.seq + 1, version: request.version ?? null, changes: [...head.changes, request.changes_base64] }
+        } else {
+          if (typeof request.snapshot_base64 !== 'string') throw new Error('document store snapshot is not base64')
+          store.entries[docId] = { meta: JSON.parse(JSON.stringify(request.meta)), snapshotBase64: request.snapshot_base64 }
+          store.heads[docId] = { seq: head.seq + 1, version: request.version ?? null, changes: [] }
+          if (request.lineage === 'new') delete store.histories[docId]
+        }
+        const written: Record<string, unknown> = { seq: store.heads[docId].seq, version: store.heads[docId].version, compact: store.heads[docId].changes.length >= 64 }
+        if (request.checkpoint) written.checkpoint = record(docId, request.checkpoint)
         persist()
-        return null
+        return written
       },
+      ReadDocumentHistory: async (request: { doc_id: string; expected_root?: string }) => {
+        checkRoot(request)
+        return { checkpoints: [...(store.histories[checkDocId(request?.doc_id)] ?? [])].reverse() }
+      },
+      RecordDocumentCheckpoint: async (request: { doc_id: string; checkpoint: { origin: string; author?: string; label?: string; version?: string }; expected_root?: string }) => {
+        checkRoot(request)
+        const checkpoint = record(checkDocId(request?.doc_id), request.checkpoint)
+        persist()
+        return { checkpoint }
+      },
+      ReadDocumentCheckpoint: async (request: { doc_id: string; id: string; expected_root?: string }) => {
+        checkRoot(request)
+        const found = (store.histories[checkDocId(request?.doc_id)] ?? []).find((checkpoint) => checkpoint.id === request.id)
+        return found ? { checkpoint: found } : null
+      },
+      DocumentStoreStatus: async () => ({ writable: true, holder: null }),
       DeleteDocumentStore: async (request: { doc_id: string; expected_root?: string }) => {
         store.deletes += 1
         persist()
         if (store.failWrites !== null) throw new Error(store.failWrites)
         checkRoot(request)
-        delete store.entries[checkDocId(request?.doc_id)]
+        const docId = checkDocId(request?.doc_id)
+        delete store.entries[docId]
+        delete store.heads[docId]
+        delete store.histories[docId]
         persist()
         return null
       },
@@ -144,8 +203,8 @@ export async function readDocumentStoreState(page: Page): Promise<DocumentStoreE
   return page.evaluate(() => {
     const store = window.__KITION_DOCUMENT_STORE_E2E__
     if (!store) throw new Error('The document store mock is unavailable')
-    const { entries, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites } = store
-    return JSON.parse(JSON.stringify({ entries, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites }))
+    const { entries, heads, histories, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites } = store
+    return JSON.parse(JSON.stringify({ entries, heads, histories, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites }))
   })
 }
 

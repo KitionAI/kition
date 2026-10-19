@@ -283,6 +283,22 @@ describe('DocumentSession: editing', () => {
   })
 })
 
+describe('DocumentSession: restoring a version', () => {
+  it('restores a past text as one undo step of the person\'s', async () => {
+    const session = await open('one\n')
+    const a = editor(session)
+    a.type({ from: 4, insert: 'two\n' })
+    await settle(1000)
+    expect(session.restoreText('one\n', 'Version of today')).toBe(true)
+    await settle()
+    expect(a.text()).toBe('one\n')
+    expect(session.restoreText('one\n')).toBe(false)
+    session.undo()
+    await settle()
+    expect(a.text()).toBe('one\ntwo\n')
+  })
+})
+
 describe('DocumentSession: edits made from an earlier text', () => {
   it('applies a dialog’s result three-way, keeping changes made since the dialog opened', async () => {
     const base = '---\ntitle: Plan\ntags: a\n---\n\nBody\n'

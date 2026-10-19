@@ -34,6 +34,8 @@ export type DesktopHost = {
   /** Files returned by the import file picker. */
   importPaths: string[]
   secureValues: Map<string, string>
+  /** What `document_store_status` answers: whether this window writes the document store (its lock). */
+  storeStatus: { writable: boolean; holder: { host: string; pid: number; started: number; heartbeat: number; sameHost: boolean } | null }
   emit: (event: string, payload: unknown) => Promise<void>
   dispose: () => Promise<void>
 }
@@ -103,6 +105,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     saveDialogPath: null,
     importPaths: [],
     secureValues: new Map(Object.entries(options.secureValues || {})),
+    storeStatus: { writable: true, holder: null },
     emit: async (event, payload) => {
       await page.evaluate(([name, value]) => {
         (window as unknown as { __kitionDesktopEmit?: (event: string, payload: unknown) => void })
@@ -197,6 +200,70 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     await fs.mkdir(storeDir(), { recursive: true })
     const gitignore = path.join(storeDir(), '.gitignore')
     if (!await exists(gitignore)) await fs.writeFile(gitignore, '*\n!.gitignore\n')
+  }
+  type BlobRecord = { hashes?: string[]; bundle?: string }
+  type StoredCheckpoint = { id: string; time: number; origin: string; author?: string; label?: string; version?: string; seq?: number; blobs?: BlobRecord }
+  /** A kit's blob bundle, `(hex SHA-256, u64 LE length, bytes) * N`, kept as one file per blob. */
+  async function storeBlobs(dir: string, bundle: Buffer): Promise<BlobRecord> {
+    const blobs: Array<[string, Buffer]> = []
+    let at = 0
+    let whole = false
+    while (at < bundle.length) {
+      const hash = bundle.subarray(at, at + 64).toString('latin1')
+      if (at + 72 > bundle.length) { whole = true; break }
+      const size = Number(bundle.readBigUInt64LE(at + 64))
+      const data = bundle.subarray(at + 72, at + 72 + size)
+      if (data.length !== size || sha256(data) !== hash) { whole = true; break }
+      blobs.push([hash, data])
+      at += 72 + size
+    }
+    await fs.mkdir(path.join(dir, 'blobs'), { recursive: true })
+    if (whole) {
+      await fs.writeFile(path.join(dir, 'blobs', sha256(bundle)), bundle)
+      return { bundle: sha256(bundle) }
+    }
+    for (const [hash, data] of blobs) await fs.writeFile(path.join(dir, 'blobs', hash), data)
+    return { hashes: blobs.map(([hash]) => hash) }
+  }
+  async function readBlobs(dir: string, record: BlobRecord): Promise<Buffer | null> {
+    const read = async (hash: string) => {
+      const data = await readIfPresent(path.join(dir, 'blobs', hash))
+      return data && sha256(data) === hash ? data : null
+    }
+    if (record.bundle) return read(record.bundle)
+    const parts: Buffer[] = []
+    for (const hash of record.hashes ?? []) {
+      const data = await read(hash)
+      if (!data) return null
+      const size = Buffer.alloc(8)
+      size.writeBigUInt64LE(BigInt(data.length))
+      parts.push(Buffer.from(hash, 'latin1'), size, data)
+    }
+    return Buffer.concat(parts)
+  }
+  async function readHistory(dir: string): Promise<StoredCheckpoint[]> {
+    const bytes = await readIfPresent(path.join(dir, 'history.json'))
+    try {
+      return bytes ? (JSON.parse(bytes.toString('utf8')).checkpoints ?? []) : []
+    } catch {
+      return []
+    }
+  }
+  const publicCheckpoint = ({ blobs, ...checkpoint }: StoredCheckpoint) => ({ ...checkpoint, hasBlobs: Boolean(blobs) })
+  async function recordCheckpoint(dir: string, input: Record<string, unknown>, manifest: { head: { seq: number; version: string | null }; blobs?: BlobRecord } | null) {
+    const history = await readHistory(dir)
+    const version = typeof input.version === 'string' ? input.version : (manifest?.head.version ?? undefined)
+    const last = history[history.length - 1]
+    if (last && version && last.version === version) return publicCheckpoint(last)
+    const checkpoint: StoredCheckpoint = {
+      id: randomUUID(), time: typeof input.time === 'number' ? input.time : Date.now(), origin: String(input.origin),
+      ...(typeof input.author === 'string' ? { author: input.author } : {}), ...(typeof input.label === 'string' ? { label: input.label } : {}),
+      ...(version ? { version } : {}), ...(manifest ? { seq: manifest.head.seq } : {}), ...(manifest?.blobs ? { blobs: manifest.blobs } : {}),
+    }
+    history.push(checkpoint)
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(path.join(dir, 'history.json'), `${JSON.stringify({ format: 1, checkpoints: history.slice(-200) }, null, 2)}\n`)
+    return publicCheckpoint(checkpoint)
   }
   async function readIndex() {
     const bytes = await readIfPresent(indexFile())
@@ -304,17 +371,33 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       await fs.writeFile(absolute, String(request?.content ?? ''))
       return documentResponse(relative, absolute)
     },
+    // The store's format 2 (src-tauri/src/workspace/docstore): `snapshot.bin`, `changes/<seq>.bin` appended after it,
+    // blobs as `blobs/<sha256>`, `history.json`, and a manifest in `meta.json` naming them. Format 1 entries are read.
     read_document_store: async ({ request }) => {
       checkRoot(request || {})
       const dir = entryDir(request?.doc_id)
-      const [metaBytes, snapshot, blobs] = await Promise.all(['meta.json', 'snapshot.bin', 'blobs.bin'].map((name) => readIfPresent(path.join(dir, name))))
+      const [metaBytes, snapshot] = await Promise.all(['meta.json', 'snapshot.bin'].map((name) => readIfPresent(path.join(dir, name))))
       if (!metaBytes || !snapshot) return null
       try {
         const stored = JSON.parse(metaBytes.toString('utf8'))
         if (stored?.snapshot?.sha256 !== sha256(snapshot) || stored?.meta?.docId !== request?.doc_id) return null
-        if (!stored.blobs) return { meta: stored.meta, snapshot_base64: snapshot.toString('base64') }
-        if (!blobs || stored.blobs.sha256 !== sha256(blobs)) return null
-        return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), blobs_base64: blobs.toString('base64') }
+        if (request?.head_only) return { meta: stored.meta, seq: stored.head?.seq ?? 0, version: stored.head?.version ?? null }
+        if (stored.format === 1) {
+          const legacy = await readIfPresent(path.join(dir, 'blobs.bin'))
+          if (stored.blobs && (!legacy || stored.blobs.sha256 !== sha256(legacy))) return null
+          return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), changes_base64: [], seq: 0, version: null, complete: true, ...(legacy && stored.blobs ? { blobs_base64: legacy.toString('base64') } : {}) }
+        }
+        const changes: string[] = []
+        for (const record of stored.changes ?? []) {
+          const change = await readIfPresent(path.join(dir, 'changes', `${record.seq}.bin`))
+          if (!change || sha256(change) !== record.sha256) return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), changes_base64: changes, seq: stored.snapshot.seq + changes.length, version: null, complete: false }
+          changes.push(change.toString('base64'))
+        }
+        const blobs = stored.blobs ? await readBlobs(dir, stored.blobs) : undefined
+        return {
+          meta: stored.meta, snapshot_base64: snapshot.toString('base64'), changes_base64: changes, seq: stored.head.seq, version: stored.head.version ?? null,
+          complete: blobs !== null, ...(blobs ? { blobs_base64: blobs.toString('base64') } : {}),
+        }
       } catch {
         return null
       }
@@ -324,17 +407,58 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       const dir = entryDir(request?.doc_id)
       const meta = request?.meta as { docId?: unknown } | undefined
       if (!meta || meta.docId !== request?.doc_id) throw new Error('document store meta names another document')
-      const snapshot = Buffer.from(String(request?.snapshot_base64 ?? ''), 'base64')
-      const blobs = typeof request?.blobs_base64 === 'string' ? Buffer.from(request.blobs_base64, 'base64') : null
+      const metaFile = path.join(dir, 'meta.json')
+      const current = await readIfPresent(metaFile).then((bytes) => (bytes ? JSON.parse(bytes.toString('utf8')) : null)).catch(() => null)
+      const manifest = current?.format === 2 ? current : null
+      const version = typeof request?.version === 'string' ? request.version : null
+      const blobs = typeof request?.blobs_base64 === 'string' ? await storeBlobs(dir, Buffer.from(request.blobs_base64, 'base64')) : null
       await ensureStore()
       await fs.mkdir(dir, { recursive: true })
-      await fs.writeFile(path.join(dir, 'snapshot.bin'), snapshot)
-      if (blobs) await fs.writeFile(path.join(dir, 'blobs.bin'), blobs)
-      else await fs.rm(path.join(dir, 'blobs.bin'), { force: true })
-      const stored = { format: 1, meta, snapshot: { sha256: sha256(snapshot), size: snapshot.length }, ...(blobs ? { blobs: { sha256: sha256(blobs), size: blobs.length } } : {}) }
-      await fs.writeFile(path.join(dir, 'meta.json'), `${JSON.stringify(stored, null, 2)}\n`)
-      return null
+      let next: Record<string, unknown> & { head: { seq: number; version: string | null }; changes: Array<{ seq: number }> }
+      if (typeof request?.changes_base64 === 'string') {
+        if (!manifest || manifest.head.seq !== request.base_seq) throw new Error('DOCUMENT_STORE_CONFLICT')
+        const change = Buffer.from(request.changes_base64, 'base64')
+        const seq = manifest.head.seq + 1
+        await fs.mkdir(path.join(dir, 'changes'), { recursive: true })
+        await fs.writeFile(path.join(dir, 'changes', `${seq}.bin`), change)
+        next = { ...manifest, meta, changes: [...manifest.changes, { seq, sha256: sha256(change), size: change.length }], head: { seq, version }, ...(blobs ? { blobs } : {}) }
+      } else {
+        const snapshot = Buffer.from(String(request?.snapshot_base64 ?? ''), 'base64')
+        const seq = (manifest?.head.seq ?? 0) + 1
+        await fs.writeFile(path.join(dir, 'snapshot.bin'), snapshot)
+        await fs.rm(path.join(dir, 'changes'), { recursive: true, force: true })
+        await fs.rm(path.join(dir, 'blobs.bin'), { force: true })
+        next = { format: 2, meta, snapshot: { sha256: sha256(snapshot), size: snapshot.length, seq }, changes: [], head: { seq, version }, ...(blobs ? { blobs } : {}) }
+        if (request?.lineage === 'new') await fs.rm(path.join(dir, 'history.json'), { force: true })
+      }
+      await fs.writeFile(metaFile, `${JSON.stringify(next, null, 2)}\n`)
+      const written: Record<string, unknown> = { seq: next.head.seq, version: next.head.version, compact: next.changes.length >= 64 }
+      if (request?.checkpoint) written.checkpoint = await recordCheckpoint(dir, request.checkpoint as Record<string, unknown>, next)
+      return written
     },
+    read_document_history: async ({ request }) => {
+      checkRoot(request || {})
+      const history = await readHistory(entryDir(request?.doc_id))
+      return { checkpoints: history.map(publicCheckpoint).reverse() }
+    },
+    record_document_checkpoint: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const checkpoint = request?.checkpoint as Record<string, unknown> | undefined
+      if (!checkpoint || typeof checkpoint.origin !== 'string') throw new Error('a checkpoint needs an origin')
+      const manifest = await readIfPresent(path.join(dir, 'meta.json')).then((bytes) => (bytes ? JSON.parse(bytes.toString('utf8')) : null)).catch(() => null)
+      await ensureStore()
+      return { checkpoint: await recordCheckpoint(dir, checkpoint, manifest?.format === 2 ? manifest : null) }
+    },
+    read_document_checkpoint: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const found = (await readHistory(dir)).find((checkpoint) => checkpoint.id === request?.id)
+      if (!found) return null
+      const blobs = found.blobs ? await readBlobs(dir, found.blobs) : null
+      return { checkpoint: publicCheckpoint(found), ...(blobs ? { blobs_base64: blobs.toString('base64') } : {}) }
+    },
+    document_store_status: async () => host.storeStatus,
     delete_document_store: async ({ request }) => {
       checkRoot(request || {})
       await fs.rm(entryDir(request?.doc_id), { recursive: true, force: true })
