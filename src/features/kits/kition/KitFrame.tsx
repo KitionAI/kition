@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
+import { documentCommentAccess } from '@/services/documentComments'
 import { mountKit, type KitConnection } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
@@ -81,6 +82,12 @@ async function unusedPath(path: string) {
   throw new Error(`no free name for ${path}`)
 }
 
+/** Who comments in the kit and how (Kit UI protocol `document.comments`), as the kit opens. */
+function kitCommentAccess(path: string, readOnly: boolean) {
+  const { me, name, canComment, othersReadOnly } = documentCommentAccess(path, readOnly)
+  return { me, ...(name ? { name } : {}), canComment, othersReadOnly }
+}
+
 /**
  * A kit that draws its own editor (Kition Kit Standard 6.1): its UI in an iframe, driven over the
  * Kit UI protocol. Kition serves its files, theme, language, and shortcuts, and forwards the Kit
@@ -143,7 +150,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}) },
+          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
