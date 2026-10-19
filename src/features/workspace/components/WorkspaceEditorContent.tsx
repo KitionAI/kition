@@ -19,7 +19,7 @@ import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEm
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@kition/app-ui/utils'
-import { boardKitForDevelopment, tableKitForDevelopment } from './kits/kitEditors'
+import { boardKitForDevelopment, documentKitForDevelopment, tableKitForDevelopment } from './kits/kitEditors'
 import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
@@ -582,7 +582,8 @@ export function WorkspaceEditorContent({
             </>
           ) : null}
           <div className="workspace-document-shell__body">
-            {activeDocumentSession && hasActiveDocument ? (
+            {/* A document open in the Document kit (development only) has the kit's own comments. */}
+            {activeDocumentSession && hasActiveDocument && !documentKitForDevelopment(activeDocumentSession.path) ? (
               <Suspense fallback={null}>
                 <DocumentComments key={activeDocumentSession.path} session={activeDocumentSession} path={activeDocumentSession.path} readOnly={editorLocked} />
               </Suspense>
@@ -645,27 +646,32 @@ export function WorkspaceEditorContent({
                     return <EditorPaneFallback key={`${tab.uid || tab.path}:opening`} />
                   }
 
+                  const nativeEditor = (
+                    <DocumentMarkdownEditorPane
+                      documentPath={entry.document.path}
+                      source={activeDocumentSession}
+                      value={draftContent}
+                      readOnly={editorLocked}
+                      onNavigate={onOpenDocument}
+                      inlineTitleSlot={inlineTitleElement}
+                      onToolbarMount={onToolbarMount}
+                      focusRequest={documentEditorFocusRequest}
+                      readingView={editorMode === 'preview'}
+                      onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
+                      onAskAgent={onAskDocumentAgent}
+                      translation={documentTranslation}
+                      onAgentInsertionContextChange={onAgentInsertionContextChange}
+                    />
+                  )
+                  // Development only: the Document kit, for parity checks (`DOCUMENT_KIT_DEV_FLAG`).
+                  const documentKit = documentKitForDevelopment(entry.document.path)
                   return (
                     <div
                       key={tab.uid || tab.path}
                       className="document-rich-editor-stack__pane is-active"
                     >
                       <EditorPaneBoundary paneId="document">
-                        <DocumentMarkdownEditorPane
-                          documentPath={entry.document.path}
-                          source={activeDocumentSession}
-                          value={draftContent}
-                          readOnly={editorLocked}
-                          onNavigate={onOpenDocument}
-                          inlineTitleSlot={inlineTitleElement}
-                          onToolbarMount={onToolbarMount}
-                          focusRequest={documentEditorFocusRequest}
-                          readingView={editorMode === 'preview'}
-                          onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
-                          onAskAgent={onAskDocumentAgent}
-                          translation={documentTranslation}
-                          onAgentInsertionContextChange={onAgentInsertionContextChange}
-                        />
+                        {documentKit ? <KitFilePane kit={documentKit} path={entry.document.path} active preview={nativeEditor} /> : nativeEditor}
                       </EditorPaneBoundary>
                     </div>
                   )

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "standard": "2.0",
+  "id": "kit.document",
+  "name": "Document",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "distribution": "default",
+  "engine": {
+    "runtime": "ts-worker",
+    "module": "kition_document_engine",
+    "class": "MarkdownDocument",
+    "contract": 2
+  },
+  "capabilities": ["kdm"],
+  "formats": [
+    {
+      "id": "markdown",
+      "extensions": ["md", "markdown"],
+      "mime": "text/markdown",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "document",
+      "extension": "md",
+      "baseName": "Untitled document",
+      "size": { "width": 612, "height": 792 }
+    }
+  ],
+  "ui": {
+    "mode": "embedded",
+    "entry": "index.html",
+    "menus": ["Edit"],
+    "layout": "pages"
+  },
+  "model": {
+    "schema": "model/schema.json",
+    "schemaVersion": 2
+  },
+  "collaboration": {
+    "merge": ["rich-text"],
+    "leases": [],
+    "serverValidation": false,
+    "comments": {
+      "commands": ["comment.add", "comment.reply", "comment.resolve", "comment.delete"]
+    }
+  },
+  "objectModel": {
+    "namespace": "Document"
+  }
+}

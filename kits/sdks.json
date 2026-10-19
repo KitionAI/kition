@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the table kit's editor is Kition's own); `path` is a kit that lives in Kition (the board kit, built from that folder; `runtime: ts-worker`, a TypeScript engine that scripts/check-kit-sdk.mjs leaves to check-manifest --module); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
+  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the table kit's editor is Kition's own); `path` is a kit that lives in Kition (the board and document kits, built from that folder; `runtime: ts-worker`, a TypeScript engine that scripts/check-kit-sdk.mjs leaves to check-manifest --module); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
   "photo": {
     "repository": "KitionAI/kition-photo",
     "crate": "kition-photo-sdk",
@@ -232,6 +232,20 @@
           }
         ]
       }
+    }
+  },
+  "document": {
+    "repository": "KitionAI/kition",
+    "path": "packages/document-kit",
+    "module": "kition_document_engine",
+    "class": "MarkdownDocument",
+    "runtime": "ts-worker",
+    "name": "Notes.md",
+    "kition": true,
+    "optional": true,
+    "edit": {
+      "command": "text.insert",
+      "params": { "at": 0, "text": "# Notes\n" }
     }
   }
 }

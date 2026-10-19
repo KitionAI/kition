@@ -83,9 +83,9 @@ module.exports = {
       name: 'app-uses-document-editor-entries',
       severity: 'error',
       comment:
-        'Import the Markdown document through its entries: @kition/document-editor (host seam, agent action types, image import, parsers), /model (the document on the KDM), /editor (the editor), /commands, /clipboard, /markdown, or /mermaid. Export what the app needs from packages/document-editor/src/{index,model,editor,commands,clipboard,markdown,mermaid}.ts.',
+        'Import the Markdown document through its entries: @kition/document-editor (host seam, agent action types, image import, parsers), /model (the document on the KDM), /file (a Markdown file as a replica, without the editor), /editor (the editor), /commands, /clipboard, /markdown, or /mermaid. Export what the app needs from packages/document-editor/src/{index,model,file,editor,commands,clipboard,markdown,mermaid}.ts.',
       from: { path: '^src/' },
-      to: { path: '^packages/document-editor/src/', pathNot: '^packages/document-editor/src/(index|model|editor|commands|clipboard|markdown|mermaid)\\.ts$' },
+      to: { path: '^packages/document-editor/src/', pathNot: '^packages/document-editor/src/(index|model|file|editor|commands|clipboard|markdown|mermaid)\\.ts$' },
     },
     {
       name: 'shared-layers-do-not-import-features',
@@ -97,7 +97,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    // A kit's web/ app (packages/board-kit/web) is built by its own toolchain from Kition's styles and strings.
+    // A kit's web/ app (packages/board-kit/web, packages/document-kit/web) is built by its own toolchain from Kition's styles and strings.
     exclude: { path: ['\\.spec\\.(ts|tsx)$', '^packages/[^/]+/web/'] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },

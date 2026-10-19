@@ -123,6 +123,30 @@ export function boardKitForDevelopment(path: string): KitEditorEntry | null {
   }
 }
 
+/**
+ * The Document kit (`kit.document`, `scripts/build-kit-ui.sh document`, packages/document-kit):
+ * Kition's own Markdown document model and editor packaged as a kit, with a TypeScript engine.
+ * Kition opens Markdown files in its native document editor; for parity checks, a development
+ * build opens them in the kit instead when `localStorage['kition.dev.documentKit']` is `'1'`.
+ * Without the kit's package the native editor shows (`preview`).
+ */
+const DOCUMENT_KIT: KitEditorEntry = {
+  ...kit('document', 'MarkdownDocument', { format: 'markdown', icon: 'document', preview: true }),
+  engine: { kitId: 'kit.document', dir: 'document-ui/engine', module: 'kition_document_engine', documentClass: 'MarkdownDocument' },
+}
+
+const DOCUMENT_KIT_DEV_FLAG = 'kition.dev.documentKit'
+
+/** The Document kit, when this development build opens `path` in it (`DOCUMENT_KIT_DEV_FLAG`). */
+export function documentKitForDevelopment(path: string): KitEditorEntry | null {
+  if (!import.meta.env.DEV || !/\.(md|markdown)$/i.test(path)) return null
+  try {
+    return window.localStorage.getItem(DOCUMENT_KIT_DEV_FLAG) === '1' ? DOCUMENT_KIT : null
+  } catch {
+    return null
+  }
+}
+
 const availability = new Map<string, Promise<boolean>>()
 
 /**

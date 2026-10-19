@@ -10,7 +10,10 @@ the editor, the desktop shell, and the agent read and write it. See
 [whiteboard-document.md](whiteboard-document.md) for the Whiteboard's own (differently shaped) KDM
 document, [table-document.md](table-document.md) for the Table's (a relational projection of its
 KDM replica, rather than a direct view of it), and [kit-sdk.md](kit-sdk.md) for the separate Kit
-SDK system; a Markdown document is a built-in document type, not a kit.
+SDK system. Kition opens a Markdown document natively, as a built-in document type; the same
+model and editor are also packaged as the standard kit `kit.document` (`packages/document-kit`,
+see [kit-sdk.md](kit-sdk.md)) for other applications, which a development build opens `.md`
+files in for parity checks.
 
 ## Where the code lives
 

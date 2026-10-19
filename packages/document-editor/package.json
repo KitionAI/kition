@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./model": "./src/model.ts",
+    "./file": "./src/file.ts",
     "./editor": "./src/editor.ts",
     "./commands": "./src/commands.ts",
     "./clipboard": "./src/clipboard.ts",

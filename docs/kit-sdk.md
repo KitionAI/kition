@@ -363,6 +363,34 @@ development build opens `.kiboard` files in the kit when
 natively. The shell's Undo and Redo follow the engine; the board's own Undo is
 in the editor.
 
+### The Document kit
+
+`kit.document` (`packages/document-kit`) packages Kition's Markdown document
+the same way: its engine is a TypeScript one (`ts-worker`), `MarkdownDocument`,
+made with `kitEngineClass` from the document on the KDM in
+`packages/document-editor` (`@kition/document-editor/file`, no CodeMirror in
+the worker). The `.md` file is the text alone: a file opens as a new replica,
+or, through `KitModel.openReplica`, with the replica a host stored for it and
+what the file adds as a `system` import change; it saves in the line style it
+was read in (line endings, byte order mark). Its commands edit the text
+(`text.insert`, `text.delete`, `text.replace`, `document.replace`,
+`text.read`; UTF-16 offsets, as CodeMirror counts them) and its comment
+threads (`comment.add`, `comment.reply`, `comment.resolve`, `comment.delete`,
+the manifest's `collaboration.comments.commands`, and `comment.threads`), each
+with a parameter schema. The editor (`web/`) is `DocumentEditor` in the kit-ui
+shell with a `DocumentHost` that only shows notices: it keeps its own replica,
+loaded from the engine's snapshot, edits it through `replicaTextSource` (typing
+undoes in runs), and exchanges changes with the engine's replica
+(`WorkerRelay`); comments are the engine's commands, so a commenter's read-only
+session writes them under kit-ui's comment backstop. `model/schema.json` is
+kept equal to `documentSchema` by a test. `scripts/build-kit-ui.sh document`
+builds the package. Kition keeps its native document editor and session; a
+development build opens `.md` files in the kit when
+`localStorage['kition.dev.documentKit']` is `'1'` and the package is built, and
+`e2e/document-embedded.spec.ts` edits and comments on a document there, saves
+it, and reopens it natively. Images show only URLs that load by themselves,
+and pasted images stay links: the host's files are not the kit's.
+
 ## 4b. Kit Packages And Releases
 
 Kition ships every kit's package inside the app (decided 2026-10-15). All ten

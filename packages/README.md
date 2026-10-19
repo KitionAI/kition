@@ -91,8 +91,11 @@ Entries (the app imports only these; rule `app-uses-document-editor-entries`):
   shares with the editor (wikilinks, tags, frontmatter). It loads neither the KDM nor the editor.
 - `@kition/document-editor/model`: the document on the KDM: `documentSchema` (`kit.document`), the
   file text as the replica keeps it (`analyzeText`, `renderText`, `createDocumentReplica`), text
-  merges, the CodeMirror binding of the replica's text (`TextBinding`), its undo and redo, and a
-  standalone text source (`createReplicaTextSource`).
+  merges, the CodeMirror binding of the replica's text (`TextBinding`), its undo and redo, and text
+  sources on a replica (`replicaTextSource`, `createReplicaTextSource`).
+- `@kition/document-editor/file`: a Markdown file's bytes as a replica and back
+  (`importMarkdownFile`, `openStoredMarkdownFile`, `exportMarkdownFile`), with the schema, text,
+  and merges, but no CodeMirror: what the Document kit's engine runs in its worker.
 - `@kition/document-editor/editor`: `DocumentEditor` (CodeMirror with live preview and widgets) over
   a `DocumentTextSource`, its extensions, and `useDocumentBinding`; `/commands` its commands;
   `/clipboard` its clipboard reading; `/markdown` and `/mermaid` Markdown rendered to HTML.
@@ -104,4 +107,4 @@ show only self-contained URLs without `resolveImageURL`). Kition's host is
 `src/features/document/host/kitionDocumentHost.ts`, installed in `src/main.tsx`; the document
 session (file binding, store, history, agent review, comments) and the panes, dialogs, and panels
 around the editor stay in `src/features/document`. Its strings are Kition's `document` namespace,
-which the editor reads through the global i18next instance, and its styles Kition's.
+which the editor reads through the global i18next instance, and its styles Kition's. The Document kit (`packages/document-kit`) is this model and editor packaged as a standard kit.

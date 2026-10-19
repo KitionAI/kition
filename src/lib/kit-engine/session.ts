@@ -35,6 +35,14 @@ export interface KitModel<View> {
   /** Repairs, as one transaction; answers whether it wrote anything. */
   validate?(tx: Tx, replica: Replica, changed: ReadonlySet<ObjectId>): boolean
   import(name: string, bytes: Uint8Array, actor: bigint): Replica
+  /**
+   * Opens file bytes with the replica a host stored for them (`openWithReplica`), for a format that
+   * does not hold its replica (Markdown): the replica from `snapshot` (a KDM snapshot or a full
+   * change export, `blobs` its media), and what the file says that it lacks as a `system` import
+   * change; empty `bytes` open the replica alone. Without it, a stored replica adds nothing to a
+   * file that holds its own, which opens as `import` makes it.
+   */
+  openReplica?(name: string, bytes: Uint8Array, snapshot: Uint8Array, blobs: Uint8Array, actor: bigint): Replica
   export(view: View, replica: Replica, name: string): Uint8Array
   /** A new document; without it, `create` refuses. */
   create?(name: string, size: KitSize, actor: bigint): Replica
@@ -215,8 +223,12 @@ export function kitEngineClass<View>(model: KitModel<View>, options: KitEngineCl
       return new Document(new KitSession(model, model.import(name, bytes, actor())))
     }
 
-    /** A file in this kit's formats holds its replica, so the stored one adds nothing it lacks. */
-    static openWithReplica(name: string, bytes: Uint8Array, _snapshot: Uint8Array, _blobs: Uint8Array) {
+    /**
+     * The file with the replica stored for it: the model's `openReplica`, or, for a format whose
+     * files hold their replica, the file alone (the stored replica adds nothing it lacks).
+     */
+    static openWithReplica(name: string, bytes: Uint8Array, snapshot: Uint8Array, blobs: Uint8Array) {
+      if (model.openReplica) return new Document(new KitSession(model, model.openReplica(name, bytes, snapshot, blobs, actor())))
       return Document.open(name, bytes)
     }
 
