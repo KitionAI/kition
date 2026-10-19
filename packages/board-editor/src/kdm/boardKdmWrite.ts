@@ -219,14 +219,31 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
 }
 
 /**
- * Removes the list entries the reader skips because their element is shown on an earlier page or
- * earlier in the same list (see `findBoardDuplicatePlacements`). Answers how many it removed.
+ * Removes the list entries the reader skips that a merge left: entries whose element is shown on
+ * an earlier page or earlier in the same list (see `findBoardDuplicatePlacements`), entries naming
+ * an object that no longer exists (a page or element deleted while another replica moved it in its
+ * list, where the move keeps the entry), and repeated entries of the board's page list. Answers how
+ * many it removed.
  */
 export function repairBoardPlacements(tx: Tx, rootId: string): number {
   let removed = 0
+  if (tx.exists(rootId)) {
+    const pageIds = tx.listItems(rootId, 'pages')
+    const seen = new Set<string>()
+    const keep = pageIds.map((id) => {
+      const live = !seen.has(id) && tx.exists(id) && tx.objectType(id) === 'Page'
+      seen.add(id)
+      return live
+    })
+    for (let index = pageIds.length - 1; index >= 0; index -= 1) {
+      if (keep[index]) continue
+      tx.listRemove(rootId, 'pages', index)
+      removed += 1
+    }
+  }
   for (const page of boardLayout(txSource(tx, rootId)).pages) {
     for (let index = page.items.length - 1; index >= 0; index -= 1) {
-      if (page.states[index] !== 'duplicate') continue
+      if (page.states[index] !== 'duplicate' && page.states[index] !== 'missing') continue
       tx.listRemove(page.id, 'elements', index)
       removed += 1
     }

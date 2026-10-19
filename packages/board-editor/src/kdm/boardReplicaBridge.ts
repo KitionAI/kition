@@ -25,8 +25,18 @@ export type BoardCommit = BoardWriteResult & { changed: boolean }
 /** Records to put into and ids to remove from the view so that it shows what the replica has. */
 export type BoardViewPatch = { put: BoardRecord[]; removed: string[] }
 
-/** The board as the reader sees it (`readBoardRecords` by id) and the list entries it skips. */
-export type BoardRead = { records: ReadonlyMap<string, BoardRecord>; duplicates: BoardDuplicatePlacement[] }
+/**
+ * The board as the reader sees it (`readBoardRecords` by id), and what a merge left that the
+ * reader skips and `repair` removes: list entries of elements shown elsewhere (`duplicates`), list
+ * entries naming no object (`dangling`), and `orphans`, elements on no page because their page was
+ * deleted while another replica added them to it or moved them onto it (the page's deletion wins).
+ */
+export type BoardRead = {
+  records: ReadonlyMap<string, BoardRecord>
+  duplicates: BoardDuplicatePlacement[]
+  dangling: boolean
+  orphans: string[]
+}
 
 /**
  * One replica of a board and the undo steps the store has on its undo stack. A step is a committed
@@ -50,6 +60,8 @@ export class BoardReplicaHistory {
    * differ from the last read: all of them except elements this store's commits only edited.
    */
   private unsettledSinceRead = new Set<string>()
+  /** Whether the next read checks every element for orphans (the first one does). */
+  private checkEveryElement = true
 
   constructor(readonly replica: Replica) {
     replica.takeChanged()
@@ -63,11 +75,37 @@ export class BoardReplicaHistory {
    */
   read(): BoardRead {
     this.collectChanges()
-    const refreshed = refreshBoardView(this.replica, this.lastRead, this.changedSinceRead)
+    const previous = this.lastRead
+    const changed = new Set(this.changedSinceRead)
+    const refreshed = refreshBoardView(this.replica, previous, changed)
     this.lastRead = refreshed ?? readBoardView(this.replica)
     this.changedSinceRead.clear()
     this.unsettledSinceRead.clear()
-    return { records: this.lastRead.records, duplicates: duplicatePlacements(this.lastRead.layout) }
+    const { layout, hidden } = this.lastRead
+    const dangling = [...hidden.values()].includes('missing')
+      || (this.replica.exists(this.rootId) && this.replica.list(this.rootId, 'pages').length !== layout.pages.length)
+    return { records: this.lastRead.records, duplicates: duplicatePlacements(layout), dangling, orphans: this.orphans(previous, changed) }
+  }
+
+  /**
+   * Elements no shown page lists. Every element is checked on the first read (a document saved with
+   * orphans), and when a change touched an object that is gone and was a page or unknown to
+   * `previous`: a page deleted here or by the merge, whose list a merge may have added elements to
+   * or moved elements onto. Otherwise only the changed objects can be orphans.
+   */
+  private orphans(previous: BoardViewRead, changed: ReadonlySet<string>): string[] {
+    const records = this.lastRead.records
+    const everything = this.checkEveryElement || [...changed].some((id) => {
+      if (records.has(id) || this.replica.exists(id)) return false
+      const before = previous.records.get(id)
+      return before === undefined || before.record_type === 'page'
+    })
+    this.checkEveryElement = false
+    const candidates = (everything ? this.replica.objectsOfType('Element') : [...changed])
+      .filter((id) => !records.has(id) && this.replica.exists(id) && this.replica.objectType(id) === 'Element')
+    if (candidates.length === 0) return []
+    const listed = new Set(this.lastRead.layout.pages.flatMap((page) => page.items))
+    return candidates.filter((id) => !listed.has(id))
   }
 
   /** What the writer may take from the last read: the objects not changed since keep their state. */
@@ -152,17 +190,19 @@ export class BoardReplicaHistory {
   }
 
   /**
-   * Writes the repair `diff` and removes the duplicate list placements of the last `read` as one
-   * `system` transaction, which the KDM keeps out of the undo history. Nothing to repair writes
-   * nothing.
+   * Writes the repair `diff`, removes the list entries the last `read` skipped, and deletes its
+   * orphans, as one `system` transaction, which the KDM keeps out of the undo history. Nothing to
+   * repair writes nothing.
    */
-  repair(diff: BoardRecordDiff, duplicates: readonly BoardDuplicatePlacement[]) {
+  repair(diff: BoardRecordDiff, read: Pick<BoardRead, 'duplicates' | 'dangling' | 'orphans'>) {
     const persisted = persistedBoardDiff(diff)
-    if (isEmptyDiff(persisted) && duplicates.length === 0) return
+    const placements = read.duplicates.length > 0 || read.dangling
+    if (isEmptyDiff(persisted) && !placements && read.orphans.length === 0) return
     const hint = this.writeHint()
     this.replica.transact(system('repair'), (tx) => {
       if (!isEmptyDiff(persisted)) writeBoardDiff(tx, this.rootId, persisted, hint)
-      if (duplicates.length > 0) repairBoardPlacements(tx, this.rootId)
+      if (placements) repairBoardPlacements(tx, this.rootId)
+      for (const id of read.orphans) if (tx.exists(id)) tx.delete(id)
     })
   }
 

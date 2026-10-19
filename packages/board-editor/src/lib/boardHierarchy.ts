@@ -171,23 +171,34 @@ export function repairBoardHierarchyRecords(
   records: readonly BoardElementRecord[],
 ) {
   const byId = new Map(records.map((record) => [record.id, record]))
-  return records.map((record) => {
-    if (!record.parentId) return record
-    const parent = byId.get(record.parentId)
-    if (
-      !parent
-      || parent.id === record.id
-      || parent.page_id !== record.page_id
-      || !isBoardContainerElement(boardElementFromRecord(parent))
-      || createsHierarchyCycle(record.id, parent.id, byId)
-    ) {
-      return createBoardElementRecord({
-        element: { ...boardElementFromRecord(record), parentId: undefined },
-        index: record.index,
-        pageId: record.page_id,
-      })
-    }
-    return record
+  return records.map((record) => (
+    hasAllowedBoardParent(record, byId) ? record : withoutBoardParent(record)
+  ))
+}
+
+/**
+ * Whether `record` has no parent or one the board allows: a container on the element's page that
+ * is neither the element nor one of its descendants.
+ */
+export function hasAllowedBoardParent(
+  record: BoardElementRecord,
+  byId: ReadonlyMap<string, BoardElementRecord>,
+) {
+  if (!record.parentId) return true
+  const parent = byId.get(record.parentId)
+  if (!parent) return false
+  return parent.id !== record.id
+    && parent.page_id === record.page_id
+    && isBoardContainerElement(boardElementFromRecord(parent))
+    && !createsHierarchyCycle(record.id, parent.id, byId)
+}
+
+/** `record` at the top level of its page. */
+export function withoutBoardParent(record: BoardElementRecord) {
+  return createBoardElementRecord({
+    element: { ...boardElementFromRecord(record), parentId: undefined },
+    index: record.index,
+    pageId: record.page_id,
   })
 }
 

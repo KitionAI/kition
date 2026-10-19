@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { person, Replica } from '@kition/kdm'
 import { BoardStore } from './boardStore'
-import { createBoardElementRecord, type BoardBindingRecord, type BoardElementRecord, type BoardPageRecord } from './boardRecords'
+import { BoardCommandRegistry } from './boardCommands'
+import { boardElementFromRecord, createBoardElementRecord, type BoardBindingRecord, type BoardElementRecord, type BoardPageRecord } from './boardRecords'
 import { findBoardDuplicatePlacements } from '../kdm/boardKdmRead'
 import { boardSchema } from '../kdm/boardSchema'
 
@@ -241,5 +242,117 @@ describe('BoardStore repairs and read-back on the KDM', () => {
     store.transact('bind', (tx) => tx.put(binding))
     expect(store.getRecord('binding:c:end')).toBeNull()
     expect(store.getRecord('c')).toBeNull()
+  })
+})
+
+describe('BoardStore keeps merged and committed documents valid', () => {
+  const page2: BoardPageRecord = { record_type: 'page', id: 'page:2', name: 'Two', index: 1 }
+  const frame = (id: string, index: number, parentId?: string) => ({ ...rect(id, index), shapeStyle: 'frame', shapeType: 'frame', parentId }) as BoardElementRecord
+
+  /** Two stores on one board with two pages, `a` on page:1 and `frame` on page:2. */
+  function pair() {
+    const first = new BoardStore()
+    const main = first.getCurrentPageId()
+    first.transact('setup', (tx) => {
+      tx.put(page2)
+      tx.put({ ...rect('a', 0), page_id: main })
+      tx.put({ ...frame('frame', 0), page_id: 'page:2' })
+    })
+    const second = new BoardStore(Replica.load(boardSchema, first.snapshot(), 99n))
+    return { first, second, main }
+  }
+
+  /** Delivers each store's changes to the other until both are current. */
+  function exchange(first: BoardStore, second: BoardStore) {
+    for (let round = 0; round < 3; round += 1) {
+      first.importChanges(second.getReplica().exportChanges(first.getReplica().version()))
+      second.importChanges(first.getReplica().exportChanges(second.getReplica().version()))
+    }
+    expect(first.getReplica().stateText()).toBe(second.getReplica().stateText())
+  }
+
+  /** Every list entry names an existing object, and every element's parent exists. */
+  function references(store: BoardStore) {
+    const replica = store.getReplica()
+    const problems: string[] = []
+    const root = replica.objectsOfType('Board')[0]
+    for (const page of replica.list(root, 'pages')) {
+      if (!replica.exists(page)) problems.push(`pages holds ${page}`)
+      else for (const id of replica.list(page, 'elements')) if (!replica.exists(id)) problems.push(`${page} holds ${id}`)
+    }
+    for (const id of replica.objectsOfType('Element')) {
+      const parent = replica.get(id, 'parent')
+      if (typeof parent === 'string' && !replica.exists(parent)) problems.push(`${id}.parent names ${parent}`)
+    }
+    return problems
+  }
+
+  it('leaves no page-list entry for a page deleted while another replica moved it', () => {
+    const { first, second, main } = pair()
+    new BoardCommandRegistry(first).execute({ type: 'page.delete', pageId: main })
+    new BoardCommandRegistry(second).execute({ type: 'page.reorder', pageId: main, placement: 'next' })
+    exchange(first, second)
+    expect(references(first)).toEqual([])
+    expect(first.getPages().map((page) => page.id)).toEqual(['page:2'])
+    expect(first.getReplica().list(first.getReplica().objectsOfType('Board')[0], 'pages')).toEqual(['page:2'])
+  })
+
+  it('leaves no element-list entry for an element deleted while another replica moved it', () => {
+    const { first, second, main } = pair()
+    first.transact('add', (tx) => tx.put({ ...rect('b', 1), page_id: main }))
+    exchange(first, second)
+    new BoardCommandRegistry(first).execute({ type: 'element.delete', elementIds: ['a'] })
+    new BoardCommandRegistry(second).execute({ type: 'element.reorder', elementIds: ['a'], placement: 'front' })
+    exchange(first, second)
+    expect(references(first)).toEqual([])
+    expect(first.getReplica().list(main, 'elements')).toEqual(['b'])
+  })
+
+  it('deletes an element added to a page another replica deleted, as the page deletion deleted its others', () => {
+    const { first, second } = pair()
+    new BoardCommandRegistry(first).execute({ type: 'page.delete', pageId: 'page:2' })
+    second.setActivePage('page:2')
+    new BoardCommandRegistry(second).execute({ type: 'element.create', elements: [{ id: 'late', kind: 'text', x: 0, y: 0, text: 'late', parentId: 'frame' }] })
+    exchange(first, second)
+    expect(references(first)).toEqual([])
+    expect(first.getReplica().exists('late')).toBe(false)
+    expect(second.getRecord('late')).toBeNull()
+  })
+
+  it('never stores a parent the board does not allow: a frame nested in its own child stays on top', () => {
+    const store = new BoardStore()
+    const main = store.getCurrentPageId()
+    store.transact('frames', (tx) => {
+      tx.put({ ...frame('outer', 0), page_id: main })
+      tx.put({ ...frame('inner', 1, 'outer'), page_id: main })
+      tx.put({ ...rect('note', 2), page_id: main })
+    })
+    const commands = new BoardCommandRegistry(store)
+    const outer = store.getElementRecord('outer')!
+    commands.execute({ type: 'element.update', elements: [{ ...boardElementFromRecord(outer), parentId: 'inner' }] })
+    expect(store.getElementRecord('outer')?.parentId).toBeUndefined()
+    expect(store.getElementRecord('inner')?.parentId).toBe('outer')
+    expect(store.getReplica().get('outer', 'parent')).toBeNull()
+    // A plain shape is no parent either; the reader of a reopened copy agrees with the store.
+    commands.execute({ type: 'element.update', elements: [{ ...boardElementFromRecord(store.getElementRecord('inner')!), parentId: 'note' }] })
+    expect(store.getReplica().get('inner', 'parent')).toBeNull()
+    const reopened = new BoardStore(Replica.load(boardSchema, store.snapshot(), 7n))
+    expect(reopened.getReplica().stateText()).toBe(store.getReplica().stateText())
+  })
+
+  it('keeps the view in the replica\'s order after a deletion and a regroup', () => {
+    const store = new BoardStore()
+    const main = store.getCurrentPageId()
+    store.transact('add', (tx) => {
+      for (const [index, id] of ['a', 'b', 'c', 'w', 'x', 'm'].entries()) tx.put({ ...rect(id, index), page_id: main })
+    })
+    const commands = new BoardCommandRegistry(store)
+    commands.execute({ type: 'element.delete', elementIds: ['x'] })
+    commands.execute({ type: 'element.group', containerId: 'g', containerKind: 'group', elementIds: ['a', 'b'] })
+    const shown = store.getRecords()
+      .filter((record): record is BoardElementRecord => record.record_type === 'element')
+      .sort((left, right) => left.index - right.index)
+    expect(shown.map((record) => record.id)).toEqual(store.getReplica().list(main, 'elements'))
+    expect(shown.map((record) => record.index)).toEqual(shown.map((_, index) => index))
   })
 })

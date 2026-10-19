@@ -15,7 +15,7 @@ import {
   type BoardPageRecord,
   type BoardRecord,
 } from './boardRecords'
-import { repairBoardHierarchyRecords } from './boardHierarchy'
+import { hasAllowedBoardParent, isBoardContainerElement, repairBoardHierarchyRecords, withoutBoardParent } from './boardHierarchy'
 import { repairBoardBindingRecords } from './boardBindingEngine'
 import { BoardSpatialIndex } from './boardSpatialIndex'
 import type { WhiteboardBounds, WhiteboardElement, WhiteboardPoint } from './whiteboardTypes'
@@ -421,9 +421,47 @@ export class BoardStore {
       throw error
     }
     if (committed.changed && transaction.source === 'user') this.recordOperation(transaction.label)
-    if (!this.refreshStaleView()) this.readBack(diff, committed)
+    if (!this.refreshStaleView()) {
+      this.readBack(diff, committed)
+      this.compactElementIndexes(diff)
+    }
     this.notify()
     return diff
+  }
+
+  /**
+   * Before `transaction` commits: clears every parent it set that the board does not allow (not a
+   * container on the element's page, the element itself, or one of its descendants), then the
+   * parents its changes made invalid (a container it moved to another page or made a plain shape).
+   * Readers drop such a parent (`normalizeBoardRecords`), so storing one would only defer the
+   * repair to whoever opens the document next, and a cycle would stay in the document until then.
+   */
+  keepHierarchyAllowed(transaction: BoardTransaction) {
+    const touched = transaction.touchedIds()
+    const isContainer = (record: BoardRecord | null | undefined) => record?.record_type === 'element' && isBoardContainerElement(boardElementFromRecord(record))
+    const set: BoardElementRecord[] = []
+    let containers = false
+    for (const id of touched) {
+      const record = this.records.get(id)
+      if (record?.record_type === 'element' && record.parentId) set.push(record)
+      containers ||= isContainer(record) || isContainer(transaction.before(id))
+    }
+    // Only a container the transaction changed can have children it made invalid.
+    if (set.length === 0 && !containers) return
+    const byId = new Map<string, BoardElementRecord>()
+    for (const record of this.records.values()) {
+      if (record.record_type === 'element') byId.set(record.id, record)
+    }
+    const children = containers
+      ? [...byId.values()].filter((record) => record.parentId && !touched.has(record.id) && touched.has(record.parentId))
+      : []
+    for (const { id } of [...set, ...children]) {
+      const record = byId.get(id)!
+      if (hasAllowedBoardParent(record, byId)) continue
+      const repaired = withoutBoardParent(record)
+      byId.set(id, repaired)
+      transaction.put(repaired)
+    }
   }
 
   readInternalRecord(id: string) {
@@ -460,14 +498,16 @@ export class BoardStore {
    * Rebuilds the view from the replica, keeping the current page: re-reads what changed since the
    * last read (`BoardReplicaHistory.read`) and normalizes the result, keeping the records it does
    * not change. With `repair`, what `normalizeBoardRecords` corrects in persisted data (dangling
-   * parents and bindings, connector ends) and duplicate list placements left by merges are
-   * repaired in one `system` transaction, which is not an undo step; a healthy board writes nothing.
+   * parents and bindings, connector ends) and what merges left in the lists (duplicate and
+   * dangling entries, and elements a deleted page stranded) are repaired in one `system`
+   * transaction, which is not an undo step; a healthy board writes nothing.
    */
   private rebuildView(options: { repair: boolean }) {
-    const { records, duplicates } = this.history.read()
+    const read = this.history.read()
+    const { records } = read
     const meta = this.records.get(BOARD_META_RECORD_ID)
     const view = normalizeBoardRecords(meta ? [meta, ...records.values()] : records.values())
-    if (options.repair) this.history.repair(diffBoardRecords(records, view), duplicates)
+    if (options.repair) this.history.repair(diffBoardRecords(records, view), read)
     this.records = view
     this.invalidateCaches()
   }
@@ -486,6 +526,42 @@ export class BoardStore {
       if (first) this.records.set(BOARD_META_RECORD_ID, createMetaRecord(first.id))
       this.invalidateCaches()
     }
+  }
+
+  /**
+   * Numbers the elements of the pages `diff` touched by their positions (0, 1, ...), as a read of
+   * the replica does. A command writes indexes that only order its page (a deletion leaves a gap);
+   * the writer places the next command's elements among the replica's positions, so an index that
+   * is not a position could put them in another order than the view shows.
+   */
+  private compactElementIndexes(diff: BoardRecordDiff) {
+    const pages = new Set<string>()
+    for (const record of [...diff.added, ...diff.removed]) {
+      if (record.record_type === 'element') pages.add(record.page_id)
+    }
+    for (const { before, after } of diff.updated) {
+      // An edit in place (the common case: a move, a label) leaves every position as it was.
+      if (before.record_type !== 'element' || after.record_type !== 'element' || (before.index === after.index && before.page_id === after.page_id)) continue
+      pages.add(before.page_id)
+      pages.add(after.page_id)
+    }
+    if (pages.size === 0) return
+    const byPage = new Map<string, BoardElementRecord[]>()
+    for (const record of this.records.values()) {
+      if (record.record_type !== 'element' || !pages.has(record.page_id)) continue
+      const list = byPage.get(record.page_id)
+      if (list) list.push(record)
+      else byPage.set(record.page_id, [record])
+    }
+    let changed = false
+    for (const list of byPage.values()) {
+      list.sort(compareBoardRecords).forEach((record, index) => {
+        if (record.index === index) return
+        this.records.set(record.id, { ...record, index })
+        changed = true
+      })
+    }
+    if (changed) this.invalidateCaches()
   }
 
   /** Rebuilds a view that imports made stale during a transaction; answers whether it did. */
@@ -559,7 +635,7 @@ export class BoardStore {
 }
 
 export class BoardTransaction {
-  private before = new Map<string, BoardRecord | undefined>()
+  private beforeRecords = new Map<string, BoardRecord | undefined>()
   private active = true
 
   constructor(
@@ -591,8 +667,19 @@ export class BoardTransaction {
 
   commit() {
     this.assertActive()
+    this.store.keepHierarchyAllowed(this)
     this.active = false
     return this.store.finishTransaction(this, 'commit')
+  }
+
+  /** The ids of the records this transaction put or removed. */
+  touchedIds(): ReadonlySet<string> {
+    return new Set(this.beforeRecords.keys())
+  }
+
+  /** A touched record as it was before this transaction (`undefined` for a new one). */
+  before(id: string): BoardRecord | undefined {
+    return this.beforeRecords.get(id)
   }
 
   cancel() {
@@ -607,7 +694,7 @@ export class BoardTransaction {
       updated: [],
       removed: [],
     }
-    for (const [id, before] of this.before) {
+    for (const [id, before] of this.beforeRecords) {
       const after = this.store.readInternalRecord(id)
       if (!before && after) diff.added.push(cloneBoardRecord(after))
       else if (before && !after) diff.removed.push(cloneBoardRecord(before))
@@ -626,7 +713,7 @@ export class BoardTransaction {
 
   restoreBeforeRecords() {
     let changed = false
-    for (const [id, before] of this.before) {
+    for (const [id, before] of this.beforeRecords) {
       if (before) changed = this.store.writeInternalRecord(before, false) || changed
       else changed = this.store.removeInternalRecord(id, false) || changed
     }
@@ -634,9 +721,9 @@ export class BoardTransaction {
   }
 
   private captureBefore(id: string) {
-    if (this.before.has(id)) return
+    if (this.beforeRecords.has(id)) return
     const record = this.store.readInternalRecord(id)
-    this.before.set(id, record ? cloneBoardRecord(record) : undefined)
+    this.beforeRecords.set(id, record ? cloneBoardRecord(record) : undefined)
   }
 
   private assertActive() {
