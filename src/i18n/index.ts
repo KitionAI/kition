@@ -13,6 +13,7 @@ import enWorkflow from './locales/en-US/workflow.json'
 import enConnections from './locales/en-US/connections.json'
 import enImageGeneration from './locales/en-US/imageGeneration.json'
 import enDesign from './locales/en-US/design.json'
+import enHistory from './locales/en-US/history.json'
 
 import zhMetadata from './locales/zh-CN/metadata.json'
 
@@ -42,6 +43,7 @@ const resources = {
     connections: enConnections,
     imageGeneration: enImageGeneration,
     design: enDesign,
+    history: enHistory,
   },
 } as const
 

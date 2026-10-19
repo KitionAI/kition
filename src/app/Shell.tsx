@@ -26,7 +26,8 @@ import {
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
 import { CollabDialogs, requestOpenSharedDocument, startCollab, useCollabAvailable } from '@/features/collab/public'
-import { sharedKitFor } from '@/features/workspace/components/kits/kitEditors'
+import { embeddedKitFor, sharedKitFor } from '@/features/workspace/components/kits/kitEditors'
+import { DocumentHistoryHost } from '@/features/history/public'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { SearchService } from '@/features/search/service/searchService'
 import { attachEventBridges } from '@/features/search/service/events'
@@ -834,6 +835,7 @@ export function AppShell() {
         </Suspense>
       ) : null}
       <CollabDialogs kitFor={sharedKitFor} onOpened={(path) => requestShowWorkspaceFile(path, true)} />
+      <DocumentHistoryHost kitFor={embeddedKitFor} />
       <ExtensionDialogs />
       <ConsoleCreditsExhaustedBanner />
       {/* Below the tab strip: a toast must never cover the tab chrome (docs/design.md). */}

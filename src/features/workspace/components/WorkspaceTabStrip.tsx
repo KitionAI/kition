@@ -5,6 +5,8 @@ import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/fea
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { KitIcon } from '@/components/KitIcon'
 import { canShareDocument, CollabTabIndicators, requestShareDocument, useCollabAvailable } from '@/features/collab/public'
+import { canShowDocumentHistory, requestDocumentHistory } from '@/features/history/public'
+import { KitDraftTabMark } from '@/features/kits/public'
 import { cn } from '@kition/app-ui/utils'
 
 /** The workspace file a tab edits, for co-editing (kit documents, boards, Markdown documents, tables). */
@@ -56,6 +58,7 @@ export function WorkspaceTabStrip({
 }) {
   const [contextMenu, setContextMenu] = useState<{ tabId: string; x: number; y: number } | null>(null)
   const { t } = useTranslation('workspace')
+  const { t: tHistory } = useTranslation('history')
   const barRef = useRef<HTMLDivElement | null>(null)
   const navRef = useRef<HTMLDivElement | null>(null)
   const measureTabRefs = useRef(new Map<string, HTMLDivElement>())
@@ -260,6 +263,10 @@ export function WorkspaceTabStrip({
       ...(collabAvailable && sharePath && canShareDocument(sharePath)
         ? [{ key: 'share', label: t('collab.share'), onSelect: () => requestShareDocument(sharePath) }]
         : []),
+      // The document's version history, for a document whose editor keeps a replica.
+      ...(sharePath && canShowDocumentHistory(sharePath)
+        ? [{ key: 'history', label: tHistory('open'), onSelect: () => requestDocumentHistory(sharePath) }]
+        : []),
     ]
   }
 
@@ -293,6 +300,7 @@ export function WorkspaceTabStrip({
         <WorkspaceTabIcon tab={tab} />
         <span>{tab.title}</span>
         <CollabIndicatorsFor tab={tab} />
+        {tab.type === 'file-viewer' ? <KitDraftTabMark path={tab.path} /> : null}
         <AgentChangedMark show={activeTabId !== tab.id && Boolean(isTabChangedByAgent?.(tab))} />
         <button
           type="button"

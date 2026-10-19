@@ -132,3 +132,8 @@ export function sharedKitFor(kitId: string) {
   const entry = creatableKits().find((candidate) => candidate.embedded.kitId === kitId)
   return entry ? { engine: entry.engine, extension: entry.create.extension } : null
 }
+
+/** The package of the kit `kitId` (its editor), as the version history shows a kit document's past versions. */
+export function embeddedKitFor(kitId: string) {
+  return KIT_EDITORS.find((entry) => entry.embedded.kitId === kitId)?.embedded ?? null
+}

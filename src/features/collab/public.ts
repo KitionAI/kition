@@ -11,3 +11,6 @@ export { CollabTabIndicators } from './CollabStatus'
 export { canShareDocument } from './shareActions'
 export { setSyncServerUrl, syncServerUrl, testSyncServer, type SyncServerTest } from './collabSettings'
 export { useCollabConnectionState } from './syncConnection'
+/** The room record of a shared document (by its KDM document id), and the window's sync client: for the version history. */
+export { readRoom } from './rooms'
+export { syncClient } from './syncConnection'

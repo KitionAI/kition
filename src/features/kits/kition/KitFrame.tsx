@@ -4,12 +4,13 @@ import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
-import { documentCommentAccess } from '@/services/documentComments'
 import { mountKit, type KitConnection } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
+import { setKitDraft } from './kitDrafts'
+import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { registerKitTestFrame } from './kitTestBridge'
 import { kitionTheme } from './kitionTheme'
@@ -85,12 +86,6 @@ async function unusedPath(path: string) {
  * Kit UI protocol. Kition serves its files, theme, language, and shortcuts, and forwards the Kit
  * AI bridge to it.
  */
-/** Who comments in the kit and how (Kit UI protocol `document.comments`), as the kit opens. */
-function kitCommentAccess(path: string, readOnly: boolean) {
-  const { me, name, canComment, othersReadOnly } = documentCommentAccess(path, readOnly)
-  return { me, ...(name ? { name } : {}), canComment, othersReadOnly }
-}
-
 /**
  * A replica a kit shows instead of its document's file (the document at a point of its version history): the kit
  * opens it read-only, saves nothing, and is no editor of the file (no agent, co-editing, or bridge registration).
@@ -148,7 +143,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
+          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -187,6 +182,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
               const show = notice.level === 'error' ? notify.error : notice.level === 'success' ? notify.success : notice.level === 'warning' ? notify.warning : notify.info
               show(notice.title, notice.description ? { description: notice.description } : undefined)
             },
+            draftChanged: (info) => setKitDraft(path, info),
             ...collab?.handlers,
             // Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here.
             shortcut: (key) => {
@@ -231,15 +227,19 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           kitId: kit.kitId,
           revision: () => state.revision,
           dirty: () => state.dirty,
-          inspect: async () => (await mounted!.ai.inspect()) as never,
+          inspect: async (options) => (await mounted!.ai.inspect(options)) as never,
           commands: async (query) => (await mounted!.ai.commands(query)) as never,
-          run: async (steps, save) => (await mounted!.ai.run(steps, save)) as never,
-          preview: async (maxSize) => (await mounted!.ai.preview(maxSize)).png,
+          run: async (steps, save, options) => (await mounted!.ai.run(steps, save, options)) as never,
+          preview: async (maxSize, options) => (await mounted!.ai.preview(maxSize, options)).png,
+          // The agent's drafts (Kit UI protocol section 7d): it may ask for review or take one back.
+          draft: mounted.capabilities.includes('draft') ? { ready: () => mounted!.draft.ready(), reopen: () => mounted!.draft.reopen() } : undefined,
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
         const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })
         const detachCollab = collab?.attach(mounted) ?? (() => undefined)
         withdraw = () => {
+          // A draft lives in its kit's page: it goes when the kit closes.
+          setKitDraft(path, { state: 'none', revision: null })
           detachCollab()
           withdrawEditor()
           withdrawTest()
@@ -293,9 +293,10 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
   }, [active, connection, path, preview])
 
   return (
-    <div className="kit-frame relative h-full min-h-0" data-active={active ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
+    <div className="kit-frame relative flex h-full min-h-0 flex-col" data-active={active ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
+      <KitDraftControls connection={connection} kitId={kit.kitId} path={path} active={active} />
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
-      <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="size-full border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
+      <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="min-h-0 w-full flex-1 border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
       {failure ? (
         <div className="absolute inset-0 flex items-center justify-center bg-background p-8" role="alert">
           <div className="max-w-md rounded-xl border border-border bg-background p-6 text-center">
