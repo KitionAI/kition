@@ -2,11 +2,11 @@ import { isolateHistory } from '@codemirror/commands'
 import { EditorState, type ChangeSpec } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { readWorkspaceDocument, type WorkspaceDocumentExternalChange } from '@/services/desktop'
+import { readWorkspaceDocument, writeWorkspaceDocument, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { flushWorkspaceEditSessions, discardWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { redoDocument, undoDocument } from './documentHistory'
 import { DocumentSession, isDocumentFileMissing, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
-import { openDocument } from './documentStore'
+import { compactStoredDocument, openDocument } from './documentStore'
 import {
   readWorkspaceMarkdown,
   registerDocumentSession,
@@ -73,6 +73,7 @@ vi.mock('./documentStore', async () => {
       await desktop.writeWorkspaceDocument(input.path, fileText, { expected_root: input.expectedRoot ?? '', expected_content: input.expectedFileText })
       return { fileText, meta: input.opened.meta }
     }),
+    compactStoredDocument: vi.fn(async () => undefined),
     mergeFileIntoReplica: vi.fn((opened: any, baseText: string, fileText: string) => opened.replica.transact(
       { kind: 'import', principal: 'file' },
       (tx: any) => mergeExternalText(tx, opened.rootId, analyzeText(baseText).text, analyzeText(fileText).text, tx.text(opened.rootId, 'body')),
@@ -828,6 +829,32 @@ describe('DocumentSession: closing and failures', () => {
     session.dispose()
     await settle()
     expect(disk.files.get(PATH)).toBe('abc')
+  })
+
+  it('writes the last keystroke at once when the tab closes within the save delay, then compacts the store', async () => {
+    disk.files.set(PATH, 'a')
+    const closedSaveFailed = vi.fn()
+    const session = new DocumentSession(PATH, { root: '/vault' }, { closedSaveFailed })
+    sessions.push(session)
+    await session.start('a')
+    const a = editor(session)
+    vi.mocked(compactStoredDocument).mockClear()
+    const writes = disk.writes.length
+    a.type({ from: 1, insert: 'b' })
+    // Closed well before the save delay runs out: the close itself writes the keystroke.
+    session.dispose()
+    await settle()
+    expect(disk.writes.slice(writes)).toEqual([{ path: PATH, content: 'ab', expected: 'a' }])
+    expect(disk.files.get(PATH)).toBe('ab')
+    // The store is compacted only after the final save, from the replica that holds the keystroke.
+    expect(compactStoredDocument).toHaveBeenCalledOnce()
+    const compactedAfter = vi.mocked(compactStoredDocument).mock.invocationCallOrder[0]!
+    expect(compactedAfter).toBeGreaterThan(Math.max(...vi.mocked(writeWorkspaceDocument).mock.invocationCallOrder))
+    const [opened] = vi.mocked(compactStoredDocument).mock.calls[0]!
+    expect((opened as { replica: { version: () => unknown } }).replica.version()).toEqual(session.replica?.version())
+    await settle(SAVE_DELAY_MS * 2)
+    expect(disk.writes).toHaveLength(writes + 1)
+    expect(closedSaveFailed).not.toHaveBeenCalled()
   })
 
   it('rejects a flush of a read-only file, retries, and discards on request', async () => {

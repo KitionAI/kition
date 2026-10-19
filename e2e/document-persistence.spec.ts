@@ -173,21 +173,40 @@ test('saves typing when the tab closes within 100 ms of the last keystroke', asy
   const writesBefore = await countMarkdownFileWrites(page)
 
   await caretAtEndOf(page, 'Close me.')
-  const typingStartedAt = await page.evaluate(() => performance.now())
-  await page.keyboard.type('!')
-  const typedAt = Date.now()
-  // Close the tab from inside the page, so nothing waits between the keystroke and the close.
-  const closing = await page.evaluate((path) => {
-    const files = window.__KITION_MARKDOWN_E2E_FILES__
-    if (!files) throw new Error('The Markdown e2e files are unavailable')
-    const writes = files.writes[path] ?? 0
-    const close = document.querySelector<HTMLButtonElement>('.document-tab-list .document-tab-close')
-    if (!close) throw new Error('The document tab has no close button')
-    const at = performance.now()
-    close.click()
-    return { at, writes }
+  // The page closes the tab itself as soon as the keystroke has been handled (its keyup), so the
+  // interval is the page's own and no round trip of the test runner (which a busy machine
+  // stretches) sits between the keystroke and the close.
+  type Closing = { typedAt: number; at: number; writes: number }
+  const typingStartedAt = await page.evaluate((path) => {
+    const marks = window as Window & { __KITION_E2E_CLOSING__?: Closing | string }
+    let typedAt = Number.NaN
+    window.addEventListener('keydown', () => {
+      typedAt = performance.now()
+    }, { capture: true, once: true })
+    window.addEventListener('keyup', () => {
+      setTimeout(() => {
+        const files = window.__KITION_MARKDOWN_E2E_FILES__
+        const close = document.querySelector<HTMLButtonElement>('.document-tab-list .document-tab-close')
+        if (!files || !close) {
+          marks.__KITION_E2E_CLOSING__ = !files ? 'The Markdown e2e files are unavailable' : 'The document tab has no close button'
+          return
+        }
+        const writes = files.writes[path] ?? 0
+        const at = performance.now()
+        close.click()
+        marks.__KITION_E2E_CLOSING__ = { typedAt, at, writes }
+      }, 0)
+    }, { capture: true, once: true })
+    return performance.now()
   }, DEFAULT_DOC_PATH)
-  expect(Date.now() - typedAt).toBeLessThan(100)
+  await page.keyboard.type('!')
+  let closing: Closing | string | undefined
+  await expect.poll(async () => {
+    closing = await page.evaluate(() => (window as Window & { __KITION_E2E_CLOSING__?: Closing | string }).__KITION_E2E_CLOSING__)
+    return closing !== undefined
+  }).toBe(true)
+  if (typeof closing !== 'object') throw new Error(closing ?? 'The tab did not close')
+  expect(closing.at - closing.typedAt).toBeLessThan(100)
   expect(closing.writes).toBe(writesBefore)
 
   await expectNoOpenDocument(page)
