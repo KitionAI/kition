@@ -22,6 +22,10 @@ use serde_json::{Map, Value, json};
 use schema::Schemas;
 
 const NEGATIVE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// The DeepSeek Harness release a conformance report targets (Kit Standard D4): the one Kition's
+/// harness follows (`kition_harness::DSH_TARGET`) and `@kition/dsh-kits` is pinned to.
+pub const DSH_TARGET: &str = kition_harness::DSH_TARGET;
 const SCREENSHOT_MAX_SIZE: u32 = 512;
 
 /// A document the suite opens, edits with one command, saves, and reopens.
@@ -65,6 +69,30 @@ pub struct Report {
     /// need. Empty without such a manifest.
     pub levels: Vec<&'static str>,
     pub level_notes: Vec<String>,
+}
+
+/// Whether `@kition/dsh-kits` registers the kit's tools in DeepSeek Harness (Kit Standard D1). The
+/// package mounts Kition's MCP server (`kition-kits-mcp`, `POST /v1/mcp/kits`), which serves the
+/// tools of every kit Kition knows, so a kit is registered when Kition's kit list has its id with
+/// the manifest's agent prefix. Answers the tools' name pattern, or why it is not registered.
+fn dsh_registration(manifest: &Value) -> Result<String, String> {
+    let id = manifest["id"].as_str().unwrap_or_default();
+    let prefix = manifest["agent"]["prefix"].as_str().unwrap_or_default();
+    let known = kition_kits::KITS
+        .iter()
+        .find(|kit| kit.id == id)
+        .ok_or_else(|| {
+            format!(
+                "Kition's kit list (kition_kits::KITS), which kition-kits-mcp serves, has no `{id}`"
+            )
+        })?;
+    if known.agent.prefix != prefix {
+        return Err(format!(
+            "Kition serves `{id}` with the agent prefix `{}`, the manifest says `{prefix}`",
+            known.agent.prefix
+        ));
+    }
+    Ok(format!("mcp__kition__{prefix}_*"))
 }
 
 impl Report {
@@ -138,6 +166,7 @@ impl Report {
                 out.push_str(&format!(" ({})", self.level_notes.join("; ")));
             }
             out.push('\n');
+            out.push_str(&format!("DeepSeek Harness target: {DSH_TARGET}\n"));
         }
         out
     }
@@ -370,7 +399,17 @@ fn standard_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
         levels.push("L2");
         if has("agent") {
             levels.push("L3");
-            notes.push("L4 needs registration in @kition/dsh-kits".to_owned());
+            match dsh_registration(manifest) {
+                Ok(tools) => {
+                    levels.push("L4");
+                    notes.push(format!(
+                        "L4 through @kition/dsh-kits as {tools}, DeepSeek Harness {DSH_TARGET}"
+                    ));
+                }
+                Err(reason) => notes.push(format!(
+                    "L4 needs registration in @kition/dsh-kits: {reason}"
+                )),
+            }
         } else {
             notes.push("L3 needs agent".to_owned());
         }
@@ -980,9 +1019,80 @@ mod tests {
         let (levels, notes) = standard_levels(&manifest);
         assert_eq!(levels, ["L1", "L2", "L3", "L5"]);
         assert!(notes.iter().any(|note| note.starts_with("L6")));
+        assert!(
+            notes
+                .iter()
+                .any(|note| note.starts_with("L4 needs registration") && note.contains("no ``")),
+            "{notes:?}"
+        );
         manifest["standard"] = json!("1.1");
         manifest["engine"]["contract"] = json!(1);
         assert_eq!(standard_levels(&manifest).0, ["L1", "L2", "L3"]);
+    }
+
+    #[test]
+    fn a_kit_kition_serves_over_mcp_reaches_l4_against_the_pinned_harness() {
+        let mut manifest = json!({
+            "id": "kit.slide",
+            "standard": "2.0",
+            "engine": { "contract": 2 },
+            "ui": { "mode": "embedded" },
+            "creates": [{ "id": "deck" }],
+            "agent": { "prefix": "slide", "tools": "document" },
+            "model": { "schema": "model/schema.json", "schemaVersion": 1 },
+            "objectModel": { "namespace": "Slides" }
+        });
+        let (levels, notes) = standard_levels(&manifest);
+        assert_eq!(levels, ["L1", "L2", "L3", "L4", "L5"]);
+        assert!(
+            notes
+                .iter()
+                .any(|note| note.contains("mcp__kition__slide_*") && note.contains(DSH_TARGET)),
+            "{notes:?}"
+        );
+        manifest["agent"]["prefix"] = json!("deck");
+        let (levels, notes) = standard_levels(&manifest);
+        assert!(!levels.contains(&"L4"));
+        assert!(
+            notes.iter().any(|note| note.contains("`slide`")),
+            "{notes:?}"
+        );
+        let report = Report {
+            checks: vec![CheckResult {
+                id: "manifest",
+                title: "t",
+                outcome: Outcome::Passed,
+            }],
+            levels,
+            level_notes: notes,
+        };
+        assert!(
+            report
+                .render()
+                .contains(&format!("DeepSeek Harness target: {DSH_TARGET}"))
+        );
+    }
+
+    /// `@kition/dsh-kits` (kition-sdk) pins the same release, when its checkout is beside this one.
+    #[test]
+    fn dsh_kits_pins_the_same_release() {
+        let package = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../kition-sdk/packages/dsh-kits/package.json");
+        let Ok(text) = std::fs::read_to_string(&package) else {
+            eprintln!("skipped: no kition-sdk checkout beside this repository");
+            return;
+        };
+        let package: Value = serde_json::from_str(&text).unwrap_or_else(|err| panic!("{err}"));
+        let pinned = &package["dsh"];
+        assert_eq!(
+            format!(
+                "{} ({})",
+                pinned["target"].as_str().unwrap_or_default(),
+                pinned["commit"].as_str().unwrap_or_default()
+            ),
+            DSH_TARGET,
+            "@kition/dsh-kits `dsh` pin: {pinned}"
+        );
     }
 
     #[test]

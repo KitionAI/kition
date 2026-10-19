@@ -15,7 +15,9 @@ name = "kition-kit-conformance"
 path = "src/main.rs"
 
 [dependencies]
+kition-harness = { workspace = true }
 kition-kit-host = { workspace = true }
+kition-kits = { workspace = true }
 kition-kit-protocol = { workspace = true, features = ["tokio"] }
 
 base64 = { workspace = true }
