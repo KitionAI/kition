@@ -791,7 +791,25 @@
     "removeMember": "移除 {{name}}",
     "revokeLink": "撤销此链接",
     "linkRevoked": "链接已撤销，它将无法再打开此文档。",
-    "newLink": "创建链接"
+    "newLink": "创建链接",
+    "syncToDevices": "同步到我的设备",
+    "syncing": "正在同步到你的设备…",
+    "syncFailed": "无法同步此文档",
+    "synced": {
+      "title": "你同步的文档",
+      "description": "你同步到设备或协同编辑、但尚未在此工作区中的文档。在这里打开后，它也会在这台设备上保持同步。",
+      "folder": "打开到",
+      "workspaceRoot": "工作区（顶层）",
+      "loading": "正在加载",
+      "empty": "你同步的文档都已在此工作区中。",
+      "private": "仅你自己",
+      "shared": "已共享",
+      "meta": "{{access}} · 更新于 {{updated}} · {{size}}",
+      "openHere": "在此打开",
+      "cannotOpen": "此版本的 Kition 无法打开这类文档。",
+      "done": "已同步到你的设备",
+      "doneDescription": "现在的编辑会同步到你的其他设备。可在那台设备的“你同步的文档”中打开它。"
+    }
   },
   "documentSchema": {
     "label": "新版本提示",

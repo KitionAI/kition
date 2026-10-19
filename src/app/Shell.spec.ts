@@ -33,6 +33,7 @@ vi.mock('@/features/history/public', () => ({
 vi.mock('@/features/collab/public', () => ({
   CollabDialogs: () => null,
   requestOpenSharedDocument: vi.fn(),
+  requestSyncedDocuments: vi.fn(),
   startCollab: () => () => undefined,
   useCollabAvailable: () => false,
 }))

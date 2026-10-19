@@ -154,7 +154,15 @@
       "unauthorized": "O servidor não reconhece sua conta. Entre novamente.",
       "unreachable": "Não foi possível acessar o servidor. Verifique o endereço e sua conexão.",
       "invalid": "Informe um endereço WebSocket que comece com ws:// ou wss://."
-    }
+    },
+    "devicesSection": "Seus dispositivos",
+    "syncAllTitle": "Sincronizar todos os meus documentos",
+    "syncAllDescription": "Todo documento que você abrir é sincronizado com seus outros dispositivos. Quando desativado, escolha Sincronizar com meus dispositivos em um documento.",
+    "syncAllOffline": "Defina um servidor de sincronização para sincronizar documentos entre seus dispositivos.",
+    "syncAllFailed": "Não foi possível alterar esta configuração. Verifique sua conexão e tente novamente.",
+    "syncedTitle": "Documentos sincronizados",
+    "syncedDescription": "Abra neste espaço de trabalho documentos dos seus outros dispositivos.",
+    "syncedShow": "Mostrar"
   },
   "themeMode": {
     "light": "Claro",

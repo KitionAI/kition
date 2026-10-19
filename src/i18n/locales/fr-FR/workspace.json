@@ -791,7 +791,25 @@
     "removeMember": "Retirer {{name}}",
     "revokeLink": "Révoquer ce lien",
     "linkRevoked": "Lien révoqué. Il n’ouvre plus ce document.",
-    "newLink": "Créer un lien"
+    "newLink": "Créer un lien",
+    "syncToDevices": "Synchroniser avec mes appareils",
+    "syncing": "Synchronisation avec vos appareils…",
+    "syncFailed": "Impossible de synchroniser ce document",
+    "synced": {
+      "title": "Vos documents synchronisés",
+      "description": "Les documents que vous synchronisez avec vos appareils ou coéditez et qui ne sont pas encore dans cet espace de travail. Ouvrez-en un ici pour le garder synchronisé sur cet appareil aussi.",
+      "folder": "Ouvrir dans",
+      "workspaceRoot": "Espace de travail (racine)",
+      "loading": "Chargement",
+      "empty": "Tous les documents que vous synchronisez sont déjà dans cet espace de travail.",
+      "private": "Vous seul",
+      "shared": "Partagé",
+      "meta": "{{access}} · Modifié le {{updated}} · {{size}}",
+      "openHere": "Ouvrir ici",
+      "cannotOpen": "Cette version de Kition ne peut pas ouvrir ce type de document.",
+      "done": "Synchronisé avec vos appareils",
+      "doneDescription": "Vos modifications parviennent désormais à vos autres appareils. Ouvrez-le là-bas depuis Vos documents synchronisés."
+    }
   },
   "documentSchema": {
     "label": "Avis de version plus récente",

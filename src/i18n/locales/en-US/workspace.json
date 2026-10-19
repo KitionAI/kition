@@ -791,7 +791,25 @@
     "removeMember": "Remove {{name}}",
     "revokeLink": "Revoke this link",
     "linkRevoked": "Link revoked. It no longer opens this document.",
-    "newLink": "Create a link"
+    "newLink": "Create a link",
+    "syncToDevices": "Sync to my devices",
+    "syncing": "Syncing to your devices…",
+    "syncFailed": "Could not sync this document",
+    "synced": {
+      "title": "Your synced documents",
+      "description": "Documents you sync to your devices or co-edit that are not in this workspace yet. Open one here to keep it in sync on this device too.",
+      "folder": "Open into",
+      "workspaceRoot": "Workspace (top level)",
+      "loading": "Loading",
+      "empty": "Every document you sync is already in this workspace.",
+      "private": "Only you",
+      "shared": "Shared",
+      "meta": "{{access}} · Updated {{updated}} · {{size}}",
+      "openHere": "Open here",
+      "cannotOpen": "This version of Kition cannot open this kind of document.",
+      "done": "Synced to your devices",
+      "doneDescription": "Edits now reach your other devices. Open it there from Your synced documents."
+    }
   },
   "documentSchema": {
     "label": "Newer version notice",

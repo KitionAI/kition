@@ -44,7 +44,9 @@
     "extensions": "Extensions",
     "runScript": "Run script…",
     "runScriptHint": "Run a workspace .mjs script on this document",
-    "shortcuts": "⌘K opens the palette; inside a kit editor, press ⌘."
+    "shortcuts": "⌘K opens the palette; inside a kit editor, press ⌘.",
+    "syncedDocuments": "Your synced documents",
+    "syncedDocumentsHint": "Open a document from your other devices here"
   },
   "viewport": {
     "tooNarrow": "The viewport is too narrow. The editor and Workflow canvas may not be fully usable at this size. Consider enlarging the window to at least 480px."

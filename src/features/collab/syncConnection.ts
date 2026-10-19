@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import { SyncClient, type ConnectionState, type SyncTransport } from '@/lib/sync'
 import { setCommentIdentity } from '@/services/documentComments'
+import { followAccountSettings, resetAccountSettings } from './accountSettings'
 import { loadCollabToken, syncServerUrl } from './collabSettings'
 
 /** `off`: co-editing is not set up in this window (no server or no session). */
@@ -64,6 +65,8 @@ async function openSyncClient(): Promise<SyncClient | null> {
   client.onState((next) => {
     if (next === 'online' && client.principal) setCommentIdentity(client.principal)
   })
+  // This person's account settings ("Sync all my documents"), on every connect.
+  followAccountSettings(client)
   current = { client, url, token }
   // A first attempt that fails keeps retrying with backoff; the state store follows it.
   client.connect(url, token).catch(() => undefined)
@@ -94,6 +97,7 @@ export async function onlineSyncClient(timeoutMs = 10_000): Promise<SyncClient> 
 export function closeSyncClient() {
   current?.client.close()
   current = null
+  resetAccountSettings()
   setState('off')
 }
 

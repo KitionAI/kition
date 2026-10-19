@@ -154,7 +154,15 @@
       "unauthorized": "服务器无法识别你的账户，请重新登录。",
       "unreachable": "无法连接服务器。请检查地址和网络连接。",
       "invalid": "请输入以 ws:// 或 wss:// 开头的 WebSocket 地址。"
-    }
+    },
+    "devicesSection": "你的设备",
+    "syncAllTitle": "同步我的所有文档",
+    "syncAllDescription": "你打开的每个文档都会同步到你的其他设备。关闭时，可在文档上选择“同步到我的设备”。",
+    "syncAllOffline": "设置同步服务器后，即可在设备之间同步文档。",
+    "syncAllFailed": "无法更改此设置。请检查网络连接后重试。",
+    "syncedTitle": "已同步的文档",
+    "syncedDescription": "在此工作区中打开来自你其他设备的文档。",
+    "syncedShow": "查看"
   },
   "themeMode": {
     "light": "浅色",

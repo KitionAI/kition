@@ -44,7 +44,9 @@
     "extensions": "扩展",
     "runScript": "运行脚本…",
     "runScriptHint": "对此文档运行工作区中的 .mjs 脚本",
-    "shortcuts": "⌘K 打开命令面板；在套件编辑器中请按 ⌘."
+    "shortcuts": "⌘K 打开命令面板；在套件编辑器中请按 ⌘.",
+    "syncedDocuments": "你同步的文档",
+    "syncedDocumentsHint": "在这里打开来自你其他设备的文档"
   },
   "viewport": {
     "tooNarrow": "视口过窄，编辑器和 Workflow 画布在此尺寸下可能无法完整使用，建议放大窗口至 480px 以上。"

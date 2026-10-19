@@ -5,8 +5,22 @@
  * relayed, and when), `startRelay` in `@/lib/sync` (how), `collabDocuments.ts` (which documents), and
  * `shareActions.ts` (sharing, and opening a shared document).
  */
-export { startCollab } from './collabRelays'
-export { CollabDialogs, requestOpenSharedDocument, requestShareDocument, useCollabAvailable } from './CollabDialogs'
+import { startAutoSync } from './autoSync'
+import { startCollab as startRelays } from './collabRelays'
+
+/** Starts co-editing in this window (relays, and "Sync all my documents"); answers its stop. */
+export function startCollab() {
+  const stopRelays = startRelays()
+  const stopAutoSync = startAutoSync()
+  return () => {
+    stopAutoSync()
+    stopRelays()
+  }
+}
+export { CollabDialogs, requestOpenSharedDocument, requestShareDocument, requestSyncDocument, requestSyncedDocuments, useCollabAvailable } from './CollabDialogs'
+export { isDocumentCollab } from './collabStore'
+export { useSyncAllDocuments } from './accountSettings'
+export { refreshAccountSettings, setSyncAllDocuments } from './syncedDocuments'
 export { CollabTabIndicators } from './CollabStatus'
 export { canShareDocument } from './shareActions'
 export { setSyncServerUrl, syncServerUrl, testSyncServer, type SyncServerTest } from './collabSettings'

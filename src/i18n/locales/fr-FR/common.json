@@ -44,7 +44,9 @@
     "extensions": "Extensions",
     "runScript": "Exécuter un script…",
     "runScriptHint": "Exécute un script .mjs de l’espace de travail sur ce document",
-    "shortcuts": "⌘K ouvre la palette ; dans un éditeur de kit, appuyez sur ⌘."
+    "shortcuts": "⌘K ouvre la palette ; dans un éditeur de kit, appuyez sur ⌘.",
+    "syncedDocuments": "Vos documents synchronisés",
+    "syncedDocumentsHint": "Ouvrir ici un document de vos autres appareils"
   },
   "viewport": {
     "tooNarrow": "La fenêtre est trop étroite. L'éditeur et le canevas Workflow peuvent ne pas être pleinement utilisables à cette taille. Agrandissez la fenêtre à au moins 480px."

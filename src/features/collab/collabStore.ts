@@ -20,6 +20,11 @@ export function setDocumentCollab(path: string, value: DocumentCollab | null) {
   emit()
 }
 
+/** Whether the document at `path` relays to a room now (shared, or synced to this person's devices). */
+export function isDocumentCollab(path: string) {
+  return documents.has(path)
+}
+
 /** The colour of an agent's avatar: the product purple, whoever runs it. */
 export const AGENT_PEER_COLOR = '#5645d4'
 

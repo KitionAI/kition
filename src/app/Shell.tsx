@@ -25,7 +25,7 @@ import {
   openWorkspaceWindow,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
-import { CollabDialogs, requestOpenSharedDocument, startCollab, useCollabAvailable } from '@/features/collab/public'
+import { CollabDialogs, requestOpenSharedDocument, requestSyncedDocuments, startCollab, useCollabAvailable } from '@/features/collab/public'
 import { embeddedKitFor, sharedKitFor } from '@/features/workspace/components/kits/kitEditors'
 import { DocumentHistoryHost } from '@/features/history/public'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
@@ -820,7 +820,7 @@ export function AppShell() {
       ) : null}
       {commandOpen ? (
         <Suspense fallback={null}>
-          <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} onOpenShared={collabAvailable ? requestOpenSharedDocument : undefined} />
+          <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} onOpenShared={collabAvailable ? requestOpenSharedDocument : undefined} onOpenSynced={collabAvailable ? requestSyncedDocuments : undefined} />
         </Suspense>
       ) : null}
       {paletteOpen ? (

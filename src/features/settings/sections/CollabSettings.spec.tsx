@@ -11,6 +11,10 @@ vi.mock('@/features/collab/public', () => {
     }),
     testSyncServer: vi.fn(async () => 'ok'),
     useCollabConnectionState: () => 'off',
+    useSyncAllDocuments: () => false,
+    setSyncAllDocuments: vi.fn(async () => undefined),
+    refreshAccountSettings: vi.fn(async () => undefined),
+    requestSyncedDocuments: vi.fn(),
   }
 })
 
@@ -74,6 +78,20 @@ describe('CollabSettings', () => {
     await click('collab-server-test')
     expect(collab.testSyncServer).toHaveBeenCalledWith('wss://sync.example.test/v1/sync')
     expect(container.querySelector('[data-testid="collab-server-test"]')?.getAttribute('data-result')).toBe('ok')
+  })
+
+  it('reads "Sync all my documents" from the server, turns it on, and shows the synced documents', async () => {
+    await mount()
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(collab.refreshAccountSettings).toHaveBeenCalled()
+    const toggle = container.querySelector<HTMLButtonElement>('[data-testid="collab-sync-all"]')!
+    expect(toggle.disabled).toBe(false)
+    await click('collab-sync-all')
+    expect(collab.setSyncAllDocuments).toHaveBeenCalledWith(true)
+    await click('collab-synced-show')
+    expect(collab.requestSyncedDocuments).toHaveBeenCalled()
   })
 
   it('turns co-editing off with an empty URL', async () => {

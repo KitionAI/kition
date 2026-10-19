@@ -154,7 +154,15 @@
       "unauthorized": "The server does not recognize your account. Sign in again.",
       "unreachable": "The server cannot be reached. Check the address and your connection.",
       "invalid": "Enter a WebSocket address that starts with ws:// or wss://."
-    }
+    },
+    "devicesSection": "Your devices",
+    "syncAllTitle": "Sync all my documents",
+    "syncAllDescription": "Every document you open syncs to your other devices. When this is off, choose Sync to my devices on a document.",
+    "syncAllOffline": "Set a sync server to sync documents across your devices.",
+    "syncAllFailed": "Could not change this setting. Check your connection and try again.",
+    "syncedTitle": "Synced documents",
+    "syncedDescription": "Open documents from your other devices in this workspace.",
+    "syncedShow": "Show"
   },
   "themeMode": {
     "light": "Light",

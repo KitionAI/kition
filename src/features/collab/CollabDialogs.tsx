@@ -8,10 +8,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { collabConfigured, CollabUnavailableError } from './syncConnection'
 import { onCollabSettingsChanged } from './collabSettings'
 import { ShareDialog, type SharedDialogDocument } from './ShareDialog'
-import { openSharedDocument, roomRole, shareDocument, type SharedKit } from './shareActions'
+import { openSharedDocument, roomRole, shareDocument, syncDocumentToMyDevices, type SharedKit } from './shareActions'
+import { SyncedDocumentsDialog } from './SyncedDocumentsDialog'
 
 const SHARE_EVENT = 'kition:collab:share'
 const OPEN_SHARED_EVENT = 'kition:collab:open-shared'
+const SYNC_EVENT = 'kition:collab:sync-to-devices'
+const SYNCED_LIST_EVENT = 'kition:collab:synced-documents'
+
+/** Asks the window's co-editing dialogs to sync the document open at `path` to this person's devices. */
+export function requestSyncDocument(path: string) {
+  window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { path } }))
+}
+
+/** Asks the window's co-editing dialogs to show this person's synced documents not in this workspace yet. */
+export function requestSyncedDocuments() {
+  window.dispatchEvent(new Event(SYNCED_LIST_EVENT))
+}
 
 /** Asks the window's co-editing dialogs to share the document open at `path`. */
 export function requestShareDocument(path: string) {
@@ -59,8 +72,8 @@ async function copyText(text: string) {
 }
 
 /**
- * The window's co-editing dialogs: sharing a document (and showing its link), and opening a
- * shared one from a link. `kitFor` names the kits this build can open shared documents of;
+ * The window's co-editing dialogs: sharing a document (and showing its link), opening a shared
+ * one from a link, syncing a document to this person's devices, and their synced documents. `kitFor` names the kits this build can open shared documents of;
  * `onOpened` shows a document opened from a link.
  */
 export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) => SharedKit | null; onOpened: (path: string) => void }) {
@@ -69,6 +82,7 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
   /** The document being shared, while its dialog is open. */
   const [shared, setShared] = useState<SharedDialogDocument | null>(null)
   const [opening, setOpening] = useState<{ link: string; busy: boolean; error: string } | null>(null)
+  const [listing, setListing] = useState(false)
 
   useEffect(() => {
     const onShare = (event: Event) => {
@@ -88,11 +102,31 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
       )
     }
     const onOpenShared = () => setOpening({ link: '', busy: false, error: '' })
+    const onSync = (event: Event) => {
+      const path = (event as CustomEvent<{ path?: string }>).detail?.path
+      if (!path) return
+      const toast = notify.loading(t('collab.syncing'))
+      void syncDocumentToMyDevices(path).then(
+        () => {
+          notify.dismiss(toast)
+          notify.success(t('collab.synced.done'), { description: t('collab.synced.doneDescription') })
+        },
+        (error: unknown) => {
+          notify.dismiss(toast)
+          notify.error(t('collab.syncFailed'), { description: errorText(error) })
+        },
+      )
+    }
+    const onList = () => setListing(true)
     window.addEventListener(SHARE_EVENT, onShare)
     window.addEventListener(OPEN_SHARED_EVENT, onOpenShared)
+    window.addEventListener(SYNC_EVENT, onSync)
+    window.addEventListener(SYNCED_LIST_EVENT, onList)
     return () => {
       window.removeEventListener(SHARE_EVENT, onShare)
       window.removeEventListener(OPEN_SHARED_EVENT, onOpenShared)
+      window.removeEventListener(SYNC_EVENT, onSync)
+      window.removeEventListener(SYNCED_LIST_EVENT, onList)
     }
   }, [errorText, t])
 
@@ -112,6 +146,7 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
   return (
     <>
       <ShareDialog shared={shared} onClose={() => setShared(null)} errorText={errorText} />
+      <SyncedDocumentsDialog open={listing} onClose={() => setListing(false)} kitFor={kitFor} onOpened={onOpened} errorText={errorText} />
       <Dialog open={Boolean(opening)} onOpenChange={(open) => !open && !opening?.busy && setOpening(null)}>
         <DialogContent size="sm" className="gap-0 p-0" data-testid="collab-open-dialog">
           <form
