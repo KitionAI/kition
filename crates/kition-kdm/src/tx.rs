@@ -66,6 +66,20 @@ impl Staged<'_> {
         self.ops.iter().any(|op| matches!(op, Op::RaiseSchema { .. }))
     }
 
+    /// The registers the operations write: `(object, map field, key, value)`, the map field `None`
+    /// for an object's own register field, the value `None` for a deleted map key.
+    pub(crate) fn register_writes(&self) -> Vec<(ObjectId, Option<String>, String, Option<Value>)> {
+        self.ops
+            .iter()
+            .filter_map(|op| match op {
+                Op::Set { id, field, value } => Some((id.clone(), None, (*field).to_owned(), Some(value.clone()))),
+                Op::MapSet { id, field, key, value } => Some((id.clone(), Some((*field).to_owned()), key.clone(), Some(value.clone()))),
+                Op::MapDelete { id, field, key } => Some((id.clone(), Some((*field).to_owned()), key.clone(), None)),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Applies the operations without committing, calling `touched` with each changed object.
     /// On success the transaction's node handles resolve.
     pub(crate) fn apply(self, doc: &LoroDoc, schema: &Schema, touched: impl FnMut(&ObjectId)) -> Result<()> {

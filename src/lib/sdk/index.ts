@@ -4,6 +4,7 @@
  * `@kition/embed` editor, a `KitConnection`, or a kit engine; queue reads and writes on typed
  * proxies; `sync()` sends them as one batch.
  */
+export { advertiseCapabilitySets, CAPABILITY_SETS, capabilitySets, supports } from './capabilities'
 export { BatchError, OBJECT_MODEL_CAPABILITY, type BatchOp, type BatchRequest, type BatchResult, type LoadedObject, type Origin } from '../kdm'
 export { exchangeBackend, ModelDocument, openDocument, type ChangedEvent, type ModelBackend, type OpenOptions } from './document'
 export { Exchange, type ModelDescription } from './exchange'

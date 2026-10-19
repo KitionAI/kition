@@ -1,11 +1,12 @@
 // Copied from kition-sdk crates/kition-kdm/src/replica.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::mem;
 use std::sync::{Arc, Mutex};
 
 use loro::event::Diff;
 use loro::{
-    Counter, ExportMode, Frontiers, Index, LoroDoc, LoroError, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer, VersionRange, VersionVector,
+    ContainerID, Counter, ExportMode, Frontiers, Index, LoroDoc, LoroError, LoroValue, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer,
+    VersionRange, VersionVector,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -68,7 +69,21 @@ pub struct Replica {
     /// For each replica whose changes an import could not apply yet, the counter just past the
     /// last of them. They are applied (and no longer pending) once [`Replica::version`] reaches it.
     pending: HashMap<PeerID, Counter>,
+    /// Registers an import changed: the candidates for another replica's later write, which an
+    /// undo or redo must keep (M12). Pruned at each undo and redo.
+    imported_registers: HashSet<Register>,
+    /// Registers an undo or redo put back to another replica's value, with that value: still that
+    /// replica's write for the next undo or redo, though this replica wrote it last.
+    kept_registers: HashMap<Register, Option<LoroValue>>,
+    /// The value this replica last wrote to each register (`None`: deleted it). Another replica's
+    /// later write of the same value is not a change an undo must keep (a script's own undo that
+    /// puts back this replica's value, for instance).
+    own_registers: HashMap<Register, Option<LoroValue>>,
 }
+
+/// A register: one key of a map container inside an object (a register field, or one key of a
+/// `map` field).
+type Register = (ContainerID, String);
 
 impl Replica {
     /// A new, empty document. Only one replica creates a document; others [`Replica::load`] it.
@@ -159,7 +174,19 @@ impl Replica {
     fn attach(doc: LoroDoc, doc_id: DocId, schema: Arc<Schema>, actor: ActorId) -> Result<Self> {
         doc.set_peer_id(actor.get()).map_err(engine)?;
         let undo = undo_manager(&doc);
-        Ok(Self { doc, doc_id, schema, actor, undo, grouping: false, changed: BTreeSet::new(), pending: HashMap::new() })
+        Ok(Self {
+            doc,
+            doc_id,
+            schema,
+            actor,
+            undo,
+            grouping: false,
+            changed: BTreeSet::new(),
+            pending: HashMap::new(),
+            imported_registers: HashSet::new(),
+            kept_registers: HashMap::new(),
+            own_registers: HashMap::new(),
+        })
     }
 
     pub fn doc_id(&self) -> DocId {
@@ -206,6 +233,7 @@ impl Replica {
             });
         }
         let before = self.doc.state_frontiers();
+        let writes = staged.register_writes();
         let mut touched = BTreeSet::new();
         if let Err(error) = staged.apply(&self.doc, &schema, |id| {
             touched.insert(id.clone());
@@ -229,6 +257,7 @@ impl Replica {
         self.doc.set_next_commit_message(&origin.encode());
         self.doc.commit();
         self.changed.extend(touched);
+        self.note_own_writes(writes);
         Ok(value)
     }
 
@@ -322,12 +351,13 @@ impl Replica {
         }
         let before = self.doc.oplog_frontiers();
         let doc = &self.doc;
-        let (imported, changed) = observe_changes(doc, || doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string())));
+        let (imported, changed, registers) = observe_changes(doc, || doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string())));
         if let Some(found) = read::min_schema_version(&self.doc).filter(|found| *found > u64::from(self.schema.schema_version)) {
             self.restore(&before)?;
             return Err(KdmError::NewerSchema { found, reads: self.schema.schema_version });
         }
         let status = imported?;
+        self.imported_registers.extend(registers);
         self.note_pending(status.pending.as_ref());
         self.changed.extend(changed.iter().cloned());
         self.reopen_undo_group();
@@ -343,6 +373,10 @@ impl Replica {
         doc.set_peer_id(self.actor.get()).map_err(engine)?;
         self.undo = undo_manager(&doc);
         self.doc = doc;
+        // No undo history is left to protect registers from.
+        self.imported_registers.clear();
+        self.kept_registers.clear();
+        self.own_registers.clear();
         self.reopen_undo_group();
         Ok(())
     }
@@ -379,23 +413,127 @@ impl Replica {
     }
 
     /// Undoes this replica's last transaction. Changes from other replicas are kept, including
-    /// later changes to the same object. The objects it changes are reported by
+    /// later changes to the same object and to the same field: a register another replica wrote
+    /// after the undone transaction keeps that value (M12). The objects it changes are reported by
     /// [`Replica::take_changed`].
     pub fn undo(&mut self) -> Result<bool> {
-        self.end_undo_group();
-        let undo = &mut self.undo;
-        let (done, changed) = observe_changes(&self.doc, || undo.undo().map_err(engine));
-        self.changed.extend(changed);
-        done
+        self.undo_or_redo(true)
     }
 
-    /// Redoes the last undone transaction, reporting what it changes like [`Replica::undo`].
+    /// Redoes the last undone transaction, keeping other replicas' later changes and reporting
+    /// what it changes like [`Replica::undo`].
     pub fn redo(&mut self) -> Result<bool> {
+        self.undo_or_redo(false)
+    }
+
+    fn undo_or_redo(&mut self, undo: bool) -> Result<bool> {
         self.end_undo_group();
-        let undo = &mut self.undo;
-        let (done, changed) = observe_changes(&self.doc, || undo.redo().map_err(engine));
+        let others = self.others_registers();
+        let manager = &mut self.undo;
+        let (done, changed, registers) = observe_changes(&self.doc, || if undo { manager.undo() } else { manager.redo() }.map_err(engine));
         self.changed.extend(changed);
-        done
+        let done = done?;
+        // The engine's inverse operation sets a register back even when another replica wrote it
+        // later; put those back to the other replica's value, in a `system` commit (not an undo
+        // step), so the result is as if the undo had skipped them.
+        for register in &registers {
+            let map = self.doc.get_map(register.0.clone());
+            match map.get(&register.1) {
+                Some(ValueOrContainer::Value(value)) => {
+                    self.own_registers.insert(register.clone(), Some(value));
+                }
+                Some(ValueOrContainer::Container(_)) => {}
+                None => {
+                    self.own_registers.insert(register.clone(), None);
+                }
+            }
+        }
+        let touched: HashSet<&Register> = registers.iter().collect();
+        let mut restored = false;
+        for (register, value) in others {
+            if !touched.contains(&register) {
+                continue;
+            }
+            let map = self.doc.get_map(register.0.clone());
+            let now = match map.get(&register.1) {
+                Some(ValueOrContainer::Value(value)) => Some(value),
+                Some(ValueOrContainer::Container(_)) => continue,
+                None => None,
+            };
+            if now == value {
+                continue;
+            }
+            match &value {
+                Some(value) => map.insert(&register.1, value.clone()).map_err(engine)?,
+                None => map.delete(&register.1).map_err(engine)?,
+            }
+            self.kept_registers.insert(register, value);
+            restored = true;
+        }
+        if restored {
+            self.doc.set_next_commit_origin(OriginKind::System.as_str());
+            self.doc.set_next_commit_message(&Origin::system("keep-later-changes").encode());
+            self.doc.commit();
+        }
+        Ok(done)
+    }
+
+    /// Records the registers a local transaction wrote, with their values.
+    fn note_own_writes(&mut self, writes: Vec<(ObjectId, Option<String>, String, Option<Value>)>) {
+        for (id, field, key, value) in writes {
+            let Ok(object) = read::object_map(&self.doc, &id) else { continue };
+            let container = match field {
+                None => loro::ContainerTrait::id(&object),
+                Some(field) => match object.get(&field) {
+                    Some(ValueOrContainer::Container(loro::Container::Map(map))) => loro::ContainerTrait::id(&map),
+                    _ => continue,
+                },
+            };
+            self.own_registers.insert((container, key), value.map(crate::value::to_loro));
+        }
+    }
+
+    /// The registers whose current value another replica wrote, with that value (`None`: deleted
+    /// there): an import changed them and another peer wrote them last, or an earlier undo or
+    /// redo kept them for another replica and nothing changed them since. Prunes both candidate
+    /// sets of registers that are this replica's own again.
+    fn others_registers(&mut self) -> Vec<(Register, Option<LoroValue>)> {
+        let doc = &self.doc;
+        let me = self.actor.get();
+        let current = |register: &Register| {
+            let map = doc.get_map(register.0.clone());
+            let value = match map.get(&register.1) {
+                Some(ValueOrContainer::Value(value)) => Some(Some(value)),
+                Some(ValueOrContainer::Container(_)) => None,
+                None => Some(None),
+            };
+            (map, value)
+        };
+        let mut out = Vec::new();
+        self.kept_registers.retain(|register, kept| match current(register) {
+            (_, Some(value)) if &value == kept => {
+                out.push((register.clone(), value));
+                true
+            }
+            _ => false,
+        });
+        let own = &self.own_registers;
+        self.imported_registers.retain(|register| {
+            if self.kept_registers.contains_key(register) {
+                return true;
+            }
+            let (map, value) = current(register);
+            match (map.get_last_editor(&register.1), value) {
+                // Another replica wrote this replica's own value again: nothing to keep.
+                (Some(peer), Some(value)) if peer != me && own.get(register) == Some(&value) => true,
+                (Some(peer), Some(value)) if peer != me => {
+                    out.push((register.clone(), value));
+                    true
+                }
+                _ => false,
+            }
+        });
+        out
     }
 
     /// Whether [`Replica::undo`] has a transaction of this replica to undo.
@@ -469,13 +607,15 @@ fn undo_manager(doc: &LoroDoc) -> UndoManager {
     undo
 }
 
-/// Runs `run` while observing which objects change. Change events are observed only during the
-/// call: a document-wide subscription makes large local transactions slow to commit.
-fn observe_changes<T>(doc: &LoroDoc, run: impl FnOnce() -> T) -> (T, BTreeSet<ObjectId>) {
-    let found = Arc::new(Mutex::new(BTreeSet::new()));
+/// Runs `run` while observing which objects change, and which registers inside objects. Change
+/// events are observed only during the call: a document-wide subscription makes large local
+/// transactions slow to commit.
+fn observe_changes<T>(doc: &LoroDoc, run: impl FnOnce() -> T) -> (T, BTreeSet<ObjectId>, Vec<Register>) {
+    let found = Arc::new(Mutex::new((BTreeSet::new(), Vec::new())));
     let sink = Arc::clone(&found);
     let subscription = doc.subscribe_root(Arc::new(move |event| {
-        let Ok(mut set) = sink.lock() else { return };
+        let Ok(mut found) = sink.lock() else { return };
+        let (set, registers) = &mut *found;
         for diff in event.events.iter() {
             let in_objects = matches!(diff.path.first(), Some((_, Index::Key(key))) if key.to_string() == OBJECTS);
             if !in_objects {
@@ -484,6 +624,13 @@ fn observe_changes<T>(doc: &LoroDoc, run: impl FnOnce() -> T) -> (T, BTreeSet<Ob
             match diff.path.get(1) {
                 Some((_, Index::Key(key))) => {
                     set.insert(ObjectId::from_string(key.to_string()));
+                    if let Diff::Map(map) = &diff.diff {
+                        for (field, value) in map.updated.iter() {
+                            if !matches!(value, Some(ValueOrContainer::Container(_))) {
+                                registers.push((diff.target.clone(), field.to_string()));
+                            }
+                        }
+                    }
                 }
                 _ => {
                     if let Diff::Map(map) = &diff.diff {
@@ -495,8 +642,8 @@ fn observe_changes<T>(doc: &LoroDoc, run: impl FnOnce() -> T) -> (T, BTreeSet<Ob
     }));
     let value = run();
     drop(subscription);
-    let changed = found.lock().map(|mut set| mem::take(&mut *set)).unwrap_or_default();
-    (value, changed)
+    let (changed, registers) = found.lock().map(|mut found| mem::take(&mut *found)).unwrap_or_default();
+    (value, changed, registers)
 }
 
 /// Every byte string a replica exports: 4-byte magic, the 16-byte document UUID, then the engine's

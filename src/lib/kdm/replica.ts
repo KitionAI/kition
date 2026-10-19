@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/kdm/src/replica.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import { isContainer as isEngineContainer, LoroDoc, UndoManager, type ImportStatus, type LoroEventBatch, type LoroTreeNode, type PeerID } from 'loro-crdt'
+import { isContainer as isEngineContainer, LoroDoc, UndoManager, type ContainerID, type ImportStatus, type LoroEventBatch, type LoroTreeNode, type PeerID } from 'loro-crdt'
 import { canonicalText, compareKeys } from './canonical'
 import { checkString } from './args'
 import { open, sameBytes, Version, wrap } from './envelope'
@@ -39,20 +39,38 @@ const engineMessage = (error: unknown): string => (error instanceof Error ? erro
  * Runs `run` while observing which objects change. Change events are observed only during the
  * call: a document-wide subscription makes large local transactions slow to commit.
  */
-function observeChanges<T>(doc: LoroDoc, run: () => T): { value: T; changed: Set<ObjectId> } {
+function observeChanges<T>(doc: LoroDoc, run: () => T): { value: T; changed: Set<ObjectId>; registers: Register[] } {
   const found = new Set<ObjectId>()
+  const registers: Register[] = []
   const unsubscribe = doc.subscribe((batch: LoroEventBatch) => {
     for (const event of batch.events) {
       if (event.path[0] !== read.OBJECTS) continue
-      if (event.path.length >= 2) found.add(String(event.path[1]))
-      else if (event.diff.type === 'map') for (const key of Object.keys(event.diff.updated)) found.add(key)
+      if (event.path.length >= 2) {
+        found.add(String(event.path[1]))
+        if (event.diff.type === 'map') {
+          for (const [key, value] of Object.entries(event.diff.updated)) if (!isEngineContainer(value)) registers.push(registerKey(event.target, key))
+        }
+      } else if (event.diff.type === 'map') for (const key of Object.keys(event.diff.updated)) found.add(key)
     }
   })
   try {
-    return { value: run(), changed: found }
+    return { value: run(), changed: found, registers }
   } finally {
     unsubscribe()
   }
+}
+
+/**
+ * A register: one key of a map container inside an object (a register field, or one key of a
+ * `map` field), as `<container id>\u0000<key>`.
+ */
+type Register = string
+
+const registerKey = (container: string, key: string): Register => `${container}\u0000${key}`
+
+const registerParts = (register: Register): [string, string] => {
+  const at = register.indexOf('\u0000')
+  return [register.slice(0, at), register.slice(at + 1)]
 }
 
 const sorted = (ids: Iterable<ObjectId>): Set<ObjectId> => new Set([...ids].sort(compareKeys))
@@ -81,6 +99,22 @@ export class Replica {
    * of them. They are applied (and no longer pending) once `version` reaches it.
    */
   private readonly pending = new Map<PeerID, number>()
+  /**
+   * Registers an import changed: the candidates for another replica's later write, which an undo
+   * or redo must keep (M12). Pruned at each undo and redo.
+   */
+  private importedRegisters = new Set<Register>()
+  /**
+   * Registers an undo or redo put back to another replica's value, with that value: still that
+   * replica's write for the next undo or redo, though this replica wrote it last.
+   */
+  private keptRegisters = new Map<Register, unknown>()
+  /**
+   * The value this replica last wrote to each register (`undefined`: deleted it). Another
+   * replica's later write of the same value is not a change an undo must keep (a script's own undo
+   * that puts back this replica's value, for instance).
+   */
+  private ownRegisters = new Map<Register, unknown>()
 
   private constructor(
     private doc: LoroDoc,
@@ -241,6 +275,7 @@ export class Replica {
     }
     this.doc.commit({ origin: origin.kind, message: encodeOrigin(origin) })
     for (const id of touched) this.changed.add(id)
+    this.noteOwnWrites(staged.registerWrites)
     return result
   }
 
@@ -370,7 +405,7 @@ export class Replica {
     if (!sameBytes(docId, this.docIdBytes)) throw errors.wrongDocument(this.docId, uuidFromBytes(docId))
     const before = this.doc.oplogFrontiers()
     let failure: unknown = null
-    const { value: status, changed } = observeChanges(this.doc, () => {
+    const { value: status, changed, registers } = observeChanges(this.doc, () => {
       try {
         return this.doc.import(engine)
       } catch (error) {
@@ -384,6 +419,7 @@ export class Replica {
       throw errors.newerSchema(found, this.schema.schemaVersion)
     }
     if (status === null) throw errors.encoding(engineMessage(failure))
+    for (const register of registers) this.importedRegisters.add(register)
     this.notePending(status)
     for (const id of changed) this.changed.add(id)
     this.reopenUndoGroup()
@@ -423,13 +459,15 @@ export class Replica {
 
   /**
    * Undoes this replica's last transaction. Changes from other replicas are kept, including later
-   * changes to the same object. The objects it changes are reported by `takeChanged`.
+   * changes to the same object and to the same field: a register another replica wrote after the
+   * undone transaction keeps that value (M12). The objects it changes are reported by
+   * `takeChanged`.
    */
   undo(): boolean {
     return this.history(() => this.undoManager.undo())
   }
 
-  /** Redoes the last undone transaction, reporting what it changes like `undo`. */
+  /** Redoes the last undone transaction, keeping other replicas' later changes and reporting what it changes like `undo`. */
   redo(): boolean {
     return this.history(() => this.undoManager.redo())
   }
@@ -514,6 +552,10 @@ export class Replica {
     this.undoManager.free()
     this.doc = doc
     this.undoManager = undoManagerOf(doc)
+    // No undo history is left to protect registers from.
+    this.importedRegisters.clear()
+    this.keptRegisters.clear()
+    this.ownRegisters.clear()
     this.reopenUndoGroup()
   }
 
@@ -553,7 +595,8 @@ export class Replica {
   private history(run: () => boolean): boolean {
     this.idle()
     this.closeUndoGroup()
-    const { value, changed } = observeChanges(this.doc, () => {
+    const others = this.othersRegisters()
+    const { value, changed, registers } = observeChanges(this.doc, () => {
       try {
         return run()
       } catch (error) {
@@ -561,11 +604,89 @@ export class Replica {
       }
     })
     for (const id of changed) this.changed.add(id)
+    for (const register of registers) {
+      const now = this.registerValue(register)
+      if (!now.container) this.ownRegisters.set(register, now.value)
+    }
+    // The engine's inverse operation sets a register back even when another replica wrote it
+    // later; put those back to the other replica's value, in a `system` commit (not an undo
+    // step), so the result is as if the undo had skipped them.
+    const touched = new Set(registers)
+    let restored = false
+    for (const [register, value] of others) {
+      if (!touched.has(register)) continue
+      const now = this.registerValue(register)
+      if (now.container || sameValue(now.value, value)) continue
+      const [container, key] = registerParts(register)
+      const map = this.doc.getContainerById(container as ContainerID) as unknown as { set(key: string, value: unknown): void; delete(key: string): void }
+      if (value === undefined) map.delete(key)
+      else map.set(key, value)
+      this.keptRegisters.set(register, value)
+      restored = true
+    }
+    if (restored) this.doc.commit({ origin: SYSTEM, message: encodeOrigin(system('keep-later-changes')) })
     return value
+  }
+
+  /** A register's value now (`undefined`: absent), and whether it holds a container instead. */
+  private registerValue(register: Register): { value: unknown; container: boolean; lastEditor: PeerID | undefined } {
+    const [container, key] = registerParts(register)
+    const map = this.doc.getContainerById(container as ContainerID) as unknown as
+      | { get(key: string): unknown; getLastEditor(key: string): PeerID | undefined }
+      | undefined
+    if (!map) return { value: undefined, container: false, lastEditor: undefined }
+    const value = map.get(key)
+    return { value, container: isEngineContainer(value), lastEditor: map.getLastEditor(key) }
+  }
+
+  /**
+   * The registers whose current value another replica wrote, with that value (`undefined`:
+   * deleted there): an import changed them and another peer wrote them last, or an earlier undo or
+   * redo kept them for another replica and nothing changed them since. Prunes both candidate sets
+   * of registers that are this replica's own again.
+   */
+  private othersRegisters(): Array<[Register, unknown]> {
+    const out: Array<[Register, unknown]> = []
+    const me = String(this.actor) as PeerID
+    for (const [register, kept] of this.keptRegisters) {
+      const now = this.registerValue(register)
+      if (!now.container && sameValue(now.value, kept)) out.push([register, kept])
+      else this.keptRegisters.delete(register)
+    }
+    for (const register of this.importedRegisters) {
+      if (this.keptRegisters.has(register)) continue
+      const now = this.registerValue(register)
+      if (now.container || now.lastEditor === undefined || now.lastEditor === me) this.importedRegisters.delete(register)
+      // Another replica wrote this replica's own value again: nothing to keep.
+      else if (!(this.ownRegisters.has(register) && sameValue(this.ownRegisters.get(register), now.value))) out.push([register, now.value])
+    }
+    return out
+  }
+
+  /** Records the registers a local transaction wrote, with their values. */
+  private noteOwnWrites(writes: ReadonlyArray<{ id: ObjectId; field: string | null; key: string; value: unknown }>): void {
+    for (const { id, field, key, value } of writes) {
+      let container: string
+      try {
+        const object = read.objectMap(this.doc, id)
+        if (field === null) container = object.id
+        else {
+          const map = object.get(field)
+          if (!isEngineContainer(map) || map.kind() !== 'Map') continue
+          container = map.id
+        }
+      } catch {
+        continue
+      }
+      this.ownRegisters.set(registerKey(container, key), value)
+    }
   }
 }
 
 type Frontiers = ReturnType<LoroDoc['frontiers']>
+
+/** Register values are JSON values: equal when their canonical texts are. */
+const sameValue = (a: unknown, b: unknown): boolean => a === b || (a !== undefined && b !== undefined && canonicalText(a) === canonicalText(b))
 
 /** The undo manager of a replica's document. */
 const undoManagerOf = (doc: LoroDoc): UndoManager => new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT] })

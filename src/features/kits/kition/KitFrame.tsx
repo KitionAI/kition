@@ -5,6 +5,7 @@ import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { mountKit, type KitConnection } from '../host/mountKit'
+import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
@@ -131,6 +132,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
+          capabilitySets: KITION_CAPABILITY_SETS,
           handlers: {
             read: async ({ path: wanted, offset, length }) => {
               const read = await KITION_KIT_HOST.read(workspacePath(wanted))

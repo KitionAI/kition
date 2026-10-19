@@ -93,8 +93,13 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`. */
   capabilities: string[]
+  /**
+   * The capability sets this host serves (Kit Standard 2.0 section 10, minor version 1.5), such as
+   * `KitModel 1.0` or `KitCollab 1.0`; absent from older hosts.
+   */
+  capabilitySets?: string[]
   /** The UI configuration (section 9); absent means none. */
   ui?: KitUiConfig
 }
@@ -126,6 +131,21 @@ export type ModelBatchParams = { origin?: unknown; ops?: Array<Record<string, un
 export type ModelBatchResult = { refs: Record<string, string>; results: unknown[]; loaded: Array<{ id: string; type: string; fields: Record<string, unknown> }>; version?: ArrayBuffer | null }
 export type ModelErrorData = { code: 'invalid-op' | 'not-found' | 'invalid-value' | 'read-only' | 'command-failed'; index: number | null; message: string }
 
+/**
+ * A lease on one scope of a co-edited document (capability `lease`, section 7b): who holds it,
+ * and whether that is this session (`self`).
+ */
+export type KitLease = { scope: string; holder: { principalId: string; name: string; self: boolean } }
+
+/** `error.data.reason` of a refused `host/leaseAcquire`: another session holds the scope (its lease in `data.lease`). */
+export const LEASE_HELD_REASON = 'held'
+
+/**
+ * A conflict object the kit's repair pass recorded (section 7c, standard 2.0 M22): a merge it
+ * could not resolve by itself, kept in the document until someone resolves it.
+ */
+export type KitConflict = { id: string; kind: string; summary: string }
+
 /** Requests the host sends, with their params and results. */
 export type HostToKit = {
   'ui/initialize': [InitializeParams, InitializeResult]
@@ -155,6 +175,8 @@ export type HostNotifications = {
   'ui/focus': Record<string, never>
   /** Replaces the UI configuration (section 9). */
   'ui/configure': { ui: KitUiConfig }
+  /** The document's leases changed (capability `lease`, section 7b): the whole list. */
+  'lease/changed': { leases: KitLease[] }
 }
 
 /** Requests the kit sends. */
@@ -168,6 +190,15 @@ export type KitToHost = {
   'host/replicaWrite': [{ path: string } & StoredReplica, Record<string, never>]
   /** Keeps what the person hid (capability `customize`, section 9). */
   'host/customize': [{ personal: { hide: string[] } }, Record<string, never>]
+  /**
+   * Takes (or renews) the lease on `scope` and keeps it until `host/leaseRelease` or the kit
+   * closes (capability `lease`, section 7b). `lease` is `null` when there is nobody to coordinate
+   * with (the document is not co-edited, or the host is offline): the kit goes ahead.
+   */
+  'host/leaseAcquire': [{ scope: string; ttl?: number }, { lease: KitLease | null }]
+  'host/leaseRelease': [{ scope: string }, Record<string, never>]
+  /** The document's leases now (capability `lease`). */
+  'host/leases': [Record<string, never>, { leases: KitLease[] }]
 }
 
 /** Notifications the kit sends. */
@@ -178,6 +209,8 @@ export type KitNotifications = {
   'replica/changed': { version: ArrayBuffer }
   /** A host button was pressed (section 9). */
   'ui/action': { id: string; document: { path: string; dirty: boolean; revision: number } }
+  /** The document's unresolved conflict objects changed (section 7c): the whole list. */
+  'document/conflicts': { conflicts: KitConflict[] }
 }
 
 type Message = { jsonrpc: '2.0'; id?: string; method?: string; params?: unknown; result?: unknown; error?: { code: number; message: string; data?: unknown } }

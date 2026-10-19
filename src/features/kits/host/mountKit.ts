@@ -8,13 +8,16 @@ import {
   KIT_UI_PROTOCOL,
   KitPeer,
   KitRpcError,
+  LEASE_HELD_REASON,
   isReady,
   type AiRunResult,
   type AiStep,
   type DocumentState,
   type HostPeer,
   type InitializeResult,
+  type KitConflict,
   type KitDocumentInit,
+  type KitLease,
   type KitNotifications,
   type KitTheme,
   type KitToHost,
@@ -25,8 +28,8 @@ import {
   type StoredReplica,
 } from './protocol'
 
-export { KIT_UI_PROTOCOL, KitRpcError }
-export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
+export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
+export type { DocumentState, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -55,6 +58,20 @@ export type KitHostHandlers = {
   customize?: (params: Params<'host/customize'>) => void | Promise<void>
   /** `ui/action`: one of the host's buttons was pressed. */
   action?: (params: KitNotifications['ui/action']) => void
+  /**
+   * Leases on the document's scopes (capability `lease`, section 7b): `acquire` takes or renews
+   * one and keeps it until `release` (or the kit closes, when the host releases what it still
+   * holds for it); answers `{ lease: null }` when nobody is there to coordinate with. A refusal
+   * throws a `KitRpcError` whose `data` is `{ reason: 'held', lease }` (or `{ reason: 'read-only' }`).
+   * `list` is the document's leases now; `KitConnection.leasesChanged` tells the kit of changes.
+   */
+  leases?: {
+    acquire: (params: Params<'host/leaseAcquire'>) => Result<'host/leaseAcquire'>
+    release: (params: Params<'host/leaseRelease'>) => void | Promise<void>
+    list: () => KitLease[] | Promise<KitLease[]>
+  }
+  /** `document/conflicts`: the document's unresolved conflict objects (section 7c). */
+  conflicts?: (params: KitNotifications['document/conflicts']) => void
 }
 
 export type MountOptions = {
@@ -67,6 +84,8 @@ export type MountOptions = {
   shortcuts: string[]
   /** The UI configuration (protocol section 9). */
   ui?: KitUiConfig
+  /** The capability sets the host serves (`ui/initialize` `capabilitySets`), such as `KitCollab 1.0`. */
+  capabilitySets?: string[]
   handlers: KitHostHandlers
   /** How long the kit may take to open the document. */
   timeoutMs?: number
@@ -89,6 +108,8 @@ export type KitConnection = {
    * latest configuration as the `ui` option.
    */
   configure: (ui: KitUiConfig) => void
+  /** Tells the kit the document's leases changed (`lease/changed`, capability `lease`). */
+  leasesChanged: (leases: KitLease[]) => void
   /** The editor's elements (`ui/elements`). Rejects with -32601 when the kit did not declare its UI. */
   elements: () => Promise<KitUiElement[]>
   ai: {
@@ -129,7 +150,7 @@ function unsupported(method: string): never {
  */
 export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promise<KitConnection> {
   const { handlers } = options
-  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize }
+  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize, lease: handlers.leases }
   const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
   const timeout = options.timeoutMs ?? 120_000
 
@@ -158,6 +179,17 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       await handlers.customize(params)
       return {}
     })
+    peer.handle('host/leaseAcquire', (params) => (handlers.leases ? handlers.leases.acquire(params) : unsupported('host/leaseAcquire')))
+    peer.handle('host/leaseRelease', async (params) => {
+      if (!handlers.leases) unsupported('host/leaseRelease')
+      await handlers.leases.release(params)
+      return {}
+    })
+    peer.handle('host/leases', async () => {
+      if (!handlers.leases) unsupported('host/leases')
+      return { leases: await handlers.leases.list() }
+    })
+    peer.on('document/conflicts', (params) => handlers.conflicts?.(params))
     peer.on('document/changed', (state) => handlers.changed(state))
     peer.on('replica/changed', (params) => handlers.replicaChanged?.(params))
     peer.on('host/notify', (notice) => handlers.notify?.(notice))
@@ -168,7 +200,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
     const document = { ...options.document, bytes: options.document.bytes?.slice(0) }
     const initialized = peer.request(
       'ui/initialize',
-      { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities, ui: options.ui },
+      { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities, capabilitySets: options.capabilitySets ?? [], ui: options.ui },
       { transfer: true },
     )
     return { peer, initialized }
@@ -235,6 +267,7 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     setLocale: (locale) => peer.notify('ui/locale', { locale }),
     focus: () => peer.notify('ui/focus', {}),
     configure: (ui) => peer.notify('ui/configure', { ui }),
+    leasesChanged: (leases) => peer.notify('lease/changed', { leases }),
     elements: () => peer.request('ui/elements', {}),
     ai: {
       inspect: () => peer.request('ai/inspect', {}),

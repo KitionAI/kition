@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
-  "title": "Kition kit manifest (kit.json), Kition Kit Standard 1.0",
-  "description": "See docs/standard.md section 3. tools/check-manifest.mjs checks these rules and K1 to K7.",
+  "title": "Kition kit manifest (kit.json), Kition Kit Standard 1.1 and 2.0",
+  "description": "See docs/standard.md section 3 and docs/standard-2.md section 8.1. tools/check-manifest.mjs checks these rules, K1 to K8, and K10 to K14.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,8 +20,8 @@
     },
     "standard": {
       "type": "string",
-      "pattern": "^1\\.[0-9]+$",
-      "description": "The standard version the kit conforms to (K2)."
+      "pattern": "^[12]\\.[0-9]+$",
+      "description": "The standard version the kit conforms to (K2): 1.x, or 2.x for a kit on the Kit Data Model (K10)."
     },
     "id": {
       "type": "string",
@@ -39,6 +39,13 @@
     "license": {
       "type": "string",
       "minLength": 1
+    },
+    "distribution": {
+      "enum": [
+        "default",
+        "plugin"
+      ],
+      "description": "default: ships with a host; plugin: installed on demand (K11)."
     },
     "upstream": {
       "type": "object",
@@ -79,10 +86,18 @@
           "pattern": "^[A-Z][A-Za-z0-9]*$",
           "description": "The exported document class."
         },
+        "runtime": {
+          "enum": [
+            "rust-wasm",
+            "ts-worker"
+          ],
+          "description": "How the engine runs in the page: a Rust engine compiled to WebAssembly, or a TypeScript engine in a worker (K11)."
+        },
         "contract": {
           "type": "integer",
           "minimum": 1,
-          "description": "contractVersion() (K3)."
+          "description": "The engine contract: 1 (KitDocument), or 2 (a KDM session, standard 2.0 section 8). contractVersion() answers it, or 1 for a contract 2 engine built before contract 2 hosts (K3).",
+          "maximum": 2
         },
         "crate": {
           "type": "string"
@@ -215,8 +230,86 @@
           "selection-outline",
           "pages",
           "timeline",
-          "engine-tools"
+          "engine-tools",
+          "kdm"
         ]
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "schemaVersion"
+      ],
+      "description": "The kit's KDM schema (standard 2.0 section 3, K12).",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "pattern": "^[^/\\\\][^\\\\]*\\.json$",
+          "description": "The schema file's path relative to kit.json (model/schema.json in a package)."
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Equal to the schema file's schemaVersion."
+        }
+      }
+    },
+    "collaboration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "merge"
+      ],
+      "description": "How the kit's documents merge (standard 2.0 section 8.1, K13).",
+      "properties": {
+        "merge": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "structured",
+              "rich-text",
+              "database",
+              "grid",
+              "timeline",
+              "raster",
+              "overlay",
+              "binary"
+            ]
+          },
+          "description": "The merge classes the kit's data maps to."
+        },
+        "leases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "The scopes the kit leases before coordinated edits, as patterns such as layer:{objectId}, or * (M21)."
+        },
+        "serverValidation": {
+          "type": "boolean",
+          "description": "Whether a server should validate pushed changes with the kit's headless engine."
+        }
+      }
+    },
+    "objectModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace"
+      ],
+      "description": "The kit's object model (KitObjectModel, K14).",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$",
+          "description": "The namespace of the generated typings (@kition/sdk kits/<namespace>)."
+        }
       }
     },
     "extras": {

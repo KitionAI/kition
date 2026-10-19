@@ -39,6 +39,11 @@ export interface Staged {
    * success the transaction's node handles resolve. Throws the engine's refusal as a `KdmError`.
    */
   apply(doc: LoroDoc, schema: Schema, touched: (id: ObjectId) => void): void
+  /**
+   * The registers the operations write: the object, the map field (`null` for the object's own
+   * register field), the key, and the value (`undefined` for a deleted map key).
+   */
+  readonly registerWrites: Array<{ id: ObjectId; field: string | null; key: string; value: unknown }>
 }
 
 /**
@@ -94,6 +99,12 @@ export class Tx {
         empty: ops.length === 0,
         raisesSchema: ops.some((op) => op.op === 'raiseSchema'),
         apply: (target, applySchema, touched) => apply(target, applySchema, ops, nodes, touched),
+        registerWrites: ops.flatMap((op): Array<{ id: ObjectId; field: string | null; key: string; value: unknown }> => {
+          if (op.op === 'set') return [{ id: op.id, field: null, key: op.field, value: op.value as unknown }]
+          if (op.op === 'mapSet') return [{ id: op.id, field: op.field, key: op.key, value: op.value as unknown }]
+          if (op.op === 'mapDelete') return [{ id: op.id, field: op.field, key: op.key, value: undefined }]
+          return []
+        }),
       },
     }
   }

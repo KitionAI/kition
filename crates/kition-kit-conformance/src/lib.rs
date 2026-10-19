@@ -60,6 +60,11 @@ pub struct CheckResult {
 #[derive(Clone, Debug, Default)]
 pub struct Report {
     pub checks: Vec<CheckResult>,
+    /// The conformance levels a Kition Kit Standard manifest supports (`L1` to `L5`; kition-sdk
+    /// `docs/standard.md` section 9 and `docs/standard-2.md` section 11), with what the others
+    /// need. Empty without such a manifest.
+    pub levels: Vec<&'static str>,
+    pub level_notes: Vec<String>,
 }
 
 impl Report {
@@ -122,6 +127,18 @@ impl Report {
             .filter(|check| check.outcome == Outcome::Passed)
             .count();
         out.push_str(&format!("{passed}/{} checks passed\n", self.checks.len()));
+        if !self.levels.is_empty() {
+            let levels = if self.passed() {
+                self.levels.join(" ")
+            } else {
+                "none (a check failed)".to_owned()
+            };
+            out.push_str(&format!("Levels: {levels}"));
+            if !self.level_notes.is_empty() {
+                out.push_str(&format!(" ({})", self.level_notes.join("; ")));
+            }
+            out.push('\n');
+        }
         out
     }
 }
@@ -192,6 +209,8 @@ pub async fn run(options: &Options) -> Report {
         Some(path) => match check_manifest(&schemas, path) {
             Ok(manifest) => {
                 report.record("manifest", title("manifest"), Ok(()));
+                report.levels.clone_from(&manifest.levels.0);
+                report.level_notes.clone_from(&manifest.levels.1);
                 Some(manifest)
             }
             Err(error) => {
@@ -332,6 +351,47 @@ struct ManifestFacts {
     version: String,
     /// The tool groups commands must belong to, when the manifest declares them.
     tool_groups: Option<Vec<String>>,
+    /// A Kition Kit Standard manifest's levels and notes ([`standard_levels`]).
+    levels: (Vec<&'static str>, Vec<String>),
+}
+
+/// The conformance levels a valid Kition Kit Standard manifest supports, as far as the manifest
+/// and this suite show them, and what the others need. L5 needs engine contract 2 under standard
+/// 2.x with a KDM schema and an object model namespace; L6 the kit's convergence suite
+/// (`kition-convergence`), which `tools/check-manifest.mjs --convergence` reads.
+fn standard_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
+    let mut levels = vec!["L1"];
+    let mut notes = Vec::new();
+    let has = |key: &str| manifest.get(key).is_some_and(|value| !value.is_null());
+    let creates = manifest["creates"]
+        .as_array()
+        .is_some_and(|items| !items.is_empty());
+    if has("ui") && creates {
+        levels.push("L2");
+        if has("agent") {
+            levels.push("L3");
+            notes.push("L4 needs registration in @kition/dsh-kits".to_owned());
+        } else {
+            notes.push("L3 needs agent".to_owned());
+        }
+    } else {
+        notes.push("L2 needs ui and creates".to_owned());
+    }
+    let major = manifest["standard"]
+        .as_str()
+        .and_then(|standard| standard.split('.').next())
+        .and_then(|major| major.parse::<u32>().ok())
+        .unwrap_or(1);
+    if major >= 2 && manifest["engine"]["contract"] == 2 && has("model") && has("objectModel") {
+        levels.push("L5");
+        notes.push("L6 needs the kit's convergence suite (kition-convergence)".to_owned());
+    } else {
+        notes.push(
+            "L5 needs standard 2.x: engine contract 2, a KDM schema, and an object model namespace"
+                .to_owned(),
+        );
+    }
+    (levels, notes)
 }
 
 /// The protocol a Kition Kit Standard manifest's `headless` section must name.
@@ -358,6 +418,7 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
             id: text("id"),
             version: text("version"),
             tool_groups: None,
+            levels: standard_levels(&value),
         });
     }
     schemas.manifest(&value)?;
@@ -378,6 +439,7 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
         }),
         id: manifest.id,
         version: manifest.version,
+        levels: (Vec::new(), Vec::new()),
     })
 }
 
@@ -902,6 +964,25 @@ mod tests {
             schemas.standard(&manifest).is_err(),
             "an embedded editor needs an entry"
         );
+    }
+
+    #[test]
+    fn reports_the_levels_of_a_standard_manifest() {
+        let mut manifest = json!({
+            "standard": "2.0",
+            "engine": { "contract": 2 },
+            "ui": { "mode": "embedded" },
+            "creates": [{ "id": "doc" }],
+            "agent": { "prefix": "doc", "tools": "document" },
+            "model": { "schema": "model/schema.json", "schemaVersion": 1 },
+            "objectModel": { "namespace": "Doc" }
+        });
+        let (levels, notes) = standard_levels(&manifest);
+        assert_eq!(levels, ["L1", "L2", "L3", "L5"]);
+        assert!(notes.iter().any(|note| note.starts_with("L6")));
+        manifest["standard"] = json!("1.1");
+        manifest["engine"]["contract"] = json!(1);
+        assert_eq!(standard_levels(&manifest).0, ["L1", "L2", "L3"]);
     }
 
     #[test]

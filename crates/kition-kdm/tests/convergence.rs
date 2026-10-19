@@ -144,6 +144,65 @@ fn undo_keeps_a_collaborators_later_change() {
 }
 
 #[test]
+fn undo_and_redo_keep_a_collaborators_later_write_to_the_same_field() {
+    let mut net = network(2, 8);
+    let (_, shape) = page_with_shape(&mut net.replicas[0]);
+    net.sync_all().unwrap();
+    net.replicas[0].transact(&person(), |tx| tx.set(&shape, "x", json!(50))).unwrap();
+    net.replicas[0].transact(&person(), |tx| tx.set(&shape, "y", json!(60))).unwrap();
+    net.sync_all().unwrap();
+    net.replicas[1].transact(&person(), |tx| tx.set(&shape, "x", json!(70))).unwrap();
+    net.sync_all().unwrap();
+    // Undoing y reverts y alone; undoing x keeps the collaborator's later 70.
+    assert!(net.replicas[0].undo().unwrap());
+    assert!(net.replicas[0].undo().unwrap());
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    assert_eq!(net.replicas[1].get(&shape, "x").unwrap(), json!(70));
+    assert_eq!(net.replicas[1].get(&shape, "y").unwrap(), json!(20));
+    // Redo restores the person's y, and still keeps the collaborator's x.
+    assert!(net.replicas[0].redo().unwrap());
+    assert!(net.replicas[0].redo().unwrap());
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    assert_eq!(net.replicas[0].get(&shape, "x").unwrap(), json!(70));
+    assert_eq!(net.replicas[0].get(&shape, "y").unwrap(), json!(60));
+    // The kept value is not an undo step of its own.
+    assert!(net.replicas[0].undo().unwrap());
+    assert_eq!(net.replicas[0].get(&shape, "y").unwrap(), json!(20));
+}
+
+#[test]
+fn undo_reverts_a_field_another_replica_put_back_to_this_replicas_value() {
+    let mut net = network(2, 8);
+    let (_, shape) = page_with_shape(&mut net.replicas[0]);
+    net.sync_all().unwrap();
+    net.replicas[0].transact(&person(), |tx| tx.set(&shape, "x", json!(50))).unwrap();
+    net.sync_all().unwrap();
+    // Replica 1 writes x and takes it back: the value is replica 0's own again.
+    net.replicas[1].transact(&person(), |tx| tx.set(&shape, "x", json!(70))).unwrap();
+    assert!(net.replicas[1].undo().unwrap());
+    net.sync_all().unwrap();
+    assert_eq!(net.replicas[0].get(&shape, "x").unwrap(), json!(50));
+    assert!(net.replicas[0].undo().unwrap());
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    assert_eq!(net.replicas[1].get(&shape, "x").unwrap(), json!(10));
+}
+
+#[test]
+fn undo_still_reverts_a_field_nobody_else_wrote_later() {
+    let mut net = network(2, 8);
+    let (_, shape) = page_with_shape(&mut net.replicas[0]);
+    net.sync_all().unwrap();
+    net.replicas[1].transact(&person(), |tx| tx.set(&shape, "x", json!(70))).unwrap();
+    net.sync_all().unwrap();
+    net.replicas[0].transact(&person(), |tx| tx.set(&shape, "x", json!(80))).unwrap();
+    assert!(net.replicas[0].undo().unwrap());
+    assert_eq!(net.replicas[0].get(&shape, "x").unwrap(), json!(70));
+}
+
+#[test]
 fn import_reports_the_changed_objects() {
     let mut net = network(2, 9);
     let (page, shape) = page_with_shape(&mut net.replicas[0]);
