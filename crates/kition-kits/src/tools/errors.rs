@@ -187,7 +187,9 @@ impl KitToolError {
 /// The code of an editor failure that names none, from its message.
 fn guess(message: &str) -> ErrorCode {
     let lower = message.to_lowercase();
-    if lower.contains("unknown command") || lower.contains("no such command") {
+    if lower.contains("no draft") {
+        ErrorCode::DraftRequired
+    } else if lower.contains("unknown command") || lower.contains("no such command") {
         ErrorCode::UnknownCommand
     } else if lower.contains("read-only") {
         ErrorCode::READ_ONLY
@@ -322,6 +324,10 @@ mod tests {
         assert_eq!(denied.code, ErrorCode::NotAllowed);
         let plain = KitToolError::from_bridge("step 0 (`no.such`) failed: unknown command".into());
         assert_eq!(plain.code, ErrorCode::UnknownCommand);
+        let undrafted = KitToolError::from_bridge(
+            "there is no draft of this document: run the agent with `draft: true` first".into(),
+        );
+        assert_eq!(undrafted.code, ErrorCode::DraftRequired);
         let late = KitToolError::from_bridge(BridgeFailure {
             message: "the editor did not answer `kit/call` in time".into(),
             data: Some(json!({ "reason": "timeout" })),

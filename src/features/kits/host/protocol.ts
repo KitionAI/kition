@@ -136,7 +136,8 @@ export type AiRunResult = { completed: Array<{ command: string; changed: boolean
  * describe its own schema runs the batch with it. A refused batch answers an error whose `data`
  * is `ModelErrorData`.
  */
-export type ModelBatchParams = { origin?: unknown; ops?: Array<Record<string, unknown>>; load?: Array<Record<string, unknown>>; schema?: object }
+/** `draft: true` runs the batch on the agent's draft (capability `draft-model`, section 7d). */
+export type ModelBatchParams = { origin?: unknown; ops?: Array<Record<string, unknown>>; load?: Array<Record<string, unknown>>; schema?: object; draft?: boolean }
 /** `version` is the kit's replica version after the batch, when it has one. */
 export type ModelBatchResult = { refs: Record<string, string>; results: unknown[]; loaded: Array<{ id: string; type: string; fields: Record<string, unknown> }>; version?: ArrayBuffer | null }
 export type ModelErrorData = { code: 'invalid-op' | 'not-found' | 'invalid-value' | 'read-only' | 'command-failed'; index: number | null; message: string }

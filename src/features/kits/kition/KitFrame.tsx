@@ -92,7 +92,7 @@ function bridgeModel(connection: KitConnection): BridgeEditor['model'] {
     // A draft has the document's schema.
     describe: () => connection.model.describe(),
     batch: async (request, options) => {
-      const params: ModelBatchParams & { draft?: boolean } = options?.draft ? { ...request, draft: true } : request
+      const params: ModelBatchParams = options?.draft ? { ...request, draft: true } : request
       return (await connection.model.batch(params)) as Record<string, unknown>
     },
     onDraft: connection.capabilities.includes('draft') && connection.capabilities.includes('draft-model'),
