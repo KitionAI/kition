@@ -1,0 +1,50 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "standard": "2.0",
+  "id": "kit.board",
+  "name": "Board",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "distribution": "default",
+  "engine": {
+    "runtime": "ts-worker",
+    "module": "kition_board_engine",
+    "class": "BoardDocument",
+    "contract": 2
+  },
+  "capabilities": ["kdm"],
+  "formats": [
+    {
+      "id": "kiboard",
+      "extensions": ["kiboard"],
+      "mime": "application/vnd.kition.board",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "board",
+      "extension": "kiboard",
+      "baseName": "Untitled board",
+      "size": { "width": 1920, "height": 1080 }
+    }
+  ],
+  "ui": {
+    "mode": "embedded",
+    "entry": "index.html",
+    "menus": ["Edit"],
+    "layout": "canvas"
+  },
+  "model": {
+    "schema": "model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": ["structured", "rich-text"],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Board"
+  }
+}

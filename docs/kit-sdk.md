@@ -339,6 +339,30 @@ opens `.kitable` files in the kit when `localStorage['kition.dev.tableKit']` is
 `e2e/table-embedded.spec.ts` edits a table there, saves it, and reopens it
 natively.
 
+### The Board kit
+
+`kit.board` (`packages/board-kit`) packages Kition's board the same way, but
+lives in Kition (`path` in `kits/sdks.json`): its engine is a TypeScript one
+(`engine.runtime` `ts-worker`, Kit Standard rule K11), `BoardDocument`, made
+with kition-sdk's `@kition/kit-engine` (`kitEngineClass`, Kition's copy in
+`src/lib/kit-engine`) from `BoardStore` and the board's commands in
+`packages/board-editor`; `web/scripts` and `vite.engine.config.ts` bundle it as
+`engine/kition_board_engine.js` with Loro's WebAssembly beside it, and kit-ui's
+engine worker loads it like a wasm-pack module. The editor (`web/`) is
+`packages/board-editor` in the kit-ui shell with an empty `BoardHost`: it keeps
+its own replica of the board, loaded from the engine's snapshot, and exchanges
+changes with the engine's replica (`WorkerRelay`), which the host saves and
+co-edits through. `packages/board-kit/kit.json` is a standard 2.0 manifest
+(`distribution: default`, `model/schema.json`, which a test keeps equal to
+`boardSchema`). `scripts/build-kit-ui.sh board` builds the package;
+`scripts/publish-kit.sh board --dry-run` packs it (publishing kits that live in
+Kition waits for a release location). Kition keeps its native board editor; a
+development build opens `.kiboard` files in the kit when
+`localStorage['kition.dev.boardKit']` is `'1'` and the package is built, and
+`e2e/board-embedded.spec.ts` edits a board there, saves it, and reopens it
+natively. The shell's Undo and Redo follow the engine; the board's own Undo is
+in the editor.
+
 ## 4b. Kit Packages And Releases
 
 Kition ships every kit's package inside the app (decided 2026-10-15). All ten

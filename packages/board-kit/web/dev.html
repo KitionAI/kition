@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Board kit: development host</title>
+    <style>
+      html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+      body { display: flex; flex-direction: column; }
+      header { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #e5e3df; font-size: 13px; }
+      iframe { flex: 1; border: 0; }
+    </style>
+  </head>
+  <body>
+    <header><strong>Development host</strong><span id="status">opening...</span><span style="flex: 1"></span><input id="file" type="file" accept=".kiboard" /></header>
+    <iframe id="kit" src="about:blank" allow="fullscreen; clipboard-read; clipboard-write" title="Board"></iframe>
+    <script type="module" src="./src/devHost.ts"></script>
+  </body>
+</html>

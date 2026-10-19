@@ -19,7 +19,7 @@ import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEm
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@kition/app-ui/utils'
-import { tableKitForDevelopment } from './kits/kitEditors'
+import { boardKitForDevelopment, tableKitForDevelopment } from './kits/kitEditors'
 import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
@@ -397,16 +397,24 @@ export function WorkspaceEditorContent({
             )}
           >
             <EditorPaneBoundary>
-              <WhiteboardEditorPane
-                agentAvailable={whiteboardAgentAvailable}
-                agentBusy={whiteboardAgentBusy}
-                onAgentBridgeChange={onWhiteboardAgentBridgeChange}
-                onCancelAgent={onCancelWhiteboardAgent}
-                onGenerateImage={onGenerateWhiteboardImage}
-                onOpenAgent={onOpenAgent}
-                path={tab.path}
-                title={tab.title}
-              />
+              {(() => {
+                const nativeEditor = (
+                  <WhiteboardEditorPane
+                    agentAvailable={whiteboardAgentAvailable}
+                    agentBusy={whiteboardAgentBusy}
+                    onAgentBridgeChange={onWhiteboardAgentBridgeChange}
+                    onCancelAgent={onCancelWhiteboardAgent}
+                    onGenerateImage={onGenerateWhiteboardImage}
+                    onOpenAgent={onOpenAgent}
+                    path={tab.path}
+                    title={tab.title}
+                  />
+                )
+                // Development only: the Board kit, for parity checks (`BOARD_KIT_DEV_FLAG`).
+                const boardKit = boardKitForDevelopment(tab.path)
+                const active = activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'board'
+                return boardKit ? <KitFilePane kit={boardKit} path={tab.path} active={active} preview={nativeEditor} /> : nativeEditor
+              })()}
             </EditorPaneBoundary>
           </div>
         ))}

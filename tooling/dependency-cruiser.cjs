@@ -51,9 +51,10 @@ module.exports = {
       comment:
         'A package under packages/ runs outside Kition too (the table editor in the Table kit, the board editor in the Board kit), so it imports nothing from src/ but the KDM copy (as @kition/kdm). The board editor uses app services through BoardHost (packages/board-editor/src/host.tsx), implemented in src/features/whiteboard/host. The table editor reads and writes its data through TableDataSource and uses app services through TableHost (packages/table-editor/src/table/ports); add what it needs there and implement it in src/features/table/host.',
       from: { path: '^packages/' },
-      // src/lib/kdm is kition-sdk's @kition/kdm, which Kition carries (scripts/sync-kit-host.mjs);
-      // packages import it as @kition/kdm, which a kit's build takes from kition-sdk.
-      to: { path: '^src/', pathNot: '^src/lib/kdm/' },
+      // src/lib/kdm and src/lib/kit-engine are kition-sdk's @kition/kdm and @kition/kit-engine,
+      // which Kition carries (scripts/sync-kit-host.mjs); packages import them by those names, which
+      // a kit's build takes from kition-sdk.
+      to: { path: '^src/', pathNot: '^src/lib/(kdm|kit-engine)/' },
     },
     {
       name: 'app-ui-is-a-leaf-package',
@@ -88,7 +89,8 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '\\.spec\\.(ts|tsx)$' },
+    // A kit's web/ app (packages/board-kit/web) is built by its own toolchain from Kition's styles and strings.
+    exclude: { path: ['\\.spec\\.(ts|tsx)$', '^packages/[^/]+/web/'] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     enhancedResolveOptions: {

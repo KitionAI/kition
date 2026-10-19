@@ -2,7 +2,8 @@
 // Kition's copy of the Kit UI protocol's host side (kition-sdk packages/kit-protocol and
 // packages/kit-host), in src/features/kits/host/, of the standard's kit.json schema
 // (schemas/kit.schema.json), in contracts/kit/kit-standard.schema.json for the conformance suite,
-// of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, and its Rust crate
+// of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, of the TypeScript engine
+// contract (packages/kit-engine/src/*.ts), in src/lib/kit-engine/, and of the KDM's Rust crate
 // (crates/kition-kdm), in crates/kition-kdm/, and of the sync client for kition-sync/1 and its
 // replica relay (packages/sync/src/*.ts), in src/lib/sync/, of the object model's page side
 // (@kition/sdk, packages/sdk/src and its generated kits), in src/lib/sdk/, and of the extension
@@ -44,6 +45,12 @@ const kdmSource = 'packages/kdm/src'
 for (const name of fs.readdirSync(path.join(sdk, kdmSource)).filter((name) => name.endsWith('.ts')).sort()) {
   const source = `${kdmSource}/${name}`
   files.push({ source, out: `src/lib/kdm/${name}`, rewrite: (text) => header(source) + text })
+}
+// The TypeScript engine contract (@kition/kit-engine): what the Board kit's engine is made with.
+const kitEngineSource = 'packages/kit-engine/src'
+for (const name of fs.readdirSync(path.join(sdk, kitEngineSource)).filter((name) => name.endsWith('.ts')).sort()) {
+  const source = `${kitEngineSource}/${name}`
+  files.push({ source, out: `src/lib/kit-engine/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
 }
 // Every sync client (@kition/sync) source file, with the relay between a replica and its room:
 // its imports are relative but for the KDM's (`@kition/kdm`), which is the copy in src/lib/kdm/,
@@ -145,6 +152,7 @@ ${dependencies}`
 const copyDirs = [
   { dir: 'src/lib/kdm', ext: '.ts' },
   { dir: 'src/lib/sync', ext: '.ts' },
+  { dir: 'src/lib/kit-engine', ext: '.ts' },
   { dir: 'src/lib/sdk', ext: '.ts' },
   { dir: 'src/lib/sdk/kits', ext: '.ts' },
   { dir: 'src/lib/extensions', ext: '.ts' },
@@ -192,4 +200,4 @@ for (const file of files) {
   }
 }
 if (stale) process.exit(1)
-if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), sync client, object model, and extension host copies match kition-sdk')
+if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), engine contract, sync client, object model, and extension host copies match kition-sdk')

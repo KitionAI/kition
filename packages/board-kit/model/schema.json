@@ -1,0 +1,57 @@
+{
+  "kdm": 1,
+  "kit": "kit.board",
+  "schemaVersion": 1,
+  "root": "Board",
+  "types": {
+    "Board": {
+      "fields": {
+        "title": { "kind": "string" },
+        "pages": { "kind": "list", "of": "Page" }
+      }
+    },
+    "Page": {
+      "fields": {
+        "name": { "kind": "string" },
+        "elements": { "kind": "list", "of": "Element" }
+      }
+    },
+    "Element": {
+      "fields": {
+        "kind": { "kind": "enum", "values": ["rectangle", "text", "stroke", "connector", "image"] },
+        "x": { "kind": "number", "optional": true },
+        "y": { "kind": "number", "optional": true },
+        "width": { "kind": "number", "optional": true },
+        "height": { "kind": "number", "optional": true },
+        "rotation": { "kind": "number", "optional": true },
+        "locked": { "kind": "boolean", "optional": true },
+        "parent": { "kind": "ref", "of": "Element", "optional": true },
+        "shapeType": { "kind": "string", "optional": true },
+        "shapeStyle": { "kind": "string", "optional": true },
+        "strokeColor": { "kind": "string", "optional": true },
+        "fillColor": { "kind": "string", "optional": true },
+        "fillStyle": { "kind": "string", "optional": true },
+        "dashStyle": { "kind": "string", "optional": true },
+        "opacity": { "kind": "number", "optional": true },
+        "strokeSize": { "kind": "string", "optional": true },
+        "text": { "kind": "text" },
+        "fontSize": { "kind": "number", "optional": true },
+        "points": { "kind": "json", "optional": true },
+        "start": { "kind": "json", "optional": true },
+        "end": { "kind": "json", "optional": true },
+        "connectorType": { "kind": "string", "optional": true },
+        "startArrowhead": { "kind": "string", "optional": true },
+        "endArrowhead": { "kind": "string", "optional": true },
+        "connectorRole": { "kind": "string", "optional": true },
+        "mindMapBranchAxis": { "kind": "string", "optional": true },
+        "startBinding": { "kind": "json", "optional": true },
+        "endBinding": { "kind": "json", "optional": true },
+        "image": { "kind": "json", "optional": true },
+        "mindMapBranchSide": { "kind": "string", "optional": true },
+        "mindMapDirection": { "kind": "string", "optional": true },
+        "mindMapCollapsed": { "kind": "boolean", "optional": true },
+        "sourceRefIds": { "kind": "json", "optional": true }
+      }
+    }
+  }
+}

@@ -31,7 +31,8 @@
       "@kition/table-editor/*": ["packages/table-editor/src/*"],
       "@kition/board-editor": ["packages/board-editor/src/index.ts"],
       "@kition/board-editor/*": ["packages/board-editor/src/*"],
-      "@kition/kdm": ["src/lib/kdm/index.ts"]
+      "@kition/kdm": ["src/lib/kdm/index.ts"],
+      "@kition/kit-engine": ["src/lib/kit-engine/index.ts"]
     }
   },
   "include": [

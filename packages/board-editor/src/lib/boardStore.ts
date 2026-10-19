@@ -269,6 +269,21 @@ export class BoardStore {
     this.notify()
   }
 
+  /**
+   * Follows changes made to the replica outside this store (a kit session's import, undo, or
+   * redo, which took the changed objects from the replica itself): rebuilds the view from the
+   * objects `changed`, repairing what the change left inconsistent, as `importChanges` does.
+   */
+  followReplica(changed: Iterable<string>) {
+    this.history.noteChanged(changed)
+    if (this.activeTransaction) {
+      this.viewStale = true
+      return
+    }
+    this.rebuildView({ repair: true })
+    this.notify()
+  }
+
   transact(
     label: string,
     update: (transaction: BoardTransaction) => void,

@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the table kit's editor is Kition's own); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
+  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the table kit's editor is Kition's own); `path` is a kit that lives in Kition (the board kit, built from that folder; `runtime: ts-worker`, a TypeScript engine that scripts/check-kit-sdk.mjs leaves to check-manifest --module); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
   "photo": {
     "repository": "KitionAI/kition-photo",
     "crate": "kition-photo-sdk",
@@ -204,6 +204,33 @@
         "values": {
           "title": "Write the plan"
         }
+      }
+    }
+  },
+  "board": {
+    "repository": "KitionAI/kition",
+    "path": "packages/board-kit",
+    "module": "kition_board_engine",
+    "class": "BoardDocument",
+    "runtime": "ts-worker",
+    "name": "Plan.kiboard",
+    "kition": true,
+    "optional": true,
+    "edit": {
+      "command": "element.create",
+      "params": {
+        "elements": [
+          {
+            "id": "note-1",
+            "kind": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 160,
+            "height": 100,
+            "text": "Plan",
+            "shapeType": "rectangle"
+          }
+        ]
       }
     }
   }

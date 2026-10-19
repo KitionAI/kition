@@ -79,7 +79,7 @@
         "module": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$",
-          "description": "The wasm-pack module name."
+          "description": "The engine module's name: the wasm-pack module (rust-wasm), or the ES module <module>.js of a TypeScript engine (ts-worker)."
         },
         "class": {
           "type": "string",

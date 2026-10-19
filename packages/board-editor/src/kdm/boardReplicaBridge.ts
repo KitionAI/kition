@@ -76,6 +76,17 @@ export class BoardReplicaHistory {
     return { read: this.lastRead, changed: this.unsettledSinceRead }
   }
 
+  /**
+   * Takes `ids` as changed since the last read: objects whose changes someone else took from the
+   * replica (`Replica.takeChanged`), such as a kit session that imported or undid them itself.
+   */
+  noteChanged(ids: Iterable<string>) {
+    for (const id of ids) {
+      this.changedSinceRead.add(id)
+      this.unsettledSinceRead.add(id)
+    }
+  }
+
   private collectChanges() {
     for (const id of this.replica.takeChanged()) {
       this.changedSinceRead.add(id)

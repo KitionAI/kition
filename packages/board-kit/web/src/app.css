@@ -1,0 +1,30 @@
+/* The shell around Kition's board editor: the editor fills the body between the bar and the status bar. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.board-kit-title {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.board-kit-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.board-kit-body > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}

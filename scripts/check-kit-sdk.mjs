@@ -26,6 +26,10 @@ const registry = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'sdks.js
 if (process.argv.includes('--all')) {
   let failures = 0
   for (const kit of Object.keys(registry).filter((key) => !key.startsWith('$'))) {
+    if (registry[kit].runtime === 'ts-worker') {
+      console.log(`SKIP ${kit}: a TypeScript engine whose editor draws itself (check it with kition-sdk's tools/check-manifest.mjs --module)`)
+      continue
+    }
     const built = fs.existsSync(path.join(repoRoot, 'public', 'kits', `${kit}-ui`, 'engine', `${registry[kit].module}_bg.wasm`))
     if (!built) {
       console.log(`SKIP ${kit}: not built (make kit-ui-${kit})`)

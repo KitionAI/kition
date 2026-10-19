@@ -12,7 +12,9 @@
 # and FONTS_REF) side by side in a scratch folder, so local changes never reach a package; and of
 # Kition itself (origin/main, or KITION_REF) for a kit marked `kition` in kits/sdks.json, whose
 # engine and editor are Kition's own (the table kit). A version is published once; bump `version`
-# in the kit's kit.json to publish a change.
+# in the kit's kit.json to publish a change. A kit that lives in Kition (`path` in kits/sdks.json,
+# the board kit) is built from the Kition clone alone; it packs with --dry-run, and is not published
+# until where its packages are released is decided.
 set -euo pipefail
 kit="${1:?usage: scripts/publish-kit.sh <kit> [--dry-run]}"
 [[ -z "${2:-}" || "${2:-}" == "--dry-run" ]] || { echo "unknown option: $2" >&2; exit 2; }
@@ -22,6 +24,11 @@ parent="$(dirname "$repo_root")"
 kit_repo="${KIT_REPO:-$parent/kition-$kit}"
 sdk_repo="${KITION_SDK_REPO:-$parent/kition-sdk}"
 fonts_repo="${KITION_FONTS_REPO:-$parent/kition-fonts}"
+in_kition="$(node -e "const kit = require('$repo_root/kits/sdks.json')['$kit']; console.log(kit && kit.path ? kit.path : '')")"
+if [[ -n "$in_kition" && -z "$dry_run" ]]; then
+  echo "kits/sdks.json: $kit lives in Kition ($in_kition); its packages are not published yet, pack it with --dry-run" >&2
+  exit 2
+fi
 scratch="${KITION_KIT_SCRATCH:-${TMPDIR:-/tmp}}"; scratch="${scratch%/}/kition-kit-publish/$kit"
 repository="$(node -e "const kit = require('$repo_root/kits/sdks.json')['$kit']; if (!kit) process.exit(1); console.log(kit.repository)")" \
   || { echo "kits/sdks.json has no kit \"$kit\"" >&2; exit 2; }
@@ -48,19 +55,28 @@ clone() {
 
 rm -rf "$scratch"
 mkdir -p "$scratch"
-kit_commit="$(clone "$kit_repo" "kition-$kit" "${KIT_REF:-origin/main}")"
+if [[ -n "$in_kition" ]]; then
+  kit_commit=""
+else
+  kit_commit="$(clone "$kit_repo" "kition-$kit" "${KIT_REF:-origin/main}")"
+fi
 sdk_commit="$(clone "$sdk_repo" kition-sdk "${SDK_REF:-origin/main}")"
 fonts_commit="$(clone "$fonts_repo" kition-fonts "${FONTS_REF:-origin/main}")"
 kition_commit=""
 if [[ "$(node -p "require('$repo_root/kits/sdks.json')['$kit'].kition === true")" == "true" ]]; then
   kition_commit="$(clone "$repo_root" kition "${KITION_REF:-origin/main}")"
 fi
+kit_dir="$scratch/kition-$kit"
+if [[ -n "$in_kition" ]]; then
+  kit_commit="$kition_commit"
+  kit_dir="$scratch/kition/$in_kition"
+fi
 pnpm --dir "$scratch/kition-sdk" install --frozen-lockfile
 # The kit checkout's build cache, so only the kit's own crates compile again. The engine's SQLite
 # needs a C compiler that targets wasm32 (build-kit-ui.sh uses Homebrew's LLVM when it is there).
-CARGO_TARGET_DIR="$kit_repo/target" KIT_REPO="$scratch/kition-$kit" KITION_DIR="$scratch/kition" "$repo_root/scripts/build-kit-ui.sh" "$kit"
+CARGO_TARGET_DIR="$kit_repo/target" KIT_REPO="$kit_dir" KITION_DIR="$scratch/kition" "$repo_root/scripts/build-kit-ui.sh" "$kit"
 
-version="$(node -p "require('$scratch/kition-$kit/kit.json').version")"
+version="$(node -p "require('$kit_dir/kit.json').version")"
 tag="package-v$version"
 asset="kition-$kit-$version.tgz"
 # Without build-kit-ui.sh's local-build stamp: the package's own files only.
