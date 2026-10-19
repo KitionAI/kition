@@ -276,6 +276,8 @@ pub struct Run {
     pub active_data_table_id: i64,
     pub execution_mode: String,
     pub task_mode: String,
+    /// `live` or `draft`: whether kit tools edit the open document or a draft of it by default.
+    pub kit_edit_mode: String,
     pub pane: String,
     pub whiteboard: Option<Value>,
     pub design: Option<Value>,

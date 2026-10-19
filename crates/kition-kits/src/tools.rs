@@ -1,6 +1,9 @@
 //! Kit tools (Kition Kit Standard A3): for every kit, inspect a file, search its commands, and
 //! edit it by running them: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, named
-//! and worded from the kit's definition (its `kit.json`).
+//! and worded from the kit's definition (its `kit.json`). An agent may edit a draft instead of
+//! the live document (standard 2.0 A12, `draft: true`), and asks for its review with
+//! `<prefix>_draft_ready` (or takes it back with `<prefix>_draft_reopen`); merging or
+//! discarding a draft is the person's alone, never a tool.
 //!
 //! One implementation serves every harness: Kition's own agent and any MCP client (DeepSeek
 //! Harness through `dsh-mcp-client`, and others) through `mcp.rs`. A file open in a kit editor
@@ -23,18 +26,38 @@ pub enum Action {
     Inspect,
     Commands,
     Run,
+    /// The agent asks the person to review its draft (standard 2.0 A12).
+    DraftReady,
+    /// The agent takes its draft back to keep working on it.
+    DraftReopen,
 }
 
 impl Action {
-    pub const ALL: [Action; 3] = [Action::Inspect, Action::Commands, Action::Run];
+    pub const ALL: [Action; 5] = [
+        Action::Inspect,
+        Action::Commands,
+        Action::Run,
+        Action::DraftReady,
+        Action::DraftReopen,
+    ];
 
     fn suffix(self) -> &'static str {
         match self {
             Action::Inspect => "inspect",
             Action::Commands => "commands",
             Action::Run => "run",
+            Action::DraftReady => "draft_ready",
+            Action::DraftReopen => "draft_reopen",
         }
     }
+}
+
+/// How a harness runs kit tools: Kition's agent passes the run's choice of live or draft editing
+/// (the agent UI's setting); a tool call's own `draft` argument wins over it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CallOptions {
+    /// Edit drafts unless a call says `draft: false`.
+    pub draft: bool,
 }
 
 /// One kit tool as a harness offers it to a model.
@@ -97,12 +120,11 @@ pub fn tool_name(kit: &KitDefinition, action: Action) -> String {
 
 /// The kit and action a tool name names, if it is a kit tool.
 pub fn parse(name: &str) -> Option<(&'static KitDefinition, Action)> {
-    let (prefix, suffix) = name.rsplit_once('_')?;
-    let kit = KITS.iter().find(|kit| kit.agent.prefix == prefix)?;
-    let action = Action::ALL
-        .into_iter()
-        .find(|action| action.suffix() == suffix)?;
-    Some((kit, action))
+    Action::ALL.into_iter().find_map(|action| {
+        let prefix = name.strip_suffix(action.suffix())?.strip_suffix('_')?;
+        let kit = KITS.iter().find(|kit| kit.agent.prefix == prefix)?;
+        Some((kit, action))
+    })
 }
 
 /// The kit's display name without the product prefix: `Photo` for `Kition Photo`.
@@ -114,11 +136,16 @@ fn path_property(kit: &KitDefinition) -> Value {
     json!({ "type": "string", "description": format!("Workspace-relative path to a {} file.", kit.agent.formats) })
 }
 
-fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 3] {
+fn draft_property() -> Value {
+    json!({ "type": "boolean", "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode." })
+}
+
+fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 5] {
     let agent = &kit.agent;
     let (name, noun) = (kit.name, agent.noun);
     let commands = tool_name(kit, Action::Commands);
     let run = tool_name(kit, Action::Run);
+    let ready = tool_name(kit, Action::DraftReady);
     [
         KitToolSpec {
             name: tool_name(kit, Action::Inspect),
@@ -130,7 +157,8 @@ fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 3] {
                 "type": "object",
                 "properties": {
                     "path": path_property(kit),
-                    "preview": { "type": "boolean", "description": "Attach a rendered preview image. Defaults to true." }
+                    "preview": { "type": "boolean", "description": "Attach a rendered preview image. Defaults to true." },
+                    "draft": draft_property()
                 },
                 "required": ["path"]
             }),
@@ -155,7 +183,7 @@ fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 3] {
         KitToolSpec {
             name: run.clone(),
             description: format!(
-                "Edit a {noun} in {name} by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by {commands}. Stops at the first failing step. Attaches a rendered preview of the result."
+                "Edit a {noun} in {name} by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by {commands}. Stops at the first failing step. Attaches a rendered preview of the result. With `draft`, the steps edit your draft of the file instead (never saved); call {ready} when it is done."
             ),
             input_schema: json!({
                 "type": "object",
@@ -174,11 +202,36 @@ fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 3] {
                             "required": ["command"]
                         }
                     },
-                    "save": { "type": "boolean", "description": "Save the file after the steps. Defaults to true." }
+                    "save": { "type": "boolean", "description": "Save the file after the steps. Defaults to true; a draft is never saved." },
+                    "draft": draft_property()
                 },
                 "required": ["path", "steps"]
             }),
             writes: true,
+        },
+        KitToolSpec {
+            name: ready.clone(),
+            description: format!(
+                "Ask the person to review your draft of a {noun} in {name}: they see a comparison with the document and merge it or discard it. Call it when the draft is done; do not merge or discard it yourself."
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": { "path": path_property(kit) },
+                "required": ["path"]
+            }),
+            writes: false,
+        },
+        KitToolSpec {
+            name: tool_name(kit, Action::DraftReopen),
+            description: format!(
+                "Take your draft of a {noun} in {name} back from review to keep editing it (after {ready}); edits with `draft` also do."
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": { "path": path_property(kit) },
+                "required": ["path"]
+            }),
+            writes: false,
         },
     ]
 }
@@ -213,6 +266,8 @@ pub fn label(name: &str) -> Option<String> {
         Action::Inspect => format!("Inspect {noun} in {kit_name}"),
         Action::Commands => format!("Find {kit_name} commands"),
         Action::Run => format!("Edit {noun} in {kit_name}"),
+        Action::DraftReady => format!("Ask for review of the {kit_name} draft"),
+        Action::DraftReopen => format!("Reopen the {kit_name} draft"),
     })
 }
 
@@ -339,20 +394,164 @@ async fn live_preview(
     }
 }
 
-/// Runs the kit tool `name` with `input`. `None` when `name` is not a kit tool.
+/// Runs the kit tool `name` with `input`, editing live documents. `None` when `name` is not a
+/// kit tool.
 pub async fn call(kits: &KitManager, name: &str, input: &Value) -> Option<KitToolResult> {
+    call_with(kits, name, input, CallOptions::default()).await
+}
+
+/// Runs the kit tool `name` with `input` and the harness's `options`.
+pub async fn call_with(
+    kits: &KitManager,
+    name: &str,
+    input: &Value,
+    options: CallOptions,
+) -> Option<KitToolResult> {
     let (kit, action) = parse(name)?;
+    let draft = input
+        .get("draft")
+        .and_then(Value::as_bool)
+        .unwrap_or(options.draft);
     Some(match action {
-        Action::Inspect => inspect(kits, kit, input).await,
+        Action::Inspect => inspect(kits, kit, input, draft).await,
         Action::Commands => commands(kits, kit, input).await,
+        Action::Run if draft => run_on_draft(kits, kit, input).await,
         Action::Run => run_steps(kits, kit, input).await,
+        Action::DraftReady | Action::DraftReopen => draft_state(kits, kit, input, action).await,
     })
 }
 
-async fn inspect(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
+/// The open editor of `path`, which a draft needs: drafts live in the person's editor (standard
+/// 2.0 A15), so a file no editor has open has none.
+async fn draft_editor(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    path: &str,
+) -> Result<LiveDocument, KitToolError> {
+    live(kits, kit, path).await.ok_or_else(|| {
+        KitToolError::from(format!(
+            "`{path}` is not open in its {} editor, so it has no draft: drafts live in the person's open editor. Ask the person to open it, or edit the file live (`draft: false`).",
+            short(kit)
+        ))
+    })
+}
+
+async fn draft_preview(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    document: &LiveDocument,
+) -> Vec<Preview> {
+    match kits.bridge().preview_draft(document, PREVIEW_SIZE).await {
+        Ok(png) => vec![Preview {
+            caption: format!(
+                "Preview of your draft of `{}` from {}.",
+                document.path, kit.name
+            ),
+            png,
+        }],
+        Err(error) => {
+            tracing::warn!(error = %error, kit = kit.id, "draft preview failed");
+            Vec::new()
+        }
+    }
+}
+
+async fn run_on_draft(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
+    let path = kit_path(input, kit)?;
+    let steps = input
+        .get("steps")
+        .and_then(Value::as_array)
+        .filter(|steps| !steps.is_empty())
+        .ok_or("`steps` must be a non-empty array")?;
+    let document = draft_editor(kits, kit, &path).await?;
+    let mut answer = kits
+        .bridge()
+        .call(
+            &document,
+            "run",
+            json!({ "steps": steps, "save": false, "draft": true }),
+        )
+        .await
+        .map_err(|error| format!("on the draft in the open {} editor: {error}", short(kit)))?;
+    let previews = draft_preview(kits, kit, &document).await;
+    let ran = answer["completed"].as_array().map_or(0, Vec::len);
+    answer["live"] = Value::Bool(true);
+    answer["draft"] = Value::Bool(true);
+    Ok(KitToolOutput {
+        previews,
+        ..KitToolOutput::new(
+            format!(
+                "Ran {ran} commands on your draft of `{path}`; the document is unchanged until the person merges the draft. Call {} when it is done.",
+                tool_name(kit, Action::DraftReady)
+            ),
+            answer,
+        )
+    })
+}
+
+async fn draft_state(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    input: &Value,
+    action: Action,
+) -> KitToolResult {
+    let path = kit_path(input, kit)?;
+    let document = draft_editor(kits, kit, &path).await?;
+    let answer = kits
+        .bridge()
+        .call(&document, action.suffix(), json!({}))
+        .await
+        .map_err(|error| format!("in the open {} editor: {error}", short(kit)))?;
+    let summary = if action == Action::DraftReady {
+        format!("Your draft of `{path}` is ready for review; the person will merge or discard it.")
+    } else {
+        format!("Your draft of `{path}` is back with you to keep editing.")
+    };
+    Ok(KitToolOutput::new(summary, answer))
+}
+
+async fn inspect(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    input: &Value,
+    draft: bool,
+) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let wants_preview = input.get("preview").and_then(Value::as_bool) != Some(false);
-    if let Some(document) = live(kits, kit, &path).await {
+    let open = live(kits, kit, &path).await;
+    // An explicit `draft: true` needs the editor; the run's default falls back to the file.
+    let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
+    if draft && (open.is_some() || explicit) {
+        let document = draft_editor(kits, kit, &path).await?;
+        if let Ok(mut answer) = kits
+            .bridge()
+            .call(&document, "inspect", json!({ "draft": true }))
+            .await
+        {
+            let previews = if wants_preview {
+                draft_preview(kits, kit, &document).await
+            } else {
+                Vec::new()
+            };
+            let summary = answer["document"]["summary"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned();
+            answer["live"] = Value::Bool(true);
+            answer["draft"] = Value::Bool(true);
+            return Ok(KitToolOutput {
+                previews,
+                ..KitToolOutput::new(format!("Opened your draft of `{path}`: {summary}"), answer)
+            });
+        }
+        if explicit {
+            return Err(
+                format!("`{path}` has no draft yet: edit it with `draft: true` first.").into(),
+            );
+        }
+        // No draft yet: the live document is what a draft would start from.
+    }
+    if let Some(document) = open {
         let mut answer = kits.bridge().call(&document, "inspect", json!({})).await?;
         let previews = if wants_preview {
             live_preview(kits, kit, &document).await
@@ -552,7 +751,7 @@ mod tests {
         prefixes.sort_unstable();
         prefixes.dedup();
         assert_eq!(prefixes.len(), KITS.len(), "prefixes are unique");
-        assert_eq!(specs().len(), KITS.len() * 3);
+        assert_eq!(specs().len(), KITS.len() * Action::ALL.len());
         for kit in KITS {
             for action in Action::ALL {
                 let name = tool_name(kit, action);
@@ -574,6 +773,28 @@ mod tests {
             assert!(specs().iter().any(|spec| spec.name == name), "{name}");
         }
         assert!(parse("document_read").is_none() && parse("photo_paint").is_none());
+        // Draft tools: asking for review and reopening; merging and discarding are never tools.
+        let slide = |name: &str| parse(name).map(|(kit, action)| (kit.id, action));
+        assert_eq!(
+            slide("slide_draft_ready"),
+            Some(("kit.slide", Action::DraftReady))
+        );
+        assert_eq!(
+            slide("slide_draft_reopen"),
+            Some(("kit.slide", Action::DraftReopen))
+        );
+        assert!(parse("slide_draft_merge").is_none() && parse("slide_draft_discard").is_none());
+        assert!(parse("slide_draft").is_none() && parse("_draft_ready").is_none());
+        let run = specs()
+            .iter()
+            .find(|spec| spec.name == "slide_run")
+            .unwrap_or_else(|| panic!("slide_run"));
+        assert_eq!(run.input_schema["properties"]["draft"]["type"], "boolean");
+        assert!(
+            run.description.contains("slide_draft_ready"),
+            "{}",
+            run.description
+        );
     }
 
     #[test]

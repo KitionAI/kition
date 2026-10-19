@@ -61,7 +61,13 @@ pub fn stage(name: &str) -> &'static str {
         | "view_image" => "context",
         _ if matches!(
             kits::parse(name),
-            Some((_, kits::Action::Inspect | kits::Action::Commands))
+            Some((
+                _,
+                kits::Action::Inspect
+                    | kits::Action::Commands
+                    | kits::Action::DraftReady
+                    | kits::Action::DraftReopen
+            ))
         ) =>
         {
             "context"

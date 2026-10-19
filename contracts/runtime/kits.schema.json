@@ -567,7 +567,9 @@
           "enum": [
             "inspect",
             "commands",
-            "run"
+            "run",
+            "draft_ready",
+            "draft_reopen"
           ]
         },
         "arguments": {
@@ -575,7 +577,7 @@
           "additionalProperties": true
         }
       },
-      "description": "kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save}."
+      "description": "kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (Kit Standard 2.0 A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. Merging and discarding a draft are the person's, never a bridge call."
     },
     "bridgeLiveDocument": {
       "type": "object",
@@ -608,8 +610,35 @@
           "type": "object",
           "additionalProperties": true,
           "description": "The kit engine's inspect() JSON."
+        },
+        "draft": {
+          "$ref": "#/$defs/bridgeDraftInfo"
         }
       }
+    },
+    "bridgeDraftInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "revision"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "none",
+            "open",
+            "ready"
+          ]
+        },
+        "revision": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "description": "The agent's draft of a kit document (Kit UI protocol section 7d): `open` while the agent works on it, `ready` once it asks for review."
     },
     "bridgeInspectResult": {
       "type": "object",
@@ -733,6 +762,10 @@
         "maxSize": {
           "type": "integer",
           "minimum": 1
+        },
+        "draft": {
+          "type": "boolean",
+          "description": "Preview the agent's draft of the document instead."
         }
       }
     },

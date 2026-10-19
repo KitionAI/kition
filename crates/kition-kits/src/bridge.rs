@@ -308,14 +308,31 @@ impl Bridge {
 
     /// A PNG preview of the live document, at most `max_size` pixels on its longer side.
     pub async fn preview(&self, document: &LiveDocument, max_size: u32) -> Result<Vec<u8>, String> {
+        self.preview_of(document, max_size, false).await
+    }
+
+    /// A PNG preview of the agent's draft of the live document (standard 2.0 A12).
+    pub async fn preview_draft(
+        &self,
+        document: &LiveDocument,
+        max_size: u32,
+    ) -> Result<Vec<u8>, String> {
+        self.preview_of(document, max_size, true).await
+    }
+
+    async fn preview_of(
+        &self,
+        document: &LiveDocument,
+        max_size: u32,
+        draft: bool,
+    ) -> Result<Vec<u8>, String> {
         use base64::Engine as _;
+        let mut params = json!({ "path": document.path, "maxSize": max_size });
+        if draft {
+            params["draft"] = Value::Bool(true);
+        }
         let answer = self
-            .request(
-                document.session,
-                "kit/preview",
-                json!({ "path": document.path, "maxSize": max_size }),
-                CALL_TIMEOUT,
-            )
+            .request(document.session, "kit/preview", params, CALL_TIMEOUT)
             .await?;
         let encoded = answer
             .get("png")

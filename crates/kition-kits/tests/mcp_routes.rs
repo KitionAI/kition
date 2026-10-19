@@ -133,7 +133,16 @@ async fn calls_a_real_kit_and_returns_its_preview() {
                 .collect()
         })
         .unwrap_or_default();
-    assert_eq!(names, ["vector_inspect", "vector_commands", "vector_run"]);
+    assert_eq!(
+        names,
+        [
+            "vector_inspect",
+            "vector_commands",
+            "vector_run",
+            "vector_draft_ready",
+            "vector_draft_reopen"
+        ]
+    );
     assert_eq!(
         listed["result"]["tools"][0]["annotations"]["readOnlyHint"],
         true

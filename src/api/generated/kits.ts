@@ -210,12 +210,12 @@ export type KitsBridgeDocumentsResult = {
 }
 
 /**
- * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save}.
+ * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (Kit Standard 2.0 A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. Merging and discarding a draft are the person's, never a bridge call.
  */
 export type KitsBridgeCallParams = {
   path: KitsWorkspacePath
   kit: KitsKitId
-  tool: "inspect" | "commands" | "run"
+  tool: "inspect" | "commands" | "run" | "draft_ready" | "draft_reopen"
   arguments: Record<string, unknown>
 }
 
@@ -229,6 +229,15 @@ export type KitsBridgeLiveDocument = {
    * The kit engine's inspect() JSON.
    */
   details: Record<string, unknown>
+  draft?: KitsBridgeDraftInfo
+}
+
+/**
+ * The agent's draft of a kit document (Kit UI protocol section 7d): `open` while the agent works on it, `ready` once it asks for review.
+ */
+export type KitsBridgeDraftInfo = {
+  state: "none" | "open" | "ready"
+  revision: number | null
 }
 
 export type KitsBridgeInspectResult = {
@@ -266,6 +275,10 @@ export type KitsBridgeRunResult = {
 export type KitsBridgePreviewParams = {
   path: KitsWorkspacePath
   maxSize: number
+  /**
+   * Preview the agent's draft of the document instead.
+   */
+  draft?: boolean
 }
 
 export type KitsBridgePreviewResult = {

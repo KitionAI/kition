@@ -230,6 +230,7 @@ pub(crate) mod testing {
             active_data_table_id: 0,
             execution_mode: "apply".into(),
             task_mode: "auto".into(),
+            kit_edit_mode: "live".into(),
             pane: pane.into(),
             whiteboard: None,
             design: None,

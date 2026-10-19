@@ -81,6 +81,9 @@ impl Provider for CoreProvider {
         sections.push(prompts::task_mode(&run.task_mode).to_owned());
         sections.push(prompts::WEB_RESEARCH.to_owned());
         sections.push(prompts::execution_mode(&run.execution_mode).to_owned());
+        if let Some(mode) = prompts::kit_edit_mode(&run.kit_edit_mode) {
+            sections.push(mode.to_owned());
+        }
         sections.push(prompts::general_lines().join("\n"));
         sections.push(self.facts.prompt_context.trim().to_owned());
         sections

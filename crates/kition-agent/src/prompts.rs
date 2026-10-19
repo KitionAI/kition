@@ -44,6 +44,13 @@ pub fn linked_document(path: &str) -> String {
     .join("\n")
 }
 
+/// How kit documents are edited this run (standard 2.0 A12): live by default, or as drafts.
+pub fn kit_edit_mode(mode: &str) -> Option<&'static str> {
+    (mode == "draft").then_some(
+        "Kit edit mode: draft.\nKit tools (`<prefix>_run`, `<prefix>_inspect`) work on your draft of each open kit document instead of the live document; the person sees nothing change until they merge it. Make and check all the edits on the draft, then call `<prefix>_draft_ready` with the file's path so the person can review a comparison and merge or discard it. You cannot merge or discard a draft yourself. Pass `draft: false` only when the person asks you to edit the live document directly.",
+    )
+}
+
 pub fn execution_mode(mode: &str) -> &'static str {
     match mode {
         "research" => {

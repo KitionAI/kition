@@ -43,6 +43,8 @@ pub struct StreamRequest {
     pub pane_context: String,
     pub execution_mode: String,
     pub task_mode: String,
+    /// How the agent edits kit documents: `live` (the default) or `draft` (standard 2.0 A12).
+    pub kit_edit_mode: String,
     pub image_generation_intent: Option<Value>,
     pub whiteboard_context: Option<Value>,
     pub design_context: Option<Value>,
@@ -65,6 +67,13 @@ fn execution_mode(value: &str) -> String {
     match value.trim().to_lowercase().as_str() {
         mode @ ("research" | "preview") => mode.to_owned(),
         _ => "apply".to_owned(),
+    }
+}
+
+fn kit_edit_mode(value: &str) -> String {
+    match value.trim().to_lowercase().as_str() {
+        "draft" => "draft".to_owned(),
+        _ => "live".to_owned(),
     }
 }
 
@@ -327,6 +336,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         active_data_table_id: request.active_data_table_id,
         execution_mode: execution_mode(&request.execution_mode),
         task_mode: task_mode(&request.task_mode),
+        kit_edit_mode: kit_edit_mode(&request.kit_edit_mode),
         pane: pane(&request.pane_context),
         whiteboard: request.whiteboard_context.clone(),
         design: request.design_context.clone(),
@@ -433,6 +443,9 @@ mod tests {
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(task_mode("browse"), "auto");
+        assert_eq!(kit_edit_mode("Draft"), "draft");
+        assert_eq!(kit_edit_mode(""), "live");
+        assert_eq!(kit_edit_mode("merge"), "live");
     }
 
     #[test]

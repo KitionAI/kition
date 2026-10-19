@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 use base64::Engine as _;
 use kition_ai::engine::MessagePart;
 use kition_kits::KitDefinition;
-use kition_kits::tools::{self as kit_tools, KitToolOutput};
+use kition_kits::tools::{self as kit_tools, CallOptions, KitToolOutput};
 use serde_json::Value;
 
 use crate::catalog::{READ_ONLY, ToolDef, WORKSPACE_WRITE};
@@ -88,7 +88,10 @@ pub async fn call(run: &Run, kit: &KitDefinition, name: &str, input: &Value) -> 
         .agent
         .kits()
         .ok_or_else(|| format!("{} is not available in this runtime", kit.name))?;
-    match kit_tools::call(kits, name, input).await {
+    let options = CallOptions {
+        draft: run.kit_edit_mode == "draft",
+    };
+    match kit_tools::call_with(kits, name, input, options).await {
         Some(Ok(output)) => Ok(ToolOutput {
             follow_up: follow_up(&output),
             ..ToolOutput::new(output.summary, output.output)
