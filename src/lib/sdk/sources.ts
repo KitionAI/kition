@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sdk/src/sources.ts by scripts/sync-kit-host.mjs; change it there, not here.
 import { encodeOrigin, type Origin } from '../kdm'
-import type { DocumentEventSource, KitCommandInfo, ModelPort } from './port'
+import type { DocumentEventName, DocumentEvents, DocumentEventSource, KitCommandInfo, ModelPort } from './port'
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
@@ -27,6 +27,11 @@ export type ConnectionLike = {
     importChanges: (changes: ArrayBuffer, blobs: ArrayBuffer) => Promise<unknown>
     onChanged: (listener: (version: ArrayBuffer) => void) => () => void
   }
+  /**
+   * Hears the kit's `presence/set` (Kit UI protocol section 7e): what the person selected, as KDM
+   * object ids. With it, the document fires `selection`.
+   */
+  onPresence?: (listener: (presence: { selection: string[] }) => void) => () => void
   /** The kit's own object model (capability `model`). */
   model?: {
     describe: (schema?: object) => Promise<Record<string, unknown>>
@@ -46,6 +51,7 @@ export function portFromConnection(connection: ConnectionLike, options: { readOn
   if (!connection.capabilities.includes('replica') && !model) {
     throw new Error(`${connection.kit.id} was opened without the replica capability: the host must offer replica (with @kition/embed, pass storage.replica or model: true)`)
   }
+  const onPresence = typeof connection.onPresence === 'function' ? connection.onPresence.bind(connection) : null
   return {
     kitId: connection.kit.id,
     exportChanges: async (since) => bytes((await connection.replica.exportChanges(buffer(since))).changes),
@@ -59,6 +65,13 @@ export function portFromConnection(connection: ConnectionLike, options: { readOn
     commands: async () => (await connection.ai.commands('')) as KitCommandInfo[],
     readOnly: options.readOnly,
     onChanged: (listener) => connection.replica.onChanged((version) => listener(bytes(version))),
+    ...(onPresence
+      ? {
+          events: ['selection'] as const,
+          on: <E extends DocumentEventName>(event: E, listener: (value: DocumentEvents[E]) => void) =>
+            event === 'selection' ? onPresence((presence) => (listener as (value: DocumentEvents['selection']) => void)({ ids: [...presence.selection] })) : () => undefined,
+        }
+      : {}),
     ...(model
       ? {
           model: {

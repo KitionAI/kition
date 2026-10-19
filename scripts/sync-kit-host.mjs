@@ -54,12 +54,17 @@ for (const name of fs.readdirSync(path.join(sdk, syncSource)).filter((name) => n
   files.push({ source, out: `src/lib/sync/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
 }
 // The object model (@kition/sdk) as a page uses it: every source file but the Node-only ones,
-// with the KDM's imports pointing at the copy in src/lib/kdm/, and its generated kit typings.
+// with the KDM's and the sync client's imports pointing at the copies in src/lib/kdm/ and
+// src/lib/sync/, and its generated kit typings.
 const sdkSource = 'packages/sdk/src'
 const nodeOnly = new Set(['node.ts', 'headless.ts'])
 for (const name of fs.readdirSync(path.join(sdk, sdkSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && !nodeOnly.has(name)).sort()) {
   const source = `${sdkSource}/${name}`
-  files.push({ source, out: `src/lib/sdk/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
+  files.push({
+    source,
+    out: `src/lib/sdk/${name}`,
+    rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'").replaceAll("from '@kition/sync'", "from '../sync'"),
+  })
 }
 for (const name of fs.readdirSync(path.join(sdk, 'packages/sdk/kits')).filter((name) => name.endsWith('.ts')).sort()) {
   const source = `packages/sdk/kits/${name}`

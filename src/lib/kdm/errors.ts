@@ -10,6 +10,7 @@ export type KdmErrorReason =
   | 'out-of-range'
   | 'wrong-document'
   | 'newer-schema'
+  | 'history-missing'
   | 'encoding'
   | 'engine'
 
@@ -37,6 +38,11 @@ export const errors = {
   /** The document's minimum schema version (rule M20) is newer than the reader's schema. */
   newerSchema: (found: number, reads: number) =>
     new KdmError('newer-schema', `the document needs schema version ${found}; this kit reads schema versions up to ${reads}`),
+  /**
+   * A shallow replica (standard 2.0 rule M16a) was asked for history before its root: changes that
+   * depend on it, or a version older than it. The server keeps that history.
+   */
+  historyMissing: (message: string) => new KdmError('history-missing', `history missing: ${message}`),
   encoding: (message: string) => new KdmError('encoding', `encoding: ${message}`),
   engine: (message: string) => new KdmError('engine', `engine: ${message}`),
 }

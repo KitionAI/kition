@@ -39,12 +39,15 @@ export type HelloResult = { server: ServerInfo; principal: Principal; capabiliti
  * `true`, `seq` is the last included change's `seq` (not the room's latest) and the caller
  * repeats `room/join` with `since` set to it; when `more` is `false`, `seq` is the room's latest.
  */
-export type RoomJoinParams = { docId: string; since: number | null; limit?: number }
+export type RoomJoinParams = { docId: string; since: number | null; limit?: number; shallow?: boolean; prefer?: SnapshotPreference }
 /**
  * `snapshot` (protocol 1.5): `since` was older than the history the server keeps change by change,
  * so `changes[0]` is a snapshot of the document (imported like any change set) and the rest follow it.
+ * `shallow` (protocol 1.8): answered to a `since: null` join that asked for a shallow start;
+ * `changes[0]` is a shallow snapshot of the room's latest state, which the client loads as a new
+ * replica (`Replica.load`), never imports into an existing one.
  */
-export type RoomJoinResult = { changes: Uint8Array[]; seq: number; more: boolean; presence: Presence[]; role: Role; snapshot?: boolean }
+export type RoomJoinResult = { changes: Uint8Array[]; seq: number; more: boolean; presence: Presence[]; role: Role; snapshot?: boolean; shallow?: boolean }
 
 export type ChangesPushParams = { docId: string; changes: Uint8Array }
 export type ChangesPushResult = { seq: number }
@@ -72,11 +75,44 @@ export type BlobPutResult = Record<string, never>
 export type BlobGetParams = { docId: string; hash: string }
 export type BlobGetResult = { data: Uint8Array; mime: string }
 
-export type SnapshotGetParams = { docId: string }
-export type SnapshotGetResult = { snapshot: Uint8Array; seq: number }
+/**
+ * Protocol 1.8: the kind of snapshot a client would rather start from when the server may choose:
+ * `shallow` for a document past the server's size threshold (a full one otherwise), or `full`.
+ */
+export type SnapshotPreference = 'shallow' | 'full'
 
-export type RoomCreateParams = { docId: string; snapshot: Uint8Array; name: string; kit: string }
+/**
+ * `shallow` (protocol 1.8) asks for a shallow snapshot of the room's latest state (standard 2.0
+ * rule M16a): its current state with only recent history; `prefer: 'shallow'` lets the server
+ * choose one for a large document.
+ */
+export type SnapshotGetParams = { docId: string; shallow?: boolean; prefer?: SnapshotPreference }
+/** `shallow` (protocol 1.8): `snapshot` is shallow; the history before its root stays on the server (`history/get`). */
+export type SnapshotGetResult = { snapshot: Uint8Array; seq: number; shallow?: boolean }
+
+/** `private` (protocol 1.9): a private room, synced to its owner's own devices, with no share link. */
+export type RoomCreateParams = { docId: string; snapshot: Uint8Array; name: string; kit: string; private?: boolean }
 export type RoomCreateResult = { shareLink: string }
+/** A private room has no share link until its owner mints one (`room/link`), protocol 1.9. */
+export type PrivateRoomCreateResult = { shareLink: null }
+
+/**
+ * One room in a principal's document list (protocol 1.9): `updated` is when it last changed
+ * (milliseconds since the Unix epoch), `size` about how many bytes the server keeps for its
+ * current state, `private` whether only its owner's devices sync it.
+ */
+export type RoomListing = { docId: string; name: string; kit: string; role: Role; updated: number; size: number; private: boolean }
+/** `rooms/list` (protocol 1.9): one page of the caller's rooms, most recently changed first. */
+export type RoomsListParams = { cursor?: string; limit?: number }
+/** `cursor` is `null` on the last page. */
+export type RoomsListResult = { rooms: RoomListing[]; cursor: string | null }
+/** `rooms/changed` (protocol 1.9): an entry of the receiver's list now, or `null` when it left the list. */
+export type RoomsChangedParams = { docId: string; room: RoomListing | null }
+/**
+ * A principal's account settings (protocol 1.9, `account/settings`, `account/update`,
+ * `account/changed`): `syncAll`, every document the person opens syncs to their devices.
+ */
+export type AccountSettings = { syncAll: boolean }
 
 /**
  * Resolves a share link (`RoomCreateResult.shareLink`) to the room it points to and the role the

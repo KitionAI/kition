@@ -37,6 +37,27 @@ export function checkOrigin(origin: unknown): asserts origin is Origin {
   if (!ok) throw new KdmError('invalid-value', `an origin needs a kind (${KINDS.join(', ')}), a string principal, and an optional string label`)
 }
 
+/**
+ * The commit message of every transaction (standard 2.0 rule M5a): its origin and the schema version
+ * of the replica that made it, a JSON array `[kind, principal, label, schemaVersion]`, identical to
+ * the Rust encoding. `decodeOrigin` reads it too (it reads the first three elements); a message
+ * written before rule M5a has no fourth element.
+ */
+export function encodeCommit(origin: Origin, schemaVersion: number): string {
+  return JSON.stringify([origin.kind, origin.principal, origin.label ?? null, schemaVersion])
+}
+
+/**
+ * A commit message's origin and author schema version (`null` when the message predates rule
+ * M5a or names none), or `null` when the message is not a KDM commit message.
+ */
+export function decodeCommit(text: string): { origin: Origin; schemaVersion: number | null } | null {
+  const origin = decodeOrigin(text)
+  if (origin === null) return null
+  const version = (JSON.parse(text) as unknown[])[3]
+  return { origin, schemaVersion: typeof version === 'number' && Number.isInteger(version) && version >= 0 ? version : null }
+}
+
 export function decodeOrigin(text: string): Origin | null {
   let parts: unknown
   try {

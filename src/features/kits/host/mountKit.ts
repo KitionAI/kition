@@ -10,6 +10,7 @@ import {
   KitRpcError,
   LEASE_HELD_REASON,
   isReady,
+  parsePresence,
   type AiRunResult,
   type AiStep,
   type DocumentState,
@@ -19,6 +20,9 @@ import {
   type KitDocumentInit,
   type KitLease,
   type KitNotifications,
+  type KitPeerPresence,
+  type KitPresence,
+  type KitPresenceCaret,
   type KitTheme,
   type KitToHost,
   type KitUiConfig,
@@ -33,7 +37,7 @@ import {
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
-export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
+export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -78,6 +82,12 @@ export type KitHostHandlers = {
   conflicts?: (params: KitNotifications['document/conflicts']) => void
   /** `draft/changed`: the agent's draft opened, changed, became ready, or closed (section 7d). */
   draftChanged?: (params: KitNotifications['draft/changed']) => void
+  /**
+   * `presence/set`: what the person shares with the other people in the document (capability
+   * `presence`, section 7e), checked; the host relays it to them. `KitConnection.peersChanged`
+   * tells the kit what they share.
+   */
+  presence?: (presence: KitPresence) => void
 }
 
 export type MountOptions = {
@@ -116,6 +126,13 @@ export type KitConnection = {
   configure: (ui: KitUiConfig) => void
   /** Tells the kit the document's leases changed (`lease/changed`, capability `lease`). */
   leasesChanged: (leases: KitLease[]) => void
+  /** Tells the kit who else is in the document and what they share (`presence/peers`, capability `presence`): the whole list. */
+  peersChanged: (peers: KitPeerPresence[]) => void
+  /**
+   * Hears every `presence/set` the kit sends (what the person selected, where their caret is),
+   * checked; answers an unsubscribe. The object model's `selection` event follows it.
+   */
+  onPresence: (listener: (presence: KitPresence) => void) => () => void
   /** The editor's elements (`ui/elements`). Rejects with -32601 when the kit did not declare its UI. */
   elements: () => Promise<KitUiElement[]>
   /** The Kit AI bridge; `draft` (capability `draft`) works on the agent's draft instead of the live document. */
@@ -170,7 +187,7 @@ function unsupported(method: string): never {
  */
 export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promise<KitConnection> {
   const { handlers } = options
-  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize, lease: handlers.leases }
+  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize, lease: handlers.leases, presence: handlers.presence }
   const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
   const timeout = options.timeoutMs ?? 120_000
 
@@ -211,6 +228,10 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
     })
     peer.on('document/conflicts', (params) => handlers.conflicts?.(params))
     peer.on('draft/changed', (params) => handlers.draftChanged?.(params))
+    peer.on('presence/set', (params) => {
+      const presence = parsePresence(params)
+      if (presence) handlers.presence?.(presence)
+    })
     peer.on('document/changed', (state) => handlers.changed(state))
     peer.on('replica/changed', (params) => handlers.replicaChanged?.(params))
     peer.on('host/notify', (notice) => handlers.notify?.(notice))
@@ -289,6 +310,12 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     focus: () => peer.notify('ui/focus', {}),
     configure: (ui) => peer.notify('ui/configure', { ui }),
     leasesChanged: (leases) => peer.notify('lease/changed', { leases }),
+    peersChanged: (peers) => peer.notify('presence/peers', { peers }),
+    onPresence: (listener) =>
+      peer.on('presence/set', (params) => {
+        const presence = parsePresence(params)
+        if (presence) listener(presence)
+      }),
     elements: () => peer.request('ui/elements', {}),
     ai: {
       inspect: (options) => peer.request('ai/inspect', options?.draft ? { draft: true } : {}),

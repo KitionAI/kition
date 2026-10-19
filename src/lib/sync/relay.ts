@@ -163,7 +163,8 @@ export function startRelay(options: RelayOptions): Relay {
   }
 
   async function join() {
-    const result = await sync.join(docId, options.since ?? null)
+    // The replica exists already: it catches up from a full snapshot, never a shallow start.
+    const result = await sync.join(docId, options.since ?? null, {})
     joined = true
     readOnly = result.role === 'viewer'
     options.onJoined?.({ presence: result.presence, role: result.role })

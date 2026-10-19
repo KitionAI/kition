@@ -103,7 +103,7 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`. */
   capabilities: string[]
   /**
    * The capability sets this host serves (Kit Standard 2.0 section 10, minor version 1.5), such as
@@ -150,6 +150,57 @@ export type KitLease = { scope: string; holder: { principalId: string; name: str
 
 /** `error.data.reason` of a refused `host/leaseAcquire`: another session holds the scope (its lease in `data.lease`). */
 export const LEASE_HELD_REASON = 'held'
+
+/**
+ * Where a person's caret is (capability `presence`, section 7e): a text field of a KDM object, and
+ * the offset in it, counted in Unicode scalar values as the object model counts text positions.
+ */
+export type KitPresenceCaret = { object: string; field: string; offset: number }
+
+/**
+ * What this session shares with the other people in its document (`presence/set`, section 7e):
+ * the KDM ids of the objects it has selected, its caret, and what it looks at (`viewport`, the
+ * kit's own shape: a page, a slide, a rectangle). A viewer shares it too: where they look, never
+ * an edit.
+ */
+export type KitPresence = { selection: string[]; caret?: KitPresenceCaret | null; viewport?: Record<string, unknown> | null }
+
+/** Another person in the document (`presence/peers`, section 7e): who, in which color, and what they share. */
+export type KitPeerPresence = { principal: string; name: string; color: string } & KitPresence
+
+/** At most this many selected ids travel in one presence (section 7e); the rest are left out. */
+export const PRESENCE_SELECTION_LIMIT = 256
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+function parseCaret(value: unknown): KitPresenceCaret | null {
+  if (!isRecord(value)) return null
+  const { object, field, offset } = value
+  return typeof object === 'string' && typeof field === 'string' && typeof offset === 'number' && Number.isInteger(offset) && offset >= 0 ? { object, field, offset } : null
+}
+
+/**
+ * A presence as the other side sent it, checked (neither side trusts the other's shapes): the
+ * selection's string ids (at most `PRESENCE_SELECTION_LIMIT`), a well-formed caret, and an object
+ * viewport. Anything else is left out; a value that is no object is no presence (`null`).
+ */
+export function parsePresence(value: unknown): KitPresence | null {
+  if (!isRecord(value)) return null
+  const selection = Array.isArray(value.selection) ? value.selection.filter((id): id is string => typeof id === 'string').slice(0, PRESENCE_SELECTION_LIMIT) : []
+  const caret = parseCaret(value.caret)
+  const viewport = isRecord(value.viewport) ? value.viewport : null
+  return { selection, ...(caret ? { caret } : {}), ...(viewport ? { viewport } : {}) }
+}
+
+/** `presence/peers`' list, checked as `parsePresence` does; peers with no principal or name are left out. */
+export function parsePeers(value: unknown): KitPeerPresence[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((peer) => {
+    const presence = parsePresence(peer)
+    if (!presence || !isRecord(peer) || typeof peer.principal !== 'string' || typeof peer.name !== 'string') return []
+    return [{ principal: peer.principal, name: peer.name, color: typeof peer.color === 'string' ? peer.color : '', ...presence }]
+  })
+}
 
 /**
  * A conflict object the kit's repair pass recorded (section 7c, standard 2.0 M22): a merge it
@@ -221,6 +272,8 @@ export type HostNotifications = {
   'ui/configure': { ui: KitUiConfig }
   /** The document's leases changed (capability `lease`, section 7b): the whole list. */
   'lease/changed': { leases: KitLease[] }
+  /** The other people in the document and what they share changed (capability `presence`, section 7e): the whole list. */
+  'presence/peers': { peers: KitPeerPresence[] }
 }
 
 /** Requests the kit sends. */
@@ -257,6 +310,8 @@ export type KitNotifications = {
   'document/conflicts': { conflicts: KitConflict[] }
   /** The agent's draft opened, changed, became ready or open again, or closed (capability `draft`). */
   'draft/changed': DraftInfo
+  /** What this session shares with the other people in the document changed (capability `presence`, section 7e). */
+  'presence/set': KitPresence
 }
 
 type Message = { jsonrpc: '2.0'; id?: string; method?: string; params?: unknown; result?: unknown; error?: { code: number; message: string; data?: unknown } }

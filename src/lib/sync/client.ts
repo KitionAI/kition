@@ -12,6 +12,7 @@ import { SyncLeases } from './leases'
 import {
   SYNC_PROTOCOL,
   SyncRpcError,
+  type AccountSettings,
   type AgentRunResult,
   type BlobGetResult,
   type BlobHasResult,
@@ -24,22 +25,39 @@ import {
   type HistoryRestoreResult,
   type Presence,
   type PreviewGetResult,
+  type PrivateRoomCreateResult,
   type Role,
   type RoomCreateResult,
+  type RoomListing,
+  type RoomsListResult,
   type RoomJoinResult,
   type RoomLinkResult,
   type RoomMembersResult,
   type RoomOpenResult,
   type SnapshotGetResult,
+  type SnapshotPreference,
 } from './protocol'
 import type { ConnectionState, SyncTransport, TransportFactory } from './transport'
 
 export type { ConnectionState } from './transport'
 
+/**
+ * How a client with no replica of a document starts (protocol 1.8): `shallow: true` asks for a
+ * shallow snapshot of the room's latest state (standard 2.0 rule M16a), `prefer: 'shallow'` lets
+ * the server choose one for a large document. A server before 1.8 answers a full snapshot.
+ */
+export type SnapshotStart = { shallow?: boolean; prefer?: SnapshotPreference }
+
 export type SyncClientOptions = {
   createTransport: TransportFactory
   client?: ClientInfo
   capabilities?: string[]
+  /**
+   * The start `snapshot` and a `join` with `since: null` ask for unless they are given their own
+   * (protocol 1.8; omitted: full snapshots). History reads go to the server either way
+   * (`history`, `historyAt`), so a shallow replica never needs its own.
+   */
+  start?: SnapshotStart
   random?: () => number
   setTimeout?: (run: () => void, ms: number) => unknown
   clearTimeout?: (handle: unknown) => void
@@ -78,6 +96,8 @@ export class SyncClient {
   private presenceListeners = new Map<string, Set<(peers: Presence[]) => void>>()
   private accessListeners = new Map<string, Set<(role: Role | null) => void>>()
   private stateListeners = new Set<(state: ConnectionState) => void>()
+  private roomsListeners = new Set<(docId: string, room: RoomListing | null) => void>()
+  private accountListeners = new Set<(settings: AccountSettings) => void>()
   private reconnectAttempt = 0
   private reconnectTimer: unknown
   private closed = false
@@ -134,26 +154,35 @@ export class SyncClient {
    * `docs/sync-protocol.md` section 3); this repeats `room/join` with `since` set to each page's
    * `seq` until `more` is `false`, combining every page's `changes` into the one result this
    * resolves with. `presence` and `role` are from the last page.
+   *
+   * A join with `since: null` (a client with no replica yet) may start from a shallow snapshot
+   * (protocol 1.8): `start` (else the client's `start` option) asks for one. The result then says
+   * `snapshot` and `shallow`, and `changes[0]` is the shallow snapshot to load as a new replica.
    */
-  async join(docId: string, since?: number | null): Promise<RoomJoinResult> {
+  async join(docId: string, since?: number | null, start: SnapshotStart = this.options.start ?? {}): Promise<RoomJoinResult> {
     let nextSince = since === undefined ? this.lastSeq.get(docId) ?? null : since
     const changes: Uint8Array[] = []
     let snapshot = false
+    let shallow = false
     let page: RoomJoinResult
     do {
-      page = await this.request<RoomJoinResult>('room/join', () => ({ docId, since: nextSince }), (value, bins) => ({
+      // Only a client with no replica may start shallow: a shallow snapshot never imports into one.
+      const params = nextSince === null ? { docId, since: nextSince, ...startParams(start) } : { docId, since: nextSince }
+      page = await this.request<RoomJoinResult>('room/join', () => params, (value, bins) => ({
         changes: readBins(value.changes, bins),
         seq: value.seq as number,
         more: value.more as boolean,
         presence: value.presence as Presence[],
         role: value.role as Role,
         ...(value.snapshot === true ? { snapshot: true } : {}),
+        ...(value.shallow === true ? { shallow: true } : {}),
       }))
       if (page.snapshot) snapshot = true
+      if (page.shallow) shallow = true
       changes.push(...page.changes)
       nextSince = page.seq
     } while (page.more)
-    const result: RoomJoinResult = { ...page, changes, ...(snapshot ? { snapshot } : {}) }
+    const result: RoomJoinResult = { ...page, changes, ...(snapshot ? { snapshot } : {}), ...(shallow ? { shallow } : {}) }
     this.joined.add(docId)
     this.bumpSeq(docId, result.seq)
     return result
@@ -219,12 +248,76 @@ export class SyncClient {
     },
   }
 
-  snapshot(docId: string): Promise<SnapshotGetResult> {
-    return this.request('snapshot/get', () => ({ docId }), (value, bins) => ({ snapshot: readBin(value.snapshot, bins), seq: value.seq as number }))
+  /**
+   * The room's snapshot, for a client with no replica yet, and the `seq` it reflects; `join` with
+   * that `seq` next. `start` (else the client's `start` option) may ask for a shallow one
+   * (protocol 1.8), which the result then says (`shallow`).
+   */
+  snapshot(docId: string, start: SnapshotStart = this.options.start ?? {}): Promise<SnapshotGetResult> {
+    return this.request(
+      'snapshot/get',
+      () => ({ docId, ...startParams(start) }),
+      (value, bins) => ({ snapshot: readBin(value.snapshot, bins), seq: value.seq as number, ...(value.shallow === true ? { shallow: true } : {}) }),
+    )
   }
 
   createRoom(docId: string, snapshot: Uint8Array, name: string, kit: string): Promise<RoomCreateResult> {
     return this.request('room/create', (out) => ({ docId, snapshot: out.bin(snapshot), name, kit }), (value) => value as RoomCreateResult)
+  }
+
+  /**
+   * Makes a private room (protocol 1.9, `room/create` with `private: true`): it syncs the document
+   * to this person's own devices, with no share link until they mint one (`createLink`), which
+   * shares it. A server before 1.9 makes an ordinary room and answers its link.
+   */
+  createPrivateRoom(docId: string, snapshot: Uint8Array, name: string, kit: string): Promise<PrivateRoomCreateResult | RoomCreateResult> {
+    return this.request('room/create', (out) => ({ docId, snapshot: out.bin(snapshot), name, kit, private: true }), (value) => ({ shareLink: (value.shareLink ?? null) as string | null }) as PrivateRoomCreateResult | RoomCreateResult)
+  }
+
+  /**
+   * One page of the rooms this person is a member of, most recently changed first (protocol 1.9,
+   * `rooms/list`); pass the answered `cursor` for the next page (`null`: none).
+   */
+  listRooms(options: { cursor?: string; limit?: number } = {}): Promise<RoomsListResult> {
+    return this.request('rooms/list', () => ({ ...options }), (value) => ({ rooms: (value.rooms ?? []) as RoomListing[], cursor: (value.cursor ?? null) as string | null }))
+  }
+
+  /** Every room this person is a member of, all pages of `listRooms`, keyed by `docId`. */
+  async listAllRooms(): Promise<RoomListing[]> {
+    const rooms = new Map<string, RoomListing>()
+    let cursor: string | undefined
+    for (let page = 0; page < 1000; page += 1) {
+      const result = await this.listRooms(cursor === undefined ? {} : { cursor })
+      for (const room of result.rooms) if (!rooms.has(room.docId)) rooms.set(room.docId, room)
+      if (!result.cursor) break
+      cursor = result.cursor
+    }
+    return [...rooms.values()]
+  }
+
+  /**
+   * Hears this person's document list change (protocol 1.9, `rooms/changed`): `room` is the entry
+   * now, or `null` when they are no longer a member.
+   */
+  onRoomsChanged(listener: (docId: string, room: RoomListing | null) => void): () => void {
+    this.roomsListeners.add(listener)
+    return () => this.roomsListeners.delete(listener)
+  }
+
+  /** This person's account settings on the server (protocol 1.9, `account/settings`). */
+  accountSettings(): Promise<AccountSettings> {
+    return this.request('account/settings', () => ({}), (value) => ({ syncAll: value.syncAll === true }))
+  }
+
+  /** Changes this person's account settings (protocol 1.9, `account/update`); answers them all. */
+  updateAccountSettings(patch: Partial<AccountSettings>): Promise<AccountSettings> {
+    return this.request('account/update', () => ({ ...patch }), (value) => ({ syncAll: value.syncAll === true }))
+  }
+
+  /** Hears this person's account settings change on any of their devices (protocol 1.9, `account/changed`). */
+  onAccountChanged(listener: (settings: AccountSettings) => void): () => void {
+    this.accountListeners.add(listener)
+    return () => this.accountListeners.delete(listener)
   }
 
   /** Resolves `shareLink` to the room it points to; `join(result.docId, ...)` actually joins it. */
@@ -372,7 +465,7 @@ export class SyncClient {
     const docIds = [...this.joined]
     await Promise.allSettled(
       docIds.map(async (docId) => {
-        const result = await this.join(docId)
+        const result = await this.join(docId, undefined, {})
         for (const changes of result.changes) this.emitChanges(docId, { changes })
       }),
     )
@@ -540,6 +633,17 @@ export class SyncClient {
       for (const listener of this.accessListeners.get(docId) ?? []) listener(role)
       return
     }
+    if (method === 'rooms/changed') {
+      const docId = params.docId as string
+      const room = (params.room ?? null) as RoomListing | null
+      for (const listener of this.roomsListeners) listener(docId, room)
+      return
+    }
+    if (method === 'account/changed') {
+      const settings = { syncAll: params.syncAll === true }
+      for (const listener of this.accountListeners) listener(settings)
+      return
+    }
     if (method === 'presence/update') {
       const docId = params.docId as string
       for (const listener of this.presenceListeners.get(docId) ?? []) listener(params.peers as Presence[])
@@ -562,6 +666,11 @@ export class SyncClient {
     set.add(listener)
     return () => set?.delete(listener)
   }
+}
+
+/** The 1.8 params of a snapshot start, omitting what asks for nothing (a 1.7 server never sees them). */
+function startParams(start: SnapshotStart): { shallow?: true; prefer?: SnapshotPreference } {
+  return { ...(start.shallow ? { shallow: true as const } : {}), ...(start.prefer ? { prefer: start.prefer } : {}) }
 }
 
 function toRpcError(error: { code: number; message: string; data?: unknown }): SyncRpcError {

@@ -34,3 +34,25 @@ fn a_typescript_document_keeps_converging_when_edited_from_rust() {
     assert_eq!(a.state_hash().unwrap(), b.state_hash().unwrap());
     assert!(a.text(&shape, "label").unwrap().starts_with("RS:"));
 }
+
+/// A shallow snapshot made by the TypeScript KDM (`fixtures/ts-shallow.*`, written by
+/// `KDM_WRITE_SHALLOW_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`) opens
+/// here as a shallow replica with the identical canonical state, and keeps converging when edited
+/// from Rust.
+#[test]
+fn a_typescript_shallow_snapshot_opens_to_the_identical_canonical_state() {
+    let mut shallow = Replica::load(schema(), include_bytes!("fixtures/ts-shallow.bin"), ActorId::from_u64(12).unwrap()).unwrap();
+    assert!(shallow.is_shallow());
+    let state = shallow.state_json().unwrap().to_string();
+    assert_eq!(shallow.state_hash().unwrap(), include_str!("fixtures/ts-shallow.sha256"), "canonical state differs from fixtures/ts-shallow.json:\n{state}");
+    let shape = shallow.objects_of_type("Shape").into_iter().next().unwrap();
+    shallow.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "RS:")).unwrap();
+    let mut other = Replica::load(schema(), include_bytes!("fixtures/ts-shallow.bin"), ActorId::from_u64(14).unwrap()).unwrap();
+    other.transact(&person(), |tx| tx.set(&shape, "x", serde_json::json!(7))).unwrap();
+    let to_other = shallow.export_changes(&other.version()).unwrap();
+    other.import_changes(&to_other).unwrap();
+    let to_shallow = other.export_changes(&shallow.version()).unwrap();
+    shallow.import_changes(&to_shallow).unwrap();
+    assert_eq!(shallow.state_hash().unwrap(), other.state_hash().unwrap());
+    assert!(other.text(&shape, "label").unwrap().starts_with("RS:"));
+}

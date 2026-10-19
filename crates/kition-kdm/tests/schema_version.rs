@@ -220,3 +220,51 @@ fn the_canonical_state_shows_the_minimum_as_meta_schema_version() {
         r#"{"meta":{"docId":"01920000-0000-7000-8000-0000000000bb","kdm":1,"kit":"kit.test","schemaVersion":3},"objects":{}}"#
     );
 }
+
+// Each change's author schema version (rule M5a).
+
+#[test]
+fn every_commit_records_its_authors_schema_version_and_the_newest_is_read_back() {
+    let mut old = Replica::create(schema_at(1), DocId::new(), actor(1)).unwrap();
+    assert_eq!(old.author_schema_version(), Some(1));
+    let (page, _) = page_with_shape(&mut old);
+    let mut newer = Replica::load(schema_at(3), &old.snapshot().unwrap(), actor(2)).unwrap();
+    // Loading changes nothing: only a newer replica's own commits record its version.
+    assert_eq!(newer.author_schema_version(), Some(1));
+    let base = old.version();
+    newer.transact(&person(), |tx| tx.set(&page, "title", json!("Edited with a newer kit"))).unwrap();
+    assert_eq!(newer.author_schema_version(), Some(3));
+    // The older reader takes the change (nothing migrated), and can tell it was written under schema 3.
+    old.import_changes(&newer.export_changes(&base).unwrap()).unwrap();
+    assert_eq!(old.get(&page, "title").unwrap(), json!("Edited with a newer kit"));
+    assert_eq!(old.author_schema_version(), Some(3));
+    assert_eq!(old.min_schema_version(), 1);
+    let loaded = Replica::load(schema_at(1), &old.snapshot().unwrap(), actor(4)).unwrap();
+    assert_eq!(loaded.author_schema_version(), Some(3));
+}
+
+#[test]
+fn the_commit_message_is_kind_principal_label_and_schema_version_which_older_readers_decode() {
+    let mut replica = Replica::create(schema_at(2), DocId::new(), actor(1)).unwrap();
+    page_with_shape(&mut replica);
+    let doc = loro::LoroDoc::new();
+    doc.import(&replica.snapshot().unwrap()[20..]).unwrap();
+    let mut messages = Vec::new();
+    for (peer, end) in doc.oplog_vv().iter() {
+        let mut counter = 0;
+        while counter < *end {
+            let change = doc.get_change(loro::ID::new(*peer, counter)).unwrap();
+            messages.push(change.message.as_deref().unwrap_or_default().to_owned());
+            counter = change.id.counter + i32::try_from(change.len).unwrap();
+        }
+    }
+    assert!(messages.contains(&r#"["person","user:test",null,2]"#.to_owned()), "{messages:?}");
+    for message in &messages {
+        assert!(Origin::decode(message).is_some(), "{message}");
+    }
+    assert_eq!(Origin::decode_commit(r#"["person","user:test",null,2]"#), Some((person(), Some(2))));
+    assert_eq!(Origin::decode_commit(r#"["person","user:test",null]"#), Some((person(), None)));
+    assert_eq!(Origin::decode_commit(r#"["person","user:test",null,"2"]"#), Some((person(), None)));
+    assert_eq!(Origin::decode_commit("not json"), None);
+    assert_eq!(Origin::system("migrate").encode_commit(4), r#"["system","kdm","migrate",4]"#);
+}

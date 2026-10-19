@@ -69,6 +69,23 @@ impl Origin {
         serde_json::json!([self.kind.as_str(), self.principal, self.label]).to_string()
     }
 
+    /// The commit message of every transaction (standard 2.0 rule M5a): the origin and the schema
+    /// version of the replica that made it, a JSON array `[kind, principal, label, schemaVersion]`,
+    /// identical to the TypeScript encoding. [`Origin::decode`] reads it too (it reads the first
+    /// three elements); a message written before rule M5a has no fourth element.
+    pub fn encode_commit(&self, schema_version: u32) -> String {
+        serde_json::json!([self.kind.as_str(), self.principal, self.label, schema_version]).to_string()
+    }
+
+    /// A commit message's origin and author schema version (`None` when the message predates rule
+    /// M5a or names none), or `None` when the message is not a KDM commit message.
+    pub fn decode_commit(text: &str) -> Option<(Self, Option<u32>)> {
+        let origin = Self::decode(text)?;
+        let value: serde_json::Value = serde_json::from_str(text).ok()?;
+        let version = value.as_array()?.get(3).and_then(serde_json::Value::as_u64).and_then(|version| u32::try_from(version).ok());
+        Some((origin, version))
+    }
+
     pub fn decode(text: &str) -> Option<Self> {
         let value: serde_json::Value = serde_json::from_str(text).ok()?;
         let parts = value.as_array()?;

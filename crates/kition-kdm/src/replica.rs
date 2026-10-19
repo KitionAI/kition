@@ -1,17 +1,18 @@
 // Copied from kition-sdk crates/kition-kdm/src/replica.rs by scripts/sync-kit-host.mjs; change it there, not here.
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::mem;
 use std::sync::{Arc, Mutex};
 
 use loro::event::Diff;
 use loro::{
-    ContainerID, Counter, ExportMode, Frontiers, Index, LoroDoc, LoroError, LoroValue, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer,
+    ContainerID, Counter, ExportMode, IdSpan, Index, LoroDoc, LoroError, LoroValue, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer,
     VersionRange, VersionVector,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-use crate::error::engine;
+use crate::error::{engine, importing};
 use crate::read::{self, META, OBJECTS, SCHEMA_VERSION};
 use crate::{ActorId, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx};
 
@@ -118,7 +119,7 @@ impl Replica {
         // The new document is discarded on failure, so nothing needs reverting.
         staged.apply(&doc, &schema, |_| {}).map_err(applying_failed)?;
         doc.set_next_commit_origin(origin.kind.as_str());
-        doc.set_next_commit_message(&origin.encode());
+        doc.set_next_commit_message(&origin.encode_commit(schema.schema_version));
         doc.commit();
         Ok((Self::attach(doc, doc_id, schema, actor)?, value))
     }
@@ -212,6 +213,31 @@ impl Replica {
         read::min_schema_version(&self.doc).and_then(|found| u32::try_from(found).ok()).unwrap_or(0)
     }
 
+    /// The newest schema version any change of this replica was written under (rule M5a: every
+    /// commit records its author's schema version), or `None` when no change records one (they
+    /// all predate the rule). A version above this replica's schema means someone edits the
+    /// document with a newer kit: objects of types this schema lacks read as their `$type` only
+    /// and refuse edits here ([`KdmError::UnknownType`]), and a host asks the person to update the
+    /// kit. A shallow replica (rule M16a) sees only the changes after its root.
+    pub fn author_schema_version(&self) -> Option<u32> {
+        let start = self.doc.shallow_since_vv();
+        let mut newest = None;
+        for (peer, end) in self.doc.oplog_vv().iter() {
+            let mut counter = start.get(peer).copied().unwrap_or(0);
+            while counter < *end {
+                let Some(change) = self.doc.get_change(loro::ID::new(*peer, counter)) else { break };
+                let version = change.message.as_deref().and_then(Origin::decode_commit).and_then(|(_, version)| version);
+                newest = newest.max(version);
+                let next = change.id.counter.saturating_add(i32::try_from(change.len).unwrap_or(i32::MAX));
+                if next <= counter {
+                    break;
+                }
+                counter = next;
+            }
+        }
+        newest
+    }
+
     /// Runs `f` as one transaction: one commit, one undo step, one origin. Operations are staged
     /// while `f` runs and applied only if it succeeds: if `f` fails, the document, its version,
     /// and its exports are unchanged and the error is returned.
@@ -248,13 +274,13 @@ impl Replica {
             if self.doc.state_frontiers() != before {
                 self.doc.revert_to(&before).map_err(engine)?;
                 self.doc.set_next_commit_origin(ROLLBACK);
-                self.doc.set_next_commit_message(&Origin::system("rollback").encode());
+                self.doc.set_next_commit_message(&Origin::system("rollback").encode_commit(self.schema.schema_version));
                 self.doc.commit();
             }
             return Err(applying_failed(error));
         }
         self.doc.set_next_commit_origin(origin.kind.as_str());
-        self.doc.set_next_commit_message(&origin.encode());
+        self.doc.set_next_commit_message(&origin.encode_commit(self.schema.schema_version));
         self.doc.commit();
         self.changed.extend(touched);
         self.note_own_writes(writes);
@@ -337,7 +363,9 @@ impl Replica {
     /// Applies changes from another replica or from storage, in any order, any number of times.
     /// Answers the objects whose state changed.
     /// Bytes that are not a KDM export are [`KdmError::Encoding`]; changes of another document are
-    /// [`KdmError::WrongDocument`] and change nothing.
+    /// [`KdmError::WrongDocument`] and change nothing. On a shallow replica, changes that depend on
+    /// history before its root (made by a replica that had not seen the root yet) are
+    /// [`KdmError::HistoryMissing`] and change nothing; see [`Replica::rebase`].
     ///
     /// Changes that raise the document's minimum schema version (rule M20) above this replica's
     /// schema are [`KdmError::NewerSchema`] and change nothing: the state, the version, the
@@ -349,9 +377,9 @@ impl Replica {
         if doc_id != self.doc_id {
             return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
         }
-        let before = self.doc.oplog_frontiers();
+        let before = self.doc.oplog_vv();
         let doc = &self.doc;
-        let (imported, changed, registers) = observe_changes(doc, || doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string())));
+        let (imported, changed, registers) = observe_changes(doc, || doc.import(bytes).map_err(importing));
         if let Some(found) = read::min_schema_version(&self.doc).filter(|found| *found > u64::from(self.schema.schema_version)) {
             self.restore(&before)?;
             return Err(KdmError::NewerSchema { found, reads: self.schema.schema_version });
@@ -364,11 +392,12 @@ impl Replica {
         Ok(changed)
     }
 
-    /// Replaces the document with its history up to `frontiers`, dropping every change applied
+    /// Replaces the document with its history up to `version`, dropping every change applied
     /// since. Changes still pending stay recorded in `pending`: they are missing again, and a
-    /// sync fetches them.
-    fn restore(&mut self, frontiers: &Frontiers) -> Result<()> {
-        let doc = self.doc.fork_at(frontiers).map_err(engine)?;
+    /// sync fetches them. A shallow replica stays shallow, with the same root.
+    fn restore(&mut self, version: &VersionVector) -> Result<()> {
+        let doc =
+            if self.doc.is_shallow() { shallow_fork_at(&self.doc, version)? } else { self.doc.fork_at(&self.doc.vv_to_frontiers(version)).map_err(engine)? };
         crate::marks::configure(&doc, &self.schema);
         doc.set_peer_id(self.actor.get()).map_err(engine)?;
         self.undo = undo_manager(&doc);
@@ -410,6 +439,94 @@ impl Replica {
     pub fn snapshot(&self) -> Result<Vec<u8>> {
         let bytes = self.doc.export(ExportMode::Snapshot).map_err(|error| KdmError::Encoding(error.to_string()))?;
         Ok(envelope::wrap(self.doc_id, &bytes))
+    }
+
+    /// A **shallow snapshot** (standard 2.0 rule M16a): the document's current state with only the
+    /// history after `at`, for a device that holds a large document without its whole history.
+    /// [`Replica::load`] opens it as a shallow replica, which edits, exports, imports, and merges
+    /// like a full one; history before its root stays with whoever holds it (the sync server).
+    ///
+    /// The root is the latest version at or before `at` that every later change descends from
+    /// (the engine moves it back past changes made concurrently with `at`, so they stay in the
+    /// retained history); `Version::empty()` keeps the whole history. `at` must be a version this
+    /// replica has ([`KdmError::InvalidValue`] otherwise); on a shallow replica, an `at` before its
+    /// own root is its root.
+    pub fn shallow_snapshot(&self, at: &Version) -> Result<Vec<u8>> {
+        if !self.version().includes(at) {
+            return Err(KdmError::InvalidValue { ty: "$shallow".into(), field: "version".into(), reason: "names changes this replica does not have".into() });
+        }
+        let frontiers = if self.reaches(at) { self.doc.vv_to_frontiers(&at.0) } else { self.doc.shallow_since_frontiers() };
+        let bytes = self.doc.export(ExportMode::shallow_snapshot(&frontiers)).map_err(|error| KdmError::Encoding(error.to_string()))?;
+        Ok(envelope::wrap(self.doc_id, &bytes))
+    }
+
+    /// Whether this replica holds only part of the document's history: it was loaded from a
+    /// [`Replica::shallow_snapshot`] (or from a snapshot of a shallow replica).
+    pub fn is_shallow(&self) -> bool {
+        self.doc.is_shallow()
+    }
+
+    /// The version a shallow replica's retained history starts at (its root): it has every change
+    /// after it, and none of the history it summarizes. `None` for a full replica.
+    pub fn shallow_root(&self) -> Option<Version> {
+        self.is_shallow().then(|| Version(self.doc.shallow_since_vv().to_vv()))
+    }
+
+    /// Whether `version` is at or after this replica's shallow root: always, on a full replica.
+    fn reaches(&self, version: &Version) -> bool {
+        self.shallow_root().is_none_or(|root| version.includes(&root))
+    }
+
+    /// Replaces this replica's document with `snapshot` (a full or shallow snapshot of the same
+    /// document, as a server answers it) plus every change this replica has that `snapshot`
+    /// lacks, and answers the objects whose state changed. For a shallow replica whose import
+    /// failed with [`KdmError::HistoryMissing`]: a newer snapshot from the server holds the
+    /// changes it could not take, rooted early enough for them, and this replica's own changes
+    /// (pushed or not) are kept on top. The state is what importing every change of both would
+    /// give.
+    ///
+    /// Refuses ([`KdmError::WrongDocument`]) a snapshot of another document, what
+    /// [`Replica::load`] refuses, and ([`KdmError::HistoryMissing`]) a shallow snapshot whose root
+    /// is after changes of this replica it lacks; a refused rebase changes nothing. Clears the undo
+    /// and redo history, like any load.
+    pub fn rebase(&mut self, snapshot: &[u8]) -> Result<BTreeSet<ObjectId>> {
+        let (doc_id, _) = envelope::open(snapshot)?;
+        if doc_id != self.doc_id {
+            return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
+        }
+        let mut base = Self::load(Arc::clone(&self.schema), snapshot, self.actor)?;
+        if !base.version().includes(&self.version()) {
+            base.import_changes(&self.export_changes(&base.version())?)?;
+            if !base.version().includes(&self.version()) {
+                // This replica is shallow and the snapshot is older than its root: the changes in
+                // between are in neither.
+                return Err(KdmError::HistoryMissing(SNAPSHOT_BEFORE_ROOT.into()));
+            }
+        }
+        let objects = |value: Value| match value {
+            Value::Object(mut state) => match state.remove(OBJECTS) {
+                Some(Value::Object(objects)) => objects,
+                _ => serde_json::Map::new(),
+            },
+            _ => serde_json::Map::new(),
+        };
+        let before = objects(self.state_json()?);
+        let after = objects(base.state_json()?);
+        let changed: BTreeSet<ObjectId> =
+            before.keys().chain(after.keys()).filter(|id| before.get(*id) != after.get(*id)).map(|id| ObjectId::from_string(id.clone())).collect();
+        self.doc = base.doc;
+        self.undo = base.undo;
+        self.imported_registers.clear();
+        self.kept_registers.clear();
+        self.own_registers.clear();
+        for (peer, end) in base.pending {
+            let known = self.pending.entry(peer).or_insert(end);
+            *known = (*known).max(end);
+        }
+        self.note_pending(None);
+        self.reopen_undo_group();
+        self.changed.extend(changed.iter().cloned());
+        Ok(changed)
     }
 
     /// Undoes this replica's last transaction. Changes from other replicas are kept, including
@@ -472,7 +589,7 @@ impl Replica {
         }
         if restored {
             self.doc.set_next_commit_origin(OriginKind::System.as_str());
-            self.doc.set_next_commit_message(&Origin::system("keep-later-changes").encode());
+            self.doc.set_next_commit_message(&Origin::system("keep-later-changes").encode_commit(self.schema.schema_version));
             self.doc.commit();
         }
         Ok(done)
@@ -590,13 +707,22 @@ impl Replica {
     }
 
     /// A draft of this document as it was at `version` (see [`Replica::fork`]). `version` must be
-    /// one this replica has reached ([`KdmError::InvalidValue`] otherwise).
+    /// one this replica has reached ([`KdmError::InvalidValue`] otherwise). A shallow replica
+    /// forks only at its current version ([`KdmError::HistoryMissing`] otherwise): earlier
+    /// versions are read from the server.
     pub fn fork_at(&self, version: &Version, actor: ActorId) -> Result<Replica> {
         if !self.version().includes(version) {
             return Err(KdmError::InvalidValue { ty: "$draft".into(), field: "version".into(), reason: "names changes this replica does not have".into() });
         }
-        let frontiers = self.doc.vv_to_frontiers(&version.0);
-        let doc = self.doc.fork_at(&frontiers).map_err(engine)?;
+        let doc = if !self.is_shallow() {
+            self.doc.fork_at(&self.doc.vv_to_frontiers(&version.0)).map_err(engine)?
+        } else if *version == self.version() {
+            self.doc.fork()
+        } else {
+            // The engine forks a shallow document only as a whole; the TypeScript one has no other
+            // way to make one at an earlier version, so neither implementation does.
+            return Err(KdmError::HistoryMissing(VERSION_BEFORE_ROOT.into()));
+        };
         crate::marks::configure(&doc, &self.schema);
         Self::attach(doc, self.doc_id, Arc::clone(&self.schema), actor)
     }
@@ -631,11 +757,12 @@ impl Replica {
         }
         let diff = merged.diff(&from, &to).map_err(engine)?;
         let doc = &self.doc;
+        let message = origin.encode_commit(self.schema.schema_version);
         let (applied, changed, registers) = observe_changes(doc, || {
             let applied = doc.apply_diff(diff);
             if applied.is_ok() {
                 doc.set_next_commit_origin(origin.kind.as_str());
-                doc.set_next_commit_message(&origin.encode());
+                doc.set_next_commit_message(&message);
                 doc.commit();
             }
             applied
@@ -648,7 +775,7 @@ impl Replica {
             if self.doc.oplog_frontiers() != from {
                 self.doc.revert_to(&from).map_err(engine)?;
                 self.doc.set_next_commit_origin(ROLLBACK);
-                self.doc.set_next_commit_message(&Origin::system("rollback").encode());
+                self.doc.set_next_commit_message(&Origin::system("rollback").encode_commit(self.schema.schema_version));
                 self.doc.commit();
             }
             return Err(engine(error));
@@ -673,7 +800,7 @@ impl Replica {
         }
         let merged = self.doc.fork();
         crate::marks::configure(&merged, &self.schema);
-        let status = merged.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
+        let status = merged.import(bytes).map_err(importing)?;
         if status.pending.is_some() {
             return Err(KdmError::InvalidValue { ty: "$draft".into(), field: "changes".into(), reason: "depend on changes this replica does not have".into() });
         }
@@ -692,6 +819,31 @@ impl Replica {
         let digest = Sha256::digest(self.state_json()?.to_string().as_bytes());
         Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
     }
+}
+
+/// What a shallow replica answers for a version before its root; the TypeScript
+/// `errors.historyMissing` says the same.
+const VERSION_BEFORE_ROOT: &str = "a shallow replica forks only at its current version; read earlier versions from the server";
+
+/// What [`Replica::rebase`] answers for a snapshot older than a shallow replica's root.
+const SNAPSHOT_BEFORE_ROOT: &str = "the snapshot is older than this shallow replica's root; rebase it on a newer one";
+
+/// A shallow document as it was at `version` (at or after its root), with the same root: its
+/// state at the root, then its retained changes up to `version`. The engine has no `fork_at` for
+/// shallow documents.
+fn shallow_fork_at(doc: &LoroDoc, version: &VersionVector) -> Result<LoroDoc> {
+    let root = doc.shallow_since_frontiers();
+    let encoding = |error: loro::LoroEncodeError| KdmError::Encoding(error.to_string());
+    let forked = LoroDoc::new();
+    forked.import(&doc.export(ExportMode::StateOnly(Some(Cow::Borrowed(&root)))).map_err(encoding)?).map_err(engine)?;
+    let spans: Vec<IdSpan> = version.sub_iter(&forked.oplog_vv()).collect();
+    if !spans.is_empty() {
+        forked.import(&doc.export(ExportMode::UpdatesInRange { spans: Cow::Owned(spans) }).map_err(encoding)?).map_err(engine)?;
+    }
+    if forked.oplog_vv() != *version {
+        return Err(KdmError::HistoryMissing(VERSION_BEFORE_ROOT.into()));
+    }
+    Ok(forked)
 }
 
 /// The undo manager of a replica's document.

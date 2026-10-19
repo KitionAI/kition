@@ -8,7 +8,7 @@
  * is in `@kition/sync/replicaVersions`, loaded on demand, since it loads the CRDT engine.
  */
 export { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry } from './blobSection'
-export { SyncClient, type SyncClientOptions, type SyncToken } from './client'
+export { SyncClient, type SnapshotStart, type SyncClientOptions, type SyncToken } from './client'
 export type { Bin, Frame } from './framing'
 export {
   HEADLESS_CAPABILITY,
@@ -40,12 +40,18 @@ export {
   type PreviewGetResult,
   type Principal,
   type Role,
+  type AccountSettings,
+  type PrivateRoomCreateResult,
   type RoomCreateResult,
+  type RoomListing,
+  type RoomsChangedParams,
+  type RoomsListResult,
   type RoomJoinResult,
   type RoomLinkResult,
   type RoomOpenResult,
   type ServerInfo,
   type SnapshotGetResult,
+  type SnapshotPreference,
 } from './protocol'
 export { DocumentLeases, SyncLeases, leaseHolder, scopesCollide, type LeaseHold } from './leases'
 export { startRelay, type Relay, type RelayOptions, type RelayReplica, type RelaySync } from './relay'

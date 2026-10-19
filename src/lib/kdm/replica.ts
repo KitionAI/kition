@@ -6,7 +6,7 @@ import { open, sameBytes, Version, wrap } from './envelope'
 import { errors, KdmError } from './errors'
 import { checkActor, committedNode, uuidFromBytes, uuidToBytes, type NodeRef, type ObjectId, type TreeEntry } from './ids'
 import { configure, type TextRun } from './marks'
-import { checkOrigin, encodeOrigin, system, type Origin } from './origin'
+import { checkOrigin, decodeCommit, encodeCommit, system, type Origin } from './origin'
 import * as read from './read'
 import { KDM_VERSION, type Schema } from './schema'
 import { Tx } from './tx'
@@ -34,6 +34,17 @@ export type TextDelta =
 const applyingFailed = (error: unknown): KdmError => errors.engine(`applying a validated transaction failed: ${error instanceof Error ? error.message : String(error)}`)
 
 const engineMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+
+/** What an import into a shallow replica answers for changes that depend on history before its root; the Rust crate says the same. */
+const CHANGES_BEFORE_ROOT = "the changes depend on history before this shallow replica's root; rebase it on a newer snapshot"
+/** What a shallow replica answers for a fork at an earlier version; the Rust crate says the same. */
+const VERSION_BEFORE_ROOT = 'a shallow replica forks only at its current version; read earlier versions from the server'
+/** What `rebase` answers for a snapshot older than a shallow replica's root; the Rust crate says the same. */
+const SNAPSHOT_BEFORE_ROOT = "the snapshot is older than this shallow replica's root; rebase it on a newer one"
+
+/** An engine failure while importing bytes: `history-missing` for changes a shallow replica lacks the history of, `encoding` otherwise. */
+const importing = (error: unknown): KdmError =>
+  engineMessage(error).includes('not included in the shallow history') ? errors.historyMissing(CHANGES_BEFORE_ROOT) : errors.encoding(engineMessage(error))
 
 /**
  * Runs `run` while observing which objects change. Change events are observed only during the
@@ -94,6 +105,12 @@ export class Replica {
   private busy = false
   /** Set between `beginUndoGroup` and `endUndoGroup`. */
   private grouping = false
+  /**
+   * Set when a shallow replica refused an import (`newer-schema`) after the engine applied it: the
+   * engine cannot rebuild a shallow document at an earlier version, so the replica refuses every
+   * later change and export with the same error (standard 2.0 rule M16a).
+   */
+  private closedBy: KdmError | null = null
   /**
    * For each replica whose changes an import could not apply yet, the counter just past the last
    * of them. They are applied (and no longer pending) once `version` reaches it.
@@ -159,7 +176,7 @@ export class Replica {
     } catch (error) {
       throw applyingFailed(error)
     }
-    doc.commit({ origin: origin.kind, message: encodeOrigin(origin) })
+    doc.commit({ origin: origin.kind, message: encodeCommit(origin, schema.schemaVersion) })
     return { replica: new Replica(doc, idBytes, schema, actor), result }
   }
 
@@ -232,12 +249,32 @@ export class Replica {
   }
 
   /**
+   * The newest schema version any change of this replica was written under (rule M5a: every
+   * commit records its author's schema version), or `null` when no change records one (they all
+   * predate the rule). A version above this replica's schema means someone edits the document
+   * with a newer kit: objects of types this schema lacks read as their `$type` only and refuse
+   * edits here (`unknown-type`), and a host asks the person to update the kit. A shallow replica
+   * (rule M16a) sees only the changes after its root.
+   */
+  authorSchemaVersion(): number | null {
+    let newest: number | null = null
+    for (const changes of this.doc.getAllChanges().values()) {
+      for (const change of changes) {
+        const version = change.message ? (decodeCommit(change.message)?.schemaVersion ?? null) : null
+        if (version !== null && (newest === null || version > newest)) newest = version
+      }
+    }
+    return newest
+  }
+
+  /**
    * Runs `f` as one transaction: one commit, one undo step, one origin. Operations are staged while
    * `f` runs and applied only if it returns: if `f` throws, the document, its version, and its
    * exports are unchanged and the error propagates. `f` must be synchronous.
    */
   transact<R>(origin: Origin, f: (tx: Tx) => R): R {
     this.idle()
+    this.checkOpen()
     checkOrigin(origin)
     checkFunction(f)
     this.busy = true
@@ -269,11 +306,11 @@ export class Replica {
         } catch (revertError) {
           throw errors.engine(engineMessage(revertError))
         }
-        this.doc.commit({ origin: ROLLBACK, message: encodeOrigin(system('rollback')) })
+        this.doc.commit({ origin: ROLLBACK, message: encodeCommit(system('rollback'), this.schema.schemaVersion) })
       }
       throw applyingFailed(error)
     }
-    this.doc.commit({ origin: origin.kind, message: encodeOrigin(origin) })
+    this.doc.commit({ origin: origin.kind, message: encodeCommit(origin, this.schema.schemaVersion) })
     for (const id of touched) this.changed.add(id)
     this.noteOwnWrites(staged.registerWrites)
     return result
@@ -377,6 +414,7 @@ export class Replica {
 
   /** The changes this replica has that a replica at `since` lacks, labelled with this document's id. */
   exportChanges(since: Version = Version.empty()): Uint8Array {
+    this.checkOpen()
     if (!(since instanceof Version)) throw new KdmError('invalid-value', 'a version must be a `Version`')
     let bytes: Uint8Array
     try {
@@ -398,9 +436,15 @@ export class Replica {
    * applying them, so the replica is rebuilt from its history before the import; that clears its
    * undo and redo history, and `subscribeText` listeners stop receiving changes. A build that
    * meets this error is too old for the document: the host stops syncing and asks for an update.
+   * A shallow replica cannot be rebuilt so: it keeps the changes and refuses every later change
+   * and export with this error, and the host reopens the document from what it stored.
+   *
+   * On a shallow replica, changes that depend on history before its root (made by a replica that
+   * had not seen the root yet) are `history-missing` errors and change nothing; see `rebase`.
    */
   importChanges(bytes: Uint8Array): Set<ObjectId> {
     this.idle()
+    this.checkOpen()
     const { docId, engine } = open(bytes)
     if (!sameBytes(docId, this.docIdBytes)) throw errors.wrongDocument(this.docId, uuidFromBytes(docId))
     const before = this.doc.oplogFrontiers()
@@ -415,10 +459,15 @@ export class Replica {
     })
     const found = read.minSchemaVersion(this.doc)
     if (found !== null && found > this.schema.schemaVersion) {
+      const error = errors.newerSchema(found, this.schema.schemaVersion)
+      if (this.doc.isShallow()) {
+        this.closedBy = error
+        throw error
+      }
       this.restore(before)
-      throw errors.newerSchema(found, this.schema.schemaVersion)
+      throw error
     }
-    if (status === null) throw errors.encoding(engineMessage(failure))
+    if (status === null) throw importing(failure)
     for (const register of registers) this.importedRegisters.add(register)
     this.notePending(status)
     for (const id of changed) this.changed.add(id)
@@ -448,6 +497,7 @@ export class Replica {
 
   /** A compacted copy of the whole document, for fast loading and new replicas. */
   snapshot(): Uint8Array {
+    this.checkOpen()
     let bytes: Uint8Array
     try {
       bytes = this.doc.export({ mode: 'snapshot' })
@@ -456,6 +506,95 @@ export class Replica {
     }
     return wrap(this.docIdBytes, bytes)
   }
+  /**
+   * A **shallow snapshot** (standard 2.0 rule M16a): the document's current state with only the
+   * history after `at`, for a device that holds a large document without its whole history. `load`
+   * opens it as a shallow replica, which edits, exports, imports, and merges like a full one;
+   * history before its root stays with whoever holds it (the sync server).
+   *
+   * The root is the latest version at or before `at` that every later change descends from (the
+   * engine moves it back past changes made concurrently with `at`, so they stay in the retained
+   * history); `Version.empty()` keeps the whole history. `at` must be a version this replica has
+   * (`invalid-value` otherwise); on a shallow replica, an `at` before its own root is its root.
+   */
+  shallowSnapshot(at: Version): Uint8Array {
+    this.checkOpen()
+    if (!(at instanceof Version)) throw new KdmError('invalid-value', 'a version must be a `Version`')
+    if (!this.version().includes(at)) throw errors.invalidValue('$shallow', 'version', 'names changes this replica does not have')
+    const frontiers = this.reaches(at) ? this.doc.vvToFrontiers(at.toEngine()) : this.doc.shallowSinceFrontiers()
+    let bytes: Uint8Array
+    try {
+      bytes = this.doc.export({ mode: 'shallow-snapshot', frontiers })
+    } catch (error) {
+      throw errors.encoding(engineMessage(error))
+    }
+    return wrap(this.docIdBytes, bytes)
+  }
+
+  /** Whether this replica holds only part of the document's history: it was loaded from a `shallowSnapshot` (or a snapshot of a shallow replica). */
+  isShallow(): boolean {
+    return this.doc.isShallow()
+  }
+
+  /**
+   * The version a shallow replica's retained history starts at (its root): it has every change
+   * after it, and none of the history it summarizes. `null` for a full replica.
+   */
+  shallowRoot(): Version | null {
+    return this.doc.isShallow() ? Version.fromEngine(this.doc.shallowSinceVV()) : null
+  }
+
+  /** Whether `version` is at or after this replica's shallow root: always, on a full replica. */
+  private reaches(version: Version): boolean {
+    const root = this.shallowRoot()
+    return root === null || version.includes(root)
+  }
+
+  /**
+   * Replaces this replica's document with `snapshot` (a full or shallow snapshot of the same
+   * document, as a server answers it) plus every change this replica has that `snapshot` lacks,
+   * and answers the objects whose state changed. For a shallow replica whose import failed with
+   * `history-missing`: a newer snapshot from the server holds the changes it could not take,
+   * rooted early enough for them, and this replica's own changes (pushed or not) are kept on top.
+   * The state is what importing every change of both would give.
+   *
+   * Refuses (`wrong-document`) a snapshot of another document, what `load` refuses, and
+   * (`history-missing`) a shallow snapshot whose root is after changes of this replica it lacks; a
+   * refused rebase changes nothing. Clears the undo and redo history, like any load, and
+   * `subscribeText` listeners stop receiving changes.
+   */
+  rebase(snapshot: Uint8Array): Set<ObjectId> {
+    this.idle()
+    this.checkOpen()
+    const { docId } = open(snapshot)
+    if (!sameBytes(docId, this.docIdBytes)) throw errors.wrongDocument(this.docId, uuidFromBytes(docId))
+    const base = Replica.load(this.schema, snapshot, this.actor)
+    if (!base.version().includes(this.version())) {
+      base.importChanges(this.exportChanges(base.version()))
+      // This replica is shallow and the snapshot is older than its root: the changes in between
+      // are in neither.
+      if (!base.version().includes(this.version())) throw errors.historyMissing(SNAPSHOT_BEFORE_ROOT)
+    }
+    const objects = (state: unknown): Record<string, unknown> => ((state as { objects?: Record<string, unknown> }).objects ?? {})
+    const before = objects(this.stateJson())
+    const after = objects(base.stateJson())
+    const changed = new Set<ObjectId>()
+    for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      if (canonicalText(before[id] ?? null) !== canonicalText(after[id] ?? null) || (id in before) !== (id in after)) changed.add(id)
+    }
+    this.undoManager.free()
+    this.doc = base.doc
+    this.undoManager = base.undoManager
+    this.importedRegisters.clear()
+    this.keptRegisters.clear()
+    this.ownRegisters.clear()
+    for (const [peer, end] of base.pending) this.pending.set(peer, Math.max(end, this.pending.get(peer) ?? 0))
+    this.prunePending()
+    this.reopenUndoGroup()
+    for (const id of changed) this.changed.add(id)
+    return sorted(changed)
+  }
+
 
   /**
    * Undoes this replica's last transaction. Changes from other replicas are kept, including later
@@ -537,12 +676,15 @@ export class Replica {
   /** A draft of this document as it was at `version` (see `fork`); `version` must be one this replica has reached. */
   forkAt(version: Version, actor: bigint): Replica {
     this.idle()
+    this.checkOpen()
     checkActor(actor)
     if (!(version instanceof Version)) throw new KdmError('invalid-value', 'a version must be a `Version`')
     if (!this.version().includes(version)) throw errors.invalidValue('$draft', 'version', 'names changes this replica does not have')
+    // The engine forks a shallow document only as a whole.
+    if (this.doc.isShallow() && !version.equals(this.version())) throw errors.historyMissing(VERSION_BEFORE_ROOT)
     let doc: LoroDoc
     try {
-      doc = this.doc.forkAt(this.doc.vvToFrontiers(version.toEngine()))
+      doc = this.doc.isShallow() ? this.doc.fork() : this.doc.forkAt(this.doc.vvToFrontiers(version.toEngine()))
     } catch (error) {
       throw errors.engine(engineMessage(error))
     }
@@ -556,6 +698,7 @@ export class Replica {
    */
   mergedState(changes: Uint8Array): unknown {
     this.idle()
+    this.checkOpen()
     return read.stateJson(this.mergedDoc(changes), this.schema)
   }
 
@@ -574,6 +717,7 @@ export class Replica {
    */
   mergeChanges(changes: Uint8Array, origin: Origin): Set<ObjectId> {
     this.idle()
+    this.checkOpen()
     checkOrigin(origin)
     const merged = this.mergedDoc(changes)
     const from = this.doc.oplogFrontiers()
@@ -593,7 +737,7 @@ export class Replica {
         failure = error
         return
       }
-      this.doc.commit({ origin: origin.kind, message: encodeOrigin(origin) })
+      this.doc.commit({ origin: origin.kind, message: encodeCommit(origin, this.schema.schemaVersion) })
     })
     if (failure !== null) {
       // The engine refused part of a difference it computed itself: put back what it applied,
@@ -601,7 +745,7 @@ export class Replica {
       this.doc.commit({ origin: ROLLBACK })
       if (!sameFrontiers(this.doc.oplogFrontiers(), from)) {
         this.doc.revertTo(from)
-        this.doc.commit({ origin: ROLLBACK, message: encodeOrigin(system('rollback')) })
+        this.doc.commit({ origin: ROLLBACK, message: encodeCommit(system('rollback'), this.schema.schemaVersion) })
       }
       throw errors.engine(engineMessage(failure))
     }
@@ -623,7 +767,7 @@ export class Replica {
     try {
       status = merged.import(engine)
     } catch (error) {
-      throw errors.encoding(engineMessage(error))
+      throw importing(error)
     }
     if (status.pending && status.pending.size > 0) throw errors.invalidValue('$draft', 'changes', 'depend on changes this replica does not have')
     const found = read.minSchemaVersion(merged)
@@ -668,9 +812,19 @@ export class Replica {
   /** Records the changes an import left pending, and forgets those applied since. */
   private notePending(status: ImportStatus): void {
     for (const [peer, { end }] of status.pending ?? []) this.pending.set(peer, Math.max(end, this.pending.get(peer) ?? 0))
+    this.prunePending()
+  }
+
+  /** Forgets the pending changes applied since they were recorded. */
+  private prunePending(): void {
     if (this.pending.size === 0) return
     const applied = this.doc.oplogVersion()
     for (const [peer, end] of this.pending) if ((applied.get(peer) ?? 0) >= end) this.pending.delete(peer)
+  }
+
+  /** Throws the error that closed this shallow replica, if one did (see `importChanges`). */
+  private checkOpen(): void {
+    if (this.closedBy) throw this.closedBy
   }
 
   private idle(): void {
@@ -700,6 +854,7 @@ export class Replica {
 
   private history(run: () => boolean): boolean {
     this.idle()
+    this.checkOpen()
     this.closeUndoGroup()
     const others = this.othersRegisters()
     const { value, changed, registers } = observeChanges(this.doc, () => {
@@ -730,7 +885,7 @@ export class Replica {
       this.keptRegisters.set(register, value)
       restored = true
     }
-    if (restored) this.doc.commit({ origin: SYSTEM, message: encodeOrigin(system('keep-later-changes')) })
+    if (restored) this.doc.commit({ origin: SYSTEM, message: encodeCommit(system('keep-later-changes'), this.schema.schemaVersion) })
     return value
   }
 
