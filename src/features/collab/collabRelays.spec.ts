@@ -175,6 +175,28 @@ describe('startCollab for documents Kition edits itself', () => {
     expect(documentCommentAccess('Shared/Plan.kiboard', false)).toMatchObject({ canComment: true, othersReadOnly: true })
   })
 
+  it('shows the agent in presence while it edits the document, and then no longer', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { noteAgentEdit } = await import('@/services/agentPresence')
+    const { client, joins } = fakeClient()
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { store, withdraw } = await openBoard('Shared/Agent.kiboard')
+    const docId = store.getReplica().docId
+    writeRoom({ docId, shareLink: 'https://example.test/s/4', name: 'Agent.kiboard', kit: 'kit.board', role: 'editor', path: 'Shared/Agent.kiboard' })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toHaveLength(1))
+    await vi.waitFor(() => expect(client.setPresence).toHaveBeenCalledTimes(1))
+    const [, joined] = client.setPresence.mock.calls[0] as unknown as [string, Record<string, unknown>]
+    expect(joined.agent).toBeUndefined()
+
+    noteAgentEdit('Shared/Agent.kiboard', 20)
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { ...joined, agent: { name: 'Agent', origin: 'agent' } })
+    // Another edit while it is there changes nothing; once it is quiet, it leaves.
+    noteAgentEdit('Shared/Agent.kiboard', 20)
+    expect(client.setPresence).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(client.setPresence).toHaveBeenLastCalledWith(docId, joined))
+  })
+
   it('never touches a table replica without a sync server and a Kition Pro session', async () => {
     const { registerOpenTable } = await import('@/features/table/lib/openTables')
     const { client, deps } = dependencies(false)

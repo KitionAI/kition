@@ -765,6 +765,7 @@
     "unreachable": "无法连接同步服务器。请检查网络连接后重试。",
     "linkNotFound": "此链接没有指向任何共享文档。",
     "peers": "也在编辑：{{names}}",
+    "agentPeer": "智能体",
     "status": {
       "online": "协同编辑：已连接",
       "connecting": "协同编辑：正在连接",

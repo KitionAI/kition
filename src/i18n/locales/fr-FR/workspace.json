@@ -765,6 +765,7 @@
     "unreachable": "Le serveur de synchronisation est injoignable. Vérifiez votre connexion et réessayez.",
     "linkNotFound": "Ce lien ne mène à aucun document partagé.",
     "peers": "Modifient aussi : {{names}}",
+    "agentPeer": "Agent",
     "status": {
       "online": "Coédition : connecté",
       "connecting": "Coédition : connexion…",

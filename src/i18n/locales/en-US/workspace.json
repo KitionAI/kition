@@ -765,6 +765,7 @@
     "unreachable": "The sync server cannot be reached. Check your connection and try again.",
     "linkNotFound": "This link does not lead to a shared document.",
     "peers": "Also editing: {{names}}",
+    "agentPeer": "Agent",
     "status": {
       "online": "Co-editing: connected",
       "connecting": "Co-editing: connecting",

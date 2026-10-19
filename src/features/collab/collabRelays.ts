@@ -10,9 +10,14 @@
  * relayed document and how (`@/services/documentComments`), and follows the owner changing this
  * person's role or removing them (`room/access`): removed, the document stops relaying and stays
  * here as a local copy.
+ *
+ * The agent is a collaborator (architecture section 13): while it edits a relayed document through
+ * the Kit AI bridge (`@/services/agentPresence`), this person's presence state carries it as
+ * `agent: { name, origin: 'agent' }`, and every viewer shows it as a peer of its own.
  */
 import { DocumentLeases, SyncRpcError, leaseHolder, startRelay, type Lease, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
 import { DocumentLeaseRefused, setDocumentLeaseProvider, type DocumentLease, type DocumentLeaseProvider } from '@/services/documentLeases'
+import { AGENT_PRESENCE, agentEditing, onAgentEditing } from '@/services/agentPresence'
 import { setReadOnlyDocuments } from '@/services/documentAccess'
 import { setSharedCommentAccess } from '@/services/documentComments'
 import { followCollabDocuments, type CollabDocument, type CollabReplica } from './collabDocuments'
@@ -86,6 +91,9 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
   let relay: Relay | null = null
   let stopPresence: (() => void) | null = null
   let stopLeases: (() => void) | null = null
+  /** Publishes this person's presence again, now with or without the agent; set once joined. */
+  let publishPresence: (() => void) | null = null
+  const stopAgent = onAgentEditing(path, () => publishPresence?.())
 
   let again = false
   const start = async (): Promise<void> => {
@@ -137,7 +145,8 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
           // A role that changed (a viewer link opened, a member's role changed) is kept, and a
           // viewer's document turns read-only.
           if (readRoom(id)?.role !== role) updateRoom(id, { role })
-          client.setPresence(id, { kit: document.kit })
+          publishPresence = () => client.setPresence(id, agentEditing(path) ? { kit: document.kit, agent: AGENT_PRESENCE } : { kit: document.kit })
+          publishPresence()
         },
         onAccess: (role) => {
           if (role) {
@@ -147,6 +156,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
             return
           }
           // Removed from the room: the document stays here as a local copy.
+          publishPresence = null
           setSharedCommentAccess(path, null)
           stopLeases?.()
           stopLeases = null
@@ -170,6 +180,8 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
   void start()
   return () => {
     stopped = true
+    publishPresence = null
+    stopAgent()
     stopRooms()
     // Leases first, while the room is still joined.
     stopLeases?.()

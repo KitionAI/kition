@@ -765,6 +765,7 @@
     "unreachable": "Não foi possível acessar o servidor de sincronização. Verifique sua conexão e tente novamente.",
     "linkNotFound": "Este link não leva a nenhum documento compartilhado.",
     "peers": "Também editando: {{names}}",
+    "agentPeer": "Agente",
     "status": {
       "online": "Coedição: conectado",
       "connecting": "Coedição: conectando",

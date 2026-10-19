@@ -1391,6 +1391,11 @@
     @apply inline-flex size-4 items-center justify-center rounded-full text-[8px] font-semibold leading-none text-white ring-1 ring-background;
   }
 
+  /* An agent editing the document: square corners tell it from the people. */
+  .collab-presence-avatar--agent {
+    @apply rounded;
+  }
+
   .collab-presence-more {
     @apply pl-1.5 text-[10px] text-muted-foreground;
   }

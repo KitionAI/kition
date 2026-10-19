@@ -48,6 +48,28 @@ bridge) and the stdio `kition-kits-mcp --workspace <folder>` without Kition (hea
 DeepSeek Harness mounts them through its own `dsh-mcp-client` with kition-sdk's
 `packages/dsh-kits` patches (standard D1); its `test/e2e.sh` proves it with a real dsh runtime.
 
+Every kit also gets two object-model tools (architecture section 13, `tools/model.rs`):
+`<prefix>_query` reads objects by id (`root` for the document) or by following fields from the
+root (`follow: "slides.0.shapes"`), and `<prefix>_batch` runs one `model/batch` (KitObjectModel
+1.0) and saves unless `save: false`. Their argument schemas are generated from the kit's
+`model.describe` once Kition has seen it (types and fields become enums; `describe: true` answers
+the schema and its JSON Schema). Both go to the open editor's `model/*` (Kit UI protocol
+section 7a) or to the headless kit's `model.describe`/`model.batch`, honour `draft` (a draft batch
+needs the editor's `draft-model` capability and is refused otherwise, never run on the document)
+and read-only documents. Every kit tool failure answers a structured error beside its message,
+`{ code, message, index?, retryable? }`: the object model's `BatchErrorCode` (`invalid-op`,
+`not-found`, `invalid-value`, `read-only`, `command-failed`) and `invalid-params`, `not-open`,
+`draft-required`, `unknown-command`, `not-allowed`, `unsupported`, `unavailable`, `failed`. The MCP
+server also serves documents as resources (`resources.rs`): `kit://<document>/describe` and
+`kit://<document>/objects/<id>`, `<document>` the file's workspace path as one percent-encoded
+segment, with `resources/list` (the documents open now) and `resources/templates/list`; no
+subscriptions.
+
+When the agent edits a co-edited document through the bridge, the person's presence state carries
+`agent: { name: "Agent", origin: "agent" }` until the agent has been quiet for 30 seconds
+(`src/services/agentPresence.ts`, `features/collab/collabRelays.ts`), and every viewer's tab shows
+the agent as a peer of its own (`PresenceAvatars`).
+
 Rejected on 2026-10-10 after a real-app trial: embedding the kit's native
 editor in an overlay window above the tab (`surface: embedded`, plan B). It
 felt like a second program, showed two canvases and extra scroll bars, and
