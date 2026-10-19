@@ -28,7 +28,7 @@ function editorSelection(): string {
   const node = selection.anchorNode
   const element = node instanceof Element ? node : node?.parentElement
   if (!element?.closest('.cm-content')) return ''
-  return selection.toString().slice(0, QUOTE_LIMIT)
+  return selection.toString().trim().slice(0, QUOTE_LIMIT)
 }
 
 /** The session's threads, read again whenever its comments or text change. */
@@ -135,7 +135,7 @@ export function DocumentComments({ session, path, readOnly }: { session: Documen
         type="button"
         variant="ghost"
         size="sm"
-        className="absolute right-3 top-2 z-20 h-7 gap-1 px-2 text-muted-foreground hover:text-foreground"
+        className="absolute right-4 top-14 z-20 h-7 gap-1 rounded-lg border border-border bg-background px-2 text-muted-foreground shadow-sm hover:text-foreground"
         title={t('comments.toggle')}
         aria-label={t('comments.toggle')}
         aria-pressed={open}
@@ -148,7 +148,7 @@ export function DocumentComments({ session, path, readOnly }: { session: Documen
       </Button>
       {open ? (
         <aside
-          className="absolute bottom-3 right-3 top-11 z-20 flex w-[320px] flex-col rounded-xl border border-border bg-background shadow-sm"
+          className="absolute bottom-3 right-4 top-24 z-20 flex w-[320px] flex-col rounded-xl border border-border bg-background shadow-sm"
           aria-label={t('comments.title')}
           data-testid="document-comments"
         >
