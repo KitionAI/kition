@@ -67,6 +67,9 @@ export default defineConfig({
         webServer: {
           command: `pnpm exec vite --config tooling/vite.config.ts --host 127.0.0.1 --port ${PORT}`,
           cwd: repositoryDir,
+          // Each port pre-bundles its dependencies in its own folder, so runs on other ports at the
+          // same time never rewrite the modules this server's pages load (tooling/vite.config.ts).
+          env: { KITION_VITE_CACHE_DIR: resolve(repositoryDir, `node_modules/.vite/e2e-${PORT}`) },
           url: BASE_URL,
           reuseExistingServer: true,
           timeout: 120_000,

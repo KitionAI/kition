@@ -48,6 +48,10 @@ function readAnalyticsEndpoint(): string {
 
 export default defineConfig(({ mode }) => ({
   root: repositoryDir,
+  // Dev servers started side by side (e2e runs on separate ports) each need their own pre-bundled
+  // dependencies: one that re-optimizes rewrites the shared folder under another's open pages, which
+  // then load two copies of React (an "invalid hook call"). tooling/playwright.config.ts sets this.
+  ...(process.env.KITION_VITE_CACHE_DIR ? { cacheDir: process.env.KITION_VITE_CACHE_DIR } : {}),
   publicDir: resolve(repositoryDir, 'public'),
   base: '/',
   // vite-plugin-wasm loads WebAssembly that a module imports as an ES module, as loro-crdt's
