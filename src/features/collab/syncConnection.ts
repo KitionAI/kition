@@ -5,6 +5,7 @@
  */
 import { useSyncExternalStore } from 'react'
 import { SyncClient, type ConnectionState, type SyncTransport } from '@/lib/sync'
+import { setCommentIdentity } from '@/services/documentComments'
 import { loadCollabToken, syncServerUrl } from './collabSettings'
 
 /** `off`: co-editing is not set up in this window (no server or no session). */
@@ -59,6 +60,10 @@ async function openSyncClient(): Promise<SyncClient | null> {
   closeSyncClient()
   const client = new SyncClient({ createTransport: webSocketTransport, client: { name: 'Kition', version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev' } })
   client.onState(setState)
+  // Who this person comments as, also once the document is no longer co-edited (rule M23).
+  client.onState((next) => {
+    if (next === 'online' && client.principal) setCommentIdentity(client.principal)
+  })
   current = { client, url, token }
   // A first attempt that fails keeps retrying with backoff; the state store follows it.
   client.connect(url, token).catch(() => undefined)

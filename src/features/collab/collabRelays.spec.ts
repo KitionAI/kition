@@ -3,6 +3,7 @@ import * as replicaApi from '@/api/dataDocumentsReplica'
 import type { KitConnection } from '@/features/kits/public'
 import { registerKitConnection } from '@/features/kits/kition/kitConnections'
 import { isDocumentReadOnly } from '@/services/documentAccess'
+import { documentCommentAccess } from '@/services/documentComments'
 import { startCollab, type CollabDependencies } from './collabRelays'
 import { readRoom, toHex, writeRoom } from './rooms'
 import * as tableReplica from './tableReplica'
@@ -74,6 +75,7 @@ describe('startCollab', () => {
 
 describe('startCollab for documents Kition edits itself', () => {
   function fakeClient() {
+    const access: Array<(role: 'owner' | 'editor' | 'commenter' | 'viewer' | null) => void> = []
     const joins: Array<{ docId: string; since: number | null | undefined }> = []
     const client = {
       state: 'online' as const,
@@ -88,9 +90,13 @@ describe('startCollab for documents Kition edits itself', () => {
       onState: vi.fn(() => () => undefined),
       setPresence: vi.fn(),
       onPresence: vi.fn(() => () => undefined),
+      onAccess: vi.fn((_docId: string, listener: (role: 'owner' | 'editor' | 'commenter' | 'viewer' | null) => void) => {
+        access.push(listener)
+        return () => undefined
+      }),
       blobs: { has: vi.fn(async (hashes: string[]) => ({ missing: hashes })), put: vi.fn(), get: vi.fn() },
     }
-    return { client, joins }
+    return { client, joins, access }
   }
 
   async function openBoard(path: string) {
@@ -136,6 +142,37 @@ describe('startCollab for documents Kition edits itself', () => {
     expect(isDocumentReadOnly('Shared/Notes.md')).toBe(true)
     writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.document', role: 'editor', path: 'Shared/Notes.md' })
     expect(isDocumentReadOnly('Shared/Notes.md')).toBe(false)
+  })
+
+  it('keeps a commenter’s document read-only, yet lets them comment', async () => {
+    writeRoom({ docId: 'doc-c', shareLink: 'https://example.test/s/c', name: 'Notes.md', kit: 'kit.document', role: 'commenter', path: 'Shared/Notes.md' })
+    cleanups.push(startCollab({ configured: async () => false, client: async () => null, versions: vi.fn() }))
+    expect(isDocumentReadOnly('Shared/Notes.md')).toBe(true)
+  })
+
+  it('follows the owner changing this person’s role, and keeps a local copy once removed', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins, access } = fakeClient()
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { store, withdraw } = await openBoard('Shared/Plan.kiboard')
+    const docId = store.getReplica().docId
+    writeRoom({ docId, shareLink: 'https://example.test/s/3', name: 'Plan.kiboard', kit: 'kit.board', role: 'editor', path: 'Shared/Plan.kiboard' })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toHaveLength(1))
+    // Joined as an editor: comments are written as the room's principal, and others' are not history.
+    await vi.waitFor(() => expect(documentCommentAccess('Shared/Plan.kiboard', false)).toMatchObject({ me: 'u:me', canComment: true, othersReadOnly: false }))
+    await vi.waitFor(() => expect(access).toHaveLength(1))
+
+    access[0]('viewer')
+    expect(readRoom(docId)?.role).toBe('viewer')
+    expect(isDocumentReadOnly('Shared/Plan.kiboard')).toBe(true)
+    expect(documentCommentAccess('Shared/Plan.kiboard', true).canComment).toBe(false)
+
+    access[0](null)
+    expect(readRoom(docId)).toBeNull()
+    expect(isDocumentReadOnly('Shared/Plan.kiboard')).toBe(false)
+    // No longer co-edited: others' threads are history.
+    expect(documentCommentAccess('Shared/Plan.kiboard', false)).toMatchObject({ canComment: true, othersReadOnly: true })
   })
 
   it('never touches a table replica without a sync server and a Kition Pro session', async () => {

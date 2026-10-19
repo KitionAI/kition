@@ -711,7 +711,7 @@
     "share": "共享以协同编辑",
     "sharing": "正在共享…",
     "sharedTitle": "已共享以协同编辑",
-    "sharedDescription": "链接已复制。拥有 Kition Pro 的人打开此链接后即可与你一起编辑此文档。",
+    "sharedDescription": "链接已复制。拥有 Kition Pro 的人打开它后，可以按照链接允许的权限与你一起处理此文档。",
     "linkLabel": "共享链接",
     "copyLink": "复制链接",
     "linkCopied": "链接已复制",
@@ -732,8 +732,25 @@
       "offline": "协同编辑：离线。重新连接后会同步你的编辑。"
     },
     "accessLabel": "通过链接可进行的操作",
-    "accessEdit": "可编辑",
-    "accessView": "仅查看",
-    "viewOnly": "仅查看"
+    "viewOnly": "仅查看",
+    "access": {
+      "editor": "可编辑",
+      "commenter": "可评论",
+      "viewer": "可查看"
+    },
+    "role": {
+      "owner": "所有者",
+      "editor": "编辑者",
+      "commenter": "评论者",
+      "viewer": "查看者"
+    },
+    "commentOnly": "仅可评论",
+    "members": "有权访问的人",
+    "memberYou": "{{name}}（你）",
+    "memberRole": "{{name}} 的角色",
+    "removeMember": "移除 {{name}}",
+    "revokeLink": "撤销此链接",
+    "linkRevoked": "链接已撤销，它将无法再打开此文档。",
+    "newLink": "创建链接"
   }
 }

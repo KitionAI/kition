@@ -12,12 +12,12 @@ function CollabStatus({ state }: { state: CollabConnectionState }) {
   return <span className={cn('collab-status', `is-${shown}`)} role="status" aria-label={label} title={label} data-testid="collab-status" data-state={shown} />
 }
 
-/** Shown on a shared document this person may only view. */
-function ViewOnlyBadge() {
+/** Shown on a shared document this person may only view, or only comment on. */
+function AccessBadge({ role }: { role: 'viewer' | 'commenter' }) {
   const { t } = useTranslation('workspace')
   return (
-    <span className="collab-view-only" data-testid="collab-view-only">
-      {t('collab.viewOnly')}
+    <span className="collab-view-only" data-testid={role === 'viewer' ? 'collab-view-only' : 'collab-comment-only'}>
+      {t(role === 'viewer' ? 'collab.viewOnly' : 'collab.commentOnly')}
     </span>
   )
 }
@@ -30,7 +30,7 @@ export function CollabTabIndicators({ path }: { path: string }) {
   return (
     <span className="collab-tab-indicators" data-testid="collab-tab-indicators">
       <CollabStatus state={state} />
-      {collab.role === 'viewer' ? <ViewOnlyBadge /> : null}
+      {collab.role === 'viewer' || collab.role === 'commenter' ? <AccessBadge role={collab.role} /> : null}
       <PresenceAvatars peers={collab.peers} />
     </span>
   )

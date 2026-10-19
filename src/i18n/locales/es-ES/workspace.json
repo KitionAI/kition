@@ -711,7 +711,7 @@
     "share": "Compartir para coedición",
     "sharing": "Compartiendo…",
     "sharedTitle": "Compartido para coedición",
-    "sharedDescription": "El enlace se ha copiado. Cualquier persona con Kition Pro que lo abra puede editar este documento contigo.",
+    "sharedDescription": "El enlace está copiado. Cualquier persona con Kition Pro que lo abra puede trabajar contigo en este documento, según lo que permita el enlace.",
     "linkLabel": "Enlace para compartir",
     "copyLink": "Copiar enlace",
     "linkCopied": "Enlace copiado",
@@ -732,8 +732,25 @@
       "offline": "Coedición: sin conexión. Tus cambios se sincronizarán al reconectar."
     },
     "accessLabel": "Qué permite el enlace",
-    "accessEdit": "Puede editar",
-    "accessView": "Puede ver",
-    "viewOnly": "Solo lectura"
+    "viewOnly": "Solo lectura",
+    "access": {
+      "editor": "Puede editar",
+      "commenter": "Puede comentar",
+      "viewer": "Puede ver"
+    },
+    "role": {
+      "owner": "Propietario",
+      "editor": "Editor",
+      "commenter": "Comentarista",
+      "viewer": "Lector"
+    },
+    "commentOnly": "Solo comentar",
+    "members": "Personas con acceso",
+    "memberYou": "{{name}} (tú)",
+    "memberRole": "Rol de {{name}}",
+    "removeMember": "Quitar a {{name}}",
+    "revokeLink": "Revocar este enlace",
+    "linkRevoked": "Enlace revocado. Ya no abre este documento.",
+    "newLink": "Crear un enlace"
   }
 }

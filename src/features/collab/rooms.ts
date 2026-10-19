@@ -50,9 +50,12 @@ function listRooms(): CollabRoom[] {
   return Object.values(readRooms()).filter((room): room is CollabRoom => Boolean(room) && typeof room.docId === 'string' && typeof room.shareLink === 'string')
 }
 
-/** The workspace files opened from links where this person may only view. */
-export function viewerPaths(): string[] {
-  return listRooms().flatMap((room) => (room.role === 'viewer' && room.path ? [room.path] : []))
+/**
+ * The workspace files opened from links whose content this person may not change: a viewer's, and
+ * a commenter's (who still writes comments, beside the content).
+ */
+export function readOnlyPaths(): string[] {
+  return listRooms().flatMap((room) => ((room.role === 'viewer' || room.role === 'commenter') && room.path ? [room.path] : []))
 }
 
 export function readRoom(docId: string): CollabRoom | null {
@@ -72,6 +75,17 @@ export function writeRoom(room: CollabRoom, { quiet = false } = {}) {
 export function updateRoom(docId: string, patch: Partial<Omit<CollabRoom, 'docId'>>, options: { quiet?: boolean } = {}) {
   const room = readRoom(docId)
   if (room) writeRoom({ ...room, ...patch }, options)
+}
+
+/** Forgets a shared document (this person was removed from its room): it is a local copy from now on. */
+export function deleteRoom(docId: string) {
+  const store = storage()
+  if (!store) return
+  const rooms = readRooms()
+  if (!(docId in rooms)) return
+  delete rooms[docId]
+  store.setItem(ROOMS_KEY, JSON.stringify(rooms))
+  window.dispatchEvent(new CustomEvent(ROOMS_CHANGED_EVENT, { detail: { docId } }))
 }
 
 /** Hears a document becoming shared (or its record changing); answers an unsubscribe. */

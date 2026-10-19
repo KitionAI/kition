@@ -5,8 +5,8 @@
  * **Share.** The document is saved first, so its file and the replica stored with it carry the
  * document's KDM identity (`docId`), then its whole history (an export from nothing) is the
  * room's snapshot; the export's blobs are uploaded before the room is made. The room is recorded
- * (`rooms.ts`), which starts the document's relay. A view-only link to the same room can be made
- * next to it (`shareViewOnlyLink`).
+ * (`rooms.ts`), which starts the document's relay. Links granting less (comment, view) can be made
+ * next to it (`createShareLink`), and the room's owner manages its members and links.
  *
  * **Open shared.** The link names the room (`room/open`); its snapshot and the blobs it references
  * come from the server, and Kition makes the file `Shared/<name>` from them: a kit document with
@@ -20,7 +20,7 @@ import { createTableFromReplica } from '@/api/dataDocumentsReplica'
 import { loadDocumentStore } from '@/features/document/public'
 import { KITION_KIT_HOST, writeKitFileFromReplica, type KitSdkManifest } from '@/features/kits/public'
 import { loadBoardSharedFile } from '@/features/whiteboard/public'
-import { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry, type SyncClient } from '@/lib/sync'
+import { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry, type Role, type RoomMembersResult, type SyncClient } from '@/lib/sync'
 import { createWorkspaceFolder, listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import { findCollabDocument, HOST_KITS } from './collabDocuments'
 import { readRoom, toHex, writeRoom } from './rooms'
@@ -70,10 +70,47 @@ export async function shareDocument(path: string): Promise<SharedDocument> {
   }
 }
 
-/** A link to the shared document `docId`'s room that lets whoever opens it only view. */
-export async function shareViewOnlyLink(docId: string): Promise<string> {
+/** What a share link lets whoever opens it do. */
+export type LinkRole = Exclude<Role, 'owner'>
+
+/** A new link to the shared document `docId`'s room granting `role` (never more than this person's own). */
+export async function createShareLink(docId: string, role: LinkRole): Promise<string> {
   const client = await onlineSyncClient()
-  return (await client.createLink(docId, 'viewer')).shareLink
+  return (await client.createLink(docId, role)).shareLink
+}
+
+/** The room's members and working links (its owner and editors may list them). */
+export async function listRoomMembers(docId: string): Promise<RoomMembersResult> {
+  const client = await onlineSyncClient()
+  return client.members(docId)
+}
+
+/** The owner gives another member `role`. */
+export async function changeMemberRole(docId: string, principalId: string, role: LinkRole) {
+  const client = await onlineSyncClient()
+  await client.setRole(docId, principalId, role)
+}
+
+/** The owner removes another member from the room. */
+export async function removeRoomMember(docId: string, principalId: string) {
+  const client = await onlineSyncClient()
+  await client.removeMember(docId, principalId)
+}
+
+/** The owner revokes a share link: it no longer opens the document. */
+export async function revokeShareLink(docId: string, shareLink: string) {
+  const client = await onlineSyncClient()
+  await client.revokeLink(docId, shareLink)
+}
+
+/** This person's role in the shared document `docId`'s room, as last known here. */
+export function roomRole(docId: string): Role | null {
+  return readRoom(docId)?.role ?? null
+}
+
+/** This person's principal id on the sync server, once connected. */
+export async function ownPrincipalId(): Promise<string | null> {
+  return (await onlineSyncClient()).principal?.id ?? null
 }
 
 /** What Kition knows of a kit to open its shared documents: its engine, and its file extension. */

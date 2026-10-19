@@ -5,19 +5,23 @@
  * room (`rooms.ts`, written by Share or Open shared document). Anything else is left alone: no
  * connection is made, nothing is sent, and no replica is touched.
  *
- * It also keeps the documents this person may only view (`viewer` rooms) read-only in every
- * editor (`@/services/documentAccess`).
+ * It also keeps the documents whose content this person may not change (`viewer` and `commenter`
+ * rooms) read-only in every editor (`@/services/documentAccess`), tells editors who comments on a
+ * relayed document and how (`@/services/documentComments`), and follows the owner changing this
+ * person's role or removing them (`room/access`): removed, the document stops relaying and stays
+ * here as a local copy.
  */
 import { DocumentLeases, SyncRpcError, leaseHolder, startRelay, type Lease, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
 import { DocumentLeaseRefused, setDocumentLeaseProvider, type DocumentLease, type DocumentLeaseProvider } from '@/services/documentLeases'
 import { setReadOnlyDocuments } from '@/services/documentAccess'
+import { setSharedCommentAccess } from '@/services/documentComments'
 import { followCollabDocuments, type CollabDocument, type CollabReplica } from './collabDocuments'
 import { loadCollabToken, onCollabSettingsChanged, syncServerUrl } from './collabSettings'
 import { setDocumentCollab, setDocumentPeers, setDocumentRole } from './collabStore'
-import { fromHex, onRoomsChanged, readRoom, toHex, updateRoom, viewerPaths, type CollabRoom } from './rooms'
+import { deleteRoom, fromHex, onRoomsChanged, readOnlyPaths, readRoom, toHex, updateRoom, type CollabRoom } from './rooms'
 import { closeSyncClient, collabConfigured, syncClient } from './syncConnection'
 
-type CollabClient = RelaySync & Pick<SyncClient, 'setPresence' | 'onPresence' | 'principal'> & Partial<Pick<SyncClient, 'leases'>>
+type CollabClient = RelaySync & Pick<SyncClient, 'setPresence' | 'onPresence' | 'principal'> & Partial<Pick<SyncClient, 'leases' | 'onAccess'>>
 
 export type CollabDependencies = {
   configured: () => Promise<boolean>
@@ -129,10 +133,29 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
         onJoined: ({ presence, role }) => {
           showPeers(presence)
           setDocumentRole(path, role)
+          if (client.principal) setSharedCommentAccess(path, { principal: client.principal, role })
           // A role that changed (a viewer link opened, a member's role changed) is kept, and a
           // viewer's document turns read-only.
           if (readRoom(id)?.role !== role) updateRoom(id, { role })
           client.setPresence(id, { kit: document.kit })
+        },
+        onAccess: (role) => {
+          if (role) {
+            setDocumentRole(path, role)
+            if (client.principal) setSharedCommentAccess(path, { principal: client.principal, role })
+            updateRoom(id, { role })
+            return
+          }
+          // Removed from the room: the document stays here as a local copy.
+          setSharedCommentAccess(path, null)
+          stopLeases?.()
+          stopLeases = null
+          stopPresence?.()
+          stopPresence = null
+          relay?.stop()
+          relay = null
+          setDocumentCollab(path, null)
+          deleteRoom(id)
         },
         onError: (error) => console.warn('[collab] relay', error),
       })
@@ -154,12 +177,13 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
     stopPresence?.()
     replica?.dispose()
     if (relay) setDocumentCollab(path, null)
+    setSharedCommentAccess(path, null)
   }
 }
 
 /** Makes the documents of `viewer` rooms read-only in their editors, now and as rooms change. */
 function followViewerDocuments() {
-  const publish = () => setReadOnlyDocuments(viewerPaths())
+  const publish = () => setReadOnlyDocuments(readOnlyPaths())
   publish()
   return onRoomsChanged(publish)
 }
