@@ -8,7 +8,7 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 type BlobRef = { hash: string; mime: string; size: number }
 
 /** kit.slide: registered with @kition/sdk when this module loads. */
-export const slidesKit: KitDescriptor = registerKit({ id: "kit.slide", schema: {"kdm":1,"kit":"kit.slide","schemaVersion":3,"root":"Presentation","types":{"Presentation":{"fields":{"props":{"kind":"json","optional":true},"show":{"kind":"json","optional":true},"headerFooter":{"kind":"json","optional":true},"defaultTextStyle":{"kind":"json","optional":true},"sections":{"kind":"json","optional":true},"customShows":{"kind":"json","optional":true},"embeddedFonts":{"kind":"json","optional":true},"notesMaster":{"kind":"json","optional":true},"handoutMaster":{"kind":"json","optional":true},"rawExt":{"kind":"json","optional":true},"masters":{"kind":"list","of":"Master"},"slides":{"kind":"list","of":"Slide"},"media":{"kind":"list","of":"Media"}}},"Master":{"fields":{"props":{"kind":"json","optional":true},"theme":{"kind":"json","optional":true},"listStyles":{"kind":"json","optional":true},"colorMap":{"kind":"json","optional":true},"rawExt":{"kind":"json","optional":true},"shapes":{"kind":"list","of":"Shape"},"layouts":{"kind":"list","of":"Layout"}}},"Layout":{"fields":{"props":{"kind":"json","optional":true},"shapes":{"kind":"list","of":"Shape"}}},"Slide":{"fields":{"layout":{"kind":"ref","of":"Layout","optional":true},"props":{"kind":"json","optional":true},"background":{"kind":"json","optional":true},"transition":{"kind":"json","optional":true},"rawExt":{"kind":"json","optional":true},"notes":{"kind":"json","optional":true},"notesBody":{"kind":"ref","of":"TextBody","optional":true},"comments":{"kind":"json","optional":true},"animations":{"kind":"list","of":"Animation"},"shapes":{"kind":"list","of":"Shape"}}},"Shape":{"fields":{"kind":{"kind":"enum","values":["shape","picture","group","connector","table","chart","media","ink","opaque"]},"name":{"kind":"string"},"xfrm":{"kind":"json","optional":true},"props":{"kind":"json","optional":true},"text":{"kind":"json","optional":true},"body":{"kind":"ref","of":"TextBody","optional":true},"children":{"kind":"list","of":"Shape"},"table":{"kind":"ref","of":"Table","optional":true},"media":{"kind":"ref","of":"Media","optional":true}}},"TextBody":{"fields":{"props":{"kind":"json","optional":true},"paragraphs":{"kind":"list","of":"Paragraph"}}},"Paragraph":{"fields":{"props":{"kind":"json","optional":true},"text":{"kind":"text","marks":{"font":{"expand":"after"},"fontEa":{"expand":"after"},"fontCs":{"expand":"after"},"fontSym":{"expand":"after"},"size":{"expand":"after"},"bold":{"expand":"after"},"italic":{"expand":"after"},"underline":{"expand":"after"},"underlineColor":{"expand":"after"},"strike":{"expand":"after"},"baseline":{"expand":"after"},"caps":{"expand":"after"},"spacing":{"expand":"after"},"kern":{"expand":"after"},"fill":{"expand":"after"},"outline":{"expand":"after"},"highlight":{"expand":"after"},"link":{"expand":"none"},"lang":{"expand":"after"},"shadow":{"expand":"after"},"glow":{"expand":"after"},"noProof":{"expand":"after"},"extra":{"expand":"after"},"inline":{"expand":"none"},"seg":{"expand":"after"}}}}},"Table":{"fields":{"props":{"kind":"json","optional":true},"cols":{"kind":"list","of":"Col"},"rows":{"kind":"list","of":"Row"},"cells":{"kind":"map"}}},"Col":{"fields":{"width":{"kind":"number"}}},"Row":{"fields":{"height":{"kind":"number"}}},"Animation":{"fields":{"props":{"kind":"json","optional":true}}},"Media":{"fields":{"blob":{"kind":"blob","optional":true},"props":{"kind":"json","optional":true}}},"CommentThread":{"fields":{"anchor":{"kind":"json"},"resolved":{"kind":"boolean","optional":true},"comments":{"kind":"list","of":"Comment"},"legacy":{"kind":"string","optional":true},"wasResolved":{"kind":"boolean","optional":true}}},"Comment":{"fields":{"author":{"kind":"string"},"name":{"kind":"string","optional":true},"body":{"kind":"text"},"created":{"kind":"string"},"initials":{"kind":"string","optional":true},"props":{"kind":"json","optional":true},"legacy":{"kind":"string","optional":true}}}}} })
+export const slidesKit: KitDescriptor = registerKit({ id: "kit.slide", schema: {"kdm":1,"kit":"kit.slide","schemaVersion":3,"root":"Presentation","types":{"Presentation":{"fields":{"props":{"kind":"json","optional":true},"show":{"kind":"json","optional":true},"headerFooter":{"kind":"json","optional":true},"defaultTextStyle":{"kind":"json","optional":true},"sections":{"kind":"json","optional":true},"customShows":{"kind":"json","optional":true},"embeddedFonts":{"kind":"json","optional":true},"notesMaster":{"kind":"json","optional":true},"handoutMaster":{"kind":"json","optional":true},"rawExt":{"kind":"json","optional":true,"readOnly":true},"masters":{"kind":"list","of":"Master"},"slides":{"kind":"list","of":"Slide"},"media":{"kind":"list","of":"Media"}}},"Master":{"fields":{"props":{"kind":"json","optional":true},"theme":{"kind":"json","optional":true},"listStyles":{"kind":"json","optional":true},"colorMap":{"kind":"json","optional":true},"rawExt":{"kind":"json","optional":true,"readOnly":true},"shapes":{"kind":"list","of":"Shape"},"layouts":{"kind":"list","of":"Layout"}}},"Layout":{"fields":{"props":{"kind":"json","optional":true},"shapes":{"kind":"list","of":"Shape"}}},"Slide":{"fields":{"layout":{"kind":"ref","of":"Layout","optional":true},"props":{"kind":"json","optional":true},"background":{"kind":"json","optional":true},"transition":{"kind":"json","optional":true},"rawExt":{"kind":"json","optional":true,"readOnly":true},"notes":{"kind":"json","optional":true},"notesBody":{"kind":"ref","of":"TextBody","optional":true},"comments":{"kind":"json","optional":true},"animations":{"kind":"list","of":"Animation"},"shapes":{"kind":"list","of":"Shape"}}},"Shape":{"readOnlyWhen":{"field":"kind","values":["opaque"]},"fields":{"kind":{"kind":"enum","values":["shape","picture","group","connector","table","chart","media","ink","opaque"]},"name":{"kind":"string"},"xfrm":{"kind":"json","optional":true},"props":{"kind":"json","optional":true},"text":{"kind":"json","optional":true},"body":{"kind":"ref","of":"TextBody","optional":true},"children":{"kind":"list","of":"Shape"},"table":{"kind":"ref","of":"Table","optional":true},"media":{"kind":"ref","of":"Media","optional":true}}},"TextBody":{"fields":{"props":{"kind":"json","optional":true},"paragraphs":{"kind":"list","of":"Paragraph"}}},"Paragraph":{"fields":{"props":{"kind":"json","optional":true},"text":{"kind":"text","marks":{"font":{"expand":"after"},"fontEa":{"expand":"after"},"fontCs":{"expand":"after"},"fontSym":{"expand":"after"},"size":{"expand":"after"},"bold":{"expand":"after"},"italic":{"expand":"after"},"underline":{"expand":"after"},"underlineColor":{"expand":"after"},"strike":{"expand":"after"},"baseline":{"expand":"after"},"caps":{"expand":"after"},"spacing":{"expand":"after"},"kern":{"expand":"after"},"fill":{"expand":"after"},"outline":{"expand":"after"},"highlight":{"expand":"after"},"link":{"expand":"none"},"lang":{"expand":"after"},"shadow":{"expand":"after"},"glow":{"expand":"after"},"noProof":{"expand":"after"},"extra":{"expand":"after"},"inline":{"expand":"none"},"seg":{"expand":"after"}}}}},"Table":{"fields":{"props":{"kind":"json","optional":true},"cols":{"kind":"list","of":"Col"},"rows":{"kind":"list","of":"Row"},"cells":{"kind":"map"}}},"Col":{"fields":{"width":{"kind":"number"}}},"Row":{"fields":{"height":{"kind":"number"}}},"Animation":{"fields":{"props":{"kind":"json","optional":true}}},"Media":{"fields":{"blob":{"kind":"blob","optional":true},"props":{"kind":"json","optional":true}}},"CommentThread":{"fields":{"anchor":{"kind":"json"},"resolved":{"kind":"boolean","optional":true},"comments":{"kind":"list","of":"Comment"},"legacy":{"kind":"string","optional":true},"wasResolved":{"kind":"boolean","optional":true}}},"Comment":{"fields":{"author":{"kind":"string"},"name":{"kind":"string","optional":true},"body":{"kind":"text"},"created":{"kind":"string"},"initials":{"kind":"string","optional":true},"props":{"kind":"json","optional":true},"legacy":{"kind":"string","optional":true}}}}} })
 
 /** The fields a new `Presentation` takes (`list.add(fields)`). */
 export type PresentationFields = {
@@ -21,7 +21,6 @@ export type PresentationFields = {
   embeddedFonts?: Json | null
   notesMaster?: Json | null
   handoutMaster?: Json | null
-  rawExt?: Json | null
 }
 
 /** A `Presentation` of kit.slide. */
@@ -35,7 +34,8 @@ export interface Presentation extends ModelObject {
   embeddedFonts: Json | null
   notesMaster: Json | null
   handoutMaster: Json | null
-  rawExt: Json | null
+  /** Read-only: the kit keeps it as it is. */
+  readonly rawExt: Json | null
   readonly masters: ModelList<Master, MasterFields>
   readonly slides: ModelList<Slide, SlideFields>
   readonly media: ModelList<Media, MediaFields>
@@ -47,7 +47,6 @@ export type MasterFields = {
   theme?: Json | null
   listStyles?: Json | null
   colorMap?: Json | null
-  rawExt?: Json | null
 }
 
 /** A `Master` of kit.slide. */
@@ -56,7 +55,8 @@ export interface Master extends ModelObject {
   theme: Json | null
   listStyles: Json | null
   colorMap: Json | null
-  rawExt: Json | null
+  /** Read-only: the kit keeps it as it is. */
+  readonly rawExt: Json | null
   readonly shapes: ModelList<Shape, ShapeFields>
   readonly layouts: ModelList<Layout, LayoutFields>
 }
@@ -78,7 +78,6 @@ export type SlideFields = {
   props?: Json | null
   background?: Json | null
   transition?: Json | null
-  rawExt?: Json | null
   notes?: Json | null
   notesBody?: string | ModelObject | null
   comments?: Json | null
@@ -92,7 +91,8 @@ export interface Slide extends ModelObject {
   props: Json | null
   background: Json | null
   transition: Json | null
-  rawExt: Json | null
+  /** Read-only: the kit keeps it as it is. */
+  readonly rawExt: Json | null
   notes: Json | null
   /** The id of a `TextBody`. */
   get notesBody(): string | null
@@ -114,7 +114,7 @@ export type ShapeFields = {
   media?: string | ModelObject | null
 }
 
-/** A `Shape` of kit.slide. */
+/** A `Shape` of kit.slide. Read-only when `kind` is "opaque" (rule OM8). */
 export interface Shape extends ModelObject {
   kind: "shape" | "picture" | "group" | "connector" | "table" | "chart" | "media" | "ink" | "opaque"
   name: string
@@ -706,6 +706,10 @@ export interface SlidesCommands extends CommandMap {
   "media.posterFrame": { id?: number; /** frame time (default: current position); default: current position */ ms?: Json }
   /** Play/Pause GIF. Params: {id?, play?: bool (default: toggle)} ? {id, playing} */
   "media.gifPlay": { id?: number; /** default: toggle */ play?: boolean }
+  /** Selection for Presence. Params: {} ? {slide: object | null, objects: [object]} (the current slide's and the selected shapes' KDM object ids; none before the document has a replica) */
+  "presence.selection": Record<string, never>
+  /** Locate Objects. Params: {ids: [object]} ? [{id, x, y, width, height}] (the shapes of the current slide among ids, in slide points) */
+  "presence.locate": { ids?: Array<Json> }
 }
 
 /** A Slides document opened with `openDocument<Presentation, SlidesCommands>`. */
