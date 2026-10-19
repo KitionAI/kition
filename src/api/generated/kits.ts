@@ -210,12 +210,12 @@ export type KitsBridgeDocumentsResult = {
 }
 
 /**
- * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (Kit Standard 2.0 A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. Merging and discarding a draft are the person's, never a bridge call.
+ * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (Kit Standard 2.0 A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. `describe` takes {draft?} and answers the kit's model/describe; `batch` takes {origin, ops, load, save?, draft?} and answers the model/batch {refs, results, loaded} with `saved` (Kit UI protocol section 7a; the agent's `<prefix>_query` and `<prefix>_batch`). A refusal's JSON-RPC error carries `data` ({code, index, message} for the object model). Merging and discarding a draft are the person's, never a bridge call.
  */
 export type KitsBridgeCallParams = {
   path: KitsWorkspacePath
   kit: KitsKitId
-  tool: "inspect" | "commands" | "run" | "draft_ready" | "draft_reopen"
+  tool: "inspect" | "commands" | "run" | "draft_ready" | "draft_reopen" | "describe" | "batch"
   arguments: Record<string, unknown>
 }
 

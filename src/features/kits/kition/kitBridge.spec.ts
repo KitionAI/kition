@@ -127,4 +127,67 @@ describe('kitBridge on the shared bridge stream', () => {
     withdraw()
     withdrawPlain()
   })
+
+  it("runs the agent's object-model calls on the editor's model, notes its edits, and keeps refusal codes", async () => {
+    const { registerBridgeEditor } = await import('./kitBridge')
+    const { agentEditing } = await import('@/services/agentPresence')
+    const batches: unknown[] = []
+    const refusal = Object.assign(new Error('op 1 failed'), { data: { code: 'not-found', index: 1, message: 'op 1 failed' } })
+    const withdraw = registerBridgeEditor({
+      path: 'talks/m.kitionslide',
+      kitId: 'kit.slide',
+      revision: () => 1,
+      dirty: () => false,
+      inspect: () => ({ path: 'talks/m.kitionslide', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
+      commands: async () => [],
+      run: async () => ({ completed: [], saved: false }),
+      preview: async () => '',
+      model: {
+        describe: async () => ({ root: 'Presentation', types: {} }),
+        batch: async (request, options) => {
+          batches.push([request, options])
+          if (request.ops.some((op) => op.target === 'missing')) throw refusal
+          return { refs: {}, results: request.ops.map(() => null), loaded: [], version: new ArrayBuffer(2) }
+        },
+        onDraft: false,
+      },
+      save: async () => true,
+    })
+    const withoutModel = registerBridgeEditor({
+      path: 'art/n.kitionvector',
+      kitId: 'kit.vector',
+      revision: () => 1,
+      dirty: () => false,
+      inspect: () => ({ path: 'art/n.kitionvector', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
+      commands: async () => [],
+      run: async () => ({ completed: [], saved: false }),
+      preview: async () => '',
+    })
+    const stream = FakeEventSource.streams.at(-1)!
+    stream.emit({ method: 'bridge.ready', params: { session: 9 } })
+    const call = (id: number, tool: string, args: Record<string, unknown> = {}, path = 'talks/m.kitionslide', kit = 'kit.slide') => stream.emit({ id, method: 'kit/call', params: { path, kit, tool, arguments: args } })
+    const set = { op: 'set', target: 'root', field: 'title', value: 'Q3' }
+    call(21, 'describe')
+    call(22, 'batch', { origin: { kind: 'agent', principal: 'local' }, ops: [], load: [{ target: 'root' }] })
+    call(23, 'batch', { ops: [set], load: [], save: true })
+    call(24, 'batch', { ops: [set, { op: 'set', target: 'missing', field: 'title', value: 'x' }], load: [] })
+    call(25, 'batch', { ops: [set], load: [], draft: true })
+    call(26, 'describe', {}, 'art/n.kitionvector', 'kit.vector')
+    await settle()
+    await settle()
+    const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message
+    expect(byId(21)?.result).toEqual({ root: 'Presentation', types: {} })
+    // Reading writes nothing and is not an agent edit.
+    expect(byId(22)?.result).toEqual({ refs: {}, results: [], loaded: [], saved: false })
+    expect(agentEditing('talks/m.kitionslide')).toBe(true)
+    expect(byId(23)?.result).toEqual({ refs: {}, results: [null], loaded: [], saved: true })
+    expect(byId(24)?.error).toEqual({ code: -32000, message: 'op 1 failed', data: { code: 'not-found', index: 1, message: 'op 1 failed' } })
+    // No draft batches on a kit that cannot run them, and none reach the document.
+    expect(byId(25)?.error).toMatchObject({ data: { code: 'unsupported' } })
+    expect(byId(26)?.error).toMatchObject({ message: expect.stringContaining('no object model'), data: { code: 'unsupported' } })
+    expect(batches).toHaveLength(3)
+    expect(batches[0]).toEqual([{ origin: { kind: 'agent', principal: 'local' }, ops: [], load: [{ target: 'root' }] }, {}])
+    withdraw()
+    withoutModel()
+  })
 })

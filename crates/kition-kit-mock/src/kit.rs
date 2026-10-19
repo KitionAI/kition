@@ -3,7 +3,10 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
+
+use kition_kdm::batch::{self, BatchError, BatchErrorCode, BatchTarget};
+use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Schema, Tx};
 
 use kition_kit_protocol::launch::Surface;
 use kition_kit_protocol::methods::{self, NotificationMethod, RequestMethod};
@@ -18,9 +21,31 @@ use serde_json::{Map, Value, json};
 
 pub type Writer = Arc<tokio::sync::Mutex<BoxWriter>>;
 
-const KIT_ID: &str = "kit.mock";
 const FORMAT: &str = "mock.text";
-const EXTENSION: &str = "mocktext";
+
+/// The kit id and file extension this mock answers to: `kit.mock` and `mocktext`, or what
+/// `KITION_KIT_MOCK_AS=<kit id>:<extension>` names, so a test can stand it in for one of the
+/// kits a host knows (the host checks the id a kit reports).
+static IDENTITY: LazyLock<(String, String)> = LazyLock::new(|| {
+    std::env::var("KITION_KIT_MOCK_AS")
+        .ok()
+        .and_then(|value| {
+            let (id, extension) = value.split_once(':')?;
+            Some((id.trim().to_owned(), extension.trim().to_owned()))
+        })
+        .filter(|(id, extension)| !id.is_empty() && !extension.is_empty())
+        .unwrap_or_else(|| ("kit.mock".to_owned(), "mocktext".to_owned()))
+});
+
+/// The object model a document answers `model.describe` and `model.batch` with: the note's text
+/// and a list of tags.
+const SCHEMA: &str = r#"{
+  "kdm": 1, "kit": "kit.mock", "schemaVersion": 1, "root": "Note",
+  "types": {
+    "Note": { "fields": { "text": { "kind": "text" }, "tags": { "kind": "list", "of": "Tag" } } },
+    "Tag": { "fields": { "name": { "kind": "string" } } }
+  }
+}"#;
 /// A 1x1 transparent PNG.
 const PIXEL_PNG: &str =
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -75,9 +100,112 @@ struct Document {
     history: Vec<String>,
     dirty: bool,
     read_only: bool,
+    /// The document's object model, made on the first `model.*` request from its text.
+    model: Option<Replica>,
+}
+
+/// A document's replica as a batch runs on it: no commands, and no writes when read-only.
+struct MockTarget<'a> {
+    replica: &'a mut Replica,
+    read_only: bool,
+}
+
+impl BatchTarget for MockTarget<'_> {
+    fn replica(&mut self) -> Result<&Replica, BatchError> {
+        Ok(self.replica)
+    }
+
+    fn transact(
+        &mut self,
+        origin: &Origin,
+        write: &mut dyn FnMut(&mut Tx<'_>) -> Result<(), BatchError>,
+    ) -> Result<(), BatchError> {
+        batch::transact_replica(self.replica, origin, write)
+    }
+
+    fn command(&mut self, id: &str, _params: Value, _origin: &Origin) -> Result<Value, String> {
+        Err(format!("`{id}` cannot run inside a batch of this kit"))
+    }
+
+    fn read_only(&self) -> bool {
+        self.read_only
+    }
+}
+
+/// An object-model failure as the Kit Protocol answers it: `data.model` is `{ code, index, message }`.
+fn model_error(error: &BatchError) -> RpcError {
+    let reason = match error.code {
+        BatchErrorCode::ReadOnly => ErrorReason::CommandDisabled,
+        _ => ErrorReason::InvalidParams,
+    };
+    let mut rpc = RpcError::kit_detail(reason, error.to_string());
+    if let Some(Value::Object(data)) = rpc.data.as_mut() {
+        data.insert("model".into(), error.to_json());
+    }
+    rpc
 }
 
 impl Document {
+    /// The object model, current with the text (a command may have changed it since).
+    fn model(&mut self) -> Result<&mut Replica, RpcError> {
+        let internal = |error: kition_kdm::KdmError| RpcError::internal(error.to_string());
+        if self.model.is_none() {
+            let schema = Arc::new(Schema::parse(SCHEMA).map_err(internal)?);
+            let text = self.text.clone();
+            let (replica, ()) = Replica::create_with(
+                schema,
+                DocId::new(),
+                ActorId::random(),
+                &Origin::system("open"),
+                |tx| {
+                    let root = tx.create("Note", Map::new())?;
+                    tx.text_insert(&root, "text", 0, &text)
+                },
+            )
+            .map_err(internal)?;
+            self.model = Some(replica);
+        }
+        let replica = self
+            .model
+            .as_mut()
+            .ok_or_else(|| RpcError::internal("no model"))?;
+        let root = batch::root_id(replica).ok_or_else(|| RpcError::internal("no root"))?;
+        if replica.text(&root, "text").map_err(internal)? != self.text {
+            let text = self.text.clone();
+            replica
+                .transact(&Origin::system("text"), |tx| {
+                    let length = tx.text_len(&root, "text")?;
+                    if length > 0 {
+                        tx.text_delete(&root, "text", 0, length)?;
+                    }
+                    tx.text_insert(&root, "text", 0, &text)
+                })
+                .map_err(internal)?;
+        }
+        Ok(replica)
+    }
+
+    /// Runs a batch; answers whether the text changed, and the batch's answer.
+    fn batch(&mut self, request: &Value) -> Result<(bool, Value), RpcError> {
+        let read_only = self.read_only;
+        let before = self.text.clone();
+        let replica = self.model()?;
+        let answer = batch::run(&mut MockTarget { replica, read_only }, request)
+            .map_err(|error| model_error(&error))?;
+        let root: ObjectId =
+            batch::root_id(replica).ok_or_else(|| RpcError::internal("no root"))?;
+        let text = replica
+            .text(&root, "text")
+            .map_err(|error| RpcError::internal(error.to_string()))?;
+        let writes = request["ops"].as_array().is_some_and(|ops| !ops.is_empty());
+        if writes {
+            self.history.push(before);
+            self.text = text;
+            self.dirty = true;
+        }
+        Ok((writes, answer))
+    }
+
     fn state(&self) -> DocumentState {
         DocumentState {
             document_id: self.id.clone(),
@@ -229,7 +357,7 @@ impl Kit {
         to_value(InitializeResult {
             protocol_version: PROTOCOL_VERSION,
             kit: KitInfo {
-                id: KIT_ID.to_owned(),
+                id: IDENTITY.0.clone(),
                 version: env!("CARGO_PKG_VERSION").to_owned(),
             },
             capabilities: Capabilities {
@@ -240,7 +368,11 @@ impl Kit {
                     save: vec![FORMAT.to_owned()],
                     export: vec![FORMAT.to_owned()],
                 },
-                features: vec!["view.describe".to_owned()],
+                features: vec![
+                    "view.describe".to_owned(),
+                    "model.describe".to_owned(),
+                    "model.batch".to_owned(),
+                ],
             },
         })
     }
@@ -320,6 +452,25 @@ impl Kit {
                     ]),
                 })
             }
+            "model.describe" => {
+                let id = document_param(&params)?;
+                self.with_document(&id, |document| {
+                    let mut described = batch::describe(document.model()?);
+                    described["kit"] = json!(IDENTITY.0);
+                    described["commands"] = json!(["text.append", "text.clear", "edit.undo"]);
+                    Ok(described)
+                })
+            }
+            "model.batch" => {
+                let id = document_param(&params)?;
+                let (changed, answer) =
+                    self.with_document(&id, |document| document.batch(&params))?;
+                if changed {
+                    let state = self.with_document(&id, |document| Ok(document.state()))?;
+                    self.broadcast::<methods::DocumentDidChangeState>(&state, step);
+                }
+                Ok(answer)
+            }
             methods::SurfaceAttach::NAME if self.surface == Surface::Headless => {
                 Err(RpcError::kit(ErrorReason::SurfaceMechanismUnsupported))
             }
@@ -335,7 +486,7 @@ impl Kit {
             Role::Agent => self.granted_path(role, &params.uri)?,
             Role::Host => uri_to_path(&params.uri)?,
         };
-        if path.extension().and_then(|extension| extension.to_str()) != Some(EXTENSION) {
+        if path.extension().and_then(|extension| extension.to_str()) != Some(IDENTITY.1.as_str()) {
             return Err(RpcError::kit(ErrorReason::UnsupportedFormat));
         }
         if let Some(create) = &params.create
@@ -368,6 +519,7 @@ impl Kit {
             text,
             history: Vec::new(),
             read_only: params.read_only == Some(true),
+            model: None,
         };
         let document_state = document.state();
         state.documents.push(document);
@@ -600,6 +752,14 @@ fn uri_to_path(uri: &str) -> Result<PathBuf, RpcError> {
 
 fn file_uri(path: &Path) -> Option<String> {
     url::Url::from_file_path(path).ok().map(String::from)
+}
+
+/// The `documentId` of an object-model request.
+fn document_param(params: &Value) -> Result<String, RpcError> {
+    params["documentId"]
+        .as_str()
+        .map(str::to_owned)
+        .ok_or_else(|| RpcError::invalid_params("`documentId` is a string"))
 }
 
 fn parse<T: DeserializeOwned>(params: Value) -> Result<T, RpcError> {

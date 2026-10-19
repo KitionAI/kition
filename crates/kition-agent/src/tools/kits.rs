@@ -1,5 +1,6 @@
 //! Kit tools for Kition's agent: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run` for
-//! every kit (Kition Kit Standard A3). The tools themselves live in `kition_kits::tools`, shared
+//! every kit (Kition Kit Standard A3), its draft tools, and the object-model tools
+//! `<prefix>_query` and `<prefix>_batch`. The tools themselves live in `kition_kits::tools`, shared
 //! with the MCP server other harnesses use; this adapts them to the agent's catalog and turns.
 
 use std::sync::LazyLock;
@@ -41,20 +42,20 @@ pub fn tool_defs() -> &'static [ToolDef] {
 
 /// The kit tools to leave out this turn: those of kits not installed in this runtime.
 pub fn unavailable(run: &Run) -> Vec<&'static str> {
-    let installed: Vec<&str> = run
+    let installed: Vec<String> = run
         .agent
         .kits()
         .map(|kits| {
             kit_tools::installed(kits)
                 .into_iter()
-                .map(|spec| spec.name.as_str())
+                .map(|spec| spec.name)
                 .collect()
         })
         .unwrap_or_default();
     tool_defs()
         .iter()
         .map(|tool| tool.name.as_str())
-        .filter(|name| !installed.contains(name))
+        .filter(|name| !installed.iter().any(|installed| installed == name))
         .collect()
 }
 
@@ -96,10 +97,11 @@ pub async fn call(run: &Run, kit: &KitDefinition, name: &str, input: &Value) -> 
             follow_up: follow_up(&output),
             ..ToolOutput::new(output.summary, output.output)
         }),
+        // The model sees what was done and the structured error (`error.code`, `error.index`).
         Some(Err(error)) => Err(ToolError {
             summary: error.message.clone(),
+            output: Some(error.structured()),
             message: error.message,
-            output: error.output,
         }),
         None => Err(format!("`{name}` is not a kit tool").into()),
     }

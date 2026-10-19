@@ -5,11 +5,11 @@ import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
-import { mountKit, type KitConnection } from '../host/mountKit'
+import { mountKit, type KitConnection, type ModelBatchParams } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
-import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
+import { registerBridgeEditor, reportBridgeChange, type BridgeEditor } from './kitBridge'
 import { setKitDraft } from './kitDrafts'
 import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
@@ -80,6 +80,23 @@ async function unusedPath(path: string) {
     if ((await KITION_KIT_HOST.stamp(candidate)) == null) return candidate
   }
   throw new Error(`no free name for ${path}`)
+}
+
+/**
+ * The kit's object model for the agent's query and batch tools (Kit UI protocol section 7a), when
+ * it lists `model`. Only a kit that also lists `draft-model` runs them on the agent's draft.
+ */
+function bridgeModel(connection: KitConnection): BridgeEditor['model'] {
+  if (!connection.capabilities.includes('model')) return undefined
+  return {
+    // A draft has the document's schema.
+    describe: () => connection.model.describe(),
+    batch: async (request, options) => {
+      const params: ModelBatchParams & { draft?: boolean } = options?.draft ? { ...request, draft: true } : request
+      return (await connection.model.batch(params)) as Record<string, unknown>
+    },
+    onDraft: connection.capabilities.includes('draft') && connection.capabilities.includes('draft-model'),
+  }
 }
 
 /** Who comments in the kit and how (Kit UI protocol `document.comments`), as the kit opens. */
@@ -240,6 +257,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           preview: async (maxSize, options) => (await mounted!.ai.preview(maxSize, options)).png,
           // The agent's drafts (Kit UI protocol section 7d): it may ask for review or take one back.
           draft: mounted.capabilities.includes('draft') ? { ready: () => mounted!.draft.ready(), reopen: () => mounted!.draft.reopen() } : undefined,
+          model: bridgeModel(mounted),
+          save: openedReadOnly ? undefined : async () => (await mounted!.save()).saved,
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
         const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })

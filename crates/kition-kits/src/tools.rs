@@ -1,6 +1,9 @@
 //! Kit tools (Kition Kit Standard A3): for every kit, inspect a file, search its commands, and
 //! edit it by running them: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, named
-//! and worded from the kit's definition (its `kit.json`). An agent may edit a draft instead of
+//! and worded from the kit's definition (its `kit.json`). The object-model tools `<prefix>_query`
+//! and `<prefix>_batch` (`model.rs`) read and edit the document as typed objects, with argument
+//! schemas generated from the kit's `model.describe`. Every failure carries a structured error
+//! code (`errors.rs`) beside its message. An agent may edit a draft instead of
 //! the live document (standard 2.0 A12, `draft: true`), and asks for its review with
 //! `<prefix>_draft_ready` (or takes it back with `<prefix>_draft_reopen`); merging or
 //! discarding a draft is the person's alone, never a tool.
@@ -10,9 +13,14 @@
 //! is edited live through the Kit AI bridge (A7); otherwise through the kit's headless
 //! executable on its `agent` connection, so the kit enforces the workspace and the agent role.
 
+mod errors;
+pub mod model;
+
 use std::sync::LazyLock;
 
 use serde_json::{Map, Value, json};
+
+pub use errors::{ErrorCode, KitToolError};
 
 use crate::bridge::LiveDocument;
 use crate::manager::{Caller, DocumentView, KITS, KitDefinition, KitManager};
@@ -30,15 +38,21 @@ pub enum Action {
     DraftReady,
     /// The agent takes its draft back to keep working on it.
     DraftReopen,
+    /// Read objects from the document's object model.
+    Query,
+    /// Edit the document's object model with one `model/batch`.
+    Batch,
 }
 
 impl Action {
-    pub const ALL: [Action; 5] = [
+    pub const ALL: [Action; 7] = [
         Action::Inspect,
         Action::Commands,
         Action::Run,
         Action::DraftReady,
         Action::DraftReopen,
+        Action::Query,
+        Action::Batch,
     ];
 
     fn suffix(self) -> &'static str {
@@ -48,7 +62,14 @@ impl Action {
             Action::Run => "run",
             Action::DraftReady => "draft_ready",
             Action::DraftReopen => "draft_reopen",
+            Action::Query => "query",
+            Action::Batch => "batch",
         }
+    }
+
+    /// Whether the tool changes files.
+    pub fn writes(self) -> bool {
+        matches!(self, Action::Run | Action::Batch)
     }
 }
 
@@ -67,7 +88,7 @@ pub struct KitToolSpec {
     pub description: String,
     /// JSON Schema for the arguments.
     pub input_schema: Value,
-    /// Whether the tool changes files (`<prefix>_run`).
+    /// Whether the tool changes files (`<prefix>_run`, `<prefix>_batch`).
     pub writes: bool,
 }
 
@@ -87,27 +108,11 @@ pub struct KitToolOutput {
 }
 
 impl KitToolOutput {
-    fn new(summary: String, output: Value) -> Self {
+    pub(crate) fn new(summary: String, output: Value) -> Self {
         Self {
             summary,
             output,
             previews: Vec::new(),
-        }
-    }
-}
-
-/// A tool's failure, with what had already happened when it stopped.
-#[derive(Clone, Debug, Default)]
-pub struct KitToolError {
-    pub message: String,
-    pub output: Option<Value>,
-}
-
-impl<T: Into<String>> From<T> for KitToolError {
-    fn from(message: T) -> Self {
-        Self {
-            message: message.into(),
-            output: None,
         }
     }
 }
@@ -132,15 +137,21 @@ pub fn short(kit: &KitDefinition) -> &'static str {
     kit.name.strip_prefix("Kition ").unwrap_or(kit.name)
 }
 
-fn path_property(kit: &KitDefinition) -> Value {
+pub(crate) fn path_property(kit: &KitDefinition) -> Value {
     json!({ "type": "string", "description": format!("Workspace-relative path to a {} file.", kit.agent.formats) })
 }
 
-fn draft_property() -> Value {
+pub(crate) fn draft_property() -> Value {
     json!({ "type": "boolean", "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode." })
 }
 
-fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 5] {
+fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 7] {
+    specs_described(kit, None)
+}
+
+/// The kit's tools, with the object-model tools' arguments generated from `described` (what the
+/// kit's `model.describe` answered) when it is known.
+fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 7] {
     let agent = &kit.agent;
     let (name, noun) = (kit.name, agent.noun);
     let commands = tool_name(kit, Action::Commands);
@@ -233,6 +244,8 @@ fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 5] {
             }),
             writes: false,
         },
+        model::query_spec(kit, described),
+        model::batch_spec(kit, described),
     ]
 }
 
@@ -244,17 +257,18 @@ pub fn specs() -> &'static [KitToolSpec] {
     &SPECS
 }
 
-/// The tools of the kits installed in this runtime.
-pub fn installed(kits: &KitManager) -> Vec<&'static KitToolSpec> {
+/// The tools of the kits installed in this runtime. A kit whose object model Kition has seen
+/// (`model.describe`) gets `<prefix>_query` and `<prefix>_batch` arguments generated from it.
+pub fn installed(kits: &KitManager) -> Vec<KitToolSpec> {
     let installed: Vec<&str> = kits
         .statuses()
         .into_iter()
         .filter(|kit| kit.installed)
         .map(|kit| kit.id)
         .collect();
-    specs()
-        .iter()
-        .filter(|spec| parse(&spec.name).is_some_and(|(kit, _)| installed.contains(&kit.id)))
+    KITS.iter()
+        .filter(|kit| installed.contains(&kit.id))
+        .flat_map(|kit| specs_described(kit, kits.described(kit.id).as_ref()))
         .collect()
 }
 
@@ -268,6 +282,8 @@ pub fn label(name: &str) -> Option<String> {
         Action::Run => format!("Edit {noun} in {kit_name}"),
         Action::DraftReady => format!("Ask for review of the {kit_name} draft"),
         Action::DraftReopen => format!("Reopen the {kit_name} draft"),
+        Action::Query => format!("Read {noun} objects in {kit_name}"),
+        Action::Batch => format!("Edit {noun} objects in {kit_name}"),
     })
 }
 
@@ -314,10 +330,10 @@ fn text_field(input: &Value, key: &str) -> String {
 }
 
 /// The path from the input, which must be a file of `kit`.
-pub fn kit_path(input: &Value, kit: &KitDefinition) -> Result<String, String> {
+pub fn kit_path(input: &Value, kit: &KitDefinition) -> Result<String, KitToolError> {
     let path = text_field(input, "path");
     if path.is_empty() {
-        return Err("missing `path`".into());
+        return Err(KitToolError::invalid("missing `path`"));
     }
     let extension = path
         .rsplit_once('.')
@@ -331,10 +347,10 @@ pub fn kit_path(input: &Value, kit: &KitDefinition) -> Result<String, String> {
         .find(|other| other.extensions.contains(&extension.as_str()))
         .map(|other| format!("; use the {}_* tools for it", other.agent.prefix))
         .unwrap_or_default();
-    Err(format!(
+    Err(KitToolError::invalid(format!(
         "`{path}` is not a {} ({}){hint}",
         kit.agent.noun, kit.agent.formats
-    ))
+    )))
 }
 
 fn document_json(view: &DocumentView) -> Value {
@@ -370,7 +386,11 @@ async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) ->
 
 /// The editor in the renderer that has `path` open, if one does (the Kit AI bridge, A7): the
 /// agent's edits then go to it, so the person sees them and they join its undo history.
-async fn live(kits: &KitManager, kit: &KitDefinition, path: &str) -> Option<LiveDocument> {
+pub(crate) async fn live(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    path: &str,
+) -> Option<LiveDocument> {
     kits.bridge()
         .find(path)
         .await
@@ -418,18 +438,20 @@ pub async fn call_with(
         Action::Run if draft => run_on_draft(kits, kit, input).await,
         Action::Run => run_steps(kits, kit, input).await,
         Action::DraftReady | Action::DraftReopen => draft_state(kits, kit, input, action).await,
+        Action::Query => model::query(kits, kit, input, draft).await,
+        Action::Batch => model::batch(kits, kit, input, draft).await,
     })
 }
 
 /// The open editor of `path`, which a draft needs: drafts live in the person's editor (standard
 /// 2.0 A15), so a file no editor has open has none.
-async fn draft_editor(
+pub(crate) async fn draft_editor(
     kits: &KitManager,
     kit: &KitDefinition,
     path: &str,
 ) -> Result<LiveDocument, KitToolError> {
     live(kits, kit, path).await.ok_or_else(|| {
-        KitToolError::from(format!(
+        KitToolError::new(ErrorCode::NotOpen, format!(
             "`{path}` is not open in its {} editor, so it has no draft: drafts live in the person's open editor. Ask the person to open it, or edit the file live (`draft: false`).",
             short(kit)
         ))
@@ -462,7 +484,7 @@ async fn run_on_draft(kits: &KitManager, kit: &KitDefinition, input: &Value) -> 
         .get("steps")
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
-        .ok_or("`steps` must be a non-empty array")?;
+        .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
     let document = draft_editor(kits, kit, &path).await?;
     let mut answer = kits
         .bridge()
@@ -472,7 +494,10 @@ async fn run_on_draft(kits: &KitManager, kit: &KitDefinition, input: &Value) -> 
             json!({ "steps": steps, "save": false, "draft": true }),
         )
         .await
-        .map_err(|error| format!("on the draft in the open {} editor: {error}", short(kit)))?;
+        .map_err(|error| {
+            KitToolError::from(error)
+                .context(&format!("on the draft in the open {} editor: ", short(kit)))
+        })?;
     let previews = draft_preview(kits, kit, &document).await;
     let ran = answer["completed"].as_array().map_or(0, Vec::len);
     answer["live"] = Value::Bool(true);
@@ -501,7 +526,19 @@ async fn draft_state(
         .bridge()
         .call(&document, action.suffix(), json!({}))
         .await
-        .map_err(|error| format!("in the open {} editor: {error}", short(kit)))?;
+        .map_err(|error| {
+            let failure = KitToolError::from(error);
+            // A draft that does not exist cannot be made ready: edit with `draft: true` first.
+            let failure = if failure.message.contains("no draft") {
+                KitToolError {
+                    code: ErrorCode::DraftRequired,
+                    ..failure
+                }
+            } else {
+                failure
+            };
+            failure.context(&format!("in the open {} editor: ", short(kit)))
+        })?;
     let summary = if action == Action::DraftReady {
         format!("Your draft of `{path}` is ready for review; the person will merge or discard it.")
     } else {
@@ -545,9 +582,10 @@ async fn inspect(
             });
         }
         if explicit {
-            return Err(
-                format!("`{path}` has no draft yet: edit it with `draft: true` first.").into(),
-            );
+            return Err(KitToolError::new(
+                ErrorCode::DraftRequired,
+                format!("`{path}` has no draft yet: edit it with `draft: true` first."),
+            ));
         }
         // No draft yet: the live document is what a draft would start from.
     }
@@ -574,10 +612,7 @@ async fn inspect(
             )
         });
     }
-    let view = kits
-        .open(Caller::Agent, &path)
-        .await
-        .map_err(|error| error.to_string())?;
+    let view = kits.open(Caller::Agent, &path).await?;
     let previews = if wants_preview {
         preview(kits, kit, &view).await
     } else {
@@ -603,10 +638,7 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
         let found = answer["commands"].as_array().cloned().unwrap_or_default();
         return Ok(listed_commands(&query, found));
     }
-    let view = kits
-        .open(Caller::Agent, &path)
-        .await
-        .map_err(|error| error.to_string())?;
+    let view = kits.open(Caller::Agent, &path).await?;
     let found = kits
         .commands(
             Caller::Agent,
@@ -614,8 +646,7 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
             Some(&view.document_id),
             Some(&query),
         )
-        .await
-        .map_err(|error| error.to_string())?;
+        .await?;
     let found = found
         .into_iter()
         .map(|command| {
@@ -652,14 +683,16 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         .get("steps")
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
-        .ok_or("`steps` must be a non-empty array")?;
+        .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
     let save = input.get("save").and_then(Value::as_bool) != Some(false);
     if let Some(document) = live(kits, kit, &path).await {
         let mut answer = kits
             .bridge()
             .call(&document, "run", json!({ "steps": steps, "save": save }))
             .await
-            .map_err(|error| format!("in the open {} editor: {error}", short(kit)))?;
+            .map_err(|error| {
+                KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit)))
+            })?;
         let previews = live_preview(kits, kit, &document).await;
         let ran = answer["completed"].as_array().map_or(0, Vec::len);
         let saved = if answer["saved"] == true {
@@ -683,15 +716,14 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             )
         });
     }
-    let mut view = kits
-        .open(Caller::Agent, &path)
-        .await
-        .map_err(|error| error.to_string())?;
+    let mut view = kits.open(Caller::Agent, &path).await?;
     let mut done = Vec::new();
     for (index, step) in steps.iter().enumerate() {
         let command = text_field(step, "command");
         if command.is_empty() {
-            return Err(format!("step {index} has no `command`").into());
+            return Err(
+                KitToolError::invalid(format!("step {index} has no `command`")).at(Some(index)),
+            );
         }
         let params = step
             .get("params")
@@ -713,10 +745,17 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
                 view = executed.document;
             }
             Err(error) => {
-                return Err(KitToolError {
-                    message: format!("step {index} (`{command}`) failed: {error}"),
-                    output: Some(json!({ "completed": done, "document": document_json(&view) })),
-                });
+                let mut failure = KitToolError::from(error);
+                if !matches!(
+                    failure.code,
+                    ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable
+                ) {
+                    failure.code = ErrorCode::COMMAND_FAILED;
+                }
+                return Err(failure
+                    .context(&format!("step {index} (`{command}`) failed: "))
+                    .at(Some(index))
+                    .with_output(json!({ "completed": done, "document": document_json(&view) })));
             }
         }
     }
@@ -724,7 +763,9 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         view = kits
             .save(Caller::Agent, view.kit_id, &view.document_id)
             .await
-            .map_err(|error| format!("the edits were applied but saving failed: {error}"))?;
+            .map_err(|error| {
+                KitToolError::from(error).context("the edits were applied but saving failed: ")
+            })?;
     }
     let previews = preview(kits, kit, &view).await;
     let saved = if save { "saved" } else { "not saved" };
@@ -764,7 +805,7 @@ mod tests {
                     Some((kit.id, action))
                 );
                 assert!(spec.description.contains(kit.name), "{}", spec.description);
-                assert_eq!(spec.writes, action == Action::Run, "{name}");
+                assert_eq!(spec.writes, action.writes(), "{name}");
                 assert_eq!(spec.input_schema["required"][0], "path");
                 assert!(label(&name).is_some_and(|label| label.contains(short(kit))));
             }
@@ -831,11 +872,14 @@ mod tests {
             .unwrap_or_else(|| panic!("kit.vector is a kit"));
         let wrong = kit_path(&json!({ "path": "art/Cover.psd" }), vector_kit)
             .err()
-            .unwrap_or_default();
+            .map(|error| (error.code, error.message))
+            .unwrap_or((ErrorCode::Failed, String::new()));
+        assert_eq!(wrong.0, ErrorCode::InvalidParams);
+        let wrong = wrong.1;
         assert!(wrong.contains("photo_*"), "{wrong}");
         assert_eq!(
             kit_path(&json!({ "path": "art/Logo.kitionvector" }), vector_kit)
-                .unwrap_or_else(|err| panic!("{err}")),
+                .unwrap_or_else(|err| panic!("{}", err.message)),
             "art/Logo.kitionvector"
         );
     }

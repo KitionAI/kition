@@ -3,6 +3,10 @@
 //! The tools are `kition_kits::tools`, the same ones Kition's agent uses, including live editing
 //! through the Kit AI bridge when the file is open in a kit editor.
 //!
+//! Every installed kit's objects are also MCP resources (`resources.rs`): `kit://<document>/describe`
+//! (its object model) and `kit://<document>/objects/<id>`, `<document>` being the file's
+//! workspace path as one percent-encoded segment.
+//!
 //! Two transports carry the same messages: Streamable HTTP on the running runtime
 //! (`POST /v1/mcp/kits`, loopback only like the rest of the API) and stdio (`kition-kits-mcp`,
 //! for when no Kition is running; it uses the headless kits).
@@ -11,12 +15,13 @@ use base64::Engine as _;
 use serde_json::{Value, json};
 
 use crate::manager::KitManager;
+use crate::resources;
 use crate::tools;
 
 /// MCP revisions this server speaks, newest first.
 const PROTOCOL_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
 
-const INSTRUCTIONS: &str = "Kition kits edit workspace files that are not text: layered images, video projects, vector drawings, motion graphics, and page layouts. For a file, call its kit's `<kit>_inspect` first, find commands with `<kit>_commands`, then edit with `<kit>_run`; check the preview it returns. A file open in Kition is edited live in its editor.";
+const INSTRUCTIONS: &str = "Kition kits edit workspace files that are not text: layered images, video projects, vector drawings, motion graphics, and page layouts. For a file, call its kit's `<kit>_inspect` first, find commands with `<kit>_commands`, then edit with `<kit>_run`; check the preview it returns. Kits with an object model also offer `<kit>_query` (read objects by id or by following fields from the root) and `<kit>_batch` (edit them in one model/batch), and their objects as `kit://` resources. Failed calls answer `error.code` (for example `not-found`, `read-only`, `unknown-command`) and `error.index`. A file open in Kition is edited live in its editor.";
 
 fn response(id: &Value, result: Value) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "result": result })
@@ -24,6 +29,10 @@ fn response(id: &Value, result: Value) -> Value {
 
 fn error(id: &Value, code: i64, message: &str) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
+}
+
+fn error_with(id: &Value, code: i64, message: &str, data: Value) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message, "data": data } })
 }
 
 fn tool_list(kits: &KitManager) -> Value {
@@ -43,7 +52,9 @@ fn tool_list(kits: &KitManager) -> Value {
 }
 
 /// A tool answer as MCP content: the summary and output as text, the output as structured
-/// content, and each preview as an image.
+/// content, and each preview as an image. A failure keeps its message and what was done, and
+/// answers its structured error (`{ code, message, index?, retryable? }`) as `error` in the
+/// structured content.
 fn tool_result(outcome: tools::KitToolResult) -> Value {
     match outcome {
         Ok(output) => {
@@ -62,11 +73,12 @@ fn tool_result(outcome: tools::KitToolResult) -> Value {
             json!({ "content": content, "structuredContent": structured, "isError": false })
         }
         Err(failure) => {
+            let error = failure.to_json();
             let text = match &failure.output {
-                Some(output) => format!("{}\n{output}", failure.message),
-                None => failure.message,
+                Some(output) => format!("{}\nerror: {error}\n{output}", failure.message),
+                None => format!("{}\nerror: {error}", failure.message),
             };
-            json!({ "content": [{ "type": "text", "text": text }], "isError": true })
+            json!({ "content": [{ "type": "text", "text": text }], "structuredContent": failure.structured(), "isError": true })
         }
     }
 }
@@ -91,7 +103,10 @@ pub async fn handle(kits: &KitManager, message: &Value) -> Option<Value> {
                 id,
                 json!({
                     "protocolVersion": version,
-                    "capabilities": { "tools": { "listChanged": false } },
+                    "capabilities": {
+                        "tools": { "listChanged": false },
+                        "resources": { "subscribe": false, "listChanged": false },
+                    },
                     "serverInfo": { "name": "kition-kits", "title": "Kition kits", "version": env!("CARGO_PKG_VERSION") },
                     "instructions": INSTRUCTIONS,
                 }),
@@ -113,6 +128,22 @@ pub async fn handle(kits: &KitManager, message: &Value) -> Option<Value> {
             match tools::call(kits, name, &arguments).await {
                 Some(outcome) => response(id, tool_result(outcome)),
                 None => error(id, -32602, &format!("unknown tool `{name}`")),
+            }
+        }
+        "resources/list" => response(id, resources::list(kits).await),
+        "resources/templates/list" => response(id, resources::templates()),
+        "resources/read" => {
+            let Some(uri) = params.get("uri").and_then(Value::as_str) else {
+                return Some(error(id, -32602, "resources/read needs a `uri`"));
+            };
+            match resources::read(kits, uri).await {
+                Ok(contents) => response(id, json!({ "contents": contents })),
+                Err(failure) => error_with(
+                    id,
+                    resources::NOT_FOUND,
+                    &failure.message,
+                    json!({ "uri": uri, "error": failure.to_json() }),
+                ),
             }
         }
         other => error(id, -32601, &format!("method `{other}` is not supported")),
@@ -176,9 +207,29 @@ mod tests {
             call["error"]["code"], -32602,
             "kits that are not installed offer no tools"
         );
-        let unknown = handle(
+        let listed = handle(
             &kits,
             &json!({ "jsonrpc": "2.0", "id": 5, "method": "resources/list" }),
+        )
+        .await
+        .unwrap_or_default();
+        assert_eq!(listed["result"]["resources"], json!([]), "nothing is open");
+        let templates = handle(
+            &kits,
+            &json!({ "jsonrpc": "2.0", "id": 6, "method": "resources/templates/list" }),
+        )
+        .await
+        .unwrap_or_default();
+        assert_eq!(
+            templates["result"]["resourceTemplates"][0]["uriTemplate"],
+            "kit://{document}/objects/{id}"
+        );
+        let missing = handle(&kits, &json!({ "jsonrpc": "2.0", "id": 7, "method": "resources/read", "params": { "uri": "kit://art%2Fa.kitionvector/objects/root" } })).await.unwrap_or_default();
+        assert_eq!(missing["error"]["code"], resources::NOT_FOUND);
+        assert_eq!(missing["error"]["data"]["error"]["code"], "invalid-params");
+        let unknown = handle(
+            &kits,
+            &json!({ "jsonrpc": "2.0", "id": 8, "method": "prompts/list" }),
         )
         .await
         .unwrap_or_default();
@@ -201,11 +252,17 @@ mod tests {
             ok["content"][2],
             json!({ "type": "image", "mimeType": "image/png", "data": "iVBORw==" })
         );
-        let failed = tool_result(Err(tools::KitToolError {
-            message: "step 0 failed".into(),
-            output: Some(json!({ "completed": [] })),
-        }));
+        let failed = tool_result(Err(tools::KitToolError::new(
+            tools::ErrorCode::COMMAND_FAILED,
+            "step 0 failed",
+        )
+        .at(Some(0))
+        .with_output(json!({ "completed": [] }))));
         assert_eq!(failed["isError"], true);
+        assert_eq!(
+            failed["structuredContent"]["error"],
+            json!({ "code": "command-failed", "message": "step 0 failed", "index": 0 })
+        );
         assert!(
             failed["content"][0]["text"]
                 .as_str()

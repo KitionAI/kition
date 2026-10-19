@@ -15,6 +15,7 @@ name = "kition-kit-mock"
 path = "src/main.rs"
 
 [dependencies]
+kition-kdm = { workspace = true }
 kition-kit-protocol = { workspace = true, features = ["tokio"] }
 
 serde = { workspace = true }

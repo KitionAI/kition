@@ -42,7 +42,37 @@ pub struct LiveDocument {
     pub session: u64,
 }
 
-type Pending = oneshot::Sender<Result<Value, String>>;
+/// A bridge request the editor refused: its message, and the error's `data` when it sent one (an
+/// object-model refusal's `{ code, index, message }`, a refusal's `{ reason }`), so the agent's
+/// tools can answer a structured error code.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BridgeFailure {
+    pub message: String,
+    pub data: Option<Value>,
+}
+
+impl BridgeFailure {
+    fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            data: None,
+        }
+    }
+}
+
+impl From<&str> for BridgeFailure {
+    fn from(message: &str) -> Self {
+        Self::new(message)
+    }
+}
+
+impl std::fmt::Display for BridgeFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+type Pending = oneshot::Sender<Result<Value, BridgeFailure>>;
 
 struct Session {
     tx: mpsc::UnboundedSender<Value>,
@@ -206,11 +236,14 @@ impl Bridge {
             .remove(&id)
             .ok_or_else(|| format!("no pending request {id}"))?;
         let outcome = match message.get("error") {
-            Some(error) => Err(error
-                .get("message")
-                .and_then(Value::as_str)
-                .unwrap_or("the editor failed")
-                .to_owned()),
+            Some(error) => Err(BridgeFailure {
+                message: error
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .unwrap_or("the editor failed")
+                    .to_owned(),
+                data: error.get("data").filter(|data| !data.is_null()).cloned(),
+            }),
             None => Ok(message.get("result").cloned().unwrap_or(Value::Null)),
         };
         let _ = waiting.send(outcome);
@@ -224,7 +257,21 @@ impl Bridge {
         params: Value,
         timeout: Duration,
     ) -> Result<Value, String> {
-        let open = self.session(session).ok_or("the editor window closed")?;
+        self.request_detailed(session, method, params, timeout)
+            .await
+            .map_err(|failure| failure.message)
+    }
+
+    async fn request_detailed(
+        &self,
+        session: u64,
+        method: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> Result<Value, BridgeFailure> {
+        let open = self
+            .session(session)
+            .ok_or_else(|| BridgeFailure::new("the editor window closed"))?;
         let id = self.next_request.fetch_add(1, Ordering::Relaxed) + 1;
         let (tx, rx) = oneshot::channel();
         open.pending
@@ -237,17 +284,20 @@ impl Bridge {
             .is_err()
         {
             self.disconnect(session);
-            return Err("the editor window closed".into());
+            return Err(BridgeFailure::new("the editor window closed"));
         }
         match tokio::time::timeout(timeout, rx).await {
             Ok(Ok(outcome)) => outcome,
-            Ok(Err(_)) => Err("the editor window closed".into()),
+            Ok(Err(_)) => Err(BridgeFailure::new("the editor window closed")),
             Err(_) => {
                 open.pending
                     .lock()
                     .unwrap_or_else(PoisonError::into_inner)
                     .remove(&id);
-                Err(format!("the editor did not answer `{method}` in time"))
+                Err(BridgeFailure {
+                    message: format!("the editor did not answer `{method}` in time"),
+                    data: Some(json!({ "reason": "timeout" })),
+                })
             }
         }
     }
@@ -293,16 +343,16 @@ impl Bridge {
             .find(|document| document.path == path)
     }
 
-    /// Runs one of the kit's document tools (`inspect`, `commands`, `run`) on the live document;
-    /// answers the tool's canonical output.
+    /// Runs one of the kit's document tools (`inspect`, `commands`, `run`, `describe`, `batch`,
+    /// `draft_ready`, `draft_reopen`) on the live document; answers the tool's canonical output.
     pub async fn call(
         &self,
         document: &LiveDocument,
         tool: &str,
         arguments: Value,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, BridgeFailure> {
         let params = json!({ "path": document.path, "kit": document.kit, "tool": tool, "arguments": arguments });
-        self.request(document.session, "kit/call", params, CALL_TIMEOUT)
+        self.request_detailed(document.session, "kit/call", params, CALL_TIMEOUT)
             .await
     }
 
@@ -369,7 +419,7 @@ mod tests {
                 let result = match message["method"].as_str() {
                     Some("kit/documents") => json!({ "documents": documents }),
                     Some("kit/call") if message["params"]["tool"] == "fail" => {
-                        let _ = bridge.receive(session, &json!({ "jsonrpc": "2.0", "id": id, "error": { "code": -32000, "message": "refused" } }));
+                        let _ = bridge.receive(session, &json!({ "jsonrpc": "2.0", "id": id, "error": { "code": -32000, "message": "refused", "data": { "code": "read-only", "index": 0, "message": "refused" } } }));
                         continue;
                     }
                     Some("kit/call") => json!({ "echo": message["params"] }),
@@ -413,7 +463,11 @@ mod tests {
         assert_eq!(answer["echo"]["kit"], "kit.vector");
         assert_eq!(
             bridge.call(&live, "fail", json!({})).await,
-            Err("refused".into())
+            Err(BridgeFailure {
+                message: "refused".into(),
+                data: Some(json!({ "code": "read-only", "index": 0, "message": "refused" })),
+            }),
+            "the editor's error data reaches the tools"
         );
         assert_eq!(
             bridge.preview(&live, 64).await.unwrap_or_default()[..4],

@@ -77,7 +77,11 @@ export function createRuntimeBridge(connection: BridgeConnection): BridgeTranspo
           if (message.id != null) send(replyTo, { id: message.id, result: result ?? {} })
         },
         (error: unknown) => {
-          if (message.id != null) send(replyTo, { id: message.id, error: { code: -32000, message: error instanceof Error ? error.message : String(error) } })
+          if (message.id == null) return
+          // A refusal's `data` (an object-model `{ code, index, message }`, a `{ reason }`) goes along.
+          const data = (error as { data?: unknown } | null)?.data
+          const failure = { code: -32000, message: error instanceof Error ? error.message : String(error), ...(data && typeof data === 'object' ? { data } : {}) }
+          send(replyTo, { id: message.id, error: failure })
         },
       )
     queues.set(channel, queued)

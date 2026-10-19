@@ -144,6 +144,7 @@ pub fn app_error(error: KitError) -> AppError {
         KitError::Launch { .. } => (502, 50201),
         KitError::Stopped { .. } => (503, 50301),
         KitError::Unavailable(_) => (409, 40904),
+        KitError::Model { .. } => (400, 40002),
         KitError::Kit { reason, .. } => match reason {
             Some(ErrorReason::DocumentNotFound) => (404, 40401),
             Some(ErrorReason::UriNotGranted) => (403, 40301),
@@ -159,6 +160,7 @@ pub fn app_error(error: KitError) -> AppError {
         KitError::NotInstalled { .. } => json!("not_installed"),
         KitError::Stopped { .. } => json!("stopped"),
         KitError::Unavailable(_) => json!("unavailable"),
+        KitError::Model { code, .. } => json!(code),
         _ => Value::Null,
     };
     AppError::new(status, code, message).with_data(json!({ "reason": reason }))

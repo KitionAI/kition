@@ -1,4 +1,5 @@
 import type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep } from '@/api/kits'
+import { noteAgentEdit } from '@/services/agentPresence'
 import { runtimeBridge, type BridgeChannel } from '@/services/runtimeBridge'
 
 /**
@@ -9,6 +10,11 @@ import { runtimeBridge, type BridgeChannel } from '@/services/runtimeBridge'
  * history. The requests arrive on the window's shared bridge stream
  * (`runtimeBridge`), which this channel keeps open while an editor is
  * registered.
+ *
+ * Every agent edit applied to a live document is noted (`@/services/agentPresence`), so a
+ * co-edited document shows the agent in its room's presence. Refusals carry their error `data`
+ * (an object-model refusal's `{ code, index, message }`), which the runtime turns into the
+ * structured error codes of the agent's tool results.
  */
 
 /** What a kit editor offers the bridge for its document. */
@@ -28,6 +34,32 @@ export type BridgeEditor = {
    * review or take a draft back. Merging and discarding are the person's, never the bridge's.
    */
   draft?: { ready: () => Promise<KitsBridgeDraftInfo>; reopen: () => Promise<KitsBridgeDraftInfo> }
+  /**
+   * The kit's object model (Kit UI protocol section 7a), when it lists `model`: the agent's
+   * `<prefix>_query` and `<prefix>_batch`. `onDraft` says whether the kit also runs them on the
+   * agent's draft (capability `draft-model`); without it a draft batch is refused, never run on
+   * the document.
+   */
+  model?: {
+    describe: (options?: DraftOption) => Promise<Record<string, unknown>>
+    batch: (request: ModelBatchRequest, options?: DraftOption) => Promise<Record<string, unknown>>
+    onDraft: boolean
+  }
+  /** Saves the document (`document/save`); answers whether it is saved. */
+  save?: () => Promise<boolean>
+}
+
+/** A `model/batch` as the agent sends it. */
+type ModelBatchRequest = { origin?: unknown; ops: Array<Record<string, unknown>>; load: Array<Record<string, unknown>> }
+
+/** A refusal the runtime reads a structured error code from (`data.code`). */
+class BridgeRefusal extends Error {
+  constructor(
+    message: string,
+    readonly data: { code: string; index?: number | null },
+  ) {
+    super(message)
+  }
 }
 
 /** `draft: true` works on the agent's draft of the document instead of the document. */
@@ -70,7 +102,24 @@ async function handle(method: string, params: Record<string, unknown>) {
           if (!steps.length) throw new Error('`steps` must be a non-empty array')
           if (onDraft.draft && !editor.draft) throw new Error(`${editor.path} is open in an editor that keeps no drafts; edit it live`)
           const { completed, saved } = await editor.run(steps, !onDraft.draft && args.save !== false, onDraft)
+          if (!onDraft.draft && completed.some((step) => step.changed)) noteAgentEdit(editor.path)
           return { completed, saved, document: await editor.inspect(onDraft) }
+        }
+        case 'describe':
+        case 'batch': {
+          const model = editor.model
+          if (!model) throw new BridgeRefusal(`${editor.path} is open in an editor whose kit serves no object model`, { code: 'unsupported' })
+          if (onDraft.draft && !model.onDraft) throw new BridgeRefusal(`${editor.path} is open in an editor that cannot run object-model batches on a draft; edit the draft with its run tool`, { code: 'unsupported' })
+          if (params.tool === 'describe') return model.describe(onDraft)
+          const ops = Array.isArray(args.ops) ? (args.ops as Array<Record<string, unknown>>) : []
+          const load = Array.isArray(args.load) ? (args.load as Array<Record<string, unknown>>) : []
+          // The replica version is the host's, not the agent's.
+          const answer: Record<string, unknown> = { ...(await model.batch({ origin: args.origin, ops, load }, onDraft)) }
+          delete answer.version
+          const writes = ops.length > 0
+          if (writes && !onDraft.draft) noteAgentEdit(editor.path)
+          const saved = writes && !onDraft.draft && args.save === true && editor.save ? await editor.save() : false
+          return { ...answer, saved }
         }
         case 'draft_ready':
         case 'draft_reopen': {

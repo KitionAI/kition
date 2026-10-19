@@ -290,6 +290,15 @@ pub enum KitError {
         reason: Option<ErrorReason>,
         message: String,
     },
+    /// An object-model failure (`model.batch`, `model.describe`): the kit's `data.model`, whose
+    /// `code` is a `BatchErrorCode` (`invalid-op`, `not-found`, `invalid-value`, `read-only`,
+    /// `command-failed`) and `index` the operation that failed.
+    #[error("{message}")]
+    Model {
+        code: String,
+        index: Option<usize>,
+        message: String,
+    },
 }
 
 impl KitError {
@@ -454,6 +463,10 @@ pub(crate) struct Inner {
     pub(crate) next_surface: AtomicU64,
     /// Kit editors open in the renderer, for the agent (`bridge.rs`).
     bridge: Arc<crate::bridge::Bridge>,
+    /// Each kit's object model as `model.describe` last answered it (the kit's schema, which is
+    /// the same for all its documents): the agent's `<prefix>_query` and `<prefix>_batch`
+    /// argument schemas are generated from it.
+    described: Mutex<HashMap<&'static str, Value>>,
 }
 
 /// The kits of one workspace. Cheap to clone.
@@ -490,6 +503,7 @@ impl KitManager {
                 surfaces: tokio::sync::Mutex::new(HashMap::new()),
                 next_surface: AtomicU64::new(1),
                 bridge: Arc::default(),
+                described: Mutex::default(),
             }),
         }
     }
@@ -548,6 +562,36 @@ impl KitManager {
                 binary_env: kit.binary_env,
             })
             .collect()
+    }
+
+    /// The kit's object model as `model.describe` last answered it, when one was asked for.
+    pub fn described(&self, kit_id: &str) -> Option<Value> {
+        self.inner
+            .described
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .find(|(id, _)| **id == kit_id)
+            .map(|(_, described)| described.clone())
+    }
+
+    /// Keeps what `model.describe` answered for `kit_id` (a live editor's or a headless kit's).
+    pub fn remember_described(&self, kit_id: &str, described: &Value) {
+        let Ok(kit) = self.definition(kit_id) else {
+            return;
+        };
+        if described.get("types").is_some_and(Value::is_object) {
+            self.inner
+                .described
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(kit.id, described.clone());
+        }
+    }
+
+    /// The definitions of the kits this manager knows.
+    pub fn definitions(&self) -> impl Iterator<Item = &'static KitDefinition> + '_ {
+        self.inner.kits.iter().map(|(kit, _)| *kit)
     }
 
     pub(crate) fn definition(&self, id: &str) -> Result<&'static KitDefinition, KitError> {
@@ -997,6 +1041,96 @@ impl KitManager {
             result: executed.result,
             document,
         })
+    }
+
+    /// An object-model request of the Kit Protocol (`model.describe`, `model.batch`) on an open
+    /// document; `params` gets the document's id. A refused batch is [`KitError::Model`]; a kit
+    /// that serves no object model answers [`KitError::Kit`] with no reason (method not found).
+    pub async fn model(
+        &self,
+        caller: Caller,
+        kit_id: &str,
+        document_id: &str,
+        method: &str,
+        mut params: Map<String, Value>,
+    ) -> Result<Value, KitError> {
+        let kit = self.definition(kit_id)?;
+        let (target, inner) = split_document_id(document_id);
+        params.insert("documentId".into(), Value::String(inner.to_owned()));
+        let running = self.instance(kit, target).await?;
+        match running
+            .client(caller)
+            .request(method, Value::Object(params), None)
+            .await
+        {
+            Ok(answer) => {
+                if method == "model.describe" {
+                    self.remember_described(kit.id, &answer);
+                }
+                Ok(answer)
+            }
+            Err(ClientError::Rpc(error))
+                if error
+                    .data
+                    .as_ref()
+                    .and_then(|data| data.get("model"))
+                    .is_some_and(Value::is_object) =>
+            {
+                let model = &error
+                    .data
+                    .as_ref()
+                    .map_or(Value::Null, |data| data["model"].clone());
+                Err(KitError::Model {
+                    code: model["code"].as_str().unwrap_or("invalid-op").to_owned(),
+                    index: model["index"]
+                        .as_u64()
+                        .and_then(|index| usize::try_from(index).ok()),
+                    message: model["message"]
+                        .as_str()
+                        .map_or_else(|| error.message.clone(), str::to_owned),
+                })
+            }
+            Err(error) => {
+                let error = KitError::from_client(kit, error);
+                if matches!(error, KitError::Stopped { .. }) {
+                    match target {
+                        Target::Headless => {
+                            self.inner.running.lock().await.remove(kit.id);
+                        }
+                        Target::Surface(id) => {
+                            self.inner.surfaces.lock().await.remove(&id);
+                        }
+                    }
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// The workspace files open in the running headless kits, as `(kit id, path)`.
+    pub async fn open_files(&self) -> Vec<(&'static str, String)> {
+        let running: Vec<(&'static str, Arc<RunningKit>)> = self
+            .inner
+            .running
+            .lock()
+            .await
+            .iter()
+            .map(|(id, kit)| (*id, Arc::clone(kit)))
+            .collect();
+        let mut files = Vec::new();
+        for (kit_id, kit) in running {
+            let Ok(list) = kit.agent.call::<methods::DocumentList>(&Empty {}).await else {
+                continue;
+            };
+            files.extend(
+                list.documents
+                    .iter()
+                    .filter_map(|document| document.uri.as_deref())
+                    .filter_map(|uri| self.relative(uri))
+                    .map(|path| (kit_id, path)),
+            );
+        }
+        files
     }
 
     pub async fn save(

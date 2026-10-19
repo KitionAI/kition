@@ -140,8 +140,14 @@ async fn calls_a_real_kit_and_returns_its_preview() {
             "vector_commands",
             "vector_run",
             "vector_draft_ready",
-            "vector_draft_reopen"
+            "vector_draft_reopen",
+            "vector_query",
+            "vector_batch"
         ]
+    );
+    assert_eq!(
+        listed["result"]["tools"][6]["annotations"]["readOnlyHint"], false,
+        "vector_batch writes"
     );
     assert_eq!(
         listed["result"]["tools"][0]["annotations"]["readOnlyHint"],
@@ -168,5 +174,28 @@ async fn calls_a_real_kit_and_returns_its_preview() {
 
     let (_, refused) = post(&app, json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "../outside.kitionvector" } } })).await;
     assert_eq!(refused["result"]["isError"], true);
+    assert!(
+        refused["result"]["structuredContent"]["error"]["code"].is_string(),
+        "{refused}"
+    );
+
+    // The object model of the real kit: read, or a clear `unsupported` when its build serves none.
+    let (_, queried) = post(&app, json!({ "jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": { "name": "vector_query", "arguments": { "path": "art/Drawing.kitionvector", "describe": true } } })).await;
+    let result = &queried["result"];
+    if result["isError"] == true {
+        assert_eq!(
+            result["structuredContent"]["error"]["code"], "unsupported",
+            "{result}"
+        );
+    } else {
+        assert!(
+            result["structuredContent"]["objects"][0]["id"].is_string(),
+            "{result}"
+        );
+        assert!(
+            result["structuredContent"]["describe"]["types"].is_object(),
+            "{result}"
+        );
+    }
     kits.shutdown().await;
 }

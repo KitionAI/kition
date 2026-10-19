@@ -13,6 +13,7 @@ workspace = true
 [dependencies]
 kition-core = { workspace = true }
 kition-http = { workspace = true }
+kition-kdm = { workspace = true }
 kition-kit-host = { workspace = true }
 kition-kit-protocol = { workspace = true, features = ["tokio"] }
 
