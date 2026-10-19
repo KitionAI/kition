@@ -146,15 +146,48 @@ export const LEASE_HELD_REASON = 'held'
  */
 export type KitConflict = { id: string; kind: string; summary: string }
 
+/**
+ * An agent's draft of the document (capability `draft`, section 7d; standard 2.0 A12 to A15): a
+ * fork of the document's replica the agent edits instead of the live document. `open` while the
+ * agent works on it, `ready` once it asks for review; `none` when there is no draft.
+ */
+export type DraftState = 'none' | 'open' | 'ready'
+export type DraftInfo = { state: DraftState; revision: number | null }
+/** One object a draft created, changed (`fields`: the differing ones), or deleted. */
+export type DraftObjectChange = { id: string; type: string; fields: string[] }
+/** The object-level comparison of a draft with the live document (standard 2.0 A13). */
+export type DraftSummary = {
+  created: DraftObjectChange[]
+  changed: DraftObjectChange[]
+  deleted: DraftObjectChange[]
+  texts: Array<{ id: string; field: string; before: string; after: string }>
+}
+/** `draft/compare`: the summary, and both sides rendered by the kit's engine (base64 PNGs; null when the engine cannot render). */
+export type DraftComparison = { summary: DraftSummary; before: string | null; after: string | null }
+/** Who a merge is recorded as: the agent, on behalf of the person who started it. */
+export type DraftOrigin = { kind: 'agent'; principal: string; label?: string }
+
 /** Requests the host sends, with their params and results. */
 export type HostToKit = {
   'ui/initialize': [InitializeParams, InitializeResult]
   'document/state': [Record<string, never>, DocumentState]
   'document/save': [Record<string, never>, { saved: boolean; version: string | null }]
-  'ai/inspect': [Record<string, never>, Record<string, unknown>]
+  /** `draft: true` (capability `draft`) inspects, runs on, and previews the agent's draft instead of the live document; `ai/run` opens one if there is none. */
+  'ai/inspect': [{ draft?: boolean }, Record<string, unknown>]
   'ai/commands': [{ query: string }, Array<Record<string, unknown>>]
-  'ai/run': [{ steps: AiStep[]; save: boolean }, AiRunResult]
-  'ai/preview': [{ maxSize: number }, { png: string }]
+  'ai/run': [{ steps: AiStep[]; save: boolean; draft?: boolean }, AiRunResult]
+  'ai/preview': [{ maxSize: number; draft?: boolean }, { png: string }]
+  /** The draft (capability `draft`, section 7d). */
+  'draft/state': [Record<string, never>, DraftInfo]
+  /** The agent asks for review; the agent may call it (through its host). */
+  'draft/ready': [Record<string, never>, DraftInfo]
+  /** Sends a draft back to the agent; the agent may call it. */
+  'draft/reopen': [Record<string, never>, DraftInfo]
+  'draft/compare': [{ maxSize?: number; schema?: object }, DraftComparison]
+  /** The person's explicit approval only, never a model's: takes the draft into the document as one undo step, and closes it. */
+  'draft/merge': [{ origin: DraftOrigin; schema?: object }, { merged: boolean; summary: DraftSummary }]
+  /** The person's explicit approval only: drops the draft; the document is untouched. */
+  'draft/discard': [Record<string, never>, DraftInfo]
   /** The editor's elements and their state (section 9). */
   'ui/elements': [Record<string, never>, KitUiElement[]]
   'replica/version': [Record<string, never>, { version: ArrayBuffer }]
@@ -211,6 +244,8 @@ export type KitNotifications = {
   'ui/action': { id: string; document: { path: string; dirty: boolean; revision: number } }
   /** The document's unresolved conflict objects changed (section 7c): the whole list. */
   'document/conflicts': { conflicts: KitConflict[] }
+  /** The agent's draft opened, changed, became ready or open again, or closed (capability `draft`). */
+  'draft/changed': DraftInfo
 }
 
 type Message = { jsonrpc: '2.0'; id?: string; method?: string; params?: unknown; result?: unknown; error?: { code: number; message: string; data?: unknown } }

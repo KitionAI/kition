@@ -38,7 +38,8 @@ export type RelayReplica = {
 }
 
 /** The sync side: the page's `SyncClient`. */
-export type RelaySync = Pick<SyncClient, 'join' | 'leave' | 'push' | 'onChanges' | 'onState' | 'blobs'> & { readonly state: ConnectionState }
+export type RelaySync = Pick<SyncClient, 'join' | 'leave' | 'push' | 'onChanges' | 'onState' | 'blobs'> &
+  Partial<Pick<SyncClient, 'onAccess'>> & { readonly state: ConnectionState }
 
 export type RelayOptions = {
   docId: string
@@ -55,6 +56,11 @@ export type RelayOptions = {
   onSeen?: (seen: { seq: number; version: Uint8Array }) => void
   /** Joined (or re-joined) the room: its presence and this person's role. */
   onJoined?: (result: { presence: Presence[]; role: RoomJoinResult['role'] }) => void
+  /**
+   * This person's role changed while joined (protocol 1.6, `room/access`); `null`: they were
+   * removed from the room, and the relay stops sending.
+   */
+  onAccess?: (role: RoomJoinResult['role'] | null) => void
   onError?: (error: unknown) => void
 }
 
@@ -83,6 +89,8 @@ export function startRelay(options: RelayOptions): Relay {
   const waiting: Uint8Array[] = []
   let joined = false
   let readOnly = false
+  /** Removed from the room (`room/access` with no role): never joined again by this relay. */
+  let removed = false
   let stopped = false
   let queue: Promise<void> = Promise.resolve()
 
@@ -168,10 +176,20 @@ export function startRelay(options: RelayOptions): Relay {
       if (await importRemote(notice.changes)) await seen(notice.seq)
     })),
     replica.onChanged(() => void run(sendLocal)),
+    sync.onAccess?.(docId, (role) => {
+      // A viewer sends nothing; a commenter sends its comments (the server refuses anything else).
+      readOnly = role === null || role === 'viewer'
+      if (role === null) {
+        joined = false
+        removed = true
+      }
+      options.onAccess?.(role)
+    }) ?? (() => undefined),
     sync.onState((state) => {
       if (state !== 'online') return
       void run(async () => {
         // The sync client re-joins a room it had joined by itself; only the first join is ours.
+        if (removed) return
         if (!joined) await join()
         await importWaiting()
         await sendLocal()

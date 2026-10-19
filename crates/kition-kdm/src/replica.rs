@@ -582,6 +582,107 @@ impl Replica {
         }
     }
 
+    /// A draft of this document (standard 2.0 A12): a new writable replica of `actor` holding
+    /// every change this one has, with no undo history. Edits made on it stay there until
+    /// [`Replica::merge_changes`] takes them into another replica of the document.
+    pub fn fork(&self, actor: ActorId) -> Result<Replica> {
+        self.fork_at(&self.version(), actor)
+    }
+
+    /// A draft of this document as it was at `version` (see [`Replica::fork`]). `version` must be
+    /// one this replica has reached ([`KdmError::InvalidValue`] otherwise).
+    pub fn fork_at(&self, version: &Version, actor: ActorId) -> Result<Replica> {
+        if !self.version().includes(version) {
+            return Err(KdmError::InvalidValue { ty: "$draft".into(), field: "version".into(), reason: "names changes this replica does not have".into() });
+        }
+        let frontiers = self.doc.vv_to_frontiers(&version.0);
+        let doc = self.doc.fork_at(&frontiers).map_err(engine)?;
+        crate::marks::configure(&doc, &self.schema);
+        Self::attach(doc, self.doc_id, Arc::clone(&self.schema), actor)
+    }
+
+    /// The canonical state this replica would have after importing `changes`, without changing it:
+    /// the "after" of a draft's comparison ([`crate::diff::diff_states`]). Refuses changes that
+    /// depend on changes this replica lacks, like [`Replica::merge_changes`].
+    pub fn merged_state(&self, changes: &[u8]) -> Result<Value> {
+        let merged = self.merged_doc(changes)?;
+        read::state_json(&merged, &self.schema)
+    }
+
+    /// Takes another replica's changes (a draft's, made on a [`Replica::fork`]) into this one as
+    /// one transaction of its own, with `origin`: one undo step (unless `origin` is `system` or
+    /// `import`), labelled as `origin` says. The result is the state a CRDT import would give, so
+    /// edits made here (or imported) since the draft was forked are kept; only the operations
+    /// that turn this state into the merged one are written, under this replica's actor. Answers
+    /// the objects that changed.
+    ///
+    /// The draft's changes themselves are not imported: merging the same changes twice writes
+    /// their effect twice (text inserted twice, for instance), so a host merges a draft once.
+    /// Refuses ([`KdmError::InvalidValue`]) changes that depend on changes this replica lacks,
+    /// changes of another document ([`KdmError::WrongDocument`]), and changes that raise the
+    /// minimum schema version beyond this replica's ([`KdmError::NewerSchema`]); a refused merge
+    /// changes nothing.
+    pub fn merge_changes(&mut self, changes: &[u8], origin: &Origin) -> Result<BTreeSet<ObjectId>> {
+        let merged = self.merged_doc(changes)?;
+        let from = self.doc.oplog_frontiers();
+        let to = merged.oplog_frontiers();
+        if from == to {
+            return Ok(BTreeSet::new());
+        }
+        let diff = merged.diff(&from, &to).map_err(engine)?;
+        let doc = &self.doc;
+        let (applied, changed, registers) = observe_changes(doc, || {
+            let applied = doc.apply_diff(diff);
+            if applied.is_ok() {
+                doc.set_next_commit_origin(origin.kind.as_str());
+                doc.set_next_commit_message(&origin.encode());
+                doc.commit();
+            }
+            applied
+        });
+        if let Err(error) = applied {
+            // The engine refused part of a difference it computed itself: put back what it
+            // applied, outside the undo history, as `transact` does.
+            self.doc.set_next_commit_origin(ROLLBACK);
+            self.doc.commit();
+            if self.doc.oplog_frontiers() != from {
+                self.doc.revert_to(&from).map_err(engine)?;
+                self.doc.set_next_commit_origin(ROLLBACK);
+                self.doc.set_next_commit_message(&Origin::system("rollback").encode());
+                self.doc.commit();
+            }
+            return Err(engine(error));
+        }
+        for register in registers {
+            let value = match self.doc.get_map(register.0.clone()).get(&register.1) {
+                Some(ValueOrContainer::Value(value)) => Some(value),
+                Some(ValueOrContainer::Container(_)) => continue,
+                None => None,
+            };
+            self.own_registers.insert(register, value);
+        }
+        self.changed.extend(changed.iter().cloned());
+        Ok(changed)
+    }
+
+    /// A copy of this document with `changes` imported, checked as [`Replica::merge_changes`] checks them.
+    fn merged_doc(&self, changes: &[u8]) -> Result<LoroDoc> {
+        let (doc_id, bytes) = envelope::open(changes)?;
+        if doc_id != self.doc_id {
+            return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
+        }
+        let merged = self.doc.fork();
+        crate::marks::configure(&merged, &self.schema);
+        let status = merged.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
+        if status.pending.is_some() {
+            return Err(KdmError::InvalidValue { ty: "$draft".into(), field: "changes".into(), reason: "depend on changes this replica does not have".into() });
+        }
+        if let Some(found) = read::min_schema_version(&merged).filter(|found| *found > u64::from(self.schema.schema_version)) {
+            return Err(KdmError::NewerSchema { found, reads: self.schema.schema_version });
+        }
+        Ok(merged)
+    }
+
     pub fn state_json(&self) -> Result<Value> {
         read::state_json(&self.doc, &self.schema)
     }

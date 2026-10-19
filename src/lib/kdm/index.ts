@@ -18,6 +18,25 @@ export {
   type LoadedObject,
 } from './batch'
 export { canonicalText } from './canonical'
+export {
+  addThread,
+  COMMENT_THREAD_TYPE,
+  COMMENT_THREAD_TYPE_DEF,
+  COMMENT_TYPE,
+  COMMENT_TYPE_DEF,
+  commentThreads,
+  deleteComment,
+  deleteThread,
+  isCommentType,
+  relocateAnchorRange,
+  reply,
+  setResolved,
+  type Comment,
+  type CommentAnchor,
+  type CommentThread,
+  type NewComment,
+} from './comment'
+export { diffIsEmpty, diffStates, type ObjectChange, type StateDiff, type TextChange } from './diff'
 export { KdmError, type KdmErrorReason } from './errors'
 export { newDocId, newObjectId, NodeRef, randomActor, uuidFromBytes, uuidToBytes, uuidV7, type ObjectId, type TreeEntry } from './ids'
 export { agent, decodeOrigin, encodeOrigin, person, system, type Origin, type OriginKind } from './origin'

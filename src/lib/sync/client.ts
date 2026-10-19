@@ -25,6 +25,7 @@ import {
   type RoomCreateResult,
   type RoomJoinResult,
   type RoomLinkResult,
+  type RoomMembersResult,
   type RoomOpenResult,
   type SnapshotGetResult,
 } from './protocol'
@@ -72,6 +73,7 @@ export class SyncClient {
   private lastSeq = new Map<string, number>()
   private changesListeners = new Map<string, Set<(notice: ChangeNotice) => void>>()
   private presenceListeners = new Map<string, Set<(peers: Presence[]) => void>>()
+  private accessListeners = new Map<string, Set<(role: Role | null) => void>>()
   private stateListeners = new Set<(state: ConnectionState) => void>()
   private reconnectAttempt = 0
   private reconnectTimer: unknown
@@ -227,9 +229,38 @@ export class SyncClient {
     return this.request('room/open', () => ({ shareLink }), (value) => value as RoomOpenResult)
   }
 
-  /** Mints another share link to `docId`'s room granting `role` (protocol 1.4, `room/link`). */
-  createLink(docId: string, role: 'editor' | 'viewer'): Promise<RoomLinkResult> {
+  /** Mints another share link to `docId`'s room granting `role` (protocol 1.4, `room/link`; `commenter` since 1.6). */
+  createLink(docId: string, role: Exclude<Role, 'owner'>): Promise<RoomLinkResult> {
     return this.request('room/link', () => ({ docId, role }), (value) => value as RoomLinkResult)
+  }
+
+  /** The room's members and working share links (protocol 1.6, `room/members`; owner or editor). */
+  members(docId: string): Promise<RoomMembersResult> {
+    return this.request('room/members', () => ({ docId }), (value) => value as RoomMembersResult)
+  }
+
+  /** Changes another member's role (protocol 1.6, `room/setRole`; owner only). */
+  async setRole(docId: string, principalId: string, role: Exclude<Role, 'owner'>): Promise<void> {
+    await this.request('room/setRole', () => ({ docId, principalId, role }), () => undefined)
+  }
+
+  /** Removes another member from the room (protocol 1.6, `room/removeMember`; owner only). */
+  async removeMember(docId: string, principalId: string): Promise<void> {
+    await this.request('room/removeMember', () => ({ docId, principalId }), () => undefined)
+  }
+
+  /** Revokes one of the room's share links (protocol 1.6, `room/revokeLink`; owner only). */
+  async revokeLink(docId: string, shareLink: string): Promise<void> {
+    await this.request('room/revokeLink', () => ({ docId, shareLink }), () => undefined)
+  }
+
+  /**
+   * Hears this person's role in `docId`'s room change (protocol 1.6, `room/access`): the owner set
+   * a new one, or removed them (`null`; the room is then no longer joined, and not re-joined on a
+   * reconnect).
+   */
+  onAccess(docId: string, listener: (role: Role | null) => void): () => void {
+    return this.subscribe(this.accessListeners, docId, listener)
   }
 
   /** The room's history checkpoints, newest first (protocol 1.5, `history/list`). */
@@ -459,6 +490,16 @@ export class SyncClient {
     }
     if (method === 'lease/changed') {
       this.leases.receive(params)
+      return
+    }
+    if (method === 'room/access') {
+      const docId = params.docId as string
+      const role = (params.role ?? null) as Role | null
+      if (role === null) {
+        this.joined.delete(docId)
+        this.leases.left(docId)
+      }
+      for (const listener of this.accessListeners.get(docId) ?? []) listener(role)
       return
     }
     if (method === 'presence/update') {

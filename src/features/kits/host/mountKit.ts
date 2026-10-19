@@ -23,13 +23,17 @@ import {
   type KitToHost,
   type KitUiConfig,
   type KitUiElement,
+  type DraftComparison,
+  type DraftInfo,
+  type DraftOrigin,
+  type DraftSummary,
   type ModelBatchParams,
   type ModelBatchResult,
   type StoredReplica,
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
-export type { DocumentState, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
+export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -72,6 +76,8 @@ export type KitHostHandlers = {
   }
   /** `document/conflicts`: the document's unresolved conflict objects (section 7c). */
   conflicts?: (params: KitNotifications['document/conflicts']) => void
+  /** `draft/changed`: the agent's draft opened, changed, became ready, or closed (section 7d). */
+  draftChanged?: (params: KitNotifications['draft/changed']) => void
 }
 
 export type MountOptions = {
@@ -112,11 +118,25 @@ export type KitConnection = {
   leasesChanged: (leases: KitLease[]) => void
   /** The editor's elements (`ui/elements`). Rejects with -32601 when the kit did not declare its UI. */
   elements: () => Promise<KitUiElement[]>
+  /** The Kit AI bridge; `draft` (capability `draft`) works on the agent's draft instead of the live document. */
   ai: {
-    inspect: () => Promise<Record<string, unknown>>
+    inspect: (options?: { draft?: boolean }) => Promise<Record<string, unknown>>
     commands: (query: string) => Promise<Array<Record<string, unknown>>>
-    run: (steps: AiStep[], save: boolean) => Promise<AiRunResult>
-    preview: (maxSize: number) => Promise<{ png: string }>
+    run: (steps: AiStep[], save: boolean, options?: { draft?: boolean }) => Promise<AiRunResult>
+    preview: (maxSize: number, options?: { draft?: boolean }) => Promise<{ png: string }>
+  }
+  /**
+   * The agent's draft, when the kit lists the `draft` capability (section 7d). `ready` and
+   * `reopen` may be the agent's; `merge` and `discard` MUST come from the person's explicit
+   * approval, never from a model.
+   */
+  draft: {
+    state: () => Promise<DraftInfo>
+    ready: () => Promise<DraftInfo>
+    reopen: () => Promise<DraftInfo>
+    compare: (options?: { maxSize?: number; schema?: object }) => Promise<DraftComparison>
+    merge: (origin: DraftOrigin, schema?: object) => Promise<{ merged: boolean; summary: DraftSummary }>
+    discard: () => Promise<DraftInfo>
   }
   /** The document's KDM replica, when the kit declares the `replica` capability. */
   replica: {
@@ -190,6 +210,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       return { leases: await handlers.leases.list() }
     })
     peer.on('document/conflicts', (params) => handlers.conflicts?.(params))
+    peer.on('draft/changed', (params) => handlers.draftChanged?.(params))
     peer.on('document/changed', (state) => handlers.changed(state))
     peer.on('replica/changed', (params) => handlers.replicaChanged?.(params))
     peer.on('host/notify', (notice) => handlers.notify?.(notice))
@@ -270,10 +291,18 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     leasesChanged: (leases) => peer.notify('lease/changed', { leases }),
     elements: () => peer.request('ui/elements', {}),
     ai: {
-      inspect: () => peer.request('ai/inspect', {}),
+      inspect: (options) => peer.request('ai/inspect', options?.draft ? { draft: true } : {}),
       commands: (query) => peer.request('ai/commands', { query }),
-      run: (steps, save) => peer.request('ai/run', { steps, save }),
-      preview: (maxSize) => peer.request('ai/preview', { maxSize }),
+      run: (steps, save, options) => peer.request('ai/run', options?.draft ? { steps, save, draft: true } : { steps, save }),
+      preview: (maxSize, options) => peer.request('ai/preview', options?.draft ? { maxSize, draft: true } : { maxSize }),
+    },
+    draft: {
+      state: () => peer.request('draft/state', {}),
+      ready: () => peer.request('draft/ready', {}),
+      reopen: () => peer.request('draft/reopen', {}),
+      compare: (options) => peer.request('draft/compare', options ?? {}),
+      merge: (origin, schema) => peer.request('draft/merge', schema ? { origin, schema } : { origin }),
+      discard: () => peer.request('draft/discard', {}),
     },
     replica: {
       version: async () => (await peer.request('replica/version', {})).version,

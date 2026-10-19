@@ -8,7 +8,14 @@
 
 export const SYNC_PROTOCOL = 'kition-sync/1'
 
-export type Role = 'owner' | 'editor' | 'viewer'
+/**
+ * A room's role for one principal: `owner` and `editor` may push any change, `commenter` (protocol
+ * 1.6) only changes that touch comment objects (Kit Standard 2.0 rule M23), `viewer` none.
+ */
+export type Role = 'owner' | 'editor' | 'commenter' | 'viewer'
+
+/** Roles by what they allow: `viewer` < `commenter` < `editor` < `owner`. */
+export const ROLE_RANK: Record<Role, number> = { viewer: 0, commenter: 1, editor: 2, owner: 3 }
 
 /** `error.data.code` (never the JSON-RPC `code`/`message`, which are for logs and people). */
 export type ErrorCode = 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'invalid' | 'unavailable' | 'rate-limited'
@@ -81,11 +88,27 @@ export type RoomOpenResult = { docId: string; name: string; kit: string; role: R
 
 /**
  * Mints another share link to a room the caller is a member of (protocol 1.4), granting `role`
- * (`editor` or `viewer`, never more than the caller's own role): a view-only link, say, next to
+ * (`editor`, `commenter` since 1.6, or `viewer`, never more than the caller's own role): a view-only link, say, next to
  * the editing link `room/create` answered.
  */
 export type RoomLinkParams = { docId: string; role: Exclude<Role, 'owner'> }
 export type RoomLinkResult = { shareLink: string }
+
+/** A member of a room (protocol 1.6): `name` is the display name they last joined with. */
+export type Member = { principalId: string; name: string; role: Role }
+/** A share link that still works (protocol 1.6): the role it grants and who minted it. */
+export type ShareLink = { shareLink: string; role: Exclude<Role, 'owner'>; createdBy: string }
+/** `room/members` (protocol 1.6): for the room's owner or an editor. */
+export type RoomMembersParams = { docId: string }
+export type RoomMembersResult = { members: Member[]; links: ShareLink[] }
+/** `room/setRole` (protocol 1.6): the owner changes another member's role. */
+export type RoomSetRoleParams = { docId: string; principalId: string; role: Exclude<Role, 'owner'> }
+/** `room/removeMember` (protocol 1.6): the owner removes another member. */
+export type RoomRemoveMemberParams = { docId: string; principalId: string }
+/** `room/revokeLink` (protocol 1.6): the owner revokes a share link. */
+export type RoomRevokeLinkParams = { docId: string; shareLink: string }
+/** Server to client, notification (protocol 1.6): the receiver's role changed; `null`: removed. */
+export type RoomAccessParams = { docId: string; role: Role | null }
 
 /** Client to server, notification. */
 export type RoomLeaveParams = { docId: string }

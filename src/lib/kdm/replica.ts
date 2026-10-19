@@ -525,6 +525,112 @@ export class Replica {
     })
   }
 
+  /**
+   * A draft of this document (standard 2.0 A12): a new writable replica of `actor` holding every
+   * change this one has, with no undo history. Edits made on it stay there until `mergeChanges`
+   * takes them into another replica of the document.
+   */
+  fork(actor: bigint): Replica {
+    return this.forkAt(this.version(), actor)
+  }
+
+  /** A draft of this document as it was at `version` (see `fork`); `version` must be one this replica has reached. */
+  forkAt(version: Version, actor: bigint): Replica {
+    this.idle()
+    checkActor(actor)
+    if (!(version instanceof Version)) throw new KdmError('invalid-value', 'a version must be a `Version`')
+    if (!this.version().includes(version)) throw errors.invalidValue('$draft', 'version', 'names changes this replica does not have')
+    let doc: LoroDoc
+    try {
+      doc = this.doc.forkAt(this.doc.vvToFrontiers(version.toEngine()))
+    } catch (error) {
+      throw errors.engine(engineMessage(error))
+    }
+    configure(doc, this.schema)
+    return new Replica(doc, this.docIdBytes, this.schema, actor)
+  }
+
+  /**
+   * The canonical state this replica would have after importing `changes`, without changing it:
+   * the "after" of a draft's comparison (`diffStates`). Refuses what `mergeChanges` refuses.
+   */
+  mergedState(changes: Uint8Array): unknown {
+    this.idle()
+    return read.stateJson(this.mergedDoc(changes), this.schema)
+  }
+
+  /**
+   * Takes another replica's changes (a draft's, made on a `fork`) into this one as one transaction
+   * of its own, with `origin`: one undo step (unless `origin` is `system` or `import`). The result
+   * is the state a CRDT import would give, so edits made here (or imported) since the draft was
+   * forked are kept; only the operations that turn this state into the merged one are written,
+   * under this replica's actor. Answers the objects that changed.
+   *
+   * The draft's changes themselves are not imported: merging the same changes twice writes their
+   * effect twice, so a host merges a draft once. Refuses (`invalid-value`) changes that depend on
+   * changes this replica lacks, changes of another document (`wrong-document`), and changes that
+   * raise the minimum schema version beyond this replica's (`newer-schema`); a refused merge
+   * changes nothing.
+   */
+  mergeChanges(changes: Uint8Array, origin: Origin): Set<ObjectId> {
+    this.idle()
+    checkOrigin(origin)
+    const merged = this.mergedDoc(changes)
+    const from = this.doc.oplogFrontiers()
+    const to = merged.oplogFrontiers()
+    if (sameFrontiers(from, to)) return new Set()
+    let diff: ReturnType<LoroDoc['diff']>
+    try {
+      diff = merged.diff(from, to)
+    } catch (error) {
+      throw errors.engine(engineMessage(error))
+    }
+    let failure: unknown = null
+    const { changed, registers } = observeChanges(this.doc, () => {
+      try {
+        this.doc.applyDiff(diff)
+      } catch (error) {
+        failure = error
+        return
+      }
+      this.doc.commit({ origin: origin.kind, message: encodeOrigin(origin) })
+    })
+    if (failure !== null) {
+      // The engine refused part of a difference it computed itself: put back what it applied,
+      // outside the undo history, as `transact` does.
+      this.doc.commit({ origin: ROLLBACK })
+      if (!sameFrontiers(this.doc.oplogFrontiers(), from)) {
+        this.doc.revertTo(from)
+        this.doc.commit({ origin: ROLLBACK, message: encodeOrigin(system('rollback')) })
+      }
+      throw errors.engine(engineMessage(failure))
+    }
+    for (const register of registers) {
+      const now = this.registerValue(register)
+      if (!now.container) this.ownRegisters.set(register, now.value)
+    }
+    for (const id of changed) this.changed.add(id)
+    return sorted(changed)
+  }
+
+  /** A copy of this document with `changes` imported, checked as `mergeChanges` checks them. */
+  private mergedDoc(changes: Uint8Array): LoroDoc {
+    const { docId, engine } = open(changes)
+    if (!sameBytes(docId, this.docIdBytes)) throw errors.wrongDocument(this.docId, uuidFromBytes(docId))
+    const merged = this.doc.fork()
+    configure(merged, this.schema)
+    let status: ImportStatus
+    try {
+      status = merged.import(engine)
+    } catch (error) {
+      throw errors.encoding(engineMessage(error))
+    }
+    if (status.pending && status.pending.size > 0) throw errors.invalidValue('$draft', 'changes', 'depend on changes this replica does not have')
+    const found = read.minSchemaVersion(merged)
+    if (found !== null && found > this.schema.schemaVersion) throw errors.newerSchema(found, this.schema.schemaVersion)
+    return merged
+  }
+
   /** The whole document in canonical form; see `stateText`. */
   stateJson(): unknown {
     return read.stateJson(this.doc, this.schema)
