@@ -361,6 +361,14 @@ Kit repository:
    current.
 2. Add `crates/kition-<kit>-sdk` on `kition-sdk` (section 3), with
    `check_contract` in its tests plus the kit's own tests.
+2b. Under engine contract 2, add kition-sdk's `kition-convergence` as a
+   dev-dependency of the SDK crate and a `tests/convergence.rs` adapter
+   (`KitAdapter`) that drives the document through its commands; it must
+   report `level6()`, write its report with `save_if_requested()`, pass its
+   WebAssembly parity check with `KITION_WASM_ENGINE` set, and meet the
+   collaboration budgets in section 7 (`tests/perf.rs`). `node
+   tools/check-manifest.mjs kit.json --convergence <report.json>` then
+   reports L6.
 3. Add the headless executable `apps/kit-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
    Add `"headless": { "executable": "kit-<kit>", "protocol": "kition-kit/1" }`
@@ -682,6 +690,34 @@ Film, measured on the built SDK in Node with real H.264 through lent files
 400 ms (decoding from the keyframe), the same frame again 26 ms, and 3.7 MB
 read of an 8 MB clip for five frames. Playback skips frames the engine cannot
 keep up with; the status bar shows the frame rate reached.
+
+### Collaboration budgets (Kit Standard 2.0, L6)
+
+Every contract 2 kit also has budgets for shared editing, measured by the
+convergence suite's perf mode (kition-sdk `kition-convergence`, `perf`) on
+the kit's own working document: a document built from 200 random commands,
+or the adapter's `large()` fixture. Run it from the kit repository with
+`cargo test --release -p <kit>-sdk --test perf -- --ignored --nocapture`
+(native, Apple M-series, release build, other builds running alongside).
+
+| Step | Budget |
+| --- | --- |
+| Open a replica from a snapshot | < 50 ms |
+| Apply 1,000 remote changes, each its own import | < 10 s (10 ms a change) |
+| Local keystroke to paint (the command and the repaint of the visible page) | p95 < 50 ms |
+| Memory per replica of the working document | < 16 MB |
+
+| Kit | Objects, snapshot | Open | 1,000 remote changes | Keystroke p50 / p95 | Memory per replica |
+| --- | --- | --- | --- | --- | --- |
+| Word | 173, 59 KB | 2.3 ms | 11.8 s (7 ms a change when idle) | 9.0 / 25 ms | 2.2 MB |
+| Slide | 354, 167 KB | 5.9 ms | 14.6 s (over: every import reloads the whole view) | 49.7 / 52.4 ms (at the limit) | 4.1 MB |
+| Sheet | 369, 141 KB | 2.4 ms | 3.5 s | 5.7 / 6.0 ms | 1.5 MB |
+| Vector | 153, 67 KB | 2.5 ms | 4.1 s | 22.2 / 35.3 ms | 1.5 MB |
+
+Slide is over the remote-change budget because its view reloads in full
+after every import rather than patching the changed objects (standard 2.0
+E11); Word is over only while other builds load the machine. A kit over
+budget records it here until it is fixed.
 
 ## 8. The Kition SDK Repository
 
