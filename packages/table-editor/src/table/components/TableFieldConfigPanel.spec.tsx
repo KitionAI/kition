@@ -1,7 +1,7 @@
 // src/features/table/components/TableFieldConfigPanel.spec.tsx
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FieldConfigPanel } from './TableFieldConfigPanel'
 import type { DataField } from '../../types/dataDocument'
@@ -48,6 +48,11 @@ async function mount(node: ReturnType<typeof createElement>) {
     root.render(node)
     await Promise.resolve()
   })
+  // RightSheet slides in on the next animation frame; let that update land inside act rather
+  // than as stray scheduler work later.
+  await act(async () => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  })
 }
 
 async function unmount() {
@@ -57,7 +62,10 @@ async function unmount() {
 }
 
 describe('FieldConfigPanel', () => {
-  beforeEach(async () => { await unmount() })
+  // Unmount after every test, the last one included: a sheet left mounted keeps its animation
+  // frame and listeners alive, and React work it schedules can run after jsdom is torn down
+  // ("window is not defined").
+  afterEach(async () => { await unmount() })
 
   it('Save is disabled while no edits have been made', async () => {
     await mount(
