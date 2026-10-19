@@ -226,13 +226,34 @@ export function findAgentMentionQuery(
 }
 
 function normalizeMentionSearchValue(value: string) {
-  return value.normalize('NFKC').trim().toLocaleLowerCase()
+  return value.normalize('NFKC').trim().toLowerCase()
 }
 
 function normalizeMentionDocumentPath(value: string) {
-  return normalizeMentionSearchValue(value)
+  return value.trim()
     .replace(/\\/g, '/')
     .replace(/^\.\//, '')
+}
+
+export function resolveAgentMentionDocumentPath(
+  documents: AgentMentionableDocument[],
+  path: string,
+) {
+  const normalizedPath = normalizeMentionDocumentPath(path)
+  if (!normalizedPath) {
+    return ''
+  }
+  const exactMatch = documents.find(
+    (document) => normalizeMentionDocumentPath(document.path) === normalizedPath,
+  )
+  if (exactMatch) {
+    return exactMatch.path
+  }
+  const foldedPath = normalizedPath.toLowerCase()
+  const foldedMatches = documents.filter(
+    (document) => normalizeMentionDocumentPath(document.path).toLowerCase() === foldedPath,
+  )
+  return foldedMatches.length === 1 ? foldedMatches[0].path : normalizedPath
 }
 
 function withoutMentionableExtension(value: string) {
@@ -269,25 +290,27 @@ export function searchAgentMentionableDocuments({
   contextPaths = [],
 }: AgentMentionSearchInput) {
   const normalizedQuery = normalizeMentionSearchValue(query)
-  const normalizedCurrentDocumentPath = normalizeMentionDocumentPath(currentDocumentPath)
+  const resolvedCurrentDocumentPath = resolveAgentMentionDocumentPath(
+    documents,
+    currentDocumentPath,
+  )
   const contextOrder = new Map(contextPaths.map((path, index) => [
-    normalizeMentionDocumentPath(path),
+    resolveAgentMentionDocumentPath(documents, path),
     index,
   ]))
   return documents
     .map((document, index) => ({
       document,
       index,
-      normalizedPath: normalizeMentionDocumentPath(document.path),
       score: scoreMentionDocument(document, normalizedQuery),
     }))
     .filter((candidate) => Number.isFinite(candidate.score))
     .sort((left, right) => {
-      const leftCurrent = left.normalizedPath === normalizedCurrentDocumentPath ? 0 : 1
-      const rightCurrent = right.normalizedPath === normalizedCurrentDocumentPath ? 0 : 1
+      const leftCurrent = left.document.path === resolvedCurrentDocumentPath ? 0 : 1
+      const rightCurrent = right.document.path === resolvedCurrentDocumentPath ? 0 : 1
       if (leftCurrent !== rightCurrent) return leftCurrent - rightCurrent
-      const leftContext = contextOrder.get(left.normalizedPath) ?? Number.POSITIVE_INFINITY
-      const rightContext = contextOrder.get(right.normalizedPath) ?? Number.POSITIVE_INFINITY
+      const leftContext = contextOrder.get(left.document.path) ?? Number.POSITIVE_INFINITY
+      const rightContext = contextOrder.get(right.document.path) ?? Number.POSITIVE_INFINITY
       if (leftContext !== rightContext) return leftContext - rightContext
       if (left.score !== right.score) return left.score - right.score
       if (left.document.kind !== right.document.kind) {
