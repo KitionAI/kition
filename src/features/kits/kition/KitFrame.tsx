@@ -163,7 +163,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
   // the kit and the version this Kition ships.
   const schemaNotice = useDocumentSchemaNotice(preview ? undefined : path)
   const kitVersion = useKitPackageVersion(kit.dir, Boolean(schemaNotice))
-  const kitName = t(`${kit.kitId.replace(/^kit\./, '')}Kit`, { defaultValue: kit.kitId })
+  const kitName = t(`documentSchema.kits.${kit.kitId.replace(/^kit\./, '')}`, { defaultValue: kit.kitId })
 
   useEffect(() => {
     const element = frame.current
@@ -174,8 +174,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
     // Who made the last edit: a save after an agent's edits is the agent's checkpoint in the history.
     let lastBy: 'agent' | 'person' = 'person'
     let withdraw: (() => void) | null = null
-    // Leases and conflict notices for co-editing (Kit UI protocol sections 7b and 7c).
-    const collab = preview ? null : kitCollabHandlers(path, openedReadOnly, () => latest.current.t)
+    // Leases, conflict notices, presence, and newer-kit notices (Kit UI protocol sections 7b, 7c, 7e, and 7f).
+    const collab = preview ? null : kitCollabHandlers(path, kit.kitId, openedReadOnly, () => latest.current.t)
     // A run of this effect that is cleaned up (StrictMode's first run, a closed tab) must not take
     // the kit's one handshake from the run that replaces it.
     const abandon = new AbortController()

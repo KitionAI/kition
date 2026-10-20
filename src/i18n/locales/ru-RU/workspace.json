@@ -823,6 +823,21 @@
     "updateAvailable": "Доступен Kition {{version}}.",
     "upToDate": "Kition обновлён: более новая версия {{kit}} для него ещё не выпущена.",
     "updateElsewhere": "Обновите Kition до последней версии, чтобы продолжить редактирование.",
-    "updateFailed": "Не удалось проверить обновления: {{message}}"
+    "updateFailed": "Не удалось проверить обновления: {{message}}",
+    "kits": {
+      "board": "Доска",
+      "cad": "САПР",
+      "design": "Вёрстка",
+      "document": "Документ",
+      "effect": "Анимация",
+      "film": "Видео",
+      "pdf": "PDF",
+      "photo": "Фото",
+      "sheet": "Таблицы",
+      "slide": "Слайды",
+      "table": "Таблица",
+      "vector": "Векторная графика",
+      "word": "Word"
+    }
   }
 }

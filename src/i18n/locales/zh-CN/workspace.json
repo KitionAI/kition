@@ -823,6 +823,21 @@
     "updateAvailable": "Kition {{version}} 已可用。",
     "upToDate": "Kition 已是最新版本：更新版本的 {{kit}} 尚未为其发布。",
     "updateElsewhere": "请将 Kition 更新到最新版本以继续编辑。",
-    "updateFailed": "无法检查更新：{{message}}"
+    "updateFailed": "无法检查更新：{{message}}",
+    "kits": {
+      "board": "画板",
+      "cad": "CAD",
+      "design": "版式",
+      "document": "文档",
+      "effect": "动效",
+      "film": "视频",
+      "pdf": "PDF",
+      "photo": "图片",
+      "sheet": "电子表格",
+      "slide": "幻灯片",
+      "table": "表格",
+      "vector": "矢量",
+      "word": "Word"
+    }
   }
 }

@@ -823,6 +823,21 @@
     "updateAvailable": "Kition {{version}} está disponible.",
     "upToDate": "Kition está actualizado: la versión más reciente de {{kit}} aún no se ha publicado para él.",
     "updateElsewhere": "Actualiza Kition a su última versión para seguir editando.",
-    "updateFailed": "No se pudieron buscar actualizaciones: {{message}}"
+    "updateFailed": "No se pudieron buscar actualizaciones: {{message}}",
+    "kits": {
+      "board": "Tablero",
+      "cad": "CAD",
+      "design": "Maquetación",
+      "document": "Documento",
+      "effect": "Animación",
+      "film": "Vídeo",
+      "pdf": "PDF",
+      "photo": "Fotos",
+      "sheet": "Hojas de cálculo",
+      "slide": "Diapositivas",
+      "table": "Tabla",
+      "vector": "Vectorial",
+      "word": "Word"
+    }
   }
 }

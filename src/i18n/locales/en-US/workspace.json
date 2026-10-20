@@ -823,6 +823,21 @@
     "updateAvailable": "Kition {{version}} is available.",
     "upToDate": "Kition is up to date: the newer {{kit}} is not published for it yet.",
     "updateElsewhere": "Update Kition to its latest version to keep editing.",
-    "updateFailed": "Could not check for updates: {{message}}"
+    "updateFailed": "Could not check for updates: {{message}}",
+    "kits": {
+      "board": "Board",
+      "cad": "CAD",
+      "design": "Design",
+      "document": "Document",
+      "effect": "Effect",
+      "film": "Film",
+      "pdf": "PDF",
+      "photo": "Photo",
+      "sheet": "Sheet",
+      "slide": "Slides",
+      "table": "Table",
+      "vector": "Vector",
+      "word": "Word"
+    }
   }
 }
