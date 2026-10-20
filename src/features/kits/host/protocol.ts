@@ -209,6 +209,22 @@ export function parsePeers(value: unknown): KitPeerPresence[] {
 export type KitConflict = { id: string; kind: string; summary: string }
 
 /**
+ * The schema versions of the kit's document (section 7f, minor version 1.8; standard 2.0 rule
+ * M5a): `reads` is the schema version the kit's replica reads, `newestAuthor` the newest one its
+ * changes were written under, which is above `reads` when a newer kit edited the document.
+ */
+export type KitSchemaReport = { reads: number; newestAuthor: number }
+
+/** A `document/schema` report, checked: both are whole numbers and a newer kit edited the document; else `null`. */
+export function parseSchemaReport(value: unknown): KitSchemaReport | null {
+  if (!value || typeof value !== 'object') return null
+  const { reads, newestAuthor } = value as { reads?: unknown; newestAuthor?: unknown }
+  if (!Number.isSafeInteger(reads) || !Number.isSafeInteger(newestAuthor)) return null
+  if ((newestAuthor as number) <= (reads as number) || (reads as number) < 0) return null
+  return { reads: reads as number, newestAuthor: newestAuthor as number }
+}
+
+/**
  * An agent's draft of the document (capability `draft`, section 7d; standard 2.0 A12 to A15): a
  * fork of the document's replica the agent edits instead of the live document. `open` while the
  * agent works on it, `ready` once it asks for review; `none` when there is no draft.
@@ -308,6 +324,8 @@ export type KitNotifications = {
   'ui/action': { id: string; document: { path: string; dirty: boolean; revision: number } }
   /** The document's unresolved conflict objects changed (section 7c): the whole list. */
   'document/conflicts': { conflicts: KitConflict[] }
+  /** A newer kit edited the document (section 7f): the host shows a notice that never blocks. */
+  'document/schema': KitSchemaReport
   /** The agent's draft opened, changed, became ready or open again, or closed (capability `draft`). */
   'draft/changed': DraftInfo
   /** What this session shares with the other people in the document changed (capability `presence`, section 7e). */

@@ -66,6 +66,14 @@ export interface KitEngineDocument {
   canRedo(): boolean
   /** Runs a command as `origin`, the KDM's commit form `[kind, principal, label]` as JSON. */
   executeAs(command: string, params: string, origin: string): string
+  /** The schema version the replica reads (its kit's `model.schemaVersion`); optional. */
+  schemaVersion?(): number
+  /**
+   * The newest schema version any of the replica's changes was written under (standard 2.0 rule
+   * M5a), or `null` when none records one; optional. Above `schemaVersion()`, a newer kit edited
+   * the document, and the host tells the person (Kit UI protocol `document/schema`).
+   */
+  authorSchemaVersion?(): number | null
   /**
    * The blobs the replica's changes refer to, as a bundle for `addBlobs`; a host sends them with
    * every exchange of changes. Empty for a document without media.

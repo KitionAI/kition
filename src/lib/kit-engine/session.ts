@@ -348,6 +348,14 @@ export function kitEngineClass<View>(model: KitModel<View>, options: KitEngineCl
       return this.session.replica.canRedo()
     }
 
+    schemaVersion() {
+      return this.session.replica.schema.schemaVersion
+    }
+
+    authorSchemaVersion() {
+      return this.session.replica.authorSchemaVersion()
+    }
+
     blobs() {
       return model.blobs?.(this.session.view, this.session.replica) ?? new Uint8Array(0)
     }

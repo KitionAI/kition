@@ -7,6 +7,7 @@
  * to and from its room through it. `LORO_REPLICA_VERSIONS`, the version handling the relay needs,
  * is in `@kition/sync/replicaVersions`, loaded on demand, since it loads the CRDT engine.
  */
+export { capabilitySetsOf, parseCapabilitySet, servesCapabilitySet } from './capabilities'
 export { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry } from './blobSection'
 export { SyncClient, type SnapshotStart, type SyncClientOptions, type SyncToken } from './client'
 export type { Bin, Frame } from './framing'

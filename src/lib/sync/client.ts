@@ -5,6 +5,7 @@
  * `seq` it last saw for it, and queues pushes made while offline, sending them in order once
  * rejoined.
  */
+import { capabilitySetsOf, servesCapabilitySet } from './capabilities'
 import { backoffDelay } from './backoff'
 import { Decoder, Outgoing, readBin, readBins } from './framing'
 import { sha256Hex } from './hash'
@@ -118,6 +119,29 @@ export class SyncClient {
     return this.hello?.principal
   }
 
+  /**
+   * Everything the server listed in its most recent `sync/hello`: protocol capabilities (`leases`,
+   * `headless`, a server's own names) and capability sets; empty before the first handshake. A
+   * reconnect may change it (a principal's plan): read it again when the state turns `online`.
+   */
+  get capabilities(): readonly string[] {
+    const listed = this.hello?.capabilities
+    return Array.isArray(listed) ? listed.filter((capability): capability is string => typeof capability === 'string') : []
+  }
+
+  /**
+   * The Kit Standard 2.0 capability sets the server serves this principal (rule CS2), such as
+   * `KitModel 1.0` and `KitCollab 1.1`: the `Name major.minor` entries of `capabilities`.
+   */
+  get capabilitySets(): readonly string[] {
+    return capabilitySetsOf(this.capabilities)
+  }
+
+  /** Whether the server serves the capability set `set` (such as `'KitCollab 1.1'`); false before the first handshake. */
+  supports(set: string): boolean {
+    return servesCapabilitySet(set, this.capabilitySets)
+  }
+
   onState(listener: (state: ConnectionState) => void): () => void {
     this.stateListeners.add(listener)
     return () => this.stateListeners.delete(listener)
@@ -222,7 +246,7 @@ export class SyncClient {
    */
   readonly leases: SyncLeases = new SyncLeases({
     request: (method, params) => this.request(method, () => params, (value) => value),
-    available: () => this.connectionState === 'online' && (this.hello?.capabilities ?? []).includes('leases'),
+    available: () => this.connectionState === 'online' && this.capabilities.includes('leases'),
     // Field initializers run before the constructor sets `options`: read them when used.
     setTimeout: (run, ms) => (this.options.setTimeout ?? ((next: () => void, wait: number) => setTimeout(next, wait)))(run, ms),
     clearTimeout: (handle) => (this.options.clearTimeout ?? ((value: unknown) => clearTimeout(value as number)))(handle),

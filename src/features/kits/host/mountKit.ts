@@ -11,6 +11,7 @@ import {
   LEASE_HELD_REASON,
   isReady,
   parsePresence,
+  parseSchemaReport,
   type AiRunResult,
   type AiStep,
   type DocumentState,
@@ -23,6 +24,7 @@ import {
   type KitPeerPresence,
   type KitPresence,
   type KitPresenceCaret,
+  type KitSchemaReport,
   type KitTheme,
   type KitToHost,
   type KitUiConfig,
@@ -37,7 +39,7 @@ import {
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
-export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
+export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -80,6 +82,11 @@ export type KitHostHandlers = {
   }
   /** `document/conflicts`: the document's unresolved conflict objects (section 7c). */
   conflicts?: (params: KitNotifications['document/conflicts']) => void
+  /**
+   * `document/schema`: a newer kit edited the document (section 7f; Kit Standard 2.0 rule M5a),
+   * checked. The host tells the person and offers the update, without blocking editing.
+   */
+  schema?: (params: KitNotifications['document/schema']) => void
   /** `draft/changed`: the agent's draft opened, changed, became ready, or closed (section 7d). */
   draftChanged?: (params: KitNotifications['draft/changed']) => void
   /**
@@ -227,6 +234,10 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       return { leases: await handlers.leases.list() }
     })
     peer.on('document/conflicts', (params) => handlers.conflicts?.(params))
+    peer.on('document/schema', (params) => {
+      const report = parseSchemaReport(params)
+      if (report) handlers.schema?.(report)
+    })
     peer.on('draft/changed', (params) => handlers.draftChanged?.(params))
     peer.on('presence/set', (params) => {
       const presence = parsePresence(params)
