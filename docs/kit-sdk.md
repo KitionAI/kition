@@ -841,13 +841,12 @@ or the adapter's `large()` fixture. Run it from the kit repository with
 | Kit | Objects, snapshot | Open | 1,000 remote changes | Keystroke p50 / p95 | Memory per replica |
 | --- | --- | --- | --- | --- | --- |
 | Word | 173, 59 KB | 2.3 ms | 11.8 s (7 ms a change when idle) | 9.0 / 25 ms | 2.2 MB |
-| Slide | 354, 167 KB | 5.9 ms | 14.6 s (over: every import reloads the whole view) | 49.7 / 52.4 ms (at the limit) | 4.1 MB |
+| Slide | 354, 167 KB | 6.0 ms | 2.5 s (an import re-reads only the slides it touched) | 4.8 / 6.0 ms (one slide shown, as in the editor) | 4.1 MB |
 | Sheet | 369, 141 KB | 2.4 ms | 3.5 s | 5.7 / 6.0 ms | 1.5 MB |
 | Vector | 153, 67 KB | 2.5 ms | 4.1 s | 22.2 / 35.3 ms | 1.5 MB |
 
-Slide is over the remote-change budget because its view reloads in full
-after every import rather than patching the changed objects (standard 2.0
-E11); Word is over only while other builds load the machine. A kit over
+Word is over the remote-change budget only while other builds load the
+machine. A kit over
 budget records it here until it is fixed.
 
 ## 8. The Kition SDK Repository
