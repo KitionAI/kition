@@ -21,7 +21,7 @@ use crate::tools;
 /// MCP revisions this server speaks, newest first.
 const PROTOCOL_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
 
-const INSTRUCTIONS: &str = "Kition kits edit workspace files that are not text: layered images, video projects, vector drawings, motion graphics, and page layouts. For a file, call its kit's `<kit>_inspect` first, find commands with `<kit>_commands`, then edit with `<kit>_run`; check the preview it returns. Kits with an object model also offer `<kit>_query` (read objects by id or by following fields from the root) and `<kit>_batch` (edit them in one model/batch), and their objects as `kit://` resources. After editing, call `<kit>_check` to list what the kit finds wrong with the file (each diagnostic has a stable `code`, a `severity`, a `target`, and maybe a `fix` command) and fix the errors. Failed calls answer `error.code` (for example `not-found`, `read-only`, `unknown-command`) and `error.index`. A file open in Kition is edited live in its editor.";
+const INSTRUCTIONS: &str = "Kition kits edit workspace files that are not text: layered images, video projects, vector drawings, motion graphics, and page layouts. For a file, call its kit's `<kit>_inspect` first, find commands with `<kit>_commands`, then edit with `<kit>_run`; check the preview it returns. Kits with an object model also offer `<kit>_query` (read objects by id or by following fields from the root) and `<kit>_batch` (edit them in one model/batch), and their objects as `kit://` resources. After editing, call `<kit>_check` to list what the kit finds wrong with the file (each diagnostic has a stable `code`, a `severity`, a `target`, and maybe a `fix` command) and fix the errors. Failed calls answer `error.code` (for example `not-found`, `read-only`, `unknown-command`) and `error.index`. With `draft: true` (the default when the server runs with `--drafts`), edits go to your draft of the file and leave the file alone; call `<kit>_draft_ready` when it is done: the person reviews, merges, or discards it, never you. A file open in Kition is edited live in its editor.";
 
 fn response(id: &Value, result: Value) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "result": result })
@@ -85,6 +85,16 @@ fn tool_result(outcome: tools::KitToolResult) -> Value {
 
 /// Handles one JSON-RPC message; answers requests, and nothing for notifications.
 pub async fn handle(kits: &KitManager, message: &Value) -> Option<Value> {
+    handle_with(kits, message, tools::CallOptions::default()).await
+}
+
+/// [`handle`] with the server's call options: `draft` makes the agent's edits drafts unless a
+/// call says `draft: false` (`kition-kits-mcp --drafts`).
+pub async fn handle_with(
+    kits: &KitManager,
+    message: &Value,
+    options: tools::CallOptions,
+) -> Option<Value> {
     let method = message.get("method").and_then(Value::as_str)?;
     let id = message.get("id")?;
     let params = message.get("params").cloned().unwrap_or(Value::Null);
@@ -125,7 +135,7 @@ pub async fn handle(kits: &KitManager, message: &Value) -> Option<Value> {
             if !tools::installed(kits).iter().any(|spec| spec.name == name) {
                 return Some(error(id, -32602, &format!("unknown tool `{name}`")));
             }
-            match tools::call(kits, name, &arguments).await {
+            match tools::call_with(kits, name, &arguments, options).await {
                 Some(outcome) => response(id, tool_result(outcome)),
                 None => error(id, -32602, &format!("unknown tool `{name}`")),
             }
@@ -151,7 +161,7 @@ pub async fn handle(kits: &KitManager, message: &Value) -> Option<Value> {
 }
 
 /// The stdio transport: newline-delimited JSON-RPC on stdin and stdout until stdin closes.
-pub async fn serve_stdio(kits: KitManager) -> std::io::Result<()> {
+pub async fn serve_stdio(kits: KitManager, options: tools::CallOptions) -> std::io::Result<()> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     let mut stdout = tokio::io::stdout();
@@ -161,7 +171,7 @@ pub async fn serve_stdio(kits: KitManager) -> std::io::Result<()> {
             continue;
         }
         let answer = match serde_json::from_str::<Value>(line) {
-            Ok(message) => handle(&kits, &message).await,
+            Ok(message) => handle_with(&kits, &message, options).await,
             Err(_) => Some(error(&Value::Null, -32700, "not JSON")),
         };
         if let Some(answer) = answer {

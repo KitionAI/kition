@@ -5,7 +5,7 @@
 //! `base64url(payload JSON) "." base64url(Ed25519 signature)`, the signature taken over the ASCII
 //! bytes of the first segment. Kition Console signs keys; this crate verifies them against public
 //! keys pinned in code by key id, with no network, so every delivery form (embed, script,
-//! headless, MCP) decides the same way. `@kition/license` is the TypeScript twin, held to the same
+//! headless, MCP, and co-editing: `collab`, `selfhost`) decides the same way. `@kition/license` is the TypeScript twin, held to the same
 //! answers by `tests/vectors.json`.
 //!
 //! ```
@@ -54,6 +54,11 @@ pub enum Form {
     Headless,
     /// `kition-kits-mcp` and other MCP serving of the kits.
     Mcp,
+    /// Co-editing through hosted Kition Pro for the licence's `tenant`: Kition Console exchanges
+    /// the integrator's server's requests for per-user sync tokens.
+    Collab,
+    /// Running Kition Pro on the licensee's own servers for its `tenant`.
+    Selfhost,
 }
 
 impl Form {
@@ -63,7 +68,15 @@ impl Form {
             Self::Script => "script",
             Self::Headless => "headless",
             Self::Mcp => "mcp",
+            Self::Collab => "collab",
+            Self::Selfhost => "selfhost",
         }
+    }
+
+    /// Whether the form is a server's (co-editing), bound to the licence's `tenant` rather than
+    /// to origins or application ids.
+    pub fn is_server(self) -> bool {
+        matches!(self, Self::Collab | Self::Selfhost)
     }
 }
 
@@ -92,8 +105,12 @@ pub struct License {
     pub kid: String,
     pub licensee: String,
     pub kits: Kits,
-    /// `embed`, `script`, `headless`, `mcp`.
+    /// `embed`, `script`, `headless`, `mcp`, `collab`, `selfhost`.
     pub forms: Vec<String>,
+    /// The licensee's co-editing namespace (`collab`, `selfhost`): lowercase letters, digits, and
+    /// inner hyphens, 2 to 40 characters. Stable across renewals: rooms belong to it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tenant: Option<String>,
     /// Web origins the embed may run on (`https://app.example.com`, `https://*.example.com`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub origins: Vec<String>,
@@ -144,6 +161,8 @@ pub enum Error {
     Origin,
     /// The application id is not among the licence's application ids.
     App,
+    /// A server form (`collab`, `selfhost`) and the licence names no valid tenant.
+    Tenant,
 }
 
 impl Error {
@@ -158,6 +177,7 @@ impl Error {
             Self::Form => "form",
             Self::Origin => "origin",
             Self::App => "app",
+            Self::Tenant => "tenant",
         }
     }
 }
@@ -174,6 +194,7 @@ impl core::fmt::Display for Error {
             Self::Form => "the licence does not cover this delivery form",
             Self::Origin => "the licence does not cover this web origin",
             Self::App => "the licence does not cover this application id",
+            Self::Tenant => "the licence names no co-editing tenant",
         };
         f.write_str(text)
     }
@@ -212,10 +233,25 @@ pub fn verify(token: &str, keys: &[PublicKey], context: &Context<'_>) -> Result<
         if !license.origins.iter().any(|pattern| origin_matches(pattern, origin)) {
             return Err(Error::Origin);
         }
+    } else if context.form.is_server() {
+        // Servers are bound to the tenant, which every server form needs.
+        if !license.tenant.as_deref().is_some_and(is_tenant) {
+            return Err(Error::Tenant);
+        }
     } else if !license.app_ids.is_empty() && !context.app_id.is_some_and(|app| license.app_ids.iter().any(|id| id == app)) {
         return Err(Error::App);
     }
     Ok(license)
+}
+
+/// Whether `tenant` is a valid tenant name: 2 to 40 lowercase ASCII letters, digits, and hyphens,
+/// neither first nor last a hyphen.
+pub fn is_tenant(tenant: &str) -> bool {
+    let bytes = tenant.as_bytes();
+    (2..=40).contains(&bytes.len())
+        && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'-')
+        && bytes.first() != Some(&b'-')
+        && bytes.last() != Some(&b'-')
 }
 
 /// Whether `origin` (`scheme://host[:port]`, as `location.origin` gives it) is `pattern`: the same

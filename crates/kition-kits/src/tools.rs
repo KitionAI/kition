@@ -16,6 +16,7 @@
 
 mod errors;
 pub mod model;
+pub mod schemas;
 
 use std::sync::LazyLock;
 
@@ -24,6 +25,7 @@ use serde_json::{Map, Value, json};
 pub use errors::{ErrorCode, KitToolError};
 
 use crate::bridge::LiveDocument;
+use crate::drafts::{self, DraftState};
 use crate::manager::{Caller, DocumentView, KITS, KitDefinition, KitManager};
 
 const PREVIEW_SIZE: u32 = 1024;
@@ -481,6 +483,72 @@ pub(crate) async fn draft_editor(
     })
 }
 
+/// Where the agent's draft of `path` is: in the file's open editor, or, when the server keeps
+/// headless drafts (`kition-kits-mcp`) and no editor has the file open, in the headless kit
+/// (`drafts.rs`). With `create`, a file without a headless draft forks one.
+pub(crate) enum DraftAt {
+    Editor(LiveDocument),
+    Headless(String),
+}
+
+pub(crate) async fn draft_at(
+    kits: &KitManager,
+    kit: &'static KitDefinition,
+    path: &str,
+    create: bool,
+) -> Result<DraftAt, KitToolError> {
+    if let Some(document) = live(kits, kit, path).await {
+        return Ok(DraftAt::Editor(document));
+    }
+    if kits.headless_drafts() {
+        return drafts::document(kits, kit, path, create)
+            .await
+            .map(DraftAt::Headless);
+    }
+    draft_editor(kits, kit, path).await.map(DraftAt::Editor)
+}
+
+/// Whether a read in draft mode goes to a headless draft: no editor has the file open, the
+/// server keeps headless drafts, and the call asks for the draft or one exists.
+async fn reads_headless_draft(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    path: &str,
+    draft: bool,
+    explicit: bool,
+) -> bool {
+    draft
+        && kits.headless_drafts()
+        && (explicit || drafts::exists(kits, path))
+        && live(kits, kit, path).await.is_none()
+}
+
+async fn headless_draft_preview(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    path: &str,
+    id: &str,
+) -> Vec<Preview> {
+    match kits.preview(kit.id, id, PREVIEW_SIZE).await {
+        Ok(png) => vec![Preview {
+            caption: format!("Preview of your draft of `{path}` from {}.", kit.name),
+            png,
+        }],
+        Err(error) => {
+            tracing::warn!(error = %error, kit = kit.id, "draft preview failed");
+            Vec::new()
+        }
+    }
+}
+
+/// The draft document as the tools answer it: the file's `path`, with `draft: true`.
+fn draft_json(view: &DocumentView, path: &str) -> Value {
+    let mut answer = document_json(view);
+    answer["path"] = Value::String(path.to_owned());
+    answer["draft"] = Value::Bool(true);
+    answer
+}
+
 async fn draft_preview(
     kits: &KitManager,
     kit: &KitDefinition,
@@ -501,14 +569,21 @@ async fn draft_preview(
     }
 }
 
-async fn run_on_draft(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
+async fn run_on_draft(
+    kits: &KitManager,
+    kit: &'static KitDefinition,
+    input: &Value,
+) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let steps = input
         .get("steps")
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
         .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
-    let document = draft_editor(kits, kit, &path).await?;
+    let document = match draft_at(kits, kit, &path, true).await? {
+        DraftAt::Editor(document) => document,
+        DraftAt::Headless(id) => return run_on_headless_draft(kits, kit, &path, &id, steps).await,
+    };
     let mut answer = kits
         .bridge()
         .call(
@@ -537,13 +612,104 @@ async fn run_on_draft(kits: &KitManager, kit: &KitDefinition, input: &Value) -> 
     })
 }
 
+/// Runs `steps` on the headless draft `id` of `path` and stores the draft.
+async fn run_on_headless_draft(
+    kits: &KitManager,
+    kit: &'static KitDefinition,
+    path: &str,
+    id: &str,
+    steps: &[Value],
+) -> KitToolResult {
+    let mut view = kits.document(Caller::Agent, kit.id, id).await?;
+    let mut done = Vec::new();
+    let mut failure = None;
+    for (index, step) in steps.iter().enumerate() {
+        let command = text_field(step, "command");
+        if command.is_empty() {
+            failure = Some(
+                KitToolError::invalid(format!("step {index} has no `command`")).at(Some(index)),
+            );
+            break;
+        }
+        let params = step
+            .get("params")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_else(Map::new);
+        match kits
+            .execute(Caller::Agent, kit.id, id, &command, params)
+            .await
+        {
+            Ok(executed) => {
+                done.push(json!({ "command": command, "changed": executed.changed, "result": executed.result }));
+                view = executed.document;
+            }
+            Err(error) => {
+                let mut error = KitToolError::from(error);
+                if !matches!(
+                    error.code,
+                    ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable
+                ) {
+                    error.code = ErrorCode::COMMAND_FAILED;
+                }
+                failure = Some(
+                    error
+                        .context(&format!("step {index} (`{command}`) failed: "))
+                        .at(Some(index)),
+                );
+                break;
+            }
+        }
+    }
+    // The steps that ran stay in the draft, as in an editor's draft.
+    if !done.is_empty() {
+        drafts::persist(kits, kit, path, id).await?;
+    }
+    if let Some(failure) = failure {
+        return Err(failure.with_output(
+            json!({ "completed": done, "draft": true, "document": draft_json(&view, path) }),
+        ));
+    }
+    let previews = headless_draft_preview(kits, kit, path, id).await;
+    Ok(KitToolOutput {
+        previews,
+        ..KitToolOutput::new(
+            format!(
+                "Ran {} commands on your draft of `{path}`; the file is unchanged until the person merges the draft. Call {} when it is done.",
+                done.len(),
+                tool_name(kit, Action::DraftReady)
+            ),
+            json!({ "completed": done, "draft": true, "saved": false, "document": draft_json(&view, path) }),
+        )
+    })
+}
+
 async fn draft_state(
     kits: &KitManager,
-    kit: &KitDefinition,
+    kit: &'static KitDefinition,
     input: &Value,
     action: Action,
 ) -> KitToolResult {
     let path = kit_path(input, kit)?;
+    if kits.headless_drafts() && live(kits, kit, &path).await.is_none() {
+        let state = if action == Action::DraftReady {
+            DraftState::Ready
+        } else {
+            DraftState::Open
+        };
+        drafts::set_state(kits, &path, state)?;
+        let summary = if state == DraftState::Ready {
+            format!(
+                "Your draft of `{path}` is ready for review; the person will merge or discard it."
+            )
+        } else {
+            format!("Your draft of `{path}` is back with you to keep editing.")
+        };
+        return Ok(KitToolOutput::new(
+            summary,
+            json!({ "path": path, "state": if state == DraftState::Ready { "ready" } else { "open" } }),
+        ));
+    }
     let document = draft_editor(kits, kit, &path).await?;
     let answer = kits
         .bridge()
@@ -572,15 +738,31 @@ async fn draft_state(
 
 async fn inspect(
     kits: &KitManager,
-    kit: &KitDefinition,
+    kit: &'static KitDefinition,
     input: &Value,
     draft: bool,
 ) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let wants_preview = input.get("preview").and_then(Value::as_bool) != Some(false);
-    let open = live(kits, kit, &path).await;
     // An explicit `draft: true` needs the editor; the run's default falls back to the file.
     let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
+    if reads_headless_draft(kits, kit, &path, draft, explicit).await {
+        let id = drafts::document(kits, kit, &path, false).await?;
+        let view = kits.document(Caller::Agent, kit.id, &id).await?;
+        let previews = if wants_preview {
+            headless_draft_preview(kits, kit, &path, &id).await
+        } else {
+            Vec::new()
+        };
+        return Ok(KitToolOutput {
+            previews,
+            ..KitToolOutput::new(
+                format!("Opened your draft of `{path}`: {}", view.summary),
+                draft_json(&view, &path),
+            )
+        });
+    }
+    let open = live(kits, kit, &path).await;
     if draft && (open.is_some() || explicit) {
         let document = draft_editor(kits, kit, &path).await?;
         if let Ok(mut answer) = kits
@@ -654,14 +836,24 @@ async fn inspect(
 /// document, or of the file through the headless kit, as `<prefix>_inspect` chooses among them.
 async fn check(
     kits: &KitManager,
-    kit: &KitDefinition,
+    kit: &'static KitDefinition,
     input: &Value,
     draft: bool,
 ) -> KitToolResult {
     let path = kit_path(input, kit)?;
-    let open = live(kits, kit, &path).await;
     let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
-    let (answer, what) = if draft && (open.is_some() || explicit) {
+    let headless_draft = reads_headless_draft(kits, kit, &path, draft, explicit).await;
+    let open = live(kits, kit, &path).await;
+    let (answer, what) = if headless_draft {
+        let id = drafts::document(kits, kit, &path, false).await?;
+        let answer = kits.check(Caller::Agent, kit.id, &id).await?.ok_or_else(|| {
+            KitToolError::new(
+                ErrorCode::Unsupported,
+                format!("this version of {} cannot check documents yet; inspect the preview instead", short(kit)),
+            )
+        })?;
+        (answer, format!("your draft of `{path}`"))
+    } else if draft && (open.is_some() || explicit) {
         let document = draft_editor(kits, kit, &path).await?;
         let answer = kits
             .bridge()

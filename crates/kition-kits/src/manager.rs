@@ -467,6 +467,11 @@ pub(crate) struct Inner {
     /// the same for all its documents): the agent's `<prefix>_query` and `<prefix>_batch`
     /// argument schemas are generated from it.
     described: Mutex<HashMap<&'static str, Value>>,
+    /// Whether an agent's draft of a file no editor has open lives headless (`drafts.rs`):
+    /// `kition-kits-mcp` turns it on; Kition keeps drafts in the person's open editor.
+    headless_drafts: AtomicBool,
+    /// The headless kits' draft documents, by workspace path.
+    pub(crate) draft_documents: tokio::sync::Mutex<HashMap<String, String>>,
 }
 
 /// The kits of one workspace. Cheap to clone.
@@ -504,8 +509,45 @@ impl KitManager {
                 next_surface: AtomicU64::new(1),
                 bridge: Arc::default(),
                 described: Mutex::default(),
+                headless_drafts: AtomicBool::new(false),
+                draft_documents: tokio::sync::Mutex::default(),
             }),
         }
+    }
+
+    /// Keeps an agent's drafts of files no editor has open in the headless kits, stored in the
+    /// workspace's `.kition/drafts/` (`drafts.rs`), instead of refusing them.
+    #[must_use]
+    pub fn with_headless_drafts(self) -> Self {
+        self.inner.headless_drafts.store(true, Ordering::Relaxed);
+        self
+    }
+
+    /// Whether drafts of files no editor has open live headless.
+    pub fn headless_drafts(&self) -> bool {
+        self.inner.headless_drafts.load(Ordering::Relaxed)
+    }
+
+    /// The workspace folder, if there is one.
+    pub fn workspace_dir(&self) -> Option<&Path> {
+        self.inner.workspace.as_deref()
+    }
+
+    /// A Kit Protocol request to the kit's headless executable that names no document (or names
+    /// it in `params`): `model.open`, `model.export`, `model.save`.
+    pub(crate) async fn headless_request(
+        &self,
+        caller: Caller,
+        kit: &'static KitDefinition,
+        method: &str,
+        params: Value,
+    ) -> Result<Value, KitError> {
+        let running = self.instance(kit, Target::Headless).await?;
+        running
+            .client(caller)
+            .request(method, params, None)
+            .await
+            .map_err(|error| KitError::from_client(kit, error))
     }
 
     /// The Kit AI bridge to the renderer's open kit editors.
@@ -1129,6 +1171,28 @@ impl KitManager {
                     }
                 }
                 Err(error)
+            }
+        }
+    }
+
+    /// Closes the running headless kits' documents of the workspace file `path`, dropping their
+    /// unsaved changes: the file changed under them.
+    pub async fn close_file(&self, path: &str) {
+        let running: Vec<Arc<RunningKit>> =
+            self.inner.running.lock().await.values().cloned().collect();
+        for kit in running {
+            let Ok(list) = kit.host.call::<methods::DocumentList>(&Empty {}).await else {
+                continue;
+            };
+            for document in list.documents {
+                let here = document.uri.as_deref().and_then(|uri| self.relative(uri));
+                if here.as_deref() == Some(path) {
+                    let params = DocumentCloseParams {
+                        document_id: document.document_id,
+                        discard_changes: Some(true),
+                    };
+                    let _ = kit.host.call::<methods::DocumentClose>(&params).await;
+                }
             }
         }
     }

@@ -11,10 +11,11 @@ use serde_json::{Map, Value, json};
 
 use super::errors::{ErrorCode, KitToolError};
 use super::{
-    Action, KitToolOutput, KitToolResult, KitToolSpec, draft_editor, draft_property, kit_path,
-    live, path_property, short, tool_name,
+    Action, DraftAt, KitToolOutput, KitToolResult, KitToolSpec, draft_at, draft_property, kit_path,
+    live, path_property, reads_headless_draft, short, tool_name,
 };
 use crate::bridge::LiveDocument;
+use crate::drafts;
 use crate::manager::{Caller, DocumentView, KitDefinition, KitManager};
 
 /// How many objects one `<prefix>_query` answers at most.
@@ -281,9 +282,11 @@ pub fn batch_spec(kit: &'static KitDefinition, described: Option<&Value>) -> Kit
     }
 }
 
-/// Where a call's object model is: the open editor (on its draft, or not) or the headless kit.
+/// Where a call's object model is: the open editor (on its draft, or not), the headless kit's
+/// draft (`drafts.rs`), or the headless kit's file.
 enum Target {
     Live { document: LiveDocument, draft: bool },
+    HeadlessDraft(DocumentView),
     Headless(DocumentView),
 }
 
@@ -300,7 +303,7 @@ impl Target {
                     .await
                     .map_err(KitToolError::from_bridge)
             }
-            Self::Headless(view) => {
+            Self::Headless(view) | Self::HeadlessDraft(view) => {
                 let params = request.as_object().cloned().unwrap_or_default();
                 Ok(kits
                     .model(
@@ -326,7 +329,7 @@ impl Target {
                 .call(document, "describe", json!({ "draft": draft }))
                 .await
                 .map_err(KitToolError::from_bridge)?,
-            Self::Headless(view) => {
+            Self::Headless(view) | Self::HeadlessDraft(view) => {
                 kits.model(
                     Caller::Agent,
                     view.kit_id,
@@ -347,7 +350,7 @@ impl Target {
 
     fn label(&self) -> &'static str {
         match self {
-            Self::Live { draft: true, .. } => "your draft of",
+            Self::Live { draft: true, .. } | Self::HeadlessDraft(_) => "your draft of",
             Self::Live { .. } => "the open editor of",
             Self::Headless(_) => "",
         }
@@ -384,12 +387,22 @@ async fn read_target(
     draft: bool,
     explicit: bool,
 ) -> Result<Target, KitToolError> {
+    if reads_headless_draft(kits, kit, path, draft, explicit).await {
+        let id = drafts::document(kits, kit, path, false).await?;
+        return Ok(Target::HeadlessDraft(
+            kits.document(Caller::Agent, kit.id, &id).await?,
+        ));
+    }
     let open = live(kits, kit, path).await;
     if draft && explicit {
-        let document = draft_editor(kits, kit, path).await?;
-        return Ok(Target::Live {
-            document,
-            draft: true,
+        return Ok(match draft_at(kits, kit, path, false).await? {
+            DraftAt::Editor(document) => Target::Live {
+                document,
+                draft: true,
+            },
+            DraftAt::Headless(id) => {
+                Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?)
+            }
         });
     }
     if let Some(document) = open {
@@ -559,6 +572,9 @@ pub(super) async fn query(
             output["draft"] = Value::Bool(true);
         }
     }
+    if let Target::HeadlessDraft(_) = &target {
+        output["draft"] = Value::Bool(true);
+    }
     let shown = loaded_count(&output);
     let summary = if total > shown {
         format!(
@@ -604,9 +620,14 @@ pub(super) async fn batch(
     }
     let writes = !ops.is_empty();
     let target = if draft {
-        Target::Live {
-            document: draft_editor(kits, kit, &path).await?,
-            draft: true,
+        match draft_at(kits, kit, &path, true).await? {
+            DraftAt::Editor(document) => Target::Live {
+                document,
+                draft: true,
+            },
+            DraftAt::Headless(id) => {
+                Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?)
+            }
         }
     } else if let Some(document) = live(kits, kit, &path).await {
         Target::Live {
@@ -655,6 +676,17 @@ pub(super) async fn batch(
             answer["saved"] = Value::Bool(save && writes && !view.dirty);
             answer["document"] = json!({ "path": view.path, "summary": view.summary, "dirty": view.dirty, "canUndo": view.can_undo });
         }
+        Target::HeadlessDraft(view) => {
+            if writes {
+                drafts::persist(kits, kit, &path, &view.document_id).await?;
+            }
+            let view = kits
+                .document(Caller::Agent, view.kit_id, &view.document_id)
+                .await?;
+            answer["draft"] = Value::Bool(true);
+            answer["saved"] = Value::Bool(false);
+            answer["document"] = json!({ "path": path, "summary": view.summary, "dirty": view.dirty, "canUndo": view.can_undo });
+        }
         Target::Live { draft, .. } => {
             answer["live"] = Value::Bool(true);
             if *draft {
@@ -665,7 +697,7 @@ pub(super) async fn batch(
     }
     let ran = answer["results"].as_array().map_or(0, Vec::len);
     let summary = match &target {
-        Target::Live { draft: true, .. } => format!(
+        Target::Live { draft: true, .. } | Target::HeadlessDraft(_) => format!(
             "Ran {ran} operations on your draft of `{path}`; the document is unchanged until the person merges the draft. Call {} when it is done.",
             tool_name(kit, Action::DraftReady)
         ),

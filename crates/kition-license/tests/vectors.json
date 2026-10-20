@@ -259,6 +259,71 @@
       "licensee": null,
       "name": "another application id",
       "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiZW1iZWQiLCJzY3JpcHQiLCJoZWFkbGVzcyIsIm1jcCJdLCJpc3N1ZWQiOjE3OTk5MTM2MDAsImtpZCI6InRlc3QtMSIsImtpdHMiOiIqIiwibGljZW5zZWUiOiJFeGFtcGxlIENvcnAgKHRlc3QpIiwib3JpZ2lucyI6WyJodHRwczovL2FwcC5leGFtcGxlLmNvbSIsImh0dHBzOi8vKi5leGFtcGxlLm9yZyJdLCJ2IjoxfQ.plS4DMl-cAleFuBe0_cZ5lhBrKaDy31avnk9PXTQ5z9UKFvDbUij9BTFysIuWb4VrpCrc65ZND__oGDrqmJXAQ"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "collab",
+        "kit": null,
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": null,
+      "licensee": "Example Corp (test)",
+      "name": "collab for its tenant",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiY29sbGFiIiwic2VsZmhvc3QiXSwiaXNzdWVkIjoxNzk5OTEzNjAwLCJraWQiOiJ0ZXN0LTEiLCJraXRzIjoiKiIsImxpY2Vuc2VlIjoiRXhhbXBsZSBDb3JwICh0ZXN0KSIsIm9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAuZXhhbXBsZS5jb20iLCJodHRwczovLyouZXhhbXBsZS5vcmciXSwidGVuYW50IjoiZXhhbXBsZS1jb3JwIiwidiI6MX0.GIkJHJdSC-QzdF0rf3YoUbJrA5qHMc5BUpeyP1-Uwro7pn85FiXqy8Hv3KPoMYtpXijVeqHp86awakqRTlJGDg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "selfhost",
+        "kit": null,
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": null,
+      "licensee": "Example Corp (test)",
+      "name": "selfhost for its tenant, application ids aside",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiY29sbGFiIiwic2VsZmhvc3QiXSwiaXNzdWVkIjoxNzk5OTEzNjAwLCJraWQiOiJ0ZXN0LTEiLCJraXRzIjoiKiIsImxpY2Vuc2VlIjoiRXhhbXBsZSBDb3JwICh0ZXN0KSIsIm9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAuZXhhbXBsZS5jb20iLCJodHRwczovLyouZXhhbXBsZS5vcmciXSwidGVuYW50IjoiZXhhbXBsZS1jb3JwIiwidiI6MX0.GIkJHJdSC-QzdF0rf3YoUbJrA5qHMc5BUpeyP1-Uwro7pn85FiXqy8Hv3KPoMYtpXijVeqHp86awakqRTlJGDg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "collab",
+        "kit": null,
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "form",
+      "licensee": null,
+      "name": "collab not covered",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "collab",
+        "kit": null,
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "tenant",
+      "licensee": null,
+      "name": "collab without a tenant",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiY29sbGFiIiwic2VsZmhvc3QiXSwiaXNzdWVkIjoxNzk5OTEzNjAwLCJraWQiOiJ0ZXN0LTEiLCJraXRzIjoiKiIsImxpY2Vuc2VlIjoiRXhhbXBsZSBDb3JwICh0ZXN0KSIsIm9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAuZXhhbXBsZS5jb20iLCJodHRwczovLyouZXhhbXBsZS5vcmciXSwidiI6MX0.0XSPfO1nGxDzDNmHlC_98mcH3AUz1Uc_THokriTC_91jthaSvh4DWTO_IrVJKmDOWApeRJf-f5nT8boa-59oDQ"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "selfhost",
+        "kit": null,
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "tenant",
+      "licensee": null,
+      "name": "selfhost with an invalid tenant",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiY29sbGFiIiwic2VsZmhvc3QiXSwiaXNzdWVkIjoxNzk5OTEzNjAwLCJraWQiOiJ0ZXN0LTEiLCJraXRzIjoiKiIsImxpY2Vuc2VlIjoiRXhhbXBsZSBDb3JwICh0ZXN0KSIsIm9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAuZXhhbXBsZS5jb20iLCJodHRwczovLyouZXhhbXBsZS5vcmciXSwidGVuYW50IjoiRXhhbXBsZV9Db3JwIiwidiI6MX0.hc7wQCd8PRtnd_AOcZtkGv1ebgabRE-sjwN2lPjs8hv29LMP421Hf5jXR4Fkfu3JXJqSxFeyFqxfbfB6YRnyDw"
     }
   ],
   "development": [
@@ -368,6 +433,52 @@
       "matches": false,
       "origin": "http://x.example.com",
       "pattern": "https://*.example.com"
+    }
+  ],
+  "tenants": [
+    {
+      "tenant": "acme",
+      "valid": true
+    },
+    {
+      "tenant": "example-corp",
+      "valid": true
+    },
+    {
+      "tenant": "a1",
+      "valid": true
+    },
+    {
+      "tenant": "a",
+      "valid": false
+    },
+    {
+      "tenant": "-acme",
+      "valid": false
+    },
+    {
+      "tenant": "acme-",
+      "valid": false
+    },
+    {
+      "tenant": "Acme",
+      "valid": false
+    },
+    {
+      "tenant": "acme_corp",
+      "valid": false
+    },
+    {
+      "tenant": "acme.corp",
+      "valid": false
+    },
+    {
+      "tenant": "abcdefghijabcdefghijabcdefghijabcdefghij",
+      "valid": true
+    },
+    {
+      "tenant": "abcdefghijabcdefghijabcdefghijabcdefghijk",
+      "valid": false
     }
   ]
 }
