@@ -7,12 +7,18 @@
  */
 import { startAutoSync } from './autoSync'
 import { startCollab as startRelays } from './collabRelays'
+import { followPageSchemaNotices } from './pageSchemaNotices'
 
-/** Starts co-editing in this window (relays, and "Sync all my documents"); answers its stop. */
+/**
+ * Starts co-editing in this window (relays, and "Sync all my documents"), with the notices of
+ * boards and Markdown documents a newer kit edited, shared or not; answers its stop.
+ */
 export function startCollab() {
   const stopRelays = startRelays()
   const stopAutoSync = startAutoSync()
+  const stopSchemaNotices = followPageSchemaNotices()
   return () => {
+    stopSchemaNotices()
     stopAutoSync()
     stopRelays()
   }

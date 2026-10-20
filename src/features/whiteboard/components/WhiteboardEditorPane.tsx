@@ -46,6 +46,7 @@ import {
 } from '@/features/whiteboard/testing/whiteboardTestBridge'
 import { useTranslation } from 'react-i18next'
 import { useDocumentReadOnly } from '@/services/documentAccess'
+import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 
 type WhiteboardEditorPaneProps = {
   agentAvailable?: boolean
@@ -357,97 +358,101 @@ function WhiteboardEditorPaneContent({
   }
 
   return (
-    <div
-      className="relative h-full min-h-0 w-full bg-background"
-      data-testid="whiteboard-editor-pane"
-      data-board-path={path}
-      data-read-only={readOnly ? 'true' : undefined}
-    >
-      <WhiteboardCanvas
-        agentPreview={agentPatch.state.preview}
-        canvasSize={canvasSize}
-        controller={controller}
-        onSizeChange={handleSizeChange}
-        readOnly={readOnly}
-        title={title}
-      />
-      <WhiteboardTopActions
-        canvasSize={canvasSize}
-        controller={controller}
-        onOpenImageStudio={openImageStudio}
-        title={title}
-      />
-      {readOnly ? null : (
-        <>
-          <WhiteboardToolbar
-            controller={controller}
-            canvasSize={canvasSize}
-          />
-          <WhiteboardSelectionToolbar
-            agentAvailable={agentAvailable}
-            controller={controller}
-            onAskAgent={askAgentAboutSelection}
-            onOpenImageStudio={openImageStudio}
-          />
-        </>
-      )}
-      <WhiteboardMinimap canvasSize={canvasSize} controller={controller} />
-      {readOnly ? null : <WhiteboardStylePanel controller={controller} />}
-      <WhiteboardAgentScopeControl
-        available={agentAvailable}
-        hasSelection={controller.hasSelection}
-        onChange={setAgentScope}
-        value={agentScope}
-      />
-      <WhiteboardAgentPreviewControls
-        state={agentPatch.state}
-        onAccept={() => void agentPatch.accept()}
-        onCancel={cancelAgentPreview}
-        onReject={agentPatch.reject}
-      />
-      <WhiteboardImageStudio
-        available={agentAvailable && Boolean(onGenerateImage)}
-        boardPath={path}
-        context={imageStudioContext}
-        generation={imageGeneration}
-        onAddAll={addAllGeneratedImages}
-        onAddResult={(workspacePath, options) => {
-          const index = Math.max(0, imageGeneration.paths.indexOf(workspacePath))
-          const centers = getGeneratedImageCenters({
-            canvasSize,
-            count: imageGeneration.paths.length || 1,
-            imageSize: getGeneratedImagePlacementSize(options.aspectRatio),
-            viewport: controller.viewport,
-          })
-          placeGeneratedImage(workspacePath, options, false, centers[index])
-        }}
-        onClose={() => setImageStudioOpen(false)}
-        onGenerate={startImageGeneration}
-        onReplaceResult={(workspacePath, options) => placeGeneratedImage(workspacePath, options, true)}
-        open={imageStudioOpen}
-      />
-      {documentState.saveRefused ? (
-        <div
-          className="absolute bottom-12 right-4 z-20 max-w-sm space-y-1 rounded-xl border bg-card px-3 py-2 text-xs text-card-foreground shadow-soft"
-          role="alert"
-          data-testid="board-save-refused"
-          data-reason={documentState.saveRefused}
-        >
-          <p className="font-medium">{t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])}</p>
-          <p className="text-muted-foreground">{t('whiteboard.file.savePaused')}</p>
-        </div>
-      ) : null}
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* A board a newer kit edited (Kit Standard 2.0 rules M5a and M20) says so and offers the update. */}
+      <DocumentSchemaBanner path={path} kitName={t('documentSchema.kits.board')} />
       <div
-        className="absolute bottom-4 right-4 z-20 rounded-md border bg-background/95 px-2.5 py-1 text-xs text-muted-foreground shadow-[var(--shadow-toolbar)] backdrop-blur"
-        role={documentState.status === 'error' ? 'alert' : 'status'}
-        title={documentState.saveRefused
-          ? t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])
-          : isBoardSaveConflict(documentState.error)
-            ? t('whiteboard.file.saveConflict')
-            : documentState.error || undefined}
-        data-testid="board-save-status"
+        className="relative min-h-0 w-full flex-1 bg-background"
+        data-testid="whiteboard-editor-pane"
+        data-board-path={path}
+        data-read-only={readOnly ? 'true' : undefined}
       >
-        {t(`board.status.${documentState.status}`)}
+        <WhiteboardCanvas
+          agentPreview={agentPatch.state.preview}
+          canvasSize={canvasSize}
+          controller={controller}
+          onSizeChange={handleSizeChange}
+          readOnly={readOnly}
+          title={title}
+        />
+        <WhiteboardTopActions
+          canvasSize={canvasSize}
+          controller={controller}
+          onOpenImageStudio={openImageStudio}
+          title={title}
+        />
+        {readOnly ? null : (
+          <>
+            <WhiteboardToolbar
+              controller={controller}
+              canvasSize={canvasSize}
+            />
+            <WhiteboardSelectionToolbar
+              agentAvailable={agentAvailable}
+              controller={controller}
+              onAskAgent={askAgentAboutSelection}
+              onOpenImageStudio={openImageStudio}
+            />
+          </>
+        )}
+        <WhiteboardMinimap canvasSize={canvasSize} controller={controller} />
+        {readOnly ? null : <WhiteboardStylePanel controller={controller} />}
+        <WhiteboardAgentScopeControl
+          available={agentAvailable}
+          hasSelection={controller.hasSelection}
+          onChange={setAgentScope}
+          value={agentScope}
+        />
+        <WhiteboardAgentPreviewControls
+          state={agentPatch.state}
+          onAccept={() => void agentPatch.accept()}
+          onCancel={cancelAgentPreview}
+          onReject={agentPatch.reject}
+        />
+        <WhiteboardImageStudio
+          available={agentAvailable && Boolean(onGenerateImage)}
+          boardPath={path}
+          context={imageStudioContext}
+          generation={imageGeneration}
+          onAddAll={addAllGeneratedImages}
+          onAddResult={(workspacePath, options) => {
+            const index = Math.max(0, imageGeneration.paths.indexOf(workspacePath))
+            const centers = getGeneratedImageCenters({
+              canvasSize,
+              count: imageGeneration.paths.length || 1,
+              imageSize: getGeneratedImagePlacementSize(options.aspectRatio),
+              viewport: controller.viewport,
+            })
+            placeGeneratedImage(workspacePath, options, false, centers[index])
+          }}
+          onClose={() => setImageStudioOpen(false)}
+          onGenerate={startImageGeneration}
+          onReplaceResult={(workspacePath, options) => placeGeneratedImage(workspacePath, options, true)}
+          open={imageStudioOpen}
+        />
+        {documentState.saveRefused ? (
+          <div
+            className="absolute bottom-12 right-4 z-20 max-w-sm space-y-1 rounded-xl border bg-card px-3 py-2 text-xs text-card-foreground shadow-soft"
+            role="alert"
+            data-testid="board-save-refused"
+            data-reason={documentState.saveRefused}
+          >
+            <p className="font-medium">{t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])}</p>
+            <p className="text-muted-foreground">{t('whiteboard.file.savePaused')}</p>
+          </div>
+        ) : null}
+        <div
+          className="absolute bottom-4 right-4 z-20 rounded-md border bg-background/95 px-2.5 py-1 text-xs text-muted-foreground shadow-[var(--shadow-toolbar)] backdrop-blur"
+          role={documentState.status === 'error' ? 'alert' : 'status'}
+          title={documentState.saveRefused
+            ? t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])
+            : isBoardSaveConflict(documentState.error)
+              ? t('whiteboard.file.saveConflict')
+              : documentState.error || undefined}
+          data-testid="board-save-status"
+        >
+          {t(`board.status.${documentState.status}`)}
+        </div>
       </div>
     </div>
   )

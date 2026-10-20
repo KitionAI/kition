@@ -17,6 +17,7 @@ import {
   WHITEBOARD_E2E_PATH,
 } from './helpers/whiteboard'
 import { versionCounters } from './helpers/kitionPro'
+import { mockLocalWorkspaceApi } from './helpers/mockApi'
 
 // The Board's `.kiboard` file as a KDM document: saved as a v2 envelope, merged with changes made
 // on disk, flushed when the editor closes, and never written when it is a version-1 file.
@@ -126,6 +127,47 @@ test('saves a move when the Board closes before the save delay ends', async ({ p
   const lastWriteAt = await page.evaluate(() => window.__KITION_WHITEBOARD_E2E_FILE__?.lastWriteAt ?? null)
   expect(lastWriteAt).not.toBeNull()
   expect(lastWriteAt! - closing.at).toBeLessThan(300)
+})
+
+/**
+ * A board file some of whose changes a Board one schema version newer made (Kit Standard 2.0 rule
+ * M5a), written with the app's own modules in the page: nothing migrated, so this Board opens it.
+ */
+async function newerBoardText(page: Page) {
+  return page.evaluate(async () => {
+    const load = (module: string) => import(/* @vite-ignore */ new URL(module, window.location.href).href)
+    const [{ createEmptyBoard, encodeBoardFile }, { Replica, Version, parseSchema, person, randomActor }, { boardSchema }] = await Promise.all([
+      load('/packages/board-editor/src/kdm/boardKdmFile.ts'),
+      load('/src/lib/kdm/index.ts'),
+      load('/packages/board-editor/src/kdm/boardSchema.ts'),
+    ])
+    const board = createEmptyBoard('Whiteboard E2E', randomActor())
+    const newer = Replica.load(parseSchema({ ...boardSchema, schemaVersion: boardSchema.schemaVersion + 1 }), board.snapshot(), randomActor())
+    const pageId = newer.objectsOfType('Page')[0]
+    newer.transact(person('user:newer-board'), (tx: { set: (id: string, field: string, value: string) => void }) => tx.set(pageId, 'name', 'Roadmap'))
+    board.importChanges(newer.exportChanges(Version.empty()))
+    return { text: encodeBoardFile(board) as string, reads: boardSchema.schemaVersion as number }
+  })
+}
+
+test('says that a newer Board edited the file, without blocking editing', async ({ page }) => {
+  await mockLocalWorkspaceApi(page)
+  await page.goto('/documents')
+  const { text, reads } = await newerBoardText(page)
+  await openWhiteboardFixture(page, { fileContent: text, elements: [] })
+
+  const banner = page.getByTestId('document-schema-banner')
+  await expect(banner).toBeVisible()
+  await expect(banner).toHaveAttribute('data-blocked', 'false')
+  await expect(banner).toContainText(workspaceCopy.documentSchema.kits.board)
+  await expect(banner).toContainText(workspaceCopy.documentSchema.newerHint)
+  await expect(page.getByTestId('document-schema-versions')).toContainText(`up to version ${reads}; this one needs version ${reads + 1}`)
+  // The board still edits.
+  await expect(page.getByTestId('whiteboard-editor-pane')).not.toHaveAttribute('data-read-only', 'true')
+  const before = elementRecords((await readWhiteboardSnapshot(page)).records).length
+  await page.getByTestId('whiteboard-tool-rectangle').click()
+  await dragOnScene(page, { x: 300, y: 480 }, { x: 470, y: 580 })
+  await expect.poll(async () => elementRecords((await readWhiteboardSnapshot(page)).records).length).toBe(before + 1)
 })
 
 test('opens a version-1 file read-only and leaves it unchanged', async ({ page }) => {

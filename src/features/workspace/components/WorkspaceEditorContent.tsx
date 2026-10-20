@@ -6,6 +6,7 @@ import { BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui/button'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
+import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
 import type {
   DocumentRevisionDecision,
@@ -552,6 +553,10 @@ export function WorkspaceEditorContent({
                 onShowChanges={() => onShowAgentReviewChanges?.()}
               />
             </Suspense>
+          ) : null}
+          {/* A Markdown document a newer kit edited (Kit Standard 2.0 rules M5a and M20) says so; the Document kit's own frame does for it. */}
+          {activeDocumentSession && !documentKitForDevelopment(activeDocumentSession.path) ? (
+            <DocumentSchemaBanner path={activeDocumentSession.path} kitName={t('documentSchema.kits.document')} />
           ) : null}
           {editorMode === 'source' || editorMode === 'split' ? (
             <>
