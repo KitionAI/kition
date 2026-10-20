@@ -111,4 +111,20 @@ describe('the Document kit engine', () => {
     listed = run(doc, 'comment.add', { body: 'On the whole document' })
     expect(listed.thread).toMatch(/\S/)
   })
+
+  it('repairs the comment threads concurrent comment commands leave broken: a reply to a thread deleted meanwhile goes too', () => {
+    const first = MarkdownDocument.open('Plan.md', bytes('# Plan\n\nGoals\n'))
+    const { thread, comment } = run(first, 'comment.add', { quote: 'Goals', body: 'Which quarter?' })
+    const second = MarkdownDocument.openWithReplica('Plan.md', new Uint8Array(0), first.snapshot(), new Uint8Array(0))
+    run(second, 'comment.reply', { thread, body: 'Q3' })
+    run(first, 'comment.delete', { thread, comment })
+    first.importChanges(second.exportChanges(first.version()))
+    second.importChanges(first.exportChanges(second.version()))
+    const state = (doc: KitEngineDocument) => Replica.load(documentSchema, doc.snapshot(), randomActor())
+    for (const doc of [first, second]) {
+      expect(run(doc, 'comment.threads').threads).toEqual([])
+      expect(state(doc).objectsOfType('Comment')).toEqual([])
+    }
+    expect(state(first).stateText()).toBe(state(second).stateText())
+  })
 })

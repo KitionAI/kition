@@ -21,6 +21,7 @@ import {
   openStoredMarkdownFile,
   createDocumentReplica,
   analyzeText,
+  repairCommentThreads,
   type LineStyle,
 } from '@kition/document-editor/file'
 
@@ -133,6 +134,8 @@ export const documentModel: KitModel<DocumentView> = {
     view.rootId = documentRootId(replica)
     return { kind: 'full' }
   },
+  // Concurrent comment commands may leave a thread without comments, or a reply in a deleted thread.
+  validate: (tx) => repairCommentThreads(tx),
   command(view, replica, id, params, origin) {
     if (!KNOWN.has(id)) throw new Error(`the document has no command ${id}`)
     const text = documentBody(replica, view.rootId)

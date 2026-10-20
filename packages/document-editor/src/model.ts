@@ -5,6 +5,7 @@
  * a replica, without the editor, are `@kition/document-editor/file`.
  */
 export { applyChangeSet, deltaToChanges, replicaChange, TextBinding, type TextBindingOptions } from './kdm/codeMirrorBinding'
+export { repairCommentThreads } from './kdm/documentComments'
 export { documentHistoryExtension, redoDocument, undoDocument, type DocumentHistory } from './kdm/documentHistory'
 export { applyEditsToString, applyTextEdits, coalesceEdits, diffText, mergeEdits, mergeExternalText, type MergeOptions, type TextEdit } from './kdm/documentMerge'
 export { documentPreviewText } from './kdm/documentPreview'

@@ -20,7 +20,7 @@ import { registerOpenMarkdownDocument } from './openDocumentSessions'
 import { DOCUMENT_BODY } from '@kition/document-editor/model'
 import { compactStoredDocument, mergeFileIntoReplica, openDocument, saveDocument, type OpenedDocument } from './documentStore'
 import { recordDocumentCheckpoint, type DocumentCheckpointInput } from '@/services/desktop'
-import { analyzeText, createDocumentReplica, documentBody, renderText } from '@kition/document-editor/model'
+import { analyzeText, createDocumentReplica, documentBody, renderText, repairCommentThreads } from '@kition/document-editor/model'
 
 /** The principal of edits made in this window. */
 export const LOCAL_PERSON = 'user:local'
@@ -490,8 +490,11 @@ export class DocumentSession {
     const opened = this.requireOpened()
     const before = opened.replica.version()
     opened.replica.importChanges(changes)
+    if (opened.replica.version().equals(before)) return
+    // Concurrent comment commands can leave a thread without comments, or a reply in a deleted thread.
+    opened.replica.transact(system('repair'), (tx) => repairCommentThreads(tx))
     // A change beside the text (a comment) reaches no text listener: save and show it too.
-    if (!opened.replica.version().equals(before)) this.afterReplicaChange()
+    this.afterReplicaChange()
   }
 
   /** The replica changed beyond what the text listeners heard: tell comment listeners, and save. */

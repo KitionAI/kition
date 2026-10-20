@@ -4,7 +4,8 @@ import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readWorkspaceDocument, writeWorkspaceDocument, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { flushWorkspaceEditSessions, discardWorkspaceEditSessions } from '@/services/workspaceEditSessions'
-import { redoDocument, undoDocument } from '@kition/document-editor/model'
+import { addThread, commentThreads, COMMENT_TYPE, deleteComment, person, randomActor, Replica, reply } from '@/lib/kdm'
+import { DOCUMENT_BODY, documentRootId, documentSchema, redoDocument, undoDocument } from '@kition/document-editor/model'
 import { DocumentSession, isDocumentFileMissing, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
 import { compactStoredDocument, openDocument } from './documentStore'
 import {
@@ -917,5 +918,27 @@ describe('Kition’s writers of other documents', () => {
     expect(session.text()).toBe('# Replaced\n')
     await settle(SAVE_DELAY_MS)
     expect(disk.files.get(PATH)).toBe('# Replaced\n')
+  })
+})
+
+describe('DocumentSession: co-editing', () => {
+  it('repairs the comment threads a co-editor’s concurrent changes leave broken', async () => {
+    const session = await open('# Plan\n\nGoals\n')
+    const replica = session.replica!
+    const rootId = documentRootId(replica)
+    const ada = person('user:ada')
+    const said = (body: string) => ({ author: 'user:ada', body, created: '2026-01-01T00:00:00.000Z' })
+    const { thread, comment } = session.transactComments(ada, (tx) => addThread(tx, { object: rootId, field: DOCUMENT_BODY, range: { start: 8, end: 13 }, quote: 'Goals' }, said('Which quarter?')))
+    const other = Replica.load(documentSchema, replica.snapshot(), randomActor())
+    // The co-editor replies while this window deletes the thread.
+    other.transact(ada, (tx) => reply(tx, thread, said('Q3')))
+    session.transactComments(ada, (tx) => deleteComment(tx, thread, comment))
+    session.importRemoteChanges(other.exportChanges(replica.version()))
+    expect(commentThreads(replica)).toEqual([])
+    expect(replica.objectsOfType(COMMENT_TYPE)).toEqual([])
+    // The repair travels like any change, and the co-editor reaches the same state.
+    other.importChanges(replica.exportChanges(other.version()))
+    expect(other.stateText()).toBe(replica.stateText())
+    expect(session.text()).toBe('# Plan\n\nGoals\n')
   })
 })

@@ -414,6 +414,25 @@ development build opens `.md` files in the kit when
 it, and reopens it natively. Images show only URLs that load by themselves,
 and pasted images stay links: the host's files are not the kit's.
 
+`packages/document-kit/src/engine/documentConvergence.spec.ts` runs the
+convergence suite on `MarkdownDocument` the way the Board kit does: random
+edits from the whole catalogue (typing with CJK and emoji, ranges deleted and
+replaced, whole texts written, comment threads added, answered, resolved, and
+deleted); the text scenarios type into the Markdown text, whose lines are its
+paragraphs (a split types a newline, a merge deletes one); reorder moves lines,
+as Alt+Up and Alt+Down do. Its view check compares the engine's text and
+threads with a fresh replica and requires every thread to have a comment and
+every comment to be in a thread. Every scenario the document has steps for
+passes, `fuzz` with 100 seeds too. It is not L6 yet: `fields`, `undo`, and
+`undo-reconnect` set two register fields of one object, and the only register
+a command sets is a thread's `resolved` (its anchor is fixed when it is made),
+so they are skipped until a command sets another field of a thread (a
+contract change, in kition-sdk first). The suite found that concurrent
+comment commands could leave a thread with no comments (two people deleting
+its two comments) or a reply in a thread someone deleted; both the kit
+(`KitModel.validate`) and Kition's native session (`importRemoteChanges`) now
+repair them with `repairCommentThreads` from `packages/document-editor`.
+
 ## 4b. Kit Packages And Releases
 
 Kition ships every kit's package inside the app (decided 2026-10-15). All ten
