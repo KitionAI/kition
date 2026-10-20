@@ -54,7 +54,7 @@ pub fn tool_kind(name: &str) -> &'static str {
             || name.ends_with("_stat")
             || name.ends_with("_schema")
             || name.ends_with("_records")
-            || matches!(suffix, "inspect" | "query" | "commands") =>
+            || matches!(suffix, "inspect" | "query" | "commands" | "check") =>
         {
             "read"
         }
@@ -340,6 +340,7 @@ mod tests {
     fn kit_tools_have_acp_kinds() {
         assert_eq!(tool_kind("vector_query"), "read");
         assert_eq!(tool_kind("vector_batch"), "edit");
+        assert_eq!(tool_kind("slide_check"), "read");
         assert_eq!(tool_kind("photo_run"), "edit");
         assert_eq!(tool_kind("document_read"), "read");
         assert_eq!(tool_kind("web_search"), "search");

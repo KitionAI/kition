@@ -500,6 +500,11 @@ Kit repository:
    over its `kitEngineClass` document in a vitest spec, asserting
    `report.level6()` and writing `report.toJsonText()` to
    `KITION_CONVERGENCE_REPORT` (the Board kit's `boardConvergence.spec.ts`).
+2c. Implement `KitDocument::check` (standard-2 A21–A23): diagnostics with
+   stable `<kit>.<name>` codes, a `target`, and a `fix` command hint where
+   one exists, errors first, each code covered by a synthetic test. Agents
+   reach it as `<prefix>_check`, embeds as `editor.check()` (Slides'
+   and Sheet's `bindings/wasm/src/check.rs` are the examples).
 3. Add the headless executable `apps/kit-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
    Add `"headless": { "executable": "kit-<kit>", "protocol": "kition-kit/1" }`

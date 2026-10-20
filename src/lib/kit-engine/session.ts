@@ -6,7 +6,7 @@
  * changes, undo and redo, the saved state, and the JSON of the contract.
  */
 import { decodeOrigin, person, randomActor, system, Version, type ObjectId, type Origin, type Replica, type Schema, type Tx } from '../kdm'
-import type { KitDamage, KitEngineClass, KitEngineCommand, KitEngineDocument } from './contract'
+import type { KitDamage, KitEngineClass, KitEngineCommand, KitEngineDiagnostic, KitEngineDocument } from './contract'
 
 /** The person a contract 1 `execute` acts for; hosts that know who it is use `executeAs`. */
 const HOST_PERSON = person('host:person')
@@ -54,6 +54,8 @@ export interface KitModel<View> {
   addBlobs?(view: View, replica: Replica, blobs: Uint8Array): void
   /** What `inspect()` adds to `canUndo` and `canRedo`. */
   inspect?(view: View, replica: Replica): Record<string, unknown>
+  /** What is wrong with the document (Kit Standard 2.0 A21); without it, `check()` answers none. It must not change the document. */
+  check?(view: View, replica: Replica): KitEngineDiagnostic[]
   /** The document's size in pixels (0 × 0 when the editor draws itself). */
   size?(view: View, replica: Replica): KitSize
 }
@@ -285,6 +287,12 @@ export function kitEngineClass<View>(model: KitModel<View>, options: KitEngineCl
     inspect() {
       const extra = model.inspect?.(this.session.view, this.session.replica) ?? {}
       return json({ ...extra, canUndo: this.canUndo(), canRedo: this.canRedo() })
+    }
+
+    check() {
+      const order = { error: 0, warning: 1, info: 2 } as const
+      const found = [...(model.check?.(this.session.view, this.session.replica) ?? [])].sort((a, b) => order[a.severity] - order[b.severity])
+      return json({ diagnostics: found })
     }
 
     commands() {

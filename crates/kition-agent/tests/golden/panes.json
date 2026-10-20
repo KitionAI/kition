@@ -392,7 +392,7 @@
         "The artifact you produce is this turn's result; do not also restate the whole thing as plain chat. If the user asked for a report or HTML, the task is not complete until artifact_write succeeds or you state a concrete blocker.",
         "The following Kition Agent skills were automatically enabled for this request. Follow their constraints.",
         "The user is on the Kition document pane to your left. If a document is open (the skill context will carry an 'Active document the user is reading' block with title / path / description), call document_read on the path before summarising or quoting it — do not invent the document's contents from the title alone. If no document is open yet, ask the user which document they want to work with (or offer document_list / document_search to discover candidates).",
-        "To edit it, find command ids with photo_commands (search by keywords such as `brightness`, `gaussian blur`, or `new layer`), then call photo_run with the steps. photo_run saves the file and returns a new preview; check it, and fix or undo (`edit.undo`) when the result is wrong."
+        "To edit it, find command ids with photo_commands (search by keywords such as `brightness`, `gaussian blur`, or `new layer`), then call photo_run with the steps. photo_run saves the file and returns a new preview; check it, call photo_check to list what the kit finds wrong, and fix or undo (`edit.undo`) when the result is wrong."
       ],
       "conversation": [
         {

@@ -36,6 +36,7 @@ import {
   type ModelBatchParams,
   type ModelBatchResult,
   type StoredReplica,
+  type KitDiagnostic,
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
@@ -142,6 +143,11 @@ export type KitConnection = {
   onPresence: (listener: (presence: KitPresence) => void) => () => void
   /** The editor's elements (`ui/elements`). Rejects with -32601 when the kit did not declare its UI. */
   elements: () => Promise<KitUiElement[]>
+  /**
+   * The engine's diagnostics on the document (`document/check`, capability `check`), errors first;
+   * `draft` checks the agent's draft. A kit without the capability answers no diagnostics here.
+   */
+  check: (options?: { draft?: boolean }) => Promise<KitDiagnostic[]>
   /** The Kit AI bridge; `draft` (capability `draft`) works on the agent's draft instead of the live document. */
   ai: {
     inspect: (options?: { draft?: boolean }) => Promise<Record<string, unknown>>
@@ -328,6 +334,7 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
         if (presence) listener(presence)
       }),
     elements: () => peer.request('ui/elements', {}),
+    check: async (options) => (info.capabilities.includes('check') ? (await peer.request('document/check', options?.draft ? { draft: true } : {})).diagnostics : []),
     ai: {
       inspect: (options) => peer.request('ai/inspect', options?.draft ? { draft: true } : {}),
       commands: (query) => peer.request('ai/commands', { query }),

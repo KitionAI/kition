@@ -1,0 +1,373 @@
+{
+  "cases": [
+    {
+      "context": {
+        "appId": null,
+        "form": "embed",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": "https://app.example.com"
+      },
+      "error": null,
+      "licensee": "Example Corp (test)",
+      "name": "embed on a listed origin",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "embed",
+        "kit": "kit.sheet",
+        "now": 1800000000,
+        "origin": "https://a.b.example.org"
+      },
+      "error": null,
+      "licensee": "Example Corp (test)",
+      "name": "embed on a wildcard subdomain",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "embed",
+        "kit": "kit.sheet",
+        "now": 1800000000,
+        "origin": "https://example.org"
+      },
+      "error": "origin",
+      "licensee": null,
+      "name": "embed on the wildcard's apex",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "embed",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": "https://evil.example.net"
+      },
+      "error": "origin",
+      "licensee": null,
+      "name": "embed on another origin",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "embed",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": "http://app.example.com"
+      },
+      "error": "origin",
+      "licensee": null,
+      "name": "embed on another scheme",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "embed",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": "https://app.example.com"
+      },
+      "error": "origin",
+      "licensee": null,
+      "name": "embed without origins in the licence",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJ2IjoxfQ.YknUoDNSVP8nCvsFuwEsjiqVcsdlbl3wWPrvRBFfGmnhdzp_B9723nOZU3hUL3KLrfH5Z_8L295S1N7wTfIQAA"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": null,
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": null,
+      "licensee": "Example Corp (test)",
+      "name": "mcp at a server's start",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "expired",
+      "licensee": null,
+      "name": "expired",
+      "token": "eyJleHBpcmVzIjoxODAwMDAwMDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9.-0rjv7dU8KoQgerzTOPMo479vEFcA7ZKE0wBmY3AHwndZgFqF3k5V2f9I4nUZ6cxfk0pIjvgeyACnrTcFnCBCA"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "headless",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "kit",
+      "licensee": null,
+      "name": "kit not covered",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6WyJraXQuc2hlZXQiXSwibGljZW5zZWUiOiJFeGFtcGxlIENvcnAgKHRlc3QpIiwib3JpZ2lucyI6WyJodHRwczovL2FwcC5leGFtcGxlLmNvbSIsImh0dHBzOi8vKi5leGFtcGxlLm9yZyJdLCJ2IjoxfQ.ubDwxmlu0fF0I5dt1vcJj5OG-fg-qr_NEAJLkZSHEKIQBGcfLwMtZhs3V0z9ubdwkqh17cdgHFW7Rmzj6WjTCg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "form",
+      "licensee": null,
+      "name": "form not covered",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCJdLCJpc3N1ZWQiOjE3OTk5MTM2MDAsImtpZCI6InRlc3QtMSIsImtpdHMiOiIqIiwibGljZW5zZWUiOiJFeGFtcGxlIENvcnAgKHRlc3QpIiwib3JpZ2lucyI6WyJodHRwczovL2FwcC5leGFtcGxlLmNvbSIsImh0dHBzOi8vKi5leGFtcGxlLm9yZyJdLCJ2IjoxfQ.XYzfFbNBZe2V1Yu1I2EgLxX-tH9pR5CnoC6FVNxJkIZOcXbjT2ySkN6NgE72rF9aLgXPw_qMGwkjNMNPHixaBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "unknown-key",
+      "licensee": null,
+      "name": "unknown key id",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0yIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9.49N1Y4Ghl0jtbpBokQ6RCudf3X7QxymqBxpkG3wEB00aoeOV3BB0dteskGnFbRvirzCkzBon3KzWOhtmYifOAQ"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "signature",
+      "licensee": null,
+      "name": "signed by another key",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9.EabKoJiIUsZb6FSmNUzthB8z0sg0neWOyU1U0Qb_d91eqa_hM-I-YOQgSpqYm-KTJ57gG-a_CYUNgxgVbsl8Aw"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "signature",
+      "licensee": null,
+      "name": "payload swapped under a signature",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9.Uccksn8lS0d5XZoACScFZ7WKaPQ6gOf2uWT5X8I-VAxel2CNWOBcRDpSPi4x1ppsvHWTAEjzv8VzxDWjpz2WBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "malformed",
+      "licensee": null,
+      "name": "not a key",
+      "token": "abc"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "malformed",
+      "licensee": null,
+      "name": "three segments",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjF9._1gCoV78GXQLmV0MGNfJ_AgSsDlMfvd7mkvTXoLvOvI6ouENqKiOkCtZB3s4TMO8kOws54Ap43-iAZ3pCA0eBg.x"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "version",
+      "licensee": null,
+      "name": "payload version 2",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6IioiLCJsaWNlbnNlZSI6IkV4YW1wbGUgQ29ycCAodGVzdCkiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIiwiaHR0cHM6Ly8qLmV4YW1wbGUub3JnIl0sInYiOjJ9.xbhD9OeUob1eddBdsgsVCvtnNk1Lkr1UVEbvc0lM-oglElhKjAIflNMjMUSKvBF0pZQ5rCcWSEJ_ZWUyCqCsBg"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "malformed",
+      "licensee": null,
+      "name": "kits neither a list nor *",
+      "token": "eyJleHBpcmVzIjoxODMxNTM2MDAwLCJmb3JtcyI6WyJlbWJlZCIsInNjcmlwdCIsImhlYWRsZXNzIiwibWNwIl0sImlzc3VlZCI6MTc5OTkxMzYwMCwia2lkIjoidGVzdC0xIiwia2l0cyI6ImFsbCIsImxpY2Vuc2VlIjoiRXhhbXBsZSBDb3JwICh0ZXN0KSIsIm9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAuZXhhbXBsZS5jb20iLCJodHRwczovLyouZXhhbXBsZS5vcmciXSwidiI6MX0.sLb_n2Prcm3zWcr8pwfgqrGiPf9ZKMYNiBPUnCnTOKGXzi07JOuU8nwt_QyAJdRZPYqboRqpB2-TH_iwlx0aBA"
+    },
+    {
+      "context": {
+        "appId": null,
+        "form": "mcp",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "app",
+      "licensee": null,
+      "name": "application id required",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiZW1iZWQiLCJzY3JpcHQiLCJoZWFkbGVzcyIsIm1jcCJdLCJpc3N1ZWQiOjE3OTk5MTM2MDAsImtpZCI6InRlc3QtMSIsImtpdHMiOiIqIiwibGljZW5zZWUiOiJFeGFtcGxlIENvcnAgKHRlc3QpIiwib3JpZ2lucyI6WyJodHRwczovL2FwcC5leGFtcGxlLmNvbSIsImh0dHBzOi8vKi5leGFtcGxlLm9yZyJdLCJ2IjoxfQ.plS4DMl-cAleFuBe0_cZ5lhBrKaDy31avnk9PXTQ5z9UKFvDbUij9BTFysIuWb4VrpCrc65ZND__oGDrqmJXAQ"
+    },
+    {
+      "context": {
+        "appId": "com.example.agent",
+        "form": "script",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": null,
+      "licensee": "Example Corp (test)",
+      "name": "application id given",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiZW1iZWQiLCJzY3JpcHQiLCJoZWFkbGVzcyIsIm1jcCJdLCJpc3N1ZWQiOjE3OTk5MTM2MDAsImtpZCI6InRlc3QtMSIsImtpdHMiOiIqIiwibGljZW5zZWUiOiJFeGFtcGxlIENvcnAgKHRlc3QpIiwib3JpZ2lucyI6WyJodHRwczovL2FwcC5leGFtcGxlLmNvbSIsImh0dHBzOi8vKi5leGFtcGxlLm9yZyJdLCJ2IjoxfQ.plS4DMl-cAleFuBe0_cZ5lhBrKaDy31avnk9PXTQ5z9UKFvDbUij9BTFysIuWb4VrpCrc65ZND__oGDrqmJXAQ"
+    },
+    {
+      "context": {
+        "appId": "com.example.other",
+        "form": "script",
+        "kit": "kit.slide",
+        "now": 1800000000,
+        "origin": null
+      },
+      "error": "app",
+      "licensee": null,
+      "name": "another application id",
+      "token": "eyJhcHBJZHMiOlsiY29tLmV4YW1wbGUuYWdlbnQiXSwiZXhwaXJlcyI6MTgzMTUzNjAwMCwiZm9ybXMiOlsiZW1iZWQiLCJzY3JpcHQiLCJoZWFkbGVzcyIsIm1jcCJdLCJpc3N1ZWQiOjE3OTk5MTM2MDAsImtpZCI6InRlc3QtMSIsImtpdHMiOiIqIiwibGljZW5zZWUiOiJFeGFtcGxlIENvcnAgKHRlc3QpIiwib3JpZ2lucyI6WyJodHRwczovL2FwcC5leGFtcGxlLmNvbSIsImh0dHBzOi8vKi5leGFtcGxlLm9yZyJdLCJ2IjoxfQ.plS4DMl-cAleFuBe0_cZ5lhBrKaDy31avnk9PXTQ5z9UKFvDbUij9BTFysIuWb4VrpCrc65ZND__oGDrqmJXAQ"
+    }
+  ],
+  "development": [
+    {
+      "development": true,
+      "origin": "http://localhost:5173"
+    },
+    {
+      "development": true,
+      "origin": "https://localhost"
+    },
+    {
+      "development": true,
+      "origin": "http://app.localhost:3000"
+    },
+    {
+      "development": true,
+      "origin": "http://127.0.0.1:8080"
+    },
+    {
+      "development": true,
+      "origin": "http://127.10.0.3"
+    },
+    {
+      "development": true,
+      "origin": "http://[::1]:4000"
+    },
+    {
+      "development": true,
+      "origin": "null"
+    },
+    {
+      "development": true,
+      "origin": "file://"
+    },
+    {
+      "development": false,
+      "origin": "https://app.example.com"
+    },
+    {
+      "development": false,
+      "origin": "http://localhost.example.com"
+    },
+    {
+      "development": false,
+      "origin": "http://127.0.0.1.example.com"
+    },
+    {
+      "development": false,
+      "origin": "http://10.0.0.1"
+    }
+  ],
+  "keys": [
+    {
+      "key": "6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw",
+      "kid": "test-1"
+    }
+  ],
+  "note": "Generated by crates/kition-license/tests/vectors.rs with fake test seeds; never a production key.",
+  "origins": [
+    {
+      "matches": true,
+      "origin": "https://app.example.com",
+      "pattern": "https://app.example.com"
+    },
+    {
+      "matches": true,
+      "origin": "https://APP.example.com",
+      "pattern": "https://app.example.com/"
+    },
+    {
+      "matches": false,
+      "origin": "https://app.example.com:8443",
+      "pattern": "https://app.example.com"
+    },
+    {
+      "matches": true,
+      "origin": "https://x.example.com",
+      "pattern": "https://*.example.com"
+    },
+    {
+      "matches": true,
+      "origin": "https://x.y.example.com",
+      "pattern": "https://*.example.com"
+    },
+    {
+      "matches": false,
+      "origin": "https://example.com",
+      "pattern": "https://*.example.com"
+    },
+    {
+      "matches": false,
+      "origin": "https://xexample.com",
+      "pattern": "https://*.example.com"
+    },
+    {
+      "matches": true,
+      "origin": "https://x.example.com:8443",
+      "pattern": "https://*.example.com:8443"
+    },
+    {
+      "matches": false,
+      "origin": "https://x.example.com",
+      "pattern": "https://*.example.com:8443"
+    },
+    {
+      "matches": false,
+      "origin": "http://x.example.com",
+      "pattern": "https://*.example.com"
+    }
+  ]
+}

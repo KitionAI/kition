@@ -2,7 +2,8 @@
 //! edit it by running them: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, named
 //! and worded from the kit's definition (its `kit.json`). The object-model tools `<prefix>_query`
 //! and `<prefix>_batch` (`model.rs`) read and edit the document as typed objects, with argument
-//! schemas generated from the kit's `model.describe`. Every failure carries a structured error
+//! schemas generated from the kit's `model.describe`; `<prefix>_check` reports what the kit finds
+//! wrong with the document (standard 2.0 A21 to A23), so the agent can verify its own edits. Every failure carries a structured error
 //! code (`errors.rs`) beside its message. An agent may edit a draft instead of
 //! the live document (standard 2.0 A12, `draft: true`), and asks for its review with
 //! `<prefix>_draft_ready` (or takes it back with `<prefix>_draft_reopen`); merging or
@@ -42,10 +43,12 @@ pub enum Action {
     Query,
     /// Edit the document's object model with one `model/batch`.
     Batch,
+    /// The kit's diagnostics on the document (standard 2.0 A22).
+    Check,
 }
 
 impl Action {
-    pub const ALL: [Action; 7] = [
+    pub const ALL: [Action; 8] = [
         Action::Inspect,
         Action::Commands,
         Action::Run,
@@ -53,6 +56,7 @@ impl Action {
         Action::DraftReopen,
         Action::Query,
         Action::Batch,
+        Action::Check,
     ];
 
     fn suffix(self) -> &'static str {
@@ -64,6 +68,7 @@ impl Action {
             Action::DraftReopen => "draft_reopen",
             Action::Query => "query",
             Action::Batch => "batch",
+            Action::Check => "check",
         }
     }
 
@@ -145,13 +150,13 @@ pub(crate) fn draft_property() -> Value {
     json!({ "type": "boolean", "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode." })
 }
 
-fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 7] {
+fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 8] {
     specs_described(kit, None)
 }
 
 /// The kit's tools, with the object-model tools' arguments generated from `described` (what the
 /// kit's `model.describe` answered) when it is known.
-fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 7] {
+fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 8] {
     let agent = &kit.agent;
     let (name, noun) = (kit.name, agent.noun);
     let commands = tool_name(kit, Action::Commands);
@@ -246,6 +251,21 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         },
         model::query_spec(kit, described),
         model::batch_spec(kit, described),
+        KitToolSpec {
+            name: tool_name(kit, Action::Check),
+            description: format!(
+                "Check a {noun} in {name}: lists what the kit finds wrong with it (broken references, overflowing text, formula errors), each with a stable `code`, a `severity` (error, warning, info), its `target` (object id, slide, page, sheet, cell), a message, and sometimes a `fix` command for {run}. Call it after editing and fix the errors it reports. Changes nothing."
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": path_property(kit),
+                    "draft": draft_property()
+                },
+                "required": ["path"]
+            }),
+            writes: false,
+        },
     ]
 }
 
@@ -284,6 +304,7 @@ pub fn label(name: &str) -> Option<String> {
         Action::DraftReopen => format!("Reopen the {kit_name} draft"),
         Action::Query => format!("Read {noun} objects in {kit_name}"),
         Action::Batch => format!("Edit {noun} objects in {kit_name}"),
+        Action::Check => format!("Check {noun} in {kit_name}"),
     })
 }
 
@@ -297,17 +318,18 @@ pub fn linked_file_prompt(path: &str) -> Option<String> {
     let kit = KITS
         .iter()
         .find(|kit| kit.extensions.contains(&extension.as_str()))?;
-    let (inspect, commands, run) = (
+    let (inspect, commands, run, check) = (
         tool_name(kit, Action::Inspect),
         tool_name(kit, Action::Commands),
         tool_name(kit, Action::Run),
+        tool_name(kit, Action::Check),
     );
     Some(
         [
             format!("Current linked {}: `{}`, open in {}.", kit.agent.noun, path.trim(), kit.name),
             format!("Call {inspect} on this path to see {} and a rendered preview before describing or changing it.", kit.agent.reports),
             format!(
-                "To edit it, find command ids with {commands} (search by keywords such as {}), then call {run} with the steps. {run} saves the file and returns a new preview; check it, and fix or undo (`edit.undo`) when the result is wrong.",
+                "To edit it, find command ids with {commands} (search by keywords such as {}), then call {run} with the steps. {run} saves the file and returns a new preview; check it, call {check} to list what the kit finds wrong, and fix or undo (`edit.undo`) when the result is wrong.",
                 kit.agent.queries
             ),
             if TEXT_EXTRACTED.contains(&extension.as_str()) {
@@ -440,6 +462,7 @@ pub async fn call_with(
         Action::DraftReady | Action::DraftReopen => draft_state(kits, kit, input, action).await,
         Action::Query => model::query(kits, kit, input, draft).await,
         Action::Batch => model::batch(kits, kit, input, draft).await,
+        Action::Check => check(kits, kit, input, draft).await,
     })
 }
 
@@ -627,6 +650,84 @@ async fn inspect(
     })
 }
 
+/// `<prefix>_check` (standard 2.0 A22): the diagnostics of the agent's draft, of the open editor's
+/// document, or of the file through the headless kit, as `<prefix>_inspect` chooses among them.
+async fn check(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    input: &Value,
+    draft: bool,
+) -> KitToolResult {
+    let path = kit_path(input, kit)?;
+    let open = live(kits, kit, &path).await;
+    let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
+    let (answer, what) = if draft && (open.is_some() || explicit) {
+        let document = draft_editor(kits, kit, &path).await?;
+        let answer = kits
+            .bridge()
+            .call(&document, "check", json!({ "draft": true }))
+            .await
+            .map_err(|error| {
+                KitToolError::from(error)
+                    .context(&format!("on the draft in the open {} editor: ", short(kit)))
+            })?;
+        (answer, format!("your draft of `{path}`"))
+    } else if let Some(document) = open {
+        let answer = kits
+            .bridge()
+            .call(&document, "check", json!({}))
+            .await
+            .map_err(|error| {
+                KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit)))
+            })?;
+        (answer, format!("`{path}`"))
+    } else {
+        let view = kits.open(Caller::Agent, &path).await?;
+        let answer = kits
+            .check(Caller::Agent, view.kit_id, &view.document_id)
+            .await?
+            .ok_or_else(|| {
+                KitToolError::new(
+                    ErrorCode::Unsupported,
+                    format!("this version of {} cannot check documents yet; inspect the preview instead", short(kit)),
+                )
+            })?;
+        (answer, format!("`{path}`"))
+    };
+    let diagnostics = answer["diagnostics"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    Ok(KitToolOutput::new(
+        diagnostics_summary(&what, &diagnostics),
+        json!({ "diagnostics": diagnostics }),
+    ))
+}
+
+/// `Checked `a.pptx`: 1 error, 2 warnings, no notes.`
+fn diagnostics_summary(what: &str, diagnostics: &[Value]) -> String {
+    let count = |severity: &str| {
+        diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic["severity"] == severity)
+            .count()
+    };
+    let plural = |n: usize, one: &str, many: &str| match n {
+        0 => format!("no {many}"),
+        1 => format!("1 {one}"),
+        n => format!("{n} {many}"),
+    };
+    if diagnostics.is_empty() {
+        return format!("Checked {what}: the kit found nothing wrong.");
+    }
+    format!(
+        "Checked {what}: {}, {}, {}.",
+        plural(count("error"), "error", "errors"),
+        plural(count("warning"), "warning", "warnings"),
+        plural(count("info"), "note", "notes")
+    )
+}
+
 async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let query = text_field(input, "query");
@@ -787,6 +888,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn summarizes_diagnostics_by_severity() {
+        let found = |severity: &str| json!({ "code": "slide.x", "severity": severity, "target": {}, "message": "x" });
+        assert_eq!(
+            diagnostics_summary("`a.pptx`", &[]),
+            "Checked `a.pptx`: the kit found nothing wrong."
+        );
+        assert_eq!(
+            diagnostics_summary(
+                "`a.pptx`",
+                &[found("error"), found("warning"), found("warning")]
+            ),
+            "Checked `a.pptx`: 1 error, 2 warnings, no notes."
+        );
+    }
+
+    #[test]
     fn every_kit_gets_inspect_commands_and_run() {
         let mut prefixes: Vec<&str> = KITS.iter().map(|kit| kit.agent.prefix).collect();
         prefixes.sort_unstable();
@@ -814,6 +931,11 @@ mod tests {
             assert!(specs().iter().any(|spec| spec.name == name), "{name}");
         }
         assert!(parse("document_read").is_none() && parse("photo_paint").is_none());
+        assert_eq!(
+            parse("slide_check").map(|(kit, action)| (kit.id, action)),
+            Some(("kit.slide", Action::Check))
+        );
+        assert!(!Action::Check.writes());
         // Draft tools: asking for review and reopening; merging and discarding are never tools.
         let slide = |name: &str| parse(name).map(|(kit, action)| (kit.id, action));
         assert_eq!(

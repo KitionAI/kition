@@ -47,6 +47,8 @@ export type BridgeEditor = {
   }
   /** Saves the document (`document/save`); answers whether it is saved. */
   save?: () => Promise<boolean>
+  /** The kit's diagnostics on the document or the agent's draft (`document/check`, Kit Standard 2.0 A21), when the kit lists `check`. */
+  check?: (options?: DraftOption) => Promise<unknown[]>
 }
 
 /** A `model/batch` as the agent sends it. */
@@ -120,6 +122,10 @@ async function handle(method: string, params: Record<string, unknown>) {
           if (writes && !onDraft.draft) noteAgentEdit(editor.path)
           const saved = writes && !onDraft.draft && args.save === true && editor.save ? await editor.save() : false
           return { ...answer, saved }
+        }
+        case 'check': {
+          if (!editor.check) throw new BridgeRefusal(`${editor.path} is open in an editor whose kit cannot check documents yet`, { code: 'unsupported' })
+          return { diagnostics: await editor.check(onDraft) }
         }
         case 'draft_ready':
         case 'draft_reopen': {

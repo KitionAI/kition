@@ -245,11 +245,24 @@ export type DraftComparison = { summary: DraftSummary; before: string | null; af
 /** Who a merge is recorded as: the agent, on behalf of the person who started it. */
 export type DraftOrigin = { kind: 'agent'; principal: string; label?: string }
 
+/** What a diagnostic is about (Kit Standard 2.0 A21); none set means the whole document. Pages and slides count from 1. */
+export type KitDiagnosticTarget = { objectId?: string; path?: string; page?: number; slide?: number; sheet?: string; cell?: string }
+/** One thing a kit found wrong with a document (Kit Standard 2.0 A21). `code` is stable (`sheet.formula-error`); `fix` is a command hint, never run on its own. */
+export type KitDiagnostic = {
+  code: string
+  severity: 'error' | 'warning' | 'info'
+  target: KitDiagnosticTarget
+  message: string
+  fix?: { command: string; params?: Record<string, unknown> }
+}
+
 /** Requests the host sends, with their params and results. */
 export type HostToKit = {
   'ui/initialize': [InitializeParams, InitializeResult]
   'document/state': [Record<string, never>, DocumentState]
   'document/save': [Record<string, never>, { saved: boolean; version: string | null }]
+  /** The engine's diagnostics on the document (capability `check`, minor version 1.9), errors first; `draft: true` checks the agent's draft. */
+  'document/check': [{ draft?: boolean }, { diagnostics: KitDiagnostic[] }]
   /** `draft: true` (capability `draft`) inspects, runs on, and previews the agent's draft instead of the live document; `ai/run` opens one if there is none. */
   'ai/inspect': [{ draft?: boolean }, Record<string, unknown>]
   'ai/commands': [{ query: string }, Array<Record<string, unknown>>]

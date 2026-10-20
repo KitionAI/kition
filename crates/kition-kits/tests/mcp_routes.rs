@@ -142,8 +142,13 @@ async fn calls_a_real_kit_and_returns_its_preview() {
             "vector_draft_ready",
             "vector_draft_reopen",
             "vector_query",
-            "vector_batch"
+            "vector_batch",
+            "vector_check"
         ]
+    );
+    assert_eq!(
+        listed["result"]["tools"][7]["annotations"]["readOnlyHint"], true,
+        "vector_check changes nothing"
     );
     assert_eq!(
         listed["result"]["tools"][6]["annotations"]["readOnlyHint"], false,
@@ -194,6 +199,20 @@ async fn calls_a_real_kit_and_returns_its_preview() {
         );
         assert!(
             result["structuredContent"]["describe"]["types"].is_object(),
+            "{result}"
+        );
+    }
+    // Diagnostics of the real kit, or a clear `unsupported` when its build predates `document.check`.
+    let (_, checked) = post(&app, json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": { "name": "vector_check", "arguments": { "path": "art/Drawing.kitionvector" } } })).await;
+    let result = &checked["result"];
+    if result["isError"] == true {
+        assert_eq!(
+            result["structuredContent"]["error"]["code"], "unsupported",
+            "{result}"
+        );
+    } else {
+        assert!(
+            result["structuredContent"]["diagnostics"].is_array(),
             "{result}"
         );
     }

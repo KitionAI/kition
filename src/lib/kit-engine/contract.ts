@@ -45,6 +45,8 @@ export interface KitEngineDocument {
   commands(): string
   /** The ids of the commands that cannot run now, as JSON. */
   disabledCommands(): string
+  /** The document's diagnostics as JSON `{ diagnostics: KitEngineDiagnostic[] }` (Kit Standard 2.0 A21); optional. */
+  check?(): string
   /** The document as file bytes; it stays unsaved until `markSaved`. */
   save(name?: string): Uint8Array
   markSaved(): void
@@ -104,3 +106,12 @@ export type KitEngineInit = {
 
 /** The module's default export: prepares the engine (for example, loads its dependencies' WebAssembly). */
 export type KitEngineModuleInit = (init: KitEngineInit) => Promise<void>
+
+/** One thing an engine found wrong with its document (Kit Standard 2.0 A21): a stable `<kit>.<name>` code, what it is about (none set: the whole document; pages and slides count from 1), and a command hint to fix it. */
+export type KitEngineDiagnostic = {
+  code: string
+  severity: 'error' | 'warning' | 'info'
+  target: { objectId?: string; path?: string; page?: number; slide?: number; sheet?: string; cell?: string }
+  message: string
+  fix?: { command: string; params?: Record<string, unknown> }
+}

@@ -68,6 +68,7 @@ pub fn stage(name: &str) -> &'static str {
                     | kits::Action::DraftReady
                     | kits::Action::DraftReopen
                     | kits::Action::Query
+                    | kits::Action::Check
             ))
         ) =>
         {

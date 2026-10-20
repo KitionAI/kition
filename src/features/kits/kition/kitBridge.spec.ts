@@ -89,6 +89,7 @@ describe('kitBridge on the shared bridge stream', () => {
         ready: async () => ({ state: 'ready', revision: 2 }),
         reopen: async () => ({ state: 'open', revision: 2 }),
       },
+      check: async (options) => [{ code: options?.draft ? 'slide.on-draft' : 'slide.on-document', severity: 'warning', target: { slide: 1 }, message: 'Found.' }],
     })
     const withdrawPlain = registerBridgeEditor({
       path: 'art/b.kitionvector',
@@ -110,6 +111,9 @@ describe('kitBridge on the shared bridge stream', () => {
     call(15, 'draft_merge')
     call(16, 'run', { steps: [{ command: 'shape.ellipse' }], draft: true }, 'art/b.kitionvector', 'kit.vector')
     call(17, 'run', { steps: [{ command: 'slide.add' }] })
+    call(18, 'check')
+    call(19, 'check', { draft: true })
+    call(20, 'check', {}, 'art/b.kitionvector', 'kit.vector')
     await settle()
     await settle()
     const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message
@@ -119,6 +123,10 @@ describe('kitBridge on the shared bridge stream', () => {
     expect(byId(14)?.result).toEqual({ png: 'draft 64' })
     expect(byId(15)?.error).toMatchObject({ message: expect.stringContaining('unknown kit tool') })
     expect(byId(16)?.error).toMatchObject({ message: expect.stringContaining('keeps no drafts') })
+    // Diagnostics of the document or the draft; an editor whose kit cannot check refuses, never answers none.
+    expect(byId(18)?.result).toEqual({ diagnostics: [expect.objectContaining({ code: 'slide.on-document' })] })
+    expect(byId(19)?.result).toEqual({ diagnostics: [expect.objectContaining({ code: 'slide.on-draft' })] })
+    expect(byId(20)?.error).toMatchObject({ message: expect.stringContaining('cannot check documents') })
     // A draft is never saved; a live run saves by default.
     expect(calls).toEqual([
       ['run', 1, false, { draft: true }],

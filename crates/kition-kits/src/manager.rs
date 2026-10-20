@@ -1043,6 +1043,32 @@ impl KitManager {
         })
     }
 
+    /// The kit's diagnostics on the document (Kit Standard 2.0 A21, `document.check`):
+    /// `{ "diagnostics": [...] }`, or `None` when the running kit predates the method.
+    pub async fn check(
+        &self,
+        caller: Caller,
+        kit_id: &str,
+        document_id: &str,
+    ) -> Result<Option<Value>, KitError> {
+        let kit = self.definition(kit_id)?;
+        let (target, inner) = split_document_id(document_id);
+        let running = self.instance(kit, target).await?;
+        match running
+            .client(caller)
+            .request(
+                "document.check",
+                serde_json::json!({ "documentId": inner }),
+                None,
+            )
+            .await
+        {
+            Ok(answer) => Ok(Some(answer)),
+            Err(ClientError::Rpc(error)) if error.code == -32601 => Ok(None),
+            Err(error) => Err(KitError::from_client(kit, error)),
+        }
+    }
+
     /// An object-model request of the Kit Protocol (`model.describe`, `model.batch`) on an open
     /// document; `params` gets the document's id. A refused batch is [`KitError::Model`]; a kit
     /// that serves no object model answers [`KitError::Kit`] with no reason (method not found).

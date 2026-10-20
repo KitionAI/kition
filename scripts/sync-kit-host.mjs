@@ -6,7 +6,8 @@
 // contract (packages/kit-engine/src/*.ts), in src/lib/kit-engine/, of the TypeScript convergence
 // suite (packages/convergence/src/*.ts but its Node-only node.ts), in src/lib/convergence/, which
 // the Board kit's convergence test runs, and of the KDM's Rust crate
-// (crates/kition-kdm), in crates/kition-kdm/, and of the sync client for kition-sync/1 and its
+// (crates/kition-kdm), in crates/kition-kdm/, of the licence verifier (crates/kition-license), in
+// crates/kition-license/, and of the sync client for kition-sync/1 and its
 // replica relay (packages/sync/src/*.ts), in src/lib/sync/, of the object model's page side
 // (@kition/sdk, packages/sdk/src and its generated kits), in src/lib/sdk/, and of the extension
 // host (@kition/extensions, packages/extensions/src with its built worker runtime), in
@@ -159,6 +160,39 @@ workspace = true
 ${dependencies}`
   },
 })
+// The licence verifier (crates/kition-license), which kition-kits-mcp checks SDK licence keys
+// with: its sources, tests, and test vectors, unchanged, with a manifest written here.
+const rustLicense = 'crates/kition-license'
+for (const dir of ['src', 'tests']) {
+  for (const name of fs.readdirSync(path.join(sdk, rustLicense, dir)).filter((name) => name.endsWith('.rs')).sort()) {
+    const source = `${rustLicense}/${dir}/${name}`
+    files.push({ source, out: source, rewrite: (text) => header(source) + text })
+  }
+}
+files.push({ source: `${rustLicense}/tests/vectors.json`, out: `${rustLicense}/tests/vectors.json`, binary: true })
+files.push({ source: 'clippy.toml', out: `${rustLicense}/clippy.toml`, binary: true })
+files.push({ source: 'rustfmt.toml', out: `${rustLicense}/rustfmt.toml`, binary: true })
+files.push({
+  source: `${rustLicense}/Cargo.toml`,
+  out: `${rustLicense}/Cargo.toml`,
+  rewrite: (text) => {
+    const dependencies = text.slice(text.indexOf('[dependencies]'))
+    return `# Copied from kition-sdk ${rustLicense} by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-license"
+description = "Offline Kition SDK licence keys: an Ed25519-signed JSON payload, verified against pinned public keys with no network."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+${dependencies}`
+  },
+})
 // A KDM copy whose source file is gone is stale too. Only files this script wrote (they start
 // with its header, or sit in the copied fixtures folder) count, so a hand-written file is never
 // removed.
@@ -174,6 +208,8 @@ const copyDirs = [
   { dir: `${rustKdm}/src`, ext: '.rs' },
   { dir: `${rustKdm}/tests`, ext: '.rs' },
   { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
+  { dir: `${rustLicense}/src`, ext: '.rs' },
+  { dir: `${rustLicense}/tests`, ext: '.rs' },
 ]
 const copies = new Set(files.map((file) => file.out))
 const copiedHere = (file) => fs.readFileSync(file, 'utf8').startsWith('// Copied from kition-sdk ')

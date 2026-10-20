@@ -288,6 +288,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           draft: mounted.capabilities.includes('draft') ? { ready: () => mounted!.draft.ready(), reopen: () => mounted!.draft.reopen() } : undefined,
           model: bridgeModel(mounted),
           save: openedReadOnly ? undefined : async () => (await mounted!.save()).saved,
+          // Diagnostics (Kit Standard 2.0 A21): only from a kit that lists `check`, so an older one is refused, not "fine".
+          check: mounted.capabilities.includes('check') ? (options) => mounted!.check(options) : undefined,
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
         const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })
