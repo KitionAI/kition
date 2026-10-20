@@ -106,7 +106,7 @@ export type InitializeParams = {
   /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`. */
   capabilities: string[]
   /**
-   * The capability sets this host serves (Kit Standard 2.0 section 10, minor version 1.5), such as
+   * The capability sets this host serves (Kit Standard `spec/index.md` section 3.1, minor version 1.5), such as
    * `KitModel 1.0` or `KitCollab 1.0`; absent from older hosts.
    */
   capabilitySets?: string[]

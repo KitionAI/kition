@@ -86,7 +86,7 @@ export interface KitAdapter<Doc> {
   addBlobs?(doc: Doc, blobs: Blobs): void
   /** The document as file bytes, when the kit can save; `null` (the default) skips the export checks. */
   exportFile?(doc: Doc): Uint8Array | null
-  /** Whether `ty.field` may name an object that no longer exists (standard 2.0 section 3). */
+  /** Whether `ty.field` may name an object that no longer exists (Kit Standard `spec/sets/model.md`). */
   allowsDangling?(ty: string, field: string): boolean
 }
 

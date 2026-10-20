@@ -96,7 +96,7 @@
         "contract": {
           "type": "integer",
           "minimum": 1,
-          "description": "The engine contract: 1 (KitDocument), or 2 (a KDM session, standard 2.0 section 8). contractVersion() answers it, or 1 for a contract 2 engine built before contract 2 hosts (K3).",
+          "description": "The engine contract: 1 (KitDocument), or 2 (a KDM session, Kit Standard spec/kits/engine.md). contractVersion() answers it, or 1 for a contract 2 engine built before contract 2 hosts (K3).",
           "maximum": 2
         },
         "crate": {
@@ -242,7 +242,7 @@
         "schema",
         "schemaVersion"
       ],
-      "description": "The kit's KDM schema (standard 2.0 section 3, K12).",
+      "description": "The kit's KDM schema (Kit Standard spec/sets/model.md, K12).",
       "properties": {
         "schema": {
           "type": "string",
@@ -262,7 +262,7 @@
       "required": [
         "merge"
       ],
-      "description": "How the kit's documents merge (standard 2.0 section 8.1, K13).",
+      "description": "How the kit's documents merge (Kit Standard spec/kits/manifest.md, K13).",
       "properties": {
         "merge": {
           "type": "array",
