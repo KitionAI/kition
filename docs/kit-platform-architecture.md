@@ -12,7 +12,8 @@ across all of them. This document defines how professional editors (images,
 PDF, video, vector, audio, and others) become **kits**: installable, native
 components that open inside Kition and that the Kition agent can drive.
 
-The wire contract is specified in [kit-protocol.md](kit-protocol.md) and the
+The wire contract is specified in the Kit Standard (`spec/reference/kit-protocol.md`
+in `KitionAI/kit-standard`) and the
 machine-readable schemas live in [`contracts/kit/`](../contracts/kit/).
 
 ## 1. Goals

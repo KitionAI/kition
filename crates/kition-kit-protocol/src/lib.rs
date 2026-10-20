@@ -1,8 +1,8 @@
 //! Kit Protocol, version 1.
 //!
 //! The wire contract between the Kition host and kits, the native executables
-//! that open and edit one family of documents. `docs/kit-protocol.md` describes
-//! the behavior and `contracts/kit/` holds the schemas these types mirror; when
+//! that open and edit one family of documents. The Kit Standard's
+//! `spec/reference/kit-protocol.md` describes the behavior and `contracts/kit/` holds the schemas these types mirror; when
 //! they disagree, the schemas win.
 //!
 //! This crate has no async runtime dependency so that kits built on plain

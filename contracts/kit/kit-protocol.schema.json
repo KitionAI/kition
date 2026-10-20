@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/kit/kit-protocol.schema.json",
   "title": "Kition Kit Protocol v1",
-  "description": "Parameter and result shapes for Kit Protocol methods. Messages are JSON-RPC 2.0; see docs/kit-protocol.md.",
+  "description": "Parameter and result shapes for Kit Protocol methods. Messages are JSON-RPC 2.0; see the Kit Standard's spec/reference/kit-protocol.md.",
   "$defs": {
     "uri": {
       "type": "string",
