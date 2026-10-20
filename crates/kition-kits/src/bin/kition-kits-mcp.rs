@@ -9,7 +9,7 @@
 //! ```
 //!
 //! The SDK licence key (`--license`, or `KITION_LICENSE`) is verified offline at start; without a
-//! valid one the server still serves and warns on stderr (kition-sdk docs/licence.md). `--app-id`
+//! valid one the server still serves and warns on stderr (Kit Standard spec/licence.md). `--app-id`
 //! (or `KITION_APP_ID`) names the application when the licence binds application ids.
 
 use std::path::PathBuf;

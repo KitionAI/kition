@@ -1,6 +1,6 @@
 //! The object-model tools (architecture section 13): `<prefix>_query` reads objects by id or by a
 //! field path from the root, and `<prefix>_batch` runs a `model/batch` (KitObjectModel 1.0,
-//! kition-sdk `docs/object-model.md`). Their argument schemas are generated from what the kit's
+//! Kit Standard `spec/reference/object-model.md`). Their argument schemas are generated from what the kit's
 //! `model.describe` answers, once Kition has seen it; before that they take any type and field.
 //!
 //! Both go where the other kit tools go: to the open kit editor through the Kit AI bridge (its

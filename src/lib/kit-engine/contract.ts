@@ -1,12 +1,12 @@
 // Copied from kition-sdk packages/kit-engine/src/contract.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Engine contract 2 as TypeScript (docs/standard-2.md section 8, architecture 7.2): the document
+ * Engine contract 2 as TypeScript (Kit Standard spec/kits/engine.md, architecture 7.2): the document
  * class a kit's engine worker drives. A WebAssembly engine made with `export_kit_document!` and
  * `export_kit_session!` has exactly these members, so one worker (`@kition/kit-ui`), the embed
  * SDK, and the object model serve both runtimes.
  */
 
-/** One command as `commands()` lists it (docs/contract.md). */
+/** One command as `commands()` lists it (Kit Standard spec/reference/contract.md). */
 export type KitEngineCommand = {
   id: string
   title: string

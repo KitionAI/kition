@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sdk/src/room.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The object model over the sync protocol (`kition-sync/1`, docs/sync-protocol.md): a document in
+ * The object model over the sync protocol (`kition-sync/1`, Kit Standard spec/reference/sync-protocol.md): a document in
  * a server room, with no kit and no page. `openRoom` joins the room with a `SyncClient`, keeps a
  * KDM replica of it here (from the room's snapshot and changes), and runs each batch on that
  * replica: a run of model operations becomes one change, which the room must take (`changes/push`)

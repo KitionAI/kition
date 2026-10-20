@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
   "title": "Kition kit manifest (kit.json), Kition Kit Standard 1.1 and 2.0",
-  "description": "See docs/standard.md section 3 and docs/standard-2.md section 8.1. tools/check-manifest.mjs checks these rules, K1 to K8, and K10 to K14.",
+  "description": "See the Kit Standard, spec/kits/manifest.md. tools/check-manifest.mjs checks these rules, K1 to K8, and K10 to K14.",
   "type": "object",
   "additionalProperties": false,
   "required": [

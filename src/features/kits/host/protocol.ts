@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kit-protocol/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The Kit UI protocol, `kition-kit-ui/1` (docs/ui-protocol.md): its messages, and JSON-RPC 2.0
+ * The Kit UI protocol, `kition-kit-ui/1` (Kit Standard spec/reference/ui-protocol.md): its messages, and JSON-RPC 2.0
  * over a MessagePort for both sides. A host and an embedded kit UI each make one `KitPeer` on
  * their end of the channel. Framework-free; no dependencies.
  */

@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sync/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * `@kition/sync`: the client for the open sync protocol `kition-sync/1` (docs/sync-protocol.md).
+ * `@kition/sync`: the client for the open sync protocol `kition-sync/1` (Kit Standard spec/reference/sync-protocol.md).
  * `SyncClient` connects over an injectable `SyncTransport`, reconnects with backoff, re-joins
  * every joined room with the caller's latest local version, and queues pushes made while
  * offline, flushing them in order once reconnected. `startRelay` relays one document's KDM replica

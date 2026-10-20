@@ -64,8 +64,8 @@ pub struct CheckResult {
 #[derive(Clone, Debug, Default)]
 pub struct Report {
     pub checks: Vec<CheckResult>,
-    /// The conformance levels a Kition Kit Standard manifest supports (`L1` to `L5`; kition-sdk
-    /// `docs/standard.md` section 9 and `docs/standard-2.md` section 11), with what the others
+    /// The conformance levels a Kition Kit Standard manifest supports (`L1` to `L5`; Kit Standard
+    /// `spec/kits/levels.md`), with what the others
     /// need. Empty without such a manifest.
     pub levels: Vec<&'static str>,
     pub level_notes: Vec<String>,
@@ -441,7 +441,7 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
         .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
     let value: Value =
         serde_json::from_str(&text).map_err(|error| format!("kit.json is not JSON: {error}"))?;
-    // A Kition Kit Standard manifest (kition-sdk `docs/standard.md` section 3): its `headless`
+    // A Kition Kit Standard manifest (Kit Standard `spec/kits/manifest.md`): its `headless`
     // section names the executable under test and the protocol it speaks.
     if value.get("standard").is_some() {
         schemas.standard(&value)?;

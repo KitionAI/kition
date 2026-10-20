@@ -92,7 +92,7 @@ covers the three GFM table widget row and column button regressions.
 ## Kits (Mandatory)
 
 - Read `docs/kit-sdk.md` before any kit work. It is how Kition implements the
-  Kition Kit Standard (`docs/standard.md` in the private `KitionAI/kition-sdk`
+  Kition Kit Standard (`spec/` in the private `KitionAI/kit-standard`
   repository), which is normative: kits, the host, and the agent conform to
   it, and contract changes go there first. The checklist in `docs/kit-sdk.md`
   is the definition of done for a new kit, and every kit ships a `kit.json`

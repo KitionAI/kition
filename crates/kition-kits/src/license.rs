@@ -1,4 +1,4 @@
-//! The SDK licence of `kition-kits-mcp` (kition-sdk docs/licence.md): the integrator's key
+//! The SDK licence of `kition-kits-mcp` (Kit Standard spec/licence.md): the integrator's key
 //! (`--license` or `KITION_LICENSE`) is verified offline when the server starts. The server always
 //! serves; without a key that covers the `mcp` form it tells the operator on stderr that it runs
 //! unlicensed, for development and evaluation only.

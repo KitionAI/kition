@@ -4,9 +4,11 @@ Status: in use for all ten kits. Revised 2026-10-15: every kit draws its own
 editor, and Kition's own kit editors are gone. Every new kit must follow this guide.
 
 This guide is how Kition implements the **Kition Kit Standard**, which is
-normative: [`docs/standard.md`](https://github.com/KitionAI/kition-sdk/blob/main/docs/standard.md)
-in the private `KitionAI/kition-sdk` repository (Apache-2.0, aligned with
-DeepSeek Harness contracts), with its plan in `docs/roadmap.md` there. Where
+normative: [`spec/`](https://github.com/KitionAI/kit-standard/tree/main/spec)
+in the private `KitionAI/kit-standard` repository (aligned with DeepSeek
+Harness contracts); the SDK that implements it is the private
+`KitionAI/kition-sdk` repository (Apache-2.0), with its plan in
+`docs/roadmap.md` there. Where
 this guide and the standard disagree, the standard wins and this guide is
 fixed. Every kit ships a `kit.json` manifest checked by the standard's
 `tools/check-manifest.mjs`.
@@ -242,7 +244,7 @@ edits a stale copy and its save overwrites the person's work. See
 A kit draws its own editor: the kit repository's `web/` app (React, on
 kition-sdk's `@kition/kit-ui`) holds the ribbon, panels, canvas, and dialogs
 next to the engine, and Kition shows it in an iframe and talks to it over the
-Kit UI protocol (`kition-kit-ui/1`, kition-sdk `docs/ui-protocol.md`). Kition
+Kit UI protocol (`kition-kit-ui/1`, Kit Standard `spec/reference/ui-protocol.md`). Kition
 keeps the shell: files, the workspace, the agent, the theme, the language, and
 its own shortcuts. All ten kits have one: Slides, Word, Sheet, PDF, and CAD
 (ribbon editors on kit-ui's `KitShell`), and Photo, Vector, Design, Effect,
@@ -500,7 +502,7 @@ Kit repository:
    over its `kitEngineClass` document in a vitest spec, asserting
    `report.level6()` and writing `report.toJsonText()` to
    `KITION_CONVERGENCE_REPORT` (the Board kit's `boardConvergence.spec.ts`).
-2c. Implement `KitDocument::check` (standard-2 A21–A23): diagnostics with
+2c. Implement `KitDocument::check` (Kit Standard `spec/sets/agent.md`, A21–A23): diagnostics with
    stable `<kit>.<name>` codes, a `target`, and a `fix` command hint where
    one exists, errors first, each code covered by a synthetic test. Agents
    reach it as `<prefix>_check`, embeds as `editor.check()` (Slides'
@@ -865,7 +867,7 @@ kit UI library) is the kit author's SDK:
 - `tools/check-sdk.mjs`: the built-SDK checker (Kition's
   `scripts/check-kit-sdk.mjs` is the same checker with the `kits/sdks.json`
   registry);
-- `docs/contract.md`: the contract; CI builds the example for wasm32.
+- the contract (Kit Standard `spec/reference/contract.md`); CI builds the example for wasm32.
 
 Kits pin it by commit (`kition-sdk = { git = "https://github.com/KitionAI/kition-sdk", rev = … }`)
 with `net.git-fetch-with-cli = true`. Kit-photo and kit-film use it. The host
