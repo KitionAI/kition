@@ -16,6 +16,7 @@ import {
   startKitionPro,
   syncNetwork,
   useSyncServer,
+  versionCounters,
 } from './helpers/kitionPro'
 
 // Co-editing a Board (`.kiboard`) between two windows through the Kition Pro sync server: a shape
@@ -51,6 +52,12 @@ async function waitForBoard(page: Page) {
 
 async function snapshot(page: Page) {
   return page.evaluate(() => window.__KITION_WHITEBOARD_TEST__!.read()) as Promise<BoardSnapshot>
+}
+
+/** The board replica's version as each author's change count: a version's bytes list its authors
+ * in no fixed order, so two equal versions can encode differently. */
+async function counters(page: Page) {
+  return JSON.stringify(versionCounters((await snapshot(page)).kdmVersion))
 }
 
 async function elementIds(page: Page) {
@@ -129,7 +136,7 @@ test('co-edits a board between two windows: live, and merging shapes drawn offli
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
     for (const page of [pageA, pageB]) await expect.poll(() => elementIds(page), { timeout: 60_000 }).toEqual(expect.arrayContaining([drawn, fromAlice, fromBob]))
-    await expect.poll(async () => (await snapshot(pageB)).kdmVersion, { timeout: 30_000 }).toBe((await snapshot(pageA)).kdmVersion)
+    await expect.poll(async () => counters(pageB), { timeout: 30_000 }).toBe(await counters(pageA))
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
@@ -165,7 +172,7 @@ test('a viewer of a shared board sees it change but cannot change it', async ({ 
     expect(await elementIds(pageB)).toContain(first)
 
     // Selecting Alice's shape and deleting it, or dragging it, changes nothing.
-    const version = (await snapshot(pageB)).kdmVersion
+    const version = await counters(pageB)
     const shape = pageB.locator(`[data-element-id="${first}"]`)
     await shape.click()
     await pageB.keyboard.press('Delete')
@@ -177,7 +184,7 @@ test('a viewer of a shared board sees it change but cannot change it', async ({ 
     expect(await shape.boundingBox()).toEqual(box)
     await pageB.mouse.up()
     expect(await elementIds(pageB)).toContain(first)
-    expect((await snapshot(pageB)).kdmVersion).toBe(version)
+    expect(await counters(pageB)).toBe(version)
 
     // Alice's next shape still reaches the viewer.
     const second = await drawRectangle(pageA, { x: 420, y: 320 })

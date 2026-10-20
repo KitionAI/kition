@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
-import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitEngine, openInKitFrame, openTreeFile, replicaVersion as embeddedReplicaVersion } from './helpers/embeddedKit'
 import { filmAddEdit, filmClips, filmPlay } from './helpers/film'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -62,9 +62,9 @@ test('opens a video project in the Film kit’s own editor, edits it there, and 
   }
 })
 
-/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+/** The replica version of the kit editor showing `path`, as author counters (Kition's development test hook). */
 function replicaVersion(page: Page, path: string) {
-  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+  return embeddedReplicaVersion(page, path)
 }
 
 test('keeps an .kitionfilm’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {

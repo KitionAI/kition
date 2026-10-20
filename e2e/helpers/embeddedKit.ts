@@ -4,6 +4,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, type Page, type Route } from '@playwright/test'
 import { installDesktopHost, type DesktopHostOptions } from './desktopHost'
+import { versionCounters } from './kitionPro'
 import { fulfillJson, mockLocalWorkspaceApi } from './mockApi'
 import { dismissFirstRunActivation } from './onboarding'
 
@@ -90,4 +91,14 @@ export async function openInKitFrame(
 ) {
   const { host, saves } = await openKitWorkspace(page, baseURL, { ...others, [name]: bytes }, options)
   return { host, saves, kit: await openTreeFile(page, name) }
+}
+
+/**
+ * The replica version of the kit editor showing `path` (Kition's development test hook), as each
+ * author's change count; '' while there is none. A version's bytes list its authors in no fixed
+ * order, so two equal versions can encode differently: compare these, never the hex.
+ */
+export async function replicaVersion(page: Page, path: string) {
+  const hex = await page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+  return hex ? JSON.stringify(versionCounters(hex)) : ''
 }

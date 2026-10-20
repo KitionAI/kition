@@ -16,6 +16,7 @@ import {
   waitForWhiteboard,
   WHITEBOARD_E2E_PATH,
 } from './helpers/whiteboard'
+import { versionCounters } from './helpers/kitionPro'
 
 // The Board's `.kiboard` file as a KDM document: saved as a v2 envelope, merged with changes made
 // on disk, flushed when the editor closes, and never written when it is a version-1 file.
@@ -60,7 +61,8 @@ test('saves a drawn rectangle as a v2 KDM file that opens again after a reload',
   await openBoardFromList(page)
   const reloaded = await readWhiteboardSnapshot(page)
   expect(reloaded.docId).toBe(before.docId)
-  expect(reloaded.kdmVersion).toBe(savedSnapshot.kdmVersion)
+  // A version's bytes list its authors in no fixed order: compare each author's change count.
+  expect(versionCounters(reloaded.kdmVersion)).toEqual(versionCounters(savedSnapshot.kdmVersion))
   expect(elementRecords(reloaded.records).find((record) => record.id === drawn.id))
     .toMatchObject({ kind: 'rectangle', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height })
   await expect(page.locator(`[data-element-id="${drawn.id}"]`)).toBeVisible()
@@ -71,7 +73,7 @@ test('merges an element written to the file on disk with an unsaved local edit',
   // Loads the in-page KDM helpers now, so the external write below lands within the save delay.
   await readWhiteboardFile(page)
   const writesBefore = await countWhiteboardFileWrites(page)
-  const versionBefore = (await readWhiteboardSnapshot(page)).kdmVersion
+  const versionBefore = JSON.stringify(versionCounters((await readWhiteboardSnapshot(page)).kdmVersion))
   const external = createBoardElementRecord({
     element: { id: 'external-note', kind: 'rectangle', x: 720, y: 520, width: 140, height: 80, text: 'From disk' },
     index: 3,
@@ -79,7 +81,7 @@ test('merges an element written to the file on disk with an unsaved local edit',
   })
 
   await dragElementBy(page, 'node-a', { x: 90, y: 60 })
-  await expect.poll(async () => (await readWhiteboardSnapshot(page)).kdmVersion).not.toBe(versionBefore)
+  await expect.poll(async () => JSON.stringify(versionCounters((await readWhiteboardSnapshot(page)).kdmVersion))).not.toBe(versionBefore)
   await addRecordsToWhiteboardFileExternally(page, [external])
   // The local move had not been saved when the file changed on disk.
   expect(await countWhiteboardFileWrites(page)).toBe(writesBefore)

@@ -4,7 +4,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
-import { openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
 import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
@@ -114,11 +114,6 @@ test('opens a Word document in the Word kit’s own editor, edits it there, and 
     await host.dispose()
   }
 })
-
-/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
-function replicaVersion(page: Page, path: string) {
-  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
-}
 
 test('keeps a Word document’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Word kit editor is not built into public/kits/word-ui')

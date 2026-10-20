@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
-import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
-import { versionCounters } from './helpers/kitionPro'
+import { expect, test } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 type NodePhotoDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
@@ -48,13 +47,6 @@ test('opens an image in the Photo kit’s own editor, paints in it, and saves it
     await host.dispose()
   }
 })
-
-/** The replica's version as sorted author counters ('' while there is none): a version's bytes list
- * its authors in no fixed order, so two equal versions can encode differently. */
-async function replicaVersion(page: Page, path: string) {
-  const hex = await page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
-  return hex ? JSON.stringify(versionCounters(hex)) : ''
-}
 
 test('keeps a PSD’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Photo kit editor is not built into public/kits/photo-ui')

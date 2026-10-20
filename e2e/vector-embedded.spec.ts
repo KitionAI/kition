@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
-import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { expect, test } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
 import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -52,11 +52,6 @@ test('opens a drawing in the Vector kit’s own editor, draws in it, and saves i
     await host.dispose()
   }
 })
-
-/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
-function replicaVersion(page: Page, path: string) {
-  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
-}
 
 test('keeps a drawing’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
