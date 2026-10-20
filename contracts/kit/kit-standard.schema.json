@@ -380,11 +380,9 @@
         },
         "mode": {
           "enum": [
-            "embedded",
-            "host"
+            "embedded"
           ],
-          "default": "host",
-          "description": "Who draws the editor: the kit (embedded, Kit UI protocol) or the host."
+          "description": "The kit draws its editor (embedded, over the Kit UI protocol), K8. Host-drawn editors (\"host\") are retired."
         },
         "entry": {
           "type": "string",

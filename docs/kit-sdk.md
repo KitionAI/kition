@@ -445,7 +445,7 @@ that much, and every app update downloads it again.
 A kit package is also the kit's SDK deliverable: the same `.tgz` is what
 another application embeds. A web page embeds it with kition-sdk's
 `@kition/embed` (`KitionEmbed.mount`, capability set `KitEmbed 1.0`; see
-kition-sdk's `docs/embed.md`): the page serves the extracted package from an
+the Kit Standard's `spec/reference/embed.md`): the page serves the extracted package from an
 origin of its own, keeps documents in its own storage, and may co-edit them
 through a sync server. Kition consumes the package the way any other host
 would, through `@kition/kit-host`, so it never builds kits in its release.
