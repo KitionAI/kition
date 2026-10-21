@@ -61,7 +61,7 @@ import type { CoordinateManager, ImageManager, SpriteManager, CombinedSelection 
 import { CellRegionType, getCellRenderer } from './renderers';
 import { RenderLayer } from './RenderLayer';
 import type { IRegionData } from './utils';
-import { BLANK_REGION_DATA, flatRanges, getRegionData, inRange } from './utils';
+import { BLANK_REGION_DATA, flatRanges, getRegionData, inRange, isClickInPressedRegion } from './utils';
 
 const { columnAppendBtnWidth, columnHeadHeight } = GRID_DEFAULT;
 
@@ -448,7 +448,7 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
     const mouseState = getMouseState(event);
     onSelectionClick(event, mouseState);
     const { type, rowIndex: hoverRowIndex, columnIndex } = mouseState;
-    if (regionType !== type) return;
+    if (!isClickInPressedRegion(regionType, type)) return;
 
     const { realIndex: rowIndex } = getLinearRow(hoverRowIndex);
 

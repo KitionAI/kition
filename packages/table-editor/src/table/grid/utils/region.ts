@@ -61,6 +61,17 @@ const rowControlDefinitions: Partial<Record<RowControlType, RegionType>> = {
   [RowControlType.Expand]: RegionType.RowHeaderExpandHandler,
 };
 
+/** A cell's region, whether or not it is the active cell. */
+const isCellRegion = (type: RegionType) => type === RegionType.Cell || type === RegionType.ActiveCell;
+
+/**
+ * Whether a click was released in the region it was pressed in. A mousedown on a cell makes it the
+ * active cell, so the same cell reads as `Cell` at the press and `ActiveCell` at the click (or the
+ * press's region is still the one rendered before the cell became active): both are the cell.
+ */
+export const isClickInPressedRegion = (pressed: RegionType, clicked: RegionType) =>
+  pressed === clicked || (isCellRegion(pressed) && isCellRegion(clicked));
+
 export const BLANK_REGION_DATA = {
   type: RegionType.Blank,
   x: Infinity,
