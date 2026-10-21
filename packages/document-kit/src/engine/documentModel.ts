@@ -56,12 +56,18 @@ const COMMANDS: ReadonlyArray<{ id: string; title: string; params: string; schem
   },
   { id: 'comment.reply', title: 'Reply to a comment', params: '{ thread: string, body: string, author?: string, name?: string }', schema: { thread: stringParam('The thread', true), body: stringParam('The reply', true), ...AUTHOR } },
   { id: 'comment.resolve', title: 'Resolve a comment', params: '{ thread: string, resolved?: boolean } (false opens it again)', schema: { thread: stringParam('The thread', true), resolved: { type: 'boolean', description: 'false opens the thread again; true by default' } } },
+  {
+    id: 'comment.move',
+    title: 'Move a comment',
+    params: '{ thread: string, quote?: string, start?: number, end?: number } (the passage it is about now)',
+    schema: { thread: stringParam('The thread', true), quote: stringParam('Text of the passage (its first occurrence)'), start: offsetParam('Where the passage starts'), end: offsetParam('Where it ends') },
+  },
   { id: 'comment.delete', title: 'Delete a comment', params: '{ thread: string, comment: string }', schema: { thread: stringParam('The thread', true), comment: stringParam('The comment; deleting a thread\'s last comment deletes the thread', true) } },
   { id: 'comment.threads', title: 'List comments', params: '{} (each thread with its range in the text now)', schema: {}, mutates: false },
 ]
 
 /** The commands that write only comment threads (kit.json `collaboration.comments.commands`). */
-export const COMMENT_COMMANDS = ['comment.add', 'comment.reply', 'comment.resolve', 'comment.delete'] as const
+export const COMMENT_COMMANDS = ['comment.add', 'comment.reply', 'comment.resolve', 'comment.move', 'comment.delete'] as const
 
 const KNOWN = new Set(COMMANDS.map((command) => command.id))
 
@@ -180,6 +186,15 @@ export const documentModel: KitModel<DocumentView> = {
         const resolved = params.resolved !== false
         replica.transact(origin, (tx) => setResolved(tx, thread, resolved))
         return { resolved }
+      }
+      case 'comment.move': {
+        // A thread is about a passage; the person moves it to another one, comments and all.
+        const thread = string(params, 'thread') as ObjectId
+        if (!commentThreads(replica).some((listed) => listed.id === thread)) throw new Error(`no comment thread ${thread}`)
+        const anchor = anchorFor(view, text, params)
+        if (!anchor.range) throw new Error('moving a comment needs a passage: a quote, or start and end')
+        replica.transact(origin, (tx) => tx.set(thread, 'anchor', anchor))
+        return { range: anchor.range }
       }
       case 'comment.delete': {
         const thread = string(params, 'thread') as ObjectId

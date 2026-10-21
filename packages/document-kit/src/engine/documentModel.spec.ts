@@ -112,6 +112,21 @@ describe('the Document kit engine', () => {
     expect(listed.thread).toMatch(/\S/)
   })
 
+  it('moves a comment thread to another passage, one undo step, and refuses what is not a thread', () => {
+    const doc = MarkdownDocument.open('Plan.md', bytes('# Plan\n\nGoals\nRisks\n'))
+    const { thread } = run(doc, 'comment.add', { quote: 'Goals', body: 'Which quarter?' })
+    expect(run(doc, 'comment.move', { thread, quote: 'Risks' })).toEqual({ range: { start: 14, end: 19 } })
+    expect(run(doc, 'comment.threads').threads[0]).toMatchObject({ id: thread, anchor: { quote: 'Risks' }, range: { start: 14, end: 19 } })
+    run(doc, 'comment.move', { thread, start: 2, end: 6 })
+    expect(run(doc, 'comment.threads').threads[0]).toMatchObject({ anchor: { quote: 'Plan' }, range: { start: 2, end: 6 } })
+    // The comments stay with the thread, and the text is unchanged.
+    expect(run(doc, 'comment.threads').threads[0].comments.map((comment: { body: string }) => comment.body)).toEqual(['Which quarter?'])
+    expect(text(doc.save())).toBe('# Plan\n\nGoals\nRisks\n')
+    expect(() => run(doc, 'comment.move', { thread, quote: 'Nowhere' })).toThrow(/has no "Nowhere"/)
+    expect(() => run(doc, 'comment.move', { thread: 'no-such-thread', quote: 'Goals' })).toThrow(/no comment thread/)
+    expect(() => run(doc, 'comment.move', { thread })).toThrow(/a passage/)
+  })
+
   it('repairs the comment threads concurrent comment commands leave broken: a reply to a thread deleted meanwhile goes too', () => {
     const first = MarkdownDocument.open('Plan.md', bytes('# Plan\n\nGoals\n'))
     const { thread, comment } = run(first, 'comment.add', { quote: 'Goals', body: 'Which quarter?' })

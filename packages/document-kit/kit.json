@@ -44,7 +44,7 @@
     "leases": [],
     "serverValidation": false,
     "comments": {
-      "commands": ["comment.add", "comment.reply", "comment.resolve", "comment.delete"]
+      "commands": ["comment.add", "comment.reply", "comment.resolve", "comment.move", "comment.delete"]
     }
   },
   "objectModel": {

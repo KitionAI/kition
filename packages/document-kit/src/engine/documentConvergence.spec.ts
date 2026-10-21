@@ -4,8 +4,9 @@
  * `MarkdownDocument` through the document's own commands (`text.*`, `document.replace`,
  * `comment.*`) and the contract 2 replica members. The suite types into the Markdown text, whose
  * lines are its paragraphs: a split is a newline typed, a merge a newline deleted. The probe object
- * is the first comment thread (`comment.threads` order): its `resolved` is the register the field
- * scenarios set, a new thread is the object `Create` makes, and deleting its comments deletes it.
+ * is the first comment thread (`comment.threads` order): its `resolved` and its anchor (the
+ * passage `comment.move` puts it on) are the two registers the field scenarios set, a new thread is
+ * the object `Create` makes, and deleting its comments deletes it.
  * The ordered collection a person reorders in a Markdown document is its lines (Alt+Up and
  * Alt+Down in the editor), so `Reorder` moves a line, through `document.replace`; a thread's
  * comments are only ever appended.
@@ -13,9 +14,8 @@
  * The view check holds what the engine shows to what a fresh replica reads: the same text, the
  * same threads, every thread with a comment, and every comment in a thread.
  *
- * Every scenario the document has steps for passes. `fields`, `undo`, and `undo-reconnect` set two
- * register fields of one object, and the catalogue sets one (`comment.resolve`), so they are
- * skipped and the kit is not L6 until a command sets another field of a thread.
+ * Every scenario the document has steps for passes, and the kit is L6: only `reparent` (no tree)
+ * and `blobs-late` (no blob field) are skipped, as the document has neither.
  *
  * `KITION_CONVERGENCE_REPORT=<file>` writes the report for `check-manifest.mjs --convergence`;
  * `KITION_CONVERGENCE_SEEDS` and `KITION_CONVERGENCE_STEPS` make the fuzzed runs heavier.
@@ -101,13 +101,20 @@ class DocumentKit extends KitEngineAdapter<DocumentView> {
   override script(doc: Doc, step: Script): boolean {
     switch (step.kind) {
       case 'SetField': {
-        // A thread has one register a command sets (`resolved`; its anchor is fixed when it is
-        // made), and the `Document` none: the suite's second field has no command.
-        if (step.slot !== 0) return false
+        // A thread's two registers a command sets: slot 0 its `resolved`, slot 1 its anchor (the
+        // passage `comment.move` puts it on, picked by the value). The `Document` has none.
+        if (step.slot !== 0 && step.slot !== 1) return false
         const thread = probe(doc)
         // A fuzzed document can lose every thread: the step then opens one, which is an edit too.
         if (!thread) return this.script(doc, { kind: 'Create' })
-        this.run(doc, 'comment.resolve', { thread: thread.id, resolved: step.value % 2 === 1 })
+        if (step.slot === 0) {
+          this.run(doc, 'comment.resolve', { thread: thread.id, resolved: step.value % 2 === 1 })
+          return true
+        }
+        const text = body(doc)
+        if (codePoints(text) < 2) return false
+        const start = step.value % (codePoints(text) - 1)
+        this.run(doc, 'comment.move', { thread: thread.id, start: utf16Index(text, start), end: utf16Index(text, start + 1) })
         return true
       }
       case 'Create': {
@@ -271,11 +278,9 @@ describe('the Document kit converges (standard 2.0 L6)', () => {
     const report = run(new DocumentKit(), optionsFromEnv(process.env))
     if (process.env.KITION_CONVERGENCE_REPORT) writeFileSync(process.env.KITION_CONVERGENCE_REPORT, report.toJsonText())
     expect(report.passed(), report.render()).toBe(true)
-    // The document has no tree and no blob field. A thread's `resolved` is the one register a
-    // command sets (an anchor is fixed when the thread is made), so the scenarios that set two
-    // fields of one object have no second field: L6 waits for a command that sets another one.
-    expect(report.checks.filter((check) => check.outcome.kind !== 'passed').map((check) => check.id)).toEqual(['fields', 'reparent', 'undo', 'undo-reconnect', 'blobs-late'])
-    expect(report.level6()).toBe(false)
+    // The document has no tree and no blob field; everything else passes, so the kit is L6.
+    expect(report.checks.filter((check) => check.outcome.kind !== 'passed').map((check) => check.id)).toEqual(['reparent', 'blobs-late'])
+    expect(report.level6(), report.render()).toBe(true)
   }, 300_000)
 
   it('moves different lines concurrently and keeps each line once', () => {
