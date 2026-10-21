@@ -8,7 +8,7 @@
 import { isolateHistory } from '@codemirror/commands'
 import { Transaction } from '@codemirror/state'
 import { VersionVector } from 'loro-crdt'
-import { agent, person, randomActor, system, type Origin, type Replica, type TextDelta, type Tx, type Version } from '@/lib/kdm'
+import { agent, ChangeAudit, person, randomActor, system, touchesOnlyComments, type Origin, type Replica, type TextDelta, type Tx, type Version } from '@/lib/kdm'
 import { readWorkspaceDocument, subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { registerWorkspaceEditSession } from '@/services/workspaceEditSessions'
 import { TextBinding } from '@kition/document-editor/model'
@@ -187,9 +187,16 @@ export class DocumentSession {
   private lastCheckpointAt = 0
   /** A checkpoint the next save records whenever it comes (an agent's edit). */
   private pendingCheckpoint: DocumentCheckpointInput | null = null
+  /**
+   * The comment steps a commenter made (their text is read-only, Kit Standard 2.0 rule M23): what
+   * their Undo can take back and their Redo bring back. Nothing before them is theirs to undo.
+   */
+  private commentSteps = { undo: 0, redo: 0 }
   readonly history: DocumentHistory = {
     undo: () => this.undo(),
     redo: () => this.redo(),
+    readOnlyUndo: () => this.commenterStep('undo'),
+    readOnlyRedo: () => this.commenterStep('redo'),
   }
 
   constructor(
@@ -287,10 +294,46 @@ export class DocumentSession {
    * beside the text, so the editors do not change, but the session saves the replica and
    * co-editing sends the change. Answers what `run` answered.
    */
-  transactComments<R>(origin: Origin, run: (tx: Tx) => R): R {
-    const result = this.requireOpened().replica.transact(origin, run)
+  transactComments<R>(origin: Origin, run: (tx: Tx) => R, options: { commenter?: boolean } = {}): R {
+    const { replica } = this.requireOpened()
+    this.endTyping()
+    const before = replica.version()
+    const result = replica.transact(origin, run)
+    // A commenter's comment is one step their Undo can take back; a new step drops what was undone.
+    if (options.commenter && !replica.version().equals(before)) this.commentSteps = { undo: this.commentSteps.undo + 1, redo: 0 }
     this.afterReplicaChange()
     return result
+  }
+
+  /**
+   * A commenter's Undo or Redo: only while their comments left a step to take, and only when the
+   * step changes nothing but comments (as a sync server checks a commenter's push); a step that
+   * would reach further is taken back and refused. Answers whether a comment step ran.
+   */
+  private commenterStep(what: 'undo' | 'redo'): boolean {
+    const opened = this.opened
+    if (!opened || this.commentSteps[what] === 0) return false
+    this.endTyping()
+    const { replica } = opened
+    const before = replica.version()
+    const audit = ChangeAudit.load(replica.exportChanges())
+    if (!(what === 'undo' ? replica.undo() : replica.redo()) || replica.version().equals(before)) return false
+    let comment = false
+    try {
+      comment = touchesOnlyComments(audit.touched(replica.exportChanges(before)))
+    } catch {
+      // A change that cannot be read is not taken as a comment.
+    }
+    if (!comment) {
+      if (what === 'undo') replica.redo()
+      else replica.undo()
+      this.commentSteps = { undo: 0, redo: 0 }
+      this.afterReplicaChange()
+      return false
+    }
+    this.commentSteps = what === 'undo' ? { undo: this.commentSteps.undo - 1, redo: this.commentSteps.redo + 1 } : { undo: this.commentSteps.undo + 1, redo: this.commentSteps.redo - 1 }
+    this.afterReplicaChange()
+    return true
   }
 
   subscribeState(listener: (state: DocumentSessionState) => void) {

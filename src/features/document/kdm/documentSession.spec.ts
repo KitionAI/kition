@@ -942,3 +942,62 @@ describe('DocumentSession: co-editing', () => {
     expect(session.text()).toBe('# Plan\n\nGoals\n')
   })
 })
+
+describe('DocumentSession: a commenter’s undo', () => {
+  /** A read-only editor view of the session (a commenter's or a viewer's), like the app's. */
+  function readOnlyEditor(session: DocumentSession) {
+    const binding = session.createBinding()
+    const view = new EditorView({
+      state: EditorState.create({ doc: session.text(), extensions: [binding.extension, session.historyExtension(), EditorState.readOnly.of(true)] }),
+      parent: document.body,
+    })
+    views.push(view)
+    return view
+  }
+  const said = (body: string) => ({ author: 'user:ada', body, created: '2026-01-01T00:00:00.000Z' })
+  const anchorOn = (session: DocumentSession) => ({ object: documentRootId(session.replica!), field: DOCUMENT_BODY, range: { start: 8, end: 13 }, quote: 'Goals' })
+
+  it('undoes and redoes the commenter’s own comments, and nothing before them', async () => {
+    const session = await open('# Plan\n\nGoals\n')
+    const a = editor(session)
+    a.type({ from: 0, insert: 'X' })
+    await settle(TYPING_GROUP_MS + 10)
+    // The person now only comments (a commenter's role): the text is read-only.
+    const view = readOnlyEditor(session)
+    const ada = person('user:ada')
+    session.transactComments(ada, (tx) => addThread(tx, anchorOn(session), said('Which quarter?')), { commenter: true })
+    expect(commentThreads(session.replica!)).toHaveLength(1)
+    expect(undoDocument(view)).toBe(true)
+    expect(commentThreads(session.replica!)).toEqual([])
+    expect(session.text()).toBe('X# Plan\n\nGoals\n')
+    // The typing before the comments stays: undo reaches only the commenter's comments.
+    expect(undoDocument(view)).toBe(false)
+    expect(session.text()).toBe('X# Plan\n\nGoals\n')
+    expect(redoDocument(view)).toBe(true)
+    expect(commentThreads(session.replica!)).toHaveLength(1)
+    expect(redoDocument(view)).toBe(false)
+  })
+
+  it('gives a viewer no undo at all', async () => {
+    const session = await open('# Plan\n\nGoals\n')
+    const a = editor(session)
+    a.type({ from: 0, insert: 'X' })
+    await settle(TYPING_GROUP_MS + 10)
+    const view = readOnlyEditor(session)
+    expect(undoDocument(view)).toBe(false)
+    expect(session.text()).toBe('X# Plan\n\nGoals\n')
+  })
+
+  it('takes back and refuses an undo that would reach past the commenter’s comments', async () => {
+    const session = await open('# Plan\n\nGoals\n')
+    const view = readOnlyEditor(session)
+    const ada = person('user:ada')
+    session.transactComments(ada, (tx) => addThread(tx, anchorOn(session), said('Which quarter?')), { commenter: true })
+    // A change of the text lands on top of the person's history (a restore run for them).
+    session.restoreText('# Plan\n\nGoals and scope\n')
+    expect(undoDocument(view)).toBe(false)
+    expect(session.text()).toBe('# Plan\n\nGoals and scope\n')
+    expect(commentThreads(session.replica!)).toHaveLength(1)
+  })
+})
+

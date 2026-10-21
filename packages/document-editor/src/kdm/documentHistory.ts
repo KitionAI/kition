@@ -11,6 +11,12 @@ import { EditorView, keymap, type Command } from '@codemirror/view'
 export type DocumentHistory = {
   undo: () => boolean
   redo: () => boolean
+  /**
+   * Undo and Redo of a read-only editor: a commenter's own comment steps (Kit Standard 2.0 rule
+   * M23), never the text. Without them a read-only editor has no undo.
+   */
+  readOnlyUndo?: () => boolean
+  readOnlyRedo?: () => boolean
 }
 
 /** The replica history of an editor, or `null` when it has none (CodeMirror's history then applies). */
@@ -22,7 +28,7 @@ const documentHistory = Facet.define<DocumentHistory, DocumentHistory | null>({
 export const undoDocument: Command = (view) => {
   const history = view.state.facet(documentHistory)
   if (!history) return undo(view)
-  if (view.state.readOnly) return false
+  if (view.state.readOnly) return history.readOnlyUndo?.() ?? false
   history.undo()
   return true
 }
@@ -31,7 +37,7 @@ export const undoDocument: Command = (view) => {
 export const redoDocument: Command = (view) => {
   const history = view.state.facet(documentHistory)
   if (!history) return redo(view)
-  if (view.state.readOnly) return false
+  if (view.state.readOnly) return history.readOnlyRedo?.() ?? false
   history.redo()
   return true
 }

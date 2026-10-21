@@ -107,7 +107,8 @@ export function DocumentComments({ session, path, readOnly }: { session: Documen
 
   const write = (label: string, run: Parameters<DocumentSession['transactComments']>[1]) => {
     try {
-      session.transactComments(person(access.me, label), run)
+      // A commenter's comments (the text read-only) are the steps their Undo and Redo reach.
+      session.transactComments(person(access.me, label), run, { commenter: readOnly })
     } catch (error) {
       notify.error(t('comments.failed'), { description: error instanceof Error ? error.message : String(error) })
     }

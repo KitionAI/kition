@@ -85,6 +85,19 @@ test('a commenter comments on a shared Markdown document, cannot change its text
     await expect(comments(pageA).getByTestId('document-comment')).toHaveAttribute('data-author', 'dev:bob')
     await expect(comments(pageA).getByTestId('document-comment-body')).toHaveText(['Should this say more?'])
 
+    // Bob's Undo takes back his own comment (never the text), for Alice too; Redo brings it back.
+    const textBefore = await text(pageB)
+    await editor(pageB).locator('.cm-line', { hasText: 'First line.' }).first().click()
+    // The editor's Mod key is the page's platform's (a read-only editor has no native undo to fall back on).
+    const mac = await pageB.evaluate(() => /Mac|iPhone|iPad/.test(navigator.platform))
+    await pageB.keyboard.press(mac ? 'Meta+z' : 'Control+z')
+    await expect(comments(pageB).getByTestId('document-comment-body')).toHaveCount(0, { timeout: 10_000 })
+    await expect(pageA.getByTestId('document-comments-count')).toHaveCount(0, { timeout: 10_000 })
+    expect(await text(pageB)).toBe(textBefore)
+    await pageB.keyboard.press(mac ? 'Meta+Shift+z' : 'Control+y')
+    await expect(comments(pageB).getByTestId('document-comment-body')).toHaveText(['Should this say more?'], { timeout: 10_000 })
+    await expect(pageA.getByTestId('document-comments-count')).toHaveText('1', { timeout: 10_000 })
+
     // Alice replies; Bob sees the reply.
     await comments(pageA).getByTestId('document-comment-reply-input').fill('Yes, the date.')
     await comments(pageA).getByTestId('document-comment-reply-send').click()
