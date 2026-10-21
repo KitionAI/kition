@@ -644,7 +644,7 @@ test.describe('app shell navigation', () => {
     expect(editorBox!.x - treeBox!.x - treeBox!.width).toBeLessThan(8)
   })
 
-  test('marks macOS desktop chrome surfaces as draggable without breaking controls', async ({ page }) => {
+  test('marks macOS desktop chrome surfaces as draggable without breaking controls', async ({ page, browserName }) => {
     await mockDesktopWorkspaceBridge(page)
     await page.goto('/documents')
     await expect(page.locator('.app-topbar')).toBeVisible()
@@ -669,12 +669,40 @@ test.describe('app shell navigation', () => {
       }
     })
 
-    expect(appRegionReport).toEqual({
-      topbar: 'drag',
-      sidebarHeader: 'drag',
-      documentTab: 'no-drag',
-      sidebarTabButton: 'no-drag',
-      sidebarHeaderAction: 'no-drag',
+    // -webkit-app-region is Chromium's; WebKit (the desktop app's WKWebView) has no such property.
+    if (browserName === 'chromium') {
+      expect(appRegionReport).toEqual({
+        topbar: 'drag',
+        sidebarHeader: 'drag',
+        documentTab: 'no-drag',
+        sidebarTabButton: 'no-drag',
+        sidebarHeaderAction: 'no-drag',
+      })
+    }
+
+    // What moves the desktop app's window: a mouse down the Tauri bridge counts as a drag.
+    const dragReport = await page.evaluate(async () => {
+      const { isWindowDragTarget } = await import(
+        /* @vite-ignore */ ['/src/services/desktopClient', 'tauriBridge.ts'].join('/')
+      )
+      const drags = (selector: string) => {
+        const element = document.querySelector(selector)
+        return element ? isWindowDragTarget(element) : null
+      }
+      return {
+        topbar: drags('.app-topbar'),
+        sidebarHeader: drags('.workspace-sidebar-header'),
+        documentTab: drags('.document-tab'),
+        sidebarTabButton: drags('.workspace-sidebar-header [role="tab"]'),
+        sidebarHeaderAction: drags('.workspace-sidebar-header-action'),
+      }
+    })
+    expect(dragReport).toEqual({
+      topbar: true,
+      sidebarHeader: true,
+      documentTab: false,
+      sidebarTabButton: false,
+      sidebarHeaderAction: false,
     })
   })
 
