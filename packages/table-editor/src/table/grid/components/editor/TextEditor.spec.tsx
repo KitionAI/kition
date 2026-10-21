@@ -85,4 +85,37 @@ describe('TextEditor focus treatment', () => {
     expect(container.querySelector('input[type="datetime-local"]')).toBeNull()
     expect(document.querySelector('[data-testid="table-date-calendar"]')).not.toBeNull()
   })
+
+  it('keeps the calendar closed after a date is picked while editing is still on', async () => {
+    const changes: unknown[] = []
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    await act(async () => {
+      root?.render(
+        createElement(TextEditor, {
+          cell: {
+            type: CellType.Text,
+            data: '2026-07-23T04:14:47Z',
+            displayData: '2026/07/23 12:14',
+            inputType: 'datetime-local',
+          } as ITextCell,
+          rect: { x: 0, y: 0, width: 180, height: 56, editorId: 'editor-date-commit' },
+          theme: lightGridTheme,
+          isEditing: true,
+          onChange: (value: unknown) => changes.push(value),
+        }),
+      )
+    })
+
+    const day = document.querySelector('[data-testid="table-date-calendar"] [data-date]:not([data-date$="-23"])')
+    expect(day).not.toBeNull()
+    // Editing stays on until the grid closes the editor after the commit: the picker must not reopen meanwhile.
+    await act(async () => {
+      day!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }))
+    })
+    expect(changes).toHaveLength(1)
+    expect(document.querySelector('[data-testid="table-date-calendar"]')).toBeNull()
+  })
 })

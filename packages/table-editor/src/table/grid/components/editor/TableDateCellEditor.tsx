@@ -93,14 +93,18 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
     const [viewDate, setViewDate] = useState(() => selectedDate ?? today)
     const selectedTimeRef = useRef<HTMLButtonElement | null>(null)
 
+    // The calendar opens when editing starts, not when the value changes: a picked date commits a new
+    // value while editing is still on, and reopening then made the calendar flash back.
+    const selectedDateRef = useRef(selectedDate)
+    selectedDateRef.current = selectedDate
     useEffect(() => {
       if (!active) {
         setPicker(null)
         return
       }
-      setViewDate(selectedDate ?? today)
+      setViewDate(selectedDateRef.current ?? today)
       setPicker('date')
-    }, [active, selectedDate, today])
+    }, [active, today])
 
     useEffect(() => {
       if (picker !== 'time') return
