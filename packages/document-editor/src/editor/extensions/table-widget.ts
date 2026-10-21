@@ -720,12 +720,23 @@ function renderTableDom(model: TableModel, view: EditorView, sourcePath: string)
       view.focus()
     }
 
+    // The row and column menus open on the right button's mousedown, as macOS context menus do.
+    // WebKit (the desktop app's WKWebView) sends no `contextmenu` after a right-button mousedown
+    // that focuses the cell's editable text, so waiting for it would never open the menu.
+    let menuOpenedAt = -Infinity
+    const openCellMenu = (e: MouseEvent): void => {
+      if (isHeader) showColContextMenu(e, colIdx)
+      else showRowContextMenu(e, rowIdx)
+    }
+
     cell.addEventListener('mousedown', (e) => {
       e.stopPropagation()
       const me = e as MouseEvent
 
       if (me.button === 2) {
         e.preventDefault()
+        menuOpenedAt = me.timeStamp
+        openCellMenu(me)
         return
       }
       onCellPointerDown(cell, me)
@@ -850,11 +861,9 @@ function renderTableDom(model: TableModel, view: EditorView, sourcePath: string)
     cell.addEventListener('contextmenu', (e: MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      if (isHeader) {
-        showColContextMenu(e, colIdx)
-      } else {
-        showRowContextMenu(e, rowIdx)
-      }
+      // The right button's mousedown already opened it; Control-click and the menu key open it here.
+      if (e.timeStamp - menuOpenedAt < 1000) return
+      openCellMenu(e)
     })
     return cell
   }
