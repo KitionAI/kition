@@ -205,7 +205,9 @@ test('title and body x-position alignment in rich mode', async ({ page }) => {
             range.setStart(node, idx)
             range.setEnd(node, idx + 1)
             const r = range.getBoundingClientRect()
-            return r.left
+            // Text that is not rendered (hidden Markdown marks) measures as an empty box at 0 in
+            // WebKit: the first visible character is the next one that has a size.
+            if (r.width > 0 || r.height > 0) return r.left
           }
         }
         node = walker.nextNode()
