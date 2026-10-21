@@ -231,7 +231,7 @@ test('clicking the page margin of a scrolled document keeps the view and targets
   await expect(content.locator('.cm-line', { hasText: `${targetText}!` })).toHaveCount(1)
 })
 
-test('clicking blank document space preserves reading mode', async ({ page }) => {
+test('clicking blank document space preserves reading mode', async ({ page, browserName }) => {
   await mockLocalWorkspaceApi(page)
   await mockDesktop(page, 'Read-only paragraph')
   await page.goto('/document')
@@ -242,7 +242,10 @@ test('clicking blank document space preserves reading mode', async ({ page }) =>
 
   await page.mouse.click(bodyBox.x + bodyBox.width / 2, bodyBox.y + bodyBox.height + 100)
 
-  await expect(content).not.toBeFocused()
+  // WebKit (the desktop app's WKWebView) moves focus from the clicked page into the read-only
+  // content; what reading mode guarantees in every engine is that typing changes nothing.
+  if (browserName === 'chromium') await expect(content).not.toBeFocused()
+  await page.keyboard.type('x')
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
   await expect(content).toHaveText('Read-only paragraph')
 })
