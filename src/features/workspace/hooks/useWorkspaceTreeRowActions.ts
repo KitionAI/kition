@@ -124,5 +124,5 @@ export function useWorkspaceTreeRowActions({
     }
   }, [renameKitableDashboardLeaf, renameKitableTableLeaf, renameKitableWorkflowLeaf, renameWorkspaceNode])
 
-  return { handleTreeNodeDelete, handleTreeNodeRename, renameKitableTableLeaf }
+  return { handleTreeNodeDelete, handleTreeNodeRename, renameKitableTableLeaf, deleteKitableTableLeaf }
 }

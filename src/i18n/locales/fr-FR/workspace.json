@@ -656,7 +656,8 @@
     "tableMenu": "Ouvrir le menu de la table",
     "searchPlaceholder": "Rechercher des tables, tableaux de bord et workflows",
     "switchSection": "Changer de section du fichier de tables",
-    "renameTable": "Renommer la table de données"
+    "renameTable": "Renommer la table de données",
+    "deleteTable": "Supprimer la table de données"
   },
   "photoKit": {
     "unavailableTitle": "L’édition Photo n’est pas disponible dans cette version",

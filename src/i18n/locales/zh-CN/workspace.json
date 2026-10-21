@@ -656,7 +656,8 @@
     "tableMenu": "打开数据表菜单",
     "searchPlaceholder": "搜索数据表、仪表盘和工作流",
     "switchSection": "切换数据表文件分区",
-    "renameTable": "重命名数据表"
+    "renameTable": "重命名数据表",
+    "deleteTable": "删除数据表"
   },
   "photoKit": {
     "unavailableTitle": "此版本不支持 Photo 编辑",

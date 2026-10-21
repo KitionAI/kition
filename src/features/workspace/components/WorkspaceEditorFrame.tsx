@@ -18,6 +18,21 @@ export type WorkspaceKitableSidebarActions = {
   openTable: (kitablePath: string, tableId: number) => unknown
   openWorkflow: (kitablePath: string, workflowId?: string) => unknown
   renameTableLeaf: (node: WorkspaceTreeNode, nextTitle: string) => unknown
+  deleteTableLeaf: (node: WorkspaceTreeNode) => unknown
+}
+
+/** A kitable table as the tree's virtual leaf, which the table leaf actions take. */
+function tableNode(kitablePath: string, tableId: number, title: string): WorkspaceTreeNode {
+  return {
+    type: 'file',
+    virtual: true,
+    path: buildKitableTableVirtualPath(kitablePath, tableId),
+    name: title,
+    title,
+    format: 'data',
+    parentPath: kitablePath,
+    children: [],
+  }
 }
 
 type WorkspaceEditorFrameProps = {
@@ -61,16 +76,8 @@ export function WorkspaceEditorFrame({
           onOpenDashboard={(dashboardId) => void actions.openDashboard(kitablePath, dashboardId)}
           onOpenTable={(tableId) => void actions.openTable(kitablePath, tableId)}
           onOpenWorkflow={(workflowId) => void actions.openWorkflow(kitablePath, workflowId)}
-          onRenameTable={(tableId, currentTitle, nextTitle) => void actions.renameTableLeaf({
-            type: 'file',
-            virtual: true,
-            path: buildKitableTableVirtualPath(kitablePath, tableId),
-            name: currentTitle,
-            title: currentTitle,
-            format: 'data',
-            parentPath: kitablePath,
-            children: [],
-          }, nextTitle)}
+          onRenameTable={(tableId, currentTitle, nextTitle) => void actions.renameTableLeaf(tableNode(kitablePath, tableId, currentTitle), nextTitle)}
+          onDeleteTable={(tableId, title) => void actions.deleteTableLeaf(tableNode(kitablePath, tableId, title))}
         />
       ) : null}
       <div className="workspace-editor-frame__content">

@@ -568,6 +568,7 @@ export function WorkspaceScreen({
   })
   const {
     renameKitableTableLeaf,
+    deleteKitableTableLeaf,
   } = rowActions
 
   // The mode chooser dialog runs against an optional (documentId, tableId)
@@ -821,6 +822,7 @@ export function WorkspaceScreen({
     openTable: openKitableTable,
     openWorkflow: openKitableWorkflow,
     renameTableLeaf: renameKitableTableLeaf,
+    deleteTableLeaf: deleteKitableTableLeaf,
   }
 
   return (

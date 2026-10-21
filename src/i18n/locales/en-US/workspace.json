@@ -656,7 +656,8 @@
     "tableMenu": "Open table menu",
     "searchPlaceholder": "Search tables, dashboards, and workflows",
     "switchSection": "Switch table file section",
-    "renameTable": "Rename data table"
+    "renameTable": "Rename data table",
+    "deleteTable": "Delete data table"
   },
   "photoKit": {
     "unavailableTitle": "Photo editing is not available in this build",

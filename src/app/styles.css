@@ -1664,6 +1664,10 @@
     @apply flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm text-foreground hover:bg-muted;
   }
 
+  .workspace-kitable-sidebar__item-menu button.is-destructive {
+    @apply text-destructive hover:bg-destructive/10;
+  }
+
   .workspace-kitable-sidebar__item-rename {
     @apply pr-2;
   }

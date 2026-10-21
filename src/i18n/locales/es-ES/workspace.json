@@ -656,7 +656,8 @@
     "tableMenu": "Abrir el menú de la tabla",
     "searchPlaceholder": "Buscar tablas, paneles y flujos de trabajo",
     "switchSection": "Cambiar de sección del archivo de tablas",
-    "renameTable": "Renombrar la tabla de datos"
+    "renameTable": "Renombrar la tabla de datos",
+    "deleteTable": "Eliminar la tabla de datos"
   },
   "photoKit": {
     "unavailableTitle": "La edición de Photo no está disponible en esta versión",

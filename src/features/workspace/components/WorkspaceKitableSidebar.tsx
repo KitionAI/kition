@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronsLeft, ChevronsRight, Database, FileInput, LayoutDashboard, MoreHorizontal, Pencil, Plus, Search, Workflow } from 'lucide-react'
+import { ChevronDown, ChevronsLeft, ChevronsRight, Database, FileInput, LayoutDashboard, MoreHorizontal, Pencil, Plus, Search, Trash2, Workflow } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -34,6 +34,8 @@ type WorkspaceKitableSidebarProps = {
   onOpenTable: (tableId: number) => void
   onOpenWorkflow: (workflowId?: string) => void
   onRenameTable?: (tableId: number, currentTitle: string, nextTitle: string) => void
+  /** Deletes a table, after the person confirms. */
+  onDeleteTable?: (tableId: number, title: string) => void
 }
 
 export function WorkspaceKitableSidebar({
@@ -53,6 +55,7 @@ export function WorkspaceKitableSidebar({
   onOpenTable,
   onOpenWorkflow,
   onRenameTable,
+  onDeleteTable,
 }: WorkspaceKitableSidebarProps) {
   const { t } = useTranslation('workspace')
   const [collapsed, setCollapsed] = useState(() => readKitableSidebarCollapsed(defaultCollapsed))
@@ -320,6 +323,7 @@ export function WorkspaceKitableSidebar({
             testId="workspace-kitable-data-table"
             onOpen={() => onOpenTable(defaultTable.id)}
             onRename={onRenameTable}
+            onDelete={onDeleteTable}
           />
         ) : null}
 
@@ -363,6 +367,7 @@ export function WorkspaceKitableSidebar({
             testId={`workspace-kitable-table-${table.id}`}
             onOpen={() => onOpenTable(table.id)}
             onRename={onRenameTable}
+            onDelete={onDeleteTable}
           />
         ))}
 
@@ -401,12 +406,14 @@ function KitableTableNavItem({
   testId,
   onOpen,
   onRename,
+  onDelete,
 }: {
   table: KitableTableSummary
   active: boolean
   testId: string
   onOpen: () => void
   onRename?: (tableId: number, currentTitle: string, nextTitle: string) => void
+  onDelete?: (tableId: number, title: string) => void
 }) {
   const { t } = useTranslation('workspace')
   const displayTitle = tableDisplayTitle(table)
@@ -460,7 +467,7 @@ function KitableTableNavItem({
           <span>{displayTitle}</span>
         </button>
       )}
-      {onRename && !renaming ? (
+      {(onRename || onDelete) && !renaming ? (
         <button
           type="button"
           className="workspace-kitable-sidebar__item-menu-trigger"
@@ -473,20 +480,36 @@ function KitableTableNavItem({
           <MoreHorizontal className="size-4" />
         </button>
       ) : null}
-      {menuOpen && onRename ? (
+      {menuOpen && (onRename || onDelete) ? (
         <div className="workspace-kitable-sidebar__item-menu" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setMenuOpen(false)
-              setDraftTitle(displayTitle)
-              setRenaming(true)
-            }}
-          >
-            <Pencil className="size-4" />
-            <span>{t('kitableSidebar.renameTable')}</span>
-          </button>
+          {onRename ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false)
+                setDraftTitle(displayTitle)
+                setRenaming(true)
+              }}
+            >
+              <Pencil className="size-4" />
+              <span>{t('kitableSidebar.renameTable')}</span>
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="is-destructive"
+              onClick={() => {
+                setMenuOpen(false)
+                onDelete(table.id, displayTitle)
+              }}
+            >
+              <Trash2 className="size-4" />
+              <span>{t('kitableSidebar.deleteTable')}</span>
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
