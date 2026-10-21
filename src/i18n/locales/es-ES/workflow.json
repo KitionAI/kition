@@ -676,5 +676,20 @@
       "hoursAgo": "hace {{n}} h",
       "daysAgo": "hace {{n}} d"
     }
+  },
+  "emailInboxSetup": {
+    "title": "Sincronizar la bandeja de entrada",
+    "setupRequired": "Configuración pendiente",
+    "configureEmail": "Configurar correo",
+    "triggerStep": "Paso 1 · Disparador",
+    "emailStep": "Paso 2 · Correo",
+    "scheduledTrigger": "Disparador programado",
+    "manualTrigger": "Disparador manual",
+    "everyMinutes": "Cada {{count}} minutos",
+    "runManually": "Ejecutar manualmente desde el flujo de trabajo",
+    "importInto": "Importar mensajes en {{table}}",
+    "connectAccount": "Conecta una cuenta de correo para activar este paso.",
+    "startWorkflow": "Iniciar este flujo de trabajo",
+    "defaultTable": "Bandeja de entrada"
   }
 }

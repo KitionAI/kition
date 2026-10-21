@@ -69,7 +69,7 @@
     }
   },
   "buttons": {
-    "create": "New Workflow"
+    "create": "New workflow"
   },
   "templates": {
     "emailMeOnRecord": {
@@ -676,5 +676,20 @@
       "hoursAgo": "{{n}}h ago",
       "daysAgo": "{{n}}d ago"
     }
+  },
+  "emailInboxSetup": {
+    "title": "Sync email inbox",
+    "setupRequired": "Setup required",
+    "configureEmail": "Configure email",
+    "triggerStep": "Step 1 · Trigger",
+    "emailStep": "Step 2 · Email",
+    "scheduledTrigger": "Scheduled trigger",
+    "manualTrigger": "Manual trigger",
+    "everyMinutes": "Every {{count}} minutes",
+    "runManually": "Run manually from the workflow",
+    "importInto": "Import messages into {{table}}",
+    "connectAccount": "Connect an email account to activate this step.",
+    "startWorkflow": "Start this workflow",
+    "defaultTable": "Inbox"
   }
 }

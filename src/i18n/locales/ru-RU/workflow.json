@@ -676,5 +676,20 @@
       "hoursAgo": "{{n}} ч назад",
       "daysAgo": "{{n}} дн назад"
     }
+  },
+  "emailInboxSetup": {
+    "title": "Синхронизация почтового ящика",
+    "setupRequired": "Требуется настройка",
+    "configureEmail": "Настроить почту",
+    "triggerStep": "Шаг 1 · Триггер",
+    "emailStep": "Шаг 2 · Почта",
+    "scheduledTrigger": "Триггер по расписанию",
+    "manualTrigger": "Ручной запуск",
+    "everyMinutes": "Каждые {{count}} мин",
+    "runManually": "Запускать вручную из рабочего процесса",
+    "importInto": "Импортировать письма в {{table}}",
+    "connectAccount": "Подключите почтовый аккаунт, чтобы включить этот шаг.",
+    "startWorkflow": "Запустить этот рабочий процесс",
+    "defaultTable": "Входящие"
   }
 }

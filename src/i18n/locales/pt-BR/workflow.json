@@ -676,5 +676,20 @@
       "hoursAgo": "há {{n}}h",
       "daysAgo": "há {{n}}d"
     }
+  },
+  "emailInboxSetup": {
+    "title": "Sincronizar caixa de entrada",
+    "setupRequired": "Configuração necessária",
+    "configureEmail": "Configurar e-mail",
+    "triggerStep": "Etapa 1 · Gatilho",
+    "emailStep": "Etapa 2 · E-mail",
+    "scheduledTrigger": "Gatilho agendado",
+    "manualTrigger": "Gatilho manual",
+    "everyMinutes": "A cada {{count}} minutos",
+    "runManually": "Executar manualmente pelo fluxo de trabalho",
+    "importInto": "Importar mensagens para {{table}}",
+    "connectAccount": "Conecte uma conta de e-mail para ativar esta etapa.",
+    "startWorkflow": "Iniciar este fluxo de trabalho",
+    "defaultTable": "Caixa de entrada"
   }
 }

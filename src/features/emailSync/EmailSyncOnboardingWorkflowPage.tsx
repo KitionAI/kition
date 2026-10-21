@@ -1,5 +1,6 @@
 import { Mail, Settings2 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@kition/app-ui'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
@@ -18,6 +19,7 @@ export function EmailSyncOnboardingWorkflowPage({
   onSaved: (workflow: EmailSyncWorkflow) => void
   runAfterSave?: 'full'
 }) {
+  const { t } = useTranslation('workflow')
   const [activePanel, setActivePanel] = useState<'trigger' | 'action' | null>(null)
   const [schedule, setSchedule] = useState({ enabled: true, intervalMinutes: 15 })
 
@@ -29,14 +31,14 @@ export function EmailSyncOnboardingWorkflowPage({
       <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Mail className="size-4 text-primary" />
-          <h1 className="truncate text-base font-semibold text-foreground">Sync email inbox</h1>
+          <h1 className="truncate text-base font-semibold text-foreground">{t('emailInboxSetup.title')}</h1>
           <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning-foreground">
-            Setup required
+            {t('emailInboxSetup.setupRequired')}
           </span>
         </div>
         <Button size="sm" onClick={() => setActivePanel('action')}>
           <Settings2 className="size-4" />
-          Configure email
+          {t('emailInboxSetup.configureEmail')}
         </Button>
       </header>
 
@@ -45,11 +47,11 @@ export function EmailSyncOnboardingWorkflowPage({
           <WorkflowCanvas key={activePanel ? 'drawer-open' : 'drawer-closed'} disabled>
             <NodeCard
               kind="trigger"
-              rowLabel="Step 1 · Trigger"
-              title={schedule.enabled ? 'Scheduled trigger' : 'Manual trigger'}
+              rowLabel={t('emailInboxSetup.triggerStep')}
+              title={schedule.enabled ? t('emailInboxSetup.scheduledTrigger') : t('emailInboxSetup.manualTrigger')}
               description={schedule.enabled
-                ? `Every ${schedule.intervalMinutes} minutes`
-                : 'Run manually from the workflow'}
+                ? t('emailInboxSetup.everyMinutes', { count: schedule.intervalMinutes })
+                : t('emailInboxSetup.runManually')}
               status={schedule.enabled ? 'green' : 'muted'}
               selected={activePanel === 'trigger'}
               dataRole="trigger"
@@ -57,16 +59,16 @@ export function EmailSyncOnboardingWorkflowPage({
             />
             <NodeCard
               kind="action"
-              rowLabel="Step 2 · Email"
-              title="Sync email inbox"
-              description={`Import messages into ${tableName(tablePath)}`}
+              rowLabel={t('emailInboxSetup.emailStep')}
+              title={t('emailInboxSetup.title')}
+              description={t('emailInboxSetup.importInto', { table: tableName(tablePath) || t('emailInboxSetup.defaultTable') })}
               status="amber"
               selected={activePanel === 'action'}
               dataRole="action"
               onSelect={() => setActivePanel('action')}
               extra={(
                 <div className="text-[11px] text-warning-foreground">
-                  Connect an email account to activate this step.
+                  {t('emailInboxSetup.connectAccount')}
                 </div>
               )}
             />
@@ -76,7 +78,7 @@ export function EmailSyncOnboardingWorkflowPage({
         <PropertiesDrawer
           open={activePanel !== null}
           kind={activePanel === 'trigger' ? 'Trigger' : 'Action'}
-          title={activePanel === 'trigger' ? 'Start this workflow' : 'Sync email inbox'}
+          title={activePanel === 'trigger' ? t('emailInboxSetup.startWorkflow') : t('emailInboxSetup.title')}
           onClose={() => setActivePanel(null)}
         >
           {activePanel === 'trigger' ? (
@@ -107,5 +109,5 @@ export function EmailSyncOnboardingWorkflowPage({
 }
 
 function tableName(path: string) {
-  return path.split(/[\\/]/).pop()?.replace(/\.kitable$/i, '') || 'Inbox'
+  return path.split(/[\\/]/).pop()?.replace(/\.kitable$/i, '') || ''
 }

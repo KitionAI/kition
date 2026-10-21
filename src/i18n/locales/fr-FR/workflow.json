@@ -676,5 +676,20 @@
       "hoursAgo": "il y a {{n}} h",
       "daysAgo": "il y a {{n}} j"
     }
+  },
+  "emailInboxSetup": {
+    "title": "Synchroniser la boîte de réception",
+    "setupRequired": "Configuration requise",
+    "configureEmail": "Configurer l’e-mail",
+    "triggerStep": "Étape 1 · Déclencheur",
+    "emailStep": "Étape 2 · E-mail",
+    "scheduledTrigger": "Déclencheur planifié",
+    "manualTrigger": "Déclencheur manuel",
+    "everyMinutes": "Toutes les {{count}} minutes",
+    "runManually": "Lancer manuellement depuis le workflow",
+    "importInto": "Importer les messages dans {{table}}",
+    "connectAccount": "Connectez un compte e-mail pour activer cette étape.",
+    "startWorkflow": "Démarrer ce workflow",
+    "defaultTable": "Boîte de réception"
   }
 }
