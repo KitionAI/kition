@@ -10,30 +10,45 @@ import {
   type DocumentCheckpointInput,
   type KitReplicaMeta,
 } from '@/services/desktop'
-import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
+import { resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { stampFromHeaders, type KitHost } from '../sdk/kitHost'
 import type { StoredReplica } from '../host/mountKit'
 
-/** Kition's workspace as a kit host: files over the loopback API, saves through `PUT /v1/kits/files`. */
+async function readFile(url: string, path: string) {
+  const response = await fetch(url, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`could not read ${path} (${response.status})`)
+  return { bytes: await response.arrayBuffer(), stamp: stampFromHeaders(response.headers) }
+}
+
+async function stampFile(url: string) {
+  const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+  return response.ok ? stampFromHeaders(response.headers) : null
+}
+
+/**
+ * Kition's workspace as a kit host: files over the loopback API, new files through
+ * `PUT /v1/kits/files`. Kition reads its own files, and the documents it opens in kits, through
+ * the workspace file service; kits' engines read the files their documents name (lent files)
+ * through the kit file service, which never serves hidden paths or `.kition/` (rule LR2).
+ */
 export const KITION_KIT_HOST: KitHost = {
-  read: async (path) => {
-    const response = await fetch(resolveWorkspaceFileURL(path), { cache: 'no-store' })
-    if (!response.ok) throw new Error(`could not read ${path} (${response.status})`)
-    return { bytes: await response.arrayBuffer(), stamp: stampFromHeaders(response.headers) }
-  },
-  stamp: async (path) => {
-    const response = await fetch(resolveWorkspaceFileURL(path), { method: 'HEAD', cache: 'no-store' })
-    return response.ok ? stampFromHeaders(response.headers) : null
-  },
+  read: (path) => readFile(resolveWorkspaceFileURL(path), path),
+  stamp: (path) => stampFile(resolveWorkspaceFileURL(path)),
   write: async (path, bytes) => {
     await writeKitFile(path, bytes)
   },
-  // The workspace file server answers ranged reads; workers need an absolute URL.
+  // The kit file server answers ranged reads; workers need an absolute URL.
   lend: (path) => {
-    const root = new URL(resolveWorkspaceFileURL('_').replace(/_$/, ''), window.location.href).href
+    const root = new URL(resolveKitFileURL('_').replace(/_$/, ''), window.location.href).href
     return { root, folder: path.split('/').filter(Boolean).slice(0, -1).join('/') }
   },
 }
+
+/** A workspace file a kit reads (`host/read`), through the kit file service (rule LR2). */
+export const readKitFile = (path: string) => readFile(resolveKitFileURL(path), path)
+
+/** The stamp of a workspace file a kit asks after (`host/stamp`), through the kit file service (rule LR2). */
+export const stampKitFile = (path: string) => stampFile(resolveKitFileURL(path))
 
 /** A copy of `bytes` in an ArrayBuffer of its own, as the Kit UI protocol carries binary data. */
 function buffer(bytes: Uint8Array): ArrayBuffer {

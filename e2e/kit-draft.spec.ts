@@ -2,8 +2,9 @@ import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
+import { serveWorkspace } from './helpers/embeddedKit'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -36,18 +37,6 @@ async function packageKeepsDrafts() {
     if (name.endsWith('.js') && (await fs.readFile(path.join(UI_ASSETS, name), 'utf8')).includes('draft/merge')) return true
   }
   return false
-}
-
-async function serveWorkspace(page: Page, root: string) {
-  await page.route('**/workspace-files/**', async (route: Route) => {
-    const relative = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*\/workspace-files\//, ''))
-    const file = path.join(root, relative)
-    if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: '' })
-    const stat = await fs.stat(file)
-    const headers = { etag: `"${stat.mtimeMs}-${stat.size}"`, 'last-modified': stat.mtime.toUTCString(), 'access-control-expose-headers': 'ETag,Content-Range,Accept-Ranges', 'content-type': 'application/octet-stream' }
-    if (route.request().method() === 'HEAD') return route.fulfill({ status: 200, headers, body: '' })
-    return route.fulfill({ status: 200, headers, body: await fs.readFile(file) })
-  })
 }
 
 /**

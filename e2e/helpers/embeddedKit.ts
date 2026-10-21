@@ -22,12 +22,19 @@ export function kitEngine<T>(kit: string, module: string) {
   }
 }
 
-/** Serves the workspace's files as the runtime's file server does (ETag, Last-Modified). */
-async function serveWorkspace(page: Page, root: string) {
-  await page.route('**/workspace-files/**', async (route: Route) => {
-    const relative = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*\/workspace-files\//, ''))
-    const file = path.join(root, relative)
-    if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: '' })
+/**
+ * Serves the workspace's files as the runtime's file services do (ETag, Last-Modified):
+ * `/workspace-files/` for Kition, and `/kit-files/` for kits, which never serves a hidden path
+ * (`.kition/`, rule LR2).
+ */
+export async function serveWorkspace(page: Page, root: string) {
+  await page.route(/\/(workspace|kit)-files\//, async (route: Route) => {
+    const url = new URL(route.request().url())
+    const [, service, relative] = /\/(workspace|kit)-files\/(.*)$/.exec(url.pathname) ?? []
+    const decoded = decodeURIComponent(relative ?? '')
+    const file = path.join(root, decoded)
+    const hidden = service === 'kit' && decoded.split('/').some((part) => part.startsWith('.'))
+    if (hidden || !file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: '' })
     const stat = await fs.stat(file)
     const headers = { etag: `"${stat.mtimeMs}-${stat.size}"`, 'last-modified': stat.mtime.toUTCString(), 'access-control-expose-headers': 'ETag,Content-Range,Accept-Ranges', 'content-type': 'application/octet-stream' }
     if (route.request().method() === 'HEAD') return route.fulfill({ status: 200, headers, body: '' })

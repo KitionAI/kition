@@ -84,10 +84,22 @@ export function resolveWorkspaceImageSources(html: string, documentPath: string)
 }
 
 export function resolveWorkspaceFileURL(path: string) {
+  return resolveFileServiceURL('/workspace-files/', path)
+}
+
+/**
+ * The URL of a workspace file as kits read it (`/kit-files/`): the runtime refuses hidden paths
+ * there, Kition's own store `.kition/` among them (rule LR2).
+ */
+export function resolveKitFileURL(path: string) {
+  return resolveFileServiceURL('/kit-files/', path)
+}
+
+function resolveFileServiceURL(service: string, path: string) {
   const normalized = normalizeWorkspacePath(path)
     .map((part) => encodeURIComponent(part))
     .join('/')
-  return normalized ? resolvePublicFileURL(`/workspace-files/${normalized}`) : ''
+  return normalized ? resolvePublicFileURL(`${service}${normalized}`) : ''
 }
 
 export function resolveWorkspaceMarkdownImagePath(path: string, documentFolder: string) {

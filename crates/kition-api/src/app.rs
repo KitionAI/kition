@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use axum::Router;
+use axum::response::IntoResponse;
 use std::sync::Arc;
 
 use kition_core::config::AppConfig;
@@ -211,13 +212,81 @@ pub fn router(deps: &Deps) -> Router {
         .nest(&deps.config.api_prefix, api)
         .nest_service("/uploads", ServeDir::new(&deps.upload_dir));
     if let Some(dir) = &deps.workspace_dir {
-        app = app.nest_service("/workspace-files", ServeDir::new(dir));
+        app = app
+            .nest_service("/workspace-files", ServeDir::new(dir))
+            .nest_service("/kit-files", kit_files(dir));
     }
     app.fallback(kition_http::not_found)
         .layer(axum::middleware::from_fn(
             kition_http::middleware::request_context,
         ))
         .layer(axum::middleware::from_fn(kition_http::cors::cors))
+}
+
+/// The workspace as kits read it: `host/read`, `host/stamp`, and lent reads by kit engines (Kit
+/// UI protocol). Like `/workspace-files`, but it never serves a hidden file or folder, Kition's
+/// own store `.kition/` (other documents' replicas and comment threads) among them, nor a file a
+/// link leads to outside the workspace (rule LR2).
+fn kit_files(dir: &Path) -> Router {
+    let root = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    Router::new()
+        .fallback_service(ServeDir::new(dir))
+        .layer(axum::middleware::from_fn(
+            move |request: axum::extract::Request, next: axum::middleware::Next| {
+                let refused = !kit_may_read(&root, request.uri().path());
+                async move {
+                    if refused {
+                        return axum::http::StatusCode::NOT_FOUND.into_response();
+                    }
+                    next.run(request).await
+                }
+            },
+        ))
+}
+
+/// Whether a kit may read the workspace file at the request path `path` (percent-encoded, as the
+/// file service decodes it): no segment hidden, and inside the workspace `root` once links are
+/// followed.
+fn kit_may_read(root: &Path, path: &str) -> bool {
+    let decoded = percent_decoded(path);
+    let hidden = |segment: &str| segment.starts_with('.');
+    if decoded.split(['/', '\\']).any(hidden) {
+        return false;
+    }
+    let relative = decoded.trim_start_matches(['/', '\\']);
+    match std::fs::canonicalize(root.join(relative)) {
+        Ok(real) => real.strip_prefix(root).is_ok_and(|inside| {
+            !inside
+                .components()
+                .any(|part| hidden(&part.as_os_str().to_string_lossy()))
+        }),
+        // Missing: the file service answers 404 itself.
+        Err(_) => true,
+    }
+}
+
+/// `path` with its `%XX` escapes decoded; an invalid escape stays as written.
+fn percent_decoded(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let escaped = (bytes[index] == b'%')
+            .then(|| bytes.get(index + 1..index + 3))
+            .flatten()
+            .and_then(|hex| u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok());
+        match escaped {
+            Some(byte) => {
+                out.push(byte);
+                index += 3;
+            }
+            None => {
+                out.push(bytes[index]);
+                index += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// Data documents need a workspace directory; without one the routes are
@@ -288,5 +357,82 @@ mod tests {
     #[test]
     fn short_hash_is_sixteen_hex_digits() {
         assert_eq!(short_hash("").len(), 16);
+    }
+
+    #[tokio::test]
+    async fn kits_never_read_kitions_store_or_hidden_paths() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::ServiceExt;
+
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        for name in [
+            ".kition/docs/index.json",
+            ".kition/docs/d1/meta.json",
+            ".git/config",
+            "art/.hidden/cover.png",
+            "art/.env",
+            "art/cover.png",
+            "clips/intro.mp4",
+        ] {
+            let path = dir.path().join(name);
+            std::fs::create_dir_all(path.parent().unwrap_or(dir.path()))
+                .unwrap_or_else(|err| panic!("{err}"));
+            std::fs::write(&path, "bytes").unwrap_or_else(|err| panic!("{err}"));
+        }
+        let files = kit_files(dir.path());
+        let status = |method: &'static str, uri: &str| {
+            let request = Request::builder()
+                .method(method)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap_or_else(|err| panic!("{err}"));
+            let files = files.clone();
+            async move {
+                files
+                    .oneshot(request)
+                    .await
+                    .unwrap_or_else(|err| panic!("{err}"))
+                    .status()
+            }
+        };
+        for uri in [
+            "/.kition/docs/index.json",
+            "/.kition/docs/d1/meta.json",
+            "/%2Ekition/docs/index.json",
+            "/%2ekition%2Fdocs%2Findex.json",
+            "/art%2F.env",
+            "/.git/config",
+            "/art/.hidden/cover.png",
+            "/art/.env",
+            "/art/../.kition/docs/index.json",
+            "/.kition/",
+        ] {
+            assert_eq!(status("GET", uri).await, StatusCode::NOT_FOUND, "GET {uri}");
+            assert_eq!(
+                status("HEAD", uri).await,
+                StatusCode::NOT_FOUND,
+                "HEAD {uri}"
+            );
+        }
+        // A link inside the workspace does not reach the store, nor one a file outside it.
+        #[cfg(unix)]
+        {
+            let outside = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+            std::fs::write(outside.path().join("secret.txt"), "bytes")
+                .unwrap_or_else(|err| panic!("{err}"));
+            std::os::unix::fs::symlink(dir.path().join(".kition"), dir.path().join("art/store"))
+                .unwrap_or_else(|err| panic!("{err}"));
+            std::os::unix::fs::symlink(outside.path(), dir.path().join("art/outside"))
+                .unwrap_or_else(|err| panic!("{err}"));
+            for uri in ["/art/store/docs/index.json", "/art/outside/secret.txt"] {
+                assert_eq!(status("GET", uri).await, StatusCode::NOT_FOUND, "GET {uri}");
+            }
+        }
+        // The document's files, beside it and elsewhere in the workspace, stay readable.
+        for uri in ["/art/cover.png", "/clips/intro.mp4", "/art%2Fcover.png"] {
+            assert_eq!(status("GET", uri).await, StatusCode::OK, "GET {uri}");
+            assert_eq!(status("HEAD", uri).await, StatusCode::OK, "HEAD {uri}");
+        }
     }
 }

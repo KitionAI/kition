@@ -275,6 +275,15 @@ and side panels).
   replaces only that file; any other write makes a new file and never
   replaces one. So one kit's editor cannot overwrite another file, of its own
   kind or of another kit.
+- What a kit reads: `host/read` and `host/stamp` answer its own document
+  (through `/workspace-files/`, wherever it is) and any other workspace file
+  whose path has no hidden segment, through `/kit-files/`: the files beside
+  the document and those its links name in other folders (film and effect
+  clips, linked pictures). Engines read lent files under the same
+  `/kit-files/` root. The runtime refuses every hidden path there, Kition's
+  own store `.kition/` (other documents' replicas and comment threads) among
+  them, and links that lead into one or out of the workspace (rule LR2 of the
+  host-capabilities proposal). `/workspace-files/` stays Kition's own.
 - A document this person may only view (a view-only share link, a `viewer`
   role) opens with `document.readOnly`. kit-ui's engine worker then refuses
   every edit (reason `read-only`) by its exported `READ_ONLY_RULES`, and the

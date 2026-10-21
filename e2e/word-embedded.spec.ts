@@ -2,9 +2,9 @@ import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
-import { openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
+import { openInKitFrame, openTreeFile, replicaVersion, serveWorkspace } from './helpers/embeddedKit'
 import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
@@ -47,18 +47,6 @@ async function textOf(bytes: Buffer) {
   const text = (JSON.parse(doc.execute('document.text', '{}')) as { text: string }).text
   doc.free()
   return text
-}
-
-async function serveWorkspace(page: Page, root: string) {
-  await page.route('**/workspace-files/**', async (route: Route) => {
-    const relative = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*\/workspace-files\//, ''))
-    const file = path.join(root, relative)
-    if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: '' })
-    const stat = await fs.stat(file)
-    const headers = { etag: `"${stat.mtimeMs}-${stat.size}"`, 'last-modified': stat.mtime.toUTCString(), 'access-control-expose-headers': 'ETag,Content-Range,Accept-Ranges', 'content-type': 'application/octet-stream' }
-    if (route.request().method() === 'HEAD') return route.fulfill({ status: 200, headers, body: '' })
-    return route.fulfill({ status: 200, headers, body: await fs.readFile(file) })
-  })
 }
 
 test('opens a Word document in the Word kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {

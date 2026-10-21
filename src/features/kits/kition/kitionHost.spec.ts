@@ -1,14 +1,36 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { renameDocument } from '@/features/document/kdm/documentStore'
 import { readDocumentIndex } from '@/services/desktop'
-import { compactKitReplica, readKitReplica, writeKitReplica } from './kitionHost'
+import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
 
 const bytes = (...values: number[]) => new Uint8Array(values).buffer
 
 afterEach(() => {
   window.localStorage.clear()
+  vi.unstubAllGlobals()
+})
+
+describe('the files kits read in Kition (rule LR2)', () => {
+  it("reads kits' files and lends their engines the workspace through the kit file service, never Kition's own", async () => {
+    const fetched: Array<{ url: string; method: string }> = []
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      fetched.push({ url, method: init?.method ?? 'GET' })
+      return new Response('abc', { headers: { etag: '"1"' } })
+    })
+    await expect(readKitFile('Clips/intro.mp4')).resolves.toMatchObject({ stamp: '"1"' })
+    await expect(stampKitFile('Shared/a b.png')).resolves.toBe('"1"')
+    expect(fetched).toEqual([
+      { url: '/kit-files/Clips/intro.mp4', method: 'GET' },
+      { url: '/kit-files/Shared/a%20b.png', method: 'HEAD' },
+    ])
+    // Engines read lent files under this root; the runtime refuses hidden paths and `.kition/` there.
+    expect(KITION_KIT_HOST.lend?.('Shared/Poster.psd')).toEqual({ root: new URL('/kit-files/', window.location.href).href, folder: 'Shared' })
+    // Kition itself still reads its own files, and the document a kit opens, through the workspace file service.
+    await KITION_KIT_HOST.read('Shared/Poster.psd')
+    expect(fetched.at(-1)).toEqual({ url: '/workspace-files/Shared/Poster.psd', method: 'GET' })
+  })
 })
 
 describe('kit replicas in Kition', () => {

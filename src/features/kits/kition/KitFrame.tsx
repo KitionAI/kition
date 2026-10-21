@@ -10,7 +10,7 @@ import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { mountKit, type KitConnection, type KitHostHandlers, type ModelBatchParams } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
-import { compactKitReplica, KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
+import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange, type BridgeEditor } from './kitBridge'
 import { setKitDraft } from './kitDrafts'
 import { KitDraftControls } from './KitDraftReview'
@@ -82,6 +82,29 @@ async function unusedPath(path: string) {
     if ((await KITION_KIT_HOST.stamp(candidate)) == null) return candidate
   }
   throw new Error(`no free name for ${path}`)
+}
+
+/**
+ * What a kit may read (`host/read`) and ask the stamp of (`host/stamp`): its own document, through
+ * Kition's file service wherever the document is; and any other workspace file whose path has no
+ * hidden segment, through the kit file service (which the runtime confines the same way): the
+ * files beside the document, and those its links name elsewhere (film and effect clips, linked
+ * pictures). Never Kition's own store (`.kition/`, other documents' replicas and comment threads)
+ * or any other hidden file or folder (rule LR2). The lent files engines read follow the same rule.
+ */
+function readableFile(wanted: string, path: string) {
+  const checked = workspacePath(wanted)
+  if (checked === workspacePath(path)) return { path: checked, own: true }
+  if (checked.split('/').some((part) => part.startsWith('.'))) throw new Error(`${wanted} is not readable by a kit`)
+  return { path: checked, own: false }
+}
+
+/** `host/read` from the kit editing `path`, within what it may read (`readableFile`). */
+async function readForKit(path: string, { path: wanted, offset, length }: Parameters<KitHostHandlers['read']>[0]) {
+  const file = readableFile(wanted, path)
+  const read = file.own ? await KITION_KIT_HOST.read(file.path) : await readKitFile(file.path)
+  const bytes = offset != null || length != null ? read.bytes.slice(offset ?? 0, length != null ? (offset ?? 0) + length : undefined) : read.bytes
+  return { bytes, version: read.stamp ?? '', size: read.bytes.byteLength }
 }
 
 /**
@@ -214,12 +237,11 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           shortcuts: HOST_SHORTCUTS,
           capabilitySets: KITION_CAPABILITY_SETS,
           handlers: {
-            read: async ({ path: wanted, offset, length }) => {
-              const read = await KITION_KIT_HOST.read(workspacePath(wanted))
-              const bytes = offset != null || length != null ? read.bytes.slice(offset ?? 0, length != null ? (offset ?? 0) + length : undefined) : read.bytes
-              return { bytes, version: read.stamp ?? '', size: read.bytes.byteLength }
+            read: (params) => readForKit(path, params),
+            stamp: async ({ path: wanted }) => {
+              const file = readableFile(wanted, path)
+              return { version: file.own ? await KITION_KIT_HOST.stamp(file.path) : await stampKitFile(file.path) }
             },
-            stamp: async ({ path: wanted }) => ({ version: await KITION_KIT_HOST.stamp(workspacePath(wanted)) }),
             write: (params) => writeForKit(path, openedReadOnly, params),
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
             // The replica the kit keeps next to its file (a PSD's), in the document store.

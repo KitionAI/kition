@@ -18,6 +18,8 @@ type Opened = {
   imports: number
   closed: boolean
   write: (params: { path: string; bytes: ArrayBuffer; mode: 'save' | 'export' | 'create' }) => Promise<{ path: string; version: string }>
+  read: (params: { path: string; offset?: number; length?: number }) => Promise<{ bytes: ArrayBuffer; version: string; size: number }>
+  stamp: (params: { path: string }) => Promise<{ version: string | null }>
   shortcuts: string[]
   shortcut: (key: { key: string; code: string; meta: boolean; ctrl: boolean; shift: boolean; alt: boolean }) => void
 }
@@ -53,6 +55,8 @@ type FakeOptions = {
   shortcuts: string[]
   handlers: {
     write: Opened['write']
+    read: Opened['read']
+    stamp: Opened['stamp']
     shortcut: Opened['shortcut']
     replicaRead: (params: { path: string }) => Promise<{ snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: string } | null>
     replicaWrite: (params: { path: string; snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: string }) => Promise<void>
@@ -95,6 +99,8 @@ async function openFakeKit(element: unknown, options: FakeOptions): Promise<Open
     imports: 0,
     closed: false,
     write: handlers.write,
+    read: handlers.read,
+    stamp: handlers.stamp,
     shortcuts: options.shortcuts,
     shortcut: handlers.shortcut,
   }
@@ -132,11 +138,27 @@ vi.mock('../host/mountKit', () => ({
 
 /** The workspace files that exist (`stamp` answers null for any other path). */
 const existing = new Set(['Shared/Poster.test', 'Shared/Poster.mp4'])
+/** The paths read through each of Kition's two file services: its own, and the one kits read through (rule LR2). */
+const reads: { host: string[]; kit: string[] } = { host: [], kit: [] }
 vi.mock('./kitionHost', () => ({
   KITION_KIT_HOST: {
-    read: async () => ({ bytes: encode(JSON.stringify(fileState.titles)), stamp: fileState.stamp }),
-    stamp: async (path: string) => (existing.has(path) ? fileState.stamp : null),
+    read: async (path: string) => {
+      reads.host.push(path)
+      return { bytes: encode(JSON.stringify(fileState.titles)), stamp: fileState.stamp }
+    },
+    stamp: async (path: string) => {
+      reads.host.push(path)
+      return existing.has(path) ? fileState.stamp : null
+    },
     lend: () => null,
+  },
+  readKitFile: async (path: string) => {
+    reads.kit.push(path)
+    return { bytes: encode('lent'), stamp: 'lent-1' }
+  },
+  stampKitFile: async (path: string) => {
+    reads.kit.push(path)
+    return 'lent-1'
   },
   readKitReplica: async () => store.replica,
   writeKitReplica: async (_path: string, _kitId: string, replica: { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: string }) => {
@@ -200,6 +222,8 @@ beforeEach(() => {
   opened.length = 0
   relayed.length = 0
   writes.length = 0
+  reads.host.length = 0
+  reads.kit.length = 0
   fileState.titles = ['Title', 'Agenda']
   store.replica = null
 })
@@ -252,6 +276,24 @@ describe('KitFrame', () => {
     await mount()
     await opened[0].write({ path: 'Shared/Poster.mp4', bytes: new ArrayBuffer(1), mode: 'export' })
     expect(writes).toEqual([{ path: 'Shared/Poster 2.mp4' }])
+  })
+
+  it("reads the document and other workspace files, but never Kition's store or hidden paths", async () => {
+    await mount()
+    const kit = opened[0]
+    reads.host.length = 0
+    for (const hidden of ['.kition/docs/index.json', '.kition/drafts/a/draft.bin', 'Shared/.hidden/cover.png', '.git/config', 'Shared/.env']) {
+      await expect(kit.read({ path: hidden })).rejects.toThrow(/not readable by a kit/)
+      await expect(kit.stamp({ path: hidden })).rejects.toThrow(/not readable by a kit/)
+    }
+    await expect(kit.read({ path: '../outside.png' })).rejects.toThrow(/outside the workspace/)
+    expect(reads).toEqual({ host: [], kit: [] })
+    // Files beside the document, and elsewhere in the workspace (media a project links), through the lent-file service.
+    await expect(kit.read({ path: 'Shared/cover.png', offset: 1, length: 2 })).resolves.toMatchObject({ size: 4, version: 'lent-1' })
+    await expect(kit.stamp({ path: 'Clips/intro.mp4' })).resolves.toEqual({ version: 'lent-1' })
+    // The document itself, through Kition's own service, wherever it is.
+    await expect(kit.read({ path: PATH })).resolves.toMatchObject({ version: 'v1' })
+    expect(reads).toEqual({ host: [PATH], kit: ['Shared/cover.png', 'Clips/intro.mp4'] })
   })
 
   it('keeps every edit, unsaved ones too, when a role change opens the kit again read-only', async () => {
