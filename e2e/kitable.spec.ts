@@ -18,6 +18,14 @@ test.use({ timezoneId: 'Asia/Shanghai' })
 // own requests resolve to it, so a test's own fetches use it too.
 const API_BASE_URL = 'http://127.0.0.1:18101/api'
 
+/**
+ * The modifier the grid's shortcuts use (react-hotkeys-hook's `mod`): Command when the page's
+ * user agent is a Mac's, as in the desktop app's WebKit, else Control.
+ */
+async function modifierKey(page: Page): Promise<'Meta' | 'Control'> {
+  return page.evaluate(() => (/mac/i.test(navigator.userAgent) && !/iphone|ipad|ipod/i.test(navigator.userAgent) ? 'Meta' : 'Control'))
+}
+
 async function waitForKitableEditor(page: Page) {
   await expect(page.getByTestId('kitable-editor')).toBeVisible({ timeout: 15_000 })
 }
@@ -310,8 +318,9 @@ test.describe('kitable editor — toolbar interactions', () => {
     })
   })
 
-  test('centers grid content and copies the selected cell to the system clipboard', async ({ page }) => {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  test('centers grid content and copies the selected cell to the system clipboard', async ({ page, browserName }) => {
+    // WebKit knows no clipboard-write permission: writing needs only the key press's user gesture.
+    await page.context().grantPermissions(browserName === 'webkit' ? ['clipboard-read'] : ['clipboard-read', 'clipboard-write'])
     await page.addInitScript(() => {
       const stateWindow = window as typeof window & Record<string, unknown>
       const textDraws: Array<{ text: string; textAlign: CanvasTextAlign; y: number }> = []
@@ -363,7 +372,7 @@ test.describe('kitable editor — toolbar interactions', () => {
     const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
     await gridStage.hover({ position: { x: 145, y: 48 } })
     await gridStage.click({ position: { x: 145, y: 48 } })
-    await page.keyboard.press('Control+c')
+    await page.keyboard.press(`${await modifierKey(page)}+c`)
 
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('Phase 2 wrap')
   })
@@ -447,10 +456,11 @@ test.describe('kitable editor — toolbar interactions', () => {
     const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
     await gridStage.click({ position: { x: 145, y: 48 } })
 
-    await page.keyboard.press('Control+z')
+    const modifier = await modifierKey(page)
+    await page.keyboard.press(`${modifier}+z`)
     await expect.poll(() => undoRequests.length).toBe(1)
 
-    await page.keyboard.press('Control+Shift+z')
+    await page.keyboard.press(`${modifier}+Shift+z`)
     await expect.poll(() => redoRequests.length).toBe(1)
   })
 
