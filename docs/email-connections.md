@@ -9,7 +9,7 @@ credential. The account address and provider credential are stored once per
 provider and reused by inbox and delivery workflows.
 
 Inbox synchronization is configured from the destination Kitable. Open its
-**Workflow** view, select **New Workflow**, and choose **Sync an email inbox**.
+**Workflow** view, select **New workflow**, and choose **Sync an email inbox**.
 The workflow owns its mailbox, destination, schedule, attachment policy,
 current progress, and run history. Email Providers does not own sync execution.
 

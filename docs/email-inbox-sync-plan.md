@@ -9,7 +9,7 @@ The first release uses IMAP because it works with the largest set of personal em
 ## Product Flow
 
 1. Open the destination Kitable and select **Workflow**.
-2. Choose **New Workflow > Sync an email inbox**.
+2. Choose **New workflow > Sync an email inbox**.
 3. Select a provider account, mailbox, schedule, and destination paths, then save the workflow.
 4. Select **Sync now**, **Sync all**, or enable scheduled sync from the workflow page.
 5. Kition creates or updates the configured `.kitable` file.

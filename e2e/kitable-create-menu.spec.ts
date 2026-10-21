@@ -6,7 +6,7 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
  * E2E — a .kitable row's "+" create menu.
  *
  * The menu creates what lives inside the kitable: "New table", and "New
- * Workflow", which asks for the trigger table in the mode dialog. Creating a
+ * workflow", which asks for the trigger table in the mode dialog. Creating a
  * table never creates a workflow.
  *
  * Pattern: inline desktop-bridge mock + inline data-document API mock, identical
@@ -342,12 +342,12 @@ test.describe('kitable + create menu', () => {
     await openKitableCreateMenu(page)
 
     // A .kitable row's + creates what lives inside it: a table, or a workflow
-    // on one of its tables ("New Workflow" in the user docs). File kinds such as
+    // on one of its tables ("New workflow"). File kinds such as
     // documents or folders do not belong here.
     const menu = page.locator('.document-create-menu')
     await expect(menu.locator('button')).toHaveCount(2)
     await expect(menu.locator('button', { hasText: 'New table' })).toBeVisible()
-    await expect(menu.getByTestId('kitable-action-create-workflow')).toHaveText('New Workflow')
+    await expect(menu.getByTestId('kitable-action-create-workflow')).toHaveText('New workflow')
     await expect(menu.locator('button', { hasText: 'New document' })).toHaveCount(0)
     await expect(menu.locator('button', { hasText: 'Folder' })).toHaveCount(0)
   })

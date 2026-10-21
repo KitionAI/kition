@@ -617,10 +617,10 @@ test.describe('kitable inner navigation and file-level tabs', () => {
     }).toBeLessThanOrEqual(1)
 
     await page.getByTestId('workspace-kitable-create').click()
-    await expect(page.locator('.document-create-option')).toHaveText(['New table', 'New dashboard', 'New form', 'New Workflow'])
+    await expect(page.locator('.document-create-option')).toHaveText(['New table', 'New dashboard', 'New form', 'New workflow'])
     await expect(page.getByTestId('kitable-action-create-dashboard')).toHaveText('New dashboard')
     await expect(page.getByTestId('kitable-action-create-form')).toHaveText('New form')
-    await expect(page.getByTestId('kitable-action-create-workflow')).toHaveText('New Workflow')
+    await expect(page.getByTestId('kitable-action-create-workflow')).toHaveText('New workflow')
     await page.keyboard.press('Escape')
 
     await page.getByTestId('workspace-kitable-collapse').click()

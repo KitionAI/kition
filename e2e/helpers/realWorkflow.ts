@@ -339,7 +339,7 @@ export async function openWorkflowDetailPage(page: Page, workflowId: string) {
 }
 
 /** Jumps the AI-build entry page directly. The user-facing flow goes
- *  Index → "New Workflow" → mode dialog → "Chat with AI", but the dialog
+ *  Index → "New workflow" → mode dialog → "Chat with AI", but the dialog
  *  click only mutates URL state and WorkflowRoute doesn't listen for
  *  popstate (so it stays on the index view until a prop changes). For
  *  e2e we bypass the dialog by navigating + dispatching popstate from a

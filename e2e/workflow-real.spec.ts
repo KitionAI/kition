@@ -70,7 +70,7 @@ test.describe.serial('workflow real no-mock e2e', () => {
     await expect(page.getByTestId('workspace-workflow-workbench')).toBeVisible()
     await expect(page.getByTestId('workflow-route-overlay')).toHaveCount(0)
 
-    // Index → "New Workflow" → mode chooser → "Chat with AI" lands on the
+    // Index → "New workflow" → mode chooser → "Chat with AI" lands on the
     // AI prompt surface. WorkflowRoute reads URL synchronously at render
     // time and doesn't subscribe to popstate — clicking through the
     // dialog only nudges history.state, which can leave Shell's
