@@ -18,10 +18,10 @@
       "pdf": "PDF"
     },
     "folder": "Папка",
-    "newDashboard": "New dashboard",
-    "newForm": "New form",
+    "newDashboard": "Новая панель",
+    "newForm": "Новая форма",
     "newTable": "Новая таблица",
-    "newWorkflow": "Новый процесс",
+    "newWorkflow": "Новый рабочий процесс",
     "group": {
       "documents": "Документы",
       "data": "Данные",

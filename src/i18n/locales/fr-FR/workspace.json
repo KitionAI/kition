@@ -18,10 +18,10 @@
       "pdf": "PDF"
     },
     "folder": "Dossier",
-    "newDashboard": "New dashboard",
-    "newForm": "New form",
+    "newDashboard": "Nouveau tableau de bord",
+    "newForm": "Nouveau formulaire",
     "newTable": "Nouvelle table",
-    "newWorkflow": "Nouveau workflow",
+    "newWorkflow": "Nouveau flux de travail",
     "group": {
       "documents": "Documents",
       "data": "Données",
