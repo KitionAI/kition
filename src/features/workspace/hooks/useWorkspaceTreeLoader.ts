@@ -73,6 +73,12 @@ export function useWorkspaceTreeLoader({
       return
     }
 
+    // Loaded on the workflow view (`/workflow…`, a reload there): opening the
+    // last document would close it, so keep it until the person leaves it.
+    if (!preferredPath && !activeDocumentPath && window.location.pathname.startsWith('/workflow')) {
+      return
+    }
+
     const nextPath = resolveInitialDocumentPath(flattenWorkspaceDocumentItems(response.items || []), {
       preferredPath,
       activeDocumentPath,

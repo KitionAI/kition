@@ -69,6 +69,23 @@ describe('WorkflowRoute', () => {
     expect(container.querySelector('[data-testid="workflow-index-page"]')).not.toBeNull()
   })
 
+  it('follows the URL: opening a workflow from the index shows its detail without a remount', async () => {
+    window.history.replaceState({}, '', '/workflow')
+    await mount(createElement(WorkflowRoute, {
+      workflowContext: null,
+      schemaLookup: async () => ({ id: 'tbl', name: 'Leads', fields: [] }),
+    }))
+    expect(container.querySelector('[data-testid="workflow-index-page"]')).not.toBeNull()
+    // What the index's row click does (openWorkflowDetail): push the detail URL and announce it.
+    await act(async () => {
+      window.history.pushState({}, '', '/workflow/auto_canvas')
+      window.dispatchEvent(new PopStateEvent('popstate', { state: {} }))
+      await Promise.resolve()
+    })
+    expect(container.querySelector('[data-testid="workflow-index-page"]')).toBeNull()
+    expect(container.querySelector('[data-testid="workflow-home-page"]')).not.toBeNull()
+  })
+
   it('forwards the active kitable scope to the workflow index route', async () => {
     window.history.replaceState({}, '', '/workflow')
     await mount(createElement(WorkflowRoute, {

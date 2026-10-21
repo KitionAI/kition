@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 
 import { useWorkflowBuild } from '../hooks/useWorkflowBuild'
 import type { WorkflowBuildInput } from '../hooks/useWorkflowBuild'
@@ -112,11 +112,26 @@ function readSelectedWorkflowIdFromHistory(): string | undefined {
   return typeof value === 'string' && value ? value : undefined
 }
 
+function subscribeToLocation(onChange: () => void) {
+  window.addEventListener('popstate', onChange)
+  return () => window.removeEventListener('popstate', onChange)
+}
+
+/**
+ * The route's URL, re-rendering when it changes: opening a workflow from the
+ * index pushes `/workflow/{id}` (openWorkflowDetail) while the shell's own
+ * state stays the same, so nothing else would re-render this route.
+ */
+function useLocationPath() {
+  return useSyncExternalStore(subscribeToLocation, () => window.location.pathname + window.location.search)
+}
+
 export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath, onExit, rootPath }: WorkflowRouteProps) {
   const build = useWorkflowBuild()
   const [schema, setSchema] = useState<TableSchema | null>(null)
   const [lastPrompt, setLastPrompt] = useState('')
   const [lastDocumentId, setLastDocumentId] = useState<string | undefined>(undefined)
+  useLocationPath()
   const mode = resolveRouteMode(workflowContext)
 
   // Reset build state when the table being automated changes, or when we drop
