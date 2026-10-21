@@ -46,7 +46,7 @@ async function selectSource(page: Page) {
   }, SOURCE)
 }
 
-test('translates a selection in the desktop client with keyboard undo and both themes', async ({ page, baseURL }, testInfo) => {
+test('translates a selection in the desktop client with keyboard undo and both themes', async ({ page, baseURL, browserName }, testInfo) => {
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
   try {
@@ -79,8 +79,11 @@ test('translates a selection in the desktop client with keyboard undo and both t
     // Keyboard navigation activates :focus-visible after the pointer-driven menu selection.
     const replaceButton = page.getByTestId('document-translation-replace')
     await expect(replaceButton).toBeFocused()
-    await page.keyboard.press('Tab')
-    await page.keyboard.press('Shift+Tab')
+    // WebKit (the desktop app's WKWebView) follows macOS: Tab moves between text fields and
+    // Option-Tab between all controls.
+    const controlTab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab'
+    await page.keyboard.press(controlTab)
+    await page.keyboard.press(`Shift+${controlTab}`)
     await expect(replaceButton).toBeFocused()
     await expect.poll(() => replaceButton.evaluate((element) => {
       const style = getComputedStyle(element)
