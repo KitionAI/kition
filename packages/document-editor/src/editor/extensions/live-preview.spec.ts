@@ -481,6 +481,12 @@ describe('livePreviewExtension — fenced code block', () => {
       expect(heads[0].line).toBe(3)
     })
 
+    it('text-scan counts every space after the hashes as part of the marker (per CommonMark)', () => {
+      const view = mountEditor('##  Two spaces\n\n#\tTab\n')
+      const heads = scanATXHeadings(view.state, scanFencedCodeBlocks(view.state))
+      expect(heads.map((h) => view.state.doc.sliceString(h.markFrom, h.markTo))).toEqual(['##  ', '#\t'])
+    })
+
     it('keeps decoration-set size stable across keystrokes (smoke test)', () => {
       const view = mountEditor(buildHeadingDoc(20), 0)
       const beforeSize = view.state.field(livePreviewField).size

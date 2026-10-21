@@ -751,9 +751,10 @@ export function scanATXHeadings(
     const [, indent, hashes] = m
     const markStart = line.from + indent.length
     const hashEnd = markStart + hashes.length
-    const tail = line.text.charAt(indent.length + hashes.length)
-    const hasTrailingSpace = tail === ' ' || tail === '\t'
-    const markEnd = hasTrailingSpace ? hashEnd + 1 : hashEnd
+    // The marker takes every space and tab after the hashes (CommonMark strips them from the
+    // heading's text): one left visible indents the heading, as WebKit draws it.
+    let markEnd = hashEnd
+    while (markEnd < line.to && /[ \t]/.test(line.text.charAt(markEnd - line.from))) markEnd += 1
     out.push({
       line: i,
       lineFrom: line.from,
