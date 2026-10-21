@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
+import { HeadlessDraftBadge } from '@/features/kits/public'
 import { WorkspaceCreateMenu, useAnchoredMenuCoords } from '@/features/workspace/components/WorkspaceCreateMenu'
 import {
   getWorkspaceItemIcon,
@@ -457,6 +458,7 @@ export function WorkspaceTree({
                       : node.name}
                   </span>
                 )}
+                {node.type === 'file' && !node.virtual && !isRenaming ? <HeadlessDraftBadge path={node.path} /> : null}
                 {!isRenaming && (canCreateInside || hasMenu) ? (
                   <span className={cn('document-tree-actions', (actionMenuOpen || moveMenuOpen || iconPickerOpen) && 'is-open')}>
                     {canCreateInside ? (

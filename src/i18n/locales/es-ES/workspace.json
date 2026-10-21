@@ -706,6 +706,16 @@
         "changed": "Modificado",
         "deleted": "Eliminado"
       }
+    },
+    "headlessDraft": {
+      "badgeTitle": "Un borrador de un agente de este archivo espera tu revisión",
+      "title": "Revisar el borrador del agente de {{name}}",
+      "hint": "Un agente fuera de Kition editó una copia de este archivo. El archivo no cambia hasta que fusiones.",
+      "noDiff": "Este kit compara un borrador por su resumen y su vista previa, no objeto por objeto.",
+      "stale": "El archivo cambió después de que el agente empezara su borrador. Al fusionar, el borrador reemplaza esos cambios.",
+      "overwrite": "Fusionar y reemplazar",
+      "dirty": "Este archivo tiene ediciones sin guardar en su editor abierto. Guárdalas o descártalas y luego fusiona.",
+      "mergedHint": "El archivo contiene ahora el borrador del agente."
     }
   },
   "filmKit": {

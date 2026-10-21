@@ -1,4 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
+import { HeadlessDraftReviewHost } from '@/features/kits/public'
 import { WorkspaceSidebar } from '@/features/workspace/components/WorkspaceSidebar'
 import { WorkspaceTree } from '@/features/workspace/components/WorkspaceTree'
 import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
@@ -157,6 +158,7 @@ export function WorkspaceSidebarPanel({
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
           />
+          <HeadlessDraftReviewHost />
         </>
       )}
     />

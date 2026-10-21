@@ -46,6 +46,10 @@ pub fn router(state: KitsState) -> Router {
             get(commands).post(execute),
         )
         .route("/kits/{kit}/documents/{document}/save", post(save))
+        .route("/kits/drafts", get(list_drafts))
+        .route("/kits/drafts/compare", get(compare_draft))
+        .route("/kits/drafts/merge", post(merge_draft))
+        .route("/kits/drafts/discard", post(discard_draft))
         .route("/kits/bridge", get(bridge_stream).post(bridge_message))
         .route("/mcp/kits", post(mcp))
         .route("/kits/surfaces", post(open_surface))
@@ -424,4 +428,85 @@ async fn write_file(
         .write_file(&query.path, &body)
         .map_err(app_error)?;
     Ok(ok(json!({ "path": query.path, "bytes": body.len() })))
+}
+
+// Drafts an agent kept beside workspace files over `kition-kits-mcp --drafts` (Kit Standard A27):
+// the person reviews, merges, or discards them here. The agent can do none of these (A14).
+
+/// Maps a refused draft command to a status the renderer can branch on; `data.reason` is the
+/// command's code (`not-found`, `stale`, or a kit tool's code).
+fn draft_error(error: crate::drafts::DraftError) -> AppError {
+    let (status, code) = match error.code {
+        "not-found" => (404, 40403),
+        "stale" => (409, 40905),
+        _ => (400, 40003),
+    };
+    AppError::new(status, code, error.message).with_data(json!({ "reason": error.code }))
+}
+
+/// `GET /kits/drafts`: the workspace's headless drafts, oldest first, each with `stale`.
+async fn list_drafts(State(state): State<KitsState>, _user: CurrentUser) -> Response {
+    let drafts = state
+        .kits
+        .workspace_dir()
+        .map(crate::drafts::list)
+        .unwrap_or_default();
+    ok(json!({ "drafts": drafts }))
+}
+
+#[derive(Deserialize)]
+struct DraftQuery {
+    path: String,
+    #[serde(default)]
+    previews: bool,
+}
+
+/// `GET /kits/drafts/compare?path=&previews=`: what merging the draft of `path` would change.
+async fn compare_draft(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    Query(query): Query<DraftQuery>,
+) -> AppResult<Response> {
+    let answer = crate::drafts::compare(&state.kits, &query.path, query.previews)
+        .await
+        .map_err(draft_error)?;
+    Ok(ok(answer))
+}
+
+#[derive(Deserialize)]
+struct MergeDraftBody {
+    path: String,
+    /// Replaces the file even though it changed since the draft forked (drops those edits).
+    #[serde(default)]
+    overwrite: bool,
+}
+
+/// `POST /kits/drafts/merge`: writes the draft of `path` as the file; refused as `stale` (409)
+/// when the file changed since the draft forked, unless `overwrite`.
+async fn merge_draft(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    JsonBody(body): JsonBody<MergeDraftBody>,
+) -> AppResult<Response> {
+    let answer = crate::drafts::merge(&state.kits, &body.path, body.overwrite)
+        .await
+        .map_err(draft_error)?;
+    Ok(ok(answer))
+}
+
+#[derive(Deserialize)]
+struct DiscardDraftBody {
+    path: String,
+}
+
+/// `POST /kits/drafts/discard`: drops the draft of `path`; the file stays as it is.
+async fn discard_draft(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    JsonBody(body): JsonBody<DiscardDraftBody>,
+) -> AppResult<Response> {
+    let answer = crate::drafts::discard(&state.kits, &body.path)
+        .await
+        .map_err(draft_error)?;
+    Ok(ok(answer))
 }

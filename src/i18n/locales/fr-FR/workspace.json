@@ -706,6 +706,16 @@
         "changed": "Modifié",
         "deleted": "Supprimé"
       }
+    },
+    "headlessDraft": {
+      "badgeTitle": "Le brouillon d'un agent pour ce fichier attend votre relecture",
+      "title": "Relire le brouillon de l'agent pour {{name}}",
+      "hint": "Un agent extérieur à Kition a modifié une copie de ce fichier. Le fichier reste tel quel jusqu'à la fusion.",
+      "noDiff": "Ce kit compare un brouillon par son résumé et son aperçu, pas objet par objet.",
+      "stale": "Le fichier a changé après le début du brouillon de l'agent. La fusion remplace ces modifications par le brouillon.",
+      "overwrite": "Fusionner et remplacer",
+      "dirty": "Ce fichier a des modifications non enregistrées dans son éditeur ouvert. Enregistrez-les ou annulez-les, puis fusionnez.",
+      "mergedHint": "Le fichier contient désormais le brouillon de l'agent."
     }
   },
   "filmKit": {

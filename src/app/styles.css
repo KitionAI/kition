@@ -1989,6 +1989,23 @@
     @apply ml-1 shrink-0 rounded-md bg-accent px-1 text-[10px] font-medium leading-4 text-primary;
   }
 
+  /* A headless draft (kition-kits-mcp --drafts) waiting beside a tree file: opens its review. */
+  .document-tree-draft-badge {
+    @apply ml-1 inline-flex shrink-0 items-center gap-0.5 rounded-md bg-accent px-1 text-[10px] font-medium leading-4 text-primary hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .document-tree-draft-badge svg {
+    @apply size-3;
+  }
+
+  .kit-draft-review__stale {
+    @apply flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900;
+  }
+
+  .kit-draft-side__summary {
+    @apply text-xs text-muted-foreground;
+  }
+
   .document-revision-review__scroller {
     @apply min-h-0 flex-1 overflow-y-auto;
     background: var(--document-main-surface, hsl(var(--background)));
@@ -4200,6 +4217,12 @@
      and draws its own "Ask agent" in its menu bar, and the topbar keeps the Agent toggle; the
      launcher would only cover the kit's controls, so it steps aside while a kit is in front. */
   body:has(.kit-frame[data-active='true']) .agent-floating-launcher {
+    display: none;
+  }
+
+  /* A right sheet is modal (a backdrop over the page) and keeps its actions in a footer at the
+     bottom right, where the launcher floats above it; the launcher steps aside while one is open. */
+  body:has([data-testid='right-sheet']) .agent-floating-launcher {
     display: none;
   }
 

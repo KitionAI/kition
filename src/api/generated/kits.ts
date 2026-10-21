@@ -100,6 +100,137 @@ export type KitsWriteFileQuery = {
 }
 
 /**
+ * replica: the draft is a KDM replica the kit compares object by object; file: a copy of the file, compared by summaries and renders.
+ */
+export type KitsDraftMode = "replica" | "file"
+
+/**
+ * A draft an agent keeps beside a workspace file over kition-kits-mcp --drafts (Kit Standard A27), as GET /v1/kits/drafts lists it. Only the person merges or discards it (A14).
+ */
+export type KitsHeadlessDraft = {
+  version: 1
+  path: KitsWorkspacePath
+  kit: KitsKitId
+  mode: KitsDraftMode
+  /**
+   * ready: the agent asked for review.
+   */
+  state: "open" | "ready"
+  /**
+   * The file's SHA-256 when the draft forked from it.
+   */
+  baseSha256: string
+  /**
+   * Unix milliseconds.
+   */
+  created: number
+  /**
+   * Unix milliseconds.
+   */
+  updated: number
+  /**
+   * The file changed since the draft forked: merging would drop those edits.
+   */
+  stale: boolean
+}
+
+/**
+ * GET /v1/kits/drafts: the workspace's headless drafts, oldest first.
+ */
+export type KitsDraftList = {
+  drafts: KitsHeadlessDraft[]
+}
+
+/**
+ * GET /v1/kits/drafts/compare?path=&previews=: what merging the draft of path would change. 404 reason not-found when there is none.
+ */
+export type KitsDraftCompareQuery = {
+  path: KitsWorkspacePath
+  /**
+   * Also render both sides (base64 PNG).
+   */
+  previews?: boolean
+}
+
+export type KitsDraftObjectChange = {
+  id: string
+  type: string
+  fields: string[]
+}
+
+export type KitsDraftTextChange = {
+  id: string
+  field: string
+  before: string
+  after: string
+}
+
+/**
+ * The object-level difference (Kit Standard A13) between the file as the draft forked from it and the draft.
+ */
+export type KitsDraftDiff = {
+  created: KitsDraftObjectChange[]
+  changed: KitsDraftObjectChange[]
+  deleted: KitsDraftObjectChange[]
+  texts: KitsDraftTextChange[]
+}
+
+export type KitsDraftSides = {
+  base?: string
+  draft?: string
+}
+
+/**
+ * The comparison a person reviews before merging: diff for replica drafts whose kit describes its schema (null otherwise, with diffUnavailable), each side's summary, and with previews both sides rendered.
+ */
+export type KitsDraftComparison = {
+  path: KitsWorkspacePath
+  kit: KitsKitId
+  mode: KitsDraftMode
+  state: "open" | "ready"
+  stale: boolean
+  diff: KitsDraftDiff | null
+  /**
+   * Why there is no object-level diff.
+   */
+  diffUnavailable?: string
+  summary: KitsDraftSides
+  /**
+   * base64 PNG renders of each side.
+   */
+  previews?: (KitsDraftSides)
+}
+
+/**
+ * POST /v1/kits/drafts/merge: writes the draft as the file. 409 reason stale when the file changed since the draft forked, unless overwrite; 404 reason not-found when there is no draft.
+ */
+export type KitsDraftMergeRequest = {
+  path: KitsWorkspacePath
+  /**
+   * Replace the file anyway, dropping its newer edits.
+   */
+  overwrite?: boolean
+}
+
+export type KitsDraftMergeResult = {
+  path: KitsWorkspacePath
+  merged: true
+  sha256: string
+}
+
+/**
+ * POST /v1/kits/drafts/discard: drops the draft; the file stays as it is. 404 reason not-found when there is none.
+ */
+export type KitsDraftDiscardRequest = {
+  path: KitsWorkspacePath
+}
+
+export type KitsDraftDiscardResult = {
+  path: KitsWorkspacePath
+  discarded: true
+}
+
+/**
  * POST /v1/kits/documents/new: creates an `Untitled image` file in the folder and opens it.
  */
 export type KitsCreateRequest = {
@@ -352,6 +483,6 @@ export type KitsBridgeDocumentApplyResult = {
 }
 
 /**
- * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.
+ * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.
  */
 export type KitsContract = KitsKitList

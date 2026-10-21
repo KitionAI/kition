@@ -706,6 +706,16 @@
         "changed": "Alterado",
         "deleted": "Removido"
       }
+    },
+    "headlessDraft": {
+      "badgeTitle": "Um rascunho de um agente para este arquivo aguarda sua revisão",
+      "title": "Revisar o rascunho do agente de {{name}}",
+      "hint": "Um agente fora do Kition editou uma cópia deste arquivo. O arquivo fica como está até você mesclar.",
+      "noDiff": "Este kit compara um rascunho pelo resumo e pela prévia, não objeto por objeto.",
+      "stale": "O arquivo mudou depois que o agente começou o rascunho. Mesclar substitui essas alterações pelo rascunho.",
+      "overwrite": "Mesclar e substituir",
+      "dirty": "Este arquivo tem edições não salvas no editor aberto. Salve ou descarte-as e depois mescle.",
+      "mergedHint": "O arquivo agora contém o rascunho do agente."
     }
   },
   "filmKit": {

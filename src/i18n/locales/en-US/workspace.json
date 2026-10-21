@@ -706,6 +706,16 @@
         "changed": "Changed",
         "deleted": "Removed"
       }
+    },
+    "headlessDraft": {
+      "badgeTitle": "An agent's draft of this file is waiting for your review",
+      "title": "Review the agent's draft of {{name}}",
+      "hint": "An agent outside Kition edited a copy of this file. The file stays as it is until you merge.",
+      "noDiff": "This kit compares a draft by its summary and preview, not object by object.",
+      "stale": "The file changed after the agent started its draft. Merging replaces those changes with the draft.",
+      "overwrite": "Merge and replace",
+      "dirty": "This file has unsaved edits in its open editor. Save or discard them, then merge.",
+      "mergedHint": "The file now holds the agent's draft."
     }
   },
   "filmKit": {

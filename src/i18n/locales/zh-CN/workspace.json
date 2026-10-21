@@ -706,6 +706,16 @@
         "changed": "修改",
         "deleted": "删除"
       }
+    },
+    "headlessDraft": {
+      "badgeTitle": "这个文件有一份 agent 草稿等待你审阅",
+      "title": "审阅 agent 对 {{name}} 的草稿",
+      "hint": "Kition 之外的 agent 修改了这个文件的副本。合并之前，文件保持不变。",
+      "noDiff": "这个套件通过摘要和预览比较草稿，而不是逐个对象比较。",
+      "stale": "agent 开始草稿后，文件又被改过。合并会用草稿替换这些修改。",
+      "overwrite": "合并并替换",
+      "dirty": "这个文件在打开的编辑器里有未保存的修改。请先保存或放弃，再合并。",
+      "mergedHint": "文件现在是 agent 的草稿内容。"
     }
   },
   "filmKit": {

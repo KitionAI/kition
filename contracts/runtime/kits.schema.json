@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/kits.schema.json",
   "title": "Kition Kits",
-  "description": "GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.",
+  "description": "GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.",
   "$ref": "#/$defs/kitList",
   "$defs": {
     "kitId": {
@@ -244,6 +244,324 @@
       "properties": {
         "path": {
           "$ref": "#/$defs/workspacePath"
+        }
+      }
+    },
+    "draftMode": {
+      "enum": [
+        "replica",
+        "file"
+      ],
+      "description": "replica: the draft is a KDM replica the kit compares object by object; file: a copy of the file, compared by summaries and renders."
+    },
+    "headlessDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A draft an agent keeps beside a workspace file over kition-kits-mcp --drafts (Kit Standard A27), as GET /v1/kits/drafts lists it. Only the person merges or discards it (A14).",
+      "required": [
+        "version",
+        "path",
+        "kit",
+        "mode",
+        "state",
+        "baseSha256",
+        "created",
+        "updated",
+        "stale"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "mode": {
+          "$ref": "#/$defs/draftMode"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "ready"
+          ],
+          "description": "ready: the agent asked for review."
+        },
+        "baseSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The file's SHA-256 when the draft forked from it."
+        },
+        "created": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix milliseconds."
+        },
+        "updated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix milliseconds."
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "The file changed since the draft forked: merging would drop those edits."
+        }
+      }
+    },
+    "draftList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/drafts: the workspace's headless drafts, oldest first.",
+      "required": [
+        "drafts"
+      ],
+      "properties": {
+        "drafts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/headlessDraft"
+          }
+        }
+      }
+    },
+    "draftCompareQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/drafts/compare?path=&previews=: what merging the draft of path would change. 404 reason not-found when there is none.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "previews": {
+          "type": "boolean",
+          "description": "Also render both sides (base64 PNG)."
+        }
+      }
+    },
+    "draftObjectChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "fields"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "draftTextChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        }
+      }
+    },
+    "draftDiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The object-level difference (Kit Standard A13) between the file as the draft forked from it and the draft.",
+      "required": [
+        "created",
+        "changed",
+        "deleted",
+        "texts"
+      ],
+      "properties": {
+        "created": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftObjectChange"
+          }
+        },
+        "changed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftObjectChange"
+          }
+        },
+        "deleted": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftObjectChange"
+          }
+        },
+        "texts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftTextChange"
+          }
+        }
+      }
+    },
+    "draftSides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "draft": {
+          "type": "string"
+        }
+      }
+    },
+    "draftComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The comparison a person reviews before merging: diff for replica drafts whose kit describes its schema (null otherwise, with diffUnavailable), each side's summary, and with previews both sides rendered.",
+      "required": [
+        "path",
+        "kit",
+        "mode",
+        "state",
+        "stale",
+        "diff",
+        "summary"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "mode": {
+          "$ref": "#/$defs/draftMode"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "ready"
+          ]
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "diff": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/draftDiff"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diffUnavailable": {
+          "type": "string",
+          "description": "Why there is no object-level diff."
+        },
+        "summary": {
+          "$ref": "#/$defs/draftSides"
+        },
+        "previews": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/draftSides"
+            }
+          ],
+          "description": "base64 PNG renders of each side."
+        }
+      }
+    },
+    "draftMergeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/drafts/merge: writes the draft as the file. 409 reason stale when the file changed since the draft forked, unless overwrite; 404 reason not-found when there is no draft.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "overwrite": {
+          "type": "boolean",
+          "description": "Replace the file anyway, dropping its newer edits."
+        }
+      }
+    },
+    "draftMergeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "merged",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "merged": {
+          "const": true
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "draftDiscardRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/drafts/discard: drops the draft; the file stays as it is. 404 reason not-found when there is none.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        }
+      }
+    },
+    "draftDiscardResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "discarded"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "discarded": {
+          "const": true
         }
       }
     },
