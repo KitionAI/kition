@@ -50,10 +50,11 @@ export class WorkerRelay {
   /** Takes the worker's changes the editor does not have yet. */
   pull() {
     this.enqueue(async () => {
-      const before = this.replica.version()
-      const { changes } = await this.engine.exportChanges(own(before.encode()))
+      const { changes } = await this.engine.exportChanges(own(this.replica.version().encode()))
       if (this.closed) return
-      // Unless the editor edited since its last push, the worker now has all the editor has.
+      // Read after the wait: the person may have typed meanwhile, and those edits are not the
+      // worker's yet. Unless the editor edited since its last push, the worker now has all it has.
+      const before = this.replica.version()
       const caughtUp = this.pushed.includes(before)
       this.replica.importChanges(new Uint8Array(changes))
       if (caughtUp) this.pushed = this.replica.version()

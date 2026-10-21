@@ -51,10 +51,11 @@ export class WorkerRelay {
   pull() {
     this.enqueue(async () => {
       const replica = this.store.getReplica()
-      const before = replica.version()
-      const { changes } = await this.engine.exportChanges(own(before.encode()))
+      const { changes } = await this.engine.exportChanges(own(replica.version().encode()))
       if (this.closed || this.store.getReplica() !== replica) return
-      // Unless the editor committed since its last push, the worker now has all the editor has.
+      // Read after the wait: the editor may have committed meanwhile, and those commits are not the
+      // worker's yet. Unless the editor committed since its last push, the worker now has all it has.
+      const before = replica.version()
       const caughtUp = this.pushed.includes(before)
       this.store.importChanges(new Uint8Array(changes))
       if (caughtUp) this.pushed = replica.version()
