@@ -17,8 +17,8 @@ type NodeSlideSdk = {
   SlideDocument: { create(name: string, width: number, height: number): { save(): Uint8Array; execute(command: string, params: string): string; free(): void } }
 }
 
-/** A two-slide deck made by the engine the page runs. */
-async function deckFixture() {
+/** A two-slide slide file made by the engine the page runs. */
+async function slideFixture() {
   const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_sdk.js')).href)) as NodeSlideSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   const doc = sdk.SlideDocument.create('Launch.kitionslide', 960, 540)
@@ -29,7 +29,7 @@ async function deckFixture() {
   return Buffer.from(bytes)
 }
 
-/** Whether the built Slides package carries a kit-ui that keeps drafts (protocol section 7d). */
+/** Whether the built Slide package carries a kit-ui that keeps drafts (protocol section 7d). */
 async function packageKeepsDrafts() {
   if (!existsSync(UI_ASSETS)) return false
   for (const name of await fs.readdir(UI_ASSETS)) {
@@ -65,13 +65,13 @@ function draftRunEvents(file: string) {
   return messages.map((message) => `data: ${JSON.stringify(message)}\n\n`).join('')
 }
 
-test("the agent edits a Slides deck as a draft; the person reviews it, merges it, and undoes the merge", async ({ page, baseURL }) => {
-  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slides kit is not built into public/kits/slide-ui')
-  test.skip(!(await packageKeepsDrafts()), 'the Slides package predates agent drafts; rebuild it with scripts/build-kit-ui.sh slide --ui-only')
+test("the agent edits a slide file as a draft; the person reviews it, merges it, and undoes the merge", async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slide kit is not built into public/kits/slide-ui')
+  test.skip(!(await packageKeepsDrafts()), 'the Slide package predates agent drafts; rebuild it with scripts/build-kit-ui.sh slide --ui-only')
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
   try {
-    await fs.writeFile(path.join(host.root, 'Launch.kitionslide'), await deckFixture())
+    await fs.writeFile(path.join(host.root, 'Launch.kitionslide'), await slideFixture())
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     let streams = 0
@@ -102,7 +102,7 @@ test("the agent edits a Slides deck as a draft; the person reviews it, merges it
       await expect.poll(() => posted.find((message) => message.id === id), { timeout: 30_000 }).toBeTruthy()
       return posted.find((message) => message.id === id)!
     }
-    // The agent's run went to its draft: the deck the person sees is unchanged, and nothing is saved.
+    // The agent's run went to its draft: the slide file the person sees is unchanged, and nothing is saved.
     const run = (await answer(1)).result as { completed: Array<{ command: string; changed: boolean }>; saved: boolean; document: { summary: string } }
     expect(run.completed).toEqual([{ command: 'slide.new', changed: true, result: expect.anything() }])
     expect(run.saved).toBe(false)
@@ -118,13 +118,13 @@ test("the agent edits a Slides deck as a draft; the person reviews it, merges it
     await expect(page.getByTestId('document-tab-draft')).toHaveAttribute('data-state', 'ready')
     await expect(page.getByTestId('kit-draft-banner')).toHaveAttribute('data-state', 'ready')
 
-    // The review compares the deck with the draft merged, both drawn by the kit.
+    // The review compares the slide file with the draft merged, both drawn by the kit.
     await page.getByTestId('kit-draft-review').click()
     await expect(page.getByTestId('kit-draft-summary')).toContainText('added', { timeout: 30_000 })
     await expect(page.getByTestId('kit-draft-before').locator('img')).toBeVisible()
     await expect(page.getByTestId('kit-draft-after').locator('img')).toBeVisible()
 
-    // The person merges it: one edit of the deck, marked as the agent's, not saved yet.
+    // The person merges it: one edit of the slide file, marked as the agent's, not saved yet.
     await page.getByTestId('kit-draft-merge').click()
     await expect(page.getByTestId('kit-draft-banner')).toHaveCount(0)
     await expect(page.getByTestId('document-tab-draft')).toHaveCount(0)

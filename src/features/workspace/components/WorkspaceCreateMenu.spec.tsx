@@ -37,9 +37,9 @@ describe('WorkspaceCreateMenu', () => {
     // Kition's own types and the kits mix; portable formats show their extension.
     expect(groups).toEqual([
       { label: 'Documents', items: ['Document.md', 'Word.docx'] },
-      { label: 'Data', items: ['Table', 'Spreadsheet.xlsx'] },
-      { label: 'Visual', items: ['Slides', 'Board', 'Image.psd'] },
-      { label: 'Media', items: ['Video'] },
+      { label: 'Data', items: ['Table', 'Sheet.xlsx'] },
+      { label: 'Visual', items: ['Slide', 'Board', 'Photo.psd'] },
+      { label: 'Media', items: ['Film'] },
     ])
     const options = Array.from(container.querySelectorAll('button'))
     expect(options.at(-1)?.textContent?.trim()).toBe('Folder')

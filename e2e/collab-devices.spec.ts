@@ -9,8 +9,8 @@ const engine = kitEngine<{
   SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument }
 }>('slide', 'kition_slide_sdk')
 
-/** A deck made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
-async function deckFixture() {
+/** A slide file made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
+async function slideFixture() {
   const sdk = await engine.load()
   const doc = sdk.SlideDocument.create('Keynote.kitionslide', 960, 540)
   doc.execute('edit.selectAll', '{}')
@@ -55,9 +55,9 @@ async function openSyncedDocuments(page: Page) {
   await expect(page.getByTestId('collab-synced-dialog')).toBeVisible()
 }
 
-test('syncs a Slides deck across one person\'s two devices: synced on one, listed and opened on the other, edited on both', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+test('syncs a slide file across one person\'s two devices: synced on one, listed and opened on the other, edited on both', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -66,10 +66,10 @@ test('syncs a Slides deck across one person\'s two devices: synced on one, liste
   const laptop = await browser.newContext()
   const desktop = await browser.newContext()
   try {
-    // On the laptop, Alice syncs her deck to her devices: no share link, nobody else.
+    // On the laptop, Alice syncs her slide file to her devices: no share link, nobody else.
     const pageA = await laptop.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await (await openTabMenu(pageA, 'Keynote', 'Sync to my devices')).click()
     await expect(pageA.getByText('Synced to your devices')).toBeVisible({ timeout: 30_000 })
@@ -79,7 +79,7 @@ test('syncs a Slides deck across one person\'s two devices: synced on one, liste
     await expect(pageA.getByRole('menuitem', { name: 'Sync to my devices' })).toHaveCount(0)
     await pageA.keyboard.press('Escape')
 
-    // On the desktop, her synced documents list the deck, which is not in this workspace yet.
+    // On the desktop, her synced documents list the slide file, which is not in this workspace yet.
     const pageB = await desktop.newPage()
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.alice))
@@ -90,7 +90,7 @@ test('syncs a Slides deck across one person\'s two devices: synced on one, liste
     await expect(pageB.getByTestId('collab-synced-folder')).toHaveValue('')
     await pageB.screenshot({ path: testInfo.outputPath('desktop-synced-documents.png') })
 
-    // Open here: the deck is made in the workspace as the same document and opens.
+    // Open here: the slide file is made in the workspace as the same document and opens.
     await row.getByTestId('collab-synced-open').click()
     await expect(pageB.getByTestId('collab-synced-dialog')).toHaveCount(0, { timeout: 30_000 })
     const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')

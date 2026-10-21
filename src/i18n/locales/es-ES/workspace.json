@@ -6,15 +6,15 @@
       "board": "Tablero",
       "page": "Página",
       "note": "Nota",
-      "image": "Imagen",
-      "video": "Vídeo",
-      "drawing": "Dibujo",
-      "motion": "Animación",
-      "layout": "Página",
+      "image": "Photo",
+      "video": "Film",
+      "drawing": "Vector",
+      "motion": "Effect",
+      "layout": "Design",
       "cad": "CAD",
-      "slide": "Diapositivas",
+      "slide": "Slide",
       "word": "Word",
-      "spreadsheet": "Hoja de cálculo",
+      "spreadsheet": "Sheet",
       "pdf": "PDF"
     },
     "folder": "Carpeta",
@@ -659,8 +659,8 @@
     "renameTable": "Renombrar la tabla de datos"
   },
   "photoKit": {
-    "unavailableTitle": "La edición de fotos no está disponible en esta versión",
-    "unavailableBody": "Las imágenes se abren en Kition cuando se incluye el motor Photo."
+    "unavailableTitle": "La edición de Photo no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Photo se abren en Kition cuando se incluye el motor Photo."
   },
   "kitEditor": {
     "conflictsTitle": "Algunas ediciones no se pudieron combinar",
@@ -719,42 +719,42 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "La edición de vídeo no está disponible en esta versión",
-    "unavailableBody": "Los proyectos de vídeo se abren en Kition cuando se incluye el motor Film.",
+    "unavailableTitle": "La edición de Film no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Film se abren en Kition cuando se incluye el motor Film.",
     "editInFilm": "Editar en Film",
     "editFailed": "No se pudo crear el proyecto de vídeo"
   },
   "vectorKit": {
-    "unavailableTitle": "La edición vectorial no está disponible en esta versión",
-    "unavailableBody": "Los dibujos vectoriales se abren en Kition cuando se incluye el motor Vector."
+    "unavailableTitle": "La edición de Vector no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Vector se abren en Kition cuando se incluye el motor Vector."
   },
   "effectKit": {
-    "unavailableTitle": "La edición de gráficos animados no está disponible en esta versión",
-    "unavailableBody": "Los proyectos de gráficos animados se abren en Kition cuando se incluye el motor Effect."
+    "unavailableTitle": "La edición de Effect no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Effect se abren en Kition cuando se incluye el motor Effect."
   },
   "designKit": {
-    "unavailableTitle": "La maquetación no está disponible en esta versión",
-    "unavailableBody": "Las maquetaciones se abren en Kition cuando se incluye el motor Design."
+    "unavailableTitle": "La edición de Design no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Design se abren en Kition cuando se incluye el motor Design."
   },
   "cadKit": {
-    "unavailableTitle": "La edición CAD no está disponible en esta versión",
-    "unavailableBody": "Los dibujos CAD se abren en Kition cuando se incluye el motor CAD."
+    "unavailableTitle": "La edición de CAD no está disponible en esta versión",
+    "unavailableBody": "Los archivos de CAD se abren en Kition cuando se incluye el motor CAD."
   },
   "slideKit": {
-    "unavailableTitle": "La edición de Diapositivas no está disponible en esta versión",
-    "unavailableBody": "Las diapositivas se abren en Kition cuando se incluye el motor de Diapositivas."
+    "unavailableTitle": "La edición de Slide no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Slide se abren en Kition cuando se incluye el motor Slide."
   },
   "wordKit": {
     "unavailableTitle": "La edición de Word no está disponible en esta versión",
-    "unavailableBody": "Los documentos de Word se abren en Kition cuando se incluye el motor de Word."
+    "unavailableBody": "Los archivos de Word se abren en Kition cuando se incluye el motor Word."
   },
   "sheetKit": {
-    "unavailableTitle": "La edición de hojas de cálculo no está disponible en esta versión",
-    "unavailableBody": "Las hojas de cálculo se abren en Kition cuando se incluye el motor de hojas."
+    "unavailableTitle": "La edición de Sheet no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Sheet se abren en Kition cuando se incluye el motor Sheet."
   },
   "pdfKit": {
     "unavailableTitle": "La edición de PDF no está disponible en esta versión",
-    "unavailableBody": "Los PDF se abren en Kition cuando se incluye el motor de PDF."
+    "unavailableBody": "Los archivos de PDF se abren en Kition cuando se incluye el motor PDF."
   },
   "collab": {
     "share": "Compartir para coedición",
@@ -835,18 +835,18 @@
     "updateElsewhere": "Actualiza Kition a su última versión para seguir editando.",
     "updateFailed": "No se pudieron buscar actualizaciones: {{message}}",
     "kits": {
-      "board": "Tablero",
+      "board": "Board",
       "cad": "CAD",
-      "design": "Maquetación",
-      "document": "Documento",
-      "effect": "Animación",
-      "film": "Vídeo",
+      "design": "Design",
+      "document": "Document",
+      "effect": "Effect",
+      "film": "Film",
       "pdf": "PDF",
-      "photo": "Fotos",
-      "sheet": "Hojas de cálculo",
-      "slide": "Diapositivas",
-      "table": "Tabla",
-      "vector": "Vectorial",
+      "photo": "Photo",
+      "sheet": "Sheet",
+      "slide": "Slide",
+      "table": "Table",
+      "vector": "Vector",
       "word": "Word"
     }
   }

@@ -136,7 +136,7 @@ describe('ExtensionService', () => {
   it('installs an extension from the workspace and runs its command on the kit document shown now', async () => {
     files.set('ext/titles/extension.json', JSON.stringify(manifest(['model.read', 'model.write'])))
     files.set('ext/titles/extension.mjs', SOURCE)
-    const document = fakeKitDocument('Deck.test')
+    const document = fakeKitDocument('Slide.test')
     mounted.active = document
     const { service, extensionNotices } = start()
     await service.ready
@@ -147,7 +147,7 @@ describe('ExtensionService', () => {
     expect((await listInstalledExtensions()).map((extension) => extension.id)).toEqual(['com.example.titles'])
 
     const [command] = service.paletteCommands()
-    expect(command).toMatchObject({ id: 'titles.upper', title: 'Upper-case the title', documentPath: 'Deck.test', extension: 'com.example.titles' })
+    expect(command).toMatchObject({ id: 'titles.upper', title: 'Upper-case the title', documentPath: 'Slide.test', extension: 'com.example.titles' })
     await service.runCommand(command)
     expect(document.title()).toBe('QUARTERLY REVIEW')
     expect(extensionNotices).toEqual([{ extension: 'com.example.titles', level: 'success', title: 'Upper-cased' }])
@@ -157,7 +157,7 @@ describe('ExtensionService', () => {
   it('shows a refusal when an extension without model.write tries to change the document', async () => {
     files.set('ext/titles/extension.json', JSON.stringify(manifest(['model.read'])))
     files.set('ext/titles/extension.mjs', SOURCE)
-    const document = fakeKitDocument('Deck.test')
+    const document = fakeKitDocument('Slide.test')
     mounted.active = document
     const { service } = start()
     await service.install('ext/titles/extension.json')
@@ -169,7 +169,7 @@ describe('ExtensionService', () => {
   it('disables, enables, and removes extensions, and loads the enabled ones when it starts', async () => {
     files.set('ext/titles/extension.json', JSON.stringify(manifest(['model.read', 'model.write'])))
     files.set('ext/titles/extension.mjs', SOURCE)
-    mounted.active = fakeKitDocument('Deck.test')
+    mounted.active = fakeKitDocument('Slide.test')
     const first = start().service
     await first.install('ext/titles')
     await first.setEnabled('com.example.titles', false)
@@ -201,10 +201,10 @@ describe('ExtensionService', () => {
         })))
       }`,
     )
-    mounted.active = fakeKitDocument('Deck.test')
+    mounted.active = fakeKitDocument('Slide.test')
     const first = start().service
     await first.install('ext/titles')
-    expect(first.palettePanels()).toEqual([expect.objectContaining({ id: 'titles.panel', title: 'Title', extension: 'com.example.titles', extensionName: 'Titles', documentPath: 'Deck.test' })])
+    expect(first.palettePanels()).toEqual([expect.objectContaining({ id: 'titles.panel', title: 'Title', extension: 'com.example.titles', extensionName: 'Titles', documentPath: 'Slide.test' })])
     expect(first.enabled('com.example.titles')).toBe(true)
     first.dispose()
 
@@ -215,7 +215,7 @@ describe('ExtensionService', () => {
     const channel = new MessageChannel()
     const panel = new RpcPeer(channel.port1)
     try {
-      await service.host.openPanel('Deck.test', 'com.example.titles', 'titles.panel', channel.port2)
+      await service.host.openPanel('Slide.test', 'com.example.titles', 'titles.panel', channel.port2)
       await expect(panel.request('panel/request', null)).resolves.toBe('quarterly review')
     } finally {
       panel.close()
@@ -242,23 +242,23 @@ describe('ExtensionService', () => {
     const { service } = start()
     await service.install('ext/titles')
     const heard: Array<number | null> = []
-    const unsubscribe = service.subscribeDocuments(() => heard.push(service.documentOpening('Deck.test')))
-    expect(service.documentOpening('Deck.test')).toBeNull()
+    const unsubscribe = service.subscribeDocuments(() => heard.push(service.documentOpening('Slide.test')))
+    expect(service.documentOpening('Slide.test')).toBeNull()
 
-    const first = mounted.listener!(fakeKitDocument('Deck.test')) as () => void
-    const opening = service.documentOpening('Deck.test')
+    const first = mounted.listener!(fakeKitDocument('Slide.test')) as () => void
+    const opening = service.documentOpening('Slide.test')
     expect(opening).not.toBeNull()
     const firstChannel = new MessageChannel()
     const firstPanel = new RpcPeer(firstChannel.port1)
-    await service.host.openPanel('Deck.test', 'com.example.titles', 'titles.panel', firstChannel.port2)
+    await service.host.openPanel('Slide.test', 'com.example.titles', 'titles.panel', firstChannel.port2)
     await expect(firstPanel.request('panel/request', null)).resolves.toBe('quarterly review')
 
     // A role change: the editor closes and opens again, read-only. The old session has ended.
     first()
-    expect(service.documentOpening('Deck.test')).toBeNull()
+    expect(service.documentOpening('Slide.test')).toBeNull()
     await expect(firstPanel.request('panel/request', null, 1_000)).rejects.toThrow()
-    const second = mounted.listener!(fakeKitDocument('Deck.test', true)) as () => void
-    const reopened = service.documentOpening('Deck.test')
+    const second = mounted.listener!(fakeKitDocument('Slide.test', true)) as () => void
+    const reopened = service.documentOpening('Slide.test')
     expect(reopened).not.toBeNull()
     expect(reopened).not.toBe(opening)
     expect(heard).toEqual([opening, null, reopened])
@@ -266,7 +266,7 @@ describe('ExtensionService', () => {
     const channel = new MessageChannel()
     const panel = new RpcPeer(channel.port1)
     try {
-      await service.host.openPanel('Deck.test', 'com.example.titles', 'titles.panel', channel.port2)
+      await service.host.openPanel('Slide.test', 'com.example.titles', 'titles.panel', channel.port2)
       await expect(panel.request('panel/request', null)).resolves.toBe('quarterly review')
     } finally {
       panel.close()
@@ -282,7 +282,7 @@ describe('ExtensionService', () => {
       return { kit: ctx.document.kitId }
     }`)
     files.set('notes.txt', 'not a script')
-    const document = fakeKitDocument('Deck.test')
+    const document = fakeKitDocument('Slide.test')
     mounted.active = document
     const { service } = start()
     await service.ready

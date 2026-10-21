@@ -1804,6 +1804,6 @@ export interface PhotoCommands extends CommandMap {
   "actions.delete": { /** name|index */ action?: Json; step?: number }
 }
 
-/** A Photo document opened with `openDocument<Image, PhotoCommands>`. */
+/** A Photo file opened with `openDocument<Image, PhotoCommands>`. */
 export type PhotoDocument = ModelDocument<Image, PhotoCommands>
 export type PhotoContext = RequestContext<Image, PhotoCommands>

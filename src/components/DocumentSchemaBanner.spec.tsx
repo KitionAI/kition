@@ -20,14 +20,14 @@ afterEach(async () => {
   await act(async () => root?.unmount())
   root = null
   container?.remove()
-  setDocumentSchemaNotice('Deck.kitionslide', null)
+  setDocumentSchemaNotice('Slide.kitionslide', null)
 })
 
 async function render() {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  await act(async () => root!.render(<DocumentSchemaBanner path="Deck.kitionslide" kitName="Slides" kitVersion="0.5.0" />))
+  await act(async () => root!.render(<DocumentSchemaBanner path="Slide.kitionslide" kitName="Slide" kitVersion="0.5.0" />))
   return container
 }
 
@@ -41,19 +41,19 @@ describe('DocumentSchemaBanner', () => {
 
   it('says a newer kit edited the document, that it stays read-only, and which versions differ', async () => {
     await render()
-    await act(async () => setDocumentSchemaNotice('Deck.kitionslide', { kit: 'kit.slide', needs: 4, reads: 3, blocked: true }))
+    await act(async () => setDocumentSchemaNotice('Slide.kitionslide', { kit: 'kit.slide', needs: 4, reads: 3, blocked: true }))
     expect(banner()?.dataset.blocked).toBe('true')
-    expect(banner()?.textContent).toContain('This document was edited with a newer Slides. Update to keep editing.')
+    expect(banner()?.textContent).toContain('This document was edited with a newer Slide. Update to keep editing.')
     expect(banner()?.textContent).toContain('read-only here')
     expect(container!.querySelector('[data-testid="document-schema-versions"]')?.textContent).toBe(
-      'This Kition has Slides 0.5.0, which reads documents up to version 3; this one needs version 4.',
+      'This Kition has Slide 0.5.0, which reads documents up to version 3; this one needs version 4.',
     )
   })
 
   it('checks for an update and installs the one available', async () => {
     updates.checkForUpdates.mockResolvedValueOnce({ phase: 'available', version: '0.2.0' })
     await render()
-    await act(async () => setDocumentSchemaNotice('Deck.kitionslide', { kit: 'kit.slide', needs: 4, reads: 3, blocked: false }))
+    await act(async () => setDocumentSchemaNotice('Slide.kitionslide', { kit: 'kit.slide', needs: 4, reads: 3, blocked: false }))
     expect(banner()?.textContent).toContain('cannot be edited here')
     await act(async () => container!.querySelector<HTMLButtonElement>('[data-testid="document-schema-check"]')!.click())
     expect(container!.querySelector('[data-testid="document-schema-update-outcome"]')?.textContent).toBe('Kition 0.2.0 is available.')
@@ -65,7 +65,7 @@ describe('DocumentSchemaBanner', () => {
   it('says to update Kition where it cannot update itself', async () => {
     updates.checkForUpdates.mockResolvedValueOnce({ phase: 'unsupported', reason: 'web preview' })
     await render()
-    await act(async () => setDocumentSchemaNotice('Deck.kitionslide', { kit: 'kit.slide', needs: Number.NaN, reads: Number.NaN, blocked: true }))
+    await act(async () => setDocumentSchemaNotice('Slide.kitionslide', { kit: 'kit.slide', needs: Number.NaN, reads: Number.NaN, blocked: true }))
     expect(container!.querySelector('[data-testid="document-schema-versions"]')).toBeNull()
     await act(async () => container!.querySelector<HTMLButtonElement>('[data-testid="document-schema-check"]')!.click())
     expect(container!.querySelector('[data-testid="document-schema-update-outcome"]')?.textContent).toBe('Update Kition to its latest version to keep editing.')

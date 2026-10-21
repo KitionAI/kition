@@ -248,11 +248,11 @@ describe('startCollab for documents Kition edits itself', () => {
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { connection, replica } = kitConnection(['ai', 'replica'])
     replica.importChanges.mockRejectedValueOnce(new Error('presentation replica: the document needs schema version 4; this kit reads schema versions up to 3'))
-    writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/6', name: 'Deck.kitionslide', kit: 'kit.slide', role: 'editor', path: 'Shared/Deck.kitionslide' })
-    cleanups.push(startCollab(deps), registerKitConnection({ path: 'Shared/Deck.kitionslide', kitId: 'kit.slide', connection }))
+    writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/6', name: 'Slide.kitionslide', kit: 'kit.slide', role: 'editor', path: 'Shared/Slide.kitionslide' })
+    cleanups.push(startCollab(deps), registerKitConnection({ path: 'Shared/Slide.kitionslide', kitId: 'kit.slide', connection }))
     await vi.waitFor(() => expect(replica.importChanges).toHaveBeenCalled())
-    await vi.waitFor(() => expect(isDocumentReadOnly('Shared/Deck.kitionslide')).toBe(true))
-    expect(documentSchemaNotice('Shared/Deck.kitionslide')).toEqual({ kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
+    await vi.waitFor(() => expect(isDocumentReadOnly('Shared/Slide.kitionslide')).toBe(true))
+    expect(documentSchemaNotice('Shared/Slide.kitionslide')).toEqual({ kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
     // A later change the replica takes (it waits on the refused one) does not move the position on:
     // the refused change is pulled again once the kit can read it.
     pulled[0]({ changes: new Uint8Array([4, 5, 6]), seq: 7 })

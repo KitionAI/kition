@@ -184,7 +184,7 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK; PowerPoint files too.
     KitDefinition {
         id: "kit.slide",
-        name: "Kition Slides",
+        name: "Kition Slide",
         binary_env: "KITION_KIT_SLIDE_BINARY",
         extensions: &["kitionslide", "pptx"],
         creates: &[],
@@ -192,7 +192,7 @@ pub const KITS: &[KitDefinition] = &[
         exports: &[],
         agent: KitAgent {
             prefix: "slide",
-            noun: "slides document",
+            noun: "slide file",
             formats: ".kitionslide and .pptx",
             reports: "its slides, the current slide, and the selection",
             covers: "slides, layouts, text, shapes, pictures, tables, charts, transitions, animations, and more",
@@ -843,7 +843,8 @@ impl KitManager {
     }
 
     /// Creates a new document in `folder` (workspace-relative, `""` for the root) with an
-    /// unused `Untitled image` name, saves it so it appears in the workspace, and opens it.
+    /// unused `Untitled <kit>` name (`Untitled Photo`), saves it so it appears in the workspace,
+    /// and opens it.
     pub async fn create(
         &self,
         caller: Caller,
@@ -873,18 +874,19 @@ impl KitManager {
                 "`{folder}` is not a workspace folder"
             )));
         }
+        let label = kit.name.strip_prefix("Kition ").unwrap_or(kit.name);
         let target_path = (1..1000)
             .map(|n| {
                 let name = if n == 1 {
-                    format!("Untitled image.{extension}")
+                    format!("Untitled {label}.{extension}")
                 } else {
-                    format!("Untitled image {n}.{extension}")
+                    format!("Untitled {label} {n}.{extension}")
                 };
                 directory.join(name)
             })
             .find(|path| !path.exists())
             .ok_or_else(|| {
-                KitError::InvalidPath("too many untitled images in this folder".into())
+                KitError::InvalidPath("too many untitled files in this folder".into())
             })?;
         let uri = url::Url::from_file_path(&target_path)
             .map(String::from)

@@ -858,6 +858,6 @@ export interface CadCommands extends CommandMap {
   "commandLine": { text?: string }
 }
 
-/** A Cad document opened with `openDocument<Drawing, CadCommands>`. */
+/** A Cad file opened with `openDocument<Drawing, CadCommands>`. */
 export type CadDocument = ModelDocument<Drawing, CadCommands>
 export type CadContext = RequestContext<Drawing, CadCommands>

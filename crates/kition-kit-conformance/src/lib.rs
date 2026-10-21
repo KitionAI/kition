@@ -1135,10 +1135,10 @@ mod tests {
             "standard": "2.0",
             "engine": { "contract": 2 },
             "ui": { "mode": "embedded" },
-            "creates": [{ "id": "deck" }],
+            "creates": [{ "id": "slide file" }],
             "agent": { "prefix": "slide", "tools": "document" },
             "model": { "schema": "model/schema.json", "schemaVersion": 1 },
-            "objectModel": { "namespace": "Slides" }
+            "objectModel": { "namespace": "Slide" }
         });
         let (levels, notes) = standard_levels(&manifest);
         assert_eq!(levels, ["L1", "L2", "L3", "L4", "L5"]);
@@ -1148,7 +1148,7 @@ mod tests {
                 .any(|note| note.contains("mcp__kition__slide_*") && note.contains(DSH_TARGET)),
             "{notes:?}"
         );
-        manifest["agent"]["prefix"] = json!("deck");
+        manifest["agent"]["prefix"] = json!("slide file");
         let (levels, notes) = standard_levels(&manifest);
         assert!(!levels.contains(&"L4"));
         assert!(

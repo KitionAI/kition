@@ -19,7 +19,7 @@ vi.mock('@/lib/notify', () => ({
 const PATH = 'talks/Launch.pptx'
 const summary = {
   created: [{ id: 's2', type: 'Slide', fields: ['shapes'] }],
-  changed: [{ id: 'deck', type: 'Presentation', fields: ['slides'] }],
+  changed: [{ id: 'slide file', type: 'Presentation', fields: ['slides'] }],
   deleted: [],
   texts: [{ id: 'p1', field: 'text', before: 'Old title', after: 'New title' }],
 }

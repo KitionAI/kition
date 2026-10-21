@@ -6,15 +6,15 @@
       "board": "Board",
       "page": "Page",
       "note": "Note",
-      "image": "Image",
-      "video": "Video",
-      "drawing": "Drawing",
-      "motion": "Motion",
-      "layout": "Page",
+      "image": "Photo",
+      "video": "Film",
+      "drawing": "Vector",
+      "motion": "Effect",
+      "layout": "Design",
       "cad": "CAD",
-      "slide": "Slides",
+      "slide": "Slide",
       "word": "Word",
-      "spreadsheet": "Spreadsheet",
+      "spreadsheet": "Sheet",
       "pdf": "PDF"
     },
     "folder": "Folder",
@@ -660,7 +660,7 @@
   },
   "photoKit": {
     "unavailableTitle": "Photo editing is not available in this build",
-    "unavailableBody": "Images open in Kition when the Photo engine is included."
+    "unavailableBody": "Photo files open in Kition when the Photo engine is included."
   },
   "kitEditor": {
     "conflictsTitle": "Some edits could not be merged",
@@ -720,41 +720,41 @@
   },
   "filmKit": {
     "unavailableTitle": "Film editing is not available in this build",
-    "unavailableBody": "Video projects open in Kition when the Film engine is included.",
+    "unavailableBody": "Film files open in Kition when the Film engine is included.",
     "editInFilm": "Edit in Film",
     "editFailed": "Could not start a video project"
   },
   "vectorKit": {
     "unavailableTitle": "Vector editing is not available in this build",
-    "unavailableBody": "Vector drawings open in Kition when the Vector engine is included."
+    "unavailableBody": "Vector files open in Kition when the Vector engine is included."
   },
   "effectKit": {
-    "unavailableTitle": "Motion editing is not available in this build",
-    "unavailableBody": "Motion projects open in Kition when the Effect engine is included."
+    "unavailableTitle": "Effect editing is not available in this build",
+    "unavailableBody": "Effect files open in Kition when the Effect engine is included."
   },
   "designKit": {
-    "unavailableTitle": "Page layout is not available in this build",
-    "unavailableBody": "Layouts open in Kition when the Design engine is included."
+    "unavailableTitle": "Design editing is not available in this build",
+    "unavailableBody": "Design files open in Kition when the Design engine is included."
   },
   "cadKit": {
     "unavailableTitle": "CAD editing is not available in this build",
-    "unavailableBody": "CAD drawings open in Kition when the CAD engine is included."
+    "unavailableBody": "CAD files open in Kition when the CAD engine is included."
   },
   "slideKit": {
-    "unavailableTitle": "Slides editing is not available in this build",
-    "unavailableBody": "Slides open in Kition when the Slides engine is included."
+    "unavailableTitle": "Slide editing is not available in this build",
+    "unavailableBody": "Slide files open in Kition when the Slide engine is included."
   },
   "wordKit": {
     "unavailableTitle": "Word editing is not available in this build",
-    "unavailableBody": "Word documents open in Kition when the Word engine is included."
+    "unavailableBody": "Word files open in Kition when the Word engine is included."
   },
   "sheetKit": {
-    "unavailableTitle": "Spreadsheet editing is not available in this build",
-    "unavailableBody": "Spreadsheets open in Kition when the Sheet engine is included."
+    "unavailableTitle": "Sheet editing is not available in this build",
+    "unavailableBody": "Sheet files open in Kition when the Sheet engine is included."
   },
   "pdfKit": {
     "unavailableTitle": "PDF editing is not available in this build",
-    "unavailableBody": "PDFs open in Kition when the PDF engine is included."
+    "unavailableBody": "PDF files open in Kition when the PDF engine is included."
   },
   "collab": {
     "share": "Share for co-editing",
@@ -844,7 +844,7 @@
       "pdf": "PDF",
       "photo": "Photo",
       "sheet": "Sheet",
-      "slide": "Slides",
+      "slide": "Slide",
       "table": "Table",
       "vector": "Vector",
       "word": "Word"

@@ -2,9 +2,9 @@
   "kdm": 1,
   "kit": "kit.test.readonly",
   "schemaVersion": 1,
-  "root": "Deck",
+  "root": "Presentation",
   "types": {
-    "Deck": {
+    "Presentation": {
       "fields": {
         "title": { "kind": "string" },
         "raw": { "kind": "json", "optional": true, "readOnly": true },

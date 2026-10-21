@@ -77,6 +77,6 @@ export interface DocumentCommands extends CommandMap {
   "comment.threads": Record<string, never>
 }
 
-/** A Document document opened with `openDocument<Document, DocumentCommands>`. */
+/** A Document file opened with `openDocument<Document, DocumentCommands>`. */
 export type DocumentDocument = ModelDocument<Document, DocumentCommands>
 export type DocumentContext = RequestContext<Document, DocumentCommands>

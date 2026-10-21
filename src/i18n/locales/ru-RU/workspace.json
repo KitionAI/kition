@@ -6,15 +6,15 @@
       "board": "Доска",
       "page": "Страница",
       "note": "Заметка",
-      "image": "Изображение",
-      "video": "Видео",
-      "drawing": "Рисунок",
-      "motion": "Анимация",
-      "layout": "Страница",
-      "cad": "САПР",
-      "slide": "Слайды",
+      "image": "Photo",
+      "video": "Film",
+      "drawing": "Vector",
+      "motion": "Effect",
+      "layout": "Design",
+      "cad": "CAD",
+      "slide": "Slide",
       "word": "Word",
-      "spreadsheet": "Электронная таблица",
+      "spreadsheet": "Sheet",
       "pdf": "PDF"
     },
     "folder": "Папка",
@@ -659,8 +659,8 @@
     "renameTable": "Переименовать таблицу данных"
   },
   "photoKit": {
-    "unavailableTitle": "Редактирование фото недоступно в этой сборке",
-    "unavailableBody": "Изображения открываются в Kition, когда в сборку включён движок Photo."
+    "unavailableTitle": "Редактирование Photo недоступно в этой сборке",
+    "unavailableBody": "Файлы Photo открываются в Kition, когда в сборку включён движок Photo."
   },
   "kitEditor": {
     "conflictsTitle": "Некоторые правки не удалось объединить",
@@ -719,42 +719,42 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "Видеомонтаж недоступен в этой сборке",
-    "unavailableBody": "Видеопроекты открываются в Kition, когда в сборку включён движок Film.",
+    "unavailableTitle": "Редактирование Film недоступно в этой сборке",
+    "unavailableBody": "Файлы Film открываются в Kition, когда в сборку включён движок Film.",
     "editInFilm": "Изменить в Film",
     "editFailed": "Не удалось создать видеопроект"
   },
   "vectorKit": {
-    "unavailableTitle": "Векторное редактирование недоступно в этой сборке",
-    "unavailableBody": "Векторные рисунки открываются в Kition, если в сборку входит движок Vector."
+    "unavailableTitle": "Редактирование Vector недоступно в этой сборке",
+    "unavailableBody": "Файлы Vector открываются в Kition, когда в сборку включён движок Vector."
   },
   "effectKit": {
-    "unavailableTitle": "Редактирование анимации недоступно в этой сборке",
-    "unavailableBody": "Проекты анимации открываются в Kition, если в сборку входит движок Effect."
+    "unavailableTitle": "Редактирование Effect недоступно в этой сборке",
+    "unavailableBody": "Файлы Effect открываются в Kition, когда в сборку включён движок Effect."
   },
   "designKit": {
-    "unavailableTitle": "Вёрстка недоступна в этой сборке",
-    "unavailableBody": "Макеты открываются в Kition, если в сборку входит движок Design."
+    "unavailableTitle": "Редактирование Design недоступно в этой сборке",
+    "unavailableBody": "Файлы Design открываются в Kition, когда в сборку включён движок Design."
   },
   "cadKit": {
-    "unavailableTitle": "Редактирование САПР недоступно в этой сборке",
-    "unavailableBody": "Чертежи САПР открываются в Kition, когда в сборку включён движок САПР."
+    "unavailableTitle": "Редактирование CAD недоступно в этой сборке",
+    "unavailableBody": "Файлы CAD открываются в Kition, когда в сборку включён движок CAD."
   },
   "slideKit": {
-    "unavailableTitle": "Редактирование слайдов недоступно в этой сборке",
-    "unavailableBody": "Слайды открываются в Kition, когда в сборку включён движок «Слайды»."
+    "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
+    "unavailableBody": "Файлы Slide открываются в Kition, когда в сборку включён движок Slide."
   },
   "wordKit": {
     "unavailableTitle": "Редактирование Word недоступно в этой сборке",
-    "unavailableBody": "Документы Word открываются в Kition, когда в сборку включён движок Word."
+    "unavailableBody": "Файлы Word открываются в Kition, когда в сборку включён движок Word."
   },
   "sheetKit": {
-    "unavailableTitle": "Редактирование таблиц недоступно в этой сборке",
-    "unavailableBody": "Таблицы открываются в Kition, когда в сборку включён движок таблиц."
+    "unavailableTitle": "Редактирование Sheet недоступно в этой сборке",
+    "unavailableBody": "Файлы Sheet открываются в Kition, когда в сборку включён движок Sheet."
   },
   "pdfKit": {
     "unavailableTitle": "Редактирование PDF недоступно в этой сборке",
-    "unavailableBody": "PDF открываются в Kition, когда в сборку включён движок PDF."
+    "unavailableBody": "Файлы PDF открываются в Kition, когда в сборку включён движок PDF."
   },
   "collab": {
     "share": "Открыть для совместного редактирования",
@@ -835,18 +835,18 @@
     "updateElsewhere": "Обновите Kition до последней версии, чтобы продолжить редактирование.",
     "updateFailed": "Не удалось проверить обновления: {{message}}",
     "kits": {
-      "board": "Доска",
-      "cad": "САПР",
-      "design": "Вёрстка",
-      "document": "Документ",
-      "effect": "Анимация",
-      "film": "Видео",
+      "board": "Board",
+      "cad": "CAD",
+      "design": "Design",
+      "document": "Document",
+      "effect": "Effect",
+      "film": "Film",
       "pdf": "PDF",
-      "photo": "Фото",
-      "sheet": "Таблицы",
-      "slide": "Слайды",
-      "table": "Таблица",
-      "vector": "Векторная графика",
+      "photo": "Photo",
+      "sheet": "Sheet",
+      "slide": "Slide",
+      "table": "Table",
+      "vector": "Vector",
       "word": "Word"
     }
   }

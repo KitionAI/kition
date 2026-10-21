@@ -146,6 +146,6 @@ export interface BoardCommands extends CommandMap {
   "page.reorder": Record<string, never>
 }
 
-/** A Board document opened with `openDocument<Board, BoardCommands>`. */
+/** A Board file opened with `openDocument<Board, BoardCommands>`. */
 export type BoardDocument = ModelDocument<Board, BoardCommands>
 export type BoardContext = RequestContext<Board, BoardCommands>

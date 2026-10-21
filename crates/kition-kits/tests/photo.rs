@@ -146,8 +146,8 @@ async fn edits_a_real_psd_through_kit_photo() {
         )
         .await
         .unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(created.path.as_deref(), Some("art/Untitled image.psd"));
+    assert_eq!(created.path.as_deref(), Some("art/Untitled Photo.psd"));
     assert_eq!(created.details["width"], 320);
-    assert!(dir.path().join("art/Untitled image.psd").is_file());
+    assert!(dir.path().join("art/Untitled Photo.psd").is_file());
     kits.shutdown().await;
 }

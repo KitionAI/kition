@@ -1,5 +1,5 @@
-// An example extension (KitExtensions 1.0): one command that puts every slide title of a Slides
-// deck in title case, through the object model, and a panel (panel.html) that lists the titles
+// An example extension (KitExtensions 1.0): one command that puts every slide title of a Slide
+// slide file in title case, through the object model, and a panel (panel.html) that lists the titles
 // with a button that does the same. It needs model.read and model.write, and nothing else: no
 // network, no commands of the kit.
 
@@ -24,7 +24,7 @@ export function titleCase(text) {
 
 const TITLES = new Set(['title', 'ctrTitle'])
 
-/** The paragraphs of every title placeholder of the deck, loaded, with their slide's index. */
+/** The paragraphs of every title placeholder of the slide file, loaded, with their slide's index. */
 async function titleParagraphs(context) {
   const slides = context.root.slides
   slides.load()
@@ -67,7 +67,7 @@ async function readTitles(document) {
 }
 
 /** Title-cases every title placeholder's paragraphs; answers how many paragraphs changed. */
-async function titleCaseDeck(document) {
+async function titleCaseSlide(document) {
   return document.run(async (context) => {
     const paragraphs = (await titleParagraphs(context)).map(({ paragraph }) => paragraph)
     let changed = 0
@@ -99,17 +99,17 @@ const summary = (changed) => (changed ? `Title-cased ${changed} title${changed =
 
 export function activate(ctx) {
   ctx.commands.register('titleCase.apply', async () => {
-    const changed = await titleCaseDeck(ctx.document)
+    const changed = await titleCaseSlide(ctx.document)
     ctx.notify(summary(changed), { level: 'success' })
     return { changed }
   })
 
-  // The panel asks for the titles and to title-case them; it hears new titles as the deck changes.
+  // The panel asks for the titles and to title-case them; it hears new titles as the slide file changes.
   ctx.panels.register('titleCase.titles', (panel) => {
     panel.onRequest(async (message) => {
       if (message?.type === 'titles') return { titles: await readTitles(ctx.document) }
       if (message?.type === 'apply') {
-        const changed = await titleCaseDeck(ctx.document)
+        const changed = await titleCaseSlide(ctx.document)
         return { changed, summary: summary(changed), titles: await readTitles(ctx.document) }
       }
       throw new Error(`unknown request ${JSON.stringify(message)}`)

@@ -1,4 +1,4 @@
-# Kit (Photo, Film, Vector, Effect, Design, CAD, Slides, Word, Sheet, PDF) shortcuts for building, trying, and testing the kits.
+# Kit (Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, PDF) shortcuts for building, trying, and testing the kits.
 # See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kition-photo,
 # ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-word, ../kition-sheet, ../kition-pdf); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
@@ -78,7 +78,7 @@ $(SDK_BINARIES):
 kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
 
 kit-dev: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS))) $(PHOTO_BINARY) $(SDK_BINARIES)
-	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slides, Word, Sheet, and PDF: open a .psd, .kitionfilm, .kitionvector, .kitioneffect, .kitiondesign, .dxf, .kitionslide, .pptx, .docx, .xlsx, or .pdf, or use the New menu."
+	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, and PDF: open a .psd, .kitionfilm, .kitionvector, .kitioneffect, .kitiondesign, .dxf, .kitionslide, .pptx, .docx, .xlsx, or .pdf, or use the New menu."
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))

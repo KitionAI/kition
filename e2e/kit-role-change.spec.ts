@@ -7,8 +7,8 @@ type SlideSdk = { SlideDocument: { create(name: string, width: number, height: n
 const slides = kitEngine<SlideSdk>('slide', 'kition_slide_sdk')
 const PATH = 'Review.kitionslide'
 
-/** A deck of two slides. */
-async function deckFixture() {
+/** A slide file of two slides. */
+async function slideFixture() {
   const sdk = await slides.load()
   const doc = sdk.SlideDocument.create(PATH, 960, 540)
   doc.execute('slide.new', JSON.stringify({ layout: 'titleAndContent', title: 'quarterly business review', body: 'revenue grew in the north' }))
@@ -107,13 +107,13 @@ const TITLES_SCRIPT = `export default async function (ctx) {
 `
 
 // The workspace keeps no saved file here (no `persist`): a saved replica no longer matches its
-// file, and a deck never saved has none. Either way the editor a role change opens again has
-// another replica than the one it replaces, and must still show the deck once, with every edit.
+// file, and a slide file never saved has none. Either way the editor a role change opens again has
+// another replica than the one it replaces, and must still show the slide file once, with every edit.
 for (const saved of [true, false]) {
-  test(`keeps a deck's slides once, with its unsaved edits, when a role change opens its editor again (${saved ? 'a saved replica the file lacks' : 'no saved replica'})`, async ({ page, baseURL }) => {
-    test.skip(!slides.built, 'the Slides kit editor is not built into public/kits/slide-ui')
+  test(`keeps a slide file's slides once, with its unsaved edits, when a role change opens its editor again (${saved ? 'a saved replica the file lacks' : 'no saved replica'})`, async ({ page, baseURL }) => {
+    test.skip(!slides.built, 'the Slide kit editor is not built into public/kits/slide-ui')
     test.setTimeout(180_000)
-    const { host, kit } = await openInKitFrame(page, baseURL!, PATH, await deckFixture(), {
+    const { host, kit } = await openInKitFrame(page, baseURL!, PATH, await slideFixture(), {
       'scripts/first.mjs': Buffer.from(retitleScript('first edit')),
       'scripts/second.mjs': Buffer.from(retitleScript('second edit')),
       'scripts/titles.mjs': Buffer.from(TITLES_SCRIPT),

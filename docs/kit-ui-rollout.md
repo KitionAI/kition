@@ -40,7 +40,7 @@ were removed. See `docs/kit-sdk.md` section 4 for how it works.
 
 | Kit | Shell | Highlights |
 | --- | --- | --- |
-| Slides | Ribbon | Pilot; thumbnails, notes, slide show |
+| Slide | Ribbon | Pilot; thumbnails, notes, slide show |
 | Word | Ribbon | Styles gallery, find and replace, contextual tabs, Chinese face |
 | Sheet | Ribbon | Formula bar, sheet tabs, clipboard; grid draws conditional formats, wrapped text, charts; headings and frozen panes stay in view (Standard E10 pinned bands) |
 | PDF | Ribbon | Page tools, thumbnails, bookmarks, comments, form fields, find; Chinese fonts a PDF does not embed |

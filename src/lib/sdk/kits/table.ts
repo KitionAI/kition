@@ -243,6 +243,6 @@ export interface TableCommands extends CommandMap {
   "table.attachments.read": { [key: string]: never }
 }
 
-/** A Table document opened with `openDocument<Base, TableCommands>`. */
+/** A Table file opened with `openDocument<Base, TableCommands>`. */
 export type TableDocument = ModelDocument<Base, TableCommands>
 export type TableContext = RequestContext<Base, TableCommands>

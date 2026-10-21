@@ -24,7 +24,7 @@ export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
 
 /**
  * Kition's shortcuts the kit forwards (the kit saves itself with Cmd+S). Cmd+K stays the kit's
- * (Word, Slides, and Sheet insert links with it); Cmd+. opens Kition's command palette from
+ * (Word, Slide, and Sheet insert links with it); Cmd+. opens Kition's command palette from
  * inside a kit instead, a key no kit binds (kit-ui's RESERVED_SHORTCUTS).
  */
 const HOST_SHORTCUTS = ['Cmd+N', 'Cmd+O', 'Cmd+W', 'Cmd+T', 'Cmd+,', 'Cmd+Q', 'Cmd+P', 'Cmd+.']

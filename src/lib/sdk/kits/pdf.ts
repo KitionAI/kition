@@ -241,6 +241,6 @@ export interface PdfCommands extends CommandMap {
   "render_preview": { /** (maximum 4096, minimum 1) */ max_side?: number; /** (minimum 1) */ page?: number }
 }
 
-/** A Pdf document opened with `openDocument<Pdf, PdfCommands>`. */
+/** A Pdf file opened with `openDocument<Pdf, PdfCommands>`. */
 export type PdfDocument = ModelDocument<Pdf, PdfCommands>
 export type PdfContext = RequestContext<Pdf, PdfCommands>

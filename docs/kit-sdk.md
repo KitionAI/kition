@@ -246,7 +246,7 @@ kition-sdk's `@kition/kit-ui`) holds the ribbon, panels, canvas, and dialogs
 next to the engine, and Kition shows it in an iframe and talks to it over the
 Kit UI protocol (`kition-kit-ui/1`, Kit Standard `spec/reference/ui-protocol.md`). Kition
 keeps the shell: files, the workspace, the agent, the theme, the language, and
-its own shortcuts. All ten kits have one: Slides, Word, Sheet, PDF, and CAD
+its own shortcuts. All ten kits have one: Slide, Word, Sheet, PDF, and CAD
 (ribbon editors on kit-ui's `KitShell`), and Photo, Vector, Design, Effect,
 and Film (menu-bar editors on `KitAppShell`, with a tool rail of flyout slots
 and side panels).
@@ -307,11 +307,11 @@ and side panels).
   frame of the same kind with the extension's network origins, Kition's
   theme tokens, and a channel to the extension's worker; Kition's
   `frame-src` keeps it on its page. `src/lib/sdk/kits/` registers the schema
-  of every kit with an object model (Word, Slides, Sheet, Photo, Vector,
+  of every kit with an object model (Word, Slide, Sheet, Photo, Vector,
   Effect, CAD, PDF), generated in kition-sdk from each kit's
   `model/schema.json` at its pinned commit. `e2e/extensions.spec.ts`
   installs the example extension, runs its command and its panel, and runs
-  scripts on Slides, Word, and Sheet documents.
+  scripts on Slide, Word, and Sheet documents.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
   folder of linked media. It is also the reference for other hosts.
@@ -505,7 +505,7 @@ Kit repository:
 2c. Implement `KitDocument::check` (Kit Standard `spec/sets/agent.md`, A21–A23): diagnostics with
    stable `<kit>.<name>` codes, a `target`, and a `fix` command hint where
    one exists, errors first, each code covered by a synthetic test. Agents
-   reach it as `<prefix>_check`, embeds as `editor.check()` (Slides'
+   reach it as `<prefix>_check`, embeds as `editor.check()` (Slide's
    and Sheet's `bindings/wasm/src/check.rs` are the examples).
 3. Add the headless executable `apps/kit-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
@@ -739,7 +739,7 @@ Command-line kits (CAD):
 - Choose document pixels from the drawing alone (CAD: a power-of-two scale of
   limits and extents), so a saved drawing reopens to the same pixels.
 
-Slide and page kits (Slides):
+Slide and page kits (Slide):
 
 - Stack the slides on one canvas in document pixels (points), so the host
   scrolls the slides; a press on another slide makes it current before the tool

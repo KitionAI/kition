@@ -66,7 +66,7 @@ const CASES: &[Case] = &[
     },
     Case {
         kit: "kit.slide",
-        fixture: "Slides.kitionslide",
+        fixture: "Slide.kitionslide",
         command: "shape.insert",
         params: || json!({ "preset": "ellipse", "rect": [100, 100, 200, 120] }),
         file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitionslide" })),

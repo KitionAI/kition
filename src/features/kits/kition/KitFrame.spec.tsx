@@ -9,7 +9,7 @@ type Opened = {
   element: unknown
   readOnly: boolean
   replica: Replica
-  /** The deck's slide titles, as the kit's replica holds them. */
+  /** The slide file's slide titles, as the kit's replica holds them. */
   titles: () => string[]
   /** An edit: a slide titled `title` added at the end. */
   edit: (title: string) => void
@@ -26,21 +26,21 @@ const encode = (text: string) => new TextEncoder().encode(text).buffer as ArrayB
 const decode = (bytes: ArrayBuffer) => new TextDecoder().decode(bytes)
 const buffer = (bytes: Uint8Array) => bytes.slice().buffer as ArrayBuffer
 
-/** A deck, as a kit keeps it in a real KDM replica: slides with titles. */
-const deckSchema = parseSchema({
+/** A slide file, as a kit keeps it in a real KDM replica: slides with titles. */
+const slideSchema = parseSchema({
   kdm: 1,
   kit: 'kit.test',
   schemaVersion: 1,
-  root: 'Deck',
-  types: { Deck: { fields: { slides: { kind: 'list', of: 'Slide' } } }, Slide: { fields: { title: { kind: 'string' } } } },
+  root: 'Presentation',
+  types: { Presentation: { fields: { slides: { kind: 'list', of: 'Slide' } } }, Slide: { fields: { title: { kind: 'string' } } } },
 })
 
-const deckTitles = (replica: Replica) => {
-  const [deck] = replica.objectsOfType('Deck')
-  return replica.list(deck, 'slides').map((slide) => String(replica.get(slide, 'title')))
+const slideTitles = (replica: Replica) => {
+  const [slideFile] = replica.objectsOfType('Presentation')
+  return replica.list(slideFile, 'slides').map((slide) => String(replica.get(slide, 'title')))
 }
 
-/** The file: the deck's titles as JSON (empty bytes: no file, the replica alone is the document). */
+/** The file: the slide file's titles as JSON (empty bytes: no file, the replica alone is the document). */
 const fileState = { titles: ['Title', 'Agenda'], stamp: 'v1' }
 /** The replica saved with the file, as the host's document store keeps it. */
 const store: { replica: { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: string } | null } = { replica: null }
@@ -63,34 +63,34 @@ type FakeOptions = {
  * A kit as the standard's kits open a document: from the replica saved with the file when it was
  * saved with the file as it is now, else a new replica (a new document) made from the file. When
  * the saved replica does not hold the file's content, the file wins, recorded onto the replica as
- * new slides (as the Slides kit does).
+ * new slides (as the Slide kit does).
  */
 async function openFakeKit(element: unknown, options: FakeOptions): Promise<Opened> {
   const { document, handlers } = options
   const file = document.bytes.byteLength ? (JSON.parse(decode(document.bytes)) as string[]) : null
   const stored = await handlers.replicaRead({ path: document.path })
-  const build = (titles: string[]) => (tx: Parameters<Parameters<Replica['transact']>[1]>[0], deck: string) => {
-    for (const title of titles) tx.listInsert(deck, 'slides', tx.list(deck, 'slides').length, tx.create('Slide', { title }))
+  const build = (titles: string[]) => (tx: Parameters<Parameters<Replica['transact']>[1]>[0], slideFile: string) => {
+    for (const title of titles) tx.listInsert(slideFile, 'slides', tx.list(slideFile, 'slides').length, tx.create('Slide', { title }))
   }
   let replica: Replica
   if (stored && stored.fileStamp === document.version) {
-    replica = Replica.load(deckSchema, new Uint8Array(stored.snapshot), randomActor())
-    if (file && JSON.stringify(deckTitles(replica)) !== JSON.stringify(file)) {
+    replica = Replica.load(slideSchema, new Uint8Array(stored.snapshot), randomActor())
+    if (file && JSON.stringify(slideTitles(replica)) !== JSON.stringify(file)) {
       replica.transact(system('import'), (tx) => {
-        const [deck] = replica.objectsOfType('Deck')
-        for (let index = tx.list(deck, 'slides').length - 1; index >= 0; index -= 1) tx.listRemove(deck, 'slides', index)
-        build(file)(tx, deck)
+        const [slideFile] = replica.objectsOfType('Presentation')
+        for (let index = tx.list(slideFile, 'slides').length - 1; index >= 0; index -= 1) tx.listRemove(slideFile, 'slides', index)
+        build(file)(tx, slideFile)
       })
     }
   } else {
-    replica = Replica.createWith(deckSchema, newDocId(), randomActor(), system('create'), (tx) => build(file ?? [])(tx, tx.create('Deck', {}))).replica
+    replica = Replica.createWith(slideSchema, newDocId(), randomActor(), system('create'), (tx) => build(file ?? [])(tx, tx.create('Presentation', {}))).replica
   }
   return {
     element,
     readOnly: Boolean(document.readOnly),
     replica,
-    titles: () => deckTitles(replica),
-    edit: (title) => replica.transact(person('user:test'), (tx) => build([title])(tx, replica.objectsOfType('Deck')[0])),
+    titles: () => slideTitles(replica),
+    edit: (title) => replica.transact(person('user:test'), (tx) => build([title])(tx, replica.objectsOfType('Presentation')[0])),
     saveReplica: () => handlers.replicaWrite({ path: document.path, snapshot: buffer(replica.snapshot()), blobs: new ArrayBuffer(0), fileStamp: fileState.stamp }),
     imports: 0,
     closed: false,
@@ -177,9 +177,9 @@ async function settle() {
 
 /** Saves a replica made from the file with it, as opening a shared document does. */
 function keepReplicaOfFile() {
-  const replica = Replica.createWith(deckSchema, newDocId(), randomActor(), system('create'), (tx) => {
-    const deck = tx.create('Deck', {})
-    fileState.titles.forEach((title, index) => tx.listInsert(deck, 'slides', index, tx.create('Slide', { title })))
+  const replica = Replica.createWith(slideSchema, newDocId(), randomActor(), system('create'), (tx) => {
+    const slideFile = tx.create('Presentation', {})
+    fileState.titles.forEach((title, index) => tx.listInsert(slideFile, 'slides', index, tx.create('Slide', { title })))
   }).replica
   store.replica = { snapshot: buffer(replica.snapshot()), blobs: new ArrayBuffer(0), fileStamp: fileState.stamp }
 }

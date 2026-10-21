@@ -62,8 +62,8 @@ async function serveWorkspace(page: Page, root: string) {
   })
 }
 
-test('opens slides in the Slides kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slides kit editor is not built into public/kits/slide-ui')
+test('opens slides in the Slide kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slide kit editor is not built into public/kits/slide-ui')
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
   try {
@@ -127,9 +127,9 @@ test('opens slides in the Slides kit’s own editor, edits it there, and saves i
   }
 })
 
-test('keeps a Slides deck’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
-  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slides kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+test('keeps a slide file’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slide kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   test.setTimeout(180_000)
   const name = 'Replica.kitionslide'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await slidesFixture(), {}, { persist: true })
@@ -156,7 +156,7 @@ test('keeps a Slides deck’s replica across a save and a reopen, and opens a fi
     const saved = await replicaVersion(page, name)
     expect(saved).not.toBe('')
 
-    // Reopened, the deck is the replica it was saved with: the third slide survives.
+    // Reopened, the slide file is the replica it was saved with: the third slide survives.
     const reopened = await reopen()
     await expect(reopened.getByTestId('slides-status')).toHaveText(/of 3$/, { timeout: 60_000 })
     await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)

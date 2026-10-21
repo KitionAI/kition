@@ -9,8 +9,8 @@ const engine = kitEngine<{
   SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument; open(name: string, bytes: Uint8Array): NodeSlideDocument }
 }>('slide', 'kition_slide_sdk')
 
-/** A deck made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
-async function deckFixture() {
+/** A slide file made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
+async function slideFixture() {
   const sdk = await engine.load()
   const doc = sdk.SlideDocument.create('Keynote.kitionslide', 960, 540)
   // The first slide's layout placeholders go: the text box is its lone shape, across the slide's
@@ -63,9 +63,9 @@ async function typeIntoShape(page: Page, kit: FrameLocator, text: string) {
   await page.keyboard.type(text)
 }
 
-test('co-edits a Slides deck between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+test('co-edits a slide file between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -74,15 +74,15 @@ test('co-edits a Slides deck between two windows: live, and merging edits made o
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
   try {
-    // Alice opens her deck and shares it.
+    // Alice opens her slide file and shares it.
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Keynote')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
 
-    // Bob opens the link: the deck is made in his Shared folder and opens as the same replica.
+    // Bob opens the link: the slide file is made in his Shared folder and opens as the same replica.
     const pageB = await bob.newPage()
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
@@ -148,10 +148,10 @@ test('co-edits a Slides deck between two windows: live, and merging edits made o
   }
 })
 
-/** The text of the first slide's text box in a saved deck, read by the same engine. */
-async function savedText(deck: Buffer) {
+/** The text of the first slide's text box in a saved slide file, read by the same engine. */
+async function savedText(slideFile: Buffer) {
   const sdk = await engine.load()
-  const doc = sdk.SlideDocument.open('Saved.kitionslide', deck)
+  const doc = sdk.SlideDocument.open('Saved.kitionslide', slideFile)
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
   doc.execute('edit.selectAll', '{}')
   const { text } = JSON.parse(doc.execute('text.get', '{}')) as { text: string }
@@ -171,8 +171,8 @@ async function typeInShapeText(page: Page, kit: FrameLocator, text: string, key:
 }
 
 test('two windows typing into one text box at once keep both texts', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -183,7 +183,7 @@ test('two windows typing into one text box at once keep both texts', async ({ br
   try {
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Keynote')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
@@ -224,9 +224,9 @@ test('two windows typing into one text box at once keep both texts', async ({ br
   }
 })
 
-test('a viewer of a shared Slides deck sees it change but cannot change it', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+test('a viewer of a shared slide file sees it change but cannot change it', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -236,12 +236,12 @@ test('a viewer of a shared Slides deck sees it change but cannot change it', asy
   try {
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     const { viewLink } = await shareViewOnlyFromTab(pageA, 'Keynote')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
 
-    // Bob opens the view-only link: the deck opens read-only, with no Save, Undo, or Redo.
+    // Bob opens the view-only link: the slide file opens read-only, with no Save, Undo, or Redo.
     const pageB = await bob.newPage()
     await useSyncServer(pageB, server.url)
     await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
@@ -262,7 +262,7 @@ test('a viewer of a shared Slides deck sees it change but cannot change it', asy
     const aliceVersion = await settledVersion(pageA, 'Keynote.kitionslide')
     await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, bobPath)), { timeout: 10_000 }).toBe(aliceVersion)
     await expect.poll(async () => (await canvas(kitB)).equals(bobBeforeText), { timeout: 5_000 }).toBe(false)
-    // A viewer has nothing to save: Alice's edits never mark his deck unsaved.
+    // A viewer has nothing to save: Alice's edits never mark his slide file unsaved.
     await expect(kitB.getByTestId('slides-unsaved')).toHaveCount(0)
 
     // Bob clicks the text box and types and presses New Slide's shortcut: his screen and his
@@ -308,13 +308,13 @@ test('a viewer of a shared Slides deck sees it change but cannot change it', asy
   }
 })
 
-test('without a Kition Pro session a Slides deck opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
-  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
+test('without a Kition Pro session a slide file opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.setTimeout(120_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')
   const sockets = recordWebSockets(page)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Keynote.kitionslide', await deckFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Keynote.kitionslide', await slideFixture())
   try {
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     // The tab menu offers no sharing.

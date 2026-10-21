@@ -35,7 +35,7 @@ pub fn infer_format(path: &str) -> &'static str {
         ".kitiondesign" => "layout",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
-        // Slides, edited in the Slides kit (PowerPoint files too, as `pptx`).
+        // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
         ".kitionslide" => "slide",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",

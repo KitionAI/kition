@@ -1515,6 +1515,6 @@ export interface FilmCommands extends CommandMap {
   "help.systemReport": Record<string, never>
 }
 
-/** A Film document opened with `openDocument<Project, FilmCommands>`. */
+/** A Film file opened with `openDocument<Project, FilmCommands>`. */
 export type FilmDocument = ModelDocument<Project, FilmCommands>
 export type FilmContext = RequestContext<Project, FilmCommands>

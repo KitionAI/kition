@@ -1469,6 +1469,6 @@ export interface EffectCommands extends CommandMap {
   "playback.settings.set": { /** cacheBeforePlayback (no type given) */ cacheBeforePlayback?: Json; /** shortcut shown in the panel */ current?: Json; /** customResolution (no type given) */ customResolution?: Json; /** fps|"auto" */ frameRate?: Json; /** fullScreen (no type given) */ fullScreen?: Json; includeAudio?: boolean; includeLayerControls?: boolean; includeOverlays?: boolean; includeVideo?: boolean; /** loop (no type given) */ loop?: Json; /** moveTimeToPreviewTime (no type given) */ moveTimeToPreviewTime?: Json; /** playCachedFrames (no type given) */ playCachedFrames?: Json; playFrom?: "rangeStart" | "currentTime"; /** seconds */ postRoll?: number; /** preRoll (no type given) */ preRoll?: Json; range?: "workArea" | "workAreaExtended" | "entireDuration" | "aroundCurrentTime"; reset?: boolean; resolution?: "auto" | "full" | "half" | "third" | "quarter" | "custom"; /** shortcut (no type given) */ shortcut?: Json; /** skip (no type given) */ skip?: Json; values?: { [key: string]: Json } }
 }
 
-/** A Effect document opened with `openDocument<Project, EffectCommands>`. */
+/** A Effect file opened with `openDocument<Project, EffectCommands>`. */
 export type EffectDocument = ModelDocument<Project, EffectCommands>
 export type EffectContext = RequestContext<Project, EffectCommands>

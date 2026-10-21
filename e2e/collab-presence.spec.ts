@@ -5,7 +5,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
 import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, sameReplicas, shareFromTab, signedIn, startKitionPro, useSyncServer } from './helpers/kitionPro'
 
 /**
- * Presence (Kit UI protocol section 7e): what one person selects in a co-edited deck travels as
+ * Presence (Kit UI protocol section 7e): what one person selects in a co-edited slide file travels as
  * KDM object ids through their presence in the room, and the other person's kit outlines it in
  * their color with their name.
  */
@@ -14,8 +14,8 @@ const engine = kitEngine<{
   SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument }
 }>('slide', 'kition_slide_sdk')
 
-/** A one-slide deck whose lone shape is a text box across the slide's middle, where a click selects it. */
-async function deckFixture() {
+/** A one-slide slide file whose lone shape is a text box across the slide's middle, where a click selects it. */
+async function slideFixture() {
   const sdk = await engine.load()
   const doc = sdk.SlideDocument.create('Keynote.kitionslide', 960, 540)
   doc.execute('edit.selectAll', '{}')
@@ -26,7 +26,7 @@ async function deckFixture() {
   return bytes
 }
 
-/** Whether the Slides kit package shares presence (Kit UI protocol 1.7): its editor speaks `presence/set`. */
+/** Whether the Slide kit package shares presence (Kit UI protocol 1.7): its editor speaks `presence/set`. */
 function kitPackageSharesPresence() {
   const assets = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'assets')
   if (!existsSync(assets)) return false
@@ -37,9 +37,9 @@ const canvas = (kit: FrameLocator) =>
   kit.getByTestId('slides-canvas-region').screenshot({ animations: 'disabled', mask: [kit.owner().page().getByTestId('agent-floating-launcher')] })
 
 test('Bob sees the shape Alice selected on a shared slide, outlined with her name', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
-  test.skip(!kitPackageSharesPresence(), 'the Slides kit package predates presence (Kit UI 1.7); build it locally with scripts/build-kit-ui.sh slide')
+  test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  test.skip(!kitPackageSharesPresence(), 'the Slide kit package predates presence (Kit UI 1.7); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -49,7 +49,7 @@ test('Bob sees the shape Alice selected on a shared slide, outlined with her nam
   try {
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 1', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Keynote')
     await expect(pageA.locator('.document-tab-list [data-testid="collab-status"]')).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

@@ -222,8 +222,8 @@ fn describe_names_read_only_types_and_fields() {
     assert_eq!(described["types"]["Kept"]["readOnly"], true);
     assert_eq!(described["types"]["Item"]["readOnlyWhen"], json!({ "field": "kind", "values": ["opaque"] }));
     assert!(described["types"]["Item"].get("readOnly").is_none());
-    assert_eq!(described["types"]["Deck"]["fields"]["raw"], json!({ "kind": "json", "optional": true, "readOnly": true }));
-    assert!(described["types"]["Deck"]["fields"]["title"].get("readOnly").is_none());
+    assert_eq!(described["types"]["Presentation"]["fields"]["raw"], json!({ "kind": "json", "optional": true, "readOnly": true }));
+    assert!(described["types"]["Presentation"]["fields"]["title"].get("readOnly").is_none());
 }
 
 #[test]

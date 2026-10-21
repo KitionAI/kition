@@ -20,8 +20,8 @@ async function exampleFiles(folder: string) {
   return Object.fromEntries(await Promise.all(['extension.json', 'extension.mjs', 'panel.html'].map(async (name) => [`${folder}/${name}`, await fs.readFile(path.join(EXAMPLE, name))] as const)))
 }
 
-/** A deck whose second slide has a title in lower case. */
-async function deckFixture() {
+/** A slide file whose second slide has a title in lower case. */
+async function slideFixture() {
   const sdk = await slides.load()
   const doc = sdk.SlideDocument.create('Review.kitionslide', 960, 540)
   doc.execute('slide.new', JSON.stringify({ layout: 'titleAndContent', title: 'quarterly business review', body: 'revenue grew in the north' }))
@@ -31,7 +31,7 @@ async function deckFixture() {
   return Buffer.from(bytes)
 }
 
-/** The texts of slide `index` of a saved deck. */
+/** The texts of slide `index` of a saved slide file. */
 async function slideTexts(bytes: Buffer, index: number) {
   const sdk = await slides.load()
   const doc = sdk.SlideDocument.open('Saved.kitionslide', bytes)
@@ -85,8 +85,8 @@ async function save(kit: FrameLocator) {
   await expect(kit.getByTestId('slides-unsaved')).toHaveCount(0)
 }
 
-test('installs an extension, runs its command and a workspace script on a Slides deck, and refuses one without model.write', async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!slides.built, 'the Slides kit editor is not built into public/kits/slide-ui')
+test('installs an extension, runs its command and a workspace script on a slide file, and refuses one without model.write', async ({ page, baseURL, browserName }, testInfo) => {
+  test.skip(!slides.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.setTimeout(180_000)
   const example = {
     manifest: await fs.readFile(path.join(EXAMPLE, 'extension.json'), 'utf8'),
@@ -123,7 +123,7 @@ export default async function (ctx) {
     'extensions/read-only/extension.json': Buffer.from(JSON.stringify(readOnly, null, 2)),
     'scripts/agenda.mjs': Buffer.from(script),
   }
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Review.kitionslide', await deckFixture(), files)
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Review.kitionslide', await slideFixture(), files)
   try {
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
@@ -131,7 +131,7 @@ export default async function (ctx) {
     await installExtension(page, 'extensions/title-case', EXTENSION)
     await installExtension(page, 'extensions/read-only/extension.json', READ_ONLY, testInfo.outputPath('extensions-settings.png'))
 
-    // Without model.write the extension's edit is refused, and the deck stays as it was.
+    // Without model.write the extension's edit is refused, and the slide file stays as it was.
     await runPaletteCommand(page, `extension:${READ_ONLY}:titleCase.apply`, testInfo.outputPath('extensions-palette.png'))
     await expect(page.getByText('Title case without write permission failed')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText(/does not have the model\.write permission/)).toBeVisible()
@@ -139,7 +139,7 @@ export default async function (ctx) {
     // Its sandbox is a scripts-only frame on an opaque origin.
     await expect(page.locator(`iframe[data-kition-extension="${READ_ONLY}"]`)).toHaveAttribute('sandbox', 'allow-scripts')
 
-    // The example extension title-cases the deck's titles; the deck saves with them.
+    // The example extension title-cases the slide file's titles; the slide file saves with them.
     await runPaletteCommand(page, `extension:${EXTENSION}:titleCase.apply`)
     await expect(page.getByText('Title-cased 1 title')).toBeVisible({ timeout: 30_000 })
     await save(kit)
@@ -150,7 +150,7 @@ export default async function (ctx) {
       expect(texts).toContain('revenue grew in the north')
     }
 
-    // A workspace script runs against the same deck.
+    // A workspace script runs against the same slide file.
     await runPaletteCommand(page, 'run-script')
     await expect(page.getByTestId('run-script-dialog')).toBeVisible()
     await page.getByTestId('run-script-path').fill('scripts/agenda.mjs')
@@ -170,8 +170,8 @@ export default async function (ctx) {
   }
 })
 
-test("shows an extension's panel beside the Slides editor, whose button title-cases the deck; Cmd+. opens the palette from inside the kit, whose Cmd+K stays its own", async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!slides.built, 'the Slides kit editor is not built into public/kits/slide-ui')
+test("shows an extension's panel beside the Slide editor, whose button title-cases the slide file; Cmd+. opens the palette from inside the kit, whose Cmd+K stays its own", async ({ page, baseURL, browserName }, testInfo) => {
+  test.skip(!slides.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.setTimeout(180_000)
   const retitle = `// Sets the second slide's title through the object model.
 export default async function (ctx) {
@@ -196,7 +196,7 @@ export default async function (ctx) {
     page,
     baseURL!,
     'Review.kitionslide',
-    await deckFixture(),
+    await slideFixture(),
     { ...(await exampleFiles('extensions/title-case')), 'scripts/retitle.mjs': Buffer.from(retitle) },
     { persist: true },
   )
@@ -207,7 +207,7 @@ export default async function (ctx) {
 
     // The page's own platform decides Cmd or Ctrl (the Chromium project emulates Windows).
     const mod = (await page.evaluate(() => /Mac|iPhone|iPad/i.test(navigator.platform))) ? 'Meta' : 'Control'
-    // Inside the kit, Cmd+K is the kit's (Slides inserts a link with it): Kition's palette stays shut.
+    // Inside the kit, Cmd+K is the kit's (Slide inserts a link with it): Kition's palette stays shut.
     await kit.getByTestId('slides-status').click()
     await page.keyboard.press(`${mod}+k`)
     await page.waitForTimeout(500)
@@ -223,7 +223,7 @@ export default async function (ctx) {
     await row.click()
     await expect(page.getByTestId('command-palette')).toHaveCount(0)
 
-    // The panel sits beside the editor, in a scripts-only frame, and lists the deck's titles.
+    // The panel sits beside the editor, in a scripts-only frame, and lists the slide file's titles.
     const aside = page.getByTestId('extension-panel')
     await expect(aside).toBeVisible()
     await expect(aside).toHaveAttribute('data-extension', EXTENSION)
@@ -237,14 +237,14 @@ export default async function (ctx) {
     expect(side!.x).toBeGreaterThanOrEqual(editor!.x + editor!.width - 1)
     await page.screenshot({ path: testInfo.outputPath('extension-panel.png') })
 
-    // Its button title-cases the deck through the extension; the list follows.
+    // Its button title-cases the slide file through the extension; the list follows.
     await panel.getByRole('button', { name: 'Title case' }).click()
     await expect(panel.getByRole('status')).toHaveText('Title-cased 1 title', { timeout: 30_000 })
     await expect(panel.locator('.item')).toHaveText(['2Quarterly Business Review'])
     await save(kit)
     if (canReadBlobBodies(browserName)) expect(await slideTexts(saves[0].bytes, 1)).toContain('Quarterly Business Review')
 
-    // Another change to the deck (a script's) reaches the panel.
+    // Another change to the slide file (a script's) reaches the panel.
     await runPaletteCommand(page, 'run-script')
     await page.getByTestId('run-script-path').fill('scripts/retitle.mjs')
     await page.getByTestId('run-script-run').click()

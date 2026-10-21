@@ -1616,6 +1616,6 @@ export interface VectorCommands extends CommandMap {
   "perspective.grid.rulers": { on?: boolean }
 }
 
-/** A Vector document opened with `openDocument<Drawing, VectorCommands>`. */
+/** A Vector file opened with `openDocument<Drawing, VectorCommands>`. */
 export type VectorDocument = ModelDocument<Drawing, VectorCommands>
 export type VectorContext = RequestContext<Drawing, VectorCommands>

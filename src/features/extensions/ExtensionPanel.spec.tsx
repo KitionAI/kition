@@ -44,7 +44,7 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 
 const { default: ExtensionPanel } = await import('./ExtensionPanel')
 
-const PATH = 'Deck.pptx'
+const PATH = 'Slide.pptx'
 const OPEN = { extension: 'com.example.titles', panel: 'titles.panel' }
 
 let root: Root | null = null

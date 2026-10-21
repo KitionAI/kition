@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn prompts_become_one_message() {
         let prompt = json!([
-            { "type": "text", "text": "Retitle the deck" },
+            { "type": "text", "text": "Retitle the slide file" },
             { "type": "resource_link", "uri": "file:///work/talks/a.pptx", "name": "a.pptx" },
             { "type": "resource", "resource": { "uri": "file:///work/notes.md", "text": "Q3" } },
             { "type": "image", "data": "", "mimeType": "image/png" }
@@ -398,7 +398,7 @@ mod tests {
         assert_eq!(
             prompt_text(&prompt).as_deref(),
             Some(
-                "Retitle the deck\n\n[a.pptx](file:///work/talks/a.pptx)\n\nfile:///work/notes.md\n```\nQ3\n```"
+                "Retitle the slide file\n\n[a.pptx](file:///work/talks/a.pptx)\n\nfile:///work/notes.md\n```\nQ3\n```"
             )
         );
         assert_eq!(prompt_text(&json!([{ "type": "image" }])), None);

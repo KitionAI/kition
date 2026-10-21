@@ -1115,6 +1115,6 @@ export interface WordCommands extends CommandMap {
   "caret.pastCitation": Record<string, never>
 }
 
-/** A Word document opened with `openDocument<Document, WordCommands>`. */
+/** A Word file opened with `openDocument<Document, WordCommands>`. */
 export type WordDocument = ModelDocument<Document, WordCommands>
 export type WordContext = RequestContext<Document, WordCommands>

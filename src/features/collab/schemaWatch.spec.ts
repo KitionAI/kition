@@ -20,7 +20,7 @@ function replica(overrides: Partial<CollabReplica> = {}): CollabReplica {
 const empty = new ArrayBuffer(0)
 
 afterEach(() => {
-  setDocumentSchemaNotice('Deck.kitionslide', null)
+  setDocumentSchemaNotice('Slide.kitionslide', null)
   setDocumentSchemaNotice('Plan.kiboard', null)
 })
 
@@ -38,10 +38,10 @@ describe('watchSchema', () => {
   it('keeps a document whose import a newer kit migrated read-only, and still fails the import', async () => {
     const onBlocked = vi.fn()
     const refused = new Error('the document needs schema version 4; this kit reads schema versions up to 3')
-    const watched = watchSchema('Deck.kitionslide', 'kit.slide', replica({ importChanges: vi.fn(async () => Promise.reject(refused)) }), { onBlocked })
+    const watched = watchSchema('Slide.kitionslide', 'kit.slide', replica({ importChanges: vi.fn(async () => Promise.reject(refused)) }), { onBlocked })
     await expect(watched.importChanges(empty, empty)).rejects.toBe(refused)
-    expect(documentSchemaNotice('Deck.kitionslide')).toEqual({ kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
-    expect(schemaBlockedPaths()).toEqual(['Deck.kitionslide'])
+    expect(documentSchemaNotice('Slide.kitionslide')).toEqual({ kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
+    expect(schemaBlockedPaths()).toEqual(['Slide.kitionslide'])
     expect(onBlocked).toHaveBeenCalledTimes(1)
     // Other failures say nothing about the schema.
     const failing = watchSchema('Plan.kiboard', 'kit.board', replica({ importChanges: vi.fn(async () => Promise.reject(new Error('offline'))) }))
@@ -61,10 +61,10 @@ describe('watchSchema', () => {
   })
 
   it('never lets a notice that does not block replace one that does', () => {
-    setDocumentSchemaNotice('Deck.kitionslide', { kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
-    setDocumentSchemaNotice('Deck.kitionslide', { kit: 'kit.slide', needs: 5, reads: 3, blocked: false })
-    expect(documentSchemaNotice('Deck.kitionslide')?.blocked).toBe(true)
-    setDocumentSchemaNotice('Deck.kitionslide', null)
-    expect(documentSchemaNotice('Deck.kitionslide')).toBeNull()
+    setDocumentSchemaNotice('Slide.kitionslide', { kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
+    setDocumentSchemaNotice('Slide.kitionslide', { kit: 'kit.slide', needs: 5, reads: 3, blocked: false })
+    expect(documentSchemaNotice('Slide.kitionslide')?.blocked).toBe(true)
+    setDocumentSchemaNotice('Slide.kitionslide', null)
+    expect(documentSchemaNotice('Slide.kitionslide')).toBeNull()
   })
 })

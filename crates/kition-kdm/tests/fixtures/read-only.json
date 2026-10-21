@@ -271,10 +271,10 @@
         "raw": {
           "ext": "<p:extLst/>"
         },
-        "title": "Deck"
+        "title": "Presentation"
       },
-      "id": "deck",
-      "type": "Deck"
+      "id": "slide",
+      "type": "Presentation"
     },
     {
       "fields": {
@@ -282,7 +282,7 @@
         "name": "Object"
       },
       "id": "op1",
-      "in": "deck.items",
+      "in": "slide.items",
       "type": "Item"
     },
     {
@@ -298,11 +298,11 @@
         "xml": "<x/>"
       },
       "id": "k1",
-      "in": "deck.kept",
+      "in": "slide.kept",
       "type": "Kept"
     },
     {
-      "text": "deck.notes",
+      "text": "slide.notes",
       "value": "kept notes"
     },
     {
@@ -311,7 +311,7 @@
     },
     {
       "key": "A1",
-      "map": "deck.cells",
+      "map": "slide.cells",
       "value": "kept"
     }
   ],
@@ -347,10 +347,10 @@
               "raw": {
                 "ext": "<p:extLst/>"
               },
-              "title": "Deck"
+              "title": "Presentation"
             },
-            "id": "deck",
-            "type": "Deck"
+            "id": "slide",
+            "type": "Presentation"
           },
           {
             "fields": {
@@ -694,7 +694,7 @@
             "field": "title",
             "op": "set",
             "target": "root",
-            "value": "Deck B"
+            "value": "Slide B"
           },
           {
             "field": "kind",
@@ -719,10 +719,10 @@
               "raw": {
                 "ext": "<p:extLst/>"
               },
-              "title": "Deck B"
+              "title": "Slide B"
             },
-            "id": "deck",
-            "type": "Deck"
+            "id": "slide",
+            "type": "Presentation"
           },
           {
             "fields": {
@@ -773,8 +773,8 @@
                 "op1"
               ]
             },
-            "id": "deck",
-            "type": "Deck"
+            "id": "slide",
+            "type": "Presentation"
           }
         ],
         "refs": {},

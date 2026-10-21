@@ -77,7 +77,7 @@ const KIT_FILE_KINDS = [
   { format: 'layout', extensions: /\.kitiondesign$/i, prefix: 'design', kit: 'Kition Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
   { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'Kition CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
   // PowerPoint files stay attachments whose text is extracted; only .kitionslide files are kit-only.
-  { format: 'slide', extensions: /\.kitionslide$/i, prefix: 'slide', kit: 'Kition Slides', one: 'a slides document', many: 'slides documents', data: 'slides data' },
+  { format: 'slide', extensions: /\.kitionslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
 ] as const
 
 type KitFileKind = (typeof KIT_FILE_KINDS)[number]

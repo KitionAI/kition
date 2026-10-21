@@ -3,7 +3,7 @@
   "id": "com.kition.examples.title-case",
   "name": "Title case slide titles",
   "version": "1.0.0",
-  "description": "Puts every slide title of a deck in title case.",
+  "description": "Puts every slide title of a slide file in title case.",
   "publisher": "Kition examples",
   "entry": "extension.mjs",
   "activation": { "kits": ["kit.slide"], "on": "command" },

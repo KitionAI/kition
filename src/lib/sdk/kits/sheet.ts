@@ -8,7 +8,7 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 type BlobRef = { hash: string; mime: string; size: number }
 
 /** kit.sheet: registered with @kition/sdk when this module loads. */
-export const sheetsKit: KitDescriptor = registerKit({ id: "kit.sheet", schema: {"kdm":1,"kit":"kit.sheet","schemaVersion":2,"root":"Workbook","types":{"Workbook":{"fields":{"props":{"kind":"json","optional":true},"theme":{"kind":"json","optional":true},"customLists":{"kind":"json","optional":true},"cellStyles":{"kind":"json","optional":true},"styles":{"kind":"map"},"names":{"kind":"list","of":"Name"},"sheets":{"kind":"list","of":"Sheet"}}},"Name":{"fields":{"name":{"kind":"string"},"scope":{"kind":"ref","of":"Sheet","optional":true},"formula":{"kind":"string"},"props":{"kind":"json","optional":true}}},"Sheet":{"fields":{"name":{"kind":"string"},"props":{"kind":"json","optional":true},"rows":{"kind":"list","of":"Row"},"cols":{"kind":"list","of":"Col"},"cells":{"kind":"map"},"comments":{"kind":"map"},"hyperlinks":{"kind":"map"},"features":{"kind":"json","optional":true},"images":{"kind":"list","of":"Image"}}},"Cell":{"fields":{"input":{"kind":"string","optional":true},"text":{"kind":"text","marks":{"bold":{"expand":"after"},"italic":{"expand":"after"},"underline":{"expand":"after"},"strike":{"expand":"after"},"font":{"expand":"after"},"size":{"expand":"after"},"color":{"expand":"after"},"vertAlign":{"expand":"after"},"family":{"expand":"after"},"charset":{"expand":"after"},"scheme":{"expand":"after"},"extra":{"expand":"after"}}},"style":{"kind":"string","optional":true},"array":{"kind":"string","optional":true},"picture":{"kind":"json","optional":true},"by":{"kind":"string","optional":true},"key":{"kind":"string","optional":true},"merged":{"kind":"json","optional":true}}},"Row":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Col":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Image":{"fields":{"props":{"kind":"json","optional":true},"blob":{"kind":"blob","optional":true}}}}} })
+export const sheetKit: KitDescriptor = registerKit({ id: "kit.sheet", schema: {"kdm":1,"kit":"kit.sheet","schemaVersion":2,"root":"Workbook","types":{"Workbook":{"fields":{"props":{"kind":"json","optional":true},"theme":{"kind":"json","optional":true},"customLists":{"kind":"json","optional":true},"cellStyles":{"kind":"json","optional":true},"styles":{"kind":"map"},"names":{"kind":"list","of":"Name"},"sheets":{"kind":"list","of":"Sheet"}}},"Name":{"fields":{"name":{"kind":"string"},"scope":{"kind":"ref","of":"Sheet","optional":true},"formula":{"kind":"string"},"props":{"kind":"json","optional":true}}},"Sheet":{"fields":{"name":{"kind":"string"},"props":{"kind":"json","optional":true},"rows":{"kind":"list","of":"Row"},"cols":{"kind":"list","of":"Col"},"cells":{"kind":"map"},"comments":{"kind":"map"},"hyperlinks":{"kind":"map"},"features":{"kind":"json","optional":true},"images":{"kind":"list","of":"Image"}}},"Cell":{"fields":{"input":{"kind":"string","optional":true},"text":{"kind":"text","marks":{"bold":{"expand":"after"},"italic":{"expand":"after"},"underline":{"expand":"after"},"strike":{"expand":"after"},"font":{"expand":"after"},"size":{"expand":"after"},"color":{"expand":"after"},"vertAlign":{"expand":"after"},"family":{"expand":"after"},"charset":{"expand":"after"},"scheme":{"expand":"after"},"extra":{"expand":"after"}}},"style":{"kind":"string","optional":true},"array":{"kind":"string","optional":true},"picture":{"kind":"json","optional":true},"by":{"kind":"string","optional":true},"key":{"kind":"string","optional":true},"merged":{"kind":"json","optional":true}}},"Row":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Col":{"fields":{"info":{"kind":"json","optional":true},"gone":{"kind":"boolean","optional":true}}},"Image":{"fields":{"props":{"kind":"json","optional":true},"blob":{"kind":"blob","optional":true}}}}} })
 
 /** The fields a new `Workbook` takes (`list.add(fields)`). */
 export type WorkbookFields = {
@@ -128,7 +128,7 @@ export interface Image extends ModelObject {
 }
 
 /** Every command of kit.sheet, by id, with its parameters. */
-export interface SheetsCommands extends CommandMap {
+export interface SheetCommands extends CommandMap {
   /** New Workbook. Params: {sample?: "budget"|"sales"|"grades"}. Changes the document. */
   "file.new": { sample?: "budget" | "sales" | "grades" }
   /** Open. Params: {path} | {name, base64} (xlsx, xlsm, xlsb and ods data import, csv, tsv, txt, json). Changes the document. */
@@ -765,6 +765,6 @@ export interface SheetsCommands extends CommandMap {
   "commandLine": { text?: string }
 }
 
-/** A Sheets document opened with `openDocument<Workbook, SheetsCommands>`. */
-export type SheetsDocument = ModelDocument<Workbook, SheetsCommands>
-export type SheetsContext = RequestContext<Workbook, SheetsCommands>
+/** A Sheet file opened with `openDocument<Workbook, SheetCommands>`. */
+export type SheetDocument = ModelDocument<Workbook, SheetCommands>
+export type SheetContext = RequestContext<Workbook, SheetCommands>

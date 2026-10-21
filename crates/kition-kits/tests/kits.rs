@@ -210,9 +210,14 @@ async fn creates_untitled_documents_with_unused_names() {
     .await;
     assert_eq!(status, StatusCode::OK, "{created}");
     check_contract("documentView", &created["data"]);
-    assert_eq!(created["data"]["path"], "art/Untitled image.mocktext");
+    assert_eq!(created["data"]["path"], "art/Untitled Mock kit.mocktext");
     assert_eq!(created["data"]["dirty"], false);
-    assert!(f.dir.path().join("art/Untitled image.mocktext").is_file());
+    assert!(
+        f.dir
+            .path()
+            .join("art/Untitled Mock kit.mocktext")
+            .is_file()
+    );
     let (_, second) = call(
         &f.app,
         "POST",
@@ -220,7 +225,7 @@ async fn creates_untitled_documents_with_unused_names() {
         Some(json!({ "folder": "art", "extension": "mocktext" })),
     )
     .await;
-    assert_eq!(second["data"]["path"], "art/Untitled image 2.mocktext");
+    assert_eq!(second["data"]["path"], "art/Untitled Mock kit 2.mocktext");
     let (status, _) = call(
         &f.app,
         "POST",

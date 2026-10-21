@@ -5,7 +5,7 @@
 //! since the draft forked. Merge and discard are never tools.
 //!
 //! Each kit is tested when its headless executable is found (`KITION_KIT_<KIT>_BINARY`, or a
-//! debug build in the sibling kit checkout): Sheet keeps replica drafts, Slides file drafts.
+//! debug build in the sibling kit checkout): Sheet keeps replica drafts, Slide file drafts.
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -36,7 +36,7 @@ const CASES: &[Case] = &[
     Case {
         kit: "slide",
         prefix: "slide",
-        fixture: "Slides.kitionslide",
+        fixture: "Slide.kitionslide",
         step: || json!({ "command": "shape.insert", "params": { "preset": "ellipse", "rect": [100, 100, 200, 120] } }),
         mode: "file",
     },
@@ -271,6 +271,6 @@ async fn an_agent_drafts_headless_and_the_person_merges() {
         assert_eq!(gone["error"]["code"], "not-found");
     }
     if tested == 0 {
-        eprintln!("skipped: no Sheet or Slides executable");
+        eprintln!("skipped: no Sheet or Slide executable");
     }
 }

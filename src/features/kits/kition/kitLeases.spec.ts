@@ -6,7 +6,7 @@ import { kitCollabHandlers } from './kitLeases'
 
 describe('kitCollabHandlers presence (Kit UI protocol section 7e)', () => {
   it('keeps what the person shares for co-editing, tells the kit what the others share, and withdraws it when the kit closes', () => {
-    const path = 'Shared/Deck.kitionslide'
+    const path = 'Shared/Slide.kitionslide'
     const { handlers, attach } = kitCollabHandlers(path, 'kit.slide', true, () => ((key: string) => key) as never)
     // A viewer (read-only) shares its selection too.
     handlers.presence?.({ selection: ['shape-1'] })

@@ -132,7 +132,7 @@
     "crate": "kition-slide-sdk",
     "module": "kition_slide_sdk",
     "class": "SlideDocument",
-    "name": "Slides.kitionslide",
+    "name": "Slide.kitionslide",
     "edit": {
       "command": "shape.insert",
       "params": {
