@@ -27,7 +27,7 @@ afterEach(() => {
 describe('newerSchemaRefusal', () => {
   it('reads what a refused import needs, from the KDM and from a kit', () => {
     expect(newerSchemaRefusal(new KdmError('newer-schema', 'the document needs schema version 2; this kit reads schema versions up to 1'))).toEqual({ needs: 2, reads: 1 })
-    expect(newerSchemaRefusal(new Error('presentation replica: the document needs schema version 5; this kit reads schema versions up to 3'))).toEqual({ needs: 5, reads: 3 })
+    expect(newerSchemaRefusal(new Error('slide replica: the document needs schema version 5; this kit reads schema versions up to 3'))).toEqual({ needs: 5, reads: 3 })
     expect(newerSchemaRefusal({ message: 'refused', data: { reason: 'newer-schema' } })).toEqual({ needs: Number.NaN, reads: Number.NaN })
     expect(newerSchemaRefusal(new Error('the connection is closed'))).toBeNull()
     expect(newerSchemaRefusal(null)).toBeNull()

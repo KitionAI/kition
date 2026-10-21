@@ -247,7 +247,7 @@ describe('startCollab for documents Kition edits itself', () => {
     }) as never
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { connection, replica } = kitConnection(['ai', 'replica'])
-    replica.importChanges.mockRejectedValueOnce(new Error('presentation replica: the document needs schema version 4; this kit reads schema versions up to 3'))
+    replica.importChanges.mockRejectedValueOnce(new Error('slide replica: the document needs schema version 4; this kit reads schema versions up to 3'))
     writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/6', name: 'Slide.kitionslide', kit: 'kit.slide', role: 'editor', path: 'Shared/Slide.kitionslide' })
     cleanups.push(startCollab(deps), registerKitConnection({ path: 'Shared/Slide.kitionslide', kitId: 'kit.slide', connection }))
     await vi.waitFor(() => expect(replica.importChanges).toHaveBeenCalled())
