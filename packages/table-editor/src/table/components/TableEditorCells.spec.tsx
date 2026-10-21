@@ -7,7 +7,7 @@ import { aiCellStore, buildCellKey } from '../store/aiCellGenerationStore'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
-import { DataCellDisplay } from './TableEditorCells'
+import { DataCellDisplay, DataInlineCell } from './TableEditorCells'
 
 let container: HTMLDivElement
 let root: Root | null = null
@@ -146,5 +146,30 @@ describe('DataCellDisplay document links', () => {
       (container.querySelector('button') as HTMLButtonElement).click()
     })
     expect(onOpenDocument).toHaveBeenCalledWith('Mail/Messages/project-update.md')
+  })
+})
+
+describe('DataInlineCell with an AI field', () => {
+  beforeEach(async () => {
+    await unmount()
+    aiCellStore._resetForTests()
+  })
+
+  it('shows the generated images, never a text box that could overwrite them', async () => {
+    const onCommit = vi.fn()
+    await mount(
+      createElement(DataInlineCell, {
+        field: attachmentField,
+        value: [{ name: 'gen.png', url: 'https://test.local/gen.png', mimeType: 'image/png' }] as any,
+        documentId: 1,
+        tableId: 1,
+        recordId: 2,
+        onCommit,
+      }),
+    )
+    const thumb = container.querySelector('[data-testid="attachment-thumb"] img')
+    expect(thumb?.getAttribute('src')).toBe('https://test.local/gen.png')
+    expect(container.querySelector('input, textarea')).toBeNull()
+    expect(onCommit).not.toHaveBeenCalled()
   })
 })

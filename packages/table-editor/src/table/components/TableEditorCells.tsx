@@ -268,6 +268,7 @@ export function DataInlineCell({
   value,
   documentId,
   tableId,
+  recordId,
   onPreviewAttachments,
   onOpenDocument,
   onCommit,
@@ -276,6 +277,8 @@ export function DataInlineCell({
   value: DataRecordValue
   documentId?: number
   tableId?: number
+  /** The record shown, so an AI field shows its generation status. */
+  recordId?: number
   onPreviewAttachments?: (items: DataAttachment[], index: number) => void
   onOpenDocument?: (path: string) => void
   onCommit: (value: DataRecordValue) => void
@@ -305,6 +308,21 @@ export function DataInlineCell({
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  // An AI field's value is generated, not typed: show it as the grid does (its
+  // images, text, and status), never as an input whose blur would write over it.
+  if (field.ai_config?.enabled) {
+    return (
+      <DataCellDisplay
+        field={field}
+        value={value}
+        tableId={tableId}
+        recordId={recordId}
+        onPreviewAttachments={onPreviewAttachments}
+        onOpenDocument={onOpenDocument}
+      />
+    )
   }
 
   if (field.type === 'checkbox') {

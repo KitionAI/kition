@@ -123,6 +123,7 @@ export function RecordDetailDrawer({
                 value={record.values?.[field.name] ?? null}
                 documentId={documentId}
                 tableId={tableId}
+                recordId={record.id}
                 onPreviewAttachments={onPreviewAttachments}
                 onOpenDocument={onOpenDocument}
                 onCommit={(value) => onUpdate(field, value)}
