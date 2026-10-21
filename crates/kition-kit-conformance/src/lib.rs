@@ -382,6 +382,39 @@ struct ManifestFacts {
     tool_groups: Option<Vec<String>>,
     /// A Kition Kit Standard manifest's levels and notes ([`standard_levels`]).
     levels: (Vec<&'static str>, Vec<String>),
+    /// A Kition Kit Standard manifest's `headless.features`, which must be exactly what the
+    /// executable's `kit.initialize` answers (Kit Standard K9).
+    headless_features: Option<Vec<String>>,
+}
+
+/// What differs between a manifest's `headless.features` and the features `kit.initialize`
+/// answered (Kit Standard K9), as one message; `None` when they are the same set.
+fn feature_mismatch(declared: &[String], answered: &[String]) -> Option<String> {
+    let missing: Vec<&str> = answered
+        .iter()
+        .filter(|feature| !declared.contains(feature))
+        .map(String::as_str)
+        .collect();
+    let extra: Vec<&str> = declared
+        .iter()
+        .filter(|feature| !answered.contains(feature))
+        .map(String::as_str)
+        .collect();
+    if missing.is_empty() && extra.is_empty() {
+        return None;
+    }
+    let mut parts = Vec::new();
+    if !missing.is_empty() {
+        parts.push(format!("missing from kit.json: {}", missing.join(", ")));
+    }
+    if !extra.is_empty() {
+        parts.push(format!("not answered by the kit: {}", extra.join(", ")));
+    }
+    Some(format!(
+        "kit.json `headless.features` must list exactly what kit.initialize answers ({}); the kit answers [{}]",
+        parts.join("; "),
+        answered.join(", ")
+    ))
 }
 
 /// The conformance levels a valid Kition Kit Standard manifest supports, as far as the manifest
@@ -458,6 +491,17 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
             version: text("version"),
             tool_groups: None,
             levels: standard_levels(&value),
+            headless_features: Some(
+                value["headless"]["features"]
+                    .as_array()
+                    .map(|features| {
+                        features
+                            .iter()
+                            .filter_map(|feature| feature.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            ),
         });
     }
     schemas.manifest(&value)?;
@@ -479,6 +523,7 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
         id: manifest.id,
         version: manifest.version,
         levels: (Vec::new(), Vec::new()),
+        headless_features: None,
     })
 }
 
@@ -643,6 +688,14 @@ impl Context<'_> {
                 "the kit reports {} {}, but kit.json says {} {}",
                 result.kit.id, result.kit.version, manifest.id, manifest.version
             ));
+        }
+        if let Some(declared) = self
+            .manifest
+            .as_ref()
+            .and_then(|manifest| manifest.headless_features.as_deref())
+            && let Some(mismatch) = feature_mismatch(declared, &result.capabilities.features)
+        {
+            return Err(mismatch);
         }
         Ok((host, result))
     }
@@ -970,6 +1023,51 @@ mod tests {
             .unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(png_size(&pixel), Some((1, 1)));
         assert_eq!(png_size(b"GIF89a"), None);
+    }
+
+    #[test]
+    fn requires_the_manifest_to_list_exactly_the_features_the_kit_answers() {
+        let owned = |list: &[&str]| {
+            list.iter()
+                .map(|feature| (*feature).to_owned())
+                .collect::<Vec<_>>()
+        };
+        let answered = owned(&[
+            "view.describe",
+            "document.check",
+            "model.describe",
+            "model.batch",
+        ]);
+        assert_eq!(
+            feature_mismatch(
+                &owned(&[
+                    "model.batch",
+                    "document.check",
+                    "view.describe",
+                    "model.describe"
+                ]),
+                &answered
+            ),
+            None,
+            "the order does not matter"
+        );
+        let mismatch = feature_mismatch(
+            &owned(&["model.describe", "model.batch", "model.open"]),
+            &answered,
+        )
+        .unwrap_or_else(|| panic!("a mismatch"));
+        assert!(
+            mismatch.contains("missing from kit.json: view.describe, document.check"),
+            "{mismatch}"
+        );
+        assert!(
+            mismatch.contains("not answered by the kit: model.open"),
+            "{mismatch}"
+        );
+        assert!(
+            mismatch.contains("K9") || mismatch.contains("kit.initialize"),
+            "{mismatch}"
+        );
     }
 
     #[test]
