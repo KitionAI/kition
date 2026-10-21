@@ -54,6 +54,28 @@ describe('useDialogFocus', () => {
     expect(document.activeElement).toBe(trigger)
   })
 
+  it('moves Tab through every control itself, buttons included, as WebKit would not', async () => {
+    await act(async () => root!.render(createElement(Dialog)))
+    const first = container.querySelector('[data-testid="first"]') as HTMLElement
+    const middle = container.querySelector('[data-testid="middle"]') as HTMLElement
+    const last = container.querySelector('[data-testid="last"]') as HTMLElement
+    tab(first)
+    expect(document.activeElement).toBe(middle)
+    tab(middle)
+    expect(document.activeElement).toBe(last)
+    tab(last, true)
+    expect(document.activeElement).toBe(middle)
+  })
+
+  it('leaves a Tab an editor inside the dialog already handled', async () => {
+    await act(async () => root!.render(createElement(Dialog)))
+    const middle = container.querySelector('[data-testid="middle"]') as HTMLElement
+    middle.focus()
+    middle.addEventListener('keydown', (event) => event.preventDefault())
+    tab(middle)
+    expect(document.activeElement).toBe(middle)
+  })
+
   it('focuses the container itself when it has no controls', async () => {
     await act(async () => root!.render(createElement(Dialog, { withControls: false })))
     const dialog = container.querySelector('[data-testid="dialog"]') as HTMLElement
