@@ -12,7 +12,7 @@ use kition_kit_protocol::ErrorReason;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
-use crate::manager::{Caller, KitError, KitManager};
+use crate::manager::{Caller, FileWrite, KitError, KitManager};
 
 #[derive(Clone)]
 pub struct KitsState {
@@ -415,6 +415,9 @@ const MAX_FILE_BYTES: usize = 2 << 30;
 #[derive(Deserialize)]
 struct WriteFileQuery {
     path: String,
+    /// The document an in-page editor opened, when the write saves it: only that file is
+    /// replaced. Without it the write makes a new file (a new document or an export).
+    document: Option<String>,
 }
 
 async fn write_file(
@@ -423,9 +426,13 @@ async fn write_file(
     Query(query): Query<WriteFileQuery>,
     body: axum::body::Bytes,
 ) -> AppResult<Response> {
+    let write = match query.document.as_deref() {
+        Some(document) => FileWrite::Save { document },
+        None => FileWrite::New,
+    };
     state
         .kits
-        .write_file(&query.path, &body)
+        .write_file(&query.path, &body, write)
         .map_err(app_error)?;
     Ok(ok(json!({ "path": query.path, "bytes": body.len() })))
 }

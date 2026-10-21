@@ -260,7 +260,8 @@ and side panels).
   checkout.
 - `src/features/kits/kition/KitFrame.tsx` mounts a package: the document's
   bytes, Kition's theme tokens and language, `host/read` and `host/write`
-  through the workspace file API, paths confined to the workspace, new files
+  through the workspace file API, paths confined to the workspace, a save
+  (`host/write` in save mode) only of the frame's own document, new files
   and exports under unused names (a rendered movie arrives as `host/write` in
   export mode), `host/pick` (the person chooses a file, which Kition copies
   next to the document), Kition's shortcuts forwarded back (`HOST_SHORTCUTS`:
@@ -269,6 +270,11 @@ and side panels).
   bridge forwarded to the frame as `ai/*`. It mounts on the protocol's
   `ready` handshake, never the frame's `load` event, and abandons a mount its
   effect no longer needs.
+- Writes go through `PUT /v1/kits/files`, and the runtime keeps the same
+  rule: a save names the document its editor opened (`document`) and
+  replaces only that file; any other write makes a new file and never
+  replaces one. So one kit's editor cannot overwrite another file, of its own
+  kind or of another kit.
 - A document this person may only view (a view-only share link, a `viewer`
   role) opens with `document.readOnly`. kit-ui's engine worker then refuses
   every edit (reason `read-only`) by its exported `READ_ONLY_RULES`, and the

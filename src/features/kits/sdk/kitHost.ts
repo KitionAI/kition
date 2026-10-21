@@ -9,7 +9,7 @@ export type KitHost = {
   read: (path: string) => Promise<{ bytes: ArrayBuffer; stamp: string | null }>
   /** The stamp of the file's current version, or null when it cannot tell. */
   stamp: (path: string) => Promise<string | null>
-  /** Replaces the file with `bytes`. */
+  /** Writes `bytes` as the new file `path` (a new document); it never replaces a file. */
   write: (path: string, bytes: Uint8Array) => Promise<void>
   /**
    * Where the document at `path` may read the other files it names (lent files): an absolute

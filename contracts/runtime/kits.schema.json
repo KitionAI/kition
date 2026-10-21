@@ -237,13 +237,17 @@
     "writeFileQuery": {
       "type": "object",
       "additionalProperties": false,
-      "description": "PUT /v1/kits/files?path=: replaces a workspace file a kit edits with the raw request body (application/octet-stream, up to 2 GiB), or writes a kit export (for example an .mp4 from a video project) as a new file; an export never replaces an existing file. In-page editors save and export through it.",
+      "description": "PUT /v1/kits/files?path=&document=: writes the raw request body (application/octet-stream, up to 2 GiB) to a workspace file. With document, it saves the document an in-page editor opened: path must be that document, a file a kit edits, and only it is replaced. Without document, it makes a new file a kit edits or a kit export (for example an .mp4 from a video project) and never replaces an existing file. In-page editors save, export, and make new files through it.",
       "required": [
         "path"
       ],
       "properties": {
         "path": {
           "$ref": "#/$defs/workspacePath"
+        },
+        "document": {
+          "$ref": "#/$defs/workspacePath",
+          "description": "The document an in-page editor opened, when the write saves it; path must name the same file."
         }
       }
     },

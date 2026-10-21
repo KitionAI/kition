@@ -7,7 +7,7 @@ import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
-import { mountKit, type KitConnection, type ModelBatchParams } from '../host/mountKit'
+import { mountKit, type KitConnection, type KitHostHandlers, type ModelBatchParams } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
@@ -36,7 +36,7 @@ function workspacePath(path: string) {
   return parts.join('/')
 }
 
-/** The document's own path: a kit keeps only its document's replica. */
+/** The document's own path: a kit saves only its document, and keeps only its document's replica. */
 function documentPath(wanted: string, path: string) {
   const checked = workspacePath(wanted)
   if (checked !== workspacePath(path)) throw new Error(`${wanted} is not this editor's document`)
@@ -82,6 +82,18 @@ async function unusedPath(path: string) {
     if ((await KITION_KIT_HOST.stamp(candidate)) == null) return candidate
   }
   throw new Error(`no free name for ${path}`)
+}
+
+/**
+ * `host/write` from the kit editing `path`: a save writes only that document; exports and new
+ * files are new files under unused names. The runtime holds both rules too: a save names its
+ * document, and no other write replaces a file.
+ */
+async function writeForKit(path: string, readOnly: boolean, { path: wanted, bytes, mode }: Parameters<KitHostHandlers['write']>[0]) {
+  if (mode === 'save' && readOnly) throw new Error(`${path} is open read-only`)
+  const target = mode === 'save' ? documentPath(wanted, path) : await unusedPath(workspacePath(wanted))
+  await writeKitFile(target, new Uint8Array(bytes), mode === 'save' ? { document: target } : {})
+  return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
 }
 
 /**
@@ -208,12 +220,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
               return { bytes, version: read.stamp ?? '', size: read.bytes.byteLength }
             },
             stamp: async ({ path: wanted }) => ({ version: await KITION_KIT_HOST.stamp(workspacePath(wanted)) }),
-            write: async ({ path: wanted, bytes, mode }) => {
-              if (openedReadOnly && mode === 'save') throw new Error(`${path} is open read-only`)
-              const target = mode === 'save' ? workspacePath(wanted) : await unusedPath(workspacePath(wanted))
-              await writeKitFile(target, new Uint8Array(bytes))
-              return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
-            },
+            write: (params) => writeForKit(path, openedReadOnly, params),
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
             // The replica the kit keeps next to its file (a PSD's), in the document store.
             replicaRead: async ({ path: wanted }) => {

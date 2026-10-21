@@ -25,14 +25,15 @@ export type { KitsDraftComparison, KitsHeadlessDraft }
 export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDocumentApplyParams, KitsBridgeDocumentApplyResult, KitsBridgeDocumentReadResult, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep }
 
 /**
- * Replaces a workspace file a kit edits with `bytes`; the in-page editors save through it. The
- * bytes are the request body as they are: wrapping them in a Blob would copy a file of up to
+ * Writes `bytes` to a workspace file: with `document` (the document an in-page editor opened, and
+ * `path` must be it) it saves that document; without, it makes a new file (a new document or an
+ * export), and the runtime refuses to replace an existing one. The bytes are the request body as they are: wrapping them in a Blob would copy a file of up to
  * 2 GiB once more, and WebKit's network inspection (which the e2e specs read saves through)
  * does not report a Blob body.
  */
-export function writeKitFile(path: string, bytes: Uint8Array) {
+export function writeKitFile(path: string, bytes: Uint8Array, { document }: { document?: string } = {}) {
   return request.put('/v1/kits/files', bytes, {
-    params: { path },
+    params: document ? { path, document } : { path },
     headers: { 'Content-Type': 'application/octet-stream' },
     timeout: 10 * 60_000,
     suppressErrorMessage: true,

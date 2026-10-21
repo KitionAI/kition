@@ -272,7 +272,7 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
         }
     };
     assert_eq!(
-        put("/kits/files?path=art/note.mocktext").await,
+        put("/kits/files?path=art/note.mocktext&document=art/note.mocktext").await,
         StatusCode::OK
     );
     // An export is written once, as a new file, and never over an existing one.
@@ -295,6 +295,124 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
             "{path}"
         );
     }
+}
+
+/// A second kit, so that one kit's editor can try to write another kit's file.
+static OTHER: KitDefinition = KitDefinition {
+    id: "kit.other",
+    name: "Other kit",
+    binary_env: "KITION_KIT_OTHER_BINARY",
+    extensions: &["mockpic"],
+    creates: &[],
+    embeds: false,
+    exports: &[],
+    agent: KitAgent {
+        prefix: "other",
+        noun: "other document",
+        formats: ".mockpic",
+        reports: "its picture",
+        covers: "nothing",
+        queries: "nothing",
+        command: "picture.noop",
+    },
+};
+
+/// `PUT /kits/files` with `body`, answering the status.
+async fn put_file(app: &Router, uri: &str, body: &'static str) -> StatusCode {
+    let request = Request::builder()
+        .method("PUT")
+        .uri(uri)
+        .header("content-type", "application/octet-stream")
+        .body(Body::from(body))
+        .unwrap_or_else(|err| panic!("{err}"));
+    app.clone()
+        .oneshot(request)
+        .await
+        .unwrap_or_else(|err| panic!("{err}"))
+        .status()
+}
+
+#[tokio::test]
+async fn an_in_page_save_writes_only_the_document_it_names() {
+    // No kit process runs: the route needs only the kits' formats and the workspace.
+    let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::create_dir_all(dir.path().join("art")).unwrap_or_else(|err| panic!("{err}"));
+    for name in [
+        "art/note.mocktext",
+        "art/other.mocktext",
+        "art/cover.mockpic",
+    ] {
+        std::fs::write(dir.path().join(name), "original").unwrap_or_else(|err| panic!("{err}"));
+    }
+    let kits = KitManager::new(
+        Some(dir.path().to_path_buf()),
+        vec![(&MOCK, None), (&OTHER, None)],
+    );
+    let db = Db::open_in_memory().unwrap_or_else(|err| panic!("{err}"));
+    kition_store::seed::run(&db.conn().unwrap_or_else(|err| panic!("{err}")))
+        .unwrap_or_else(|err| panic!("{err}"));
+    let auth = AuthConfig {
+        db,
+        jwt_secret: "test".into(),
+        disabled: true,
+    };
+    let app = router(KitsState { auth, kits });
+    let read = |name: &str| std::fs::read_to_string(dir.path().join(name)).unwrap_or_default();
+
+    // A save names the document its editor opened; any other target is refused, whatever its kit.
+    for uri in [
+        "/kits/files?path=art/other.mocktext&document=art/note.mocktext",
+        "/kits/files?path=art/cover.mockpic&document=art/note.mocktext",
+        "/kits/files?path=art/cover.mockpic&document=art/cover.mocktext",
+        "/kits/files?path=art/note.mockout&document=art/note.mockout",
+        "/kits/files?path=art/note.txt&document=art/note.txt",
+    ] {
+        assert_eq!(
+            put_file(&app, uri, "taken").await,
+            StatusCode::BAD_REQUEST,
+            "{uri}"
+        );
+    }
+    // Without a document, a write makes a new file and never replaces one, of any kit.
+    for uri in [
+        "/kits/files?path=art/other.mocktext",
+        "/kits/files?path=art/cover.mockpic",
+        "/kits/files?path=art/note.mocktext",
+    ] {
+        assert_eq!(
+            put_file(&app, uri, "taken").await,
+            StatusCode::BAD_REQUEST,
+            "{uri}"
+        );
+    }
+    for name in [
+        "art/note.mocktext",
+        "art/other.mocktext",
+        "art/cover.mockpic",
+    ] {
+        assert_eq!(read(name), "original", "{name}");
+    }
+
+    assert_eq!(
+        put_file(
+            &app,
+            "/kits/files?path=art/note.mocktext&document=art/note.mocktext",
+            "saved"
+        )
+        .await,
+        StatusCode::OK
+    );
+    assert_eq!(read("art/note.mocktext"), "saved");
+    assert_eq!(
+        put_file(&app, "/kits/files?path=art/new.mocktext", "made").await,
+        StatusCode::OK
+    );
+    assert_eq!(read("art/new.mocktext"), "made");
+    assert_eq!(
+        put_file(&app, "/kits/files?path=art/new.mocktext", "again").await,
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(read("art/new.mocktext"), "made");
 }
 
 #[tokio::test]

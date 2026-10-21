@@ -17,7 +17,7 @@ type Opened = {
   saveReplica: () => Promise<void>
   imports: number
   closed: boolean
-  write: (params: { path: string; bytes: ArrayBuffer; mode: 'save' | 'new' }) => Promise<unknown>
+  write: (params: { path: string; bytes: ArrayBuffer; mode: 'save' | 'export' | 'create' }) => Promise<{ path: string; version: string }>
   shortcuts: string[]
   shortcut: (key: { key: string; code: string; meta: boolean; ctrl: boolean; shift: boolean; alt: boolean }) => void
 }
@@ -130,10 +130,12 @@ vi.mock('../host/mountKit', () => ({
   }),
 }))
 
+/** The workspace files that exist (`stamp` answers null for any other path). */
+const existing = new Set(['Shared/Poster.test', 'Shared/Poster.mp4'])
 vi.mock('./kitionHost', () => ({
   KITION_KIT_HOST: {
     read: async () => ({ bytes: encode(JSON.stringify(fileState.titles)), stamp: fileState.stamp }),
-    stamp: async () => fileState.stamp,
+    stamp: async (path: string) => (existing.has(path) ? fileState.stamp : null),
     lend: () => null,
   },
   readKitReplica: async () => store.replica,
@@ -143,8 +145,8 @@ vi.mock('./kitionHost', () => ({
   compactKitReplica: async () => undefined,
 }))
 
-const writes: string[] = []
-vi.mock('@/api/kits', () => ({ writeKitFile: vi.fn(async (path: string) => void writes.push(path)) }))
+const writes: Array<{ path: string; document?: string }> = []
+vi.mock('@/api/kits', () => ({ writeKitFile: vi.fn(async (path: string, _bytes: Uint8Array, options?: { document?: string }) => void writes.push({ path, ...options })) }))
 vi.mock('./kitBridge', () => ({ registerBridgeEditor: () => () => undefined, reportBridgeChange: () => undefined }))
 vi.mock('./kitTestBridge', () => ({ registerKitTestFrame: () => () => undefined }))
 vi.mock('./pickWorkspaceFile', () => ({ pickWorkspaceFile: async () => null }))
@@ -232,6 +234,24 @@ describe('KitFrame', () => {
     expect(opened.map((kit) => kit.readOnly)).toEqual([true])
     await expect(opened[0].write({ path: PATH, bytes: new ArrayBuffer(1), mode: 'save' })).rejects.toThrow(/read-only/)
     expect(writes).toEqual([])
+  })
+
+  it('saves only the document the frame opened, and names it to the runtime', async () => {
+    await mount()
+    const kit = opened[0]
+    // Another file of the same kind, other kits' files, and a path that climbs out to another file.
+    for (const other of ['Shared/Other.test', 'Shared/Cover.psd', 'Report.docx', 'Shared/./Poster.test/../Other.test']) {
+      await expect(kit.write({ path: other, bytes: new ArrayBuffer(1), mode: 'save' })).rejects.toThrow(/not this editor's document|outside the workspace/)
+    }
+    expect(writes).toEqual([])
+    await expect(kit.write({ path: PATH, bytes: new ArrayBuffer(1), mode: 'save' })).resolves.toMatchObject({ path: PATH })
+    expect(writes).toEqual([{ path: PATH, document: PATH }])
+  })
+
+  it('writes exports and new files as new files only, never naming a document', async () => {
+    await mount()
+    await opened[0].write({ path: 'Shared/Poster.mp4', bytes: new ArrayBuffer(1), mode: 'export' })
+    expect(writes).toEqual([{ path: 'Shared/Poster 2.mp4' }])
   })
 
   it('keeps every edit, unsaved ones too, when a role change opens the kit again read-only', async () => {

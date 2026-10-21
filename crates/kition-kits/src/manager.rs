@@ -23,6 +23,15 @@ use serde_json::{Map, Value};
 
 use crate::surfaces::SurfaceKit;
 
+/// What [`KitManager::write_file`] may do to its target.
+#[derive(Debug, Clone, Copy)]
+pub enum FileWrite<'a> {
+    /// Saves `document`, the file an editor opened: only that file is replaced.
+    Save { document: &'a str },
+    /// Makes a new file (a new document, or an export); an existing file is never replaced.
+    New,
+}
+
 /// A kit Kition knows how to use.
 #[derive(Debug)]
 pub struct KitDefinition {
@@ -37,7 +46,7 @@ pub struct KitDefinition {
     /// Whether the kit's own editor can be embedded in a desktop tab.
     pub embeds: bool,
     /// Extensions the kit's in-page editor exports to, for example `mp4` from a video project.
-    /// Exports are only ever new files: `write_file` never replaces an existing one.
+    /// Exports are only ever new files: `write_file` never replaces an existing one with them.
     pub exports: &'static [&'static str],
     /// How the agent's tools for this kit read (`kit.json` `agent`).
     pub agent: KitAgent,
@@ -1258,27 +1267,49 @@ impl KitManager {
         Ok(())
     }
 
-    /// Replaces a workspace file that a kit handles with `bytes`, crash-safely: the bytes go to a
-    /// temporary file beside the target, which is then renamed over it. The in-page editors save
-    /// through here.
-    pub fn write_file(&self, path: &str, bytes: &[u8]) -> Result<(), KitError> {
-        let extension = path
-            .rsplit_once('.')
-            .map(|(_, extension)| extension.to_ascii_lowercase())
-            .unwrap_or_default();
-        let export = self
-            .inner
-            .kits
-            .iter()
-            .any(|(kit, _)| kit.exports.contains(&extension.as_str()));
-        if self.kit_for_path(path).is_none() && !export {
-            return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
-        }
+    /// Writes `bytes` to the workspace file `path`, crash-safely: the bytes go to a temporary file
+    /// beside the target, which is then renamed over it. `write` says what the write may do: a
+    /// save replaces only the document it names, which some kit edits; any other write makes a new
+    /// file and never replaces one (the in-page editors' `host/write` modes, Kit UI protocol). So
+    /// one kit's editor never overwrites another file, its own kind or another kit's.
+    pub fn write_file(
+        &self,
+        path: &str,
+        bytes: &[u8],
+        write: FileWrite<'_>,
+    ) -> Result<(), KitError> {
+        let edited = self.kit_for_path(path).is_some();
         let target = self.resolve(path)?;
-        if export && self.kit_for_path(path).is_none() && target.exists() {
-            return Err(KitError::InvalidPath(format!(
-                "`{path}` exists; exports never replace a file"
-            )));
+        match write {
+            FileWrite::Save { document } => {
+                if !edited {
+                    return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
+                }
+                if self.resolve(document)? != target {
+                    return Err(KitError::InvalidPath(format!(
+                        "`{path}` is not `{document}`, the document this save is for"
+                    )));
+                }
+            }
+            FileWrite::New => {
+                let extension = path
+                    .rsplit_once('.')
+                    .map(|(_, extension)| extension.to_ascii_lowercase())
+                    .unwrap_or_default();
+                let export = self
+                    .inner
+                    .kits
+                    .iter()
+                    .any(|(kit, _)| kit.exports.contains(&extension.as_str()));
+                if !edited && !export {
+                    return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
+                }
+                if target.exists() {
+                    return Err(KitError::InvalidPath(format!(
+                        "`{path}` exists; a new file never replaces one"
+                    )));
+                }
+            }
         }
         let parent = target
             .parent()

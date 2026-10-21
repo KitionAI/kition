@@ -31,7 +31,7 @@ use base64::Engine as _;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
-use crate::manager::{Caller, KitDefinition, KitError, KitManager};
+use crate::manager::{Caller, FileWrite, KitDefinition, KitError, KitManager};
 use crate::tools::{ErrorCode, KitToolError};
 
 /// The folder of the workspace's drafts.
@@ -583,7 +583,7 @@ pub async fn merge(kits: &KitManager, path: &str, overwrite: bool) -> Result<Val
         let _ = kits.close(kit.id, &id, true).await;
         decode(&saved?["data"], "file")?
     };
-    kits.write_file(path, &bytes)?;
+    kits.write_file(path, &bytes, FileWrite::Save { document: path })?;
     // Documents the kits hold of the file are now behind it; the next open reads it again.
     kits.close_file(path).await;
     discard_folder(kits, path, &dir).await;
