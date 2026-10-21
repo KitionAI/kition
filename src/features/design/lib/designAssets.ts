@@ -19,6 +19,13 @@ const assetDB = () =>
       db.createObjectStore('images')
     },
   })
+/**
+ * An imported image in the browser's asset store: its bytes, not a Blob. WebKit (the desktop
+ * app's web view) refuses to keep Blobs in IndexedDB ("Error preparing Blob/File data to be stored
+ * in object store").
+ */
+type StoredImage = { bytes: ArrayBuffer; type: string }
+
 export function blobDataURL(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -80,10 +87,10 @@ export async function loadDesignAssetBlob(
   if (!isDesktopRuntime()) {
     const db = await assetDB()
     try {
-      const blob = (await db.get('images', `${root}:${path}`)) as
-        | Blob
+      const stored = (await db.get('images', `${root}:${path}`)) as
+        | StoredImage
         | undefined
-      if (blob) return blob
+      if (stored) return new Blob([stored.bytes], { type: stored.type })
     } finally {
       db.close()
     }
@@ -122,7 +129,8 @@ export async function importDesignImage(
   } else {
     const db = await assetDB()
     try {
-      await db.put('images', blob, `${root}:${path}`)
+      const stored: StoredImage = { bytes: await blob.arrayBuffer(), type: blob.type }
+      await db.put('images', stored, `${root}:${path}`)
     } finally {
       db.close()
     }
