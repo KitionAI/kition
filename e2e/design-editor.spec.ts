@@ -137,14 +137,19 @@ test('shows editable starter previews and keeps controls reachable at 1024px in 
       general: { ...settings.general, theme: 'light' },
     })
   })
+  // The light theme's foreground, hsl lightness 10% (25.5 per channel): Chromium rounds it to 26
+  // and WebKit to 25, so each channel may be either.
   await expect
     .poll(() =>
       page
         .locator('.design-tool-rail button')
         .first()
-        .evaluate((el) => getComputedStyle(el).color),
+        .evaluate((el) => {
+          const channels = getComputedStyle(el).color.match(/\d+/g)?.slice(0, 3).map(Number) ?? []
+          return channels.length === 3 && channels.every((channel) => channel === 25 || channel === 26)
+        }),
     )
-    .toBe('rgb(26, 26, 26)')
+    .toBe(true)
   await page.screenshot({ path: testInfo.outputPath('design-library.png') })
   await page.getByRole('button', { name: 'Editorial', exact: true }).click()
   await saved(page)
@@ -230,22 +235,32 @@ test('preserves an externally changed source and keeps the editing version avail
 
 test('preserves composed text and exports transparent PNG and opaque JPEG', async ({
   page,
+  browserName,
 }) => {
+  // Two exports and a reload: WebKit needs more than the default 30 s on a loaded machine.
+  test.setTimeout(60_000)
   await create(page)
   await page.getByRole('button', { name: 'Artboard size', exact: true }).click()
   await number(page, 'Width', 320)
   await number(page, 'Height', 240)
   await page.getByRole('button', { name: 'Text', exact: true }).click()
   const field = page.getByRole('textbox', { name: 'Edit text', exact: true })
-  const cdp = await page.context().newCDPSession(page)
   const text = designChinese.newText
-  await cdp.send('Input.imeSetComposition', {
-    text,
-    selectionStart: text.length,
-    selectionEnd: text.length,
-  })
-  await expect(field).toBeVisible()
-  await cdp.send('Input.insertText', { text })
+  const cdp = browserName === 'chromium' ? await page.context().newCDPSession(page) : null
+  if (cdp) {
+    // An IME composition, then its committed text (CDP, Chromium only).
+    await cdp.send('Input.imeSetComposition', {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    })
+    await expect(field).toBeVisible()
+    await cdp.send('Input.insertText', { text })
+  } else {
+    // Playwright drives no IME in WebKit: the committed text arrives as one insertion.
+    await expect(field).toBeVisible()
+    await page.keyboard.insertText(text)
+  }
   await field.press('Control+Enter')
   await saved(page)
   expect(
@@ -312,7 +327,7 @@ test('preserves composed text and exports transparent PNG and opaque JPEG', asyn
     id = Object.values(doc.nodes).find((n) => n.type === 'text')!.id
   await page.locator(`[data-design-node="${id}"] text`).dblclick()
   await expect(field).toHaveValue(text)
-  await cdp.detach()
+  await cdp?.detach()
 })
 
 test('keeps group, layer, object clipboard, and canceled drag operations undoable', async ({
