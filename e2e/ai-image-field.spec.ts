@@ -65,7 +65,10 @@ const FIXTURE_DOCUMENT = {
           table_id: 21,
           name: 'ai_image',
           title: 'AI Image',
-          type: 'ai',
+          // An attachment field whose images are generated from the title, as
+          // the field editor saves it (options.ai_config, read by the runtime
+          // and lifted to field.ai_config by the client).
+          type: 'attachment',
           required: false,
           unique: false,
           readonly: false,
@@ -73,14 +76,14 @@ const FIXTURE_DOCUMENT = {
           order: 1,
           options: {
             ai_config: {
+              type: 'image_generation',
               enabled: true,
-              action_type: 'image_generation',
-              output_format: 'image',
               auto_update: false,
-              source_field_name: 'title',
-              image_size: '1024x1024',
-              image_count: 1,
-              image_quality: 'medium',
+              source_field_id: 201,
+              n: 1,
+              quality: 'medium',
+              aspect_ratio: '1:1',
+              resolution: '1K',
             },
           },
           created_at: '2026-06-01T00:00:00.000Z',
@@ -243,11 +246,16 @@ async function mockAIImageDesktopBridge(page: Page) {
 }
 
 async function mockAIImageDataDocumentApi(page: Page) {
-  await page.route('**/api/v1/data-documents/**', async (route) => {
+  await page.route('**/api/v1/data-documents**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
     const path = url.pathname
     const method = request.method()
+
+    // GET /data-documents → the list the kitable sidebar is built from
+    if (method === 'GET' && path === '/api/v1/data-documents') {
+      return fulfillJson(route, { code: 200, data: { items: [FIXTURE_DOCUMENT], total: 1, offset: 0, limit: 100 } })
+    }
 
     // POST /data-documents/open → resolve path to document
     if (method === 'POST' && path === '/api/v1/data-documents/open') {
@@ -282,23 +290,24 @@ test.describe('AI image field — e2e smoke', () => {
   test('renders attachment thumbnail in RecordDetailDrawer for image_generation AI field', async ({
     page,
   }) => {
-    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("kitable-editor"). See tooling/e2e-quarantine.json.')
     await mockAIImageDesktopBridge(page)
     await page.goto('/')
     await waitForKitableEditor(page)
 
     // The gallery view renders each record as a real DOM <article>. Click the
     // first card to open the RecordDetailDrawer.
+    // Click the card's title: its image opens the attachment preview instead.
     const galleryCard = page.locator('.data-inline-gallery-card').first()
     await expect(galleryCard).toBeVisible({ timeout: 10_000 })
-    await galleryCard.click()
+    await galleryCard.getByText('Sunset over mountains', { exact: true }).click()
 
     // The drawer should appear.
     const drawer = page.locator('.data-inline-record-drawer')
     await expect(drawer).toBeVisible({ timeout: 5_000 })
 
-    // The AI image cell wrapper must be present inside the drawer.
-    const aiImageCell = drawer.locator('.data-inline-ai-cell-image')
+    // The AI field's cell inside the drawer: an image-generation field renders
+    // its value as attachments there.
+    const aiImageCell = drawer.locator('.data-inline-ai-cell').filter({ has: page.getByTestId('attachment-thumb') })
     await expect(aiImageCell).toBeVisible({ timeout: 5_000 })
 
     // The attachment thumbnail button must be present in the DOM inside the AI

@@ -379,16 +379,15 @@ test('A9 InsertPoint popover offers Add action / Add filter when "+" is clicked'
   await expect(menu).toHaveCount(0)
 })
 
-test('A1 DocTab — /workflow URL opens a doc tab (no modal overlay)', async ({ page }) => {
-  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
+test('A1 — the /workflow URL shows the workflow list in the workspace and opens a workflow from it', async ({ page }) => {
   await seedWorkflow(page, {
     enabled: false,
     to: 'sevennt.leslie@gmail.com',
     subject: 'New Lead',
     connectionId: 'conn_a',
   })
-  // Land on /documents (the regular workspace shell), then push the
-  // /workflow URL to mount the global workflow list as a doc tab.
+  // Land on /documents (the regular workspace shell), then push the /workflow
+  // URL: the workflow view mounts inside the workspace, not as an overlay.
   await page.goto('/documents')
   await page.evaluate(() => {
     const state = { ...(window.history.state || {}) }
@@ -397,20 +396,16 @@ test('A1 DocTab — /workflow URL opens a doc tab (no modal overlay)', async ({ 
     window.history.pushState(state, '', '/workflow')
     window.dispatchEvent(new PopStateEvent('popstate', { state }))
   })
-  // New flow: an workflow doc tab mounts. data-workflow-tab="true"
-  // is the new attribute on the tab wrapper; data-testid stays
-  // workspace-workflow-workbench so the legacy real-API suite's
-  // assertions continue to hold.
-  // The global list and kitable-scoped list share the same DocTab detail
-  // transition. Clicking a row must update this workbench's workflowId;
-  // it must not open the legacy full-screen /workflow/{id} surface.
   await expect(page.getByTestId('workspace-workflow-workbench')).toBeVisible()
   await expect(page.getByTestId('workflow-index-page')).toBeVisible()
-  await page.locator('[data-testid="workflow-index-row"][data-workflow-id="auto_seed"]').click()
+
+  // A row opens that workflow's detail in the same workbench, at its own URL.
+  await page.locator('[data-testid="workflow-index-row"][data-workflow-id="auto_canvas"]').click()
   await expect(page.getByTestId('workflow-home-page')).toBeVisible()
+  await expect(page.getByTestId('workflow-index-page')).toHaveCount(0)
   await expect(page.getByTestId('workspace-workflow-workbench')).toHaveCount(1)
   await expect(page.getByTestId('workflow-route-overlay')).toHaveCount(0)
-  await expect.poll(async () => page.evaluate(() => window.location.pathname)).toBe('/workflow')
+  await expect.poll(async () => page.evaluate(() => window.location.pathname)).toBe('/workflow/auto_canvas')
 })
 
 test('AskAI configure_smtp_connection → dropdown refreshes with the new connection', async ({ page }) => {

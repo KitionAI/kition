@@ -578,7 +578,6 @@ test.describe('kitable inner navigation and file-level tabs', () => {
   })
 
   test('kitable opens a Feishu-style inner navigation and keeps virtual tables out of the primary tree', async ({ page }) => {
-    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toHaveCount(expected) failed | locator(".document-create-option"). See tooling/e2e-quarantine.json.')
     await page.goto('/')
 
     // ── Wait for the sidebar tree to load ──────────────────────────────────
@@ -618,8 +617,10 @@ test.describe('kitable inner navigation and file-level tabs', () => {
     }).toBeLessThanOrEqual(1)
 
     await page.getByTestId('workspace-kitable-create').click()
-    await expect(page.locator('.document-create-option')).toHaveCount(3)
+    await expect(page.locator('.document-create-option')).toHaveText(['New table', 'New dashboard', 'New form', 'New Workflow'])
     await expect(page.getByTestId('kitable-action-create-dashboard')).toHaveText('New dashboard')
+    await expect(page.getByTestId('kitable-action-create-form')).toHaveText('New form')
+    await expect(page.getByTestId('kitable-action-create-workflow')).toHaveText('New Workflow')
     await page.keyboard.press('Escape')
 
     await page.getByTestId('workspace-kitable-collapse').click()

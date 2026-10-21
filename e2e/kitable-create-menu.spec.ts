@@ -3,12 +3,11 @@ import { expect, test, type Page } from '@playwright/test'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 
 /**
- * E2E — kitable "+" create menu: New table only.
+ * E2E — a .kitable row's "+" create menu.
  *
- * Verifies the Group B refactor: the inline `+` menu inside a .kitable only
- * exposes "New table". The "New workflow" entry has been removed — workflow
- * creation now flows through the table-leaf "..." menu (Group A) or the
- * Workflows landing CTA (Group C).
+ * The menu creates what lives inside the kitable: "New table", and "New
+ * Workflow", which asks for the trigger table in the mode dialog. Creating a
+ * table never creates a workflow.
  *
  * Pattern: inline desktop-bridge mock + inline data-document API mock, identical
  * to the pattern established in kitable-tree-expand-and-open-table.spec.ts.
@@ -339,33 +338,24 @@ test.describe('kitable + create menu', () => {
     await mockDesktopBridge(page)
   })
 
-  test('kitable + opens a single-item menu (New table only); New workflow entry is gone', async ({ page }) => {
-    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toHaveCount(expected) failed | locator(".document-create-menu").locator("button"). See tooling/e2e-quarantine.json.')
+  test('kitable + opens a menu with New table and New workflow, nothing else', async ({ page }) => {
     await openKitableCreateMenu(page)
 
-    // Group B: the kitable-variant menu now only renders "New table". The
-    // "New workflow" entry was retired — workflow creation now hangs off
-    // the table-leaf "..." menu (Group A) and the Workflows landing CTA
-    // (Group C). Assert *both* the count and the absence of the old entry.
+    // A .kitable row's + creates what lives inside it: a table, or a workflow
+    // on one of its tables ("New Workflow" in the user docs). File kinds such as
+    // documents or folders do not belong here.
     const menu = page.locator('.document-create-menu')
-    await expect(menu.locator('button')).toHaveCount(1)
+    await expect(menu.locator('button')).toHaveCount(2)
     await expect(menu.locator('button', { hasText: 'New table' })).toBeVisible()
-    await expect(menu.locator('button', { hasText: 'New workflow' })).toHaveCount(0)
+    await expect(menu.getByTestId('kitable-action-create-workflow')).toHaveText('New Workflow')
+    await expect(menu.locator('button', { hasText: 'New document' })).toHaveCount(0)
+    await expect(menu.locator('button', { hasText: 'Folder' })).toHaveCount(0)
   })
 
   test('New table creates and auto-opens; no workflow API calls fire', async ({ page }) => {
-    // Group B regression: confirm the New table path still works end-to-end
-    // after the "New workflow" entry was removed, and that no
-    // POST /v1/workflows leaks from this menu.
-    //
-    // We deliberately scope this test to what Group B *changed*:
-    //   • the menu still creates a table (auto-opens the new tab), and
-    //   • no POST /v1/workflows sneaks out of the menu.
-    // The sidebar-row reflection of the new table is covered by the
-    // kitableChildrenIndex.refresh() path that Group A's rename/delete tests
-    // already exercise end-to-end (where the row updates after a refresh).
-    // Re-asserting it here would couple this regression to refresh-timing
-    // semantics that have nothing to do with the "New workflow" removal.
+    // New table creates and opens a table, and no POST /v1/workflows leaks
+    // from it. How the sidebar lists the new table is covered by the
+    // kitable-table-leaf-actions spec's rename and delete tests.
     const workflowPosts: string[] = []
     await page.route('**/api/v1/workflows**', async (route) => {
       if (route.request().method() === 'POST') {
@@ -390,8 +380,7 @@ test.describe('kitable + create menu', () => {
       page.locator('.document-tab-list .document-tab[data-tab-title="Untitled table"]'),
     ).toHaveCount(0)
 
-    // And, critically for Group B, no POST /v1/workflows should have fired
-    // anywhere along the way.
+    // And no POST /v1/workflows fired anywhere along the way.
     expect(workflowPosts).toEqual([])
   })
 })

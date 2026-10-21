@@ -3,29 +3,26 @@ import { expect, test, type Page } from '@playwright/test'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 
 /**
- * E2E — Group A: virtual `table://` leaf "..." menu on a kitable.
+ * E2E — a kitable's table actions, where they live now.
  *
- * Asserts the new per-table-leaf actions added by the kitable refactor:
- *   1. Hovering a virtual `table://` row reveals the "More actions" button, and
- *      the menu exposes exactly Rename / Delete / Create Workflow. Workspace
- *      file-row actions like "Add to chat", "Duplicate", "Move to", "Show in
- *      Finder" must NOT appear (the leaves are virtual nodes).
- *   2. Rename routes through `PATCH /v1/data-documents/1/tables/:tid` with
- *      `{title}` and updates both the sidebar row and any open `table:` tab.
- *   3. Empty / whitespace-only rename short-circuits — no PATCH fires, the row
- *      keeps its original title.
- *   4. Delete pops a destructive confirm dialog; Cancel does NOT call DELETE
- *      and leaves the row visible.
- *   5. Confirmed Delete fires `DELETE /v1/data-documents/1/tables/:tid`, removes
- *      the row from the sidebar, closes the matching open tab, and clears the
- *      activeResourcePath (no stale virtual path in workspace-tabs.v2).
- *   6. "Create Workflow" from the menu opens the mode chooser dialog
- *      pre-resolved to the selected table — no table picker appears.
+ * Tables are not rows of the primary file tree (virtual children stay out of
+ * it since the Feishu-style kitable navigation, see
+ * kitable-tree-expand-and-open-table.spec.ts); they are items of the kitable
+ * sidebar. Their actions:
+ *   1. The sidebar table item's menu offers Rename and Delete: no Create
+ *      Workflow and no file-row actions (Add to chat, Duplicate, Move to, Show
+ *      in Finder).
+ *   2. Rename PATCHes `/v1/data-documents/1/tables/:tid` with `{title}` and the
+ *      sidebar shows the new title.
+ *   3. An empty or whitespace-only rename sends nothing and keeps the title.
+ *   4. Delete asks first; Cancel sends no DELETE and the table stays.
+ *   5. A confirmed Delete sends `DELETE /v1/data-documents/1/tables/:tid`, the
+ *      table leaves the sidebar, and the other table stays.
+ *   6. "New workflow" in the kitable's own `+` menu opens the mode dialog on
+ *      the first table, and the person can choose the other one there.
  *
- * Pattern: inline desktop-bridge mock + inline data-document API mock,
- * identical to kitable-tree-expand-and-open-table.spec.ts. The data-document
- * mock now owns a mutable list of tables so PATCH/DELETE persist within a
- * single test.
+ * Pattern: inline desktop-bridge mock + inline data-document API mock with a
+ * mutable list of tables, so PATCH/DELETE persist within a single test.
  */
 
 const VAULT_PATH = '/tmp/kition-kitable-table-leaf-actions-e2e-vault'
@@ -334,43 +331,46 @@ function freshState(): MockApiState {
   }
 }
 
-async function expandKitable(page: Page) {
+async function openKitableSidebar(page: Page) {
   await page.goto('/')
   const kitableRow = page.locator('.document-tree-row.document-tree-page', { hasText: 't2.kitable' })
   await expect(kitableRow).toBeVisible({ timeout: 15_000 })
   await kitableRow.click()
-  // Wait until child rows are visible — useKitableChildrenIndex has loaded.
-  await expect(page.locator('.document-tree-row', { hasText: 'Prospects' })).toBeVisible({ timeout: 10_000 })
+  // The kitable opens with its sidebar collapsed; the top bar's control expands it.
+  const expand = page.getByRole('button', { name: 'Expand table file sidebar' })
+  await expect(expand).toBeVisible({ timeout: 10_000 })
+  await expand.click()
+  await expect(page.getByTestId('workspace-kitable-data-table')).toHaveText('Prospects', { timeout: 10_000 })
+  await expect(page.getByTestId('workspace-kitable-table-13')).toHaveText('Touchpoints')
 }
 
-async function openTableLeafActionMenu(page: Page, title: string) {
-  const row = page.locator('.document-tree-row', { hasText: title }).first()
-  await row.hover()
-  const moreActionsBtn = row.locator('.document-tree-action[aria-label="More actions"]')
-  await expect(moreActionsBtn).toBeVisible({ timeout: 5_000 })
-  await moreActionsBtn.click()
-  // The menu sits as a sibling of the moreActions button — bind by testid'd
-  // entries to avoid matching the outer tree menu of other rows.
-  await expect(page.locator('[data-testid="kitable-table-action-rename"]')).toBeVisible({ timeout: 5_000 })
+async function openTableMenu(page: Page) {
+  await page.getByTestId('workspace-kitable-data-table-menu').click()
+  const menu = page.locator('.workspace-kitable-sidebar__item-menu')
+  await expect(menu).toBeVisible({ timeout: 5_000 })
+  return menu
 }
 
-async function openKitableContainerCreateMenu(page: Page) {
-  // The kitable container ("t2.kitable") owns its own inline `+` menu where
-  // Create Workflow now lives (previously it sat inside the "..." menu). We
-  // hover the container row, then click the Create inside button — its
-  // onClick stops propagation so the row's expansion state is untouched.
-  const containerRow = page.locator('.document-tree-row.document-tree-page', { hasText: 't2.kitable' })
-  await expect(containerRow).toBeVisible({ timeout: 5_000 })
-  await containerRow.hover()
-  const createBtn = containerRow.locator('.document-tree-action[aria-label="Create inside this page"]')
-  await expect(createBtn).toBeVisible({ timeout: 5_000 })
-  await createBtn.click()
-  await expect(page.locator('[data-testid="kitable-action-create-workflow"]')).toBeVisible({ timeout: 5_000 })
+async function startRename(page: Page) {
+  const menu = await openTableMenu(page)
+  await menu.getByRole('menuitem', { name: 'Rename data table' }).click()
+  const input = page.getByTestId('workspace-kitable-data-table-rename-input')
+  await expect(input).toBeVisible({ timeout: 5_000 })
+  return input
+}
+
+async function deleteFromSidebar(page: Page) {
+  const menu = await openTableMenu(page)
+  await menu.getByRole('menuitem', { name: 'Delete data table' }).click()
+  const dialog = page.getByTestId('kitable-table-delete-confirm')
+  await expect(dialog).toBeVisible({ timeout: 5_000 })
+  await expect(dialog.getByTestId('confirm-message')).toContainText('Delete table "Prospects"?')
+  return dialog
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
-test.describe('kitable virtual table leaf "..." menu', () => {
+test.describe('kitable table actions', () => {
   let state: MockApiState
 
   test.beforeEach(async ({ page }) => {
@@ -380,171 +380,86 @@ test.describe('kitable virtual table leaf "..." menu', () => {
     await mockDesktopBridge(page)
   })
 
-  test('A1 — leaf table "..." menu exposes only Rename / Delete (no Create Workflow)', async ({ page }) => {
-    await expandKitable(page)
-    await openTableLeafActionMenu(page, 'Prospects')
+  test('A1 — the sidebar table menu offers Rename and Delete only, and tables are not file-tree rows', async ({ page }) => {
+    await openKitableSidebar(page)
+    // Tables are kitable sidebar items, never rows of the primary tree.
+    await expect(page.locator('.document-tree-row', { hasText: 'Prospects' })).toHaveCount(0)
 
-    // The two table-leaf actions remain on the leaf menu.
-    await expect(page.locator('[data-testid="kitable-table-action-rename"]')).toBeVisible()
-    await expect(page.locator('[data-testid="kitable-table-action-delete"]')).toBeVisible()
-
-    // Create Workflow has been moved up to the .kitable container row's
-    // menu — it must NOT appear on a table leaf anymore.
-    await expect(page.locator('[data-testid="kitable-table-action-create-workflow"]')).toHaveCount(0)
-    await expect(page.locator('[data-testid="kitable-action-create-workflow"]')).toHaveCount(0)
-
-    // File-row-only actions must NOT appear on a virtual leaf — they make no
-    // sense (no underlying file path, no duplicate semantics, etc.).
-    const menu = page.locator('.document-tree-menu').first()
-    await expect(menu.locator('text=Add to chat')).toHaveCount(0)
-    await expect(menu.locator('text=Duplicate')).toHaveCount(0)
-    await expect(menu.locator('text=Move to...')).toHaveCount(0)
-    await expect(menu.locator('text=Show in Finder')).toHaveCount(0)
-    await expect(menu.locator('text=Change icon')).toHaveCount(0)
-    await expect(menu.locator('text=Create Workflow')).toHaveCount(0)
+    const menu = await openTableMenu(page)
+    await expect(menu.getByRole('menuitem')).toHaveCount(2)
+    await expect(menu.getByRole('menuitem', { name: 'Rename data table' })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Delete data table' })).toBeVisible()
+    for (const label of ['Create Workflow', 'New workflow', 'Add to chat', 'Duplicate', 'Move to...', 'Show in Finder', 'Change icon']) {
+      await expect(menu.getByText(label, { exact: true })).toHaveCount(0)
+    }
   })
 
-  test('A2 — Rename PATCHes the table and updates sidebar row + open tab', async ({ page }) => {
-    await expandKitable(page)
+  test('A2 — Rename PATCHes the table and the sidebar shows the new title', async ({ page }) => {
+    await openKitableSidebar(page)
+    const input = await startRename(page)
+    await input.fill('Leads')
+    await input.press('Enter')
 
-    // Open the Prospects tab so the rename has a live tab to update.
-    await page.locator('.document-tree-row', { hasText: 'Prospects' }).first().click()
-    await expect(page.locator('.document-tab-bar [data-tab-title="Prospects"]')).toBeVisible({ timeout: 5_000 })
-
-    await openTableLeafActionMenu(page, 'Prospects')
-    await page.locator('[data-testid="kitable-table-action-rename"]').click()
-
-    const renameInput = page.locator('.document-tree-rename-input')
-    await expect(renameInput).toBeVisible({ timeout: 5_000 })
-    await renameInput.fill('Leads')
-    await renameInput.press('Enter')
-
-    // Sidebar row reflects new title.
-    await expect(page.locator('.document-tree-row', { hasText: 'Leads' })).toBeVisible({ timeout: 5_000 })
-
-    // The open tab inherits the new title.
-    await expect(page.locator('.document-tab-bar [data-tab-title="Leads"]')).toBeVisible({ timeout: 5_000 })
-
-    // Exactly one PATCH with the renamed title; no DELETE leaked.
-    expect(state.patchCalls).toHaveLength(1)
+    await expect(page.getByTestId('workspace-kitable-data-table')).toHaveText('Leads', { timeout: 5_000 })
+    await expect.poll(() => state.patchCalls.length).toBe(1)
     expect(state.patchCalls[0]?.tableId).toBe(12)
     expect(state.patchCalls[0]?.payload).toMatchObject({ title: 'Leads' })
     expect(state.deleteCalls).toHaveLength(0)
   })
 
-  test('A3 — empty rename input short-circuits, no PATCH fires', async ({ page }) => {
-    await expandKitable(page)
-    await openTableLeafActionMenu(page, 'Prospects')
-    await page.locator('[data-testid="kitable-table-action-rename"]').click()
+  test('A3 — an empty rename sends nothing and keeps the title', async ({ page }) => {
+    await openKitableSidebar(page)
+    const input = await startRename(page)
+    await input.fill('   ')
+    await input.press('Enter')
 
-    const renameInput = page.locator('.document-tree-rename-input')
-    await expect(renameInput).toBeVisible({ timeout: 5_000 })
-
-    // Whitespace-only input — useKitableTableLeafActions.renameKitableTableLeaf
-    // bails on trimmed empty string.
-    await renameInput.fill('   ')
-    await renameInput.press('Enter')
-
-    // Rename input is dismissed (renameWorkspaceNode end), and the row keeps
-    // its original title.
-    await expect(renameInput).toHaveCount(0)
-    await expect(page.locator('.document-tree-row', { hasText: 'Prospects' })).toBeVisible()
+    await expect(input).toHaveCount(0)
+    await expect(page.getByTestId('workspace-kitable-data-table')).toHaveText('Prospects')
     expect(state.patchCalls).toHaveLength(0)
   })
 
-  test('A4 — Delete cancel does NOT call DELETE, row stays', async ({ page }) => {
-    await expandKitable(page)
-    await openTableLeafActionMenu(page, 'Prospects')
-    await page.locator('[data-testid="kitable-table-action-delete"]').click()
+  test('A4 — Delete asks first; Cancel sends no DELETE and the table stays', async ({ page }) => {
+    await openKitableSidebar(page)
+    const dialog = await deleteFromSidebar(page)
+    await dialog.getByTestId('cancel-btn').click()
 
-    // Confirm dialog appears with the dedicated testid from useKitableTableLeafActions.
-    const confirmDialog = page.locator('[data-testid="kitable-table-delete-confirm"]')
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-
-    // Click Cancel — the confirm dialog's Cancel button carries `cancel-btn`.
-    await confirmDialog.locator('[data-testid="cancel-btn"]').click()
-
-    // Dialog gone, no DELETE, row still listed.
-    await expect(confirmDialog).toHaveCount(0)
-    await expect(page.locator('.document-tree-row', { hasText: 'Prospects' })).toBeVisible()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByTestId('workspace-kitable-data-table')).toHaveText('Prospects')
     expect(state.deleteCalls).toHaveLength(0)
   })
 
-  test('A5 — confirmed Delete calls DELETE, removes node, closes tab', async ({ page }) => {
-    await expandKitable(page)
+  test('A5 — a confirmed Delete sends DELETE and the table leaves the sidebar', async ({ page }) => {
+    await openKitableSidebar(page)
+    const dialog = await deleteFromSidebar(page)
+    await dialog.getByTestId('confirm-btn').click()
 
-    // Open the Prospects tab first so we can verify it's closed after delete.
-    await page.locator('.document-tree-row', { hasText: 'Prospects' }).first().click()
-    await expect(page.locator('.document-tab-bar [data-tab-title="Prospects"]')).toBeVisible({ timeout: 5_000 })
-
-    await openTableLeafActionMenu(page, 'Prospects')
-    await page.locator('[data-testid="kitable-table-action-delete"]').click()
-
-    const confirmDialog = page.locator('[data-testid="kitable-table-delete-confirm"]')
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await confirmDialog.locator('[data-testid="confirm-btn"]').click()
-
-    // DELETE fired for the Prospects table id (12).
     await expect.poll(() => state.deleteCalls.length).toBe(1)
     expect(state.deleteCalls[0]?.tableId).toBe(12)
-
-    // The Prospects row disappears from the sidebar.
-    await expect(page.locator('.document-tree-row', { hasText: 'Prospects' })).toHaveCount(0, { timeout: 5_000 })
-
-    // The open tab is closed too — workspace-tabs.v2 has no entry pointing at
-    // the deleted virtual path.
-    await expect(page.locator('.document-tab-bar [data-tab-title="Prospects"]')).toHaveCount(0, { timeout: 5_000 })
-    const persistedTabs = await page.evaluate(() => {
-      const raw = window.localStorage.getItem('kition.document.workspace-tabs.v2')
-      if (!raw) return []
-      try {
-        const parsed = JSON.parse(raw) as Record<string, unknown[]>
-        return Object.values(parsed)[0] || []
-      } catch {
-        return []
-      }
-    })
-    expect(
-      persistedTabs.some(
-        (tab) => (tab as { type: string; tableId?: number }).type === 'table' && (tab as { tableId?: number }).tableId === 12,
-      ),
-    ).toBe(false)
-
-    // The sibling table (Touchpoints) is still listed.
-    await expect(page.locator('.document-tree-row', { hasText: 'Touchpoints' })).toBeVisible()
+    expect(state.patchCalls).toHaveLength(0)
+    // Prospects is gone; Touchpoints, the remaining table, leads the sidebar.
+    await expect(page.locator('.workspace-kitable-sidebar').getByText('Prospects', { exact: true })).toHaveCount(0, { timeout: 5_000 })
+    await expect(page.getByTestId('workspace-kitable-data-table')).toHaveText('Touchpoints')
   })
 
-  test('A6 — Create Workflow from the .kitable container menu picks a table then opens mode dialog', async ({ page }) => {
-    // The fixture has 2 tables (Prospects + Touchpoints), so clicking Create
-    // Workflow on the container row should defer to the table picker so the
-    // user can choose the scope.
-    await expandKitable(page)
-    await openKitableContainerCreateMenu(page)
-    await page.locator('[data-testid="kitable-action-create-workflow"]').click()
-
-    // Picker shows up first, scoped to t2.kitable (both tables present).
-    const pickerOptions = page.locator('[data-testid="workflow-table-picker-options"]')
-    await expect(pickerOptions).toBeVisible({ timeout: 5_000 })
-    await expect(pickerOptions.locator('[data-testid="workflow-table-picker-option"]', { hasText: 'Prospects' })).toBeVisible()
-    await expect(pickerOptions.locator('[data-testid="workflow-table-picker-option"]', { hasText: 'Touchpoints' })).toBeVisible()
-
-    // The mode chooser dialog has not shown up yet — it only opens after we
-    // pick a table.
-    await expect(page.locator('[data-testid="workspace-workflow-create-mode-dialog"]')).toHaveCount(0)
-
-    await pickerOptions.locator('[data-testid="workflow-table-picker-option"]', { hasText: 'Prospects' }).click()
+  test('A6 — New workflow in the kitable + menu opens the mode dialog on a table the person can change', async ({ page }) => {
+    // Two tables: the dialog starts on the first and offers both as the trigger table.
+    await openKitableSidebar(page)
+    await page.getByTestId('workspace-kitable-create').click()
+    await page.getByTestId('kitable-action-create-workflow').click()
 
     const modeDialog = page.locator('[data-testid="workspace-workflow-create-mode-dialog"]')
     await expect(modeDialog).toBeVisible({ timeout: 5_000 })
-
-    // Both mode choices are present — no "Start From Scratch".
     await expect(modeDialog.locator('[data-testid="create-mode-template"]')).toBeVisible()
     await expect(modeDialog.locator('[data-testid="create-mode-chat"]')).toBeVisible()
-
-    // Context is pre-resolved from the picker selection — the dialog surfaces
-    // it via a data attribute for e2e to inspect without depending on copy.
     await expect(modeDialog).toHaveAttribute('data-context-table-name', 'Prospects')
     await expect(modeDialog).toHaveAttribute('data-context-table-id', '12')
     await expect(modeDialog).toHaveAttribute('data-context-document-id', '1')
+
+    const source = page.getByTestId('workflow-create-source-table')
+    await expect(source.locator('option')).toHaveText(['Prospects', 'Touchpoints'])
+    await source.selectOption('13')
+    await expect(modeDialog).toHaveAttribute('data-context-table-id', '13')
+    await expect(modeDialog).toHaveAttribute('data-context-table-name', 'Touchpoints')
   })
+
 })

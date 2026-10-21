@@ -243,11 +243,16 @@ async function mockFieldEditSheetDesktopBridge(page: Page) {
 }
 
 async function mockFieldEditSheetDataDocumentApi(page: Page) {
-  await page.route('**/api/v1/data-documents/**', async (route) => {
+  await page.route('**/api/v1/data-documents**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
     const path = url.pathname
     const method = request.method()
+
+    // GET /data-documents → the list the kitable sidebar is built from
+    if (method === 'GET' && path === '/api/v1/data-documents') {
+      return fulfillJson(route, { code: 200, data: { items: [FIXTURE_DOCUMENT], total: 1, offset: 0, limit: 100 } })
+    }
 
     // POST /data-documents/open → resolve path to document
     if (method === 'POST' && path === '/api/v1/data-documents/open') {
@@ -280,7 +285,6 @@ test.describe('Edit field sheet — e2e visual snapshot', () => {
   })
 
   test('Edit field sheet matches visual snapshot', async ({ page }) => {
-    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("kitable-editor"). See tooling/e2e-quarantine.json.')
     await mockFieldEditSheetDesktopBridge(page)
     await page.goto('/')
     await waitForKitableEditor(page)

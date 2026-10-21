@@ -576,7 +576,6 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
   })
 
   test('C2 — global /workflow route renders the index page (not the launcher hero)', async ({ page }) => {
-    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("workflow-index-page"). See tooling/e2e-quarantine.json.')
     const state = freshState(SINGLE_TABLE)
     await mockLocalWorkspaceApi(page)
     await mockApi(page, state)
@@ -659,7 +658,6 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
     await expect(page.getByTestId('workflow-home-body-editor')).not.toBeEmpty()
   })
   test('C4b — email inbox sync is launched from the shared template picker', async ({ page }) => {
-    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("email-sync-workflow-editor"). See tooling/e2e-quarantine.json.')
     const state = freshState(MULTI_TABLE)
     await mockLocalWorkspaceApi(page)
     await mockApi(page, state)
@@ -675,6 +673,13 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
     await page.getByTestId('email-sync-workflow-template').click()
 
     await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0)
+    // The template opens as a workflow canvas (a schedule trigger, then the
+    // inbox sync); its email settings open from "Configure email".
+    await expect(page.getByRole('heading', { name: 'Sync email inbox' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /trigger: Scheduled trigger/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /action: Sync email inbox/ })).toBeVisible()
+    await expect(page.getByTestId('email-sync-workflow-editor')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Configure email' }).click()
     await expect(page.getByTestId('email-sync-workflow-editor')).toBeVisible()
     await expect(page.getByTestId('email-sync-table-select')).toContainText('Prospects')
     await page.getByTestId('email-sync-table-select').click()
