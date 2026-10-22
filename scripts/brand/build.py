@@ -39,7 +39,6 @@ def write_kits():
     for kit in kit_icons.KITS:
         write(ROOT / 'public/kit-icons' / f'{kit.id}.svg', kit_icons.icon_svg(kit))
         write(ROOT / 'public/kit-icons' / f'{kit.id}-small.svg', kit_icons.small_icon_svg(kit))
-    write(ROOT / 'src/app/kit-colors.css', kit_icons.colors_css())
     write(ROOT / 'kits/kit-colors.json', kit_icons.colors_json())
 
 

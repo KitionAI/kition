@@ -9,7 +9,6 @@ import { QueryProvider } from './app/QueryProvider'
 import { i18nReady } from './i18n'
 import { installFileDropGuard } from './lib/fileDropGuard'
 import './app/styles.css'
-import './app/kit-colors.css'
 import './styles/desktop-display.css'
 
 installFileDropGuard()

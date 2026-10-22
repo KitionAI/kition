@@ -74,14 +74,6 @@ class KitIconTests(unittest.TestCase):
         for kit in kit_icons.KITS:
             self.assertIn(kit.hue, kit_icons.small_icon_svg(kit), kit.id)
 
-    def test_colors_css_matches_kit_ui_brand_tokens(self):
-        css = kit_icons.colors_css()
-        self.assertIn('--kit-word: #2b5cd9;', css)
-        self.assertIn('--kit-word-soft: rgba(43, 92, 217, 0.1);', css)
-        self.assertIn('.dark {', css)
-        self.assertIn('--kit-word: #6b9bff;', css)
-        self.assertIn('--kit-word-soft: rgba(107, 155, 255, 0.2);', css)
-
     def test_colors_json_names_each_kit(self):
         palette = json.loads(kit_icons.colors_json())
         self.assertEqual(palette['layout']['kitId'], 'kit.design')

@@ -58,7 +58,7 @@ export function DesignToolbar({
 }) {
   const { t } = useTranslation('design')
   return (
-    <div className="design-toolbar kit-tinted-bar" data-kit="design">
+    <div className="design-toolbar">
       <div className="design-title">
         <strong title={title}>{title}</strong>
         <span role="status" data-testid="design-save-status">
