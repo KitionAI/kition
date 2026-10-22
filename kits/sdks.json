@@ -55,7 +55,7 @@
     "crate": "kition-vector-sdk",
     "module": "kition_vector_sdk",
     "class": "VectorDocument",
-    "name": "Drawing.kitionvector",
+    "name": "Drawing.kvector",
     "edit": {
       "command": "shape.rectangle",
       "params": {
@@ -85,7 +85,7 @@
     "crate": "kition-design-sdk",
     "module": "kition_design_sdk",
     "class": "DesignDocument",
-    "name": "Flyer.kitiondesign",
+    "name": "Flyer.kdesign",
     "edit": [
       {
         "command": "frame.create",

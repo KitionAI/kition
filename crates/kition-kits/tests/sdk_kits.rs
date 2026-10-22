@@ -22,13 +22,10 @@ struct Case {
 const CASES: &[Case] = &[
     Case {
         kit: "kit.vector",
-        fixture: "Drawing.kitionvector",
+        fixture: "Drawing.kvector",
         command: "shape.ellipse",
         params: || json!({ "x": 100, "y": 20, "width": 60, "height": 60 }),
-        file_command: (
-            "document.save",
-            || json!({ "path": "elsewhere.kitionvector" }),
-        ),
+        file_command: ("document.save", || json!({ "path": "elsewhere.kvector" })),
     },
     Case {
         kit: "kit.effect",
@@ -42,13 +39,10 @@ const CASES: &[Case] = &[
     },
     Case {
         kit: "kit.design",
-        fixture: "Flyer.kitiondesign",
+        fixture: "Flyer.kdesign",
         command: "frame.create",
         params: || json!({ "rect": [300, 300, 400, 400], "content": "unassigned" }),
-        file_command: (
-            "file.saveACopy",
-            || json!({ "path": "elsewhere.kitiondesign" }),
-        ),
+        file_command: ("file.saveACopy", || json!({ "path": "elsewhere.kdesign" })),
     },
     Case {
         kit: "kit.film",

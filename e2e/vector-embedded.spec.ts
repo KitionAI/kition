@@ -11,7 +11,7 @@ const engine = kitEngine<{ VectorDocument: { create(name: string, width: number,
 /** A real drawing made by the same engine the page runs: one rectangle. */
 async function logoFixture() {
   const sdk = await engine.load()
-  const doc = sdk.VectorDocument.create('Logo.kitionvector', 400, 300)
+  const doc = sdk.VectorDocument.create('Logo.kvector', 400, 300)
   doc.execute('shape.rectangle', JSON.stringify({ x: 40, y: 40, width: 120, height: 80 }))
   doc.execute('select.none', '{}')
   const bytes = doc.save()
@@ -22,7 +22,7 @@ async function logoFixture() {
 test('opens a drawing in the Vector kit’s own editor, draws in it, and saves it through Kition', async ({ page, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
   test.setTimeout(120_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Logo.kitionvector', await logoFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Logo.kvector', await logoFixture())
   try {
     await expect(kit.getByTestId('vector-status')).toContainText('1 objects', { timeout: 60_000 })
     await expect(kit.getByTestId('vector-menu-Object')).toHaveText('Object')
@@ -47,7 +47,7 @@ test('opens a drawing in the Vector kit’s own editor, draws in it, and saves i
 
     await kit.getByTestId('vector-save').click()
     await expect(kit.getByTestId('vector-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual(['Logo.kitionvector'])
+    expect(saves.map((save) => save.path)).toEqual(['Logo.kvector'])
   } finally {
     await host.dispose()
   }
@@ -57,7 +57,7 @@ test('keeps a drawing’s replica across a save and a reopen, and opens a file c
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
   test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_sdk'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
   test.setTimeout(180_000)
-  const name = 'Replica.kitionvector'
+  const name = 'Replica.kvector'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await logoFixture(), {}, { persist: true })
   const reopen = async () => {
     await page.reload({ waitUntil: 'domcontentloaded' })

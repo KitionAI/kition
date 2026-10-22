@@ -128,7 +128,7 @@ async fn the_agent_reaches_the_window_with_the_file_open() {
         tokio::spawn(async move {
             let listing = events.next().await;
             assert_eq!(listing["method"], "kit/documents");
-            let documents = json!({ "documents": [{ "path": "art/Logo.kitionvector", "kit": "kit.vector", "dirty": false, "revision": 4 }] });
+            let documents = json!({ "documents": [{ "path": "art/Logo.kvector", "kit": "kit.vector", "dirty": false, "revision": 4 }] });
             assert_eq!(
                 post(
                     &app,
@@ -151,7 +151,7 @@ async fn the_agent_reaches_the_window_with_the_file_open() {
                 .await,
                 StatusCode::OK
             );
-            let changed = json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "art/Logo.kitionvector", "revision": 5, "by": "agent" } });
+            let changed = json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "art/Logo.kvector", "revision": 5, "by": "agent" } });
             assert_eq!(post(&app, session, changed).await, StatusCode::OK);
             events
         })
@@ -159,7 +159,7 @@ async fn the_agent_reaches_the_window_with_the_file_open() {
 
     let live = kits
         .bridge()
-        .find("art/Logo.kitionvector")
+        .find("art/Logo.kvector")
         .await
         .unwrap_or_else(|| panic!("the window has it open"));
     assert_eq!(
@@ -178,7 +178,7 @@ async fn the_agent_reaches_the_window_with_the_file_open() {
     assert_eq!(ran["completed"][0]["changed"], true);
     let events = window.await.unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(
-        kits.bridge().last_change("art/Logo.kitionvector"),
+        kits.bridge().last_change("art/Logo.kvector"),
         Some((5, "agent".to_owned()))
     );
 
@@ -206,7 +206,7 @@ async fn the_agent_reaches_the_window_with_the_file_open() {
     drop(events);
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     assert!(!kits.bridge().connected());
-    assert!(kits.bridge().find("art/Logo.kitionvector").await.is_none());
+    assert!(kits.bridge().find("art/Logo.kvector").await.is_none());
 }
 
 #[tokio::test]

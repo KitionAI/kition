@@ -20,14 +20,14 @@ fn mock_binary() -> Option<PathBuf> {
     path.is_file().then_some(path)
 }
 
-/// A launcher that starts the mock kit as `kit.vector` for `.kitionvector` files.
+/// A launcher that starts the mock kit as `kit.vector` for `.kvector` files.
 fn as_vector(dir: &Path, mock: &Path) -> PathBuf {
     use std::os::unix::fs::PermissionsExt;
     let script = dir.join("kit-vector-mock.sh");
     std::fs::write(
         &script,
         format!(
-            "#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kitionvector exec '{}' \"$@\"\n",
+            "#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector exec '{}' \"$@\"\n",
             mock.display()
         ),
     )
@@ -51,7 +51,7 @@ fn fixture() -> Option<Fixture> {
     let bin = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::create_dir_all(workspace.path().join("art")).unwrap_or_else(|err| panic!("{err}"));
-    std::fs::write(workspace.path().join("art/Note.kitionvector"), "hello")
+    std::fs::write(workspace.path().join("art/Note.kvector"), "hello")
         .unwrap_or_else(|err| panic!("{err}"));
     let vector = KITS
         .iter()
@@ -80,7 +80,7 @@ async fn call(kits: &KitManager, name: &str, input: Value) -> Result<Value, Valu
 async fn queries_and_batches_the_headless_kit() {
     let Some(f) = fixture() else { return };
     let kits = &f.kits;
-    let path = "art/Note.kitionvector";
+    let path = "art/Note.kvector";
 
     let read = call(
         kits,
@@ -296,12 +296,12 @@ async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
         .unwrap_or_else(|| panic!("kit.vector is a kit"));
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let kits = KitManager::new(Some(workspace.path().to_path_buf()), vec![(vector, None)]);
-    let calls = editor(&kits, "art/Live.kitionvector", false);
+    let calls = editor(&kits, "art/Live.kvector", false);
 
     let read = call(
         &kits,
         "vector_query",
-        json!({ "path": "art/Live.kitionvector", "describe": true }),
+        json!({ "path": "art/Live.kvector", "describe": true }),
     )
     .await
     .unwrap_or_else(|err| panic!("{err}"));
@@ -321,7 +321,7 @@ async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
     let edited = call(
         &kits,
         "vector_batch",
-        json!({ "path": "art/Live.kitionvector", "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }),
+        json!({ "path": "art/Live.kvector", "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }),
     )
     .await
     .unwrap_or_else(|err| panic!("{err}"));
@@ -338,7 +338,7 @@ async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
     let drafted = call(
         &kits,
         "vector_batch",
-        json!({ "path": "art/Live.kitionvector", "draft": true, "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }], "load": [{ "target": "root" }] }),
+        json!({ "path": "art/Live.kvector", "draft": true, "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }], "load": [{ "target": "root" }] }),
     )
     .await
     .unwrap_or_else(|err| panic!("{err}"));
@@ -359,11 +359,11 @@ async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
 
     // A read-only document refuses writes with `read-only`.
     let readonly = KitManager::new(Some(workspace.path().to_path_buf()), vec![(vector, None)]);
-    let _calls = editor(&readonly, "art/Shared.kitionvector", true);
+    let _calls = editor(&readonly, "art/Shared.kvector", true);
     let refused = match tools::call(
         &readonly,
         "vector_batch",
-        &json!({ "path": "art/Shared.kitionvector", "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }),
+        &json!({ "path": "art/Shared.kvector", "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }),
     )
     .await
     {

@@ -234,7 +234,7 @@ mod tests {
             templates["result"]["resourceTemplates"][0]["uriTemplate"],
             "kit://{document}/objects/{id}"
         );
-        let missing = handle(&kits, &json!({ "jsonrpc": "2.0", "id": 7, "method": "resources/read", "params": { "uri": "kit://art%2Fa.kitionvector/objects/root" } })).await.unwrap_or_default();
+        let missing = handle(&kits, &json!({ "jsonrpc": "2.0", "id": 7, "method": "resources/read", "params": { "uri": "kit://art%2Fa.kvector/objects/root" } })).await.unwrap_or_default();
         assert_eq!(missing["error"]["code"], resources::NOT_FOUND);
         assert_eq!(missing["error"]["data"]["error"]["code"], "invalid-params");
         let unknown = handle(
@@ -250,14 +250,14 @@ mod tests {
     fn previews_become_images_and_failures_say_what_happened() {
         let ok = tool_result(Ok(tools::KitToolOutput {
             summary: "Opened".into(),
-            output: json!({ "path": "a.kitionvector" }),
+            output: json!({ "path": "a.kvector" }),
             previews: vec![tools::Preview {
-                caption: "Preview of `a.kitionvector`.".into(),
+                caption: "Preview of `a.kvector`.".into(),
                 png: vec![0x89, b'P', b'N', b'G'],
             }],
         }));
         assert_eq!(ok["isError"], false);
-        assert_eq!(ok["structuredContent"]["path"], "a.kitionvector");
+        assert_eq!(ok["structuredContent"]["path"], "a.kvector");
         assert_eq!(
             ok["content"][2],
             json!({ "type": "image", "mimeType": "image/png", "data": "iVBORw==" })

@@ -7,7 +7,7 @@ const engine = kitEngine<{ DesignDocument: { create(name: string, width: number,
 /** A real layout made by the same engine the page runs: one page with a text frame. */
 async function flyerFixture() {
   const sdk = await engine.load()
-  const doc = sdk.DesignDocument.create('Flyer.kitiondesign', 612, 792)
+  const doc = sdk.DesignDocument.create('Flyer.kdesign', 612, 792)
   doc.execute('frame.create', JSON.stringify({ rect: [54, 72, 558, 200], content: 'text', caret: true }))
   doc.execute('text.insert', JSON.stringify({ text: 'Spring concert' }))
   doc.execute('text.exitToFrame', '{}')
@@ -20,7 +20,7 @@ async function flyerFixture() {
 test('opens a layout in the Design kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Design kit editor is not built into public/kits/design-ui')
   test.setTimeout(120_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Flyer.kitiondesign', await flyerFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Flyer.kdesign', await flyerFixture())
   try {
     await expect(kit.getByTestId('design-status')).toHaveText('1 pages', { timeout: 60_000 })
     await expect(kit.getByTestId('design-menu-Layout')).toHaveText('Layout')
@@ -37,7 +37,7 @@ test('opens a layout in the Design kit’s own editor, edits it there, and saves
 
     await kit.getByTestId('design-save').click()
     await expect(kit.getByTestId('design-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual(['Flyer.kitiondesign'])
+    expect(saves.map((save) => save.path)).toEqual(['Flyer.kdesign'])
   } finally {
     await host.dispose()
   }

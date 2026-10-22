@@ -63,7 +63,7 @@ pub struct KitAgent {
     pub prefix: &'static str,
     /// What one file is, for example `layered image`.
     pub noun: &'static str,
-    /// The file types as people know them, for example `PSD, PSB, or .kitionphoto`.
+    /// The file types as people know them, for example `PSD, PSB, or .kphoto`.
     pub formats: &'static str,
     /// What `<prefix>_inspect` reports.
     pub reports: &'static str,
@@ -80,19 +80,15 @@ pub const KITS: &[KitDefinition] = &[
         id: "kit.photo",
         name: "Photo",
         binary_env: "KITION_KIT_PHOTO_BINARY",
-        extensions: &["psd", "psb", "kitionphoto"],
-        creates: &[
-            ("psd", "psd"),
-            ("psb", "psb"),
-            ("kitionphoto", "kitionphoto"),
-        ],
+        extensions: &["psd", "psb", "kphoto"],
+        creates: &[("psd", "psd"), ("psb", "psb"), ("kphoto", "kphoto")],
         base_name: "Untitled photo",
         embeds: true,
         exports: &[],
         agent: KitAgent {
             prefix: "photo",
             noun: "layered image",
-            formats: "PSD, PSB, or .kitionphoto",
+            formats: "PSD, PSB, or .kphoto",
             reports: "its size, color mode, bit depth, and layers",
             covers: "layers, adjustments, filters, selections, transforms, type, and more",
             queries: "`brightness`, `gaussian blur`, or `new layer`",
@@ -124,7 +120,7 @@ pub const KITS: &[KitDefinition] = &[
         id: "kit.vector",
         name: "Vector",
         binary_env: "KITION_KIT_VECTOR_BINARY",
-        extensions: &["kitionvector"],
+        extensions: &["kvector"],
         creates: &[],
         base_name: "Untitled vector",
         embeds: false,
@@ -132,7 +128,7 @@ pub const KITS: &[KitDefinition] = &[
         agent: KitAgent {
             prefix: "vector",
             noun: "vector drawing",
-            formats: ".kitionvector",
+            formats: ".kvector",
             reports: "its artboards, layers, objects, and selection",
             covers: "shapes, paths, paint, type, alignment, effects, artboards, and more",
             queries: "`rectangle`, `align`, or `stroke`",
@@ -164,7 +160,7 @@ pub const KITS: &[KitDefinition] = &[
         id: "kit.design",
         name: "Design",
         binary_env: "KITION_KIT_DESIGN_BINARY",
-        extensions: &["kitiondesign"],
+        extensions: &["kdesign"],
         creates: &[],
         base_name: "Untitled design",
         embeds: false,
@@ -172,7 +168,7 @@ pub const KITS: &[KitDefinition] = &[
         agent: KitAgent {
             prefix: "design",
             noun: "page layout",
-            formats: ".kitiondesign",
+            formats: ".kdesign",
             reports: "its pages, spreads, frames, stories, styles, and swatches",
             covers: "pages, frames, text, styles, swatches, tables, and more",
             queries: "`text frame`, `paragraph style`, or `insert page`",

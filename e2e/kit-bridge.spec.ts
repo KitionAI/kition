@@ -20,7 +20,7 @@ type NodeVectorSdk = {
 async function drawingFixture() {
   const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_vector_sdk.js')).href)) as NodeVectorSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
-  const doc = sdk.VectorDocument.create('Logo.kitionvector', 400, 300)
+  const doc = sdk.VectorDocument.create('Logo.kvector', 400, 300)
   doc.execute('shape.rectangle', JSON.stringify({ x: 20, y: 20, width: 80, height: 60 }))
   const bytes = doc.save()
   doc.free()
@@ -36,7 +36,7 @@ function bridgeEvents(file: string) {
     { jsonrpc: '2.0', id: 3, method: 'kit/call', params: { path: file, kit: 'kit.vector', tool: 'run', arguments: { steps: [{ command: 'shape.ellipse', params: { x: 200, y: 100, width: 120, height: 120 } }], save: false } } },
     { jsonrpc: '2.0', id: 4, method: 'kit/preview', params: { path: file, maxSize: 200 } },
     { jsonrpc: '2.0', id: 5, method: 'kit/call', params: { path: file, kit: 'kit.vector', tool: 'run', arguments: { steps: [{ command: 'no.such.command' }], save: false } } },
-    { jsonrpc: '2.0', id: 6, method: 'kit/call', params: { path: 'other.kitionvector', kit: 'kit.vector', tool: 'inspect', arguments: {} } },
+    { jsonrpc: '2.0', id: 6, method: 'kit/call', params: { path: 'other.kvector', kit: 'kit.vector', tool: 'inspect', arguments: {} } },
   ]
   return messages.map((message) => `data: ${JSON.stringify(message)}\n\n`).join('')
 }
@@ -49,7 +49,7 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
   try {
-    await fs.writeFile(path.join(host.root, 'Logo.kitionvector'), await drawingFixture())
+    await fs.writeFile(path.join(host.root, 'Logo.kvector'), await drawingFixture())
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     let streams = 0
@@ -58,7 +58,7 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
       streams += 1
       // The first stream carries the requests; a reconnect is told there is nothing more.
       if (streams > 1) return route.fulfill({ status: 204, body: '' })
-      await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' }, body: bridgeEvents('Logo.kitionvector') })
+      await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' }, body: bridgeEvents('Logo.kvector') })
     })
     const posted: Array<{ session: string | null; message: Record<string, unknown> }> = []
     await page.route('**/v1/kits/bridge?**', async (route) => {
@@ -81,7 +81,7 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     }
     const documents = await answer(1)
     expect(documents.session).toBe('7')
-    expect(documents.message.result).toEqual({ documents: [{ path: 'Logo.kitionvector', kit: 'kit.vector', dirty: false, revision: expect.any(Number) }] })
+    expect(documents.message.result).toEqual({ documents: [{ path: 'Logo.kvector', kit: 'kit.vector', dirty: false, revision: expect.any(Number) }] })
 
     const commands = (await answer(2)).message.result as { commands: Array<{ id: string; description: string | null }>; total: number }
     expect(commands.commands.map((command) => command.id)).toContain('shape.ellipse')

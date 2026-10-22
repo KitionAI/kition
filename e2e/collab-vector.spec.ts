@@ -10,7 +10,7 @@ const engine = kitEngine<{ VectorDocument: { create(name: string, width: number,
 /** A drawing made by the same engine the page runs: two tall rectangles, one on each half. */
 async function drawingFixture() {
   const sdk = await engine.load()
-  const doc = sdk.VectorDocument.create('Poster.kitionvector', 400, 300)
+  const doc = sdk.VectorDocument.create('Poster.kvector', 400, 300)
   doc.execute('shape.rectangle', JSON.stringify({ x: 20, y: 20, width: 170, height: 260 }))
   doc.execute('shape.rectangle', JSON.stringify({ x: 210, y: 20, width: 170, height: 260 }))
   doc.execute('select.none', '{}')
@@ -86,7 +86,7 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
     // Alice opens her drawing and shares it.
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Poster.kitionvector', await drawingFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Poster.kvector', await drawingFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('vector-status')).toContainText('2 objects', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Poster')
     expect(link).toMatch(/\/s\/\S+$/)
@@ -99,19 +99,19 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
     await openSharedLink(pageB, link)
     const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('vector-status')).toContainText('2 objects', { timeout: 60_000 })
-    expect(existsSync(path.join(b.host.root, 'Shared', 'Poster.kitionvector'))).toBe(true)
+    expect(existsSync(path.join(b.host.root, 'Shared', 'Poster.kvector'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Poster.kitionvector', pageB, 'Shared/Poster.kitionvector'), { timeout: 15_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Poster.kvector', pageB, 'Shared/Poster.kvector'), { timeout: 15_000 }).toBe('same')
 
     // Alice moves the left rectangle: within a second Bob's replica has the move, and his canvas shows it.
     const bobBeforeMove = await canvas(kitB)
-    const moveBaseline = JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kitionvector'))
+    const moveBaseline = JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kvector'))
     await moveObject(pageA, a.kit, 0.3, 0.5, 30)
     const moved = Date.now()
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector')), { intervals: [10] }).not.toBe(moveBaseline)
-    const aliceMoveVersion = await settledVersion(pageA, 'Poster.kitionvector')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kitionvector')), { timeout: 5_000, intervals: [20] }).toBe(aliceMoveVersion)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Poster.kvector')), { intervals: [10] }).not.toBe(moveBaseline)
+    const aliceMoveVersion = await settledVersion(pageA, 'Poster.kvector')
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kvector')), { timeout: 5_000, intervals: [20] }).toBe(aliceMoveVersion)
     const moveLive = Date.now() - moved
     testInfo.annotations.push({ type: 'live move to the other window', description: `${moveLive} ms` })
     expect(moveLive).toBeLessThan(1_000)
@@ -119,12 +119,12 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
 
     // Bob recolours the right rectangle: within a second Alice's replica and canvas have it.
     const aliceBeforeColor = await canvas(a.kit)
-    const colorBaseline = JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector'))
+    const colorBaseline = JSON.stringify(await replicaCounters(pageA, 'Poster.kvector'))
     await recolor(pageB, kitB, 0.7, 0.5, '#d02020')
     const recoloured = Date.now()
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kitionvector')), { intervals: [10] }).not.toBe(colorBaseline)
-    const bobColorVersion = await settledVersion(pageB, 'Shared/Poster.kitionvector')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector')), { timeout: 5_000, intervals: [20] }).toBe(bobColorVersion)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kvector')), { intervals: [10] }).not.toBe(colorBaseline)
+    const bobColorVersion = await settledVersion(pageB, 'Shared/Poster.kvector')
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Poster.kvector')), { timeout: 5_000, intervals: [20] }).toBe(bobColorVersion)
     const colorLive = Date.now() - recoloured
     testInfo.annotations.push({ type: 'live recolour to the other window', description: `${colorLive} ms` })
     expect(colorLive).toBeLessThan(1_000)
@@ -133,19 +133,19 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
     // Bob goes offline and draws a rectangle; Alice draws one too, meanwhile.
     await bobNetwork.setOnline(false)
     await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
-    const offlineVersion = JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector'))
+    const offlineVersion = JSON.stringify(await replicaCounters(pageA, 'Poster.kvector'))
     await drawRectangle(pageB, kitB, 0.6, 0.2)
     await expect(kitB.getByTestId('vector-status')).toContainText('3 objects')
     await drawRectangle(pageA, a.kit, 0.2, 0.7)
     await expect(a.kit.getByTestId('vector-status')).toContainText('3 objects')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector'))).not.toBe(offlineVersion)
-    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kitionvector'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector')))
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Poster.kvector'))).not.toBe(offlineVersion)
+    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kvector'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Poster.kvector')))
 
     // Back online, both merge on their own: the same replica, with both new rectangles.
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Poster.kitionvector', pageB, 'Shared/Poster.kitionvector'), { timeout: 60_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Poster.kvector', pageB, 'Shared/Poster.kvector'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(a.kit.getByTestId('vector-status')).toContainText('4 objects')
     await expect(kitB.getByTestId('vector-status')).toContainText('4 objects')
@@ -164,7 +164,7 @@ test('without a Kition Pro session a Vector drawing opens, edits, and saves as b
   // A sync server is configured, but nobody is signed in: co-editing stays off.
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')
   const sockets = recordWebSockets(page)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Poster.kitionvector', await drawingFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Poster.kvector', await drawingFixture())
   try {
     await expect(kit.getByTestId('vector-status')).toContainText('2 objects', { timeout: 60_000 })
     // The tab menu offers no sharing.
@@ -176,7 +176,7 @@ test('without a Kition Pro session a Vector drawing opens, edits, and saves as b
     await expect(kit.getByTestId('vector-unsaved')).toBeVisible()
     await kit.getByTestId('vector-save').click()
     await expect(kit.getByTestId('vector-unsaved')).toHaveCount(0, { timeout: 30_000 })
-    expect(saves.map((save) => save.path)).toEqual(['Poster.kitionvector'])
+    expect(saves.map((save) => save.path)).toEqual(['Poster.kvector'])
     await expect(page.locator('[data-testid="collab-status"]')).toHaveCount(0)
     expect(sockets.filter((url) => url.includes('/v1/sync'))).toEqual([])
   } finally {

@@ -24,15 +24,15 @@ pub fn infer_format(path: &str) -> &'static str {
         ".html" | ".htm" => "html",
         ".png" | ".jpg" | ".jpeg" | ".gif" | ".webp" | ".svg" => "image",
         // Layered images, edited in the Photo kit.
-        ".psd" | ".psb" | ".kitionphoto" => "photo",
+        ".psd" | ".psb" | ".kphoto" => "photo",
         // Video projects, edited in the Film kit.
         ".kitionfilm" => "film",
         // Vector drawings, edited in the Vector kit.
-        ".kitionvector" => "vector",
+        ".kvector" => "vector",
         // Motion-graphics projects, edited in the Effect kit.
         ".kitioneffect" => "effect",
         // Page layouts, edited in the Design kit.
-        ".kitiondesign" => "layout",
+        ".kdesign" => "layout",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
         // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
@@ -90,11 +90,11 @@ pub fn is_supported(path: &str) -> bool {
             "svg",
             "psd",
             "psb",
-            "kitionphoto",
+            "kphoto",
             "kitionfilm",
-            "kitionvector",
+            "kvector",
             "kitioneffect",
-            "kitiondesign",
+            "kdesign",
             "dxf",
             "kitionslide",
             "mp4",
@@ -121,18 +121,18 @@ mod tests {
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
         assert_eq!(infer_format("films/Trailer.kitionfilm"), "film");
         assert!(is_supported("films/Trailer.kitionfilm"));
-        assert_eq!(infer_format("art/Logo.kitionvector"), "vector");
-        assert!(is_supported("art/Logo.kitionvector"));
+        assert_eq!(infer_format("art/Logo.kvector"), "vector");
+        assert!(is_supported("art/Logo.kvector"));
         assert_eq!(infer_format("motion/Intro.kitioneffect"), "effect");
         assert!(is_supported("motion/Intro.kitioneffect"));
-        assert_eq!(infer_format("print/Flyer.kitiondesign"), "layout");
-        assert!(is_supported("print/Flyer.kitiondesign"));
+        assert_eq!(infer_format("print/Flyer.kdesign"), "layout");
+        assert!(is_supported("print/Flyer.kdesign"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
         assert_eq!(infer_format("talks/Launch.kitionslide"), "slide");
         assert!(is_supported("talks/Launch.kitionslide"));
         assert!(is_supported("art/poster.psb"));
-        assert!(!is_text("art/poster.kitionphoto"));
+        assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");
         assert!(is_editable("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));

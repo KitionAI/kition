@@ -62,9 +62,9 @@ function kit(name: string, documentClass: string, entry: Omit<KitEditorEntry, 'e
 // The create menu orders its items itself (`CREATE_ORDER` in `WorkspaceCreateMenu`).
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'photo', extension: 'psd', baseName: 'Untitled photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.photo', group: 'visual' } }),
-  kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: 'kitionvector', baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
+  kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: 'kvector', baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
   // US Letter, in points.
-  kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: 'kitiondesign', baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
+  kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: 'kdesign', baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
   kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'video', extension: 'kitionfilm', baseName: 'Untitled film', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', group: 'media' } }),
   kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'effect', extension: 'kitioneffect', baseName: 'Untitled effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.effect', group: 'media' } }),
   // A3 in millimetres; the engine starts a metric drawing with those limits.

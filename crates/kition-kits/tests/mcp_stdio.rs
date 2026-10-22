@@ -72,7 +72,7 @@ async fn serves_tools_errors_and_resources_over_stdio() {
     };
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::create_dir_all(workspace.path().join("notes")).unwrap_or_else(|err| panic!("{err}"));
-    std::fs::write(workspace.path().join("notes/Plan.kitionvector"), "plan")
+    std::fs::write(workspace.path().join("notes/Plan.kvector"), "plan")
         .unwrap_or_else(|err| panic!("{err}"));
     let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_kition-kits-mcp"));
     // Only the stand-in kit is installed.
@@ -85,7 +85,7 @@ async fn serves_tools_errors_and_resources_over_stdio() {
         .arg("--workspace")
         .arg(workspace.path())
         .env("KITION_KIT_VECTOR_BINARY", &mock)
-        .env("KITION_KIT_MOCK_AS", "kit.vector:kitionvector")
+        .env("KITION_KIT_MOCK_AS", "kit.vector:kvector")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -125,7 +125,7 @@ async fn serves_tools_errors_and_resources_over_stdio() {
         "{names:?}"
     );
 
-    let path = "notes/Plan.kitionvector";
+    let path = "notes/Plan.kvector";
     let queried = server
         .tool("vector_query", json!({ "path": path, "describe": true }))
         .await;
@@ -201,8 +201,8 @@ async fn serves_tools_errors_and_resources_over_stdio() {
     assert_eq!(
         uris,
         [
-            "kit://notes%2FPlan.kitionvector/describe",
-            "kit://notes%2FPlan.kitionvector/objects/root"
+            "kit://notes%2FPlan.kvector/describe",
+            "kit://notes%2FPlan.kvector/objects/root"
         ],
         "{resources}"
     );
@@ -223,7 +223,7 @@ async fn serves_tools_errors_and_resources_over_stdio() {
     let object = server
         .request(
             "resources/read",
-            json!({ "uri": format!("kit://notes%2FPlan.kitionvector/objects/{root}") }),
+            json!({ "uri": format!("kit://notes%2FPlan.kvector/objects/{root}") }),
         )
         .await;
     let text: Value = serde_json::from_str(
@@ -236,7 +236,7 @@ async fn serves_tools_errors_and_resources_over_stdio() {
     let missing = server
         .request(
             "resources/read",
-            json!({ "uri": "kit://notes%2FPlan.kitionvector/objects/nothing-here" }),
+            json!({ "uri": "kit://notes%2FPlan.kvector/objects/nothing-here" }),
         )
         .await;
     assert_eq!(missing["error"]["code"], -32002, "{missing}");

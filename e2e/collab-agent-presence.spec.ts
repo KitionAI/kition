@@ -9,7 +9,7 @@ const engine = kitEngine<{ VectorDocument: { create(name: string, width: number,
 /** A drawing with one rectangle, made by the same engine the page runs. */
 async function drawingFixture() {
   const sdk = await engine.load()
-  const doc = sdk.VectorDocument.create('Plan.kitionvector', 400, 300)
+  const doc = sdk.VectorDocument.create('Plan.kvector', 400, 300)
   doc.execute('shape.rectangle', JSON.stringify({ x: 20, y: 20, width: 120, height: 90 }))
   doc.execute('select.none', '{}')
   const bytes = Buffer.from(doc.save())
@@ -62,11 +62,11 @@ test("the agent's edit on a shared drawing shows the agent in every viewer's pre
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
     const signedInAlice = signedIn(DEV_PRINCIPALS.alice)
-    const a = await openInKitFrame(pageA, baseURL!, 'Plan.kitionvector', await drawingFixture(), {}, {
+    const a = await openInKitFrame(pageA, baseURL!, 'Plan.kvector', await drawingFixture(), {}, {
       ...signedInAlice,
       routes: async (page) => {
         await signedInAlice.routes(page)
-        posted = await agentBridge(page, 'Plan.kitionvector', agentGo)
+        posted = await agentBridge(page, 'Plan.kvector', agentGo)
       },
     })
     await expect(a.kit.getByTestId('vector-status')).toContainText('1 objects', { timeout: 60_000 })

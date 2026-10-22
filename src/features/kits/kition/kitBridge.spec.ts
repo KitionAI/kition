@@ -37,11 +37,11 @@ describe('kitBridge on the shared bridge stream', () => {
     const { registerBridgeEditor, reportBridgeChange } = await import('./kitBridge')
     const { runtimeBridge } = await import('@/services/runtimeBridge')
     const withdraw = registerBridgeEditor({
-      path: './art/a.kitionvector',
+      path: './art/a.kvector',
       kitId: 'kit.vector',
       revision: () => 3,
       dirty: () => false,
-      inspect: () => ({ path: 'art/a.kitionvector', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
+      inspect: () => ({ path: 'art/a.kvector', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
       commands: async () => [],
       run: async () => ({ completed: [], saved: false }),
       preview: async () => '',
@@ -53,11 +53,11 @@ describe('kitBridge on the shared bridge stream', () => {
     stream.emit({ method: 'bridge.ready', params: { session: 7 } })
     stream.emit({ id: 1, method: 'kit/documents', params: {} })
     stream.emit({ id: 2, method: 'document/read', params: { path: 'Notes/a.md' } })
-    stream.emit({ id: 3, method: 'kit/call', params: { path: 'other.kitionvector', kit: 'kit.vector', tool: 'inspect', arguments: {} } })
-    reportBridgeChange({ path: '/art/a.kitionvector', revision: 4, by: 'agent' })
+    stream.emit({ id: 3, method: 'kit/call', params: { path: 'other.kvector', kit: 'kit.vector', tool: 'inspect', arguments: {} } })
+    reportBridgeChange({ path: '/art/a.kvector', revision: 4, by: 'agent' })
     await settle()
     const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message
-    expect(byId(1)?.result).toEqual({ documents: [{ path: './art/a.kitionvector', kit: 'kit.vector', dirty: false, revision: 3 }] })
+    expect(byId(1)?.result).toEqual({ documents: [{ path: './art/a.kvector', kit: 'kit.vector', dirty: false, revision: 3 }] })
     expect(byId(2)?.result).toEqual({ open: true, content: 'text' })
     expect(byId(3)?.error).toMatchObject({ message: expect.stringContaining('not open in a kit editor') })
     expect(posted.map((entry) => entry.message.method).filter(Boolean)).toEqual(['documents.open', 'kit.changed'])
@@ -92,7 +92,7 @@ describe('kitBridge on the shared bridge stream', () => {
       check: async (options) => [{ code: options?.draft ? 'slide.on-draft' : 'slide.on-document', severity: 'warning', target: { slide: 1 }, message: 'Found.' }],
     })
     const withdrawPlain = registerBridgeEditor({
-      path: 'art/b.kitionvector',
+      path: 'art/b.kvector',
       kitId: 'kit.vector',
       revision: () => 1,
       dirty: () => false,
@@ -109,11 +109,11 @@ describe('kitBridge on the shared bridge stream', () => {
     call(13, 'draft_reopen')
     stream.emit({ id: 14, method: 'kit/preview', params: { path: 'talks/a.pptx', maxSize: 64, draft: true } })
     call(15, 'draft_merge')
-    call(16, 'run', { steps: [{ command: 'shape.ellipse' }], draft: true }, 'art/b.kitionvector', 'kit.vector')
+    call(16, 'run', { steps: [{ command: 'shape.ellipse' }], draft: true }, 'art/b.kvector', 'kit.vector')
     call(17, 'run', { steps: [{ command: 'slide.add' }] })
     call(18, 'check')
     call(19, 'check', { draft: true })
-    call(20, 'check', {}, 'art/b.kitionvector', 'kit.vector')
+    call(20, 'check', {}, 'art/b.kvector', 'kit.vector')
     await settle()
     await settle()
     const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message
@@ -162,11 +162,11 @@ describe('kitBridge on the shared bridge stream', () => {
       save: async () => true,
     })
     const withoutModel = registerBridgeEditor({
-      path: 'art/n.kitionvector',
+      path: 'art/n.kvector',
       kitId: 'kit.vector',
       revision: () => 1,
       dirty: () => false,
-      inspect: () => ({ path: 'art/n.kitionvector', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
+      inspect: () => ({ path: 'art/n.kvector', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
       commands: async () => [],
       run: async () => ({ completed: [], saved: false }),
       preview: async () => '',
@@ -180,7 +180,7 @@ describe('kitBridge on the shared bridge stream', () => {
     call(23, 'batch', { ops: [set], load: [], save: true })
     call(24, 'batch', { ops: [set, { op: 'set', target: 'missing', field: 'title', value: 'x' }], load: [] })
     call(25, 'batch', { ops: [set], load: [], draft: true })
-    call(26, 'describe', {}, 'art/n.kitionvector', 'kit.vector')
+    call(26, 'describe', {}, 'art/n.kvector', 'kit.vector')
     await settle()
     await settle()
     const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message

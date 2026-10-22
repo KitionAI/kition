@@ -177,17 +177,17 @@ mod tests {
         );
         assert_eq!(KitResource::parse(&uri), Some(object));
         assert_eq!(
-            KitResource::parse("kit://a.kitionvector/describe"),
+            KitResource::parse("kit://a.kvector/describe"),
             Some(KitResource::Describe {
-                path: "a.kitionvector".into()
+                path: "a.kvector".into()
             })
         );
         for bad in [
-            "kit://a.kitionvector",
+            "kit://a.kvector",
             "kit:///describe",
-            "kit://a.kitionvector/objects/",
-            "kit://a.kitionvector/objects/a/b",
-            "file:///a.kitionvector",
+            "kit://a.kvector/objects/",
+            "kit://a.kvector/objects/a/b",
+            "file:///a.kvector",
             "kit://%zz/describe",
         ] {
             assert_eq!(KitResource::parse(bad), None, "{bad}");

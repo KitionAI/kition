@@ -1157,7 +1157,7 @@ mod tests {
         let prompt = |path: &str| {
             linked_file_prompt(path).unwrap_or_else(|| panic!("{path} opens in a kit"))
         };
-        let vector = prompt("art/Logo.kitionvector");
+        let vector = prompt("art/Logo.kvector");
         assert!(
             vector.contains("vector_inspect")
                 && vector.contains("vector_run")
@@ -1165,7 +1165,7 @@ mod tests {
             "{vector}"
         );
         assert!(prompt("motion/Intro.kitioneffect").contains("effect_commands"));
-        assert!(prompt("print/Flyer.kitiondesign").contains("design_run"));
+        assert!(prompt("print/Flyer.kdesign").contains("design_run"));
         assert!(prompt("plans/Floor.dxf").contains("cad_run"));
         assert!(prompt("talks/Launch.pptx").contains("slide_run"));
         assert!(
@@ -1192,9 +1192,9 @@ mod tests {
         let wrong = wrong.1;
         assert!(wrong.contains("photo_*"), "{wrong}");
         assert_eq!(
-            kit_path(&json!({ "path": "art/Logo.kitionvector" }), vector_kit)
+            kit_path(&json!({ "path": "art/Logo.kvector" }), vector_kit)
                 .unwrap_or_else(|err| panic!("{}", err.message)),
-            "art/Logo.kitionvector"
+            "art/Logo.kvector"
         );
     }
 }

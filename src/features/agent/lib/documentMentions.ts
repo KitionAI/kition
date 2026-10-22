@@ -70,11 +70,11 @@ export function isBinaryAttachmentMention(
  * names them.
  */
 const KIT_FILE_KINDS = [
-  { format: 'photo', extensions: /\.(?:psd|psb|kitionphoto)$/i, prefix: 'photo', kit: 'Photo', one: 'a layered image', many: 'layered images', data: 'image data' },
+  { format: 'photo', extensions: /\.(?:psd|psb|kphoto)$/i, prefix: 'photo', kit: 'Photo', one: 'a layered image', many: 'layered images', data: 'image data' },
   { format: 'film', extensions: /\.kitionfilm$/i, prefix: 'film', kit: 'Film', one: 'a video project', many: 'video projects', data: 'project data' },
-  { format: 'vector', extensions: /\.(?:kition-vector|kition-vector)$/i, prefix: 'vector', kit: 'Vector', one: 'a vector drawing', many: 'vector drawings', data: 'drawing data' },
+  { format: 'vector', extensions: /\.kvector$/i, prefix: 'vector', kit: 'Vector', one: 'a vector drawing', many: 'vector drawings', data: 'drawing data' },
   { format: 'effect', extensions: /\.kitioneffect$/i, prefix: 'effect', kit: 'Effect', one: 'a motion graphics project', many: 'motion graphics projects', data: 'project data' },
-  { format: 'layout', extensions: /\.kitiondesign$/i, prefix: 'design', kit: 'Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
+  { format: 'layout', extensions: /\.kdesign$/i, prefix: 'design', kit: 'Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
   { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
   // PowerPoint files stay attachments whose text is extracted; only .kitionslide files are kit-only.
   { format: 'slide', extensions: /\.kitionslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
