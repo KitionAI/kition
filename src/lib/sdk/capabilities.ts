@@ -1,12 +1,12 @@
 // Copied from kition-sdk packages/sdk/src/capabilities.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Capability sets (Kit Standard `spec/index.md` section 3.1): named, versioned groups of APIs a host or a
+ * Capability sets (Kit Harness Protocol (KHP) `spec/index.md` section 3.1): named, versioned groups of APIs a host or a
  * server advertises and a script tests, never a product or its version. A minor version only adds
  * members, so `Name a.b` satisfies a request for `Name a.c` when `c` is at most `b`.
  */
 import { servesCapabilitySet } from '../sync'
 
-/** The capability sets of Kit Standard 2.0. */
+/** The capability sets of KHP 2.0. */
 export const CAPABILITY_SETS = {
   model: 'KitModel 1.0',
   collab: 'KitCollab 1.0',

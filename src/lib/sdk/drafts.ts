@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sdk/src/drafts.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The person's side of headless drafts (Kit Standard A12 to A15): an agent working through
+ * The person's side of headless drafts (Kit Harness Protocol (KHP) A12 to A15): an agent working through
  * `kition-kits-mcp` keeps its drafts in the workspace's `.kition/drafts/`; a page's server lists
  * them, shows their comparison, and merges or discards one when the person says so, by running
  * `kition-kits-mcp drafts`. Never offer these to an agent: merging is the person's alone (A14).

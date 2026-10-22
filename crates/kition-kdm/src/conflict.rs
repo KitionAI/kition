@@ -1,5 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/conflict.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! Conflict objects (Kition Kit Standard 2.0, rule M22).
+//! Conflict objects (Kit Harness Protocol (KHP) 2.0, rule M22).
 //!
 //! A kit's repair pass after a merge (`KitModel::validate`) makes the merged state valid again,
 //! deterministically, on every replica. Some merges it cannot resolve by itself: an edit a peer

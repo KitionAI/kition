@@ -1,5 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/lib.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! Kit Data Model (KDM): the typed, replicated document model of the Kition Kit Standard 2.0.
+//! Kit Data Model (KDM): the typed, replicated document model of the Kit Harness Protocol (KHP) 2.0.
 //!
 //! A kit declares its document as a [`Schema`]. A [`Replica`] holds one copy of a document,
 //! changes it only through transactions ([`Replica::transact`]), and exchanges changes with other

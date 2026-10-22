@@ -1,12 +1,12 @@
 // Copied from kition-sdk packages/kit-engine/src/contract.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Engine contract 2 as TypeScript (Kit Standard spec/kits/engine.md, architecture 7.2): the document
+ * Engine contract 2 as TypeScript (Kit Harness Protocol (KHP) spec/kits/engine.md, architecture 7.2): the document
  * class a kit's engine worker drives. A WebAssembly engine made with `export_kit_document!` and
  * `export_kit_session!` has exactly these members, so one worker (`@kition/kit-ui`), the embed
  * SDK, and the object model serve both runtimes.
  */
 
-/** One command as `commands()` lists it (Kit Standard spec/reference/contract.md). */
+/** One command as `commands()` lists it (KHP spec/reference/contract.md). */
 export type KitEngineCommand = {
   id: string
   title: string
@@ -45,7 +45,7 @@ export interface KitEngineDocument {
   commands(): string
   /** The ids of the commands that cannot run now, as JSON. */
   disabledCommands(): string
-  /** The document's diagnostics as JSON `{ diagnostics: KitEngineDiagnostic[] }` (Kit Standard 2.0 A21); optional. */
+  /** The document's diagnostics as JSON `{ diagnostics: KitEngineDiagnostic[] }` (KHP 2.0 A21); optional. */
   check?(): string
   /** The document as file bytes; it stays unsaved until `markSaved`. */
   save(name?: string): Uint8Array
@@ -107,7 +107,7 @@ export type KitEngineInit = {
 /** The module's default export: prepares the engine (for example, loads its dependencies' WebAssembly). */
 export type KitEngineModuleInit = (init: KitEngineInit) => Promise<void>
 
-/** One thing an engine found wrong with its document (Kit Standard 2.0 A21): a stable `<kit>.<name>` code, what it is about (none set: the whole document; pages and slides count from 1), and a command hint to fix it. */
+/** One thing an engine found wrong with its document (KHP 2.0 A21): a stable `<kit>.<name>` code, what it is about (none set: the whole document; pages and slides count from 1), and a command hint to fix it. */
 export type KitEngineDiagnostic = {
   code: string
   severity: 'error' | 'warning' | 'info'

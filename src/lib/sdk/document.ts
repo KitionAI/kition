@@ -22,7 +22,7 @@ export type OpenOptions = {
 /**
  * What answers a document's `model/describe` and `model/batch`: an `Exchange` over a `ModelPort`
  * (the object model on the host's side), or a kit that serves the object model itself (a
- * headless kit executable over the Kit Protocol, `@kition/sdk/node`'s `launchHeadlessKit`).
+ * headless kit executable over the Kit Host Protocol, `@kition/sdk/node`'s `launchHeadlessKit`).
  */
 export interface ModelBackend extends DocumentEventSource {
   readonly kitId: string

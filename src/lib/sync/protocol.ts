@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sync/src/protocol.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The open sync protocol, `kition-sync/1` (Kit Standard spec/reference/sync-protocol.md): JSON-RPC 2.0 messages over a
+ * The open sync protocol, `kition-sync/1` (Kit Harness Protocol (KHP) spec/reference/sync-protocol.md): JSON-RPC 2.0 messages over a
  * WebSocket. Binary payloads (KDM change bytes, snapshots, blobs) travel as separate binary
  * frames; see `./framing`. These are the JSON-visible shapes, with binary fields as `Uint8Array`
  * (the wire's `{"$bin": n}` markers are an encoding detail `./framing` and `./client` handle).
@@ -10,7 +10,7 @@ export const SYNC_PROTOCOL = 'kition-sync/1'
 
 /**
  * A room's role for one principal: `owner` and `editor` may push any change, `commenter` (protocol
- * 1.6) only changes that touch comment objects (Kit Standard 2.0 rule M23), `viewer` none.
+ * 1.6) only changes that touch comment objects (KHP 2.0 rule M23), `viewer` none.
  */
 export type Role = 'owner' | 'editor' | 'commenter' | 'viewer'
 

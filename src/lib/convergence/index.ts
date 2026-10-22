@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/convergence/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * `@kition/convergence`: the convergence suite of the Kition Kit Standard 2.0 (section 11) for
+ * `@kition/convergence`: the convergence suite of the Kit Harness Protocol (KHP) 2.0 (section 11) for
  * TypeScript engines, what a `ts-worker` kit runs to claim L6. The same 17 scenarios, pass and
  * skip rules, and report as the Rust `kition-convergence` crate, driven through a `KitAdapter`;
  * `KitEngineAdapter` does the replica part for engines made with `@kition/kit-engine`.

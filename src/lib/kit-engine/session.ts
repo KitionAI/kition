@@ -54,7 +54,7 @@ export interface KitModel<View> {
   addBlobs?(view: View, replica: Replica, blobs: Uint8Array): void
   /** What `inspect()` adds to `canUndo` and `canRedo`. */
   inspect?(view: View, replica: Replica): Record<string, unknown>
-  /** What is wrong with the document (Kit Standard 2.0 A21); without it, `check()` answers none. It must not change the document. */
+  /** What is wrong with the document (Kit Harness Protocol (KHP) 2.0 A21); without it, `check()` answers none. It must not change the document. */
   check?(view: View, replica: Replica): KitEngineDiagnostic[]
   /** The document's size in pixels (0 × 0 when the editor draws itself). */
   size?(view: View, replica: Replica): KitSize

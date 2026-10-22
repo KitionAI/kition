@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sync/src/client.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * `SyncClient`: the client side of `kition-sync/1` (Kit Standard spec/reference/sync-protocol.md) over a
+ * `SyncClient`: the client side of `kition-sync/1` (Kit Harness Protocol (KHP) spec/reference/sync-protocol.md) over a
  * `SyncTransport`. Reconnects with backoff, re-joins every joined room with the highest server
  * `seq` it last saw for it, and queues pushes made while offline, sending them in order once
  * rejoined.
@@ -130,7 +130,7 @@ export class SyncClient {
   }
 
   /**
-   * The Kit Standard 2.0 capability sets the server serves this principal (rule CS2), such as
+   * The KHP 2.0 capability sets the server serves this principal (rule CS2), such as
    * `KitModel 1.0` and `KitCollab 1.1`: the `Name major.minor` entries of `capabilities`.
    */
   get capabilitySets(): readonly string[] {
@@ -175,7 +175,7 @@ export class SyncClient {
    * `docId`, or `null` with none yet, which asks for everything from the room's snapshot).
    *
    * A busy room's catch-up does not fit in one `room/join` reply, so the server pages it (`more`,
-   * Kit Standard `spec/reference/sync-protocol.md` section 3); this repeats `room/join` with `since` set to each page's
+   * KHP `spec/reference/sync-protocol.md` section 3); this repeats `room/join` with `since` set to each page's
    * `seq` until `more` is `false`, combining every page's `changes` into the one result this
    * resolves with. `presence` and `role` are from the last page.
    *

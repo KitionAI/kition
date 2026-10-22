@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kdm/src/comment.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Comments (Kition Kit Standard 2.0, rule M23), as the `kition-kdm` crate's `comment` module.
+ * Comments (Kit Harness Protocol (KHP) 2.0, rule M23), as the `kition-kdm` crate's `comment` module.
  *
  * People discuss a document in comment threads anchored to its objects. A thread is an object of
  * the reserved type `CommentThread`: its `anchor` (an object, and optionally a field and a range in

@@ -1,5 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/comment.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! Comments (Kition Kit Standard 2.0, rule M23).
+//! Comments (Kit Harness Protocol (KHP) 2.0, rule M23).
 //!
 //! People discuss a document in **comment threads** anchored to its objects. A thread is an object
 //! of the reserved type `CommentThread`: where it is anchored (`anchor`, a JSON value naming an

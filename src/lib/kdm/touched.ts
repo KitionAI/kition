@@ -1,7 +1,7 @@
 // Copied from kition-sdk packages/kdm/src/touched.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
  * Which objects a change touches, read from the KDM format alone (no schema, no kit), as a sync
- * server checks a `commenter`'s push (sync protocol 1.6, Kit Standard 2.0 rule M23): an operation
+ * server checks a `commenter`'s push (sync protocol 1.6, Kit Harness Protocol (KHP) 2.0 rule M23): an operation
  * targets an object when it is the object's entry in the `objects` map or lands in a container
  * inside that object; anything else (`meta`, the schema raises) touches the document itself.
  */
