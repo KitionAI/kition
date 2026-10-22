@@ -119,11 +119,23 @@ and checks read-only refusal.)*
   positions), so concurrent edits of different charts, or of one chart's
   members, all stay; a schema 3 replica migrates its charts on the first
   write.
-- **All kits:** an edit that changes the data detaches it from the embedded
-  workbook (literal values, no stale `c:externalData`), so another
-  application shows the edited values but cannot edit them as cells (open:
-  rewriting the embedded workbook). Element-level formatting (axes, number
-  formats, trendlines, error bars) is preserved but not yet editable.
+- **Word and Slide:** a chart made here, or whose data were edited, is saved
+  with a new embedded workbook of its data (`c:externalData`, the series bound
+  to its ranges), so another application can edit the data as cells again. A
+  type the description does not edit (bubble, stock) keeps its data as
+  written. Sheet's charts show its own cells and need no workbook.
+- **Formatting:** the description carries the category and value axes
+  (bounds, major unit, number format, shown), the data-label position and
+  each series' line width, marker and smoothing. Chart Design's shared Format
+  group (Format Axis, Label Position, Format Series) sets them through
+  `drawing.chart`, and each kit's browser test sets them, undoes them and, in
+  Word and Slide, saves and reopens them. Slide writes them into its chart
+  model, so they draw at once; Word patches the part and its renderer draws
+  fixed major units, markers, smooth lines and label positions. Sheet takes a
+  series' smoothing; its model has no axis scale, label position, line width
+  or marker yet, so `drawing.chart` refuses them as unsupported and the
+  editor does not offer them. Trendlines, error bars, secondary-axis and
+  combination-chart formatting are preserved but not yet editable.
 
 ## Ink
 
