@@ -5,6 +5,7 @@
  * docs/design.md: 12px cards, 8px buttons, restrained borders.
  */
 import type { HTMLAttributes, ReactNode } from 'react'
+import { FileWarning } from 'lucide-react'
 
 import { Button } from '@kition/app-ui'
 import { cn } from '@kition/app-ui/utils'
@@ -79,6 +80,40 @@ export function InlineError({ message, children, size = 'md', onRetry, retryLabe
           {retryLabel}
         </Button>
       ) : null}
+    </div>
+  )
+}
+
+export type FileNoticeProps = {
+  /** Names the file, as in "Could not open Report.psd". */
+  title: string
+  /** What happened, in plain words. */
+  message: string
+  /** The raw reason (an engine or reader error), shown small below the message. */
+  detail?: string
+  /** The actions, usually Buttons. */
+  children?: ReactNode
+  className?: string
+  'data-testid'?: string
+  'data-problem'?: string
+}
+
+/** Shown in place of an editor when its file cannot be opened: an icon, the file, why, and what to do. */
+export function FileNotice({ title, message, detail, children, className, ...rest }: FileNoticeProps) {
+  return (
+    <div
+      className={cn('flex w-full max-w-md flex-col items-start gap-3 rounded-xl border bg-card p-6 text-left text-card-foreground shadow-soft', className)}
+      role="alert"
+      data-testid={rest['data-testid']}
+      data-problem={rest['data-problem']}
+    >
+      <FileWarning aria-hidden="true" className="size-5 text-muted-foreground" />
+      <div className="min-w-0 space-y-1">
+        <h2 className="break-words text-base font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        {detail ? <p className="break-words pt-1 text-xs text-muted-foreground" data-testid="file-notice-detail">{detail}</p> : null}
+      </div>
+      {children}
     </div>
   )
 }

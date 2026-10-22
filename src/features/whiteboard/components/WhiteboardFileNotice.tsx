@@ -1,8 +1,8 @@
-import { FileWarning } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { useConfirm } from '@kition/app-ui/confirm'
 import { Button } from '@kition/app-ui'
+import { FileNotice } from '@/components/states'
 import type { BoardDocumentProblem, BoardSaveRefusal } from '@/features/whiteboard/hooks/useBoardDocument'
 
 /** The `workspace` message explaining each reason a `.kiboard` file cannot be opened or saved. */
@@ -50,17 +50,12 @@ export function WhiteboardFileNotice({
   }
 
   return (
-    <div
-      className="flex w-full max-w-md flex-col items-start gap-3 rounded-xl border bg-card p-6 text-card-foreground shadow-soft"
-      role="alert"
+    <FileNotice
+      title={t('whiteboard.file.title', { title })}
+      message={t(BOARD_FILE_PROBLEM_MESSAGES[problem])}
       data-testid="whiteboard-file-notice"
       data-problem={problem}
     >
-      <FileWarning aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
-      <div className="space-y-1">
-        <h2 className="text-base font-semibold">{t('whiteboard.file.title', { title })}</h2>
-        <p className="text-sm text-muted-foreground">{t(BOARD_FILE_PROBLEM_MESSAGES[problem])}</p>
-      </div>
       {canStartNew ? (
         <div className="space-y-2">
           <Button disabled={busy} onClick={() => void startNew()} data-testid="whiteboard-file-start-new">
@@ -75,6 +70,6 @@ export function WhiteboardFileNotice({
         </Button>
       ) : null}
       {error ? <p className="text-xs text-destructive" role="status">{error}</p> : null}
-    </div>
+    </FileNotice>
   )
 }

@@ -667,7 +667,9 @@
     "conflictsTitle": "Algumas edições não puderam ser mescladas",
     "conflictsBody_one": "{{count}} edição feita por outra pessoa ao mesmo tempo não pôde ser mesclada. Ela fica no documento até ser resolvida.",
     "conflictsBody_other": "{{count}} edições feitas por outra pessoa ao mesmo tempo não puderam ser mescladas. Elas ficam no documento até serem resolvidas.",
-    "openFailed": "Não foi possível abrir este arquivo",
+    "openFailedTitle": "Não foi possível abrir {{name}}",
+    "openFailedMessage": "O arquivo pode estar danificado ou não ser um arquivo {{type}} válido. Ele não foi alterado.",
+    "tryAgain": "Tentar novamente",
     "opening": "Abrindo…",
     "draft": {
       "title": "Rascunho do agente",

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
+import { Button } from '@kition/app-ui'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
+import { FileNotice } from '@/components/states'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
@@ -173,6 +175,34 @@ function useKitPackageVersion(dir: string, wanted: boolean) {
     }
   }, [dir, wanted])
   return version
+}
+
+/** Shown over the frame when the kit could not open the file: which file, that it is unchanged, and the kit's reason. */
+function KitOpenFailure({ path, kitName, failure, onRetry }: { path: string; kitName: string; failure: string; onRetry: () => void }) {
+  const { t } = useTranslation('workspace')
+  return (
+    <FileNotice
+      title={t('kitEditor.openFailedTitle', { name: fileName(path) })}
+      message={t('kitEditor.openFailedMessage', { type: fileTypeName(path, kitName) })}
+      detail={failure}
+      data-testid="kit-open-failed"
+    >
+      <Button variant="outline" onClick={onRetry} data-testid="kit-open-retry">
+        {t('kitEditor.tryAgain')}
+      </Button>
+    </FileNotice>
+  )
+}
+
+/** The file's name, the last part of its workspace path. */
+function fileName(path: string) {
+  return path.split('/').pop() || path
+}
+
+/** How the notice names the file's type: its extension in capitals (PSD), or the kit's name. */
+function fileTypeName(path: string, kitName: string) {
+  const match = /\.([^./]+)$/.exec(fileName(path))
+  return match ? match[1].toUpperCase() : kitName
 }
 
 export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: EmbeddedKit; path: string; active: boolean; onOpenAgent?: () => void; preview?: KitPreview }) {
@@ -385,11 +415,17 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
       <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="min-h-0 w-full flex-1 border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
       {failure ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-background p-8" role="alert">
-          <div className="max-w-md rounded-xl border border-border bg-background p-6 text-center">
-            <p className="text-[15px] font-semibold text-foreground">{t('kitEditor.openFailed')}</p>
-            <p className="mt-2 text-[13px] text-muted-foreground">{failure}</p>
-          </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-background p-8">
+          <KitOpenFailure
+            path={path}
+            kitName={kitName}
+            failure={failure}
+            onRetry={() => {
+              // Opens the kit again in a new page.
+              setFailure(null)
+              setReopened((count) => count + 1)
+            }}
+          />
         </div>
       ) : connection ? null : (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-background text-sm text-muted-foreground" data-testid="kit-opening">

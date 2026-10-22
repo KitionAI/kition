@@ -184,6 +184,7 @@ vi.mock('./kitConnections', () => ({
 }))
 
 import { setReadOnlyDocuments } from '@/services/documentAccess'
+import { mountKit } from '../host/mountKit'
 import { KitFrame } from './KitFrame'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -236,6 +237,22 @@ afterEach(async () => {
 })
 
 describe('KitFrame', () => {
+  it('names the file it could not open, says it was not changed, and opens it again on request', async () => {
+    vi.mocked(mountKit).mockRejectedValueOnce(new Error('codec: unrecognized image format'))
+    await mount()
+    const notice = container.querySelector('[data-testid="kit-open-failed"]')
+    expect(notice?.getAttribute('role')).toBe('alert')
+    expect(notice?.querySelector('h2')?.textContent).toBe('Could not open Poster.test')
+    expect(notice?.textContent).toContain('The file may be damaged or not a valid TEST file. It has not been changed.')
+    expect(notice?.querySelector('[data-testid="file-notice-detail"]')?.textContent).toBe('codec: unrecognized image format')
+    expect(opened).toHaveLength(0)
+
+    await act(async () => (container.querySelector('[data-testid="kit-open-retry"]') as HTMLButtonElement).click())
+    await settle()
+    expect(container.querySelector('[data-testid="kit-open-failed"]')).toBeNull()
+    expect(opened).toHaveLength(1)
+  })
+
   it("has the kit forward Kition's palette key, Cmd+., and keep Cmd+K for itself", async () => {
     await mount()
     expect(opened[0].shortcuts).toContain('Cmd+.')

@@ -667,7 +667,9 @@
     "conflictsTitle": "Certaines modifications n’ont pas pu être fusionnées",
     "conflictsBody_one": "{{count}} modification faite par quelqu’un d’autre au même moment n’a pas pu être fusionnée. Elle est conservée dans le document jusqu’à sa résolution.",
     "conflictsBody_other": "{{count}} modifications faites par quelqu’un d’autre au même moment n’ont pas pu être fusionnées. Elles sont conservées dans le document jusqu’à leur résolution.",
-    "openFailed": "Impossible d'ouvrir ce fichier",
+    "openFailedTitle": "Impossible d'ouvrir {{name}}",
+    "openFailedMessage": "Le fichier est peut-être endommagé ou n'est pas un fichier {{type}} valide. Il n'a pas été modifié.",
+    "tryAgain": "Réessayer",
     "opening": "Ouverture…",
     "draft": {
       "title": "Brouillon de l'agent",

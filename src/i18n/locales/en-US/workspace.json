@@ -667,7 +667,9 @@
     "conflictsTitle": "Some edits could not be merged",
     "conflictsBody_one": "{{count}} edit made by someone else at the same time could not be merged. It is kept in the document until it is resolved.",
     "conflictsBody_other": "{{count}} edits made by someone else at the same time could not be merged. They are kept in the document until they are resolved.",
-    "openFailed": "Could not open this file",
+    "openFailedTitle": "Could not open {{name}}",
+    "openFailedMessage": "The file may be damaged or not a valid {{type}} file. It has not been changed.",
+    "tryAgain": "Try again",
     "opening": "Opening…",
     "draft": {
       "title": "Agent draft",

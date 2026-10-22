@@ -667,7 +667,9 @@
     "conflictsTitle": "部分编辑无法合并",
     "conflictsBody_one": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
     "conflictsBody_other": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
-    "openFailed": "无法打开这个文件",
+    "openFailedTitle": "无法打开 {{name}}",
+    "openFailedMessage": "文件可能已损坏，或不是有效的 {{type}} 文件。文件未被修改。",
+    "tryAgain": "重试",
     "opening": "正在打开…",
     "draft": {
       "title": "智能体草稿",
