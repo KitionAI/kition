@@ -50,10 +50,17 @@ if [[ -n "$in_kition" ]]; then
 else
   cp "$kit_repo/LICENSE" "$kit_repo/NOTICE" "$out/"
 fi
-kit_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$kit_repo/kit.json','utf8')).id)")"
-version="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$kit_repo/kit.json','utf8')).version)")"
 commit="$(git -C "$kit_repo" rev-parse HEAD)"
-printf '{ "kitId": "%s", "version": "%s", "commit": "%s", "entry": "index.html", "protocol": "kition-kit-ui/1" }\n' "$kit_id" "$version" "$commit" > "$out/kit-ui.json"
+# The package's identity, and its brand color for scripts/check-kit-brands.mjs.
+node -e '
+const fs = require("fs")
+const [manifestFile, commit, outFile] = process.argv.slice(1)
+const kit = JSON.parse(fs.readFileSync(manifestFile, "utf8"))
+const pkg = { kitId: kit.id, version: kit.version, commit, entry: "index.html", protocol: "kition-kit-ui/1", ...(kit.ui?.brand ? { brand: kit.ui.brand } : {}) }
+fs.writeFileSync(outFile, JSON.stringify(pkg) + "\n")
+' "$kit_repo/kit.json" "$commit" "$out/kit-ui.json"
+kit_id="$(node -p "require('$out/kit-ui.json').kitId")"
+version="$(node -p "require('$out/kit-ui.json').version")"
 # Marks the package as a local build, so scripts/fetch-kits.mjs never takes it for the published
 # one of the same version (docs/kit-sdk.md, section 4b). publish-kit.sh leaves it out of the .tgz.
 sdk_commit="$(git -C "${KITION_SDK_REPO:-$kit_repo/../kition-sdk}" rev-parse HEAD 2>/dev/null || echo unknown)"

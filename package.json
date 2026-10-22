@@ -44,6 +44,7 @@
     "check:knip": "node scripts/check-knip-baseline.mjs",
     "check:knip:update": "node scripts/check-knip-baseline.mjs --update",
     "check:kit-sdks": "node scripts/check-kit-sdk.mjs --all",
+    "check:kit-brands": "node scripts/check-kit-brands.mjs",
     "check:deps": "depcruise --config tooling/dependency-cruiser.cjs --ignore-known tooling/dependency-cruiser.known.json --output-type err src packages",
     "check:deps:update": "depcruise --config tooling/dependency-cruiser.cjs --baseline tooling/dependency-cruiser.known.json --baseline-mode shrink-only src packages",
     "check:e2e-coverage": "node scripts/check-e2e-coverage.mjs",
