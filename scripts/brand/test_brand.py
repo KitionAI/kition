@@ -1,5 +1,6 @@
 """Unit tests for the brand generator: python -m unittest discover scripts/brand"""
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -8,8 +9,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import kit_icons  # noqa: E402
 import mark  # noqa: E402
-
-import re
 
 HEX = re.compile(r'^#[0-9a-f]{6}$')
 
@@ -62,7 +61,7 @@ class KitIconTests(unittest.TestCase):
             self.assertTrue(svg.startswith('<svg'), kit.id)
             self.assertNotIn('<text', svg, kit.id)
             self.assertIn(f'fill="{kit_icons.tint(kit.hue, .16)}"', svg, kit.id)
-            self.assertIn(kit.hue, svg, kit.id)
+            self.assertIn(kit.hue, kit_icons.glyph(kit), kit.id)
             self.assertNotIn('filter', svg, kit.id)
             self.assertNotIn('gloss', svg, kit.id)
 

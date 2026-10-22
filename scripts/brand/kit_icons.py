@@ -11,7 +11,7 @@ class Kit:
     name: str
     # The icon's color.
     hue: str
-    # `ui.brand` in kit.json: the primary color in each scheme (white text on light, black on dark).
+    # The primary color in each scheme: `ui.brand` in kit.json (white text on light, black on dark).
     brand_light: str
     brand_dark: str
 
@@ -36,7 +36,7 @@ KITS = [
 # The kit that declares each palette entry as its `ui.brand`; Design Studio is Kition's own.
 KIT_IDS = {kit.id: f'kit.{kit.id}' for kit in KITS} | {'layout': 'kit.design', 'design': None}
 
-AC = '#fff'
+_WHITE = '#fff'
 
 
 def tint(colour, amount):
@@ -57,7 +57,7 @@ def _page(fg):
 
 def glyph(kit):
     """The kit's glyph in its hue, with white details, for the soft tile."""
-    fg, ac = kit.hue, AC
+    fg, ac = kit.hue, _WHITE
     full = f'fill="{fg}"'
     back = f'fill="{fg}" fill-opacity=".4"'
     if kit.id == 'document':
@@ -149,7 +149,6 @@ def icon_svg(kit):
 # coloured shape with 1-2 px white cut-outs; every edge sits on a whole pixel so 1x screens stay crisp.
 _PAGE = 'M3 1H10L14 5V14Q14 15 13 15H3Q2 15 2 14V2Q2 1 3 1Z'
 _FOLD = 'M10 1V4Q10 5 11 5H14Z'
-_WHITE = '#fff'
 
 
 def _p(d, fill, opacity=None):
@@ -171,8 +170,9 @@ def small_glyph(kit):
     if kit.id == 'pdf':
         return page + _r(4, 8, 8, 4, w) + _r(5, 9, 6, 2, d)
     if kit.id == 'layout':
-        return (_p('M3 1H13Q14 1 14 2V14Q14 15 13 15H3Q2 15 2 14V2Q2 1 3 1Z', c) + _r(4, 3, 8, 4, w)
-                + _r(4, 9, 3, 1, w) + _r(9, 9, 3, 1, w) + _r(4, 12, 3, 1, w) + _r(9, 12, 3, 1, w))
+        # A laid-out page: a headline, a picture across the top, and two columns of text.
+        return (page + _r(4, 3, 5, 1, w) + _r(4, 6, 8, 3, w)
+                + _r(4, 10, 3, 1, w) + _r(9, 10, 3, 1, w) + _r(4, 12, 3, 1, w) + _r(9, 12, 3, 1, w))
     if kit.id == 'table':
         return (_r(1, 2, 14, 12, c, rx=2) + _r(2, 6, 12, 7, w) + _r(2, 8, 12, 1, c) + _r(2, 10, 12, 1, c)
                 + _r(5, 6, 1, 7, c))
