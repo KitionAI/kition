@@ -51,8 +51,10 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Word import
   stays P: theme colours and run formatting of shapes are not modelled; colours
   are RGB.
-  Known gap: Slide's `drawing.*` ids are each replica's own shape ids, not the
-  stable ids DR2 requires.
+  Ids (DR2): Word's and Sheet's are the file's drawing ids, replicated, so
+  they survive both replicas and reopening a file. Slide's are the shapes'
+  replica objects: the same on every replica and across reopening with the
+  replica, but new when a PPTX is opened without one (DR2's SHOULD).
 - **Slide:** full DrawingML model (`Geom` preset and custom, theme style
   references, effects, text bodies). Engine tools select, move, resize,
   rotate, and adjust. KDM keeps the frame, name, and text paragraphs as their

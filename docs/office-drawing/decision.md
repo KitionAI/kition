@@ -99,8 +99,9 @@ change goes through the kit's transaction, undo history, and KDM writer. No
 second undo stack exists.
 
 Agents and editors use the same commands. The Kit Harness Protocol set
-`KitDrawing 1.0` (drafted in the kit-standard repository as
-`spec/sets/drawing.md`) names them `drawing.insert`, `drawing.delete`,
+`KitDrawing 1.0` (a draft set of the Kition kit platform, in the Kition SDK's
+`docs/platform/sets/drawing.md` since KHP 2.0 narrowed the Kit Harness
+Protocol to the AI layer) names them `drawing.insert`, `drawing.delete`,
 `drawing.transform`, `drawing.format`, `drawing.text`, and `drawing.describe`.
 Existing kit commands (`insert.shape`, `shape.fill`, `arrange.rotate`, and so
 on) stay as aliases until Phase 4.
