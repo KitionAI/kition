@@ -233,10 +233,12 @@ function createRank(id: string) {
   return rank === -1 ? CREATE_ORDER.length : rank
 }
 
-/** Kition's own formats (`.kitionslide`, `.kitable`, …) say nothing to a
+/** Formats other applications open. Kition's own (`.kitionslide`, `.kdesign`, …) say nothing to a
  *  reader; portable ones (`.docx`, `.psd`) tell Word from Document. */
+const PORTABLE_EXTENSIONS = new Set(['md', 'docx', 'xlsx', 'pptx', 'pdf', 'psd', 'dxf'])
+
 function portableExtension(extension: string) {
-  return /^kit/.test(extension) ? undefined : extension
+  return PORTABLE_EXTENSIONS.has(extension) ? extension : undefined
 }
 
 function resolveWorkspaceCreateIcon(format: DocumentCreateFormat) {

@@ -106,7 +106,7 @@ pub const KITS: &[KitDefinition] = &[
         binary_env: "KITION_KIT_FILM_BINARY",
         extensions: &["kitionfilm"],
         creates: &[],
-        base_name: "Untitled video",
+        base_name: "Untitled film",
         embeds: false,
         exports: &["mp4"],
         agent: KitAgent {
@@ -206,7 +206,7 @@ pub const KITS: &[KitDefinition] = &[
         binary_env: "KITION_KIT_SLIDE_BINARY",
         extensions: &["kitionslide", "pptx"],
         creates: &[],
-        base_name: "Untitled slides",
+        base_name: "Untitled slide",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -226,7 +226,7 @@ pub const KITS: &[KitDefinition] = &[
         binary_env: "KITION_KIT_WORD_BINARY",
         extensions: &["docx"],
         creates: &[],
-        base_name: "Untitled Word document",
+        base_name: "Untitled document",
         embeds: false,
         exports: &[],
         agent: KitAgent {
