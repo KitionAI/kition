@@ -8,6 +8,7 @@ import './app.css'
 import { App } from './App'
 import { createBoardI18n } from './i18n'
 import { CATALOGS } from './strings'
+import manifest from '../../kit.json'
 
 const root = createRoot(document.getElementById('root')!)
 
@@ -17,7 +18,7 @@ const alone = window.setTimeout(() => {
   root.render(<div className="kui-alone">{t('noHost')}</div>)
 }, 3000)
 
-void connectHost({ id: 'kit.board', version: '0.1.0', capabilities: ['ai'] }).then(async (host) => {
+void connectHost({ id: 'kit.board', version: '0.1.0', capabilities: ['ai'], brand: manifest.ui.brand }).then(async (host) => {
   window.clearTimeout(alone)
   const i18n = await createBoardI18n(host.init.locale)
   // No StrictMode: its doubled effects would open the document twice, in two engine workers.

@@ -34,7 +34,8 @@
     "mode": "embedded",
     "entry": "index.html",
     "menus": ["Edit"],
-    "layout": "pages"
+    "layout": "pages",
+    "brand": { "light": "#5645d4", "dark": "#8b7cf0" }
   },
   "model": {
     "schema": "model/schema.json",

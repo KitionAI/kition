@@ -34,7 +34,8 @@
     "mode": "embedded",
     "entry": "index.html",
     "menus": ["Edit"],
-    "layout": "canvas"
+    "layout": "canvas",
+    "brand": { "light": "#966e00", "dark": "#ffd04d" }
   },
   "model": {
     "schema": "model/schema.json",
