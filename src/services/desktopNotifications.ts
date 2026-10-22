@@ -9,6 +9,7 @@ import {
   type DesktopLifecycleEvent,
 } from '@/api/desktopNotifications'
 import { resolveApiURL } from '@/services/desktop'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 const defaultPolicy: DesktopNotificationPolicy = {
   systemNotificationsEnabled: true,
@@ -112,7 +113,7 @@ export async function dispatchSessionStarted(): Promise<boolean> {
 export function dispatchOnQuit(): void {
   try {
     const url = resolveApiURL('/v1/desktop/hooks/lifecycle')
-    void fetch(url, {
+    void runtimeFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ event: 'on_quit' }),

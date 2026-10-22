@@ -56,6 +56,15 @@ api_reset_url="${KITION_E2E_API_RESET_URL:-${api_origin}/api/v1/e2e/reset}"
 tmp_config=""
 tmp_runtime_dir=""
 runtime_binary=""
+# The runtime refuses requests without its API token, which it writes to this file when it starts
+# (contracts/runtime/transport.schema.json). An API this script reuses names its own file here.
+api_token_file="${KITION_API_TOKEN_FILE:-$APP_DIR/data/api-token}"
+
+api_curl() {
+  local token=""
+  [[ -f "$api_token_file" ]] && token="$(cat "$api_token_file")"
+  curl -H "Kition-Token: $token" "$@"
+}
 
 api_is_healthy() {
   curl -fsS "$api_health_url" >/dev/null 2>&1
@@ -88,7 +97,7 @@ set_api_port() {
 
 persistent_api_uses_test_workspace() {
   local runtime_json
-  runtime_json="$(curl -fsS "${api_origin}/desktop/runtime" 2>/dev/null || true)"
+  runtime_json="$(api_curl -fsS "${api_origin}/desktop/runtime" 2>/dev/null || true)"
   local expected_workspace="$APP_DIR/test-workspace-desktop"
   local expected_sqlite="$APP_DIR/data/desktop-e2e.db"
   [[ "$runtime_json" == *"\"workspace_dir\":\"$expected_workspace\""* && "$runtime_json" == *"\"sqlite_path\":\"$expected_sqlite\""* ]]
@@ -120,6 +129,7 @@ make_temp_config() {
 
   tmp_runtime_dir="$(mktemp -d "${TMPDIR:-/tmp}/kition-workflow-e2e.XXXXXX")"
   tmp_config="$tmp_runtime_dir/desktop-e2e.toml"
+  api_token_file="$tmp_runtime_dir/api-token"
   awk -v port="$api_port" -v sqlite_path="$tmp_runtime_dir/desktop-e2e.db" -v upload_dir="$tmp_runtime_dir/uploads" -v workspace_dir="$tmp_runtime_dir/workspace" '
     BEGIN { section="" }
     /^[[:space:]]*\[/ {
@@ -181,7 +191,7 @@ else
   fi
   (
     cd "$APP_DIR"
-    exec "$runtime_binary" --config "$tmp_config" all
+    KITION_API_TOKEN_FILE="$api_token_file" exec "$runtime_binary" --config "$tmp_config" all
   ) >"$API_LOG_FILE" 2>&1 &
   api_pid="$!"
   api_started=1
@@ -217,8 +227,9 @@ cleanup() {
 trap cleanup EXIT
 
 echo "[inspect-workflow] resetting real backend fixtures"
-curl -fsS -X POST "$api_reset_url" >/dev/null
+api_curl -fsS -X POST "$api_reset_url" >/dev/null
 export KITION_API_TARGET="$api_origin"
+export KITION_API_TOKEN_FILE="$api_token_file"
 export KITION_E2E_API_BASE_URL="${api_origin}/api/v1"
 export KITION_WORKFLOW_E2E_KEEP_ARTIFACTS="${KITION_WORKFLOW_E2E_KEEP_ARTIFACTS:-$PERSIST_WORKSPACE}"
 

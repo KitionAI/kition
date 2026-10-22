@@ -10,18 +10,19 @@ import {
   type DocumentCheckpointInput,
   type KitReplicaMeta,
 } from '@/services/desktop'
-import { resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
+import { resolveKitFilesRootURL, resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { stampFromHeaders, type KitHost } from '../sdk/kitHost'
 import type { StoredReplica } from '../host/mountKit'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 async function readFile(url: string, path: string) {
-  const response = await fetch(url, { cache: 'no-store' })
+  const response = await runtimeFetch(url, { cache: 'no-store' })
   if (!response.ok) throw new Error(`could not read ${path} (${response.status})`)
   return { bytes: await response.arrayBuffer(), stamp: stampFromHeaders(response.headers) }
 }
 
 async function stampFile(url: string) {
-  const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+  const response = await runtimeFetch(url, { method: 'HEAD', cache: 'no-store' })
   return response.ok ? stampFromHeaders(response.headers) : null
 }
 
@@ -37,9 +38,10 @@ export const KITION_KIT_HOST: KitHost = {
   write: async (path, bytes) => {
     await writeKitFile(path, bytes)
   },
-  // The kit file server answers ranged reads; workers need an absolute URL.
+  // The kit file server answers ranged reads; workers need an absolute URL. The root is signed
+  // for the kit file service only (a kit is never given the API token).
   lend: (path) => {
-    const root = new URL(resolveKitFileURL('_').replace(/_$/, ''), window.location.href).href
+    const root = new URL(resolveKitFilesRootURL(), window.location.href).href
     return { root, folder: path.split('/').filter(Boolean).slice(0, -1).join('/') }
   },
 }

@@ -29,6 +29,7 @@ import type {
   KitsDraftMergeResult,
   KitsHeadlessDraft,
 } from './generated/kits'
+import { runtimeFetch, signRuntimeURL } from '@/services/runtimeAuth'
 
 export type { KitsDraftComparison, KitsFileStat, KitsGrantSessionView, KitsHeadlessDraft }
 export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDocumentApplyParams, KitsBridgeDocumentApplyResult, KitsBridgeDocumentReadResult, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep }
@@ -103,7 +104,7 @@ export async function listKitFolder(session: string, handle: string) {
 export async function readKitFile(session: string, handle: string, { offset = 0, length }: { offset?: number; length?: number } = {}) {
   const query = new URLSearchParams({ session, offset: String(offset) })
   if (length !== undefined) query.set('length', String(length))
-  const response = await fetch(`${resolveApiURL(`/v1/kits/grants/${encodeURIComponent(handle)}/content`)}?${query}`)
+  const response = await runtimeFetch(`${resolveApiURL(`/v1/kits/grants/${encodeURIComponent(handle)}/content`)}?${query}`)
   if (!response.ok) {
     const data = await response.json().catch(() => undefined)
     throw Object.assign(new Error((data as { message?: string } | undefined)?.message ?? `Request failed (${response.status})`), { response: { status: response.status, data } })
@@ -131,7 +132,8 @@ export async function releaseKitFiles(session: string, handles: string[]) {
 
 /** The bridge stream: the runtime's requests to this window's kit editors and open documents. */
 export function kitBridgeURL() {
-  return resolveApiURL('/v1/kits/bridge')
+  // `EventSource` sends no header: the stream's URL is signed (runtimeAuth.ts).
+  return signRuntimeURL(resolveApiURL('/v1/kits/bridge'))
 }
 
 /** An answer to a bridge request, or a `kit.changed` or `documents.open` notification, from this window. */

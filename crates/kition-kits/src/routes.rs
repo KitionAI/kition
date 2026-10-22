@@ -478,9 +478,11 @@ fn file_error(error: crate::grants::FileError) -> AppError {
 }
 
 /// Who calls a grant route: every grant route takes it, so it is the one place a caller check
-/// lives. Today it is the person a session's handles are bound to (FA1). The kit frame isolation
-/// work (a per-kit origin and a per-launch API token) adds the caller's kit origin here, checked
-/// against the session's kit in `GrantStore::with_session`.
+/// lives. It is the person a session's handles are bound to (FA1), and the call must have carried
+/// this launch's API token (`kition_http::gate`): a signed URL or an open route never reaches a
+/// grant, even if a router were mounted without the gate. Kit frame isolation's second phase (a
+/// per-kit origin) adds the caller's kit origin here, checked against the session's kit in
+/// `GrantStore::with_session`.
 struct GrantCaller {
     principal: String,
 }
@@ -492,6 +494,11 @@ impl axum::extract::FromRequestParts<KitsState> for GrantCaller {
         parts: &mut http::request::Parts,
         state: &KitsState,
     ) -> Result<Self, Self::Rejection> {
+        if parts.extensions.get::<kition_http::gate::Access>()
+            != Some(&kition_http::gate::Access::Token)
+        {
+            return Err(AppError::localized_unauthorized("auth.unauthorized"));
+        }
         let user = <CurrentUser as axum::extract::FromRequestParts<KitsState>>::from_request_parts(
             parts, state,
         )

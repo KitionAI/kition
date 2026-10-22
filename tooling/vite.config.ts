@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import wasm from 'vite-plugin-wasm'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import type { ClientRequest, IncomingMessage } from 'node:http'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -43,6 +44,36 @@ function readAnalyticsEndpoint(): string {
     return url.protocol === 'https:' || (url.protocol === 'http:' && loopback) ? url.toString() : ''
   } catch {
     return ''
+  }
+}
+
+/**
+ * The development server's proxy to a runtime started on its own (`KITION_API_TARGET`). The
+ * runtime refuses requests without its API token (contracts/runtime/transport.schema.json), and
+ * the page in the web build has none: the proxy adds it, read from the file the runtime writes
+ * (`KITION_API_TOKEN_FILE`), to the page's own requests only. A request another site's page sends
+ * through this server (`Sec-Fetch-Site` other than `same-origin`) goes on without it and is
+ * refused. The `Origin` header is dropped: the runtime allows no development origin of its own.
+ */
+function runtimeProxy() {
+  return {
+    target: process.env.KITION_API_TARGET || 'http://127.0.0.1:18101',
+    changeOrigin: true,
+    secure: false,
+    configure: (proxy: { on: (event: 'proxyReq', listener: (request: ClientRequest, incoming: IncomingMessage) => void) => void }) => {
+      proxy.on('proxyReq', (request, incoming) => {
+        request.removeHeader('origin')
+        const site = incoming.headers['sec-fetch-site']
+        if (site !== undefined && site !== 'same-origin') return
+        const tokenFile = process.env.KITION_API_TOKEN_FILE
+        if (!tokenFile) return
+        try {
+          request.setHeader('Kition-Token', readFileSync(tokenFile, 'utf8').trim())
+        } catch {
+          // No runtime has written its token yet: the request goes on without it and is refused.
+        }
+      })
+    },
   }
 }
 
@@ -105,16 +136,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
     proxy: {
-      '/api': {
-        target: process.env.KITION_API_TARGET || 'http://127.0.0.1:18101',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/uploads': {
-        target: process.env.KITION_API_TARGET || 'http://127.0.0.1:18101',
-        changeOrigin: true,
-        secure: false,
-      },
+      '/api': runtimeProxy(),
+      '/uploads': runtimeProxy(),
     },
   },
   build: {

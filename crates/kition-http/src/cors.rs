@@ -1,14 +1,18 @@
 //! Request origin checks. The API only answers requests addressed to a
-//! loopback host, which defeats DNS rebinding. Loopback and desktop-app
-//! origins are allowed with credentials, other cross-origin requests get
-//! `403`, and preflights end with `204` before any other middleware runs.
+//! loopback host, which defeats DNS rebinding. The desktop app's renderer,
+//! and the exact development origins a [`CorsPolicy`] names, are allowed with
+//! credentials; every other cross-origin request gets `403`, other pages on
+//! this machine (`http://localhost:<any port>`) among them, so no other page
+//! can read an answer or send the API token. Preflights end with `204` before
+//! any other middleware runs, the API token gate included.
 
-use axum::extract::Request;
+use std::sync::Arc;
+
+use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 
-const ALLOWED_ORIGINS: [&str; 2] = ["http://localhost:34115", "http://127.0.0.1:34115"];
 /// The desktop app's renderer: `tauri://localhost` on macOS and Linux, and
 /// `tauri.localhost` on Windows.
 const DESKTOP_SHELL_ORIGINS: [&str; 3] = [
@@ -21,18 +25,34 @@ const ALLOW_METHODS: &str = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 // `Kition-Session` tags a data-document request with this window's session so the
 // runtime can skip the origin's own `table/changed` events; `Kition-Origin` marks
 // template seeding requests that run before any window session exists.
-const ALLOW_HEADERS: &str =
-    "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Session,Kition-Origin";
+// `Kition-Token` is the per-launch API token (`crate::gate`).
+const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Session,Kition-Origin,Kition-Token";
 // Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`. A read
 // through a file grant (`/v1/kits/grants/{handle}/content`) names the whole size in
 // `Kition-File-Size`.
 const EXPOSE_HEADERS: &str = "ETag,Content-Range,Accept-Ranges,Kition-File-Size";
 
-fn origin_allowed(origin: &str) -> bool {
-    ALLOWED_ORIGINS.contains(&origin)
-        || DESKTOP_SHELL_ORIGINS.contains(&origin)
-        || origin.starts_with("http://localhost:")
-        || origin.starts_with("http://127.0.0.1:")
+/// The origins allowed besides the desktop renderer: in development, the dev server the renderer
+/// is served from (`tauri dev`), named exactly.
+#[derive(Clone, Default)]
+pub struct CorsPolicy {
+    extra: Arc<[String]>,
+}
+
+impl CorsPolicy {
+    pub fn new(extra_origins: impl IntoIterator<Item = String>) -> Self {
+        Self {
+            extra: extra_origins
+                .into_iter()
+                .map(|origin| origin.trim().trim_end_matches('/').to_owned())
+                .filter(|origin| !origin.is_empty())
+                .collect(),
+        }
+    }
+
+    fn allows(&self, origin: &str) -> bool {
+        DESKTOP_SHELL_ORIGINS.contains(&origin) || self.extra.iter().any(|extra| extra == origin)
+    }
 }
 
 /// Whether a `Host` header names this machine.
@@ -49,7 +69,7 @@ fn is_loopback_host(host: &str) -> bool {
     )
 }
 
-pub async fn cors(request: Request, next: Next) -> Response {
+pub async fn cors(State(policy): State<CorsPolicy>, request: Request, next: Next) -> Response {
     let host_allowed = request
         .headers()
         .get(header::HOST)
@@ -75,7 +95,7 @@ pub async fn cors(request: Request, next: Next) -> Response {
     if origin == format!("http://{host}") || origin == format!("https://{host}") {
         return next.run(request).await;
     }
-    if !origin_allowed(&origin) {
+    if !policy.allows(&origin) {
         return StatusCode::FORBIDDEN.into_response();
     }
     let Ok(origin_value) = HeaderValue::from_str(&origin) else {
@@ -138,9 +158,15 @@ mod tests {
     use super::*;
 
     fn app() -> Router {
-        Router::new()
-            .route("/x", get(|| async { "ok" }))
-            .layer(axum::middleware::from_fn(cors))
+        Router::new().route("/x", get(|| async { "ok" })).layer(
+            axum::middleware::from_fn_with_state(
+                CorsPolicy::new([
+                    "http://localhost:5173".to_owned(),
+                    "http://127.0.0.1:9000/".to_owned(),
+                ]),
+                cors,
+            ),
+        )
     }
 
     async fn send(request: http::request::Builder) -> Response {
@@ -199,6 +225,35 @@ mod tests {
                 .any(|name| name == "Kition-Session")
         );
         assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Origin"));
+        assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Token"));
+    }
+
+    #[tokio::test]
+    async fn other_pages_on_this_machine_are_forbidden() {
+        // A page in the person's browser served from another local port, or the web, can neither
+        // read an answer nor pass a preflight to send the API token.
+        for origin in [
+            "http://localhost:3001",
+            "http://127.0.0.1:18102",
+            "http://localhost:34115",
+            "https://example.com",
+            "null",
+        ] {
+            for request in [
+                Request::get("/x").header("Origin", origin),
+                Request::options("/x")
+                    .header("Origin", origin)
+                    .header("Access-Control-Request-Method", "POST")
+                    .header("Access-Control-Request-Headers", "kition-token"),
+            ] {
+                let response = send(request.header("Host", "127.0.0.1:18101")).await;
+                assert_eq!(response.status(), StatusCode::FORBIDDEN, "{origin}");
+                assert!(
+                    header_text(&response, "access-control-allow-origin").is_empty(),
+                    "{origin}"
+                );
+            }
+        }
     }
 
     #[tokio::test]

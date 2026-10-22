@@ -5,6 +5,7 @@ import {
   WORKFLOW_ENABLED_CHANGED_EVENT,
 } from '@/features/workflow/lib/workflowEvents'
 import { resolveApiURL } from '@/services/desktop'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 export { WORKFLOW_ENABLED_CHANGED_EVENT } from '@/features/workflow/lib/workflowEvents'
 
@@ -55,7 +56,7 @@ export function useWorkflowEnabled(workflowId: string | null, initialEnabled = f
     setStatus('saving')
     setError(null)
     try {
-      const res = await fetch(resolveApiURL(`/v1/workflows/${workflowId}/enabled`), {
+      const res = await runtimeFetch(resolveApiURL(`/v1/workflows/${workflowId}/enabled`), {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ enabled: next }),

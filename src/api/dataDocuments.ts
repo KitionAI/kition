@@ -41,6 +41,7 @@ import type {
   DataDocumentsTransactTransactResponse,
   DataDocumentsTransactUndoRedoResponse,
 } from './generated/data-documents-transact'
+import { runtimeFetch, signRuntimeURL } from '@/services/runtimeAuth'
 
 /** One step of a table transaction (contracts/runtime/data-documents-transact.schema.json). */
 export type TableOp = DataDocumentsTransactOp
@@ -344,12 +345,13 @@ export function uploadDataAttachment(documentId: number, tableId: number, file: 
  * file (`kition-blob:<sha256>`), served by the runtime.
  */
 export function dataDocumentBlobURL(documentId: number, hash: string) {
-  return resolveApiURL(`/v1/data-documents/${documentId}/blobs/${encodeURIComponent(hash)}`)
+  // An `<img>` source: signed for this blob, since it carries no header (runtimeAuth.ts).
+  return signRuntimeURL(resolveApiURL(`/v1/data-documents/${documentId}/blobs/${encodeURIComponent(hash)}`))
 }
 
 /** The bytes of the blob `hash` of the document `documentId`, and their type. */
 export async function readDataDocumentBlob(documentId: number, hash: string) {
-  const response = await fetch(dataDocumentBlobURL(documentId, hash))
+  const response = await runtimeFetch(dataDocumentBlobURL(documentId, hash))
   if (!response.ok) throw new Error(`The attachment could not be read (${response.status})`)
   return {
     data: new Uint8Array(await response.arrayBuffer()),

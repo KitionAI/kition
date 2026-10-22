@@ -31,7 +31,9 @@ fn saved_theme(desktop: &Desktop) -> String {
         .unwrap_or_else(|| "light".to_owned())
 }
 
-/// What the renderer reads before any module runs.
+/// What the renderer reads before any module runs. The main frame only (Tauri's
+/// `initialization_script`), never a kit's frame. The API token is a separate, hidden property
+/// the renderer's `runtimeAuth.ts` takes and deletes as it loads, so it is not left on `window`.
 fn bootstrap_script(desktop: &Desktop) -> String {
     let env = desktop.env();
     let globals = json!({
@@ -39,7 +41,11 @@ fn bootstrap_script(desktop: &Desktop) -> String {
         "backendOrigin": env.backend_url,
         "platform": env.platform,
     });
-    format!("window.__KITION_DESKTOP__ = Object.freeze({globals});")
+    let token = json!(desktop.supervisor.api_token());
+    format!(
+        "window.__KITION_DESKTOP__ = Object.freeze({globals});\n\
+         Object.defineProperty(window, '__KITION_API_TOKEN__', {{ value: {token}, configurable: true, enumerable: false, writable: false }});"
+    )
 }
 
 fn open_externally<R: Runtime>(app: &AppHandle<R>, url: &Url) {

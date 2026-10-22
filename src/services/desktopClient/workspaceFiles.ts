@@ -4,6 +4,7 @@
 import { type CopyDocumentHtmlRequest, type SavePdfFileRequest, type WorkspaceAsset, type WorkspaceFileChooseResponse, type WorkspaceFileImportRequest, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
 import { ImageImportError, imageImportFailure } from '@kition/document-editor'
+import { runtimeFetch } from '../runtimeAuth'
 
 export async function openWorkspaceFile(path: string) {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
@@ -75,7 +76,7 @@ export async function saveWorkspaceAssetFromBlobURL(options: {
   blobURL: string
   index?: number
 }): Promise<WorkspaceAsset> {
-  const response = await fetch(options.blobURL)
+  const response = await runtimeFetch(options.blobURL)
   if (!response.ok) {
     throw new Error(`image blob read failed: ${response.status}`)
   }
@@ -120,7 +121,7 @@ export async function importWorkspaceImageFromBlobURL(options: {
     if (!imported?.imported_path) throw new ImageImportError('write')
     return { importedPath: imported.imported_path, relativePath: imported.imported_path }
   }
-  const response = await fetch(options.blobURL, { referrerPolicy: 'no-referrer' })
+  const response = await runtimeFetch(options.blobURL, { referrerPolicy: 'no-referrer' })
   if (!response.ok) {
     throw new Error(`image blob read failed: ${response.status}`)
   }
@@ -328,7 +329,7 @@ export async function copyImageToClipboard(url: string) {
     try {
       return await bridge.CopyImage({ url: source })
     } catch {
-      const response = await fetch(source)
+      const response = await runtimeFetch(source)
       if (!response.ok) throw new Error(`image download failed: ${response.status}`)
       const png = await imageBlobToPng(await response.blob())
       return bridge.CopyImage({ url: await blobToDataURL(png) })
@@ -338,7 +339,7 @@ export async function copyImageToClipboard(url: string) {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
     throw new Error('image clipboard is unavailable')
   }
-  const response = await fetch(source)
+  const response = await runtimeFetch(source)
   if (!response.ok) throw new Error(`image download failed: ${response.status}`)
   const png = await imageBlobToPng(await response.blob())
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
@@ -346,7 +347,7 @@ export async function copyImageToClipboard(url: string) {
 }
 
 export async function saveRemoteFile(url: string, defaultFilename: string, dialogTitle: string) {
-  const response = await fetch(url)
+  const response = await runtimeFetch(url)
   if (!response.ok) {
     throw new Error(`download failed: ${response.status}`)
   }

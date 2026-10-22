@@ -19,6 +19,12 @@ export type DesktopHostOptions = {
   root?: string
   platform?: 'darwin' | 'win32' | 'linux'
   backendOrigin?: string
+  /**
+   * The launch's API token the shell's bootstrap script hands the renderer (as
+   * src-tauri/src/window.rs does); the renderer then sends it to the runtime and signs file URLs
+   * with it (src/services/runtimeAuth.ts). Off unless a spec sets it.
+   */
+  apiToken?: string
   secureValues?: Record<string, string>
   /** Replaces the built-in answer for a command. */
   overrides?: Record<string, Handler>
@@ -634,7 +640,9 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     return handler(args || {})
   })
 
-  await page.addInitScript(({ platform: hostPlatform, backendOrigin: origin }) => {
+  await page.addInitScript(({ platform: hostPlatform, backendOrigin: origin, apiToken }) => {
+    // The token goes to the main frame only, like Tauri's `initialization_script`.
+    if (apiToken && window.top === window) Object.defineProperty(window, '__KITION_API_TOKEN__', { value: apiToken, configurable: true, enumerable: false, writable: false })
     type Callback = (payload: unknown) => void
     const callbacks = new Map<number, Callback>()
     const listeners = new Map<string, number[]>()
@@ -672,7 +680,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     target.__kitionDesktopEmit = (event: string, payload: unknown) => {
       for (const id of listeners.get(event) || []) callbacks.get(id)?.({ event, id, payload })
     }
-  }, { platform, backendOrigin })
+  }, { platform, backendOrigin, apiToken: options.apiToken || '' })
 
   return host
 }

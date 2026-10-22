@@ -1,4 +1,4 @@
-import { isDesktopRuntime, resolvePublicFileURL } from './desktop'
+import { isDesktopRuntime, resolvePublicFileURL, resolvePublicFolderURL } from './desktop'
 
 const workspaceRootImageFolders = new Set(['agent', 'attachments', '.kition'])
 
@@ -93,6 +93,14 @@ export function resolveWorkspaceFileURL(path: string) {
  */
 export function resolveKitFileURL(path: string) {
   return resolveFileServiceURL('/kit-files/', path)
+}
+
+/**
+ * The root under which a kit's engine reads lent files (`<root><path>`): the kit file service,
+ * signed for that folder only, so the kit is never handed the runtime's API token.
+ */
+export function resolveKitFilesRootURL() {
+  return resolvePublicFolderURL('/kit-files/')
 }
 
 function resolveFileServiceURL(service: string, path: string) {

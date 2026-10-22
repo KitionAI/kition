@@ -15,15 +15,19 @@ kition-core = { workspace = true }
 kition-store = { workspace = true }
 
 axum = { workspace = true }
+hex = { workspace = true }
 http = { workspace = true }
 jsonwebtoken = { workspace = true }
+rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
 http-body-util = { workspace = true }
+jsonschema = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }

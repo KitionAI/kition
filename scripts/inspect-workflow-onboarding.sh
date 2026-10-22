@@ -11,6 +11,8 @@ API_PORT="${KITION_ONBOARDING_E2E_API_PORT:-18141}"
 API_ORIGIN="http://127.0.0.1:${API_PORT}"
 UI_PORT="${KITION_ONBOARDING_E2E_UI_PORT:-31141}"
 CONFIG_FILE="$RUNTIME_DIR/desktop-e2e.toml"
+# Where the runtime writes its API token; the dev server's proxy and the spec's helpers read it.
+export KITION_API_TOKEN_FILE="$RUNTIME_DIR/api-token"
 RUNTIME_CONFIG_TEMPLATE="$APP_DIR/crates/kition-api/e2e.toml"
 API_PID=""
 

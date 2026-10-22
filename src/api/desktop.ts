@@ -2,6 +2,7 @@ import type { ApiTimestamp } from '@/types'
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
 import type { DiscoverProviderModelsPayload, DiscoverProviderModelsResponse } from '@/types/desktopSettings'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 export function discoverProviderModels(data: DiscoverProviderModelsPayload) {
   return request
@@ -105,7 +106,7 @@ export type DesktopBootstrapEnvelope<T> = {
 }
 
 async function postBootstrap<T>(path: string, payload: unknown): Promise<DesktopBootstrapEnvelope<T>> {
-  const response = await fetch(resolveApiURL(path), {
+  const response = await runtimeFetch(resolveApiURL(path), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

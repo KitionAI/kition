@@ -24,6 +24,7 @@ tauri-build = { version = "2", features = [] }
 kition-api = { workspace = true }
 kition-kits = { workspace = true }
 kition-core = { workspace = true }
+kition-http = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tauri = { version = "2.12", features = ["devtools", "image-png", "macos-proxy"] }

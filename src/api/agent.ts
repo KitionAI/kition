@@ -19,6 +19,7 @@ import type {
   AgentTablePlanContext,
   AgentTaskMode,
 } from './agentTypes'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 export type * from './agentTypes'
 
@@ -178,7 +179,7 @@ export async function streamAgentMessage(options: {
   signal?: AbortSignal
   onNotification?: (notification: AgentStreamNotification) => void
 }) {
-  const response = await fetch(resolveApiURL(`/v1/agent/sessions/${options.sessionId}/messages/stream`), {
+  const response = await runtimeFetch(resolveApiURL(`/v1/agent/sessions/${options.sessionId}/messages/stream`), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

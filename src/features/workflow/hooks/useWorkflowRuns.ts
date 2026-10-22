@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { resolveApiURL } from '@/services/desktop'
 
 import type { WorkflowRunRecord } from '@/api/workflows'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 export type { WorkflowRunRecord }
 
@@ -31,7 +32,7 @@ export function useWorkflowRuns(workflowId: string | null, active: boolean): Use
     setStatus('loading')
     setError(null)
     try {
-      const res = await fetch(resolveApiURL(`/v1/workflows/${workflowId}/runs?limit=50`))
+      const res = await runtimeFetch(resolveApiURL(`/v1/workflows/${workflowId}/runs?limit=50`))
       const body = await res.json() as { runs?: WorkflowRunRecord[]; error?: string }
       if (!mountedRef.current) return
       if (!res.ok) {

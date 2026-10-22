@@ -25,13 +25,45 @@ pub trait Runtime: Send + Sync + 'static {
 /// A running Kition's agent API, for example `http://127.0.0.1:<port>/api/v1`.
 pub struct HttpRuntime {
     base: String,
-    token: Option<String>,
+    token: String,
     client: reqwest::Client,
 }
 
+/// The header that carries Kition's API token (contracts/runtime/transport.schema.json).
+const TOKEN_HEADER: &str = "Kition-Token";
+
+/// Kition's API token for this launch, from the file the runtime writes for trusted local
+/// clients (`api-token` beside its database). The file must be this account's only: on Unix, a
+/// file other accounts may read is refused, since whoever reads it can run commands as you.
+pub fn read_token_file(path: &std::path::Path) -> Result<String, String> {
+    let shown = path.display();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(path)
+            .map_err(|error| format!("cannot read the API token file {shown}: {error}"))?
+            .permissions()
+            .mode();
+        if mode & 0o077 != 0 {
+            return Err(format!(
+                "the API token file {shown} is readable by other accounts (mode {:o}); it must be 600",
+                mode & 0o777
+            ));
+        }
+    }
+    let token = std::fs::read_to_string(path)
+        .map_err(|error| format!("cannot read the API token file {shown}: {error}"))?;
+    let token = token.trim();
+    if token.is_empty() {
+        return Err(format!("the API token file {shown} is empty"));
+    }
+    Ok(token.to_owned())
+}
+
 impl HttpRuntime {
-    /// `base` must be a loopback URL: Kition's API binds to `127.0.0.1` only.
-    pub fn new(base: &str, token: Option<String>) -> Result<Self, String> {
+    /// `base` must be a loopback URL: Kition's API binds to `127.0.0.1` only. `token` is this
+    /// launch's API token ([`read_token_file`]).
+    pub fn new(base: &str, token: String) -> Result<Self, String> {
         let url = reqwest::Url::parse(base).map_err(|error| format!("`{base}`: {error}"))?;
         let loopback = matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]"));
         if !loopback || !matches!(url.scheme(), "http" | "https") {
@@ -51,11 +83,9 @@ impl HttpRuntime {
     }
 
     fn post(&self, path: &str) -> reqwest::RequestBuilder {
-        let request = self.client.post(format!("{}{path}", self.base));
-        match &self.token {
-            Some(token) => request.bearer_auth(token),
-            None => request,
-        }
+        self.client
+            .post(format!("{}{path}", self.base))
+            .header(TOKEN_HEADER, &self.token)
     }
 }
 
@@ -134,14 +164,32 @@ mod tests {
 
     #[test]
     fn only_a_loopback_api_is_accepted() {
-        assert!(HttpRuntime::new("http://127.0.0.1:4310/api/v1", None).is_ok());
-        assert!(HttpRuntime::new("http://localhost:4310/api/v1/", None).is_ok());
+        assert!(HttpRuntime::new("http://127.0.0.1:4310/api/v1", "t".into()).is_ok());
+        assert!(HttpRuntime::new("http://localhost:4310/api/v1/", "t".into()).is_ok());
         for refused in [
             "http://example.com/api/v1",
             "ftp://127.0.0.1/api/v1",
             "not a url",
         ] {
-            assert!(HttpRuntime::new(refused, None).is_err(), "{refused}");
+            assert!(HttpRuntime::new(refused, "t".into()).is_err(), "{refused}");
         }
+    }
+
+    #[test]
+    fn the_token_file_must_be_private() {
+        let dir = std::env::temp_dir().join(format!("kition-acp-token-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("api-token");
+        let _ = std::fs::write(&path, "abc123\n");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644));
+            assert!(read_token_file(&path).is_err_and(|error| error.contains("other accounts")));
+            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+        }
+        assert_eq!(read_token_file(&path), Ok("abc123".to_owned()));
+        assert!(read_token_file(&dir.join("missing")).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

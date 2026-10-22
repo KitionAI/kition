@@ -28,6 +28,11 @@ pub fn portal_base_url() -> String {
 pub struct Supervisor {
     env: RwLock<DesktopEnv>,
     app_version: String,
+    /// This launch's API token (`kition_http::gate`): made once, so the runtime keeps it across
+    /// restarts and the renderer's copy stays valid.
+    api_token: String,
+    /// The dev server's origin under `tauri dev`, which the runtime must let through.
+    dev_origin: Mutex<Option<String>>,
     smtp_proxy: Mutex<String>,
     server: tokio::sync::Mutex<Option<RunningServer>>,
     last_error: Mutex<String>,
@@ -38,10 +43,25 @@ impl Supervisor {
         Self {
             env: RwLock::new(env),
             app_version: app_version.to_owned(),
+            api_token: kition_http::gate::new_token(),
+            dev_origin: Mutex::default(),
             smtp_proxy: Mutex::default(),
             server: tokio::sync::Mutex::new(None),
             last_error: Mutex::default(),
         }
+    }
+
+    /// The token the renderer sends; only the main window's bootstrap script reads it.
+    pub fn api_token(&self) -> &str {
+        &self.api_token
+    }
+
+    /// Lets the renderer served from the dev server `origin` (`tauri dev`) call the runtime.
+    pub fn set_dev_origin(&self, origin: Option<String>) {
+        *self
+            .dev_origin
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = origin;
     }
 
     fn env(&self) -> DesktopEnv {
@@ -73,8 +93,8 @@ impl Supervisor {
             name: "Kition Desktop API".into(),
             version: self.app_version.clone(),
             api_prefix: "/api/v1".into(),
-            // The desktop API is loopback-only and unauthenticated; the
-            // secret only signs tokens nothing uses.
+            // The desktop API is loopback-only and gated by the launch's API token
+            // (`api_token`); user accounts are off, so the secret signs nothing.
             jwt_secret: uuid::Uuid::new_v4().to_string(),
             portal_base_url: portal_base_url(),
             disable_auth: true,
@@ -83,6 +103,14 @@ impl Supervisor {
             access_token_expire_minutes: 120,
             refresh_token_expire_days: 7,
             http_port: i64::from(env.backend_port),
+            api_token: self.api_token.clone(),
+            allowed_origins: self
+                .dev_origin
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .iter()
+                .cloned()
+                .collect(),
             log_level: "info".into(),
             upload_dir: text(&env.uploads_dir),
             workspace_dir: text(&env.workspace_dir),

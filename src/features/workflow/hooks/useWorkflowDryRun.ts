@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { resolveApiURL } from '@/services/desktop'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 export interface DryRunResult {
   ok: boolean
@@ -44,7 +45,7 @@ export function useWorkflowDryRun(): UseWorkflowDryRunResult {
       setError(null)
     }
     try {
-      const res = await fetch(resolveApiURL(`/v1/workflows/${workflowId}/dry-run`), { method: 'POST' })
+      const res = await runtimeFetch(resolveApiURL(`/v1/workflows/${workflowId}/dry-run`), { method: 'POST' })
       const body = (await res.json()) as DryRunResult
       if (!mountedRef.current) return
       if (!res.ok || !body.ok) {

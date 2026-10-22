@@ -3,9 +3,11 @@
 pub mod auth;
 pub mod cors;
 pub mod extract;
+pub mod gate;
 pub mod middleware;
 
 use axum::Json;
+use axum::Router;
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 use kition_core::response::Envelope;
@@ -35,4 +37,14 @@ pub async fn not_found() -> Response {
         "404 page not found",
     )
         .into_response()
+}
+
+/// `routes` behind the transport checks every runtime answers through: the loopback `Host` and
+/// origin checks ([`cors`]), then the API token gate ([`gate`]), both in front of routing, so a
+/// refused request reaches no route and an unknown path is refused like a known one.
+pub fn guard(routes: Router, gate: gate::ApiGate, policy: cors::CorsPolicy) -> Router {
+    Router::new()
+        .fallback_service(routes)
+        .layer(axum::middleware::from_fn_with_state(gate, gate::require))
+        .layer(axum::middleware::from_fn_with_state(policy, cors::cors))
 }

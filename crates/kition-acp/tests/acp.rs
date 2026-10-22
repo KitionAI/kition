@@ -227,6 +227,8 @@ async fn a_cancelled_prompt_stops() {
     );
 }
 
+const API_TOKEN: &str = "acp-test-token";
+
 /// A stand-in for Kition's agent API: makes session 7, and streams a turn in pieces.
 async fn kition_api(seen: Arc<Mutex<Vec<Value>>>) -> String {
     use axum::Json;
@@ -259,6 +261,12 @@ async fn kition_api(seen: Arc<Mutex<Vec<Value>>>) -> String {
             ),
         )
         .with_state(seen);
+    // Behind the runtime's own gate: every call needs the API token.
+    let app = kition_http::guard(
+        app,
+        kition_http::gate::ApiGate::new(API_TOKEN, "/api/v1"),
+        kition_http::cors::CorsPolicy::default(),
+    );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .unwrap_or_else(|err| panic!("{err}"));
@@ -271,7 +279,7 @@ async fn kition_api(seen: Arc<Mutex<Vec<Value>>>) -> String {
 async fn drives_kitions_agent_api_over_http() {
     let seen = Arc::new(Mutex::new(Vec::new()));
     let base = kition_api(Arc::clone(&seen)).await;
-    let runtime = HttpRuntime::new(&base, None).unwrap_or_else(|err| panic!("{err}"));
+    let runtime = HttpRuntime::new(&base, API_TOKEN.into()).unwrap_or_else(|err| panic!("{err}"));
     let mut client = Client::start(Arc::new(runtime), Options::default());
     client.send(json!({ "jsonrpc": "2.0", "id": 1, "method": "session/new", "params": { "cwd": "/work/site", "mcpServers": [] } })).await;
     let session = client.until_answer(1).await.1["result"]["sessionId"].clone();
@@ -296,4 +304,15 @@ async fn drives_kitions_agent_api_over_http() {
     assert_eq!(seen[0]["id"], "7");
     assert_eq!(seen[0]["request"]["content"], "Say hello");
     assert_eq!(seen[0]["request"]["kit_edit_mode"], "live");
+}
+
+#[tokio::test]
+async fn a_wrong_api_token_is_refused() {
+    let base = kition_api(Arc::new(Mutex::new(Vec::new()))).await;
+    let runtime = HttpRuntime::new(&base, "wrong".into()).unwrap_or_else(|err| panic!("{err}"));
+    let refused = kition_acp::Runtime::new_session(&runtime, "x".into()).await;
+    assert!(
+        refused.as_ref().is_err_and(|error| error.contains("401")),
+        "{refused:?}"
+    );
 }

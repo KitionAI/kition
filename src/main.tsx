@@ -1,3 +1,5 @@
+// First: takes this launch's API token off `window` before any other code runs.
+import './services/runtimeAuth'
 import './services/desktopClient/tauriBridge'
 import React from 'react'
 import ReactDOM from 'react-dom/client'

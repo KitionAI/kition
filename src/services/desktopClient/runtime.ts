@@ -2,9 +2,9 @@
  * Runtime location and health: platform checks, API base resolution, backend readiness, bootstrap, feedback, notifications, and window actions.
  */
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
+import { DESKTOP_BACKEND_ORIGIN_FALLBACK, signRuntimePath, signRuntimeURL } from '../runtimeAuth'
 import { type BootstrapAttestationRequest, type DesktopBackendStatus, type DesktopInfo, type FeedbackReportSubmissionRequest, getDesktopBridge } from './bridge'
 
-const desktopBackendOriginFallback = 'http://127.0.0.1:18101'
 const apiPrefix = '/api'
 const backendHealthPath = '/health'
 let desktopBackendReadyPromise: Promise<boolean> | null = null
@@ -27,7 +27,7 @@ export function isDesktopRuntime() {
 }
 
 function getDesktopBackendOrigin() {
-  return getDesktopBridge()?.backendOrigin || desktopBackendOriginFallback
+  return getDesktopBridge()?.backendOrigin || DESKTOP_BACKEND_ORIGIN_FALLBACK
 }
 
 export function normalizeApiPath(path: string) {
@@ -46,18 +46,7 @@ export function normalizeApiPath(path: string) {
   return normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`
 }
 
-function getLocalE2EApiBaseURL() {
-  if (typeof window === 'undefined') {
-    return ''
-  }
-  return String(window.localStorage.getItem('kition.e2e.apiBaseUrl') || '').trim().replace(/\/+$/, '')
-}
-
 export function getApiBaseURL() {
-  const e2eBaseURL = getLocalE2EApiBaseURL()
-  if (e2eBaseURL) {
-    return e2eBaseURL
-  }
   return isDesktopRuntime() ? `${getDesktopBackendOrigin()}${apiPrefix}` : apiPrefix
 }
 
@@ -74,12 +63,27 @@ export function resolvePublicFileURL(path: string) {
   if (bundledAssetPath) {
     return resolveBundledAssetURL(bundledAssetPath)
   }
-  if (/^(https?:|data:|blob:|kition-workspace:)/i.test(path)) {
+  if (/^https?:/i.test(path)) {
+    // A runtime file URL kept as it was written (an agent's image result): signed like the rest.
+    return signRuntimeURL(path)
+  }
+  if (/^(data:|blob:|kition-workspace:)/i.test(path)) {
     return path
   }
 
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return isDesktopRuntime() ? `${getDesktopBackendOrigin()}${normalizedPath}` : normalizedPath
+  // A file URL may end up where no header goes (`<img>`, `<video>`, a PDF frame): signed for
+  // this one file (runtimeAuth.ts).
+  return isDesktopRuntime() ? `${getDesktopBackendOrigin()}${signRuntimePath(normalizedPath)}` : normalizedPath
+}
+
+/**
+ * The runtime's URL of the folder `path` (from `/`, ending in `/`) under which a reader appends
+ * relative paths: a kit engine's lent root. Signed for that folder, never with the token itself.
+ */
+export function resolvePublicFolderURL(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  return isDesktopRuntime() ? `${getDesktopBackendOrigin()}${signRuntimePath(normalizedPath, { scope: 'folder' })}` : normalizedPath
 }
 
 export function getDesktopBackendHealthURL() {
@@ -112,6 +116,7 @@ export async function waitForDesktopBackendReady(timeoutMs = 15000) {
         }
 
         try {
+          // The health probe is on the runtime's open list: it needs no token.
           const response = await fetch(getDesktopBackendHealthURL(), { method: 'GET' })
           if (response.ok) {
             return true

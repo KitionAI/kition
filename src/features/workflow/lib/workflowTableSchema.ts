@@ -1,6 +1,7 @@
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { resolveApiURL } from '@/services/desktop'
 import { windowSessionId } from '@/api/windowSession'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 /**
  * Pull schema for a single table off the data-document API. Shared by the
@@ -25,7 +26,7 @@ export async function fetchWorkflowTableSchema(
   // Bypasses src/api/request.ts (no response envelope to unwrap here beyond
   // reading .data.items below), so this window's session has to be sent by
   // hand to match every other /v1/data-documents request.
-  const res = await fetch(resolveApiURL(`/v1/data-documents/${documentId}/tables/${tableId}/fields`), {
+  const res = await runtimeFetch(resolveApiURL(`/v1/data-documents/${documentId}/tables/${tableId}/fields`), {
     headers: { 'Kition-Session': windowSessionId() },
   })
   if (!res.ok) throw new Error(`schema fetch failed (${res.status})`)

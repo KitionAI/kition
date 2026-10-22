@@ -22,5 +22,5 @@ pub mod translate;
 /// The ACP protocol version this server speaks.
 pub const PROTOCOL_VERSION: u64 = 1;
 
-pub use runtime::{HttpRuntime, Runtime};
+pub use runtime::{HttpRuntime, Runtime, read_token_file};
 pub use server::{Options, serve};

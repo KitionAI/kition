@@ -632,8 +632,7 @@ describe('useScenarioBuild — FormData / headers', () => {
     expect((attachments[1] as File).name).toBe('receipt2.jpg')
 
     // Fix 4b — X-Locale header
-    const headers = init.headers as Record<string, string>
-    expect(headers['X-Locale']).toBe('en-US')
+    expect(new Headers(init.headers).get('X-Locale')).toBe('en-US')
 
     await harness.unmount()
   })

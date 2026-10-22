@@ -9,6 +9,7 @@ import {
   type WorkflowBuildStatus,
 } from '@/features/workflow/types'
 import type { RuntimeWritingModel } from '@/types'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 const BUILD_PATH = '/v1/workflows/build'
 
@@ -159,7 +160,7 @@ export function useWorkflowBuild(): UseWorkflowBuildResult {
         if (!mountedRef.current || ctl.signal.aborted) return
       }
 
-      const res = await fetch(resolveApiURL(BUILD_PATH), {
+      const res = await runtimeFetch(resolveApiURL(BUILD_PATH), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),

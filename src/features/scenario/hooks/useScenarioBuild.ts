@@ -11,6 +11,7 @@ import {
   type ScenarioBuildStatus,
   type UseScenarioBuildResult,
 } from '@/features/scenario/types'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 /** Endpoint path passed to `resolveApiURL` (which prepends `/api`). */
 const BUILD_PATH = '/v1/scenarios/build'
@@ -257,7 +258,7 @@ export function useScenarioBuild(): UseScenarioBuildResult {
       }
 
       try {
-        const response = await fetch(resolveApiURL(BUILD_PATH), {
+        const response = await runtimeFetch(resolveApiURL(BUILD_PATH), {
           method: 'POST',
           headers: {
             'X-Locale': getCurrentLocale(),

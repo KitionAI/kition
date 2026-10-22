@@ -32,6 +32,16 @@ pub struct AppConfig {
     pub auto_migrate: bool,
     pub auto_seed: bool,
     pub http_port: i64,
+    /// This launch's API token (`kition_http::gate`). Never read from a file or the environment:
+    /// the process that embeds the runtime sets it, or the runtime makes one when it starts.
+    pub api_token: String,
+    /// Where the runtime writes the token for trusted local clients (`kition-acp`), readable by
+    /// this account only: `KITION_API_TOKEN_FILE`, then `server.http.tokenFile`, else `api-token`
+    /// beside the database. Never inside a folder the runtime serves.
+    pub api_token_file: String,
+    /// Origins allowed besides the desktop renderer, named exactly: the dev server the renderer
+    /// is served from in development. Set by the embedding process only.
+    pub allowed_origins: Vec<String>,
     pub log_level: String,
     pub upload_dir: String,
     pub workspace_dir: String,
@@ -111,6 +121,12 @@ fn from_value(root: &Value, env: &dyn Fn(&str) -> Option<String>) -> AppConfig {
             &env_str("KITION_DESKTOP_API_PORT"),
             file.int("server.http.port"),
         ),
+        api_token: String::new(),
+        api_token_file: first_non_empty(&[
+            env_str("KITION_API_TOKEN_FILE"),
+            file.string("server.http.tokenFile"),
+        ]),
+        allowed_origins: Vec::new(),
         log_level: file.string("logger.default.level"),
         upload_dir: first_non_empty(&[
             env_str("KITION_DESKTOP_UPLOAD_DIR"),
@@ -311,6 +327,22 @@ proxy = "http://file-proxy"
         assert_eq!(cfg.http_port, 4242);
         assert_eq!(cfg.sqlite_path, "/tmp/override.db");
         assert_eq!(cfg.portal_base_url, "https://example.test");
+    }
+
+    #[test]
+    fn the_api_token_never_comes_from_configuration() {
+        let root: Value = toml::from_str(
+            "[app]\napiToken = \"from-file\"\n[server.http]\ntoken = \"t\"\ntokenFile = \"/run/kition/api-token\"\n",
+        )
+        .unwrap_or_else(|err| panic!("config: {err}"));
+        let cfg = from_value(&root, &env_from(&[("KITION_API_TOKEN", "from-env")]));
+        assert_eq!(cfg.api_token, "");
+        assert_eq!(cfg.api_token_file, "/run/kition/api-token");
+        let cfg = from_value(
+            &root,
+            &env_from(&[("KITION_API_TOKEN_FILE", "/tmp/elsewhere")]),
+        );
+        assert_eq!(cfg.api_token_file, "/tmp/elsewhere");
     }
 
     #[test]

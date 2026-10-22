@@ -83,7 +83,7 @@ describe('kit file grants client', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(new Uint8Array([2, 3, 4]), { status: 200, headers: { ETag: '"1-10"', 'Kition-File-Size': '10' } }))
     vi.stubGlobal('fetch', fetchMock)
     const read = await readKitFile(session, handle, { offset: 2, length: 3 })
-    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/kits/grants/${handle}/content?session=${session}&offset=2&length=3`)
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/kits/grants/${handle}/content?session=${session}&offset=2&length=3`, expect.objectContaining({ headers: expect.any(Headers) }))
     expectMatchesContract({ session, offset: 2, length: 3 }, 'kits', 'readFileQuery')
     expect(new Uint8Array(read.bytes)).toEqual(new Uint8Array([2, 3, 4]))
     expect(read).toMatchObject({ version: '"1-10"', size: 10 })

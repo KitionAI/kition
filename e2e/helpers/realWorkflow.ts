@@ -1,6 +1,14 @@
+import { readFileSync } from 'node:fs'
 import { expect, type Page } from '@playwright/test'
 
 export const REAL_API_BASE_URL = process.env.KITION_E2E_API_BASE_URL || 'http://127.0.0.1:18101/api/v1'
+
+/** The live runtime's API token, from the file it writes (`KITION_API_TOKEN_FILE`, set by the scripts that start it). */
+function runtimeTokenHeader(): Record<string, string> {
+  const file = process.env.KITION_API_TOKEN_FILE
+  if (!file) return {}
+  return { 'Kition-Token': readFileSync(file, 'utf8').trim() }
+}
 
 export type RealWorkflowFixture = {
   documentId: string
@@ -243,14 +251,14 @@ export async function installRealDesktopSettings(page: Page) {
   const provider = process.env.KITION_E2E_AI_PROVIDER!
   const model = process.env.KITION_E2E_AI_MODEL!
   const apiKey = process.env.KITION_E2E_AI_API_KEY!
-  const apiBaseUrl = process.env.KITION_E2E_API_BASE_URL || REAL_API_BASE_URL
-  const uiApiBaseUrl = apiBaseUrl.replace(/\/v1\/?$/, '')
   const baseUrl = process.env.KITION_E2E_AI_BASE_URL || providerDefaultBaseURL(provider)
   const wireApi = process.env.KITION_E2E_AI_WIRE_API || (provider === 'anthropic' ? 'anthropic_messages' : 'responses')
   const authScheme = process.env.KITION_E2E_AI_AUTH_SCHEME || (provider === 'anthropic' ? 'x-api-key' : 'bearer')
   const reasoningEffort = process.env.KITION_E2E_AI_REASONING_EFFORT || 'medium'
 
-  await page.addInitScript(({ provider, model, apiKey, uiApiBaseUrl, baseUrl, wireApi, authScheme, reasoningEffort }) => {
+  // The page reaches the runtime through the development server's proxy (`/api`), which adds the
+  // runtime's API token (tooling/vite.config.ts); the page itself never holds it.
+  await page.addInitScript(({ provider, model, apiKey, baseUrl, wireApi, authScheme, reasoningEffort }) => {
     const providerKinds = ['openai', 'anthropic', 'custom', 'kition_console']
     const providers: Record<string, any> = {}
     for (const kind of providerKinds) {
@@ -311,8 +319,7 @@ export async function installRealDesktopSettings(page: Page) {
     window.localStorage.setItem('kition.desktop.settings.v1', JSON.stringify(settings))
     window.localStorage.setItem('kition.desktop.settings.backup.v1', JSON.stringify(settings))
     window.localStorage.setItem(`desktop.provider.${provider}.apiKey.v1`, apiKey)
-    window.localStorage.setItem('kition.e2e.apiBaseUrl', uiApiBaseUrl)
-  }, { provider, model, apiKey, uiApiBaseUrl, baseUrl, wireApi, authScheme, reasoningEffort })
+  }, { provider, model, apiKey, baseUrl, wireApi, authScheme, reasoningEffort })
 }
 
 export async function openWorkflowIndexPage(page: Page) {
@@ -384,6 +391,7 @@ export async function apiFetch<T = JsonRecord>(path: string, init: RequestInit =
     ...init,
     headers: {
       'content-type': 'application/json',
+      ...runtimeTokenHeader(),
       ...(init.headers || {}),
     },
   })

@@ -16,6 +16,8 @@ use kition_store::Db;
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
+const TOKEN: &str = "grant-routes-test-token";
+
 struct Fixture {
     app: Router,
     kits: KitManager,
@@ -65,12 +67,16 @@ fn fixture() -> Fixture {
         jwt_secret: "test".into(),
         disabled: true,
     };
-    // The same origin guard the runtime puts in front of every route.
-    let app = router(KitsState {
-        auth,
-        kits: kits.clone(),
-    })
-    .layer(axum::middleware::from_fn(kition_http::cors::cors));
+    // The same transport guard the runtime puts in front of every route: the origin checks and
+    // the API token gate.
+    let app = kition_http::guard(
+        router(KitsState {
+            auth,
+            kits: kits.clone(),
+        }),
+        kition_http::gate::ApiGate::new(TOKEN, ""),
+        kition_http::cors::CorsPolicy::default(),
+    );
     Fixture {
         app,
         kits,
@@ -114,7 +120,16 @@ impl Answer {
     }
 }
 
-async fn send(app: &Router, request: Request<Body>) -> Answer {
+/// Sends `request` as Kition's renderer does, with the API token.
+async fn send(app: &Router, mut request: Request<Body>) -> Answer {
+    request.headers_mut().insert(
+        kition_http::gate::TOKEN_HEADER,
+        http::HeaderValue::from_static(TOKEN),
+    );
+    send_as_is(app, request).await
+}
+
+async fn send_as_is(app: &Router, request: Request<Body>) -> Answer {
     let response = app
         .clone()
         .oneshot(request)
@@ -839,4 +854,64 @@ async fn refuses_requests_not_addressed_to_a_loopback_host() {
     )
     .await;
     assert_eq!(view.data()["grants"], json!([]));
+}
+
+#[tokio::test]
+async fn refuses_every_grant_route_without_the_api_token() {
+    let fixture = fixture();
+    let app = &fixture.app;
+    let session = open_session(app, json!({})).await;
+    let granted = grant(
+        app,
+        &session,
+        "art/photo.png",
+        "file",
+        json!(["read", "write"]),
+    )
+    .await;
+    let handle = handle_of(&granted);
+    let attempts = [
+        ("POST", "/kits/grants/sessions".to_owned(), json!({ "kit": "kit.mock" }).to_string()),
+        (
+            "POST",
+            "/kits/grants".to_owned(),
+            json!({ "session": session, "path": "art/notes.txt", "kind": "file", "rights": ["read"], "flow": "pick" }).to_string(),
+        ),
+        ("GET", format!("/kits/grants/{handle}?session={session}"), String::new()),
+        ("GET", format!("/kits/grants/{handle}/content?session={session}"), String::new()),
+        ("PUT", format!("/kits/grants/{handle}/content?session={session}&offset=0"), "x".to_owned()),
+        ("GET", format!("/kits/grants/sessions/{session}"), String::new()),
+        ("DELETE", format!("/kits/grants/sessions/{session}"), String::new()),
+    ];
+    for (method, uri, body) in attempts {
+        for token in [None, Some("wrong")] {
+            let mut request = Request::builder()
+                .method(method)
+                .uri(&uri)
+                .header("content-type", "application/json");
+            if let Some(token) = token {
+                request = request.header(kition_http::gate::TOKEN_HEADER, token);
+            }
+            let request = request
+                .body(Body::from(body.clone()))
+                .unwrap_or_else(|err| panic!("{err}"));
+            let answer = send_as_is(app, request).await;
+            assert_eq!(answer.status, StatusCode::UNAUTHORIZED, "{method} {uri}");
+            assert_eq!(answer.reason(), "api_token", "{method} {uri}");
+        }
+    }
+    // Nothing changed: the session is open with its one grant, and the file is as it was.
+    let view = call(
+        app,
+        "GET",
+        &format!("/kits/grants/sessions/{session}"),
+        None,
+    )
+    .await;
+    assert_eq!(view.status, StatusCode::OK);
+    assert_eq!(view.data()["grants"].as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        std::fs::read_to_string(fixture.dir.path().join("art/photo.png")).unwrap_or_default(),
+        "0123456789"
+    );
 }

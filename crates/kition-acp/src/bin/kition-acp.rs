@@ -2,8 +2,12 @@
 //! ACP clients. It drives the agent of a running Kition through its loopback API.
 //!
 //! ```text
-//! kition-acp --url http://127.0.0.1:<port>/api/v1 --model-file <model.json>
+//! kition-acp --url http://127.0.0.1:<port>/api/v1 --token-file <Kition data>/data/api-token \
+//!   --model-file <model.json>
 //! ```
+//!
+//! Kition's API needs the token the running Kition made for this launch, which it writes to
+//! `data/api-token` in its data directory, readable by this account only.
 //!
 //! The model file is Kition's `RuntimeModel` JSON (`provider_type`, `model_name`, `base_url`,
 //! `api_key`, `wire_api`, …): Kition keeps the person's model settings in its own window, so an
@@ -25,9 +29,10 @@ struct Args {
     /// Kition's loopback API, for example http://127.0.0.1:<port>/api/v1.
     #[arg(long, env = "KITION_API_URL")]
     url: String,
-    /// A bearer token, when the runtime requires one.
-    #[arg(long, env = "KITION_API_TOKEN", hide_env_values = true)]
-    token: Option<String>,
+    /// The file holding the running Kition's API token: `data/api-token` in Kition's data
+    /// directory. It must be readable by this account only.
+    #[arg(long, env = "KITION_API_TOKEN_FILE")]
+    token_file: std::path::PathBuf,
     /// The model of every turn: a file with Kition's `RuntimeModel` JSON.
     #[arg(long, env = "KITION_ACP_MODEL_FILE")]
     model_file: Option<std::path::PathBuf>,
@@ -52,7 +57,14 @@ fn main() -> ExitCode {
             }
         },
     };
-    let runtime = match HttpRuntime::new(&args.url, args.token) {
+    let token = match kition_acp::read_token_file(&args.token_file) {
+        Ok(token) => token,
+        Err(error) => {
+            eprintln!("kition-acp: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let runtime = match HttpRuntime::new(&args.url, token) {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!("kition-acp: {error}");

@@ -113,4 +113,20 @@ describe('workspace image file URLs', () => {
       expect(resolveAgentImageWorkspacePath(destination)).toBe('')
     }
   })
+
+  it('signs runtime file URLs once the desktop shell handed over its token, never with the token', async () => {
+    const workspaceFiles = await loadWorkspaceFilesModule()
+    const auth = await import('./runtimeAuth')
+    auth.setRuntimeTokenForTests('launch-token')
+    try {
+      const signed = /^http:\/\/127\.0\.0\.1:18101\/_signed\/\d+\.\d+\.[0-9a-f]{64}\/workspace-files\/Agent\/a\.png$/
+      expect(workspaceFiles.resolveWorkspaceFileURL('Agent/a.png')).toMatch(signed)
+      // An agent's image result kept as the runtime URL it was written as.
+      expect(workspaceFiles.resolveAgentImageURL('http://127.0.0.1:18101/workspace-files/Agent/a.png')).toMatch(signed)
+      expect(workspaceFiles.resolveAgentImageURL('https://example.com/a.png')).toBe('https://example.com/a.png')
+      expect(workspaceFiles.resolveWorkspaceFileURL('Agent/a.png')).not.toContain('launch-token')
+    } finally {
+      auth.setRuntimeTokenForTests('')
+    }
+  })
 })

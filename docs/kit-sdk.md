@@ -69,7 +69,9 @@ subscriptions.
 
 External agents' clients reach Kition's agent over the Agent Client Protocol (standard D3,
 `crates/kition-acp`): an editor launches `kition-acp --url http://127.0.0.1:<port>/api/v1
---model-file <model.json>` as its ACP agent (protocol version 1, stdio). It serves `initialize`,
+--token-file <Kition data directory>/data/api-token --model-file <model.json>` as its ACP agent
+(protocol version 1, stdio); the token file holds the running Kition's API token and must be
+readable by the person's account only. It serves `initialize`,
 `authenticate`, `session/new`, `session/prompt` (text, resource links, embedded text resources),
 and `session/cancel`, projects each turn's stream (`session.event`, `agent/assistant-stream`) onto
 `session/update` (`agent_message_chunk`, `tool_call`, `tool_call_update`, `plan`), and asks
@@ -280,10 +282,29 @@ and side panels).
   whose path has no hidden segment, through `/kit-files/`: the files beside
   the document and those its links name in other folders (film and effect
   clips, linked pictures). Engines read lent files under the same
-  `/kit-files/` root. The runtime refuses every hidden path there, Kition's
+  `/kit-files/` root, given to them as a URL signed for that folder only
+  (below). The runtime refuses every hidden path there, Kition's
   own store `.kition/` (other documents' replicas and comment threads) among
   them, and links that lead into one or out of the workspace (rule LR2 of the
   host-capabilities proposal). `/workspace-files/` stays Kition's own.
+- The runtime answers only callers holding this launch's API token
+  (kit frame isolation, phase 1; `contracts/runtime/transport.schema.json`),
+  because it can run commands as the person (desktop hooks). The desktop
+  shell makes the token at launch and gives it to the main frame's bootstrap
+  script only; `src/services/runtimeAuth.ts` takes it off `window` as the
+  renderer loads and sends it as `Kition-Token` on every runtime request.
+  URLs that carry no header (`<img>`, `EventSource`, a kit engine's lent
+  root) are signed with it for one file or one folder and expire; a kit is
+  never given the token. Requests without it get `401` before routing, so
+  they change nothing; other origins, other `localhost` pages among them, get
+  `403`. Trusted local clients (`kition-acp --token-file`) read it from
+  `data/api-token` in Kition's data directory, which only the person's
+  account can read. Residual until phase 2 (per-kit origins, CSP, sandbox):
+  a kit frame is still same-origin with Kition's page, so a hostile kit page
+  can reach the page's own requests through `window.parent` (for example by
+  wrapping its `fetch`) and act with the token. Phase 1 closes the local API
+  to everything that is not Kition's page: other accounts, other pages in
+  the browser, and kits once they leave Kition's origin.
 - Files beyond the document (KitFiles 1.0) go through file handles the
   runtime mints and keeps, under `/v1/kits/grants`
   (`crates/kition-kits/src/grants.rs`): a grant session per editor page,

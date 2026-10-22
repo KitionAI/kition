@@ -12,6 +12,7 @@ import {
     tryReportConsoleCreditsExhausted,
 } from '@/services/consoleCredits'
 import { windowSessionId } from './windowSession'
+import { runtimeTokenHeaders } from '@/services/runtimeAuth'
 
 const DEFAULT_TIMEOUT_MS = 300000
 /** Matches `/v1/data-documents`, `/v1/data-documents/...`, and `/v1/data-documents?...`, not a path that merely starts with the same text. */
@@ -221,9 +222,12 @@ async function send<T>(method: string, url: string, dataArgument: unknown, confi
     error.config = { ...config, method, url }
     const { signal, release } = combineSignals(config.signal, config.timeout ?? DEFAULT_TIMEOUT_MS)
 
+    const target = buildURL(url, config.params)
+    // This launch's API token, which the runtime requires on every request (runtimeAuth.ts).
+    Object.assign(headers, runtimeTokenHeaders(target))
     let response: Response
     try {
-        response = await fetch(buildURL(url, config.params), { method, headers, body, signal })
+        response = await fetch(target, { method, headers, body, signal })
     } catch (cause) {
         release()
         if (config.signal?.aborted) throw cause

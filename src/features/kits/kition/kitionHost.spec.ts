@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { renameDocument } from '@/features/document/kdm/documentStore'
 import { readDocumentIndex } from '@/services/desktop'
+import { setRuntimeTokenForTests } from '@/services/runtimeAuth'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
 
 const bytes = (...values: number[]) => new Uint8Array(values).buffer
@@ -30,6 +31,22 @@ describe('the files kits read in Kition (rule LR2)', () => {
     // Kition itself still reads its own files, and the document a kit opens, through the workspace file service.
     await KITION_KIT_HOST.read('Shared/Poster.psd')
     expect(fetched.at(-1)).toEqual({ url: '/workspace-files/Shared/Poster.psd', method: 'GET' })
+  })
+})
+
+describe("the URLs a kit is given in the desktop app (kit frame isolation, phase 1)", () => {
+  afterEach(() => {
+    setRuntimeTokenForTests('')
+    delete (window as { kitionDesktop?: unknown }).kitionDesktop
+  })
+
+  it('lends a root signed for the kit file service only, never the API token', () => {
+    window.kitionDesktop = { shell: 'tauri', backendOrigin: 'http://127.0.0.1:18101' } as typeof window.kitionDesktop
+    setRuntimeTokenForTests('launch-token')
+    const lent = KITION_KIT_HOST.lend?.('Shared/Poster.psd')
+    expect(lent?.folder).toBe('Shared')
+    expect(lent?.root).toMatch(/^http:\/\/127\.0\.0\.1:18101\/_signed\/\d+\.11\.[0-9a-f]{64}\/kit-files\/$/)
+    expect(lent?.root).not.toContain('launch-token')
   })
 })
 

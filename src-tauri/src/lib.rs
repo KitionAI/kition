@@ -72,6 +72,15 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     app.on_menu_event(on_menu_event);
 
     let desktop = app.state::<Desktop>();
+    // `tauri dev` serves the renderer from the dev server, an origin the runtime must allow.
+    desktop.supervisor.set_dev_origin(
+        app.config()
+            .build
+            .dev_url
+            .as_ref()
+            .filter(|_| tauri::is_dev())
+            .map(|url| url.origin().ascii_serialization()),
+    );
     desktop.restore_workspace();
     // A Kition that takes the store lock over, or loses it, tells the renderer.
     let notices = handle.clone();

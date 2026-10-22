@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { resolveApiURL } from '@/services/desktop'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
+import { runtimeFetch } from '@/services/runtimeAuth'
 
 export interface SendTestResult {
   ok: boolean
@@ -71,7 +72,7 @@ export function useWorkflowSendTest(): UseWorkflowSendTestResult {
       payload.triggerFields = opts.triggerFields
     }
     try {
-      const res = await fetch(resolveApiURL(`/v1/workflows/${workflowId}/send-test`), {
+      const res = await runtimeFetch(resolveApiURL(`/v1/workflows/${workflowId}/send-test`), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
