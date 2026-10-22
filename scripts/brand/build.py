@@ -3,6 +3,7 @@
     python3 -m venv scripts/brand/.venv
     scripts/brand/.venv/bin/pip install -r scripts/brand/requirements.txt
     scripts/brand/.venv/bin/python scripts/brand/build.py
+    scripts/brand/.venv/bin/python scripts/brand/build.py --kits   kit icons and kit colors only
 
 Writes public/brand, public/kit-icons, the logo PNGs, and src-tauri/icons
 (through `pnpm tauri icon`). Requires node_modules for the Inter font.
@@ -34,15 +35,21 @@ def save(image, path):
     print('wrote', path.relative_to(ROOT))
 
 
+def write_kits():
+    for kit in kit_icons.KITS:
+        write(ROOT / 'public/kit-icons' / f'{kit.id}.svg', kit_icons.icon_svg(kit))
+        write(ROOT / 'public/kit-icons' / f'{kit.id}-small.svg', kit_icons.small_icon_svg(kit))
+    write(ROOT / 'src/app/kit-colors.css', kit_icons.colors_css())
+    write(ROOT / 'kits/kit-colors.json', kit_icons.colors_json())
+
+
 def main():
     brand = ROOT / 'public/brand'
     write(brand / 'kition-symbol.svg', mark.symbol_svg())
     write(brand / 'kition-icon-flat.svg', mark.flat_icon_svg())
     write(brand / 'kition-icon-small.svg', mark.small_icon_svg())
     write(brand / 'kition-lockup.svg', mark.lockup_svg())
-    for kit in kit_icons.KITS:
-        write(ROOT / 'public/kit-icons' / f'{kit.id}.svg', kit_icons.icon_svg(kit))
-        write(ROOT / 'public/kit-icons' / f'{kit.id}-small.svg', kit_icons.small_icon_svg(kit))
+    write_kits()
 
     tile = mark.icon_3d_tile(512).resize((256, 256), mark.Image.LANCZOS)
     for target in ('public/logo-mark.png', 'public/onboarding/logo.png', 'docs/readme/kition-logo-mark.png'):
@@ -59,4 +66,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:] == ['--kits']:
+        write_kits()
+    else:
+        main()
