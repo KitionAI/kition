@@ -1365,6 +1365,14 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tab-kit) 20%, transparent);
   }
 
+  /* A Kition editor's top bar, tinted like a kit's (docs/design.md, Kit colors). Set data-kit. */
+  .kit-tinted-bar[data-kit] {
+    background: linear-gradient(var(--kit-tint), var(--kit-tint)), var(--document-main-surface, hsl(var(--card)));
+  }
+
+  .kit-tinted-bar[data-kit='table'] { --kit-tint: var(--kit-table-soft); }
+  .kit-tinted-bar[data-kit='design'] { --kit-tint: var(--kit-design-soft); }
+
   .document-tab.is-modified .document-tab-close {
     @apply text-amber-500;
   }

@@ -47,7 +47,7 @@ export function TableEditorToolbarHeader({
   useDismissableLayer(viewCreateRef, viewCreateOpen, onCloseViewCreate)
 
   return (
-    <div className="data-inline-topbar">
+    <div className="data-inline-topbar kit-tinted-bar" data-kit="table">
       <div className="data-inline-header-left">
         <div className="data-inline-view-tabs">
           {tableViews.map((view) => (
