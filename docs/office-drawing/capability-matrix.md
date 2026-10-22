@@ -129,19 +129,34 @@ and checks read-only refusal.)*
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | Y | Y | Y | P | Y | P | P | P |
-| Word | P | P | N | N | P | Y | ? | ? | ? |
-| Sheet | ? | P | N | N | P | ? | P | P | P |
+| Slide | P | Y | Y | Y | Y | Y | P | Y | Y |
+| Word | P | P | Y | Y | Y | Y | Y | Y | Y |
+| Sheet | P | P | Y | Y | Y | Y | Y | Y | Y |
 
-- **Slide:** `ShapeKind::Ink` with typed strokes (points with pressure, color,
-  width). The engine's ink tool draws pen and highlighter strokes; the eraser
-  removes a whole stroke. The importer reads ink content parts. The strokes
-  are one KDM properties value.
-- **Word:** `draw.pen`, `draw.pencil`, `draw.highlighter`, `draw.stroke`, and
-  `draw.erase` keep strokes as freeform shapes. The editor has no pen tool.
-- **Sheet:** ink points are text encoded as `x,y;x,y` in `Shape.text`.
-  `draw.pen`, `draw.eraser`, `draw.lasso`, `draw.stroke`, and
-  `draw.inkToShape` exist. The editor has no pen tool.
+*(Phase 3, ink: all three kits implement `KitDrawing 1.2` ink through
+kition-sdk's `kition_drawing::ink`: the shared stroke (tool, colour, width,
+points with pressure), `drawing.ink` and `drawing.erase`, a pen gesture that
+previews and adds one stroke on release, and an eraser whose swept path takes
+the strokes it touches on release, each one undo step. The Draw tab is the
+shared kit-ui `InkGroup` in every kit, driving the same `draw.*` commands and
+`draw.state`. Each kit has native tests and a Chromium and WebKit browser test
+that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
+
+- **Slide:** strokes stay in the slide's ink layer (one ink shape). The eraser
+  was a point test that pushed an undo step per pointer event; it is now the
+  shared swept-path gesture, one step per drag. Saved ink (a group of `Ink N`
+  freeforms) now reads back as ink instead of a group of shapes; pressure is
+  not kept in the file (read back as 0.5). The ink layer is one KDM properties
+  value: two people drawing on one slide at once keep one side's strokes
+  (open).
+- **Word:** a stroke is a floating freeform (the existing `draw.stroke`); the
+  editor now draws and erases with the pointer, which it could not before.
+  Each stroke is its own inline object, so concurrent strokes merge.
+- **Sheet:** a stroke is an `Ink` shape (its own KDM object). The editor now
+  draws and erases with the pointer; a stroke's width is kept exactly and its
+  pen (pencil, highlighter) in its outline's opacity. Saved ink was written as a
+  rectangle holding its points as text; it is now an open freeform path that
+  Excel draws and Kition reads back as ink.
 
 ## WordArt
 
