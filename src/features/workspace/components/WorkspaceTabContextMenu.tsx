@@ -65,14 +65,14 @@ export function WorkspaceTabContextMenu({
   return createPortal(
     <div
       ref={rootRef}
-      className="workspace-tab-context-menu"
+      className="app-menu workspace-tab-context-menu"
       style={{ left, top }}
       onContextMenu={(event) => event.preventDefault()}
       role="menu"
     >
       {items.map((item) => {
         if (item.separator) {
-          return <div key={item.key} className="workspace-tab-context-menu-separator" role="separator" />
+          return <div key={item.key} className="app-menu-separator" role="separator" />
         }
         return (
           <button
@@ -80,7 +80,7 @@ export function WorkspaceTabContextMenu({
             type="button"
             role="menuitem"
             className={cn(
-              'workspace-tab-context-menu-item',
+              'app-menu-item workspace-tab-context-menu-item',
               item.danger && 'is-danger',
             )}
             disabled={item.disabled}

@@ -547,7 +547,7 @@ export function WorkspaceTree({
                         </button>
                         {actionMenuOpen && actionMenuCoords ? createPortal(
                           <span
-                            className="document-tree-menu document-tree-menu--portal"
+                            className="app-menu document-tree-menu document-tree-menu--portal"
                             data-placement={menuPlacement}
                             data-window-drag-exclude="true"
                             style={{ position: 'fixed', left: actionMenuCoords.left, top: actionMenuCoords.top, right: 'auto', bottom: 'auto' }}
@@ -556,7 +556,7 @@ export function WorkspaceTree({
                             {canAddToChat ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   onAddToChat?.(node)
@@ -569,7 +569,7 @@ export function WorkspaceTree({
                             {canAddToNewChat ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   onAddToNewChat?.(node)
@@ -582,7 +582,7 @@ export function WorkspaceTree({
                             {canSetIcon ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   setIconPickerPath(node.path)
@@ -595,7 +595,7 @@ export function WorkspaceTree({
                             {canRename ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 data-testid={
                                   isKitableTableLeaf
                                     ? 'kitable-table-action-rename'
@@ -614,7 +614,7 @@ export function WorkspaceTree({
                             {canDuplicate ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   onDuplicate(node)
@@ -627,7 +627,7 @@ export function WorkspaceTree({
                             {canMove ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   setMoveMenuPath(node.path)
@@ -640,7 +640,7 @@ export function WorkspaceTree({
                             {canRevealInOS ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   onRevealInOS?.(node)
@@ -653,7 +653,7 @@ export function WorkspaceTree({
                             {canDelete ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item is-danger"
+                                className="app-menu-item document-tree-menu-item is-danger"
                                 data-testid={
                                   isKitableTableLeaf
                                     ? 'kitable-table-action-delete'
@@ -677,7 +677,7 @@ export function WorkspaceTree({
                         ) : null}
                         {moveMenuOpen && moveMenuCoords ? createPortal(
                           <span
-                            className="document-tree-menu document-tree-move-menu document-tree-menu--portal"
+                            className="app-menu document-tree-menu document-tree-move-menu document-tree-menu--portal"
                             data-placement={menuPlacement}
                             data-window-drag-exclude="true"
                             style={{ position: 'fixed', left: moveMenuCoords.left, top: moveMenuCoords.top, right: 'auto', bottom: 'auto' }}
@@ -687,7 +687,7 @@ export function WorkspaceTree({
                             {node.parentPath ? (
                               <button
                                 type="button"
-                                className="document-tree-menu-item"
+                                className="app-menu-item document-tree-menu-item"
                                 onClick={() => {
                                   setMoveMenuPath('')
                                   onMoveToFolder(node, null)
@@ -705,7 +705,7 @@ export function WorkspaceTree({
                                   <button
                                     key={target.path}
                                     type="button"
-                                    className="document-tree-menu-item"
+                                    className="app-menu-item document-tree-menu-item"
                                     onClick={() => {
                                       setMoveMenuPath('')
                                       onMoveToFolder(node, target)
