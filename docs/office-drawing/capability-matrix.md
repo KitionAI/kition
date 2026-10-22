@@ -80,9 +80,9 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | P | Y | Y | Y | Y | P | P | Y |
-| Word | P | P | Y | Y | Y | Y | P | P | Y |
-| Sheet | P | P | Y | Y | Y | Y | P | P | Y |
+| Slide | P | P | Y | Y | Y | Y | Y | P | Y |
+| Word | P | P | Y | Y | Y | Y | Y | P | Y |
+| Sheet | P | P | Y | Y | Y | Y | Y | P | Y |
 
 *(Phase 3, charts: all three kits implement `KitDrawing 1.1` charts through
 kition-sdk's `kition_drawing::chart`, the shared description (`ChartSpec`),
@@ -95,23 +95,30 @@ and checks read-only refusal.)*
 - **Slide:** the semantic model maps to and from the shared description by
   position, so a series keeps its look. The kept chart part is patched with
   the shared codec instead of dropped, so formatting Slide does not model
-  survives an edit (the writer reuses the part only when it reads back as the
-  model). The data grid edits categories and series. The whole chart is still
-  one KDM properties value: two people editing one chart at once keep one
-  change (open, DR14).
+  survives an edit: saving patches the kept part to the chart (an edit leaves it
+  alone) and uses it when it reads back as the model. The data grid edits
+  categories and series. A chart is its own KDM object (schema version 4), one
+  map entry per member, so concurrent edits of one chart's title and data both
+  stay.
 - **Word:** a chart is described from its part; `drawing.chart` patches the
   part, keeps it on the chart object and draws it again. Inserted charts get
   a new part. Charts now move and resize (SmartArt diagrams stay frozen), and
   their frames are their own replica register, so a move and an edit made at
   once both stay. Chart text takes letters its font lacks from a fallback
-  face. The edited part is one register value (concurrent edits of one chart
-  keep one).
+  face. An edited chart keeps its description, not a patched part: the part
+  stays as read or made and is patched when drawn or saved. In the replica
+  (schema version 5) the description is its own object, one map entry per
+  member, and the drawing is made again on every read, so concurrent edits of
+  one chart's members all stay.
 - **Sheet:** a chart shows its cells: it is described with the values its
   ranges hold, and its type, titles, legend, labels, gridlines and series
   colours change by command; categories and series are refused (DR16), and
   the editor has no data grid. Charts are now drawing objects the pointer
-  selects, moves and resizes. All of a sheet's charts are one `features`
-  register value (open, DR14).
+  selects, moves and resizes. Charts are KDM objects of their own (schema
+  version 4: anchor register, one map entry per member, ranges still stored as
+  positions), so concurrent edits of different charts, or of one chart's
+  members, all stay; a schema 3 replica migrates its charts on the first
+  write.
 - **All kits:** an edit that changes the data detaches it from the embedded
   workbook (literal values, no stale `c:externalData`), so another
   application shows the edited values but cannot edit them as cells (open:
