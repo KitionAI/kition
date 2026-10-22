@@ -24,13 +24,13 @@
   },
   "effect": {
     "repository": "KitionAI/kition-effect",
-    "version": "0.3.14",
-    "tag": "package-v0.3.14",
-    "asset": "kition-effect-0.3.14.tgz",
-    "size": 16270878,
-    "sha256": "aa8be04763b907ee38ecee9ef432a0694ff1fec37d354df2c576725063b7ab9a",
-    "commit": "d75c9bf700c0d8ef244ca299ff4ca4617e590068",
-    "sdkCommit": "18e7ee942c5889eee9882f7d33faad56d56ab817",
+    "version": "0.3.15",
+    "tag": "package-v0.3.15",
+    "asset": "kition-effect-0.3.15.tgz",
+    "size": 16277870,
+    "sha256": "6c0b97d757e174ba05fa7535b0cee3c48b30abaed8213c7859b480db227c6f47",
+    "commit": "f48cc7d36eabda7f3f107a5660bf646bc8cb58fc",
+    "sdkCommit": "aba2a92ac2df4a07a0eb80e8de963ae5d818015e",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "film": {

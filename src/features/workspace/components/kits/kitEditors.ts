@@ -66,7 +66,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   // US Letter, in points.
   kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: 'kdesign', baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
   kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'video', extension: 'kitionfilm', baseName: 'Untitled film', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', group: 'media' } }),
-  kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'effect', extension: 'kitioneffect', baseName: 'Untitled effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.effect', group: 'media' } }),
+  kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'effect', extension: 'keffect', baseName: 'Untitled effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.effect', group: 'media' } }),
   // A3 in millimetres; the engine starts a metric drawing with those limits.
   kit('cad', 'CadDocument', { format: 'cad', icon: 'cad', create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', group: 'visual' } }),
   // US Letter, in points.

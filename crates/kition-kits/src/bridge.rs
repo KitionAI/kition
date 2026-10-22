@@ -480,7 +480,7 @@ mod tests {
         let bridge = Arc::new(Bridge::default());
         let (session, rx) = bridge.connect();
         let live = LiveDocument {
-            path: "a.kitioneffect".into(),
+            path: "a.keffect".into(),
             kit: "kit.effect".into(),
             dirty: false,
             revision: 1,

@@ -71,7 +71,7 @@
     "crate": "kition-effect-sdk",
     "module": "kition_effect_sdk",
     "class": "EffectDocument",
-    "name": "Motion.kitioneffect",
+    "name": "Motion.keffect",
     "edit": {
       "command": "layer.newSolid",
       "params": {

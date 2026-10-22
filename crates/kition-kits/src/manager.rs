@@ -140,7 +140,7 @@ pub const KITS: &[KitDefinition] = &[
         id: "kit.effect",
         name: "Effect",
         binary_env: "KITION_KIT_EFFECT_BINARY",
-        extensions: &["kitioneffect"],
+        extensions: &["keffect"],
         creates: &[],
         base_name: "Untitled effect",
         embeds: false,
@@ -148,7 +148,7 @@ pub const KITS: &[KitDefinition] = &[
         agent: KitAgent {
             prefix: "effect",
             noun: "motion graphics project",
-            formats: ".kitioneffect",
+            formats: ".keffect",
             reports: "its active composition, layers, and their keyframe times",
             covers: "compositions, layers, keyframes, effects, masks, text, and more",
             queries: "`new solid`, `add keyframe`, or `gaussian blur`",

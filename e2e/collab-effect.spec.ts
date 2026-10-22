@@ -13,7 +13,7 @@ const engine = kitEngine<{ EffectDocument: { create(name: string, width: number,
  */
 async function motionFixture() {
   const sdk = await engine.load()
-  const doc = sdk.EffectDocument.create('Motion.kitioneffect', 320, 180)
+  const doc = sdk.EffectDocument.create('Motion.keffect', 320, 180)
   doc.execute('comp.settings', JSON.stringify({ duration: 2 }))
   const red = (JSON.parse(doc.execute('layer.newSolid', JSON.stringify({ name: 'Red', color: '#ff0000' }))) as { layer: number }).layer
   doc.execute('prop.addKey', JSON.stringify({ layer: red, path: 'transform/opacity', time: 0, value: 0 }))
@@ -58,7 +58,7 @@ test('co-edits a motion project between two windows: live, and merging edits mad
     // Alice opens her project and shares it.
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Motion.kitioneffect', await motionFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Motion.keffect', await motionFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('effect-status')).toContainText('2 layers', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Motion')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
@@ -70,10 +70,10 @@ test('co-edits a motion project between two windows: live, and merging edits mad
     await openSharedLink(pageB, link)
     const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('effect-status')).toContainText('2 layers', { timeout: 60_000 })
-    expect(existsSync(path.join(b.host.root, 'Shared', 'Motion.kitioneffect'))).toBe(true)
+    expect(existsSync(path.join(b.host.root, 'Shared', 'Motion.keffect'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Motion.kitioneffect', pageB, 'Shared/Motion.kitioneffect'), { timeout: 15_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Motion.keffect', pageB, 'Shared/Motion.keffect'), { timeout: 15_000 }).toBe('same')
     await expect(order(kitB)).toHaveText(['Blue', 'Red'])
 
     // Bob looks at Red's transform (his own selection, not Alice's).
@@ -81,24 +81,24 @@ test('co-edits a motion project between two windows: live, and merging edits mad
     await expect(opacity(kitB)).toHaveValue('0')
 
     // Alice edits Red's opacity key at 0 s: within a second Bob's panel shows it.
-    const beforeKey = JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect'))
+    const beforeKey = JSON.stringify(await replicaCounters(pageA, 'Motion.keffect'))
     await setOpacity(a.kit, 'Red', 40)
     const keyed = Date.now()
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect')), { intervals: [10] }).not.toBe(beforeKey)
-    const aliceKeyVersion = JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect'))
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.kitioneffect')), { timeout: 5_000, intervals: [20] }).toBe(aliceKeyVersion)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Motion.keffect')), { intervals: [10] }).not.toBe(beforeKey)
+    const aliceKeyVersion = JSON.stringify(await replicaCounters(pageA, 'Motion.keffect'))
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.keffect')), { timeout: 5_000, intervals: [20] }).toBe(aliceKeyVersion)
     const keyLive = Date.now() - keyed
     testInfo.annotations.push({ type: 'live keyframe edit to the other window', description: `${keyLive} ms` })
     expect(keyLive).toBeLessThan(1_000)
     await expect(opacity(kitB)).toHaveValue('40', { timeout: 5_000 })
 
     // Alice moves Red above Blue: within a second Bob's timeline has Red on top.
-    const beforeMove = JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect'))
+    const beforeMove = JSON.stringify(await replicaCounters(pageA, 'Motion.keffect'))
     await bringForward(pageA, a.kit, 'Red')
     const moved = Date.now()
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect')), { intervals: [10] }).not.toBe(beforeMove)
-    const aliceMoveVersion = JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect'))
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.kitioneffect')), { timeout: 5_000, intervals: [20] }).toBe(aliceMoveVersion)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Motion.keffect')), { intervals: [10] }).not.toBe(beforeMove)
+    const aliceMoveVersion = JSON.stringify(await replicaCounters(pageA, 'Motion.keffect'))
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.keffect')), { timeout: 5_000, intervals: [20] }).toBe(aliceMoveVersion)
     const moveLive = Date.now() - moved
     testInfo.annotations.push({ type: 'live layer move to the other window', description: `${moveLive} ms` })
     expect(moveLive).toBeLessThan(1_000)
@@ -116,13 +116,13 @@ test('co-edits a motion project between two windows: live, and merging edits mad
     await expect(row(kitB, 'Blue').getByTestId('effect-key')).toHaveCount(1)
     await setOpacity(a.kit, 'Red', 60)
     await expect(opacity(a.kit)).toHaveValue('60')
-    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.kitioneffect'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect')))
+    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.keffect'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Motion.keffect')))
 
     // Back online, both merge on their own: the same replica, and both edits in both windows.
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Motion.kitioneffect', pageB, 'Shared/Motion.kitioneffect'), { timeout: 60_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Motion.keffect', pageB, 'Shared/Motion.keffect'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(row(a.kit, 'Blue').getByTestId('effect-key')).toHaveCount(1, { timeout: 5_000 })
     await expect(row(kitB, 'Red').getByTestId('effect-key')).toHaveCount(2)
@@ -146,7 +146,7 @@ test('without a Kition Pro session a motion project opens and edits as before, w
   test.setTimeout(120_000)
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')
   const sockets = recordWebSockets(page)
-  const { host, kit } = await openInKitFrame(page, baseURL!, 'Motion.kitioneffect', await motionFixture())
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Motion.keffect', await motionFixture())
   try {
     await expect(kit.getByTestId('effect-status')).toContainText('2 layers', { timeout: 60_000 })
     await openTabMenu(page, 'Motion', 'Copy path/reference')

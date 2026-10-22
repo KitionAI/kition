@@ -29,13 +29,10 @@ const CASES: &[Case] = &[
     },
     Case {
         kit: "kit.effect",
-        fixture: "Motion.kitioneffect",
+        fixture: "Motion.keffect",
         command: "layer.newSolid",
         params: || json!({ "name": "Blue", "color": "#0000ff", "width": 32, "height": 36 }),
-        file_command: (
-            "file.saveAs",
-            || json!({ "path": "elsewhere.kitioneffect" }),
-        ),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.keffect" })),
     },
     Case {
         kit: "kit.design",

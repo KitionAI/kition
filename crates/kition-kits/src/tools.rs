@@ -1164,7 +1164,7 @@ mod tests {
                 && vector.contains("in Vector"),
             "{vector}"
         );
-        assert!(prompt("motion/Intro.kitioneffect").contains("effect_commands"));
+        assert!(prompt("motion/Intro.keffect").contains("effect_commands"));
         assert!(prompt("print/Flyer.kdesign").contains("design_run"));
         assert!(prompt("plans/Floor.dxf").contains("cad_run"));
         assert!(prompt("talks/Launch.pptx").contains("slide_run"));

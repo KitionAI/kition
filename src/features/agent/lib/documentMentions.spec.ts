@@ -264,7 +264,7 @@ describe('documentMentions', () => {
 
     const mentioned = buildAgentDocumentMentionPromptContext({
       referencedDocuments: [
-        { kind: 'file', path: 'Motion/Intro.kitioneffect', name: 'Intro.kitioneffect', title: 'Intro' },
+        { kind: 'file', path: 'Motion/Intro.keffect', name: 'Intro.keffect', title: 'Intro' },
         { kind: 'file', path: 'Print/Flyer.kdesign', name: 'Flyer.kdesign', title: 'Flyer' },
       ],
     })

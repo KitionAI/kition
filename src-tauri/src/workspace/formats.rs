@@ -30,7 +30,7 @@ pub fn infer_format(path: &str) -> &'static str {
         // Vector drawings, edited in the Vector kit.
         ".kvector" => "vector",
         // Motion-graphics projects, edited in the Effect kit.
-        ".kitioneffect" => "effect",
+        ".keffect" => "effect",
         // Page layouts, edited in the Design kit.
         ".kdesign" => "layout",
         // CAD drawings, edited in the CAD kit.
@@ -93,7 +93,7 @@ pub fn is_supported(path: &str) -> bool {
             "kphoto",
             "kitionfilm",
             "kvector",
-            "kitioneffect",
+            "keffect",
             "kdesign",
             "dxf",
             "kitionslide",
@@ -123,8 +123,8 @@ mod tests {
         assert!(is_supported("films/Trailer.kitionfilm"));
         assert_eq!(infer_format("art/Logo.kvector"), "vector");
         assert!(is_supported("art/Logo.kvector"));
-        assert_eq!(infer_format("motion/Intro.kitioneffect"), "effect");
-        assert!(is_supported("motion/Intro.kitioneffect"));
+        assert_eq!(infer_format("motion/Intro.keffect"), "effect");
+        assert!(is_supported("motion/Intro.keffect"));
         assert_eq!(infer_format("print/Flyer.kdesign"), "layout");
         assert!(is_supported("print/Flyer.kdesign"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");

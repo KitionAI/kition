@@ -176,7 +176,7 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.kvector$/i.test(path)) {
     return 'vector'
   }
-  if (/\.kitioneffect$/i.test(path)) {
+  if (/\.keffect$/i.test(path)) {
     return 'effect'
   }
   if (/\.kdesign$/i.test(path)) {
