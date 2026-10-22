@@ -92,12 +92,14 @@ covers the three GFM table widget row and column button regressions.
 ## Kits (Mandatory)
 
 - Read `docs/kit-sdk.md` before any kit work. It is how Kition implements the
-  Kition Kit Standard (`spec/` in the private `KitionAI/kit-standard`
-  repository), which is normative: kits, the host, and the agent conform to
-  it, and contract changes go there first. The checklist in `docs/kit-sdk.md`
-  is the definition of done for a new kit, and every kit ships a `kit.json`
-  that passes the standard's `tools/check-manifest.mjs`.
-- Kition is the standard's reference implementation, and its agent targets
+  Kit Harness Protocol (KHP, `spec/` in the private `KitionAI/kit-standard`
+  repository) and the Kition kit platform (`docs/platform/` in the private
+  `KitionAI/kition-sdk` repository), which are normative: kits, the host, and
+  the agent conform to them, and contract changes go there first. The
+  checklist in `docs/kit-sdk.md` is the definition of done for a new kit, and
+  every kit ships a `kit.json` that declares its KHP version (`"khp": "1.0"`)
+  and passes kition-sdk's `tools/check-manifest.mjs`.
+- Kition is KHP's reference implementation, and its agent targets
   DeepSeek Harness contracts (tool definitions, session event log, SDK
   protocol) by contract, not by embedding another runtime.
 - Kit editors run in the page: the kit's engine is compiled to WebAssembly
@@ -107,7 +109,7 @@ covers the three GFM table widget row and column button regressions.
   a tab, and never build kit editors inside Kition; both were tried and
   removed. Native kit executables run only `headless`, for the agent.
 - A kit's package (`public/kits/<kit>-ui/`: editor, engine, fonts) must stay
-  self-contained (standard UI-K1) so other applications can embed it. Kition
+  self-contained (platform rule UI-K1) so other applications can embed it. Kition
   ships every kit's package inside the app, as published by
   `scripts/publish-kit.sh` on a developer machine and pinned in
   `kits/kits.lock.json`. Never add builds or workflows to the private kit

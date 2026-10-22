@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Kition's copy of the Kit UI protocol's host side (kition-sdk packages/kit-protocol and
 // packages/kit-host), in src/features/kits/host/, of the standard's kit.json schema
-// (schemas/kit.schema.json), in contracts/kit/kit-standard.schema.json for the conformance suite,
+// (schemas/kit.schema.json), in contracts/kit/kit.schema.json for the conformance suite,
 // of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, of the TypeScript engine
 // contract (packages/kit-engine/src/*.ts), in src/lib/kit-engine/, of the TypeScript convergence
 // suite (packages/convergence/src/*.ts but its Node-only node.ts), in src/lib/convergence/, which
@@ -48,7 +48,7 @@ const files = [
     rewrite: (text) => header('packages/kit-host/src/files.ts') + narrowPrintParams(text.replaceAll("from '@kition/kit-protocol'", "from './protocol'")),
   },
   // JSON has no comments; the schema's $id names its source.
-  { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit-standard.schema.json', rewrite: (text) => text },
+  { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit.schema.json', rewrite: (text) => text },
 ]
 
 if (!fs.existsSync(path.join(sdk, 'packages/kit-host')) || !fs.existsSync(path.join(sdk, 'packages/extensions'))) {

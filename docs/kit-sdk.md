@@ -3,15 +3,22 @@
 Status: in use for all ten kits. Revised 2026-10-15: every kit draws its own
 editor, and Kition's own kit editors are gone. Every new kit must follow this guide.
 
-This guide is how Kition implements the **Kition Kit Standard**, which is
-normative: [`spec/`](https://github.com/KitionAI/kit-standard/tree/main/spec)
+This guide is how Kition implements the **Kit Harness Protocol (KHP)** and
+the Kition kit platform, which are normative. KHP (how an AI agent uses a
+kit) is [`spec/`](https://github.com/KitionAI/kit-standard/tree/main/spec)
 in the private `KitionAI/kit-standard` repository (aligned with DeepSeek
-Harness contracts); the SDK that implements it is the private
-`KitionAI/kition-sdk` repository (Apache-2.0), with its plan in
-`docs/roadmap.md` there. Where
-this guide and the standard disagree, the standard wins and this guide is
-fixed. Every kit ships a `kit.json` manifest checked by the standard's
-`tools/check-manifest.mjs`.
+Harness contracts); the platform (engines, the Kit Data Model, the Kit UI
+protocol, embedding) is `docs/platform/` in the private
+`KitionAI/kition-sdk` repository (Apache-2.0), the SDK that implements both,
+with its plan in `docs/roadmap.md` there. Where this guide and KHP or the
+platform disagree, they win and this guide is fixed. Every kit ships a
+`kit.json` manifest checked by kition-sdk's `tools/check-manifest.mjs`. Its
+`khp` field is the KHP version the kit conforms to (`"khp": "1.0"`, no alias
+for the old `standard` field), and `level` the KHP tier it claims (`basic`,
+`agent-ready`, `agent-ready-complete`), with `agent.drafts`,
+`agent.objectModel`, and `agent.layout` saying which tools it offers. The
+platform rules and levels key off the platform fields (`engine.contract`,
+`model`, `ui`), never off `khp`.
 
 ## 1. The Decision
 
@@ -246,7 +253,7 @@ edits a stale copy and its save overwrites the person's work. See
 A kit draws its own editor: the kit repository's `web/` app (React, on
 kition-sdk's `@kition/kit-ui`) holds the ribbon, panels, canvas, and dialogs
 next to the engine, and Kition shows it in an iframe and talks to it over the
-Kit UI protocol (`kition-kit-ui/1`, Kit Standard `spec/reference/ui-protocol.md`). Kition
+Kit UI protocol (`kition-kit-ui/1`, kition-sdk `docs/platform/reference/ui-protocol.md`). Kition
 keeps the shell: files, the workspace, the agent, the theme, the language, and
 its own shortcuts. All ten kits have one: Slide, Word, Sheet, PDF, and CAD
 (ribbon editors on kit-ui's `KitShell`), and Photo, Vector, Design, Effect,
@@ -331,8 +338,8 @@ and side panels).
 - `src/features/kits/host/` is Kition's copy of `@kition/kit-protocol` and
   `@kition/kit-host` (kition-sdk is private, Kition public):
   `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
-  fails when they drift. The same script copies the standard's `kit.json`
-  schema into `contracts/kit/kit-standard.schema.json`, which the conformance
+  fails when they drift. The same script copies kition-sdk's `kit.json`
+  schema into `contracts/kit/kit.schema.json`, which the conformance
   suite checks manifests against.
 - Extensions and scripts (`KitExtensions 1.0`) work on open kit documents
   through the object model (`KitObjectModel 1.0`). `src/lib/sdk/` (the
@@ -391,7 +398,7 @@ natively.
 
 `kit.board` (`packages/board-kit`) packages Kition's board the same way, but
 lives in Kition (`path` in `kits/sdks.json`): its engine is a TypeScript one
-(`engine.runtime` `ts-worker`, Kit Standard rule K11), `BoardDocument`, made
+(`engine.runtime` `ts-worker`, platform rule K11), `BoardDocument`, made
 with kition-sdk's `@kition/kit-engine` (`kitEngineClass`, Kition's copy in
 `src/lib/kit-engine`) from `BoardStore` and the board's commands in
 `packages/board-editor`; `web/scripts` and `vite.engine.config.ts` bundle it as
@@ -400,7 +407,7 @@ engine worker loads it like a wasm-pack module. The editor (`web/`) is
 `packages/board-editor` in the kit-ui shell with an empty `BoardHost`: it keeps
 its own replica of the board, loaded from the engine's snapshot, and exchanges
 changes with the engine's replica (`WorkerRelay`), which the host saves and
-co-edits through. `packages/board-kit/kit.json` is a standard 2.0 manifest
+co-edits through. `packages/board-kit/kit.json` is a KHP 1.0 manifest on engine contract 2
 (`distribution: default`, `model/schema.json`, which a test keeps equal to
 `boardSchema`). `scripts/build-kit-ui.sh board` builds the package;
 `scripts/publish-kit.sh board --dry-run` packs it (publishing kits that live in
@@ -491,7 +498,7 @@ that much, and every app update downloads it again.
 A kit package is also the kit's SDK deliverable: the same `.tgz` is what
 another application embeds. A web page embeds it with kition-sdk's
 `@kition/embed` (`KitionEmbed.mount`, capability set `KitEmbed 1.0`; see
-the Kit Standard's `spec/reference/embed.md`): the page serves the extracted package from an
+kition-sdk's `docs/platform/reference/embed.md`): the page serves the extracted package from an
 origin of its own, keeps documents in its own storage, and may co-edit them
 through a sync server. Kition consumes the package the way any other host
 would, through `@kition/kit-host`, so it never builds kits in its release.
@@ -548,7 +555,7 @@ Kit repository:
    over its `kitEngineClass` document in a vitest spec, asserting
    `report.level6()` and writing `report.toJsonText()` to
    `KITION_CONVERGENCE_REPORT` (the Board kit's `boardConvergence.spec.ts`).
-2c. Implement `KitDocument::check` (Kit Standard `spec/sets/agent.md`, A21–A23): diagnostics with
+2c. Implement `KitDocument::check` (kition-sdk `docs/platform/sets/agent.md`, A21–A23): diagnostics with
    stable `<kit>.<name>` codes, a `target`, and a `fix` command hint where
    one exists, errors first, each code covered by a synthetic test. Agents
    reach it as `<prefix>_check`, embeds as `editor.check()` (Slide's
@@ -875,7 +882,7 @@ Film, measured on the built SDK in Node with real H.264 through lent files
 read of an 8 MB clip for five frames. Playback skips frames the engine cannot
 keep up with; the status bar shows the frame rate reached.
 
-### Collaboration budgets (Kit Standard 2.0, L6)
+### Collaboration budgets (engine contract 2, L6)
 
 Every contract 2 kit also has budgets for shared editing, measured by the
 convergence suite's perf mode (kition-sdk `kition-convergence`, `perf`) on
@@ -913,7 +920,7 @@ kit UI library) is the kit author's SDK:
 - `tools/check-sdk.mjs`: the built-SDK checker (Kition's
   `scripts/check-kit-sdk.mjs` is the same checker with the `kits/sdks.json`
   registry);
-- the contract (Kit Standard `spec/reference/contract.md`); CI builds the example for wasm32.
+- the contract (kition-sdk `docs/platform/reference/contract.md`); CI builds the example for wasm32.
 
 Kits pin it by commit (`kition-sdk = { git = "https://github.com/KitionAI/kition-sdk", rev = … }`)
 with `net.git-fetch-with-cli = true`. Kit-photo and kit-film use it. The host

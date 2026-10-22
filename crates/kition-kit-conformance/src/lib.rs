@@ -23,7 +23,7 @@ use schema::Schemas;
 
 const NEGATIVE_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// The DeepSeek Harness release a conformance report targets (Kit Standard D4): the one Kition's
+/// The DeepSeek Harness release a conformance report targets (platform D4): the one Kition's
 /// harness follows (`kition_harness::DSH_TARGET`) and `@kition/dsh-kits` is pinned to.
 pub const DSH_TARGET: &str = kition_harness::DSH_TARGET;
 const SCREENSHOT_MAX_SIZE: u32 = 512;
@@ -64,14 +64,13 @@ pub struct CheckResult {
 #[derive(Clone, Debug, Default)]
 pub struct Report {
     pub checks: Vec<CheckResult>,
-    /// The conformance levels a Kition Kit Standard manifest supports (`L1` to `L5`; Kit Standard
-    /// `spec/kits/levels.md`), with what the others
-    /// need. Empty without such a manifest.
+    /// The Kition platform conformance levels a KHP manifest supports (`L1` to `L5`; kition-sdk
+    /// `docs/platform/kits/levels.md`), with what the others need. Empty without such a manifest.
     pub levels: Vec<&'static str>,
     pub level_notes: Vec<String>,
 }
 
-/// Whether `@kition/dsh-kits` registers the kit's tools in DeepSeek Harness (Kit Standard D1). The
+/// Whether `@kition/dsh-kits` registers the kit's tools in DeepSeek Harness (platform D1). The
 /// package mounts Kition's MCP server (`kition-kits-mcp`, `POST /v1/mcp/kits`), which serves the
 /// tools of every kit Kition knows, so a kit is registered when Kition's kit list has its id with
 /// the manifest's agent prefix. Answers the tools' name pattern, or why it is not registered.
@@ -380,15 +379,15 @@ struct ManifestFacts {
     version: String,
     /// The tool groups commands must belong to, when the manifest declares them.
     tool_groups: Option<Vec<String>>,
-    /// A Kition Kit Standard manifest's levels and notes ([`standard_levels`]).
+    /// A KHP manifest's platform levels and notes ([`platform_levels`]).
     levels: (Vec<&'static str>, Vec<String>),
-    /// A Kition Kit Standard manifest's `headless.features`, which must be exactly what the
-    /// executable's `kit.initialize` answers (Kit Standard K9).
+    /// A KHP manifest's `headless.features`, which must be exactly what the executable's
+    /// `kit.initialize` answers (platform K9).
     headless_features: Option<Vec<String>>,
 }
 
 /// What differs between a manifest's `headless.features` and the features `kit.initialize`
-/// answered (Kit Standard K9), as one message; `None` when they are the same set.
+/// answered (platform K9), as one message; `None` when they are the same set.
 fn feature_mismatch(declared: &[String], answered: &[String]) -> Option<String> {
     let missing: Vec<&str> = answered
         .iter()
@@ -417,11 +416,12 @@ fn feature_mismatch(declared: &[String], answered: &[String]) -> Option<String> 
     ))
 }
 
-/// The conformance levels a valid Kition Kit Standard manifest supports, as far as the manifest
-/// and this suite show them, and what the others need. L5 needs engine contract 2 under standard
-/// 2.x with a KDM schema and an object model namespace; L6 the kit's convergence suite
-/// (`kition-convergence`), which `tools/check-manifest.mjs --convergence` reads.
-fn standard_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
+/// The Kition platform conformance levels a valid KHP manifest supports, as far as the manifest
+/// and this suite show them, and what the others need. They key off the platform fields, never
+/// `khp` (the KHP version): L5 needs engine contract 2 with a KDM schema and an object model
+/// namespace; L6 the kit's convergence suite (`kition-convergence`), which kition-sdk's
+/// `tools/check-manifest.mjs --convergence` reads.
+fn platform_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
     let mut levels = vec!["L1"];
     let mut notes = Vec::new();
     let has = |key: &str| manifest.get(key).is_some_and(|value| !value.is_null());
@@ -449,39 +449,34 @@ fn standard_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
     } else {
         notes.push("L2 needs ui and creates".to_owned());
     }
-    let major = manifest["standard"]
-        .as_str()
-        .and_then(|standard| standard.split('.').next())
-        .and_then(|major| major.parse::<u32>().ok())
-        .unwrap_or(1);
-    if major >= 2 && manifest["engine"]["contract"] == 2 && has("model") && has("objectModel") {
+    if manifest["engine"]["contract"] == 2 && has("model") && has("objectModel") {
         levels.push("L5");
         notes.push("L6 needs the kit's convergence suite (kition-convergence)".to_owned());
     } else {
         notes.push(
-            "L5 needs standard 2.x: engine contract 2, a KDM schema, and an object model namespace"
-                .to_owned(),
+            "L5 needs engine contract 2, a KDM schema, and an object model namespace".to_owned(),
         );
     }
     (levels, notes)
 }
 
-/// The protocol a Kition Kit Standard manifest's `headless` section must name.
-const STANDARD_HEADLESS_PROTOCOL: &str = "kition-kit/1";
+/// The protocol a KHP manifest's `headless` section must name.
+const HEADLESS_PROTOCOL: &str = "kition-kit/1";
 
 fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, String> {
     let text = std::fs::read_to_string(path)
         .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
     let value: Value =
         serde_json::from_str(&text).map_err(|error| format!("kit.json is not JSON: {error}"))?;
-    // A Kition Kit Standard manifest (Kit Standard `spec/kits/manifest.md`): its `headless`
-    // section names the executable under test and the protocol it speaks.
-    if value.get("standard").is_some() {
-        schemas.standard(&value)?;
+    // A KHP manifest (`khp`, the KHP version; KHP `spec/manifest.md` and kition-sdk
+    // `docs/platform/kits/manifest.md`): its `headless` section names the executable under test
+    // and the protocol it speaks.
+    if value.get("khp").is_some() {
+        schemas.kit(&value)?;
         let protocol = value["headless"]["protocol"].as_str();
-        if protocol != Some(STANDARD_HEADLESS_PROTOCOL) {
+        if protocol != Some(HEADLESS_PROTOCOL) {
             return Err(format!(
-                "kit.json `headless.protocol` is {}, expected {STANDARD_HEADLESS_PROTOCOL}",
+                "kit.json `headless.protocol` is {}, expected {HEADLESS_PROTOCOL}",
                 protocol.unwrap_or("missing")
             ));
         }
@@ -490,7 +485,7 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
             id: text("id"),
             version: text("version"),
             tool_groups: None,
-            levels: standard_levels(&value),
+            levels: platform_levels(&value),
             headless_features: Some(
                 value["headless"]["features"]
                     .as_array()
@@ -1081,10 +1076,10 @@ mod tests {
     }
 
     #[test]
-    fn accepts_a_standard_manifest_with_an_embedded_editor() {
+    fn accepts_a_khp_manifest_with_an_embedded_editor() {
         let schemas = Schemas::load().unwrap_or_else(|err| panic!("{err}"));
         let mut manifest = json!({
-            "standard": "1.1",
+            "khp": "1.0",
             "id": "kit.example",
             "name": "Example",
             "version": "0.1.0",
@@ -1093,20 +1088,31 @@ mod tests {
             "formats": [{ "id": "example", "extensions": ["example"], "role": "edit" }],
             "ui": { "mode": "embedded", "entry": "ui/index.html", "layout": "canvas" }
         });
-        schemas
-            .standard(&manifest)
-            .unwrap_or_else(|err| panic!("{err}"));
+        schemas.kit(&manifest).unwrap_or_else(|err| panic!("{err}"));
         manifest["ui"].as_object_mut().map(|ui| ui.remove("entry"));
         assert!(
-            schemas.standard(&manifest).is_err(),
+            schemas.kit(&manifest).is_err(),
             "an embedded editor needs an entry"
+        );
+        manifest["ui"]["entry"] = json!("ui/index.html");
+        manifest["khp"] = json!("2.0");
+        assert!(
+            schemas.kit(&manifest).is_err(),
+            "khp is the KHP version, 1.x"
+        );
+        let mut legacy = manifest.clone();
+        legacy.as_object_mut().map(|object| object.remove("khp"));
+        legacy["standard"] = json!("2.0");
+        assert!(
+            schemas.kit(&legacy).is_err(),
+            "there is no `standard` alias"
         );
     }
 
     #[test]
-    fn reports_the_levels_of_a_standard_manifest() {
+    fn reports_the_platform_levels_from_the_platform_fields() {
         let mut manifest = json!({
-            "standard": "2.0",
+            "khp": "1.0",
             "engine": { "contract": 2 },
             "ui": { "mode": "embedded" },
             "creates": [{ "id": "doc" }],
@@ -1114,7 +1120,7 @@ mod tests {
             "model": { "schema": "model/schema.json", "schemaVersion": 1 },
             "objectModel": { "namespace": "Doc" }
         });
-        let (levels, notes) = standard_levels(&manifest);
+        let (levels, notes) = platform_levels(&manifest);
         assert_eq!(levels, ["L1", "L2", "L3", "L5"]);
         assert!(notes.iter().any(|note| note.starts_with("L6")));
         assert!(
@@ -1123,16 +1129,23 @@ mod tests {
                 .any(|note| note.starts_with("L4 needs registration") && note.contains("no ``")),
             "{notes:?}"
         );
-        manifest["standard"] = json!("1.1");
+        // The KHP version says nothing about the platform: engine contract 1 is what stops L5.
         manifest["engine"]["contract"] = json!(1);
-        assert_eq!(standard_levels(&manifest).0, ["L1", "L2", "L3"]);
+        let (levels, notes) = platform_levels(&manifest);
+        assert_eq!(levels, ["L1", "L2", "L3"]);
+        assert!(
+            notes
+                .iter()
+                .any(|note| note.starts_with("L5 needs engine contract 2")),
+            "{notes:?}"
+        );
     }
 
     #[test]
     fn a_kit_kition_serves_over_mcp_reaches_l4_against_the_pinned_harness() {
         let mut manifest = json!({
             "id": "kit.slide",
-            "standard": "2.0",
+            "khp": "1.0",
             "engine": { "contract": 2 },
             "ui": { "mode": "embedded" },
             "creates": [{ "id": "slide file" }],
@@ -1140,7 +1153,7 @@ mod tests {
             "model": { "schema": "model/schema.json", "schemaVersion": 1 },
             "objectModel": { "namespace": "Slide" }
         });
-        let (levels, notes) = standard_levels(&manifest);
+        let (levels, notes) = platform_levels(&manifest);
         assert_eq!(levels, ["L1", "L2", "L3", "L4", "L5"]);
         assert!(
             notes
@@ -1149,7 +1162,7 @@ mod tests {
             "{notes:?}"
         );
         manifest["agent"]["prefix"] = json!("slide file");
-        let (levels, notes) = standard_levels(&manifest);
+        let (levels, notes) = platform_levels(&manifest);
         assert!(!levels.contains(&"L4"));
         assert!(
             notes.iter().any(|note| note.contains("`slide`")),

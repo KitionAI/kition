@@ -4,14 +4,14 @@ use serde_json::Value;
 
 const PROTOCOL: &str = include_str!("../../../contracts/kit/kit-protocol.schema.json");
 const MANIFEST: &str = include_str!("../../../contracts/kit/kit-manifest.schema.json");
-/// The Kition Kit Standard's `kit.json` schema, a copy of `schemas/kit.schema.json` in the
-/// kition-sdk repository.
-const STANDARD: &str = include_str!("../../../contracts/kit/kit-standard.schema.json");
+/// The `kit.json` schema (KHP's manifest plus the Kition kit platform's fields), a copy of
+/// `schemas/kit.schema.json` in the kition-sdk repository.
+const KIT: &str = include_str!("../../../contracts/kit/kit.schema.json");
 
 pub struct Schemas {
     protocol: Value,
     manifest: Value,
-    standard: Value,
+    kit: Value,
 }
 
 impl Schemas {
@@ -20,7 +20,7 @@ impl Schemas {
         Ok(Self {
             protocol: parse(PROTOCOL)?,
             manifest: parse(MANIFEST)?,
-            standard: parse(STANDARD)?,
+            kit: parse(KIT)?,
         })
     }
 
@@ -38,9 +38,9 @@ impl Schemas {
         validate(&self.manifest, instance).map_err(|error| format!("kit.json: {error}"))
     }
 
-    /// A Kition Kit Standard manifest (it has a `standard` version).
-    pub fn standard(&self, instance: &Value) -> Result<(), String> {
-        validate(&self.standard, instance).map_err(|error| format!("kit.json: {error}"))
+    /// A KHP manifest (it has a `khp` version).
+    pub fn kit(&self, instance: &Value) -> Result<(), String> {
+        validate(&self.kit, instance).map_err(|error| format!("kit.json: {error}"))
     }
 }
 

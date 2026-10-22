@@ -1,6 +1,7 @@
 {
   "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
-  "standard": "2.0",
+  "khp": "1.0",
+  "level": "basic",
   "id": "kit.board",
   "name": "Board",
   "version": "0.1.0",
