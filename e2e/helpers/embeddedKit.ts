@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { expect, type Page, type Route } from '@playwright/test'
 import { installDesktopHost, type DesktopHostOptions } from './desktopHost'
 import { versionCounters } from './kitionPro'
+import { serveKitGrants } from './kitGrants'
 import { fulfillJson, mockLocalWorkspaceApi } from './mockApi'
 import { dismissFirstRunActivation } from './onboarding'
 
@@ -45,6 +46,8 @@ export async function serveWorkspace(page: Page, root: string) {
 /**
  * Kition on a desktop workspace whose files kits read through the file server. Files Kition saves
  * through its file API are recorded in `saves`, and with `persist` also written to the workspace.
+ * The runtime's file grants (`/v1/kits/grants`) are served over the workspace; `grants` holds
+ * their sessions.
  */
 export async function openKitWorkspace(
   page: Page,
@@ -59,6 +62,7 @@ export async function openKitWorkspace(
   }
   await mockLocalWorkspaceApi(page)
   await serveWorkspace(page, host.root)
+  const grants = await serveKitGrants(page, host.root)
   const saves: Array<{ path: string | null; bytes: Buffer }> = []
   await page.route('**/api/v1/kits/files?**', async (route) => {
     const target = new URL(route.request().url()).searchParams.get('path')
@@ -71,7 +75,7 @@ export async function openKitWorkspace(
   await routes(page)
   await page.goto(new URL('/documents', baseURL).toString(), { waitUntil: 'domcontentloaded' })
   await dismissFirstRunActivation(page)
-  return { host, saves }
+  return { host, saves, grants }
 }
 
 /** Opens the workspace file `name` from the tree, where the kit's own editor shows in a frame. */

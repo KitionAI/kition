@@ -5,6 +5,7 @@
 pub mod bridge;
 pub mod document_bridge;
 pub mod drafts;
+pub mod grants;
 pub mod host;
 pub mod license;
 pub mod manager;

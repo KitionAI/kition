@@ -3772,6 +3772,7 @@ version = "0.0.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
+ "hex",
  "http",
  "http-body-util",
  "jsonschema",
@@ -3782,6 +3783,7 @@ dependencies = [
  "kition-kit-protocol",
  "kition-license",
  "kition-store",
+ "rand 0.9.5",
  "serde",
  "serde_json",
  "sha2",

@@ -481,6 +481,8 @@ pub(crate) struct Inner {
     headless_drafts: AtomicBool,
     /// The headless kits' draft documents, by workspace path.
     pub(crate) draft_documents: tokio::sync::Mutex<HashMap<String, String>>,
+    /// The file grants kits hold (`grants.rs`, KitFiles 1.0).
+    grants: crate::grants::GrantStore,
 }
 
 /// The kits of one workspace. Cheap to clone.
@@ -511,6 +513,7 @@ impl KitManager {
         let workspace = workspace.map(|dir| std::fs::canonicalize(&dir).unwrap_or(dir));
         Self {
             inner: Arc::new(Inner {
+                grants: crate::grants::GrantStore::new(workspace.clone()),
                 workspace,
                 kits,
                 running: tokio::sync::Mutex::new(HashMap::new()),
@@ -540,6 +543,34 @@ impl KitManager {
     /// The workspace folder, if there is one.
     pub fn workspace_dir(&self) -> Option<&Path> {
         self.inner.workspace.as_deref()
+    }
+
+    /// The file grants kits hold in this workspace (KitFiles 1.0).
+    pub fn grants(&self) -> &crate::grants::GrantStore {
+        &self.inner.grants
+    }
+
+    /// `files/write` through a handle: stages the chunk, and the final one commits. A final
+    /// chunk that replaces a file is refused while an editor has that file open with unsaved
+    /// edits (FA14).
+    pub async fn write_granted(
+        &self,
+        session: &str,
+        principal: &str,
+        handle: &str,
+        chunk: crate::grants::WriteChunk<'_>,
+    ) -> Result<Option<String>, crate::grants::FileError> {
+        let grants = self.grants();
+        let unsaved = match grants.replaces(session, principal, handle) {
+            Some(path) if chunk.last => self
+                .inner
+                .bridge
+                .find(&path)
+                .await
+                .is_some_and(|document| document.dirty),
+            _ => false,
+        };
+        grants.write(session, principal, handle, chunk, unsaved)
     }
 
     /// A Kit Protocol request to the kit's headless executable that names no document (or names

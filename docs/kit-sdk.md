@@ -284,6 +284,16 @@ and side panels).
   own store `.kition/` (other documents' replicas and comment threads) among
   them, and links that lead into one or out of the workspace (rule LR2 of the
   host-capabilities proposal). `/workspace-files/` stays Kition's own.
+- Files beyond the document (KitFiles 1.0) go through file handles the
+  runtime mints and keeps, under `/v1/kits/grants`
+  (`crates/kition-kits/src/grants.rs`): a grant session per editor page,
+  bound to its kit, the person, and its document, with the kit manifest's
+  `files` lists (K15); handles (`fh_…`) bound to their session with `read`,
+  `create`, or `write`; ranged reads; staged writes that commit atomically,
+  where a `create` never replaces a file and a `write` needs the version it
+  replaces; releases; and a grant log per session. Paths stay in the
+  runtime, confined like `/kit-files/`. `KitFrame` serving the kit's
+  `files/*` requests from them is the next step.
 - A document this person may only view (a view-only share link, a `viewer`
   role) opens with `document.readOnly`. kit-ui's engine worker then refuses
   every edit (reason `read-only`) by its exported `READ_ONLY_RULES`, and the

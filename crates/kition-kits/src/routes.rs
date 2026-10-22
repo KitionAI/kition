@@ -46,6 +46,22 @@ pub fn router(state: KitsState) -> Router {
             get(commands).post(execute),
         )
         .route("/kits/{kit}/documents/{document}/save", post(save))
+        .route("/kits/grants", post(grant_file))
+        .route("/kits/grants/create", post(create_file))
+        .route("/kits/grants/release", post(release_files))
+        .route("/kits/grants/sessions", post(open_grant_session))
+        .route(
+            "/kits/grants/sessions/{session}",
+            get(grant_session).delete(end_grant_session),
+        )
+        .route("/kits/grants/{handle}", get(stat_file))
+        .route("/kits/grants/{handle}/list", get(list_folder))
+        .route(
+            "/kits/grants/{handle}/content",
+            get(read_file)
+                .put(write_chunk)
+                .layer(axum::extract::DefaultBodyLimit::max(MAX_CHUNK_BYTES)),
+        )
         .route("/kits/drafts", get(list_drafts))
         .route("/kits/drafts/compare", get(compare_draft))
         .route("/kits/drafts/merge", post(merge_draft))
@@ -435,6 +451,327 @@ async fn write_file(
         .write_file(&query.path, &body, write)
         .map_err(app_error)?;
     Ok(ok(json!({ "path": query.path, "bytes": body.len() })))
+}
+
+// File grants (Kit Standard `KitFiles 1.0`, `grants.rs`): the renderer serves a kit's `files/*`
+// requests through these routes. A grant session is bound to a kit, the person, and the
+// document its editor opened; handles are bound to their session. No answer names a path.
+
+/// The largest chunk one `files/write` stages.
+const MAX_CHUNK_BYTES: usize = 64 << 20;
+
+/// Maps a refused file request to a status; `data.reason` is the KitFiles reason (section 10),
+/// `null` for malformed parameters.
+fn file_error(error: crate::grants::FileError) -> AppError {
+    use crate::grants::FileError;
+    let (status, code) = match &error {
+        FileError::NotGranted(_) => (403, 40310),
+        FileError::NotAllowed(_) => (403, 40311),
+        FileError::AlreadyCommitted => (409, 40910),
+        FileError::Conflict(_) => (409, 40911),
+        FileError::UnsavedEdits => (409, 40912),
+        FileError::Quota => (413, 41310),
+        FileError::Io => (500, 50010),
+        FileError::BadParams(_) => (400, 40010),
+    };
+    AppError::new(status, code, error.to_string()).with_data(json!({ "reason": error.reason() }))
+}
+
+/// Who calls a grant route: every grant route takes it, so it is the one place a caller check
+/// lives. Today it is the person a session's handles are bound to (FA1). The kit frame isolation
+/// work (a per-kit origin and a per-launch API token) adds the caller's kit origin here, checked
+/// against the session's kit in `GrantStore::with_session`.
+struct GrantCaller {
+    principal: String,
+}
+
+impl axum::extract::FromRequestParts<KitsState> for GrantCaller {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut http::request::Parts,
+        state: &KitsState,
+    ) -> Result<Self, Self::Rejection> {
+        let user = <CurrentUser as axum::extract::FromRequestParts<KitsState>>::from_request_parts(
+            parts, state,
+        )
+        .await?;
+        Ok(Self {
+            principal: format!("user:{}", user.id),
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenGrantSessionBody {
+    kit: String,
+    #[serde(default)]
+    document: Option<String>,
+    #[serde(default)]
+    files: crate::grants::FilesManifest,
+    #[serde(default)]
+    read_only: bool,
+}
+
+/// `POST /kits/grants/sessions`: opens a grant session for a kit's editor page.
+async fn open_grant_session(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    JsonBody(body): JsonBody<OpenGrantSessionBody>,
+) -> AppResult<Response> {
+    let session = state
+        .kits
+        .grants()
+        .open_session(crate::grants::SessionRequest {
+            kit: &body.kit,
+            principal: &caller.principal,
+            document: body.document.as_deref(),
+            manifest: body.files,
+            read_only: body.read_only,
+        })
+        .map_err(file_error)?;
+    Ok(ok(json!({ "session": session })))
+}
+
+/// `GET /kits/grants/sessions/{session}`: the session's handles and grant log (FA16).
+async fn grant_session(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    Path(session): Path<String>,
+) -> AppResult<Response> {
+    let view = state
+        .kits
+        .grants()
+        .view(&session, &caller.principal)
+        .map_err(file_error)?;
+    Ok(ok(view))
+}
+
+/// `DELETE /kits/grants/sessions/{session}`: ends the session; its handles expire (FA4).
+async fn end_grant_session(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    Path(session): Path<String>,
+) -> Response {
+    let revoked = state.kits.grants().end_session(&session, &caller.principal);
+    ok(json!({ "revoked": revoked }))
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+enum PersonFlow {
+    Pick,
+    Drop,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GrantBody {
+    session: String,
+    path: String,
+    kind: crate::grants::Kind,
+    rights: Vec<crate::grants::Right>,
+    #[serde(default)]
+    accept: Vec<String>,
+    flow: PersonFlow,
+}
+
+/// `POST /kits/grants`: grants a handle on a file or folder the person picked or dropped.
+async fn grant_file(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    JsonBody(body): JsonBody<GrantBody>,
+) -> AppResult<Response> {
+    let flow = match body.flow {
+        PersonFlow::Pick => crate::grants::Flow::Pick,
+        PersonFlow::Drop => crate::grants::Flow::Drop,
+    };
+    let stat = state
+        .kits
+        .grants()
+        .grant(
+            &body.session,
+            &caller.principal,
+            crate::grants::GrantRequest {
+                path: &body.path,
+                kind: body.kind,
+                rights: &body.rights,
+                accept: &body.accept,
+                flow,
+                approved: false,
+            },
+        )
+        .map_err(file_error)?;
+    Ok(ok(stat))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateFileBody {
+    session: String,
+    suggested_name: String,
+    #[serde(default)]
+    mime: Option<String>,
+    #[serde(default)]
+    folder: Option<String>,
+}
+
+/// `POST /kits/grants/create`: `files/create`, a handle on a new file under an unused name.
+async fn create_file(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    JsonBody(body): JsonBody<CreateFileBody>,
+) -> AppResult<Response> {
+    let stat = state
+        .kits
+        .grants()
+        .create(
+            &body.session,
+            &caller.principal,
+            &body.suggested_name,
+            body.mime.as_deref(),
+            body.folder.as_deref(),
+        )
+        .map_err(file_error)?;
+    Ok(ok(stat))
+}
+
+#[derive(Deserialize)]
+struct ReleaseBody {
+    session: String,
+    handles: Vec<String>,
+}
+
+/// `POST /kits/grants/release`: `files/release`; unknown and expired handles are ignored.
+async fn release_files(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    JsonBody(body): JsonBody<ReleaseBody>,
+) -> Response {
+    state
+        .kits
+        .grants()
+        .release(&body.session, &caller.principal, &body.handles);
+    ok(json!({}))
+}
+
+#[derive(Deserialize)]
+struct SessionQuery {
+    session: String,
+}
+
+/// `GET /kits/grants/{handle}?session=`: `files/stat`.
+async fn stat_file(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    Path(handle): Path<String>,
+    Query(query): Query<SessionQuery>,
+) -> AppResult<Response> {
+    let stat = state
+        .kits
+        .grants()
+        .stat(&query.session, &caller.principal, &handle)
+        .map_err(file_error)?;
+    Ok(ok(stat))
+}
+
+/// `GET /kits/grants/{handle}/list?session=`: `files/list`.
+async fn list_folder(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    Path(handle): Path<String>,
+    Query(query): Query<SessionQuery>,
+) -> AppResult<Response> {
+    let files = state
+        .kits
+        .grants()
+        .list(&query.session, &caller.principal, &handle)
+        .map_err(file_error)?;
+    Ok(ok(json!({ "files": files })))
+}
+
+#[derive(Deserialize)]
+struct ReadQuery {
+    session: String,
+    #[serde(default)]
+    offset: u64,
+    #[serde(default)]
+    length: Option<u64>,
+}
+
+/// `GET /kits/grants/{handle}/content?session=&offset=&length=`: `files/read`. The body is the
+/// bytes; `ETag` is the file's version and `Kition-File-Size` its whole size.
+async fn read_file(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    Path(handle): Path<String>,
+    Query(query): Query<ReadQuery>,
+) -> AppResult<Response> {
+    let read = state
+        .kits
+        .grants()
+        .read(
+            &query.session,
+            &caller.principal,
+            &handle,
+            query.offset,
+            query.length,
+        )
+        .map_err(file_error)?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/octet-stream".to_owned()),
+            (header::CACHE_CONTROL, "no-store".to_owned()),
+            (header::ETAG, read.version),
+            (
+                http::HeaderName::from_static("kition-file-size"),
+                read.size.to_string(),
+            ),
+        ],
+        read.bytes,
+    )
+        .into_response())
+}
+
+#[derive(Deserialize)]
+struct WriteQuery {
+    session: String,
+    offset: u64,
+    #[serde(default, rename = "final")]
+    last: bool,
+    #[serde(default)]
+    expected: Option<String>,
+}
+
+/// `PUT /kits/grants/{handle}/content?session=&offset=&final=&expected=`: `files/write`, one
+/// chunk of the raw request body. Answers `{}`, or `{ version }` for the final chunk.
+async fn write_chunk(
+    State(state): State<KitsState>,
+    caller: GrantCaller,
+    Path(handle): Path<String>,
+    Query(query): Query<WriteQuery>,
+    body: axum::body::Bytes,
+) -> AppResult<Response> {
+    let version = state
+        .kits
+        .write_granted(
+            &query.session,
+            &caller.principal,
+            &handle,
+            crate::grants::WriteChunk {
+                bytes: &body,
+                offset: query.offset,
+                last: query.last,
+                expected: query.expected.as_deref(),
+            },
+        )
+        .await
+        .map_err(file_error)?;
+    Ok(ok(match version {
+        Some(version) => json!({ "version": version }),
+        None => json!({}),
+    }))
 }
 
 // Drafts an agent kept beside workspace files over `kition-kits-mcp --drafts` (Kit Standard A27):

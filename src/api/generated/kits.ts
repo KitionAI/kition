@@ -104,6 +104,208 @@ export type KitsWriteFileQuery = {
 }
 
 /**
+ * A grant session: one kit editor page, bound to its kit, the person, and the document it opened. 128 random bits.
+ */
+export type KitsGrantSessionId = string
+
+/**
+ * A file handle (KitFiles FA1): opaque, 128 random bits, bound to one grant session. The runtime keeps the path it names; no answer carries a path.
+ */
+export type KitsFileHandle = string
+
+/**
+ * read: files/read and files/stat, and files/list on a folder. create: write a new file once (never replacing one), or files/create in a folder. write: replace an existing file with an expected version (FA2).
+ */
+export type KitsFileRight = "read" | "create" | "write"
+
+export type KitsFileKind = "file" | "folder"
+
+/**
+ * How a handle was granted (KitFiles section 3): the person's pick or drop, files/create, an entry of a granted folder, or a file an agent's command names.
+ */
+export type KitsGrantFlow = "pick" | "drop" | "create" | "list" | "agent"
+
+/**
+ * data.reason of a refused /v1/kits/grants request (KitFiles section 10): 403 file-not-granted (unknown, expired, released, or foreign handle or session, or a right the handle lacks) and not-allowed (outside the workspace, a hidden path or a link out of it, an extension outside the kit's manifest, a write in a read-only session); 409 already-committed, conflict (a create that would replace a file, or a stale expected version), and unsaved-edits; 413 quota; 500 io-error. Malformed parameters are 400 with data.reason null.
+ */
+export type KitsFileErrorReason = "file-not-granted" | "not-allowed" | "already-committed" | "conflict" | "unsaved-edits" | "quota" | "io-error"
+
+/**
+ * The kit manifest's files lists (K15), extensions without the dot. A grant outside them is refused not-allowed; without them every grant is.
+ */
+export type KitsFilesManifest = {
+  read?: string[]
+  create?: string[]
+  folders?: boolean
+  print?: boolean
+}
+
+/**
+ * POST /v1/kits/grants/sessions: opens a grant session for a kit's editor page. Its handles expire when it ends (DELETE /v1/kits/grants/sessions/{session}) or after twelve hours unused.
+ */
+export type KitsGrantSessionRequest = {
+  kit: KitsKitId
+  /**
+   * The document the editor opened; files/create without a folder makes files beside it.
+   */
+  document?: KitsWorkspacePath
+  files?: KitsFilesManifest
+  /**
+   * A read-only document: no write grants (FA17).
+   */
+  readOnly?: boolean
+}
+
+/**
+ * The answer to POST /v1/kits/grants/sessions.
+ */
+export type KitsGrantSession = {
+  session: KitsGrantSessionId
+}
+
+/**
+ * A handle as the kit sees it (FA3): GET /v1/kits/grants/{handle}?session=, and the answer of POST /v1/kits/grants and /v1/kits/grants/create.
+ */
+export type KitsFileStat = {
+  handle: KitsFileHandle
+  /**
+   * The last path segment only; untrusted text.
+   */
+  name: string
+  kind: KitsFileKind
+  size?: number
+  mime?: string
+  /**
+   * The file's opaque version stamp; null for a created file not committed yet.
+   */
+  version: string | null
+  rights: KitsFileRight[]
+}
+
+/**
+ * POST /v1/kits/grants: grants a handle on a workspace file or folder the person picked or dropped. read and write need an existing file; create needs a new name in an existing folder and never replaces a file (conflict). A folder takes read, and create when the manifest lists create.
+ */
+export type KitsGrantRequest = {
+  session: KitsGrantSessionId
+  path: KitsWorkspacePath
+  kind: KitsFileKind
+  rights: KitsFileRight[]
+  /**
+   * For a folder: the extensions files/list answers, within the manifest's read list.
+   */
+  accept?: string[]
+  flow: "pick" | "drop"
+}
+
+/**
+ * POST /v1/kits/grants/create: files/create (FA7). A handle with right create on a new file beside the session's document, or in a folder handle with right create, under an unused name (Report 2.pdf when Report.pdf exists). Only the last segment of suggestedName counts, sanitised (FA15); its extension must be in the manifest's create list. The file appears when committed.
+ */
+export type KitsCreateFileRequest = {
+  session: KitsGrantSessionId
+  suggestedName: string
+  mime?: string
+  folder?: KitsFileHandle
+}
+
+/**
+ * GET /v1/kits/grants/{handle}/list?session=: files/list on a folder handle with right read. Its visible files the grant accepts, not recursively, each a new handle with right read.
+ */
+export type KitsFileList = {
+  files: KitsFileStat[]
+}
+
+/**
+ * GET /v1/kits/grants/{handle}/content?session=&offset=&length=: files/read. The body is the bytes (application/octet-stream) from offset, at most length and at most 8 MiB; ETag is the file's version and Kition-File-Size the whole file's size, so the caller reads on.
+ */
+export type KitsReadFileQuery = {
+  session: KitsGrantSessionId
+  offset?: number
+  length?: number
+}
+
+/**
+ * PUT /v1/kits/grants/{handle}/content?session=&offset=&final=&expected=: files/write, one chunk (the raw request body, application/octet-stream, up to 64 MiB). offset must equal the bytes staged so far. Chunks are staged in a temporary file; final commits atomically. A create handle commits once and never replaces a file; a write handle commits only while the file's version is still expected, which the final chunk carries, and not while an editor has the file open with unsaved edits. A failed commit drops the staged bytes.
+ */
+export type KitsWriteChunkQuery = {
+  session: KitsGrantSessionId
+  offset: number
+  final?: boolean
+  expected?: string
+}
+
+/**
+ * The answer to a files/write chunk: {} while staging, the committed file's version after the final chunk.
+ */
+export type KitsWriteChunkResult = {
+  version?: string
+}
+
+/**
+ * POST /v1/kits/grants/release: files/release. Unknown and expired handles are ignored; staged writes of released handles are dropped.
+ */
+export type KitsReleaseRequest = {
+  session: KitsGrantSessionId
+  handles: KitsFileHandle[]
+}
+
+/**
+ * A handle as the person sees it (FA16).
+ */
+export type KitsGrantView = {
+  handle: KitsFileHandle
+  /**
+   * The last path segment only; untrusted text.
+   */
+  name: string
+  kind: KitsFileKind
+  size?: number
+  mime?: string
+  /**
+   * The file's opaque version stamp; null for a created file not committed yet.
+   */
+  version: string | null
+  rights: KitsFileRight[]
+  flow: KitsGrantFlow
+}
+
+/**
+ * One entry of a session's grant log (KitFiles section 7): every grant, commit, release, and revocation, with the file's display name only.
+ */
+export type KitsGrantLogEntry = {
+  /**
+   * Milliseconds since the Unix epoch.
+   */
+  at: number
+  event: "grant" | "commit" | "release" | "revoke"
+  handle: KitsFileHandle
+  flow: KitsGrantFlow
+  kit: KitsKitId
+  principal: string
+  rights: KitsFileRight[]
+  kind: KitsFileKind
+  name: string
+}
+
+/**
+ * GET /v1/kits/grants/sessions/{session}: what the session holds now and its grant log (FA16).
+ */
+export type KitsGrantSessionView = {
+  session: KitsGrantSessionId
+  kit: KitsKitId
+  document: KitsWorkspacePath | null
+  readOnly: boolean
+  grants: KitsGrantView[]
+  log: KitsGrantLogEntry[]
+}
+
+/**
+ * The answer to DELETE /v1/kits/grants/sessions/{session}: the handles that expired with it.
+ */
+export type KitsGrantSessionEnd = {
+  revoked: KitsFileHandle[]
+}
+
+/**
  * replica: the draft is a KDM replica the kit compares object by object; file: a copy of the file, compared by summaries and renders.
  */
 export type KitsDraftMode = "replica" | "file"
@@ -487,6 +689,6 @@ export type KitsBridgeDocumentApplyResult = {
 }
 
 /**
- * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.
+ * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kit Standard KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason).
  */
 export type KitsContract = KitsKitList

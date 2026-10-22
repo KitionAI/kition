@@ -215,6 +215,11 @@ module.exports = {
       rules: { 'max-lines': 'off', 'max-lines-per-function': 'off' },
     },
     {
+      // KitFiles' host side, copied from kition-sdk by scripts/sync-kit-host.mjs: its shape is decided there.
+      files: ['src/features/kits/host/files.ts'],
+      rules: { 'max-lines-per-function': 'off' },
+    },
+    {
       // Object-model typings generated from each kit's schema (scripts/generate-kit.mjs in kition-sdk).
       files: ['src/lib/sdk/kits/**'],
       rules: { 'max-lines': 'off' },

@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kit-protocol/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The Kit UI protocol, `kition-kit-ui/1` (Kit Standard spec/reference/ui-protocol.md): its messages, and JSON-RPC 2.0
+ * The Kit UI protocol, `kition-kit-ui/1` (Kit Harness Protocol (KHP) spec/reference/ui-protocol.md): its messages, and JSON-RPC 2.0
  * over a MessagePort for both sides. A host and an embedded kit UI each make one `KitPeer` on
  * their end of the channel. Framework-free; no dependencies.
  */
@@ -81,7 +81,7 @@ export type KitDocumentInit = {
    */
   readOnly?: boolean
   /**
-   * Who comments and how (minor version 1.6; Kit Standard 2.0 rule M23): the person's principal
+   * Who comments and how (minor version 1.6; KHP 2.0 rule M23): the person's principal
    * id (`null` when unknown) and display name, whether they may write comments (a commenter's
    * document is `readOnly` for its content yet takes comments), and whether threads others opened
    * are read-only history (the document is not co-edited now).
@@ -103,10 +103,10 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`. */
   capabilities: string[]
   /**
-   * The capability sets this host serves (Kit Standard `spec/index.md` section 3.1, minor version 1.5), such as
+   * The capability sets this host serves (KHP `spec/index.md` section 3.1, minor version 1.5), such as
    * `KitModel 1.0` or `KitCollab 1.0`; absent from older hosts.
    */
   capabilitySets?: string[]
@@ -245,15 +245,63 @@ export type DraftComparison = { summary: DraftSummary; before: string | null; af
 /** Who a merge is recorded as: the agent, on behalf of the person who started it. */
 export type DraftOrigin = { kind: 'agent'; principal: string; label?: string }
 
-/** What a diagnostic is about (Kit Standard 2.0 A21); none set means the whole document. Pages and slides count from 1. */
+/** What a diagnostic is about (KHP 2.0 A21); none set means the whole document. Pages and slides count from 1. */
 export type KitDiagnosticTarget = { objectId?: string; path?: string; page?: number; slide?: number; sheet?: string; cell?: string }
-/** One thing a kit found wrong with a document (Kit Standard 2.0 A21). `code` is stable (`sheet.formula-error`); `fix` is a command hint, never run on its own. */
+/** One thing a kit found wrong with a document (KHP 2.0 A21). `code` is stable (`sheet.formula-error`); `fix` is a command hint, never run on its own. */
 export type KitDiagnostic = {
   code: string
   severity: 'error' | 'warning' | 'info'
   target: KitDiagnosticTarget
   message: string
   fix?: { command: string; params?: Record<string, unknown> }
+}
+
+/**
+ * KitFiles 1.0 (KHP `spec/sets/files.md`; Kit UI protocol section 7g, minor version
+ * 1.10): files beyond the open document, reached only through file handles the host grants. A
+ * handle is an opaque `fh_…` string bound to one session, one kit, and one principal (FA1, FA5);
+ * no path of the host's file system ever reaches the kit (FA-P2, UI-F1).
+ */
+export const FILE_HANDLE_PREFIX = 'fh_'
+
+/** What a handle allows (FA2): `read` (and list a folder), `create` (a new file, or files in a folder), `write` (replace an existing file). */
+export type KitFileRight = 'read' | 'create' | 'write'
+
+/**
+ * A handle's stat (FA3). `name` is a display name, the last segment only, untrusted text for the
+ * kit; `version` is the host's opaque version stamp, `null` for a created file not committed yet.
+ */
+export type KitFileStat = {
+  handle: string
+  name: string
+  kind: 'file' | 'folder'
+  size?: number
+  mime?: string
+  version: string | null
+  rights: KitFileRight[]
+}
+
+/** `files/pick` (FA6): `accept` lists extensions without the dot; `multiple` applies to `open`, `suggestedName` to `save`. */
+export type KitFilesPickParams = { purpose: string; mode: 'open' | 'folder' | 'save'; accept: string[]; multiple?: boolean; suggestedName?: string | null }
+
+/** `files/create` (FA7): `folder` is a folder handle with right `create`; without it, the host creates beside the document. */
+export type KitFilesCreateParams = { suggestedName: string; mime?: string; folder?: string }
+
+/** `files/write` (FA9): one staged chunk; `offset` is the number of bytes staged so far; `final` commits; `expected` is required on a `write` handle's final chunk. */
+export type KitFilesWriteParams = { handle: string; bytes: ArrayBuffer; offset: number; final?: boolean; expected?: string | null }
+
+/** `files/print` (FA11): a PDF the kit rendered, or a handle with right `read` on a PDF. */
+export type KitFilesPrintParams = { bytes: ArrayBuffer; mime: 'application/pdf'; title: string } | { handle: string; title: string }
+
+/** The reasons a `files/*` request is refused (`error.data.reason` of a `-32000`; KitFiles 1.0 section 10). */
+export const FILE_ERROR_REASONS = ['file-not-granted', 'not-allowed', 'no-gesture', 'already-committed', 'conflict', 'unsaved-edits', 'quota', 'unsupported', 'io-error'] as const
+export type KitFileErrorReason = (typeof FILE_ERROR_REASONS)[number]
+
+/** The reason a `files/*` request was refused, from the error the host answered; `null` for any other failure. */
+export function fileErrorReason(error: unknown): KitFileErrorReason | null {
+  if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
+  const reason = (error.data as { reason?: unknown }).reason
+  return (FILE_ERROR_REASONS as readonly string[]).includes(reason as string) ? (reason as KitFileErrorReason) : null
 }
 
 /** Requests the host sends, with their params and results. */
@@ -303,6 +351,8 @@ export type HostNotifications = {
   'lease/changed': { leases: KitLease[] }
   /** The other people in the document and what they share changed (capability `presence`, section 7e): the whole list. */
   'presence/peers': { peers: KitPeerPresence[] }
+  /** The host revoked these handles, or they expired (KitFiles FA4); later calls with them fail `file-not-granted`. */
+  'files/revoked': { handles: string[] }
 }
 
 /** Requests the kit sends. */
@@ -325,6 +375,21 @@ export type KitToHost = {
   'host/leaseRelease': [{ scope: string }, Record<string, never>]
   /** The document's leases now (capability `lease`). */
   'host/leases': [Record<string, never>, { leases: KitLease[] }]
+  /** Shows the host's picker (capability `files-pick`, section 7g); only from a person's gesture. Empty when the person cancels. */
+  'files/pick': [KitFilesPickParams, { files: KitFileStat[] }]
+  /** A new file handle with right `create` (capability `files`): an unused name, never an existing file (FA7). */
+  'files/create': [KitFilesCreateParams, KitFileStat]
+  'files/stat': [{ handle: string }, KitFileStat]
+  /** At most `length` bytes from `offset`; possibly fewer. `size` is the whole file's size. */
+  'files/read': [{ handle: string; offset?: number; length?: number }, { bytes: ArrayBuffer; version: string; size: number }]
+  /** A folder handle's entries that match the grant's `accept`, not recursively, each with right `read`. */
+  'files/list': [{ handle: string }, { files: KitFileStat[] }]
+  /** One staged chunk; `{ version }` once `final` commits it (FA9). */
+  'files/write': [KitFilesWriteParams, { version?: string }]
+  /** Drops handles; never an error, even for unknown or expired ones. */
+  'files/release': [{ handles: string[] }, Record<string, never>]
+  /** Shows the system's print dialog (capability `print`); only from a person's gesture. */
+  'files/print': [KitFilesPrintParams, { printed: boolean }]
 }
 
 /** Notifications the kit sends. */

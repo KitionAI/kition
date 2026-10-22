@@ -23,8 +23,10 @@ const ALLOW_METHODS: &str = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 // template seeding requests that run before any window session exists.
 const ALLOW_HEADERS: &str =
     "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Session,Kition-Origin";
-// Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`.
-const EXPOSE_HEADERS: &str = "ETag,Content-Range,Accept-Ranges";
+// Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`. A read
+// through a file grant (`/v1/kits/grants/{handle}/content`) names the whole size in
+// `Kition-File-Size`.
+const EXPOSE_HEADERS: &str = "ETag,Content-Range,Accept-Ranges,Kition-File-Size";
 
 fn origin_allowed(origin: &str) -> bool {
     ALLOWED_ORIGINS.contains(&origin)

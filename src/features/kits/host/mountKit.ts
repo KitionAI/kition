@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kit-host/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The host's side of the Kit UI protocol (Kit Standard spec/reference/ui-protocol.md): mount an embedded kit UI in an
+ * The host's side of the Kit UI protocol (Kit Harness Protocol (KHP) spec/reference/ui-protocol.md): mount an embedded kit UI in an
  * iframe, hand it its port, initialize it with the document, theme, and locale, and serve its
  * file calls with the host's own handlers. Framework-free.
  */
@@ -38,8 +38,13 @@ import {
   type StoredReplica,
   type KitDiagnostic,
 } from './protocol'
+import { FILES_METHODS, openFileSession, type KitFileSession, type KitFilesOptions } from './files'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
+export { fileErrorReason } from './protocol'
+export { extensionOf, fileError, openFileSession, sanitizeFileName, unusedName, FILES_METHODS } from './files'
+export type { FilesMethod, KitFileCommitMode, KitFileEntry, KitFileGrant, KitFileGrantFlow, KitFileRef, KitFileSession, KitFileStaging, KitFilesManifest, KitFilesOptions, KitFilesStorage } from './files'
+export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
@@ -84,7 +89,7 @@ export type KitHostHandlers = {
   /** `document/conflicts`: the document's unresolved conflict objects (section 7c). */
   conflicts?: (params: KitNotifications['document/conflicts']) => void
   /**
-   * `document/schema`: a newer kit edited the document (section 7f; Kit Standard 2.0 rule M5a),
+   * `document/schema`: a newer kit edited the document (section 7f; KHP 2.0 rule M5a),
    * checked. The host tells the person and offers the update, without blocking editing.
    */
   schema?: (params: KitNotifications['document/schema']) => void
@@ -111,6 +116,12 @@ export type MountOptions = {
   /** The capability sets the host serves (`ui/initialize` `capabilitySets`), such as `KitCollab 1.0`. */
   capabilitySets?: string[]
   handlers: KitHostHandlers
+  /**
+   * Serves KitFiles 1.0 (`files/*`, protocol section 7g): the host's storage, the kit manifest's
+   * `files` lists, its picker and printer. Lists `files`, and `files-pick` and `print` when it
+   * has them. Each kit document the frame loads gets its own grant table, ended with it.
+   */
+  files?: KitFilesOptions
   /** How long the kit may take to open the document. */
   timeoutMs?: number
   /** Abandons the mount (the frame went away first): stops listening and rejects. */
@@ -187,6 +198,11 @@ export type KitConnection = {
     describe: (schema?: object) => Promise<Record<string, unknown>>
     batch: (params: ModelBatchParams) => Promise<ModelBatchResult>
   }
+  /**
+   * The session's file grants, when the host serves `files` (KitFiles 1.0): grant a handle for an
+   * agent's `file` parameter or a drop, revoke handles, list what the kit holds (FA16).
+   */
+  files: Pick<KitFileSession, 'grant' | 'revoke' | 'grants'> | null
   close: () => void
 }
 
@@ -202,6 +218,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   const { handlers } = options
   const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize, lease: handlers.leases, presence: handlers.presence }
   const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
+  if (options.files) capabilities.push('files', ...(options.files.pick ? ['files-pick'] : []), ...(options.files.print ? ['print'] : []))
   const timeout = options.timeoutMs ?? 120_000
 
   /** One attempt: a channel to the kit document that announced itself as `id`. */
@@ -239,6 +256,8 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       if (!handlers.leases) unsupported('host/leases')
       return { leases: await handlers.leases.list() }
     })
+    const files = options.files ? openFileSession({ ...options.files, readOnly: options.document.readOnly === true, revoked: (handles) => peer.notify('files/revoked', { handles }) }) : null
+    if (files) for (const method of FILES_METHODS) peer.handle(method, (params) => files.serve(method, params as never))
     peer.on('document/conflicts', (params) => handlers.conflicts?.(params))
     peer.on('document/schema', (params) => {
       const report = parseSchemaReport(params)
@@ -262,11 +281,15 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities, capabilitySets: options.capabilitySets ?? [], ui: options.ui },
       { transfer: true },
     )
-    return { peer, initialized }
+    return { peer, files, initialized }
   }
 
   return new Promise((resolve, reject) => {
-    let current: { peer: HostPeer; id: string } | null = null
+    let current: { peer: HostPeer; files: KitFileSession | null; id: string } | null = null
+    const stop = (attempt: { peer: HostPeer; files: KitFileSession | null } | null) => {
+      attempt?.peer.close()
+      void attempt?.files?.end()
+    }
     const finish = () => {
       clearTimeout(timer)
       window.removeEventListener('message', onMessage)
@@ -274,7 +297,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
     }
     const onAbort = () => {
       finish()
-      current?.peer.close()
+      stop(current)
       reject(new Error('the kit mount was abandoned'))
     }
     if (options.signal?.aborted) {
@@ -284,7 +307,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
     options.signal?.addEventListener('abort', onAbort)
     const timer = setTimeout(() => {
       finish()
-      current?.peer.close()
+      stop(current)
       reject(new Error('the kit did not open the document in time'))
     }, timeout)
     // A kit document announced itself: connect to it. A newer one (the frame navigated, or the
@@ -293,18 +316,19 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       if (event.source !== frame.contentWindow || !isReady(event.data) || event.data.ready !== KIT_UI_PROTOCOL) return
       if (options.origin !== '*' && event.origin !== options.origin) return
       if (current?.id === event.data.id) return
-      current?.peer.close()
-      const { peer, initialized } = attempt(event.source as Window, event.data.id)
-      current = { peer, id: event.data.id }
+      stop(current)
+      const { peer, files, initialized } = attempt(event.source as Window, event.data.id)
+      current = { peer, files, id: event.data.id }
       initialized.then(
         (info) => {
           if (current?.peer !== peer) return
           finish()
-          resolve(connection(peer, info))
+          resolve(connection(peer, info, files))
         },
         (error: unknown) => {
           if (current?.peer !== peer) return
           finish()
+          void files?.end()
           reject(error instanceof Error ? error : new Error(String(error)))
         },
       )
@@ -315,7 +339,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   })
 }
 
-function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilities: string[] }): KitConnection {
+function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilities: string[] }, files: KitFileSession | null): KitConnection {
   return {
     kit: info.kit,
     capabilities: info.capabilities,
@@ -360,6 +384,10 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
       describe: (schema) => peer.request('model/describe', schema ? { schema } : {}),
       batch: (params) => peer.request('model/batch', params),
     },
-    close: () => peer.close(),
+    files: files && { grant: files.grant, revoke: files.revoke, grants: files.grants },
+    close: () => {
+      peer.close()
+      void files?.end()
+    },
   }
 }
