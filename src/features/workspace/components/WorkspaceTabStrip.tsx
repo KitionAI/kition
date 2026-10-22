@@ -1,8 +1,8 @@
 import { Bot, ChevronDown, ChevronLeft, ChevronRight, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, X, Zap } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
-import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
+import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, getWorkspaceTabKit, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { KitIcon } from '@/components/KitIcon'
 import { canShareDocument, CollabTabIndicators, isDocumentCollab, requestShareDocument, requestSyncDocument, useCollabAvailable } from '@/features/collab/public'
 import { canShowDocumentHistory, requestDocumentHistory } from '@/features/history/public'
@@ -279,6 +279,7 @@ export function WorkspaceTabStrip({
   const nextTab = activeIndex >= 0 && activeIndex < tabs.length - 1 ? tabs[activeIndex + 1] : undefined
 
   function renderTab(tab: WorkspaceTab) {
+    const kit = getWorkspaceTabKit(tab)
     return (
       <div
         key={tab.id}
@@ -287,6 +288,8 @@ export function WorkspaceTabStrip({
           activeTabId === tab.id && 'is-active',
           isTabModified?.(tab) && 'is-modified',
         )}
+        data-kit={kit ?? undefined}
+        style={kit ? ({ '--tab-kit': `var(--kit-${kit})`, '--tab-kit-soft': `var(--kit-${kit}-soft)` } as CSSProperties) : undefined}
         title={tab.title}
         data-tab-title={tab.title}
         onClick={() => activateTab(tab)}
@@ -472,9 +475,8 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
   if (tab.type === 'dashboard') {
     return <LayoutDashboard className="size-3.5 text-brand" />
   }
-  if (tab.type === 'design') return <KitIcon kit="design" small className="size-3.5" />
-  if (tab.type === 'board') return <KitIcon kit="board" small className="size-3.5" />
-  return <KitIcon kit={tab.format === 'data' ? 'table' : 'document'} small className="size-3.5" />
+  const kit = getWorkspaceTabKit(tab)
+  return <KitIcon kit={kit ?? 'document'} small className="size-3.5" />
 }
 
 /** A background tab whose document the agent changed: the change waits there for review. */

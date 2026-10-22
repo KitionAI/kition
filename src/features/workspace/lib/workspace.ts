@@ -301,6 +301,24 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
   }
 }
 
+/** The kit whose color and icon a tab shows; plain files, galleries, workflows, and dashboards have none. */
+export function getWorkspaceTabKit(tab: WorkspaceTab): KitIconId | null {
+  switch (tab.type) {
+    case 'gallery':
+    case 'dashboard':
+      return null
+    case 'file-viewer':
+      return getWorkspaceItemKitIcon(tab.format)
+    case 'workflow':
+      return tab.kitablePath ? 'table' : null
+    case 'design':
+    case 'board':
+      return tab.type
+    default:
+      return 'format' in tab && tab.format === 'data' ? 'table' : 'document'
+  }
+}
+
 export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): WorkspaceItemIcon {
   const kit = getWorkspaceItemKitIcon(format)
   if (kit) {

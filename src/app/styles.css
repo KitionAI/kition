@@ -982,6 +982,15 @@
     box-shadow: inset 0 2px 0 0 hsl(var(--primary));
   }
 
+  /* The merged topbar tab: tinted like the kit's bar beneath it, with no bottom edge. */
+  .document-topbar-tabs .document-tab.is-active[data-kit] {
+    background: linear-gradient(var(--tab-kit-soft), var(--tab-kit-soft)), var(--document-main-surface, hsl(var(--card)));
+    box-shadow:
+      inset 1px 0 0 color-mix(in srgb, var(--tab-kit) 20%, transparent),
+      inset -1px 0 0 color-mix(in srgb, var(--tab-kit) 20%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--tab-kit) 20%, transparent);
+  }
+
   .document-title-row {
 
     @apply flex items-center gap-2;
@@ -1347,6 +1356,13 @@
   .document-tab.is-active {
     @apply text-foreground;
     background: hsl(var(--primary) / 0.1);
+  }
+
+  /* An active kit tab takes the kit's soft tint and a hairline in its color (docs/design.md, Kit
+     colors). The tint sits over the page surface, as the kit's own bar below does. */
+  .document-tab.is-active[data-kit] {
+    background: linear-gradient(var(--tab-kit-soft), var(--tab-kit-soft)), var(--document-main-surface, hsl(var(--card)));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tab-kit) 20%, transparent);
   }
 
   .document-tab.is-modified .document-tab-close {
