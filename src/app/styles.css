@@ -315,6 +315,9 @@
     --document-border: hsl(0 0% 89.8%);
     --document-hover: hsl(240 5.9% 10% / 0.04);
     --document-active: hsl(240 5.9% 10% / 0.06);
+    /* Selected tree rows use the soft purple accent; hover stays neutral. */
+    --document-selected: hsl(var(--accent));
+    --document-selected-text: hsl(var(--brand-active));
     --document-control: hsl(0 0% 96.1%);
     --document-text: hsl(0 0% 9%);
     --document-muted-text: hsl(42 3% 46%);
@@ -331,6 +334,8 @@
     --document-border: hsl(var(--border));
     --document-hover: hsl(0 0% 100% / 0.04);
     --document-active: hsl(0 0% 100% / 0.06);
+    --document-selected: hsl(var(--accent));
+    --document-selected-text: hsl(var(--accent-foreground));
     --document-control: hsl(222 14% 14%);
     --document-text: hsl(var(--foreground));
     --document-muted-text: hsl(var(--muted-foreground));
@@ -3102,13 +3107,15 @@
     background: var(--document-hover, hsl(var(--muted)));
   }
 
-  .document-tree-row.is-active {
-    @apply font-medium text-foreground;
-    background: var(--document-active, hsl(var(--muted)));
+  .document-tree-row.is-active,
+  .document-tree-row.is-active:hover {
+    @apply font-medium;
+    background: var(--document-selected, hsl(var(--accent)));
+    color: var(--document-selected-text, hsl(var(--brand-active)));
   }
 
   .document-tree-folder {
-    @apply font-medium text-muted-foreground;
+    @apply font-medium text-foreground;
   }
 
   .document-tree-drag-handle {
@@ -3410,12 +3417,6 @@
     @apply flex h-full min-h-0 flex-col bg-background;
   }
 
-  .agent-chat-panel.is-empty {
-    background:
-      linear-gradient(180deg, hsl(var(--tint-lavender) / 0.45) 0%, hsl(var(--background) / 0) 38%),
-      hsl(var(--background));
-  }
-
   .agent-chat-header {
     @apply flex h-16 shrink-0 items-center justify-between border-b px-5;
     border-bottom-color: var(--document-border, hsl(var(--border)));
@@ -3461,6 +3462,10 @@
 
   .agent-chat-empty-actions {
     @apply mt-2 w-full;
+  }
+
+  .agent-chat-empty-cta {
+    @apply flex justify-center;
   }
 
   .agent-chat-suggestion-grid {
@@ -4254,6 +4259,15 @@
     @apply pointer-events-none block size-full select-none overflow-visible;
     filter: drop-shadow(0 5px 8px hsl(var(--foreground) / 0.16));
     animation: agent-floating-icon-idle 4.2s ease-in-out infinite;
+  }
+
+  /* Kition purple, easing to a slightly lighter purple toward the tail. */
+  .agent-floating-launcher__stop-start {
+    stop-color: hsl(var(--primary));
+  }
+
+  .agent-floating-launcher__stop-end {
+    stop-color: color-mix(in srgb, hsl(var(--primary)) 80%, white);
   }
 
   .agent-floating-launcher__eyes {

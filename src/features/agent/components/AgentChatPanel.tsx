@@ -19,6 +19,7 @@ import { isKitionAccountUsable } from '@/features/account/lib/accountState'
 import type { AgentMentionableDocument } from '@/features/agent/lib/documentMentions'
 import { type AgentPaneContext, emptyStateForPane } from '@/features/agent/lib/paneEmptyState'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
+import { Button } from '@kition/app-ui'
 import { cn } from '@kition/app-ui/utils'
 
 type AgentChatPanelProps = {
@@ -212,21 +213,17 @@ export function AgentChatPanel({
             title="Kition"
             description={emptyState.description}
             actions={needsModelConfig ? (
-              <div className="agent-chat-suggestion-grid">
-                <button
-                  type="button"
-                  className="agent-chat-suggestion-card"
+              <div className="agent-chat-empty-cta">
+                <Button
                   onClick={onConfigureModel}
                   data-testid="agent-empty-configure-model"
                 >
-                  <span>{t('emptyState.needsModelConfig.label')}</span>
-                </button>
+                  {t('emptyState.needsModelConfig.label')}
+                </Button>
               </div>
             ) : hostedAccountBlocked ? (
-              <div className="agent-chat-suggestion-grid">
-                <button
-                  type="button"
-                  className="agent-chat-suggestion-card"
+              <div className="agent-chat-empty-cta">
+                <Button
                   onClick={hostedAccountCreditsEmpty
                     ? onHostedAccountBilling
                     : hostedAccountStatus === 'connecting'
@@ -235,7 +232,7 @@ export function AgentChatPanel({
                   disabled={hostedAccountStatus === 'loading'}
                   data-testid="agent-empty-kition-account"
                 >
-                  <span>{hostedAccountStatus === 'credits_empty'
+                  {hostedAccountStatus === 'credits_empty'
                     ? t('emptyState.kitionAccount.topUp')
                     : hostedAccountStatus === 'loading'
                     ? t('emptyState.kitionAccount.checking')
@@ -245,8 +242,8 @@ export function AgentChatPanel({
                         ? t('emptyState.kitionAccount.retry')
                         : hostedAccountStatus === 'expired'
                           ? t('emptyState.kitionAccount.signInAgain')
-                        : t('emptyState.kitionAccount.signIn')}</span>
-                </button>
+                        : t('emptyState.kitionAccount.signIn')}
+                </Button>
               </div>
             ) : (
               <div className="agent-chat-suggestion-grid">

@@ -14,8 +14,8 @@ export function AgentLauncherIcon() {
           y2="804.907"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#8800ff" />
-          <stop offset="1" stopColor="#ba32ff" />
+          <stop className="agent-floating-launcher__stop-start" />
+          <stop className="agent-floating-launcher__stop-end" offset="1" />
         </linearGradient>
         <linearGradient
           id="agent-launcher-bow-gradient"
@@ -25,8 +25,8 @@ export function AgentLauncherIcon() {
           y2="368.19"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#8800ff" />
-          <stop offset="1" stopColor="#ba32ff" />
+          <stop className="agent-floating-launcher__stop-start" />
+          <stop className="agent-floating-launcher__stop-end" offset="1" />
         </linearGradient>
       </defs>
       <path

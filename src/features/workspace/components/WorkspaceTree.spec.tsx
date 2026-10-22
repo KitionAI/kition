@@ -227,3 +227,27 @@ describe('WorkspaceTree drag feedback', () => {
     expect(bWrap.firstElementChild?.classList.contains('document-tree-drop-slot')).toBe(true)
   })
 })
+
+describe('WorkspaceTree context menu', () => {
+  beforeEach(async () => {
+    await unmount()
+    document.querySelectorAll('.document-tree-menu').forEach((menu) => menu.remove())
+  })
+
+  it('right-clicking a file row opens the same menu as the more button', async () => {
+    const node = makeFileNode({ path: 'notes/a.md', name: 'a.md' })
+    await mount(createElement(WorkspaceTree, makeProps({ nodes: [node] })))
+
+    const row = findRow('a.md')
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    await act(async () => {
+      row.dispatchEvent(event)
+    })
+
+    expect(event.defaultPrevented).toBe(true)
+    const menu = document.body.querySelector('.document-tree-menu')
+    expect(menu).not.toBeNull()
+    expect(menu?.textContent).toContain('Rename')
+    expect(row.querySelector('[data-tree-more-trigger]')?.getAttribute('aria-expanded')).toBe('true')
+  })
+})

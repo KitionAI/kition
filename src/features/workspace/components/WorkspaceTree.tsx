@@ -202,6 +202,19 @@ export function WorkspaceTree({
     }
   }, [currentActionMenuPath, managesActionMenuState, setCurrentActionMenuPath])
 
+  function openActionMenu(path: string, trigger: HTMLElement) {
+    setMoveMenuPath('')
+    // Flip the menu above the trigger when the row sits near the viewport bottom.
+    const rect = trigger.getBoundingClientRect()
+    const margin = 8
+    const estimatedMenuHeight = 300
+    const spaceBelow = window.innerHeight - rect.bottom - margin
+    const spaceAbove = rect.top - margin
+    setMenuPlacement(spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow ? 'top' : 'bottom')
+    setActionMenuAnchorEl(trigger)
+    setCurrentActionMenuPath(path)
+  }
+
   function startRename(node: WorkspaceTreeNode) {
     closeRowMenus()
     setRenamingPath(node.path)
@@ -372,6 +385,16 @@ export function WorkspaceTree({
                     : undefined}
                 data-workflow-id={isKitableWorkflowLeaf ? (parseKitableWorkflowVirtualPath(node.path)?.workflowId ?? '') : undefined}
                 style={{ paddingLeft: `${paddingLeft}px` }}
+                onContextMenu={(event) => {
+                  // Right-click opens the same menu as the row's "more" button.
+                  const trigger = event.currentTarget.querySelector<HTMLElement>('[data-tree-more-trigger]')
+                  if (!hasMenu || isRenaming || !trigger) {
+                    return
+                  }
+                  event.preventDefault()
+                  event.stopPropagation()
+                  openActionMenu(node.path, trigger)
+                }}
                 onClick={(event) => {
 
                   if (event.detail > 1) {
@@ -506,21 +529,15 @@ export function WorkspaceTree({
                         <button
                           type="button"
                           className="document-tree-action"
+                          data-tree-more-trigger=""
                           onClick={(event) => {
                             event.stopPropagation()
-                            setMoveMenuPath('')
                             if (actionMenuOpen) {
+                              setMoveMenuPath('')
                               setCurrentActionMenuPath('')
                               return
                             }
-                            const rect = event.currentTarget.getBoundingClientRect()
-                            const margin = 8
-                            const estimatedMenuHeight = 300
-                            const spaceBelow = window.innerHeight - rect.bottom - margin
-                            const spaceAbove = rect.top - margin
-                            setMenuPlacement(spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow ? 'top' : 'bottom')
-                            setActionMenuAnchorEl(event.currentTarget)
-                            setCurrentActionMenuPath(node.path)
+                            openActionMenu(node.path, event.currentTarget)
                           }}
                           aria-label={t('tree.moreActions')}
                           aria-expanded={actionMenuOpen}

@@ -622,7 +622,8 @@ describe('AgentChatPanel Kition Account readiness', () => {
       onHostedAccountConnect,
     })))
 
-    expect(container.querySelectorAll('.agent-chat-suggestion-card')).toHaveLength(1)
+    expect(container.querySelectorAll('.agent-chat-suggestion-card')).toHaveLength(0)
+    expect(container.querySelectorAll('.agent-chat-empty-cta button')).toHaveLength(1)
     expect(container.textContent).not.toContain('Summarize this document')
     const signIn = container.querySelector('[data-testid="agent-empty-kition-account"]') as HTMLButtonElement
     await act(async () => {
