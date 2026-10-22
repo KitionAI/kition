@@ -80,22 +80,43 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | P | P | N | P | Y | P | P | P |
-| Word | P | P | N | N | N | N | N | P | P |
-| Sheet | P | P | ? | N | P | ? | P | P | P |
+| Slide | P | P | Y | Y | Y | Y | P | P | Y |
+| Word | P | P | Y | Y | Y | Y | P | P | Y |
+| Sheet | P | P | Y | Y | Y | Y | P | P | Y |
 
-- **Slide:** a semantic model (type, categories, series, legend, labels,
-  axes, style, palette). The writer emits a `c:chartSpace` with cached values
-  and no embedded workbook, so the data cannot be edited in another
-  application. Only `chart.type` is a command; editing chart data is an open
-  P0 item. The whole chart is one KDM properties value.
-- **Word:** charts are flattened into drawing items at import, with label
-  widths estimated. They are written back from the preserved XML, so the
-  file survives, but nothing is editable.
-- **Sheet:** a chart subsystem (`crates/engine/chart`) resolves workbook
-  ranges, and the `chart.*` commands (change type, select data, add element,
-  format) edit it. The writer emits chart parts. The editor shows charts but
-  has no chart user interface.
+*(Phase 3, charts: all three kits implement `KitDrawing 1.1` charts through
+kition-sdk's `kition_drawing::chart`, the shared description (`ChartSpec`),
+the `drawing.chart` change and the DrawingML chart codec. Insert › Chart and
+Chart Design are the shared kit-ui controls in every kit, so a person's edit
+and an agent's are the same command. Each kit has a native test and a
+Chromium and WebKit browser test that inserts, edits, undoes, saves, reopens
+and checks read-only refusal.)*
+
+- **Slide:** the semantic model maps to and from the shared description by
+  position, so a series keeps its look. The kept chart part is patched with
+  the shared codec instead of dropped, so formatting Slide does not model
+  survives an edit (the writer reuses the part only when it reads back as the
+  model). The data grid edits categories and series. The whole chart is still
+  one KDM properties value: two people editing one chart at once keep one
+  change (open, DR14).
+- **Word:** a chart is described from its part; `drawing.chart` patches the
+  part, keeps it on the chart object and draws it again. Inserted charts get
+  a new part. Charts now move and resize (SmartArt diagrams stay frozen), and
+  their frames are their own replica register, so a move and an edit made at
+  once both stay. Chart text takes letters its font lacks from a fallback
+  face. The edited part is one register value (concurrent edits of one chart
+  keep one).
+- **Sheet:** a chart shows its cells: it is described with the values its
+  ranges hold, and its type, titles, legend, labels, gridlines and series
+  colours change by command; categories and series are refused (DR16), and
+  the editor has no data grid. Charts are now drawing objects the pointer
+  selects, moves and resizes. All of a sheet's charts are one `features`
+  register value (open, DR14).
+- **All kits:** an edit that changes the data detaches it from the embedded
+  workbook (literal values, no stale `c:externalData`), so another
+  application shows the edited values but cannot edit them as cells (open:
+  rewriting the embedded workbook). Element-level formatting (axes, number
+  formats, trendlines, error bars) is preserved but not yet editable.
 
 ## Ink
 
