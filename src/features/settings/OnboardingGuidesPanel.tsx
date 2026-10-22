@@ -154,7 +154,7 @@ function OnboardingGuidesPanelReady(props: {
       ) : null}
 
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-[13px] font-semibold uppercase text-muted-foreground">
           {t('onboardingGuides.guides')}
         </span>
         <Button

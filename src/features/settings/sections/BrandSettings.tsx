@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@kition/app-ui'
+import { Button, Input, Select } from '@kition/app-ui'
 import {
   SettingsActionBar,
   SettingsPaneHeader,
@@ -58,7 +58,7 @@ function BrandKitEditor({ root }: { root: string }) {
     <>
       <SettingsSection title={t('brand.identitySection')}>
         <SettingsRow title={t('brand.name')} description={t('brand.nameDescription')}>
-          <input
+          <Input
             className="settings-input"
             aria-label={t('brand.name')}
             value={draft.name ?? ''}
@@ -66,7 +66,7 @@ function BrandKitEditor({ root }: { root: string }) {
           />
         </SettingsRow>
         <SettingsRow title={t('brand.font')} description={t('brand.fontDescription')}>
-          <select
+          <Select
             className="settings-select"
             aria-label={t('brand.font')}
             value={draft.fontFamily ?? ''}
@@ -76,12 +76,12 @@ function BrandKitEditor({ root }: { root: string }) {
           >
             <option value="">{t('brand.noFont')}</option>
             {DESIGN_FONT_FAMILIES.map((font) => (
-              <option key={font}>{font}</option>
+              <option key={font} value={font}>{font}</option>
             ))}
-          </select>
+          </Select>
         </SettingsRow>
         <SettingsRow title={t('brand.logo')} description={t('brand.logoDescription')}>
-          <input
+          <Input
             className="settings-input"
             aria-label={t('brand.logo')}
             value={draft.logoPath ?? ''}
@@ -93,11 +93,10 @@ function BrandKitEditor({ root }: { root: string }) {
       <SettingsSection title={t('brand.colorsSection')} description={t('brand.colorsDescription')}>
         {BRAND_COLOR_ROLES.map((role) => (
           <SettingsRow key={role} title={t(`brand.colors.${role}`)}>
-            <input
-              type="color"
-              aria-label={t(`brand.colors.${role}`)}
-              value={draft.colors[role] ?? '#ffffff'}
-              onChange={(event) => setColor(role, event.target.value)}
+            <ColorSwatch
+              label={t(`brand.colors.${role}`)}
+              value={draft.colors[role]}
+              onChange={(value) => setColor(role, value)}
             />
             <Button variant="ghost" size="sm" disabled={!draft.colors[role]} onClick={() => setColor(role, '')}>
               {t('brand.clearColor')}
@@ -119,5 +118,26 @@ function BrandKitEditor({ root }: { root: string }) {
         onCancel={() => setDraft(brand.kit ?? EMPTY_BRAND_KIT)}
       />
     </>
+  )
+}
+
+/**
+ * A color well: the swatch shows the color, or a checkerboard when there is none, and the native
+ * color input sits invisibly over it so clicking the swatch opens the system picker.
+ */
+function ColorSwatch({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }) {
+  return (
+    <span
+      className="settings-color-swatch"
+      data-empty={value ? undefined : 'true'}
+      style={value ? { backgroundColor: value } : undefined}
+    >
+      <input
+        type="color"
+        aria-label={label}
+        value={value ?? '#ffffff'}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </span>
   )
 }

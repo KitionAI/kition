@@ -21,6 +21,7 @@ import { PropertiesDrawer } from '@/features/workflow/drawer/PropertiesDrawer'
 import { EmailSyncTriggerPanel } from './EmailSyncTriggerPanel'
 import { EmailSyncWorkflowEditor } from './EmailSyncWorkflowEditor'
 import { CopyableEmailSyncError } from './CopyableEmailSyncError'
+import { ProviderSwitch } from './EmailSyncSettingsPanel'
 import { useEmailSyncTableOptions } from './useEmailSyncTableOptions'
 import {
   cancelEmailSyncRun,
@@ -198,17 +199,12 @@ export function EmailSyncWorkflowPage({ workflowId }: { workflowId: string }) {
         <div className="flex min-w-0 items-center gap-3">
           <Mail className="size-4 text-primary" />
           <h1 className="truncate text-base font-semibold text-foreground">{workflow.name}</h1>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={workflow.schedule.enabled}
-            aria-label="Enable email sync schedule"
+          <ProviderSwitch
+            checked={workflow.schedule.enabled}
+            label="Enable email sync schedule"
             disabled={busy === 'schedule' || Boolean(activeRun)}
-            onClick={() => void saveSchedule(!workflow.schedule.enabled)}
-            className={`relative h-5 w-9 rounded-full border transition-colors ${workflow.schedule.enabled ? 'border-primary bg-primary' : 'border-border bg-muted'} disabled:opacity-50`}
-          >
-            <span className={`absolute top-0.5 size-3.5 rounded-full bg-white shadow-sm transition-transform ${workflow.schedule.enabled ? 'left-[18px]' : 'left-0.5'}`} />
-          </button>
+            onChange={() => void saveSchedule(!workflow.schedule.enabled)}
+          />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setActivePanel('runs')}>

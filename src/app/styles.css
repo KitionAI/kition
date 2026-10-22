@@ -200,6 +200,13 @@
     font: inherit;
   }
 
+  /* Native sliders, checkboxes, and radios follow Kition purple, not the browser blue. */
+  input[type='range'],
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: hsl(var(--primary));
+  }
+
   html.theme-transitioning,
   html.theme-transitioning * {
     transition: none !important;
@@ -930,7 +937,7 @@
   }
 
   .kition-account-panel__primary {
-    @apply mt-3 h-10 w-full rounded-md;
+    @apply mt-3 self-start rounded-md;
   }
 
   .kition-account-panel__footer {
@@ -5412,7 +5419,7 @@
 
   .settings-input,
   .settings-select .el-select {
-    @apply h-14 rounded-md border-input bg-background px-4 text-base shadow-none;
+    @apply h-14 rounded-md border border-input bg-background px-4 text-base shadow-none;
   }
 
   .settings-select .el-select {
@@ -5489,30 +5496,33 @@
     @apply flex flex-wrap gap-2;
   }
 
+  /* The one switch: a neutral track when off, Kition purple when on, no text
+     inside (the button carries the accessible label). */
   .el-switch {
-    @apply relative inline-flex h-7 min-w-[64px] items-center justify-end rounded-full border border-border bg-background px-2.5 pl-8 text-[10px] font-medium text-muted-foreground transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200;
+    background: hsl(var(--hairline-strong));
   }
 
   .el-switch::after {
     content: '';
-    @apply absolute left-1 top-1 size-5 rounded-full bg-muted-foreground/70 shadow-sm transition-all duration-200;
+    @apply pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full shadow-sm transition-transform duration-200;
+    background: hsl(var(--primary-foreground));
   }
 
   .el-switch.is-checked {
-    @apply justify-start border-emerald-200 bg-emerald-50 px-2.5 pr-8 text-emerald-700;
+    background: hsl(var(--primary));
   }
 
   .el-switch.is-checked::after {
-    left: calc(100% - 1.5rem);
-    background-color: rgb(16 185 129 / 0.9);
+    transform: translateX(1rem);
+  }
+
+  .el-switch:has(.settings-switch-button:disabled) {
+    @apply opacity-50;
   }
 
   .settings-switch-button {
-    @apply relative z-10 inline-flex h-full w-full items-center justify-end bg-transparent p-0 text-[10px] font-medium text-inherit;
-  }
-
-  .el-switch.is-checked .settings-switch-button {
-    @apply justify-start;
+    @apply absolute inset-0 z-10 rounded-full bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed;
   }
 
   .shortcut-input {
@@ -5647,6 +5657,29 @@
     @apply p-0;
   }
 
+  /* In Settings the account header reads like every other pane's header. */
+  .settings-account-pane .kition-account-panel__header {
+    @apply mb-6 block border-b border-border/40 pb-5 pr-0;
+  }
+
+  .settings-account-pane .kition-account-panel__icon,
+  .settings-account-pane .kition-account-panel__eyebrow {
+    display: none;
+  }
+
+  .settings-account-pane .kition-account-panel h1 {
+    @apply mt-0 text-[22px] font-semibold leading-snug;
+  }
+
+  .settings-account-pane .kition-account-panel__description {
+    @apply mt-1 leading-normal;
+  }
+
+  .settings-account-pane .kition-account-panel__content,
+  .settings-account-pane .kition-account-benefits {
+    @apply mt-0 border-t-0 pt-0;
+  }
+
   .settings-modal-window .settings-provider-editor,
   .settings-modal-window .settings-provider-rail {
     @apply rounded-none border-0 bg-transparent shadow-none;
@@ -5692,9 +5725,25 @@
     @apply h-10 rounded-lg text-sm;
   }
 
+  /* One control column: every select and text field in a settings row has the same
+     width; a narrower max-width (a port, a percentage) still applies. */
   .settings-modal-window .settings-select,
   .settings-modal-window .settings-input {
-    min-width: 180px;
+    width: 240px;
+    min-width: 0;
+  }
+
+  /* A color well: the swatch, with the native color input invisible over it. */
+  .settings-color-swatch {
+    @apply relative inline-block size-8 shrink-0 overflow-hidden rounded-lg border border-input transition-shadow focus-within:ring-2 focus-within:ring-ring/30;
+  }
+
+  .settings-color-swatch[data-empty='true'] {
+    background: repeating-conic-gradient(hsl(var(--muted)) 0 25%, hsl(var(--background)) 0 50%) 0 0 / 8px 8px;
+  }
+
+  .settings-color-swatch input {
+    @apply absolute inset-0 size-full cursor-pointer opacity-0;
   }
 
   .settings-modal-window .settings-feedback {
@@ -8825,7 +8874,7 @@
   }
 
   .settings-pane-header h2 {
-    @apply text-[22px] font-semibold leading-snug tracking-tight text-foreground;
+    @apply text-[22px] font-semibold leading-snug text-foreground;
   }
 
   .settings-pane-header p {
@@ -8846,7 +8895,7 @@
   }
 
   .settings-section-head strong {
-    @apply text-[13px] font-semibold uppercase tracking-wide text-muted-foreground;
+    @apply text-[13px] font-semibold uppercase text-muted-foreground;
   }
 
   .settings-section-head p {
@@ -8879,7 +8928,7 @@
   }
 
   .settings-sidebar-title {
-    @apply block text-[11px] font-semibold uppercase tracking-[1px] text-muted-foreground;
+    @apply block text-[11px] font-semibold uppercase text-muted-foreground;
   }
 
   .settings-sidebar-search {

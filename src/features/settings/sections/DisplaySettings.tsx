@@ -231,9 +231,7 @@ function DisplayAppearanceSection({ display, theme, onUpdate, onUpdateTheme }: D
             className="settings-switch-button"
             aria-label={t('display.reduceMotion')}
             onClick={() => onUpdate('reduceMotion', !display.reduceMotion)}
-          >
-            {display.reduceMotion ? t('common.enabled') : t('common.disabled')}
-          </button>
+          />
         </span>
       </SettingsRow>
       <SettingsRow
@@ -248,9 +246,7 @@ function DisplayAppearanceSection({ display, theme, onUpdate, onUpdateTheme }: D
             className="settings-switch-button"
             aria-label={t('display.showDocumentToolbar')}
             onClick={() => onUpdate('showDocumentToolbar', !display.showDocumentToolbar)}
-          >
-            {display.showDocumentToolbar ? t('common.enabled') : t('common.disabled')}
-          </button>
+          />
         </span>
       </SettingsRow>
     </SettingsSection>

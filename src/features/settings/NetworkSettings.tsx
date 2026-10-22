@@ -264,16 +264,15 @@ export function NetworkSettings() {
               className="settings-switch-button"
               aria-label={t('network.proxy.enableTitle')}
               onClick={() => update('enabled', !form.enabled)}
-            >
-              {form.enabled ? t('network.proxy.enabled') : t('network.proxy.disabled')}
-            </button>
+            />
           </span>
         </SettingsRow>
       </SettingsSection>
 
       <fieldset
         disabled={!form.enabled}
-        className={cn('contents', !form.enabled && 'opacity-60')}
+        // A real box (not display: contents), so the dimming applies to the fields.
+        className={cn('m-0 min-w-0 border-0 p-0 transition-opacity', !form.enabled && 'opacity-50')}
       >
         <SettingsSection>
           <SettingsRow title={t('network.proxy.schemeLabel')}>
@@ -281,6 +280,7 @@ export function NetworkSettings() {
               value={form.scheme}
               onChange={(event) => update('scheme', event.target.value as DesktopProxyScheme)}
               aria-label={t('network.proxy.schemeLabel')}
+              disabled={!form.enabled}
               className="settings-select w-full max-w-[256px]"
             >
               {schemeOrder.map((scheme) => (

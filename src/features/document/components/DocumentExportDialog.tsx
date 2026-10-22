@@ -43,7 +43,6 @@ function ToggleSwitch({
   ariaLabel: string
   disabled?: boolean
 }) {
-  const { t } = useTranslation('document')
   return (
     <span className={cn('el-switch', checked && 'is-checked')}>
       <button
@@ -54,9 +53,7 @@ function ToggleSwitch({
         className="settings-switch-button"
         disabled={disabled}
         onClick={() => onChange(!checked)}
-      >
-        {checked ? t('export.toggleOn') : t('export.toggleOff')}
-      </button>
+      />
     </span>
   )
 }

@@ -1,4 +1,4 @@
-import { Bot, CircleUserRound, Database, Info, Mail, Monitor, Network, Palette, Puzzle, Settings, SlidersHorizontal, Users } from 'lucide-react'
+import { Bot, CircleUserRound, Code2, Database, Info, Mail, Monitor, Network, Palette, Puzzle, Settings, Users } from 'lucide-react'
 
 /** The settings sections in sidebar order, with where each one's searchable copy lives. */
 export const settingsSections = [
@@ -12,7 +12,7 @@ export const settingsSections = [
   { key: 'collab', icon: Users, group: 'advanced' },
   { key: 'extensions', icon: Puzzle, group: 'advanced' },
   { key: 'runtime', icon: Database, group: 'advanced' },
-  { key: 'developer', icon: SlidersHorizontal, group: 'advanced' },
+  { key: 'developer', icon: Code2, group: 'advanced' },
   { key: 'about', icon: Info, group: 'primary' },
 ] as const
 

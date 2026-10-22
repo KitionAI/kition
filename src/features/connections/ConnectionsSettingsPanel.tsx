@@ -320,20 +320,21 @@ export function ConnectionModal({
 
   const editor = (
       <div className={embedded ? 'min-w-0' : 'w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl'}>
-        <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-          <Mail className="size-5 text-primary" />
-          <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Email Delivery</p>
-            <h3 className={embedded ? 'mt-1 text-lg font-semibold text-foreground' : 'text-sm font-semibold text-foreground'}>{embedded ? 'Delivery settings' : form.id ? t('modal.titleEdit') : t('modal.titleNew')}</h3>
-            <p className="text-xs text-muted-foreground">{embedded ? 'Configure sender identity and SMTP transport for send-email workflows.' : t('modal.subtitle')}</p>
-          </div>
-          {!embedded ? (
+        {/* Embedded, the host pane already titles this section. */}
+        {!embedded ? (
+          <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+            <Mail className="size-5 text-primary" />
+            <div>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Email Delivery</p>
+              <h3 className="text-sm font-semibold text-foreground">{form.id ? t('modal.titleEdit') : t('modal.titleNew')}</h3>
+              <p className="text-xs text-muted-foreground">{t('modal.subtitle')}</p>
+            </div>
             <button type="button" className="ml-auto inline-grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={onClose} aria-label={t('modal.closeAria')}>
               <X className="size-4" />
             </button>
-          ) : null}
-        </header>
-        <div className="grid gap-5 px-5 py-4">
+          </header>
+        ) : null}
+        <div className={embedded ? 'grid gap-5 pb-4' : 'grid gap-5 px-5 py-4'}>
           {!embedded ? <FormField label="Email provider">
             <select
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
@@ -385,7 +386,7 @@ export function ConnectionModal({
           {error ? <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive" data-testid="connection-error">{error}</div> : null}
           {okMessage ? <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">{okMessage}</div> : null}
         </div>
-        <footer className="flex justify-end gap-2 border-t border-border bg-muted/40 px-5 py-4">
+        <footer className={embedded ? 'flex justify-end gap-2 border-t border-border pt-4' : 'flex justify-end gap-2 border-t border-border bg-muted/40 px-5 py-4'}>
           {!embedded ? <Button variant="outline" onClick={onClose}>{t('modal.cancel')}</Button> : null}
           <Button disabled={!canSubmit || saving} onClick={() => void submit()} data-testid="connection-save">
             {saving ? <LoaderCircle className="size-4 animate-spin" /> : null}

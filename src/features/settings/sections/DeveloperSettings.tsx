@@ -75,9 +75,7 @@ export function DeveloperSettings() {
                   general: { ...current.general, debug: !current.general.debug },
                 }))
               }}
-            >
-              {settings.general.debug ? t('common.enabled') : t('common.disabled')}
-            </button>
+            />
           </span>
         </SettingsRow>
       </SettingsSection>

@@ -493,17 +493,17 @@ export function ProviderSwitch({
   onChange: () => void
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${checked ? 'border-primary bg-primary' : 'border-border bg-muted'} disabled:opacity-50`}
-      onClick={onChange}
-    >
-      <span className={`absolute left-0 top-0.5 size-[18px] rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
-    </button>
+    <span className={`el-switch${checked ? ' is-checked' : ''}`}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        className="settings-switch-button"
+        onClick={onChange}
+      />
+    </span>
   )
 }
 

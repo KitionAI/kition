@@ -152,9 +152,7 @@ export function GeneralSettings() {
               aria-label={t('general.shareUsageData')}
               onClick={() => updateGeneral({ shareUsageData: !settings.general.shareUsageData })}
               data-testid="share-usage-data-toggle"
-            >
-              {settings.general.shareUsageData ? t('common.enabled') : t('common.disabled')}
-            </button>
+            />
           </span>
         </SettingsRow>
         <SettingsRow
@@ -182,9 +180,7 @@ export function GeneralSettings() {
                 className="settings-switch-button"
                 aria-label={t(item.titleKey)}
                 onClick={() => updateGeneral({ [item.field]: !settings.general[item.field] })}
-              >
-                {settings.general[item.field] ? t('common.enabled') : t('common.disabled')}
-              </button>
+              />
             </span>
           </SettingsRow>
         ))}
