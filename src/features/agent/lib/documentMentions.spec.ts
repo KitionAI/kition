@@ -258,7 +258,7 @@ describe('documentMentions', () => {
       activeDocumentFormat: 'vector',
       referencedDocuments: [],
     })
-    expect(active).toContain('a vector drawing open in Kition Vector')
+    expect(active).toContain('a vector drawing open in Vector')
     expect(active).toContain('vector_inspect')
     expect(active).not.toContain('photo_inspect')
 
@@ -268,9 +268,9 @@ describe('documentMentions', () => {
         { kind: 'file', path: 'Print/Flyer.kitiondesign', name: 'Flyer.kitiondesign', title: 'Flyer' },
       ],
     })
-    expect(mentioned).toContain('Referenced motion graphics projects in this turn (open them in Kition Effect)')
+    expect(mentioned).toContain('Referenced motion graphics projects in this turn (open them in Effect)')
     expect(mentioned).toContain('effect_run')
-    expect(mentioned).toContain('Referenced page layouts in this turn (open them in Kition Design)')
+    expect(mentioned).toContain('Referenced page layouts in this turn (open them in Design)')
     expect(mentioned).toContain('design_commands')
     expect(mentioned).not.toContain('Referenced workspace documents in this turn')
   })
@@ -281,7 +281,7 @@ describe('documentMentions', () => {
       activeDocumentFormat: 'photo',
       referencedDocuments: [],
     })
-    expect(active).toContain('layered image open in Kition Photo')
+    expect(active).toContain('layered image open in Photo')
     expect(active).toContain('photo_inspect')
     expect(active).not.toContain('Read this exact path with document_read')
 

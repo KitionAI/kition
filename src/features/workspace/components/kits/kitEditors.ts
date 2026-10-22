@@ -61,17 +61,17 @@ function kit(name: string, documentClass: string, entry: Omit<KitEditorEntry, 'e
 
 // The create menu orders its items itself (`CREATE_ORDER` in `WorkspaceCreateMenu`).
 const KIT_EDITORS: readonly KitEditorEntry[] = [
-  kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'image', extension: 'psd', baseName: 'Untitled Photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image', group: 'visual' } }),
-  kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'drawing', extension: 'kitionvector', baseName: 'Untitled Vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', group: 'visual' } }),
+  kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'photo', extension: 'psd', baseName: 'Untitled photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.photo', group: 'visual' } }),
+  kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: 'kitionvector', baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
   // US Letter, in points.
-  kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: 'kitiondesign', baseName: 'Untitled Design', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
+  kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: 'kitiondesign', baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
   kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'video', extension: 'kitionfilm', baseName: 'Untitled Film', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', group: 'media' } }),
-  kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'motion', extension: 'kitioneffect', baseName: 'Untitled Effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', group: 'media' } }),
+  kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'effect', extension: 'kitioneffect', baseName: 'Untitled effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.effect', group: 'media' } }),
   // A3 in millimetres; the engine starts a metric drawing with those limits.
   kit('cad', 'CadDocument', { format: 'cad', icon: 'cad', create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', group: 'visual' } }),
   // US Letter, in points.
   kit('word', 'WordDocument', { format: 'docx', icon: 'word', preview: true, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word', size: { width: 612, height: 792 }, label: 'createMenu.format.word', group: 'documents' } }),
-  kit('sheet', 'SheetDocument', { format: 'xlsx', icon: 'sheet', preview: true, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled Sheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', group: 'data' } }),
+  kit('sheet', 'SheetDocument', { format: 'xlsx', icon: 'sheet', preview: true, create: { id: 'sheet', extension: 'xlsx', baseName: 'Untitled sheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.sheet', group: 'data' } }),
   kit('slide', 'SlideDocument', { format: 'slide', icon: 'slide', create: { id: 'slide', extension: 'kitionslide', baseName: 'Untitled Slide', size: { width: 960, height: 540 }, label: 'createMenu.format.slide', group: 'visual' } }),
   // PowerPoint files open in the Slide kit.
   kit('slide', 'SlideDocument', { format: 'pptx', icon: 'slide', preview: true }),

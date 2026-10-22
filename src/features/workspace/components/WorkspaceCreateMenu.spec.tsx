@@ -21,9 +21,9 @@ describe('WorkspaceCreateMenu', () => {
         onCreateTable: vi.fn(),
         onCreateBoard,
         kitCreations: [
-          { id: 'image', label: 'createMenu.format.image', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
+          { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
           { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kitionslide', onCreate: vi.fn() },
-          { id: 'spreadsheet', label: 'createMenu.format.spreadsheet', kit: 'sheet', group: 'data', extension: 'xlsx', onCreate: vi.fn() },
+          { id: 'sheet', label: 'createMenu.format.sheet', kit: 'sheet', group: 'data', extension: 'xlsx', onCreate: vi.fn() },
           { id: 'word', label: 'createMenu.format.word', kit: 'word', group: 'documents', extension: 'docx', onCreate: vi.fn() },
           { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
         ],

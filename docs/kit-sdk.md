@@ -817,7 +817,7 @@ Text kits (Word):
   so every printable key and editing key reaches the engine, and command
   shortcuts (`Cmd+B`) reach the frame. Turn the engine's `Mod+` shortcuts into
   `Cmd+`.
-- Keep the session in a `RefCell` when laying out needs `&mut` (Kition Word
+- Keep the session in a `RefCell` when laying out needs `&mut` (the Word kit
   caches its layout), since `render` and `inspect` take `&self`. Never mark
   the document changed for a caret or selection move.
 - An engine that fills its whole output with paper (`render_region`) renders
@@ -825,7 +825,7 @@ Text kits (Word):
 
 Grid kits (Sheet):
 
-- An engine whose upstream draws with its UI toolkit (Kition Sheet's grid is
+- An engine whose upstream draws with its UI toolkit (the Sheet kit's grid is
   egui) needs its own painting in the SDK: port the toolkit drawing (cell
   fills, borders, text, alignment, number formats) into the SDK crate, with
   the faces the upstream web build uses, and say in `KITION_CHANGES.md` what is
@@ -838,7 +838,7 @@ Grid kits (Sheet):
 
 Tool-table kits (PDF):
 
-- An upstream whose agent surface is a JSON tool table (Kition PDF's
+- An upstream whose agent surface is a JSON tool table (the PDF kit's
   `automation`) can be the kit's command list: fill in the document argument,
   convert each JSON Schema to the standard's parameter schema (and check it
   with `kition_sdk::schema::validate`), and map undo and redo to `edit.undo`

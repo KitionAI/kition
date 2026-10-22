@@ -139,7 +139,7 @@ pub fn parse(name: &str) -> Option<(&'static KitDefinition, Action)> {
     })
 }
 
-/// The kit's display name without the product prefix: `Photo` for `Kition Photo`.
+/// The kit's display name without the product prefix: `Slide` for `Kition Slide`.
 pub fn short(kit: &KitDefinition) -> &'static str {
     kit.name.strip_prefix("Kition ").unwrap_or(kit.name)
 }
@@ -1161,7 +1161,7 @@ mod tests {
         assert!(
             vector.contains("vector_inspect")
                 && vector.contains("vector_run")
-                && vector.contains("Kition Vector"),
+                && vector.contains("in Vector"),
             "{vector}"
         );
         assert!(prompt("motion/Intro.kitioneffect").contains("effect_commands"));

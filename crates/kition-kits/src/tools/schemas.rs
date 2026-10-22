@@ -18,6 +18,7 @@ static GENERIC: KitDefinition = KitDefinition {
     binary_env: "KITION_KIT_<KIT>_BINARY",
     extensions: &[],
     creates: &[],
+    base_name: "Untitled <kit>",
     embeds: false,
     exports: &[],
     agent: KitAgent {

@@ -10,13 +10,13 @@ test('makes a new image with the engine in the Photo kit’s package and opens i
   try {
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
     // The kits sit in their groups of the create menu.
-    await expect(page.getByRole('group', { name: 'Visual' }).getByTestId('workspace-create-image')).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Visual' }).getByTestId('workspace-create-photo')).toBeVisible()
     await expect(page.getByRole('group', { name: 'Documents' }).getByTestId('workspace-create-word')).toBeVisible()
     await page.locator('.document-create-menu--portal').screenshot({ path: testInfo.outputPath('create-menu.png') })
-    await page.getByTestId('workspace-create-image').click()
+    await page.getByTestId('workspace-create-photo').click()
 
     // The page made the file with the kit's engine and wrote it to the workspace…
-    await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled Photo.psd'])
+    await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled photo.psd'])
     expect(saves[0]!.bytes.subarray(0, 4).toString()).toBe('8BPS')
     // …then opened it in the kit's own editor, at the size the create menu asks for.
     await expect(page.getByTestId('kit-frame')).toBeVisible()

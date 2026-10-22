@@ -43,6 +43,9 @@ pub struct KitDefinition {
     pub extensions: &'static [&'static str],
     /// Extensions Kition can create new documents in, with the kit's format id for each.
     pub creates: &'static [(&'static str, &'static str)],
+    /// A new document's name before its extension and number (`kit.json` `creates[].baseName`),
+    /// for example `Untitled photo`.
+    pub base_name: &'static str,
     /// Whether the kit's own editor can be embedded in a desktop tab.
     pub embeds: bool,
     /// Extensions the kit's in-page editor exports to, for example `mp4` from a video project.
@@ -75,7 +78,7 @@ pub struct KitAgent {
 pub const KITS: &[KitDefinition] = &[
     KitDefinition {
         id: "kit.photo",
-        name: "Kition Photo",
+        name: "Photo",
         binary_env: "KITION_KIT_PHOTO_BINARY",
         extensions: &["psd", "psb", "kitionphoto"],
         creates: &[
@@ -83,6 +86,7 @@ pub const KITS: &[KitDefinition] = &[
             ("psb", "psb"),
             ("kitionphoto", "kitionphoto"),
         ],
+        base_name: "Untitled photo",
         embeds: true,
         exports: &[],
         agent: KitAgent {
@@ -98,10 +102,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK; `kit-film` serves the agent.
     KitDefinition {
         id: "kit.film",
-        name: "Kition Film",
+        name: "Film",
         binary_env: "KITION_KIT_FILM_BINARY",
         extensions: &["kitionfilm"],
         creates: &[],
+        base_name: "Untitled video",
         embeds: false,
         exports: &["mp4"],
         agent: KitAgent {
@@ -117,10 +122,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK.
     KitDefinition {
         id: "kit.vector",
-        name: "Kition Vector",
+        name: "Vector",
         binary_env: "KITION_KIT_VECTOR_BINARY",
         extensions: &["kitionvector"],
         creates: &[],
+        base_name: "Untitled vector",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -136,10 +142,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK; renders are new MP4 files.
     KitDefinition {
         id: "kit.effect",
-        name: "Kition Effect",
+        name: "Effect",
         binary_env: "KITION_KIT_EFFECT_BINARY",
         extensions: &["kitioneffect"],
         creates: &[],
+        base_name: "Untitled effect",
         embeds: false,
         exports: &["mp4"],
         agent: KitAgent {
@@ -155,10 +162,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK.
     KitDefinition {
         id: "kit.design",
-        name: "Kition Design",
+        name: "Design",
         binary_env: "KITION_KIT_DESIGN_BINARY",
         extensions: &["kitiondesign"],
         creates: &[],
+        base_name: "Untitled design",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -174,10 +182,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK.
     KitDefinition {
         id: "kit.cad",
-        name: "Kition CAD",
+        name: "CAD",
         binary_env: "KITION_KIT_CAD_BINARY",
         extensions: &["dxf"],
         creates: &[],
+        base_name: "Untitled CAD",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -197,6 +206,7 @@ pub const KITS: &[KitDefinition] = &[
         binary_env: "KITION_KIT_SLIDE_BINARY",
         extensions: &["kitionslide", "pptx"],
         creates: &[],
+        base_name: "Untitled slides",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -212,10 +222,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK.
     KitDefinition {
         id: "kit.word",
-        name: "Kition Word",
+        name: "Word",
         binary_env: "KITION_KIT_WORD_BINARY",
         extensions: &["docx"],
         creates: &[],
+        base_name: "Untitled Word document",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -231,10 +242,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK.
     KitDefinition {
         id: "kit.sheet",
-        name: "Kition Sheet",
+        name: "Sheet",
         binary_env: "KITION_KIT_SHEET_BINARY",
         extensions: &["xlsx"],
         creates: &[],
+        base_name: "Untitled sheet",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -250,10 +262,11 @@ pub const KITS: &[KitDefinition] = &[
     // Edited in the page through its SDK.
     KitDefinition {
         id: "kit.pdf",
-        name: "Kition PDF",
+        name: "PDF",
         binary_env: "KITION_KIT_PDF_BINARY",
         extensions: &["pdf"],
         creates: &[],
+        base_name: "Untitled PDF",
         embeds: false,
         exports: &[],
         agent: KitAgent {
@@ -883,7 +896,7 @@ impl KitManager {
     }
 
     /// Creates a new document in `folder` (workspace-relative, `""` for the root) with an
-    /// unused `Untitled <kit>` name (`Untitled Photo`), saves it so it appears in the workspace,
+    /// unused name from the kit's base name (`Untitled photo`), saves it so it appears in the workspace,
     /// and opens it.
     pub async fn create(
         &self,
@@ -914,13 +927,13 @@ impl KitManager {
                 "`{folder}` is not a workspace folder"
             )));
         }
-        let label = kit.name.strip_prefix("Kition ").unwrap_or(kit.name);
+        let base = kit.base_name;
         let target_path = (1..1000)
             .map(|n| {
                 let name = if n == 1 {
-                    format!("Untitled {label}.{extension}")
+                    format!("{base}.{extension}")
                 } else {
-                    format!("Untitled {label} {n}.{extension}")
+                    format!("{base} {n}.{extension}")
                 };
                 directory.join(name)
             })

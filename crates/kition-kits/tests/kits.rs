@@ -22,6 +22,7 @@ static MOCK: KitDefinition = KitDefinition {
     binary_env: "KITION_KIT_MOCK_BINARY",
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
+    base_name: "Untitled Mock kit",
     embeds: false,
     exports: &["mockout"],
     agent: KitAgent {
@@ -304,6 +305,7 @@ static OTHER: KitDefinition = KitDefinition {
     binary_env: "KITION_KIT_OTHER_BINARY",
     extensions: &["mockpic"],
     creates: &[],
+    base_name: "Untitled Other kit",
     embeds: false,
     exports: &[],
     agent: KitAgent {

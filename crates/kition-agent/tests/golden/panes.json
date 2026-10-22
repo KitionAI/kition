@@ -379,7 +379,7 @@
         "Call photo_inspect on this path to see its size, color mode, bit depth, and layers and a rendered preview before describing or changing it.",
         "Choose the artifact from intent: a readable report, dashboard, or visualization/HTML page uses artifact_write with a `.html` path and a complete standalone HTML document; structured data that will be queried uses data_table_create or data_table_add_records; plain prose uses artifact_write with a `.md` path. When both a readable view and stored data are wanted, do both.",
         "Current execution mode: apply.",
-        "Current linked layered image: `art/Cover.psd`, open in Kition Photo.",
+        "Current linked layered image: `art/Cover.psd`, open in Photo.",
         "Current task mode: auto.",
         "Decide the right next tool path from the user's latest request and the active document/table context.",
         "Do not assume table writes or document creation unless the user request and current context support that action.",

@@ -437,7 +437,7 @@ export type KitsDraftDiscardResult = {
 }
 
 /**
- * POST /v1/kits/documents/new: creates an `Untitled <kit>` file (`Untitled Photo`) in the folder and opens it.
+ * POST /v1/kits/documents/new: creates an untitled file (`Untitled photo`, the kit's base name) in the folder and opens it.
  */
 export type KitsCreateRequest = {
   /**

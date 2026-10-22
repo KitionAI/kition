@@ -25,6 +25,7 @@ static MOCK: KitDefinition = KitDefinition {
     binary_env: "KITION_KIT_MOCK_BINARY",
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
+    base_name: "Untitled Mock kit",
     embeds: false,
     exports: &[],
     agent: KitAgent {

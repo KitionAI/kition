@@ -289,9 +289,7 @@ mod tests {
                 "error": { "code": "command-failed", "message": "step 1 failed", "index": 1 },
             })
         );
-        let busy = KitToolError::from(KitError::Stopped {
-            name: "Kition Vector",
-        });
+        let busy = KitToolError::from(KitError::Stopped { name: "Vector" });
         assert_eq!(busy.code, ErrorCode::Unavailable);
         assert_eq!(busy.to_json()["retryable"], true);
         let unknown = KitToolError::from(KitError::Kit {
