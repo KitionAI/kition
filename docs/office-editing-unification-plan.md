@@ -1,6 +1,6 @@
 # Shared Office Drawing Editing Plan
 
-Status: In progress. This plan covers implementation of editable charts, ink, WordArt, and shapes across Kition Word, Sheet, and Slide. Phase 0 is recorded in [the decision](office-drawing/decision.md), [the capability matrix](office-drawing/capability-matrix.md), and [the frozen baseline](office-drawing/baseline.md); Phase 1 is under way (Slide and Sheet done, Word next).
+Status: In progress. This plan covers implementation of editable charts, ink, WordArt, and shapes across Kition Word, Sheet, and Slide. Phase 0 is recorded in [the decision](office-drawing/decision.md), [the capability matrix](office-drawing/capability-matrix.md), and [the frozen baseline](office-drawing/baseline.md); Phase 1's three-kit shape slice is implemented in Slide, Sheet, and Word.
 
 Build these capabilities as optional shared libraries in `kition-sdk`, with shared editor controls used by each kit. Each kit retains its document layout, anchoring, data binding, and file packaging. A feature is complete when a user can insert it, edit it, undo and redo changes, collaborate, save, reopen, and continue editing it in all three kits.
 

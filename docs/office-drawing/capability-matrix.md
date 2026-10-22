@@ -33,7 +33,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Slide *(Phase 1)* | Y | Y | Y | Y | Y | Y | Y | Y | Y |
-| Word | P | P | N | N | P | Y | ? | P | P |
+| Word *(Phase 1)* | P | Y | Y | Y | Y | Y | Y | Y | Y |
 | Sheet *(Phase 1)* | P | Y | Y | Y | Y | Y | Y | Y | Y |
 
 - **Phase 1 evidence.** Slide: `cmd/drawing.rs` tests (the `drawing.*`
@@ -44,6 +44,13 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   typing, nudge, delete, reopen), `kdm-model` `tests/drawing_shapes.rs` (two
   peers, migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Sheet
   import stays P: shape text keeps only plain text as an editable property.
+  Word: `cmd/drawing.rs` (commands, DOCX round trip of id, preset, frame and
+  text, copies get new ids), `outline.rs`, `bindings/wasm/src/objects.rs`
+  (pointer move, resize, rotate, Escape, nudge, reopen), `kdm-model`
+  `tests/drawing_frames.rs` (move against format on two peers, schema 3
+  migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Word import
+  stays P: theme colours and run formatting of shapes are not modelled; colours
+  are RGB.
   Known gap: Slide's `drawing.*` ids are each replica's own shape ids, not the
   stable ids DR2 requires.
 - **Slide:** full DrawingML model (`Geom` preset and custom, theme style
@@ -56,7 +63,9 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   `shape.change`, and `arrange.*` exist. The editor's only tool is the text
   tool: no object selection, handles, or pointer moves. Shapes are KDM
   `Inline` objects anchored in paragraph text; their merge granularity is not
-  verified.
+  verified. *(Phase 1: presets are kept and drawn from the shared catalog,
+  shapes have ids, the editor selects, moves, resizes and turns objects, and a
+  shape's frame is its own KDM register.)*
 - **Sheet:** nine kinds plus a kept preset name, custom geometry, gradient,
   outline, rotation, and flips. Text is a plain string, with the original text
   body and style references kept as raw XML. KDM stores each shape as one
