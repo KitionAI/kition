@@ -1,4 +1,4 @@
-import { agent, person, randomActor, Replica } from '@kition/kdm'
+import { person, randomActor, Replica } from '@kition/kdm'
 import { createBoardFromRecords, createEmptyBoard } from '../kdm/boardKdmFile'
 import { readBoardRecords, readBoardTitle } from '../kdm/boardKdmRead'
 import { BoardReplicaHistory, type BoardCommit } from '../kdm/boardReplicaBridge'
@@ -64,7 +64,6 @@ type BoardTransactionOptions = {
 
 /** The principals of local transactions; authorization never relies on them. */
 const LOCAL_PERSON = 'user:local'
-const LOCAL_AGENT = 'agent:whiteboard'
 const RECENT_OPERATION_LIMIT = 100
 
 /**
@@ -408,9 +407,9 @@ export class BoardStore {
       this.notify()
       return null
     }
-    const origin = transaction.source === 'agent'
-      ? agent(LOCAL_AGENT, transaction.label)
-      : person(LOCAL_PERSON, transaction.label)
+    // An accepted AI change is the person's step, like a merged draft (KitModel 1.1 M12a, A14),
+    // so the person's Undo takes it back.
+    const origin = person(LOCAL_PERSON, transaction.label)
     let committed: BoardCommit
     try {
       committed = this.history.commit(diff, origin)
