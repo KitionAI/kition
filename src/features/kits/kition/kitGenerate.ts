@@ -4,7 +4,7 @@ import { buildDesktopRuntimeModel, canUseDesktopProvider, resolvePreferredDeskto
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
 import type { DesktopProviderKind } from '@/types/desktopSettings'
 import type { RuntimeWritingModel } from '@/types'
-import { KitRpcError, type KitGeneratePart, type KitGenerateParams, type KitGenerateResult } from '../host/protocol'
+import { GENERATE_PURPOSES, KitRpcError, type KitDefinedGeneratePurpose, type KitGeneratePart, type KitGenerateParams, type KitGenerateResult } from '../host/protocol'
 
 /** A refusal of `host/generate` (Kit UI protocol section 7j), with its reason. */
 function refuse(reason: string, message: string): never {
@@ -62,20 +62,29 @@ function requestPart(part: KitGeneratePart): AiGenerateRequest['messages'][numbe
   return { type: 'image', url: part.url }
 }
 
+/** A purpose section 7j defines, which Kition serves (UI-G4). */
+function isDefinedPurpose(purpose: unknown): purpose is KitDefinedGeneratePurpose {
+  return (GENERATE_PURPOSES as readonly unknown[]).includes(purpose)
+}
+
 /**
- * `host/generate` for a kit (Kit UI protocol 2.2 section 7j): runs the kit's prompt on the
+ * `host/generate` for a kit (Kit UI protocol 2.4 section 7j): runs the kit's prompt on the
  * person's model through the runtime, which logs its usage; the kit writes the answer into its
- * document itself. Kition generates for AI fields (`ai-field`) only.
+ * document itself. Kition serves the defined purposes, `ai-field` (an AI field's cell) and
+ * `rewrite` (text the person selected, rewritten as they asked), and refuses everything else as
+ * `not-allowed`: a kit's own purposes (`<kit>.<name>`, which UI-G4 lets a host refuse) have no
+ * generic handling in Kition, and `mountKit` already refused any other string.
  */
 export async function kitionGenerate(params: KitGenerateParams): Promise<KitGenerateResult> {
-  if (params.purpose !== 'ai-field') refuse('not-allowed', `Kition does not generate for ${String(params.purpose)}`)
+  const purpose: unknown = params.purpose
+  if (!isDefinedPurpose(purpose)) refuse('not-allowed', `Kition does not generate for ${JSON.stringify(purpose)}`)
   if (params.output !== 'text' && params.output !== 'image') refuse('failed', `unknown output ${String(params.output)}`)
   if (!Array.isArray(params.messages) || !params.messages.length) refuse('failed', 'the request has no messages')
   const runtimeModel = await resolveGenerateRuntimeModel(params.output, params.model).catch((error: unknown) => refuse('unavailable', error instanceof Error ? error.message : String(error)))
   if (!runtimeModel) refuse('unavailable', 'Configure a model in Settings first.')
   try {
     const answer = await generateForKit({
-      purpose: 'ai-field',
+      purpose,
       output: params.output,
       runtimeModel: runtimeModel as AiGenerateRequest['runtimeModel'],
       messages: params.messages.map((message) => ({ role: message.role, parts: message.parts.map(requestPart) })),

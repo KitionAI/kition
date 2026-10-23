@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/ai-generate.schema.json",
   "title": "Kition Host Generation for Kits",
-  "description": "POST /api/v1/ai/generate: the model call behind a kit's host/generate request (Kit UI protocol 2.2 section 7j). The renderer forwards the kit's prompt with the runtime model the person's settings choose; the runtime runs it, logs its usage, and answers text or one image. The kit never sees a key or an endpoint. A refusal carries data.reason: unavailable (no model), not-allowed (a purpose the host does not generate for), quota (no credits left), too-large, timeout, or failed.",
+  "description": "POST /api/v1/ai/generate: the model call behind a kit's host/generate request (Kit UI protocol 2.4 section 7j). The renderer forwards the kit's prompt with the runtime model the person's settings choose; the runtime runs it, logs its usage, and answers text or one image. The kit never sees a key or an endpoint. A refusal carries data.reason: unavailable (no model), not-allowed (a purpose the host does not generate for), quota (no credits left), too-large, timeout, or failed.",
   "$ref": "#/$defs/request",
   "x-endpoints": {
     "generate": "POST /api/v1/ai/generate"
@@ -43,7 +43,7 @@
       "additionalProperties": false,
       "required": ["purpose", "output", "messages"],
       "properties": {
-        "purpose": { "type": "string", "enum": ["ai-field"] },
+        "purpose": { "type": "string", "enum": ["ai-field", "rewrite"], "description": "A defined purpose of Kit UI protocol 2.4 section 7j: ai-field (an AI field's cell) or rewrite (text the person selected, rewritten as they asked). Kition refuses a kit's own purposes (<kit>.<name>) as not-allowed." },
         "output": { "type": "string", "enum": ["text", "image"] },
         "runtimeModel": { "$ref": "ai-chat.schema.json#/$defs/runtimeModel" },
         "messages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/message" } },

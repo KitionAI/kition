@@ -1,5 +1,10 @@
-//! `POST /ai/generate`: a model call a kit asks the host for (Kit UI protocol 2.2 section 7j,
+//! `POST /ai/generate`: a model call a kit asks the host for (Kit UI protocol 2.4 section 7j,
 //! `host/generate`), run with the person's model settings.
+//!
+//! The runtime serves the protocol's defined purposes: `ai-field` (an AI field's cell) and
+//! `rewrite` (text the person selected, rewritten as they asked). A kit's own purposes
+//! (`<kit>.<name>`) are refused before they get here, because Kition has no generic handling
+//! for them.
 //!
 //! The kit stays offline: it builds the prompt from what its document holds and the renderer
 //! forwards it here with the runtime model the person's settings choose. The answer is text, or
@@ -23,8 +28,18 @@ use serde_json::{Value, json};
 use crate::chat::{AiGate, require_ai};
 use crate::engine::{AiError, Engine, ImageRequest, Message, MessagePart, RuntimeModel};
 
-/// The purposes a kit may generate for.
-const PURPOSES: &[&str] = &["ai-field"];
+/// The purposes a kit may generate for (Kit UI protocol 2.4 section 7j's defined purposes).
+const PURPOSES: &[&str] = &["ai-field", "rewrite"];
+/// The host's instructions for a `rewrite`, put before the kit's own messages. The kit's messages
+/// name the change the person asked for (improve, shorten, expand, change the tone, fix the
+/// spelling, translate) and carry the selected text; the kit shows the answer as a suggestion
+/// and writes it only when the person accepts it, so the answer must be the replacement text
+/// alone.
+const REWRITE_INSTRUCTIONS: &str = "You rewrite text a person selected in a document, as they ask: \
+improve, shorten, expand, change the tone, fix the spelling, or translate it. Keep the meaning, \
+the language (unless asked to translate), and the formatting (paragraphs, lists, inline marks) \
+unless asked to change them. Answer with the rewritten text only: no preamble, no quotes, no \
+explanation, and nothing before or after it.";
 /// At most this many bytes of prompt text and images, together.
 const MAX_REQUEST_BYTES: usize = 24 << 20;
 /// At most this many images in one request.
@@ -192,6 +207,9 @@ pub fn engine_messages(request: &GenerateRequest) -> AppResult<(Vec<Message>, Ve
     }
     if messages.is_empty() {
         return Err(refused(400, "failed", "the request has no messages"));
+    }
+    if request.purpose == "rewrite" && request.output == "text" {
+        messages.insert(0, Message::new("system", REWRITE_INSTRUCTIONS));
     }
     Ok((messages, images))
 }
@@ -390,6 +408,36 @@ mod tests {
         ] {
             assert!(engine_messages(&request(value)).is_err());
         }
+    }
+
+    #[test]
+    fn serves_the_defined_purposes_only() {
+        assert!(PURPOSES.contains(&"ai-field"));
+        assert!(PURPOSES.contains(&"rewrite"));
+        assert!(!PURPOSES.contains(&"note.outline"));
+    }
+
+    #[test]
+    fn a_rewrite_starts_with_the_host_instructions() {
+        let built = request(json!({
+            "purpose": "rewrite", "output": "text",
+            "messages": [
+                { "role": "user", "parts": [{ "type": "text", "text": "Shorten:\nThe quick brown fox jumps over the lazy dog." }] }
+            ]
+        }));
+        let (messages, _) = engine_messages(&built).unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].role, "system");
+        assert!(messages[0].content.contains("rewritten text only"));
+        assert_eq!(messages[1].role, "user");
+        assert!(messages[1].content.starts_with("Shorten:"));
+
+        let field = request(json!({
+            "purpose": "ai-field", "output": "text",
+            "messages": [{ "role": "user", "parts": [{ "type": "text", "text": "Summarize" }] }]
+        }));
+        let (messages, _) = engine_messages(&field).unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(messages.len(), 1);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 /**
- * Host generation for kits (Kit UI protocol 2.2 section 7j): the model call behind a kit's
+ * Host generation for kits (Kit UI protocol 2.4 section 7j): the model call behind a kit's
  * `host/generate`, run by the runtime with the runtime model the person's settings choose.
  */
 import request, { type RequestError } from './request'

@@ -8,7 +8,7 @@ import { canReadBlobBodies } from './helpers/requestBody'
  * Kition's tables are `.ktable` files the Table kit edits in its own editor (KitFrame). This gate
  * covers what Kition adds around the kit: creating a table file, saving through Kition's file API,
  * a host feature's write arriving live in an open editor without joining the person's undo, the
- * person's models answering AI fields (`host/generate`), and the host actions a table asks for
+ * person's models answering AI fields and selection rewrites (`host/generate`), and the host actions a table asks for
  * (`host/action`: `workflow.run`, `design.fromRecord`), and a table file's tables and dashboards
  * in the workspace tree, which open the file in the kit at the one clicked (`document.view`, then
  * `document/reveal`). The editor's own behavior is tested in the kit's repository.
@@ -240,6 +240,79 @@ test('a table’s button runs a Kition workflow, and a record starts a design (h
     const [design] = await page.evaluate(() => (window as unknown as { __designRequests: Array<{ title: string; fields: Record<string, unknown> }> }).__designRequests)
     expect(design.title).toMatch(/^Design /)
     expect(design.fields).toMatchObject({ title: 'Ada' })
+  } finally {
+    await host.dispose()
+  }
+})
+
+/**
+ * Sends `host/generate` from inside the kit's frame over the kit's own channel to Kition, as a kit
+ * editor does; the port is the one the kit received with `ui/initialize`'s handshake.
+ */
+async function generateFromKit(page: Page, purpose: string) {
+  const frame = page.frames().find((candidate) => candidate.url().includes('/kits/table-ui/'))
+  if (!frame) throw new Error('the Table kit frame is not open')
+  return frame.evaluate(async (wanted) => {
+    const port = (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort
+    if (!port) throw new Error('the kit has no host channel')
+    const id = `e2e-generate-${wanted}`
+    return new Promise<{ result?: { text?: string; model?: string }; error?: { code: number; data?: { reason?: string } } }>((resolve) => {
+      const answer = (event: MessageEvent) => {
+        if (event.data?.id !== id) return
+        port.removeEventListener('message', answer)
+        resolve(event.data)
+      }
+      port.addEventListener('message', answer)
+      port.postMessage({
+        jsonrpc: '2.0',
+        id,
+        method: 'host/generate',
+        params: { purpose: wanted, output: 'text', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Shorten: Ada wrote the first program for a machine that did not exist yet.' }] }] },
+      })
+    })
+  }, purpose)
+}
+
+test('Kition serves host/generate for a rewrite of the person’s selection, and refuses a kit’s own purposes', async ({ page, baseURL }) => {
+  test.setTimeout(120_000)
+  const { bytes } = await leadsFixture()
+  await configureModel(page)
+  const generated: Array<Record<string, unknown>> = []
+  const routes = async (page: Page) => {
+    await serveKitTables(page)
+    await page.route('**/api/v1/ai/generate', async (route) => {
+      const body = route.request().postDataJSON() as Record<string, unknown>
+      generated.push(body)
+      // The runtime serves the defined purposes only (contracts/runtime/ai-generate.schema.json).
+      if (body.purpose !== 'ai-field' && body.purpose !== 'rewrite') return fulfillJson(route, { code: 400, message: 'not a purpose', data: { reason: 'not-allowed' } }, 400)
+      await fulfillJson(route, { code: 200, message: 'success', data: { text: 'Ada wrote the first program.', model: 'gpt-test' } })
+    })
+  }
+  // Every frame keeps the host channel it is handed, so the test can speak for the kit.
+  await page.addInitScript(() => {
+    window.addEventListener('message', (event) => {
+      if ((event.data as { kitionKitUi?: number } | null)?.kitionKitUi === 1 && event.ports[0]) (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort = event.ports[0]
+    })
+  })
+
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Leads.ktable', bytes, {}, { routes })
+  try {
+    await expect(records(kit)).toContainText('1 record', { timeout: 60_000 })
+
+    // `rewrite` is a defined purpose (Kit UI protocol 2.4 section 7j): Kition runs it on the person's model.
+    const rewritten = await generateFromKit(page, 'rewrite')
+    expect(rewritten.error).toBeUndefined()
+    expect(rewritten.result).toMatchObject({ text: 'Ada wrote the first program.', model: 'gpt-test' })
+    expect(generated).toHaveLength(1)
+    expect(generated[0]).toMatchObject({ purpose: 'rewrite', output: 'text', runtimeModel: expect.objectContaining({ model_name: 'gpt-test' }) })
+    expect(JSON.stringify(generated[0].messages)).toContain('Shorten:')
+
+    // A kit's own purpose has no generic handling in Kition, and another kit's is never allowed (UI-G4).
+    for (const purpose of ['table.summary', 'note.outline', 'chat']) {
+      const refused = await generateFromKit(page, purpose)
+      expect(refused.error).toMatchObject({ code: -32000, data: { reason: 'not-allowed' } })
+    }
+    expect(generated).toHaveLength(1)
   } finally {
     await host.dispose()
   }

@@ -33,7 +33,10 @@ export type AiGenerateOptions = {
 }
 
 export type AiGenerateRequest = {
-  purpose: "ai-field"
+  /**
+   * A defined purpose of Kit UI protocol 2.4 section 7j: ai-field (an AI field's cell) or rewrite (text the person selected, rewritten as they asked). Kition refuses a kit's own purposes (<kit>.<name>) as not-allowed.
+   */
+  purpose: "ai-field" | "rewrite"
   output: "text" | "image"
   runtimeModel?: AiChatRuntimeModel
   messages: AiGenerateMessage[]
@@ -63,6 +66,6 @@ export type AiGenerateAnswer = {
 export type AiGenerateReason = "unavailable" | "not-allowed" | "quota" | "refused" | "too-large" | "timeout" | "failed"
 
 /**
- * POST /api/v1/ai/generate: the model call behind a kit's host/generate request (Kit UI protocol 2.2 section 7j). The renderer forwards the kit's prompt with the runtime model the person's settings choose; the runtime runs it, logs its usage, and answers text or one image. The kit never sees a key or an endpoint. A refusal carries data.reason: unavailable (no model), not-allowed (a purpose the host does not generate for), quota (no credits left), too-large, timeout, or failed.
+ * POST /api/v1/ai/generate: the model call behind a kit's host/generate request (Kit UI protocol 2.4 section 7j). The renderer forwards the kit's prompt with the runtime model the person's settings choose; the runtime runs it, logs its usage, and answers text or one image. The kit never sees a key or an endpoint. A refusal carries data.reason: unavailable (no model), not-allowed (a purpose the host does not generate for), quota (no credits left), too-large, timeout, or failed.
  */
 export type AiGenerateContract = AiGenerateRequest

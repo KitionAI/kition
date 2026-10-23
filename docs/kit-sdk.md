@@ -296,7 +296,12 @@ items with `primary`.
   the kit's), and the Kit AI
   bridge forwarded to the frame as `ai/*`. Kition also answers `host/generate`
   with the person's models (`kitGenerate.ts`, `POST /v1/ai/generate`,
-  `contracts/runtime/ai-generate.schema.json`) and `host/action` with its
+  `contracts/runtime/ai-generate.schema.json`) for the defined purposes of
+  Kit UI protocol 2.4 section 7j, `ai-field` and `rewrite` (the runtime
+  puts its own rewrite instructions before the kit's prompt). It refuses a
+  kit's own purposes (`<kit>.<name>`) as `not-allowed`, because Kition has no
+  generic handling for them, and `mountKit` refuses any other string
+  (UI-G4). It answers `host/action` with its
   own actions (`kitActions.ts`: `workflow.run` through
   `POST /v1/workflows/{id}/run-record`, and `design.fromRecord`); neither is
   offered to a preview or a read-only document. It mounts on the protocol's
