@@ -68,25 +68,25 @@
   },
   "sheet": {
     "repository": "KitionAI/kition-sheet",
-    "version": "0.4.17",
-    "tag": "package-v0.4.17",
-    "asset": "kition-sheet-0.4.17.tgz",
-    "size": 8349329,
-    "sha256": "33747f1b251241009e5b1e27ec9567a3e524d6e20e8ddf969249993b0f1cee51",
-    "commit": "540d30beb47f39c702b70ffe45b2e296d60d71a5",
-    "sdkCommit": "0a2c8cabc51cb6787476894c6418c0e68bfb63bd",
+    "version": "0.4.18",
+    "tag": "package-v0.4.18",
+    "asset": "kition-sheet-0.4.18.tgz",
+    "size": 8352354,
+    "sha256": "093750d686c247b88405a53d610a0f55ef48251529ee69b14fc3acfed22f3301",
+    "commit": "5a1ba74e5eef9cf79d4e8877df4bd243b5bdc0e0",
+    "sdkCommit": "f791e9267ce894f6760d879832ecb86bfaa1f2e3",
     "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   },
   "slide": {
     "repository": "KitionAI/kition-slide",
-    "version": "0.5.8",
-    "tag": "package-v0.5.8",
-    "asset": "kition-slide-0.5.8.tgz",
-    "size": 11017646,
-    "sha256": "c1647de41119733a9aefa4d29c316b42ce180ed91fd158d033059d94f094e8c5",
-    "commit": "946161cc57c762b9d086ef30062fae86b1bf80f9",
-    "sdkCommit": "332e30d3ce6f3ebf17409a56bbf66c6be8f06a30",
-    "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
+    "version": "0.5.9",
+    "tag": "package-v0.5.9",
+    "asset": "kition-slide-0.5.9.tgz",
+    "size": 11890293,
+    "sha256": "c6d5f8a799087f8c69d5435a2fd169e27d0e389659fac7ff21d72538c8f6b73f",
+    "commit": "36222c36c289fa6b925702771d38f85b4e134c83",
+    "sdkCommit": "f791e9267ce894f6760d879832ecb86bfaa1f2e3",
+    "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   },
   "table": {
     "repository": "KitionAI/kition-table",
@@ -113,13 +113,13 @@
   },
   "word": {
     "repository": "KitionAI/kition-word",
-    "version": "0.5.6",
-    "tag": "package-v0.5.6",
-    "asset": "kition-word-0.5.6.tgz",
-    "size": 13203508,
-    "sha256": "188cdb5df55e1b1069cdb6b445ec5586dc6ab448fe56fd0202b18c1915443ca5",
-    "commit": "6467281e3eb5137912b34b49536f99976692357f",
-    "sdkCommit": "0a2c8cabc51cb6787476894c6418c0e68bfb63bd",
+    "version": "0.5.7",
+    "tag": "package-v0.5.7",
+    "asset": "kition-word-0.5.7.tgz",
+    "size": 13245440,
+    "sha256": "a4dc2a0151127c90b9239310f0006ccdc5132d8727ccd6f8dc4f04b2520163ea",
+    "commit": "899306ca6927e289e4ae803bd9c7b2a3c70a2efc",
+    "sdkCommit": "f791e9267ce894f6760d879832ecb86bfaa1f2e3",
     "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   }
 }
