@@ -87,6 +87,17 @@ test('opens a board in the Board kit, draws on it, saves it, and Kition opens th
     await expect(kit.getByTestId('board-unsaved')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('board-embedded.png') })
 
+    // Focus hides the board's tool palette; the frame's Focus bar names the active tool instead.
+    await expect(kit.getByTestId('whiteboard-toolbar')).toBeVisible()
+    await kit.getByTestId('board-mode').click()
+    await kit.getByTestId('board-mode-focus').click()
+    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'focus')
+    await expect(kit.getByTestId('whiteboard-toolbar')).toHaveCount(0)
+    await expect(kit.getByTestId('board-focus-tool')).toBeVisible()
+    await kit.getByTestId('board-focus-exit').click()
+    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'line')
+    await expect(kit.getByTestId('whiteboard-toolbar')).toBeVisible()
+
     await kit.getByTestId('board-save').click()
     await expect(kit.getByTestId('board-unsaved')).toHaveCount(0, { timeout: 30_000 })
     // The editor's replica and the engine's exchanged every change without a failure.

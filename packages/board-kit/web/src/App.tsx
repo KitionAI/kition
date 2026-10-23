@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { I18nextProvider } from 'react-i18next'
+import { I18nextProvider, useTranslation } from 'react-i18next'
+import { ArrowUpRight, Eraser, Hand, Highlighter, MousePointer2, Pencil, Square, StickyNote, Type, type LucideIcon } from 'lucide-react'
 import type { i18n } from 'i18next'
-import { EditorFrame, KitEditorProvider, createKitStrings, toast, useKitEditorState, useKitSession, type FrameTab, type HostConnection } from '@kition/kit-ui'
+import { EditorFrame, FrameChrome, KitEditorProvider, createKitStrings, toast, useKitEditorState, useKitSession, type FocusTool, type FrameTab, type HostConnection } from '@kition/kit-ui'
 import { randomActor, Replica } from '@kition/kdm'
 import { ConfirmProvider } from '@kition/app-ui/confirm'
-import { BoardHostProvider, type BoardHost, type WhiteboardPoint } from '@kition/board-editor'
+import { BoardHostProvider, type BoardHost, type WhiteboardPoint, type WhiteboardTool } from '@kition/board-editor'
 import {
   useWhiteboardEditor,
   WhiteboardCanvas,
@@ -45,6 +46,19 @@ function useDarkClass() {
 /** The board has no command tabs yet: the frame shows its title and the document actions. */
 const NO_TABS: FrameTab[] = []
 
+/** The icon the Focus bar shows for the board's active tool (the palette's own icons). */
+const TOOL_ICONS: Record<WhiteboardTool, LucideIcon> = {
+  select: MousePointer2,
+  hand: Hand,
+  eraser: Eraser,
+  rectangle: Square,
+  note: StickyNote,
+  text: Type,
+  pen: Pencil,
+  highlight: Highlighter,
+  connector: ArrowUpRight,
+}
+
 export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
   useDarkClass()
   const t = useMemo(() => createKitStrings(CATALOGS, host.init.locale), [host])
@@ -52,6 +66,8 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
   const session = useKitSession(host, manifest, describe)
   const editor = useKitEditorState(session, host, t, 'board')
   const name = host.init.document.name
+  // The board's active tool, for the Focus bar (Focus hides the board's own tool palette).
+  const [focusTool, setFocusTool] = useState<FocusTool | null>(null)
 
   return (
     <KitEditorProvider editor={editor}>
@@ -63,13 +79,14 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
           </span>
         }
         hiddenCommands={editorKeys}
+        focusTool={focusTool}
       >
         <div className="board-kit-body" data-testid="board-body">
           {session.doc ? (
             <I18nextProvider i18n={i18n}>
               <ConfirmProvider>
                 <BoardHostProvider value={KIT_BOARD_HOST}>
-                  <BoardKitEditor session={session} readOnly={host.readOnly === true} title={name.replace(/\.kiboard$/i, '')} />
+                  <BoardKitEditor session={session} readOnly={host.readOnly === true} title={name.replace(/\.kiboard$/i, '')} onTool={setFocusTool} />
                 </BoardHostProvider>
               </ConfirmProvider>
             </I18nextProvider>
@@ -91,8 +108,9 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
  * (`BoardStore`), loaded from the engine's snapshot, and a `WorkerRelay` keeps it and the
  * engine's replica in step.
  */
-function BoardKitEditor({ readOnly, session, title }: { readOnly: boolean; session: Session; title: string }) {
+function BoardKitEditor({ onTool, readOnly, session, title }: { onTool: (tool: FocusTool | null) => void; readOnly: boolean; session: Session; title: string }) {
   const controller = useWhiteboardEditor()
+  const { t } = useTranslation('workspace')
   const { store, replaceDocument } = controller
   const [loaded, setLoaded] = useState(false)
   const [canvasSize, setCanvasSize] = useState<WhiteboardPoint>({ x: 1200, y: 760 })
@@ -104,6 +122,13 @@ function BoardKitEditor({ readOnly, session, title }: { readOnly: boolean; sessi
   useEffect(() => {
     store.setReadOnly(readOnly)
   }, [readOnly, store])
+
+  // The active tool goes to the frame's Focus bar; a read-only board has no tools.
+  const tool = controller.tool
+  useEffect(() => {
+    onTool(readOnly ? null : { label: t(`board.toolbar.${tool}`), icon: TOOL_ICONS[tool] })
+  }, [onTool, readOnly, t, tool])
+  useEffect(() => () => onTool(null), [onTool])
 
   // The engine's document, as the editor's own replica; a reopened document starts it again.
   useEffect(() => {
@@ -154,7 +179,10 @@ function BoardKitEditor({ readOnly, session, title }: { readOnly: boolean; sessi
       <WhiteboardTopActions canvasSize={canvasSize} controller={controller} title={title} />
       {readOnly ? null : (
         <>
-          <WhiteboardToolbar controller={controller} canvasSize={canvasSize} />
+          {/* The bottom tool palette is the kit's own bar: Focus hides it (its floating bar shows the tool). */}
+          <FrameChrome>
+            <WhiteboardToolbar controller={controller} canvasSize={canvasSize} />
+          </FrameChrome>
           <WhiteboardSelectionToolbar controller={controller} />
         </>
       )}
