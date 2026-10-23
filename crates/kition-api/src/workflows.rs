@@ -73,6 +73,21 @@ pub fn rename_hook(deps: &Deps, store: &Arc<Store>) -> kition_tableclient::route
     })
 }
 
+/// Follows a deleted table file in every host feature bound to it: its workflows, form syncs,
+/// and email syncs are removed, as a deleted data document's workflows always were.
+pub fn delete_hook(deps: &Deps, store: &Arc<Store>) -> kition_tableclient::routes::DeleteHook {
+    let (store, db) = (store.clone(), deps.db.clone());
+    Arc::new(move |path: &str| {
+        let mut removed = store.delete_by_document_path(path)?;
+        let conn = db.conn().map_err(|e| e.to_string())?;
+        removed += kition_formsync::store::delete_by_document_path(&conn, path)
+            .map_err(|e| e.to_string())?;
+        removed += kition_emailsync::store::delete_by_table_path(&conn, path)
+            .map_err(|e| e.to_string())?;
+        Ok(removed)
+    })
+}
+
 pub struct Workflows {
     pub state: WorkflowState,
 }

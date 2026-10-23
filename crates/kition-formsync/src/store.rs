@@ -218,3 +218,78 @@ pub fn rename_document_path(conn: &Connection, from: &str, to: &str) -> AppResul
     }
     Ok(changed)
 }
+
+/// Whether `path` is the deleted table file `gone`, or a file under the deleted folder `gone`.
+fn is_under(path: &str, gone: &str) -> bool {
+    let path = path.trim();
+    path == gone || path.starts_with(&format!("{gone}/"))
+}
+
+/// Follows a deleted table file (or folder of them): removes the form sync workflows that write
+/// to it, with their synced items. Answers how many were removed.
+pub fn delete_by_document_path(conn: &Connection, path: &str) -> AppResult<usize> {
+    let gone = path.trim().trim_end_matches('/');
+    if gone.is_empty() {
+        return Ok(0);
+    }
+    let mut removed = 0;
+    for workflow in list_all(conn)? {
+        if !is_under(&workflow.document_path, gone) {
+            continue;
+        }
+        conn.execute(
+            "DELETE FROM form_sync_items WHERE workflow_id = ?1",
+            [&workflow.id],
+        )?;
+        removed += conn.execute(
+            "DELETE FROM form_sync_workflows WHERE id = ?1",
+            [&workflow.id],
+        )?;
+    }
+    Ok(removed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn workflow(id: &str, path: &str) -> Workflow {
+        Workflow {
+            id: id.into(),
+            user_id: 1,
+            name: id.into(),
+            template_id: "lead-form".into(),
+            binding_id: format!("binding_{id}"),
+            document_path: path.into(),
+            table_id: "1".into(),
+            ..Workflow::default()
+        }
+    }
+
+    #[test]
+    fn deleting_a_table_file_removes_its_form_syncs() {
+        let db = kition_store::Db::open_in_memory().unwrap_or_else(|e| panic!("{e}"));
+        let conn = db.conn().unwrap_or_else(|e| panic!("{e}"));
+        for (id, path) in [
+            ("f1", "crm/Leads.ktable"),
+            ("f2", "crm/More.ktable"),
+            ("f3", "crm-old/Leads.ktable"),
+        ] {
+            insert(&conn, &mut workflow(id, path)).unwrap_or_else(|e| panic!("{e}"));
+        }
+        save_item(&conn, "f1", "s1", "7", 1).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            delete_by_document_path(&conn, "crm/Leads.ktable").ok(),
+            Some(1)
+        );
+        assert!(!has_item(&conn, "f1", "s1").unwrap_or(true));
+        assert_eq!(delete_by_document_path(&conn, "crm/").ok(), Some(1));
+        assert_eq!(delete_by_document_path(&conn, "").ok(), Some(0));
+        let left: Vec<String> = list_all(&conn)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|w| w.id)
+            .collect();
+        assert_eq!(left, vec!["f3".to_owned()]);
+    }
+}

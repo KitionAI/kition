@@ -3,7 +3,7 @@ import { loadDesignLib } from '@/features/design/public'
 import { loadBoardFile } from '@/features/whiteboard/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { reportTableFileRenamed } from '@/api/kitTables'
+import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
 import { useConfirm } from '@kition/app-ui/confirm'
 import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
 import {
@@ -81,6 +81,19 @@ function followMovedTableFiles(fromPath: string, toPath: string) {
   reportTableFileRenamed(fromPath, toPath).catch((cleanupError) => {
     console.warn('[workspace] failed to follow a moved table file', cleanupError)
   })
+}
+
+// The workflows, form syncs, and email syncs bound to a deleted table file (or to the table files
+// of a deleted folder) go with it. Fire-and-forget, as for moves: the file is already in the Trash.
+function followDeletedTableFiles(node: WorkspaceTreeNode) {
+  const gone = new Set<string>()
+  if (node.type === 'folder' || isTableFilePath(node.path)) gone.add(node.path)
+  if (node.type === 'file' && node.folderPath) gone.add(node.folderPath)
+  for (const path of gone) {
+    reportTableFileDeleted(path).catch((cleanupError) => {
+      console.warn('[workspace] failed to follow a deleted table file', cleanupError)
+    })
+  }
 }
 
 function getWorkspaceDeleteConfirmationMessage(
@@ -162,6 +175,7 @@ export function useWorkspaceTreeNodeActions({
         ? await deleteWorkspaceFolder(node.path)
         : await deleteWorkspaceDocument(node.path)
       await (isFolder ? syncDocumentFolderDeleted(rootPath, node.path) : syncDocumentFileDeleted(rootPath, node.path))
+      followDeletedTableFiles(node)
       updateTreeMetadata((current) => removeWorkspaceTreeBranchMetadata(current, node.path, childFolderPath))
       setAgentModifiedDocumentPaths(
         (current) => new Set([...current].filter((path) => path !== node.path && !path.startsWith(childPrefix))),

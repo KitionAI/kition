@@ -21,11 +21,16 @@ use crate::{FileInfo, TableClient, TableError, TableInfo, is_table_path};
 /// answers how many bindings changed.
 pub type RenameHook = Arc<dyn Fn(&str, &str) -> Result<usize, String> + Send + Sync>;
 
+/// Follows a deleted table file (or a folder of them) in the host features bound to it, which
+/// it removes: answers how many bindings went.
+pub type DeleteHook = Arc<dyn Fn(&str) -> Result<usize, String> + Send + Sync>;
+
 #[derive(Clone)]
 pub struct KitTablesState {
     pub auth: AuthConfig,
     pub tables: TableClient,
     pub renamed: Option<RenameHook>,
+    pub deleted: Option<DeleteHook>,
 }
 
 impl axum::extract::FromRef<KitTablesState> for AuthConfig {
@@ -44,6 +49,7 @@ pub fn router(state: KitTablesState) -> Router {
         .route("/kit-tables/records", get(records).post(write_record))
         .route("/kit-tables/attachments", post(put_attachment))
         .route("/kit-tables/renamed", post(renamed))
+        .route("/kit-tables/deleted", post(deleted))
         .with_state(state)
 }
 
@@ -356,6 +362,29 @@ async fn renamed(
         None => 0,
     };
     Ok(ok(json!({ "updated": updated })))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct Deleted {
+    path: String,
+}
+
+async fn deleted(
+    State(state): State<KitTablesState>,
+    _user: CurrentUser,
+    JsonBody(body): JsonBody<Deleted>,
+) -> AppResult<Response> {
+    let path = body.path.trim().trim_start_matches("./");
+    if path.is_empty() {
+        return Err(AppError::bad_request("`path` required"));
+    }
+    state.tables.forget(path);
+    let removed = match &state.deleted {
+        Some(hook) => hook(path).map_err(AppError::internal)?,
+        None => 0,
+    };
+    Ok(ok(json!({ "removed": removed })))
 }
 
 #[cfg(test)]

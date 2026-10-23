@@ -173,6 +173,20 @@ export type KitTablesRenamedResult = {
   updated: number
 }
 
+export type KitTablesDeletedRequest = {
+  /**
+   * The deleted table file, or a deleted folder: every table file under it.
+   */
+  path: string
+}
+
+export type KitTablesDeletedResult = {
+  /**
+   * Workflows, form syncs, and email syncs bound to the deleted files, which were removed.
+   */
+  removed: number
+}
+
 export type KitTablesReason = "unavailable" | "not-found" | "failed"
 
 /**

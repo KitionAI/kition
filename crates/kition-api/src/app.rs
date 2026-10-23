@@ -194,11 +194,13 @@ pub fn router(deps: &Deps) -> Router {
             );
             kition_emailsync::start_scheduler(mail.clone());
             let renamed = crate::workflows::rename_hook(deps, &workflows.state.engine.store);
+            let deleted = crate::workflows::delete_hook(deps, &workflows.state.engine.store);
             api.merge(kition_tableclient::routes::router(
                 kition_tableclient::routes::KitTablesState {
                     auth: deps.auth(),
                     tables: deps.table_client.clone(),
                     renamed: Some(renamed),
+                    deleted: Some(deleted),
                 },
             ))
             .merge(kition_tableclient::scenario::router(

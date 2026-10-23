@@ -13,7 +13,8 @@
     "records": "GET /api/v1/kit-tables/records?path=&tableId=&limit=&offset=",
     "writeRecord": "POST /api/v1/kit-tables/records",
     "putAttachment": "POST /api/v1/kit-tables/attachments",
-    "renamed": "POST /api/v1/kit-tables/renamed"
+    "renamed": "POST /api/v1/kit-tables/renamed",
+    "deleted": "POST /api/v1/kit-tables/deleted"
   },
   "$defs": {
     "tablePath": {
@@ -228,6 +229,22 @@
       "required": ["updated"],
       "properties": {
         "updated": { "type": "integer", "minimum": 0, "description": "Workflows, form sync targets, and email sync targets that now name the new path." }
+      }
+    },
+    "deletedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "description": "The deleted table file, or a deleted folder: every table file under it." }
+      }
+    },
+    "deletedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["removed"],
+      "properties": {
+        "removed": { "type": "integer", "minimum": 0, "description": "Workflows, form syncs, and email syncs bound to the deleted files, which were removed." }
       }
     },
     "reason": {

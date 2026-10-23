@@ -583,3 +583,77 @@ pub fn rename_table_path(conn: &Connection, from: &str, to: &str) -> AppResult<u
     }
     Ok(changed)
 }
+
+/// Follows a deleted table file (or folder of them): removes the email sync workflows that write
+/// to it, with their runs and items. The Markdown and attachments they imported stay. Answers how
+/// many were removed.
+pub fn delete_by_table_path(conn: &Connection, path: &str) -> AppResult<usize> {
+    let gone = path.trim().trim_end_matches('/');
+    if gone.is_empty() {
+        return Ok(0);
+    }
+    let mut removed = 0;
+    for workflow in all_workflows(conn)? {
+        let table_path = workflow.target().table_path;
+        if table_path != gone && !table_path.starts_with(&format!("{gone}/")) {
+            continue;
+        }
+        conn.execute(
+            "DELETE FROM sync_runs WHERE workflow_id = ?1",
+            [&workflow.id],
+        )?;
+        conn.execute(
+            "DELETE FROM sync_items WHERE workflow_id = ?1",
+            [&workflow.id],
+        )?;
+        removed += conn.execute("DELETE FROM workflows WHERE id = ?1", [&workflow.id])?;
+    }
+    Ok(removed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deleting_a_table_file_removes_its_email_syncs() {
+        let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let store = Store {
+            db: Db::open_in_memory().unwrap_or_else(|e| panic!("{e}")),
+            secrets: SecretStore::with_key_path(dir.path().join("key")),
+        };
+        for (id, path) in [
+            ("m1", "mail/Inbox.ktable"),
+            ("m2", "mail/Other.ktable"),
+            ("m3", "mail-old/Inbox.ktable"),
+        ] {
+            let mut workflow = Workflow {
+                id: id.into(),
+                user_id: 1,
+                name: id.into(),
+                target_json: serde_json::to_string(&TargetConfig {
+                    table_path: path.into(),
+                    ..TargetConfig::default()
+                })
+                .unwrap_or_default(),
+                ..Workflow::default()
+            };
+            store
+                .write_workflow(&mut workflow, true)
+                .unwrap_or_else(|e| panic!("{e}"));
+        }
+        let conn = store.db.conn().unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            delete_by_table_path(&conn, "mail/Inbox.ktable").ok(),
+            Some(1)
+        );
+        assert_eq!(delete_by_table_path(&conn, "mail").ok(), Some(1));
+        assert_eq!(delete_by_table_path(&conn, " ").ok(), Some(0));
+        let left: Vec<String> = all_workflows(&conn)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|w| w.id)
+            .collect();
+        assert_eq!(left, vec!["m3".to_owned()]);
+    }
+}

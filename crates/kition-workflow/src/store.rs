@@ -277,23 +277,33 @@ impl Store {
         Ok(true)
     }
 
-    /// Removes workflows that read from or write to a document.
+    /// Removes the workflows bound to a deleted table file (or to any file under a deleted
+    /// folder): those whose trigger, record action, lookup, or any node names it. Answers how
+    /// many were removed.
     pub fn delete_by_document_path(&self, document_path: &str) -> Result<usize, String> {
-        let document_path = document_path.trim();
-        if document_path.is_empty() {
+        let gone = document_path.trim().trim_end_matches('/');
+        if gone.is_empty() {
             return Ok(0);
         }
+        let under = |path: &str| {
+            let path = path.trim();
+            path == gone || path.starts_with(&format!("{gone}/"))
+        };
         let (removed, snapshot) = {
             let mut data = self.write();
             let before = data.len();
             data.retain(|_, def| {
-                let target = def
-                    .action
-                    .add_record
-                    .as_ref()
-                    .map(|c| c.target_document_path.trim())
-                    .unwrap_or_default();
-                def.trigger.document_path.trim() != document_path && target != document_path
+                let mut paths = vec![def.trigger.document_path.clone()];
+                if let Some(config) = def.action.add_record.as_ref() {
+                    paths.push(config.target_document_path.clone());
+                }
+                if let Some(config) = def.action.lookup_record.as_ref() {
+                    paths.push(config.target_document_path.clone());
+                }
+                for node in &def.extra_nodes {
+                    paths_in_config(&node.config, &mut paths);
+                }
+                !paths.iter().any(|path| under(path))
             });
             (before - data.len(), data.clone())
         };
@@ -352,6 +362,24 @@ impl Store {
             self.persist(&snapshot)?;
         }
         Ok(changed)
+    }
+}
+
+/// Every `documentPath` and `targetDocumentPath` in a node's configuration.
+fn paths_in_config(config: &Value, out: &mut Vec<String>) {
+    match config {
+        Value::Object(map) => {
+            for (key, value) in map {
+                match value {
+                    Value::String(path) if key == "documentPath" || key == "targetDocumentPath" => {
+                        out.push(path.clone());
+                    }
+                    _ => paths_in_config(value, out),
+                }
+            }
+        }
+        Value::Array(items) => items.iter().for_each(|item| paths_in_config(item, out)),
+        _ => {}
     }
 }
 
@@ -692,6 +720,51 @@ mod tests {
             store.get("w2").map(|d| d.trigger.document_path),
             Some("crm-old/Leads.ktable".to_owned())
         );
+    }
+
+    #[test]
+    fn deleting_a_table_file_removes_the_workflows_bound_to_it() {
+        let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let store = Store::new(dir.path().join("workflow.json"));
+        let mut triggered = def("w1", "Trigger");
+        triggered.trigger.document_path = "crm/Leads.ktable".into();
+        let mut writes = def("w2", "Writes");
+        writes.trigger.document_path = "Other.ktable".into();
+        writes.action.add_record = Some(AddRecordConfig {
+            target_document_path: "crm/Leads.ktable".into(),
+            ..Default::default()
+        });
+        let mut looks_up = def("w3", "Looks up");
+        looks_up.trigger.document_path = "Other.ktable".into();
+        looks_up.extra_nodes.push(NodeConfig {
+            node_id: "n1".into(),
+            kind: "lookup_record".into(),
+            config: json!({ "lookupRecord": { "targetDocumentPath": "crm/Leads.ktable" } }),
+        });
+        let mut kept = def("w4", "Kept");
+        kept.trigger.document_path = "crm-old/Leads.ktable".into();
+        for workflow in [triggered, writes, looks_up, kept] {
+            assert!(store.put(workflow).is_ok());
+        }
+        assert_eq!(
+            store.delete_by_document_path("crm/Leads.ktable").ok(),
+            Some(3)
+        );
+        assert_eq!(
+            store
+                .list()
+                .iter()
+                .map(|d| d.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["w4"]
+        );
+        // A deleted folder takes the workflows of every file under it.
+        assert_eq!(store.delete_by_document_path("crm").ok(), Some(0));
+        assert_eq!(store.delete_by_document_path("crm-old/").ok(), Some(1));
+        assert_eq!(store.delete_by_document_path(" ").ok(), Some(0));
+        let reloaded = Store::new(dir.path().join("workflow.json"));
+        assert!(reloaded.load().is_ok());
+        assert!(reloaded.list().is_empty());
     }
 
     #[test]

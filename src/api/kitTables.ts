@@ -8,6 +8,7 @@ import request from './request'
 import type {
   KitTablesAttachment,
   KitTablesCreateFileResult,
+  KitTablesDeletedResult,
   KitTablesFieldSeed,
   KitTablesFieldsResult,
   KitTablesFile,
@@ -88,6 +89,11 @@ export async function putTableAttachment(ref: TableRef, file: Blob & { name?: st
 /** Tells the host features that name a table file (or a folder of them) that it moved. */
 export function reportTableFileRenamed(from: string, to: string) {
   return request.post<KitTablesRenamedResult>('/v1/kit-tables/renamed', { from, to }, { suppressErrorMessage: true })
+}
+
+/** Tells the host features bound to a deleted table file (or to the table files of a deleted folder) that it went: they are removed. */
+export function reportTableFileDeleted(path: string) {
+  return request.post<KitTablesDeletedResult>('/v1/kit-tables/deleted', { path }, { suppressErrorMessage: true })
 }
 
 /** Fired on `window` when a table file was created, saved, renamed, or deleted in this window. */

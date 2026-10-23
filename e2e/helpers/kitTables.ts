@@ -41,6 +41,7 @@ export type KitTablesMockState = {
   tableUpdates: Array<Record<string, unknown>>
   fileCreates: Array<Record<string, unknown>>
   renames: Array<Record<string, unknown>>
+  deletes: Array<Record<string, unknown>>
 }
 
 const DEFAULT_FIELDS: KitTableFieldFixture[] = [{ id: 'fld_name', name: 'name', title: 'Name', type: 'text', primary: true }]
@@ -90,6 +91,7 @@ export async function mockKitTables(page: Page, files: KitTableFileFixture[]): P
     tableUpdates: [],
     fileCreates: [],
     renames: [],
+    deletes: [],
   }
   const findTable = (path: string, tableId: string) => state.files
     .find((file) => file.path === path)?.tables.find((table) => String(table.id) === String(tableId))
@@ -167,6 +169,12 @@ export async function mockKitTables(page: Page, files: KitTableFileFixture[]): P
     if (method === 'POST' && endpoint === '/renamed') {
       state.renames.push(body)
       return json(route, { updated: 0 })
+    }
+    if (method === 'POST' && endpoint === '/deleted') {
+      state.deletes.push(body)
+      const gone = String(body.path || '')
+      state.files = state.files.filter((file) => file.path !== gone && !file.path.startsWith(`${gone}/`))
+      return json(route, { removed: 0 })
     }
     return json(route, { reason: 'not-found' }, 404)
   })

@@ -414,7 +414,9 @@ and never join the person's undo; workflow triggers read
 `table.changes.since`. The renderer reaches it through `/v1/kit-tables*`
 (`contracts/runtime/kit-tables.schema.json`, `src/api/kitTables.ts`), and
 workflows, form sync, and email sync name a table by its file path
-(`documentPath`) and table id. `pnpm test:ktable:e2e`
+(`documentPath`) and table id. They follow the file: a rename or move
+(`/v1/kit-tables/renamed`) changes the path they name, and a delete
+(`/v1/kit-tables/deleted`) removes them. `pnpm test:ktable:e2e`
 (`e2e/table-kit.spec.ts`) covers what Kition adds around the kit; the
 editor's own behavior is tested in the kit's repository.
 
