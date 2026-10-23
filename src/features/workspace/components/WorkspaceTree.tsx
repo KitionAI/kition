@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Trash2, Zap } from 'lucide-react'
+import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, LayoutDashboard, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Table2, Trash2, Zap } from 'lucide-react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -21,6 +21,7 @@ import {
 } from '@/features/workspace/lib/workspace'
 import { useDraftTitleForPath } from '@/features/workspace/lib/draftTitleStore'
 import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
+import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
 import { cn } from '@kition/app-ui/utils'
 import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
 
@@ -228,15 +229,21 @@ export function WorkspaceTree({
         const isModified = node.type === 'file' && modifiedPaths.has(node.path)
         const isWorkflowsVirtual = node.virtual && node.path.startsWith('workflows://')
         const isWorkflowVirtual = node.virtual && node.path.startsWith('workflow://')
+        // A table or dashboard of a table file (the Table kit lists them; a click opens it there).
+        const tableFileChild = node.virtual ? parseTableFileChildPath(node.path) : null
         const FormatIcon = isWorkflowsVirtual || isWorkflowVirtual
             ? Zap
-            : getWorkspaceItemIcon(node.format)
+            : tableFileChild
+              ? (tableFileChild.kind === 'dashboards' ? LayoutDashboard : Table2)
+              : getWorkspaceItemIcon(node.format)
         const formatIconColorClass = isWorkflowsVirtual || isWorkflowVirtual
           ? 'text-brand'
-          : getWorkspaceItemIconColorClass(node.format)
+          : tableFileChild
+            ? getWorkspaceItemIconColorClass(inferWorkspaceItemFormat(tableFileChild.filePath))
+            : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
         const isOrganizable = isOrganizableWorkspaceFormat(node.format)
-        // A table file opens in the Table kit; its tables are the kit's own tabs.
+        // A table file opens in the Table kit; expanded, it lists its tables and dashboards.
         const isTableFile = node.type === 'file'
           && !node.virtual
           && node.name.toLowerCase().endsWith('.ktable')
@@ -247,7 +254,7 @@ export function WorkspaceTree({
         const disclosureKey = node.folderPath ?? node.path
         const expanded = expandedPaths.has(disclosureKey)
         const visibleChildren = node.children
-        const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder'
+        const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder' || isTableFile
         const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isTableFile)
         const canDelete = !node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path)))
         const canSetIcon = !node.virtual

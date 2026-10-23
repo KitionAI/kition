@@ -22,6 +22,7 @@ import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { registerKitTestFrame } from './kitTestBridge'
 import { kitionTheme } from './kitionTheme'
+import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
@@ -266,7 +267,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
+          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(preview ? {} : openingView(path)), ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -409,9 +410,9 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
     }
   }, [connection, openedReadOnly, readOnly])
 
-  useEffect(() => {
-    connection?.setLocale(i18n.language)
-  }, [connection, i18n.language])
+  useEffect(() => connection?.setLocale(i18n.language), [connection, i18n.language])
+  // Kition asked the open editor to show somewhere else (`document/reveal`).
+  useKitReveal(path, preview ? null : connection)
 
   useEffect(() => {
     if (!active || !connection || preview) return

@@ -9,6 +9,8 @@ import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { expandedTableFiles, withTableFileChildren } from '@/features/workspace/lib/tableFileChildren'
+import { useTableFileChildren } from '@/features/workspace/hooks/useTableFileChildren'
 import {
   buildPrivateSectionTreeNodes,
 } from '@/features/workspace/lib/workspaceTree'
@@ -121,9 +123,19 @@ export function WorkspaceScreen({
     treeItems,
     treeMetadata,
   } = workspaceTree
-  const workspaceTreeNodes = useMemo(
+  const fileTreeNodes = useMemo(
     () => buildPrivateSectionTreeNodes(treeItems, treeMetadata),
     [treeItems, treeMetadata],
+  )
+  // An expanded table file lists its tables and dashboards, read through the Table kit.
+  const expandedTables = useMemo(
+    () => expandedTableFiles(fileTreeNodes, workspaceTree.expandedPaths),
+    [fileTreeNodes, workspaceTree.expandedPaths],
+  )
+  const tableFileChildren = useTableFileChildren(expandedTables)
+  const workspaceTreeNodes = useMemo(
+    () => withTableFileChildren(fileTreeNodes, tableFileChildren),
+    [fileTreeNodes, tableFileChildren],
   )
   // Pinned tabs storage is workspace-scoped; keep the module-level current root
   // in sync with rootPath so pin/unpin/list operations hit the right bucket.

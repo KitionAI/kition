@@ -1,3 +1,4 @@
+import { isTableFilePath } from '@/api/kitTables'
 import { useCallback, useMemo, useState } from 'react'
 import type { SetStateAction, Dispatch } from 'react'
 import {
@@ -87,8 +88,14 @@ export function useWorkspaceTreeState(): UseWorkspaceTreeStateResult {
         next.add(path)
       }
     })
+    // A table file expands too: it lists its tables and dashboards.
+    files.forEach((file) => {
+      if (isTableFilePath(file.path) && expandedFolders.has(file.path)) {
+        next.add(file.path)
+      }
+    })
     return next
-  }, [allFolderPaths, treeMetadata.expandedFolders])
+  }, [allFolderPaths, files, treeMetadata.expandedFolders])
 
   const updateTreeMetadata = useCallback((updater: (metadata: WorkspaceTreeMetadata) => WorkspaceTreeMetadata) => {
     setTreeMetadataMap((current) => {

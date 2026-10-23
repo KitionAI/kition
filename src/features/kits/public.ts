@@ -7,6 +7,7 @@
 export { createKitFile } from './sdk/createKitFile'
 export type { KitSdkManifest } from './sdk/kitSdk'
 export { KitFrame, type EmbeddedKit } from './kition/KitFrame'
+export { revealInKit } from './kition/kitViews'
 export { resolveGenerateRuntimeModel } from './kition/kitGenerate'
 export { KitDraftTabMark } from './kition/KitDraftTabMark'
 export { HeadlessDraftBadge, HeadlessDraftReviewHost } from './kition/HeadlessDraftReview'

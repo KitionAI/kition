@@ -9,8 +9,9 @@ import { canReadBlobBodies } from './helpers/requestBody'
  * covers what Kition adds around the kit: creating a table file, saving through Kition's file API,
  * a host feature's write arriving live in an open editor without joining the person's undo, the
  * person's models answering AI fields (`host/generate`), and the host actions a table asks for
- * (`host/action`: `workflow.run`, `design.fromRecord`). The editor's own behavior is tested in the
- * kit's repository.
+ * (`host/action`: `workflow.run`, `design.fromRecord`), and a table file's tables and dashboards
+ * in the workspace tree, which open the file in the kit at the one clicked (`document.view`, then
+ * `document/reveal`). The editor's own behavior is tested in the kit's repository.
  */
 
 type NodeTableDocument = { call(method: string, params: string): string; save(): Uint8Array; markSaved(): void; free(): void }
@@ -239,6 +240,68 @@ test('a table’s button runs a Kition workflow, and a record starts a design (h
     const [design] = await page.evaluate(() => (window as unknown as { __designRequests: Array<{ title: string; fields: Record<string, unknown> }> }).__designRequests)
     expect(design.title).toMatch(/^Design /)
     expect(design.fields).toMatchObject({ title: 'Ada' })
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** A table file with two tables and a dashboard, made by the engine the page runs. */
+async function baseFixture() {
+  const sdk = await engine.load()
+  const doc = sdk.TableDocument.create('Base.ktable', 0, 0)
+  const call = caller(doc)
+  const [first] = call<{ tables: Array<{ id: number }> }>('documents.get').tables
+  call('tables.update', { tableId: first.id, title: 'Leads' })
+  const people = call<{ id: number }>('tables.create', { title: 'People' })
+  call('dashboards.upsert', { dashboardId: 'overview', title: 'Overview', source_table_id: first.id, layout: [], widgets: [] })
+  const dashboards = call<{ items: Array<{ id: string }> }>('dashboards.list').items
+  doc.markSaved()
+  const bytes = Buffer.from(doc.save())
+  doc.free()
+  return { bytes, leads: first.id, people: people.id, dashboard: dashboards[0].id }
+}
+
+test('the tree lists a table file’s tables and dashboards, and opens the file in the kit at the one clicked', async ({ page, baseURL }) => {
+  test.setTimeout(120_000)
+  const { bytes, leads, people, dashboard } = await baseFixture()
+  const described: string[] = []
+  // What the runtime answers through the Table kit for the one file the tree reads.
+  const routes = async (page: Page) => {
+    await serveKitTables(page)
+    await page.route(/\/api\/v1\/kit-tables\?path=/, async (route) => {
+      described.push(new URL(route.request().url()).searchParams.get('path') ?? '')
+      const table = (id: number, title: string) => ({ id: String(id), name: title.toLowerCase(), title, meta: {}, fields: [] })
+      await fulfillJson(route, {
+        code: 200,
+        message: 'success',
+        data: { files: [{ path: 'Base.ktable', documentId: null, tables: [table(leads, 'Leads'), table(people, 'People')], dashboards: [{ id: dashboard, name: 'Overview' }] }], unreadable: [] },
+      })
+    })
+  }
+  const { host } = await openKitWorkspace(page, baseURL!, { 'Base.ktable': bytes }, { routes })
+  try {
+    const row = page.locator('.document-tree-row', { hasText: 'Base' }).first()
+    await expect(row).toBeVisible({ timeout: 30_000 })
+    // A table file is read for the tree only once it is expanded.
+    expect(described).toEqual([])
+    await row.locator('.document-tree-lead-toggle').click()
+    const child = (title: string) => page.locator('.document-tree-row', { hasText: title }).first()
+    await expect(child('People')).toBeVisible()
+    await expect(child('Overview')).toBeVisible()
+    expect(described).toEqual(['Base.ktable'])
+
+    // The dashboard opens the file in the kit, showing that dashboard.
+    await child('Overview').click()
+    await expect(page.getByTestId('kit-frame')).toBeVisible({ timeout: 60_000 })
+    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(kit.getByTestId(`dashboard-tab-${dashboard}`)).toHaveAttribute('aria-current', 'page', { timeout: 60_000 })
+    await expect(kit.getByTestId('dashboard-editor-pane')).toBeVisible()
+
+    // Another table of the open file: the open editor shows it.
+    await child('People').click()
+    await expect(kit.getByTestId(`table-tab-${people}`)).toHaveAttribute('aria-current', 'page')
+    await expect(kit.getByTestId('ktable-editor')).toBeVisible()
+    await expect(page.getByTestId('kit-frame')).toHaveCount(1)
   } finally {
     await host.dispose()
   }

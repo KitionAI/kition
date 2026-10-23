@@ -1,4 +1,6 @@
 import { useCallback } from 'react'
+import { revealInKit } from '@/features/kits/public'
+import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
 
 const WORKFLOWS_LEAF_PREFIX = 'workflows://'
 
@@ -15,7 +17,8 @@ type UseWorkspaceSidebarNavigationOptions = {
 
 /**
  * Routes a click on a sidebar row to the right tab. Real files open by format (a table file
- * opens in the Table kit, like every kit file); the Workflows row carries a sentinel path.
+ * opens in the Table kit, like every kit file); the Workflows row carries a sentinel path, and a
+ * table file's table or dashboard opens the file in the kit there.
  */
 export function useWorkspaceSidebarNavigation({
   workflowOpen,
@@ -45,6 +48,12 @@ export function useWorkspaceSidebarNavigation({
     }
     if (path.startsWith(WORKFLOWS_LEAF_PREFIX)) {
       openWorkflows(path.slice(WORKFLOWS_LEAF_PREFIX.length) || undefined)
+      return
+    }
+    const tableFileChild = parseTableFileChildPath(path)
+    if (tableFileChild) {
+      revealInKit(tableFileChild.filePath, tableFileChild.view)
+      void openDocument(tableFileChild.filePath)
       return
     }
     void openDocument(path)

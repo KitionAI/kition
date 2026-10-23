@@ -29,6 +29,7 @@ import {
   type KitToHost,
   type KitUiConfig,
   type KitUiElement,
+  type KitView,
   type DraftComparison,
   type DraftInfo,
   type DraftOrigin,
@@ -47,6 +48,8 @@ export { extensionOf, fileError, openFileSession, sanitizeFileName, unusedName, 
 export type { FilesMethod, KitFileCommitMode, KitFileEntry, KitFileGrant, KitFileGrantFlow, KitFileRef, KitFileSession, KitFileStaging, KitFilesManifest, KitFilesOptions, KitFilesStorage } from './files'
 export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams } from './protocol'
 export type { KitActionErrorReason, KitActionParams, KitActionResult, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGenerateResult } from './protocol'
+export type { KitView } from './protocol'
+export { parseKitView } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
@@ -161,6 +164,11 @@ export type KitConnection = {
   leasesChanged: (leases: KitLease[]) => void
   /** Tells the kit who else is in the document and what they share (`presence/peers`, capability `presence`): the whole list. */
   peersChanged: (peers: KitPeerPresence[]) => void
+  /**
+   * Shows `view` in the open document (`document/reveal`, section 7i, OP3), as the `document.view`
+   * a new editor opens at. A kit that cannot show it ignores it.
+   */
+  reveal: (view: KitView) => void
   /**
    * Hears every `presence/set` the kit sends (what the person selected, where their caret is),
    * checked; answers an unsubscribe. The object model's `selection` event follows it.
@@ -375,6 +383,7 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     configure: (ui) => peer.notify('ui/configure', { ui }),
     leasesChanged: (leases) => peer.notify('lease/changed', { leases }),
     peersChanged: (peers) => peer.notify('presence/peers', { peers }),
+    reveal: (view) => peer.notify('document/reveal', { view }),
     onPresence: (listener) =>
       peer.on('presence/set', (params) => {
         const presence = parsePresence(params)

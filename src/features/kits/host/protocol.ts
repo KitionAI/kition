@@ -77,6 +77,39 @@ export type KitUiElement = { id: string; kind: string; label: string; parent: st
 /** `KitDocumentInit.comments`: who comments in this session, and how. */
 export type KitCommentAccess = { me: string | null; name?: string; canComment: boolean; othersReadOnly: boolean }
 
+/**
+ * Where in a document (minor version 2.1, `KitLinks 1.0` section 2): a diagnostic target's shape
+ * (`objectId`, `path`, `page`, `slide`, `sheet`, `cell`) plus `time`, `heading`, and `blockId`, as
+ * the document's kit understands them. A kit that cannot show it ignores it.
+ */
+export type KitView = {
+  objectId?: string
+  path?: string
+  page?: number
+  slide?: number
+  sheet?: string
+  cell?: string
+  time?: number
+  heading?: string[]
+  blockId?: string
+}
+
+/** A `view` checked: an object with only the known members, each of its type; `null` otherwise or when empty. */
+export function parseKitView(value: unknown): KitView | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const raw = value as Record<string, unknown>
+  const view: KitView = {}
+  for (const key of ['objectId', 'path', 'sheet', 'cell', 'blockId'] as const) {
+    if (typeof raw[key] === 'string' && raw[key]) view[key] = raw[key] as string
+  }
+  for (const key of ['page', 'slide'] as const) {
+    if (Number.isInteger(raw[key]) && (raw[key] as number) >= 1) view[key] = raw[key] as number
+  }
+  if (typeof raw.time === 'number' && Number.isFinite(raw.time) && raw.time >= 0) view.time = raw.time
+  if (Array.isArray(raw.heading) && raw.heading.length && raw.heading.every((part) => typeof part === 'string')) view.heading = [...raw.heading]
+  return Object.keys(view).length ? view : null
+}
+
 export type KitDocumentInit = {
   path: string
   name: string
@@ -102,6 +135,12 @@ export type KitDocumentInit = {
    * and the document's folder in it, for the engine's synchronous reads of linked files.
    */
   lend?: { root: string; folder: string }
+  /**
+   * Where in the document to show first (minor version 2.1, section 2): the host opened it from a
+   * link or its own navigation (`host/open`, OP3). A kit that can show it scrolls to it and
+   * selects it; otherwise it ignores it.
+   */
+  view?: KitView
 }
 
 export type InitializeParams = {
@@ -407,6 +446,8 @@ export type HostNotifications = {
   'presence/peers': { peers: KitPeerPresence[] }
   /** The host revoked these handles, or they expired (KitFiles FA4); later calls with them fail `file-not-granted`. */
   'files/revoked': { handles: string[] }
+  /** Shows `view` in the open document (minor version 2.1, section 7i; OP3), as `document.view` does for a new editor. */
+  'document/reveal': { view: KitView }
 }
 
 /** Requests the kit sends. */
