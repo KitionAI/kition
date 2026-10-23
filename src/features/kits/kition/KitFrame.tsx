@@ -15,6 +15,7 @@ import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange, type BridgeEditor } from './kitBridge'
 import { setKitDraft } from './kitDrafts'
+import { kitionGenerate } from './kitGenerate'
 import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { registerKitTestFrame } from './kitTestBridge'
@@ -295,6 +296,9 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
               show(notice.title, notice.description ? { description: notice.description } : undefined)
             },
             draftChanged: (info) => setKitDraft(path, info),
+            // The person's models for what the kit generates (Kit UI protocol section 7j): not for a
+            // preview or a read-only document, which the kit cannot write an answer into.
+            generate: preview || openedReadOnly ? undefined : (params) => kitionGenerate(params),
             ...collab?.handlers,
             // Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here.
             shortcut: (key) => {

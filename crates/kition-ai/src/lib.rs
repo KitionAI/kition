@@ -2,5 +2,6 @@
 
 pub mod chat;
 pub mod engine;
+pub mod generate;
 pub mod models;
 pub mod usage;

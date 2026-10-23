@@ -129,6 +129,13 @@ pub fn router(deps: &Deps) -> Router {
             engine: deps.ai.clone(),
             ai_gate: deps.ai_gate(),
         }))
+        .merge(kition_ai::generate::router(
+            kition_ai::generate::GenerateState {
+                auth: deps.auth(),
+                engine: deps.ai.clone(),
+                ai_gate: deps.ai_gate(),
+            },
+        ))
         .merge(kition_ai::usage::router(deps.auth()))
         .merge(kition_kits::router(kition_kits::KitsState {
             auth: deps.auth(),

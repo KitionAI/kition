@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/ai-generate.schema.json",
+  "title": "Kition Host Generation for Kits",
+  "description": "POST /api/v1/ai/generate: the model call behind a kit's host/generate request (Kit UI protocol 2.2 section 7j). The renderer forwards the kit's prompt with the runtime model the person's settings choose; the runtime runs it, logs its usage, and answers text or one image. The kit never sees a key or an endpoint. A refusal carries data.reason: unavailable (no model), not-allowed (a purpose the host does not generate for), quota (no credits left), too-large, timeout, or failed.",
+  "$ref": "#/$defs/request",
+  "x-endpoints": {
+    "generate": "POST /api/v1/ai/generate"
+  },
+  "$defs": {
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["text", "image"] },
+        "text": { "type": "string" },
+        "mime": { "type": "string" },
+        "data": { "type": "string", "description": "An image's bytes, base64." },
+        "url": { "type": "string", "description": "An http(s) image the document names." }
+      }
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "parts"],
+      "properties": {
+        "role": { "type": "string", "enum": ["system", "user"] },
+        "parts": { "type": "array", "items": { "$ref": "#/$defs/part" } }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxTokens": { "type": "integer", "minimum": 1 },
+        "temperature": { "type": "number" },
+        "size": { "type": "string", "pattern": "^[0-9]+x[0-9]+$" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose", "output", "messages"],
+      "properties": {
+        "purpose": { "type": "string", "enum": ["ai-field"] },
+        "output": { "type": "string", "enum": ["text", "image"] },
+        "runtimeModel": { "$ref": "ai-chat.schema.json#/$defs/runtimeModel" },
+        "messages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/message" } },
+        "options": { "$ref": "#/$defs/options" }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mime", "data"],
+      "properties": {
+        "mime": { "type": "string" },
+        "data": { "type": "string", "description": "The image's bytes, base64." }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inputTokens": { "type": "integer", "minimum": 0 },
+        "outputTokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model"],
+      "properties": {
+        "text": { "type": "string" },
+        "image": { "$ref": "#/$defs/image" },
+        "model": { "type": "string" },
+        "usage": { "$ref": "#/$defs/usage" }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["unavailable", "not-allowed", "quota", "refused", "too-large", "timeout", "failed"]
+    }
+  }
+}
