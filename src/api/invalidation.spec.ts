@@ -33,8 +33,7 @@ const ROOT = '/workspace/demo'
 function seed(client: QueryClient) {
   const keys = {
     tree: queryKeys.workspaceTree(ROOT),
-    index: queryKeys.kitableIndex(ROOT),
-    kitable: queryKeys.documentByPath(ROOT, 'a/b.kitable'),
+    table: queryKeys.documentByPath(ROOT, 'a/b.ktable'),
     note: queryKeys.documentByPath(ROOT, 'notes/today.md'),
     otherRootTree: queryKeys.workspaceTree('/workspace/other'),
     workflows: queryKeys.workflows(),
@@ -62,13 +61,16 @@ afterEach(() => {
 })
 
 describe('invalidateForWorkspaceChange', () => {
-  it('a changed .kitable file invalidates that document and the kitable index only', async () => {
+  it('a changed table file invalidates that document only, and tells the table pickers', async () => {
     const keys = seed(client)
+    const heard = vi.fn()
+    window.addEventListener('kition:table-files:changed', heard)
 
-    await invalidateForWorkspaceChange(client, { path: 'a/b.kitable', eventType: 'change' })
+    await invalidateForWorkspaceChange(client, { path: 'a/b.ktable', eventType: 'change' })
+    window.removeEventListener('kition:table-files:changed', heard)
 
-    expect(isInvalidated(client, keys.kitable)).toBe(true)
-    expect(isInvalidated(client, keys.index)).toBe(true)
+    expect(heard).toHaveBeenCalledOnce()
+    expect(isInvalidated(client, keys.table)).toBe(true)
     expect(isInvalidated(client, keys.note)).toBe(false)
     expect(isInvalidated(client, keys.tree)).toBe(false)
     expect(isInvalidated(client, keys.otherRootTree)).toBe(false)
@@ -82,7 +84,7 @@ describe('invalidateForWorkspaceChange', () => {
 
     expect(isInvalidated(client, keys.note)).toBe(true)
     expect(isInvalidated(client, keys.tree)).toBe(true)
-    expect(isInvalidated(client, keys.index)).toBe(false)
+    expect(isInvalidated(client, keys.table)).toBe(false)
   })
 })
 
@@ -92,9 +94,9 @@ describe('installWorkspaceInvalidation', () => {
     const dispose = installWorkspaceInvalidation(client)
     expect(watcher.handler).not.toBeNull()
 
-    watcher.handler?.({ path: 'a/b.kitable', eventType: 'add' })
+    watcher.handler?.({ path: 'a/b.ktable', eventType: 'add' })
     await Promise.resolve()
-    expect(isInvalidated(client, keys.index)).toBe(true)
+    expect(isInvalidated(client, keys.table)).toBe(true)
 
     client.setQueryData(keys.otherRootTree, { seeded: true })
     window.dispatchEvent(new CustomEvent(WORKSPACE_RELOAD_EVENT))

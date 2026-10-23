@@ -2,7 +2,7 @@
 
 export type IndexableDoc = {
   id: string
-  kind: 'note' | 'kitable_record' | 'kitable_meta'
+  kind: 'note' | 'table_record' | 'table_meta'
   vaultPath: string
   title: string
   body: string
@@ -36,7 +36,7 @@ export type OpName =
   | 'file' | 'path' | 'tag'
   | 'section' | 'block' | 'line'
   | 'task' | 'task-todo' | 'task-done'
-  | 'kitable' | 'field' | 'view'
+  | 'table' | 'field' | 'view'
   | 'regex' | 'match-case'
 
 export type QueryNode =
@@ -62,7 +62,7 @@ export type SearchHit = {
 
 export type WorkerProgress = {
   type: 'progress'
-  phase: 'note' | 'kitable' | 'persist'
+  phase: 'note' | 'table' | 'persist'
   done: number
   total: number
 }

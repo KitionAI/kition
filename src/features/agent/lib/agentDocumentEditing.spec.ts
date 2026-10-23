@@ -20,8 +20,8 @@ describe('buildAgentDocumentEditingPromptContext', () => {
 
   it('does not add text patch guidance for structured or binary documents', () => {
     expect(buildAgentDocumentEditingPromptContext({
-      activeDocumentPath: 'Data/Issues.kitable',
-      activeDocumentFormat: 'data',
+      activeDocumentPath: 'Data/Issues.ktable',
+      activeDocumentFormat: 'table',
     })).toBe('')
     expect(buildAgentDocumentEditingPromptContext({
       activeDocumentPath: 'Docs/Report.pdf',

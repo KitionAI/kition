@@ -1,6 +1,5 @@
 import type { AgentPaneContext, AgentTaskMode } from '@/api/agent'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import type { DataDocument, DataTable } from '@kition/table-editor'
 import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentDesignContext } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } from '@/features/document/public'
@@ -8,8 +7,6 @@ import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } fr
 export type AgentTurnContext = {
   activeDocumentPath: string
   activeDocumentFormat?: WorkspaceDocumentFormat
-  activeDataDocumentId: number
-  activeDataTableId: number
   taskMode?: AgentTaskMode
   /** Active workbench tab type — forwarded to streamAgentMessage so
    *  the backend can pick a pane-specific system-prompt addendum. */
@@ -50,10 +47,6 @@ export function finalizeAgentTurnContext(input: {
 export function buildAgentTurnContext(input: {
   activeDocumentPath?: string
   activeDocumentFormat?: WorkspaceDocumentFormat
-  activeDocument?: DataDocument | null
-  activeTable?: DataTable | null
-  activeDataDocumentId?: number | null
-  activeDataTableId?: number | null
   paneContext?: AgentPaneContext
   activeWorkflowId?: string
   whiteboardContext?: AgentWhiteboardContext
@@ -69,8 +62,6 @@ export function buildAgentTurnContext(input: {
   return {
     activeDocumentPath,
     activeDocumentFormat: input.activeDocumentFormat,
-    activeDataDocumentId: input.activeDocument?.id ?? input.activeDataDocumentId ?? 0,
-    activeDataTableId: input.activeTable?.id ?? input.activeDataTableId ?? 0,
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,
     whiteboardContext: input.whiteboardContext,

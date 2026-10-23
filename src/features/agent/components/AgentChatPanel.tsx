@@ -7,12 +7,11 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentLocalSource, AgentSession,
-  AgentShellApprovalDecision, AgentShellApprovalRequest, AgentTablePlanContext,
+  AgentShellApprovalDecision, AgentShellApprovalRequest,
 } from '@/api/agent'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { AgentAiComposer } from './AgentAiComposer'
 import { AgentChangedFilesCard, AgentConversation } from './AgentConversation'
-import { AgentContextCards } from './AgentContextCards'
 import { AgentPanelEmptyState } from './AgentPanelChrome'
 import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAccount'
 import { isKitionAccountUsable } from '@/features/account/lib/accountState'
@@ -58,7 +57,6 @@ type AgentChatPanelProps = {
   onModelChange: (value: string) => void
   onOpenArtifact: (path: string) => void
   onReviewModifiedArtifact?: (path: string) => void
-  onApplyPlan?: (plan: AgentTablePlanContext) => void
   onShellApprovalDecision?: (
     request: AgentShellApprovalRequest,
     decision: AgentShellApprovalDecision,
@@ -67,7 +65,7 @@ type AgentChatPanelProps = {
   /** Active workbench pane the agent sits next to. Drives the
    *  empty-state copy so the suggestion prompts match what the user is
    *  actually looking at — "Summarize this document" makes no sense
-   *  when the right pane is a workflow editor or table view. Defaults
+   *  when the right pane is a workflow editor. Defaults
    *  to 'document' to keep behaviour unchanged for legacy mounts. */
   paneContext?: AgentPaneContext
   /** Client-only welcome copy for surfaces that do not yet publish runtime context. */
@@ -104,7 +102,6 @@ export function AgentChatPanel({
   onModelChange,
   onOpenArtifact,
   onReviewModifiedArtifact,
-  onApplyPlan,
   onShellApprovalDecision,
   onImportFiles,
   paneContext = 'document',
@@ -275,13 +272,6 @@ export function AgentChatPanel({
             onShellApprovalDecision={onShellApprovalDecision}
           />
         )}
-        {!isEmptyChat ? (
-          <AgentContextCards
-            view={view}
-            busy={busy}
-            onApplyPlan={onApplyPlan}
-          />
-        ) : null}
       </div>
       {progressCard ?? null}
       <div className="agent-chat-composer">
@@ -291,7 +281,7 @@ export function AgentChatPanel({
         />
         <AgentAiComposer
           imageControls={imageGeneration ? <AgentImageComposerControls mode={imageMode} busy={busy}
-            surface={paneContext === 'table' || paneContext === 'whiteboard' ? paneContext : 'document'}
+            surface={paneContext === 'whiteboard' ? paneContext : 'document'}
             accessToken={imageGeneration.accessToken} /> : undefined}
           imageSummary={imageGeneration ? <AgentImageComposerSummary mode={imageMode} busy={busy} /> : undefined}
           busy={busy}

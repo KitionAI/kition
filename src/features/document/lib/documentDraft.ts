@@ -1,9 +1,6 @@
 import type { DocumentPlatform } from '@/features/document/lib/documentCreation'
-import {
-  inferWorkspaceItemFormat,
-  isWorkspaceDataMarkerContent,
-} from '@/features/workspace/lib/workspace'
-import type { WorkspaceDocument, WorkspaceDocumentFormat } from '@/services/desktop'
+import { inferWorkspaceItemFormat } from '@/features/workspace/lib/workspace'
+import type { WorkspaceDocument } from '@/services/desktop'
 
 export function inferDocumentPlatform(path: string, content: string): DocumentPlatform {
   const text = `${path}\n${content}`
@@ -12,13 +9,6 @@ export function inferDocumentPlatform(path: string, content: string): DocumentPl
 
 export function readWorkspaceDocumentDraft(document: WorkspaceDocument) {
   const format = document.format || inferWorkspaceItemFormat(document.path, document.content)
-
-  if (format === 'data' || isWorkspaceDataMarkerContent(document.content)) {
-    return {
-      format: 'data' as WorkspaceDocumentFormat,
-      markdown: '',
-    }
-  }
 
   return {
     format,

@@ -3,13 +3,15 @@
  * becomes a Markdown link in a document or an attachment on the table record
  * the design came from. API access is injected so the flows stay testable.
  */
-import type { DataAttachment, DataRecordValue } from '@kition/table-editor'
 import type { DesignRecordRef } from '@/types/designStart'
 
+/** An attachment cell's entry, as the Table kit stores it. */
+type Attachment = Record<string, unknown> & { url: string }
+
 export type DesignHandoffApi = {
-  uploadAttachment: (documentId: number, tableId: number, file: File) => Promise<DataAttachment>
-  readRecordValue: (ref: DesignRecordRef) => Promise<DataRecordValue | undefined>
-  updateRecord: (ref: DesignRecordRef, values: Record<string, DataRecordValue>) => Promise<unknown>
+  uploadAttachment: (ref: DesignRecordRef, file: File) => Promise<Attachment>
+  readRecordValue: (ref: DesignRecordRef) => Promise<unknown>
+  updateRecord: (ref: DesignRecordRef, values: Record<string, unknown>) => Promise<unknown>
 }
 
 /** The Markdown that embeds an exported design in a document. */
@@ -23,14 +25,14 @@ export async function sendDesignToTable(
   api: DesignHandoffApi,
   ref: DesignRecordRef,
   file: File,
-): Promise<DataAttachment> {
-  const attachment = await api.uploadAttachment(ref.documentId, ref.tableId, file)
+): Promise<Attachment> {
+  const attachment = await api.uploadAttachment(ref, file)
   const current = await api.readRecordValue(ref)
   const existing = Array.isArray(current)
-    ? (current as unknown[]).filter((entry): entry is DataAttachment => Boolean(entry && typeof entry === 'object' && 'url' in entry))
+    ? (current as unknown[]).filter((entry): entry is Attachment => Boolean(entry && typeof entry === 'object' && 'url' in entry))
     : current && typeof current === 'object' && 'url' in current
-      ? [current as DataAttachment]
+      ? [current as Attachment]
       : []
-  await api.updateRecord(ref, { [ref.field]: [...existing, attachment] as unknown as DataRecordValue })
+  await api.updateRecord(ref, { [ref.field]: [...existing, attachment] })
   return attachment
 }

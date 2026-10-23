@@ -16,7 +16,6 @@ import type {
   AgentShellApprovalResponse,
   AgentSkillSpec,
   AgentSourceAdapterSpec,
-  AgentTablePlanContext,
   AgentTaskMode,
 } from './agentTypes'
 import { runtimeFetch } from '@/services/runtimeAuth'
@@ -148,16 +147,14 @@ export async function streamAgentMessage(options: {
   attachmentPaths?: string[]
   localSources?: AgentLocalSource[]
   activeDocumentPath?: string
-  activeDataDocumentId?: number | null
-  activeDataTableId?: number | null
   /** Workflow id the user is editing when paneContext === 'workflow'.
    *  Backend loads the def + appends a compact summary to the skill
-   *  context so the agent knows the trigger.type / bound table /
+   *  context so the agent knows the trigger.type /
    *  action.type without having to call tools. Empty / missing → no
    *  workflow context is injected. */
   activeWorkflowId?: string
   /** Mirrors the workbench tab type the user has open ("document" /
-   *  "workflow" / "table" / "gallery"). The backend uses
+   *  "workflow" / "gallery" / "whiteboard" / "design"). The backend uses
    *  this to add pane-specific guidance to the system prompt so the
    *  agent's behaviour matches what the user is actually looking at.
    *  Empty string / undefined defaults to "document". */
@@ -169,7 +166,6 @@ export async function streamAgentMessage(options: {
   imageGenerationIntent?: AgentImageGenerationIntent
   whiteboardContext?: AgentWhiteboardContext
   designContext?: AgentDesignContext
-  tablePlanContext?: AgentTablePlanContext
   shellApproval?: AgentShellApprovalResponse
   modelId?: string
   runtimeModel?: RuntimeWritingModel
@@ -191,8 +187,6 @@ export async function streamAgentMessage(options: {
       attachment_paths: options.attachmentPaths || [],
       local_sources: options.localSources || [],
       active_document_path: options.activeDocumentPath || '',
-      active_data_document_id: options.activeDataDocumentId || 0,
-      active_data_table_id: options.activeDataTableId || 0,
       active_workflow_id: options.activeWorkflowId || '',
       pane_context: options.paneContext || '',
       execution_mode: options.executionMode || 'apply',
@@ -201,7 +195,6 @@ export async function streamAgentMessage(options: {
       image_generation_intent: options.imageGenerationIntent || undefined,
       whiteboard_context: options.whiteboardContext || undefined,
       design_context: options.designContext || undefined,
-      table_plan_context: options.tablePlanContext || undefined,
       shell_approval: options.shellApproval || undefined,
       model_id: options.modelId || '',
       runtime_model: options.runtimeModel || undefined,

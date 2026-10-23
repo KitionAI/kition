@@ -18,9 +18,7 @@
       "pdf": "PDF"
     },
     "folder": "Folder",
-    "newDashboard": "New dashboard",
     "newForm": "New form",
-    "newTable": "New table",
     "newWorkflow": "New workflow",
     "group": {
       "documents": "Documents",
@@ -101,16 +99,6 @@
       "toc": "Outline",
       "locked": "Lock page"
     },
-    "tableAction": {
-      "rename": "Rename",
-      "duplicate": "Duplicate",
-      "downloadCsv": "Download CSV",
-      "importData": "Import data",
-      "api": "API",
-      "history": "History",
-      "share": "Share",
-      "delete": "Delete"
-    },
     "markdownMode": {
       "rich": "Edit view",
       "preview": "Reading view",
@@ -147,7 +135,6 @@
     "workflowsTitle": "Workflows",
     "boardTitle": "Board",
     "workflowsScoped": "Workflows · {{name}}",
-    "untitledTable": "Untitled table",
     "untitledWorkflow": "Untitled workflow",
     "videos": "Videos",
     "workflow": "Workflow"
@@ -609,9 +596,6 @@
     "settings": "Settings"
   },
   "errors": {
-    "kitableNotFound": "Could not locate this table file on disk.",
-    "kitableNoTables": "This table file has no tables yet — create a table first.",
-    "parentKitableNotFound": "Could not locate the parent table file on disk.",
     "createWorkflowFailed": "Failed to create workflow",
     "documentPathEmpty": "Document path cannot be empty",
     "nameEmpty": "Name cannot be empty",
@@ -623,8 +607,6 @@
     "onlyWorkspaceItemsRenamable": "Only documents, tables, and boards can be renamed here.",
     "createDocumentFailed": "Failed to create document",
     "createBoardFailed": "Failed to create Board",
-    "createDashboardFailed": "Failed to create dashboard",
-    "createTableFailed": "Failed to create table",
     "importMarkdownFailed": "Failed to import Markdown",
     "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev and try again.",
     "browserDevModePickDirectory": "You are running in browser dev mode and cannot pick a native directory. Launch the desktop app via pnpm dev and try again.",
@@ -638,25 +620,9 @@
     "restoredSavedVersion": "Restored to the saved version",
     "documentCreated": "Document created",
     "boardCreated": "Board created",
-    "dashboardCreated": "Dashboard created",
-    "tableCreated": "Table created",
-    "spreadsheetImported": "Spreadsheet imported as a table",
     "folderCreated": "Folder created",
     "renamed": "Renamed",
-    "alreadyInLocation": "Already in this location",
-    "tableDeleted": "Table deleted"
-  },
-  "kitableSidebar": {
-    "collapse": "Collapse table file sidebar",
-    "expand": "Expand table file sidebar",
-    "create": "Create in table file",
-    "tableName": "Data table name",
-    "navLabel": "Table file",
-    "tableMenu": "Open table menu",
-    "searchPlaceholder": "Search tables, dashboards, and workflows",
-    "switchSection": "Switch table file section",
-    "renameTable": "Rename data table",
-    "deleteTable": "Delete data table"
+    "alreadyInLocation": "Already in this location"
   },
   "photoKit": {
     "unavailableTitle": "Photo editing is not available in this build",

@@ -11,7 +11,7 @@
 export type TransportTokenHeader = "Kition-Token"
 
 /**
- * A signed URL path, for GET and HEAD only: /_signed/<expires>.<length>.<signature>/<path>. <signature> is the lower-case hex HMAC-SHA-256, keyed with the token (UTF-8), of `<expires>\n<scope>`, where <scope> is the first <length> bytes of /<path> as sent (percent-encoded). A file URL signs its whole path; a kit engine's lent root signs the folder /kit-files/ and the engine appends the rest. Valid until <expires> (Unix seconds), and only when <scope> starts with /workspace-files/, /kit-files/, /uploads/, <api prefix>/kits/bridge, or <api prefix>/data-documents/. The request is routed as /<path>; the token itself is never in a URL.
+ * A signed URL path, for GET and HEAD only: /_signed/<expires>.<length>.<signature>/<path>. <signature> is the lower-case hex HMAC-SHA-256, keyed with the token (UTF-8), of `<expires>\n<scope>`, where <scope> is the first <length> bytes of /<path> as sent (percent-encoded). A file URL signs its whole path; a kit engine's lent root signs the folder /kit-files/ and the engine appends the rest. Valid until <expires> (Unix seconds), and only when <scope> starts with /workspace-files/, /kit-files/, /uploads/, or <api prefix>/kits/bridge. The request is routed as /<path>; the token itself is never in a URL.
  */
 export type TransportSignedPath = string
 

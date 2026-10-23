@@ -27,7 +27,7 @@ export function ScenarioRoute({ onExit }: ScenarioRouteProps) {
   const {
     events,
     status,
-    baseId,
+    basePath,
     baseName,
     error,
     submit,
@@ -70,7 +70,7 @@ export function ScenarioRoute({ onExit }: ScenarioRouteProps) {
       <ScenarioBuildPage
         events={events}
         status={status}
-        baseId={baseId}
+        basePath={basePath}
         baseName={baseName}
         error={error}
         onClose={handleClose}

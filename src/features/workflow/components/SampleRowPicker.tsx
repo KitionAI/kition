@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
-import { listDataRecords } from '@/api/dataDocuments'
-import type { DataRecord } from '@kition/table-editor'
+import { listTableRecords, type KitTablesRecord } from '@/api/kitTables'
 
 /**
  * SampleRowPicker — the UI half of WF-U3.
@@ -20,7 +19,7 @@ import type { DataRecord } from '@kition/table-editor'
  * up the cost. Refreshing the list re-fetches on demand.
  *
  * Contract:
- *   - documentId / tableId may be 0 / "" when the trigger isn't bound yet;
+ *   - documentPath / tableId are null when the trigger isn't bound yet;
  *     the button stays disabled in that state with an explanatory tooltip.
  *   - onPick is called with the picked record's values exactly as the
  *     /records endpoint returned them. The caller (Run test) forwards
@@ -28,35 +27,37 @@ import type { DataRecord } from '@kition/table-editor'
  *   - The picker is uncontrolled — open/close state lives here.
  */
 export interface SampleRowPickerProps {
-  documentId: number | null
-  tableId: number | null
+  /** The trigger table's file path. */
+  documentPath: string | null
+  /** The trigger table's id in that file. */
+  tableId: string | null
   disabled?: boolean
-  onPick: (values: Record<string, unknown>, record: DataRecord) => void
+  onPick: (values: Record<string, unknown>, record: KitTablesRecord) => void
 }
 
 const PAGE_SIZE = 10
 
-export function SampleRowPicker({ documentId, tableId, disabled, onPick }: SampleRowPickerProps) {
+export function SampleRowPicker({ documentPath, tableId, disabled, onPick }: SampleRowPickerProps) {
   const { t } = useTranslation('workflow')
   const [open, setOpen] = useState(false)
-  const [records, setRecords] = useState<DataRecord[]>([])
+  const [records, setRecords] = useState<KitTablesRecord[]>([])
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const ready = Boolean(documentId && tableId)
+  const ready = Boolean(documentPath && tableId)
 
   const refresh = useCallback(async () => {
-    if (!documentId || !tableId) return
+    if (!documentPath || !tableId) return
     setStatus('loading')
     setError(null)
     try {
-      const resp = await listDataRecords(documentId, tableId, { limit: PAGE_SIZE })
+      const resp = await listTableRecords({ path: documentPath, tableId }, { limit: PAGE_SIZE })
       setRecords(resp.items ?? [])
       setStatus('done')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setStatus('error')
     }
-  }, [documentId, tableId])
+  }, [documentPath, tableId])
 
   // First open with a ready binding triggers the fetch. Subsequent opens
   // reuse the cached list; the user can hit refresh manually.
@@ -73,7 +74,7 @@ export function SampleRowPicker({ documentId, tableId, disabled, onPick }: Sampl
     setRecords([])
     setStatus('idle')
     setError(null)
-  }, [documentId, tableId])
+  }, [documentPath, tableId])
 
   const label = useMemo(() => {
     if (!ready) return t('panels.sampleRow.noTableBound')
@@ -124,10 +125,10 @@ export function SampleRowPicker({ documentId, tableId, disabled, onPick }: Sampl
             const preview = previewRecord(record)
             return (
               <button
-                key={record.id}
+                key={String(record.id)}
                 type="button"
                 data-testid="workflow-home-sample-row-option"
-                data-record-id={record.id}
+                data-record-id={String(record.id)}
                 onClick={() => {
                   onPick(record.values, record)
                   setOpen(false)
@@ -145,13 +146,13 @@ export function SampleRowPicker({ documentId, tableId, disabled, onPick }: Sampl
   )
 }
 
-/** previewRecord summarises a DataRecord into a one-line label + optional
+/** previewRecord summarises a table record into a one-line label + optional
  *  hint so the picker rows are scannable without rendering the full payload.
  *  The label picks the first non-empty string value (usually the primary
  *  column); the hint shows the next non-empty value so the user can tell
  *  near-duplicates apart. Exported for the spec — keep the heuristic
  *  pinned so future changes don't silently regress the list UX. */
-export function previewRecord(record: DataRecord): { label: string; hint: string } {
+export function previewRecord(record: KitTablesRecord): { label: string; hint: string } {
   const fields = Object.entries(record.values || {})
   const strings = fields
     .map(([, v]) => (typeof v === 'string' && v.trim() ? v.trim() : null))

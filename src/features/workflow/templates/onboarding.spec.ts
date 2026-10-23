@@ -24,7 +24,7 @@ describe('onboarding workflow templates', () => {
     expect(template).toBeDefined()
 
     const application = createWorkflowFromTemplate(template!, {
-      documentId: 'onboarding-leads',
+      documentPath: 'Guides/Lead Automation/Lead Follow-up.ktable',
       tableId: '1',
       tableName: 'Leads',
       schema: leadsSchema,
@@ -36,7 +36,7 @@ describe('onboarding workflow templates', () => {
       enabled: false,
       trigger: expect.objectContaining({
         type: 'record_created',
-        documentId: 'onboarding-leads',
+        documentPath: 'Guides/Lead Automation/Lead Follow-up.ktable',
         tableId: '1',
       }),
       action: expect.objectContaining({

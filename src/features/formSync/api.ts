@@ -13,14 +13,10 @@ import {
   type FormSyncWorkflow,
   type UpdateFormSyncWorkflowInput,
 } from '@/api/formSync'
-import {
-  getDataDocument,
-  listDataDocuments,
-  updateDataDocument,
-} from '@/api/dataDocuments'
+import { listTableFiles, updateTable } from '@/api/kitTables'
 
 import {
-  readDocumentFormSyncWorkflows,
+  readTableFileFormSyncWorkflows,
   removeLocalFormSyncWorkflow,
   writeLocalFormSyncWorkflow,
   type LocalFormSyncWorkflow,
@@ -35,11 +31,11 @@ export type {
 } from '@/api/formSync'
 
 export async function listFormSyncWorkflows() {
-  const [documents, remoteWorkflows] = await Promise.all([
-    listDataDocuments().then((response) => response.items || []),
+  const [files, remoteWorkflows] = await Promise.all([
+    listTableFiles().then((response) => response.files || []),
     listRemoteFormSyncWorkflows(),
   ])
-  const localWorkflows = readDocumentFormSyncWorkflows(documents)
+  const localWorkflows = readTableFileFormSyncWorkflows(files)
   const aliasedRemoteIds = new Set(
     localWorkflows.map((workflow) => workflow.remote_workflow_id).filter(Boolean),
   )
@@ -126,24 +122,6 @@ export async function syncFormSyncWorkflow(id: string) {
   return syncRemoteFormSyncWorkflow(remoteId)
 }
 
-export async function deleteFormSyncWorkflow(id: string) {
-  const localWorkflow = await findLocalWorkflow(id)
-  if (!localWorkflow) {
-    throw new Error('Deleting published forms is not supported by this runtime.')
-  }
-  if (localWorkflow.remote_workflow_id) {
-    throw new Error('Deleting a form after it has been published is not supported by this runtime.')
-  }
-  const documentId = parseDocumentId(localWorkflow.target.document_id)
-  const document = await getDataDocument(documentId)
-  await updateDataDocument(documentId, {
-    meta: removeLocalFormSyncWorkflow(document.meta, id),
-  })
-  emitFormSyncChanged(id)
-}
-
-export { FORM_SYNC_CHANGED_EVENT } from '@/api/formSync'
-
 function emitFormSyncChanged(workflowId: string) {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(FORM_SYNC_CHANGED_EVENT, {
@@ -152,16 +130,26 @@ function emitFormSyncChanged(workflowId: string) {
 }
 
 async function findLocalWorkflow(id: string) {
-  const documents = await listDataDocuments().then((response) => response.items || [])
-  return readDocumentFormSyncWorkflows(documents).find((workflow) => workflow.id === id)
+  const files = await listTableFiles().then((response) => response.files || [])
+  return readTableFileFormSyncWorkflows(files).find((workflow) => workflow.id === id)
+}
+
+/** The table an unpublished form keeps its draft in: the one it writes to. */
+async function targetTable(workflow: LocalFormSyncWorkflow) {
+  const { document_path: path, table_id: tableId } = workflow.target
+  const files = await listTableFiles().then((response) => response.files || [])
+  const table = files.find((file) => file.path === path)?.tables.find((item) => item.id === tableId)
+  if (!path || !table) throw new Error('The form destination table is invalid.')
+  return table
 }
 
 async function persistLocalWorkflow(workflow: LocalFormSyncWorkflow) {
-  const documentId = parseDocumentId(workflow.target.document_id)
-  const document = await getDataDocument(documentId)
-  await updateDataDocument(documentId, {
-    meta: writeLocalFormSyncWorkflow(document.meta, workflow),
-  })
+  const table = await targetTable(workflow)
+  await updateTable(
+    { path: workflow.target.document_path, tableId: workflow.target.table_id },
+    { meta: writeLocalFormSyncWorkflow(table.meta, workflow) },
+    'formsync',
+  )
 }
 
 function mergeWorkflow(
@@ -187,14 +175,6 @@ function toCreateInput(
     schedule: workflow.schedule,
     published,
   }
-}
-
-function parseDocumentId(value: string) {
-  const documentId = Number(value)
-  if (!Number.isInteger(documentId) || documentId <= 0) {
-    throw new Error('The form destination document is invalid.')
-  }
-  return documentId
 }
 
 function createLocalWorkflowId() {

@@ -1,5 +1,5 @@
 import type { ApiTimestamp } from '@/types'
-import { toEpochMs } from '@kition/table-editor'
+import { toEpochMs } from '@/lib/timestamps'
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'

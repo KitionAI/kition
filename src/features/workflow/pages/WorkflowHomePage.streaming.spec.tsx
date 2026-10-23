@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { listDataDocuments } from '@/api/dataDocuments'
+import { getTableFields, listTableFiles } from '@/api/kitTables'
 import {
   deleteWorkflow,
   listWorkflowRuns,
@@ -41,8 +41,10 @@ vi.mock('@/features/workspace/components/WorkspaceWorkflowCreateModeDialog', () 
   WorkspaceWorkflowCreateModeDialog: () => null,
 }))
 
-vi.mock('@/api/dataDocuments', () => ({
-  listDataDocuments: vi.fn().mockResolvedValue({ items: [] }),
+vi.mock('@/api/kitTables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/kitTables')>()),
+  listTableFiles: vi.fn(),
+  getTableFields: vi.fn(),
 }))
 
 vi.mock('@/features/workflow/lib/aiChatBridge', () => ({
@@ -57,7 +59,7 @@ const realWorkflow: WorkflowDefinition = {
   name: 'Existing workflow',
   description: '',
   enabled: false,
-  trigger: { nodeId: 'trigger_1', type: 'record_created', documentId: 'doc_1', tableId: 'tbl_1' },
+  trigger: { nodeId: 'trigger_1', type: 'record_created', documentPath: 'leads.ktable', tableId: 'tbl_1' },
   action: {
     nodeId: 'action_1',
     type: 'send_email',
@@ -73,7 +75,7 @@ function buildStreamingPreview(overrides: Partial<StreamingPreview> = {}): Strea
     name: 'Streaming workflow',
     description: '',
     enabled: false,
-    trigger: { nodeId: 'trigger_pre', type: 'record_created', tableId: 'tbl_1', documentId: 'doc_1' },
+    trigger: { nodeId: 'trigger_pre', type: 'record_created', tableId: 'tbl_1', documentPath: 'leads.ktable' },
     action: {
       nodeId: 'action_pre',
       type: 'send_email',
@@ -128,13 +130,11 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }))
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ data: { items: [] } }),
-  } as Response)
-  vi.mocked(listDataDocuments).mockResolvedValue({
-    items: [{ title: 'Leads doc', tables: [{ id: 'tbl_1', title: 'Leads' }] }],
-  } as any)
+  vi.mocked(getTableFields).mockResolvedValue({ items: [], table: { id: 'tbl_1', name: 'leads', title: 'Leads', fields: [], meta: {} } })
+  vi.mocked(listTableFiles).mockResolvedValue({
+    files: [{ path: 'leads.ktable', documentId: null, dashboards: [], tables: [{ id: 'tbl_1', name: 'leads', title: 'Leads', fields: [], meta: {} }] }],
+    unreadable: [],
+  })
   vi.mocked(listWorkflows).mockResolvedValue([realWorkflow])
   vi.mocked(listWorkflowRuns).mockResolvedValue([])
   vi.mocked(listChannels).mockResolvedValue([])

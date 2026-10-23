@@ -42,7 +42,6 @@ function buildInput(overrides: Partial<WorkspaceScreenSidebarInput> = {}) {
     chat: { addNodeToChat: vi.fn(async () => undefined), addNodeToNewChat: vi.fn(async () => undefined) } as never,
     chrome: { privateExpanded: true, onTogglePrivate: vi.fn(), onToggleSidebar: vi.fn() },
     desktop: true,
-    onCreateWorkflowForTable: vi.fn(),
     onOpen: vi.fn(),
     onRefreshed: vi.fn(),
     ...overrides,

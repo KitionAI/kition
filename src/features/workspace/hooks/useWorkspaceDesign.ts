@@ -13,7 +13,7 @@ import {
   type DesignTableSendRequest,
 } from '@/services/workspaceDesignActions'
 import { relativeMarkdownPath } from '@/features/document/public'
-import { listDataRecords, updateDataRecord, uploadDataAttachment } from '@/api/dataDocuments'
+import { listTableRecords, putTableAttachment, writeTableRecord } from '@/api/kitTables'
 import { designMarkdownLink, sendDesignToTable } from '../lib/designHandoff'
 import type { DesignDocument } from '@/features/design/public'
 import type { BoardFrameSnapshot } from '@/types/designStart'
@@ -156,12 +156,12 @@ export function useWorkspaceDesign(options: {
       const { file, ref } = (event as CustomEvent<DesignTableSendRequest>).detail
       void sendDesignToTable(
         {
-          uploadAttachment: uploadDataAttachment,
+          uploadAttachment: async (target, upload) => (await putTableAttachment({ path: target.path, tableId: target.tableId }, upload, 'design')) as Record<string, unknown> & { url: string },
           readRecordValue: async (target) => {
-            const page = await listDataRecords(target.documentId, target.tableId, { limit: 500 })
-            return page.items?.find((record) => record.id === target.recordId)?.values?.[target.field]
+            const page = await listTableRecords(target)
+            return page.items?.find((record) => String(record.id) === target.recordId)?.values?.[target.field]
           },
-          updateRecord: (target, values) => updateDataRecord(target.documentId, target.tableId, target.recordId, values),
+          updateRecord: (target, values) => writeTableRecord({ path: target.path, tableId: target.tableId, recordId: target.recordId }, values, 'design'),
         },
         ref,
         file,

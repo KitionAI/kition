@@ -3,7 +3,7 @@ import { loadDesignLib } from '@/features/design/public'
 import { loadBoardFile } from '@/features/whiteboard/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { renameDataDocumentByPath } from '@/api/dataDocuments'
+import { reportTableFileRenamed } from '@/api/kitTables'
 import { useConfirm } from '@kition/app-ui/confirm'
 import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
 import {
@@ -58,9 +58,6 @@ type UseWorkspaceTreeNodeActionsOptions = {
   refreshWorkspaceDocuments: (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
   renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
-  // Rekeys the kitable children index when a .kitable file is renamed so the
-  // virtual table/workflow leaves don't vanish until the next backend refresh.
-  renameKitableChildrenIndexPath?: (fromPath: string, toPath: string) => void
   rootPath: string
   setActiveResourcePath: (path: string) => void
   setActiveWorkspaceTabId: (tabId: string) => void
@@ -74,33 +71,19 @@ type UseWorkspaceTreeNodeActionsOptions = {
   >
 }
 
-// Keep the backend's DataDocument path column in sync with the on-disk file
-// path after a move/rename. The desktop side only knows about files; the
-// backend's row would otherwise stay pinned to the old path and listDocuments
-// would log "kitable open failed" until the row is manually fixed. Also
-// rekeys the in-memory kitable children index so the tree's virtual table /
-// workflow leaves don't briefly disappear before the next backend refresh.
-// Fire-and-forget by design — failure here mustn't roll back the disk op.
-function syncKitableBackendPath(
-  fromPath: string,
-  toPath: string,
-  workspaceRoot: string,
-  renameKitableChildrenIndexPath?: (fromPath: string, toPath: string) => void,
-) {
+// Workflows, form sync, and email sync name table files by path: a renamed or moved table
+// file (or a folder holding some) is followed there. Fire-and-forget by design — failure here
+// mustn't roll back the disk op.
+function followMovedTableFiles(fromPath: string, toPath: string) {
   if (!fromPath || !toPath || fromPath === toPath) {
     return
   }
-  if (!fromPath.toLowerCase().endsWith('.kitable')) {
-    return
-  }
-  renameKitableChildrenIndexPath?.(fromPath, toPath)
-  renameDataDocumentByPath({ path: fromPath, target_path: toPath, workspace_root: workspaceRoot })
-    .catch((cleanupError) => {
-      console.warn('[workspace] failed to sync kitable backend index', cleanupError)
-    })
+  reportTableFileRenamed(fromPath, toPath).catch((cleanupError) => {
+    console.warn('[workspace] failed to follow a moved table file', cleanupError)
+  })
 }
 
-export function getWorkspaceDeleteConfirmationMessage(
+function getWorkspaceDeleteConfirmationMessage(
   node: Pick<WorkspaceTreeNode, 'title' | 'type'>,
   childCount: number,
 ) {
@@ -125,7 +108,6 @@ export function useWorkspaceTreeNodeActions({
   refreshWorkspaceDocuments,
   remapWorkspaceTabPaths,
   renameWorkspaceTabPath,
-  renameKitableChildrenIndexPath,
   rootPath,
   setActiveResourcePath,
   setActiveWorkspaceTabId,
@@ -180,8 +162,6 @@ export function useWorkspaceTreeNodeActions({
         ? await deleteWorkspaceFolder(node.path)
         : await deleteWorkspaceDocument(node.path)
       await (isFolder ? syncDocumentFolderDeleted(rootPath, node.path) : syncDocumentFileDeleted(rootPath, node.path))
-      // Keep the DataDocument mapping for .kitable files so restoring the file
-      // from the system Trash also restores its records and workflows.
       updateTreeMetadata((current) => removeWorkspaceTreeBranchMetadata(current, node.path, childFolderPath))
       setAgentModifiedDocumentPaths(
         (current) => new Set([...current].filter((path) => path !== node.path && !path.startsWith(childPrefix))),
@@ -361,7 +341,7 @@ export function useWorkspaceTreeNodeActions({
         path: draggedNode.path,
         target_folder: destinationFolder,
       })
-      syncKitableBackendPath(draggedNode.path, movedDocument.path, rootPath, renameKitableChildrenIndexPath)
+      followMovedTableFiles(draggedNode.path, movedDocument.path)
       await syncDocumentFileMoved(rootPath, draggedNode.path, movedDocument.path)
       updateTreeMetadata((current) => applyMovedMetadata(current, movedDocument.path))
       remapWorkspaceTabPaths(draggedNode.path, movedDocument.path)
@@ -385,7 +365,6 @@ export function useWorkspaceTreeNodeActions({
     persistActiveDocument,
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
-    renameKitableChildrenIndexPath,
     rootPath,
     setError,
     setFeedback,
@@ -499,15 +478,14 @@ export function useWorkspaceTreeNodeActions({
 
       const targetName = renameWorkspaceDocumentPath(node.path, trimmed).split('/').pop() || ''
       const moved = await moveWorkspaceDocument({ path: node.path, target_name: targetName })
-      syncKitableBackendPath(node.path, moved.path, rootPath, renameKitableChildrenIndexPath)
+      followMovedTableFiles(node.path, moved.path)
       await syncDocumentFileMoved(rootPath, node.path, moved.path)
       updateTreeMetadata((current) => (
         renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, moved.path)
       ))
       remapWorkspaceTabPaths(node.path, moved.path)
-      // For .kitable files also remap table:// and workflow:// tab ids whose
-      // kitablePath still points at the old file path (Option A: file branch only).
-      if (node.path.toLowerCase().endsWith('.kitable')) {
+      // A table file's workflow tab follows the file.
+      if (node.path.toLowerCase().endsWith('.ktable')) {
         renameWorkspaceTabPath(node.path, moved.path)
       }
       setFeedback(t('feedback.renamed'))
@@ -525,7 +503,6 @@ export function useWorkspaceTreeNodeActions({
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
-    renameKitableChildrenIndexPath,
     rootPath,
     setError,
     setFeedback,
@@ -607,7 +584,7 @@ export function useWorkspaceTreeNodeActions({
     setFeedback('')
     try {
       const moved = await moveWorkspaceDocument({ path: node.path, target_folder: destinationFolder })
-      syncKitableBackendPath(node.path, moved.path, rootPath, renameKitableChildrenIndexPath)
+      followMovedTableFiles(node.path, moved.path)
       await syncDocumentFileMoved(rootPath, node.path, moved.path)
       updateTreeMetadata((current) => moveWorkspaceTreeBranchMetadata(current, node, moved.path))
       remapWorkspaceTabPaths(node.path, moved.path)
@@ -632,7 +609,6 @@ export function useWorkspaceTreeNodeActions({
     persistActiveDocument,
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
-    renameKitableChildrenIndexPath,
     rootPath,
     setError,
     setFeedback,

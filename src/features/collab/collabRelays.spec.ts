@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import * as replicaApi from '@/api/dataDocumentsReplica'
 import type { KitConnection } from '@/features/kits/public'
 import { registerKitConnection } from '@/features/kits/kition/kitConnections'
 import { isDocumentReadOnly } from '@/services/documentAccess'
@@ -8,10 +7,6 @@ import { presencePeers, setLocalPresence } from '@/services/documentPresence'
 import { documentSchemaNotice } from '@/services/documentSchema'
 import { startCollab, type CollabDependencies } from './collabRelays'
 import { readRoom, toHex, writeRoom } from './rooms'
-import * as tableReplica from './tableReplica'
-
-vi.mock('./tableReplica', () => ({ createTableRelayReplica: vi.fn() }))
-vi.mock('@/api/dataDocumentsReplica', () => ({ getTableReplicaVersion: vi.fn(), createTableFromReplica: vi.fn() }))
 
 function kitConnection(capabilities: string[]) {
   const replica = {
@@ -260,15 +255,5 @@ describe('startCollab for documents Kition edits itself', () => {
     await flush()
     expect(readRoom('doc-1')?.seen).toBeUndefined()
     expect(readRoom('doc-1')?.role).toBe('editor')
-  })
-
-  it('never touches a table replica without a sync server and a Kition Pro session', async () => {
-    const { registerOpenTable } = await import('@/features/table/lib/openTables')
-    const { client, deps } = dependencies(false)
-    cleanups.push(startCollab(deps), registerOpenTable({ path: 'Tasks.kitable' }))
-    await flush()
-    expect(client).not.toHaveBeenCalled()
-    expect(tableReplica.createTableRelayReplica).not.toHaveBeenCalled()
-    expect(replicaApi.getTableReplicaVersion).not.toHaveBeenCalled()
   })
 })

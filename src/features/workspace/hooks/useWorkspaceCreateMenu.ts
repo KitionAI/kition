@@ -18,20 +18,21 @@ type UseWorkspaceCreateMenuOptions = {
   expandPrivateSection: () => void
   createDocumentInside: TreeActions['createDocumentInside']
   openDocumentTemplateDialog: (folder?: string) => void
-  openKitableTemplateDialog: (folder?: string) => void
   createDesign: (folder?: string) => Promise<unknown> | void
   /** Kit items (Image, Video project), each making a file in a folder. */
   kitCreations: readonly KitCreationSource[]
   openBoardTemplateDialog: (folder?: string) => void
   openWorkspaceWorkflow: () => void
+  /** A workflow for one of a table file's tables. */
+  openTableFileWorkflow: (tablePath: string) => void
   onCloseProfile?: () => void
 }
 
 /**
  * Handlers behind the sidebar's create menu. The menu opens either for the
- * workspace (a folder) or for a .kitable container, and "New table" means
- * a template picker in the first case and a table inside the file in the
- * second. Returned as one object so the sidebar props can spread it.
+ * workspace (a folder) or for a table file, where it makes a form or a
+ * workflow for the file's tables. Returned as one object so the sidebar props
+ * can spread it.
  */
 export function useWorkspaceCreateMenu({
   createFlows,
@@ -41,14 +42,14 @@ export function useWorkspaceCreateMenu({
   expandPrivateSection,
   createDocumentInside,
   openDocumentTemplateDialog,
-  openKitableTemplateDialog,
   createDesign,
   kitCreations,
   openBoardTemplateDialog,
   openWorkspaceWorkflow,
+  openTableFileWorkflow,
   onCloseProfile,
 }: UseWorkspaceCreateMenuOptions) {
-  const { kitableCreateContext, setKitableCreateContext, createMenuVariant } = createFlows
+  const { setTableFileCreateContext, createMenuVariant } = createFlows
   return useMemo(() => ({
     createMenuVariant,
     onOpenCreateMenu: () => {
@@ -57,7 +58,7 @@ export function useWorkspaceCreateMenu({
     },
     onCloseCreateMenu: () => {
       closeCreateMenu()
-      setKitableCreateContext(null)
+      setTableFileCreateContext(null)
     },
     onCreateDocument: () => {
       closeCreateMenu()
@@ -68,21 +69,23 @@ export function useWorkspaceCreateMenu({
       createFlows.openFolderDialog()
     },
     onCreateInside: (node: WorkspaceTreeNode) => {
-      if (node.type === 'file' && node.name.toLowerCase().endsWith('.kitable') && !node.virtual) {
-        setKitableCreateContext(node.path)
+      if (node.type === 'file' && node.name.toLowerCase().endsWith('.ktable') && !node.virtual) {
+        setTableFileCreateContext(node.path)
         expandPrivateSection()
         openCreateFormatMenu(undefined, node.path)
         return
       }
       void createDocumentInside(node)
     },
-    onCreateTable: () => {
-      if (kitableCreateContext) {
-        void createFlows.createTableFromCreateMenu()
-        return
-      }
+    onCreateFormForTable: (node: WorkspaceTreeNode) => {
       closeCreateMenu()
-      openKitableTemplateDialog(createMenuFolder)
+      createFlows.openFormSyncCreate(node.path)
+    },
+    onCreateWorkflowForTable: (node: WorkspaceTreeNode) => {
+      closeCreateMenu()
+      setTableFileCreateContext(null)
+      onCloseProfile?.()
+      openTableFileWorkflow(node.path)
     },
     onOpenWorkflows: () => {
       onCloseProfile?.()
@@ -117,13 +120,12 @@ export function useWorkspaceCreateMenu({
     createMenuFolder,
     createMenuVariant,
     expandPrivateSection,
-    kitableCreateContext,
     onCloseProfile,
     openBoardTemplateDialog,
     openCreateFormatMenu,
     openDocumentTemplateDialog,
-    openKitableTemplateDialog,
+    openTableFileWorkflow,
     openWorkspaceWorkflow,
-    setKitableCreateContext,
+    setTableFileCreateContext,
   ])
 }

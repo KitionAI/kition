@@ -2,18 +2,12 @@
  * Pure tab-list transitions for the workspace tab strip.
  *
  * Every function takes the current `TabsState` and returns the next one
- * without side effects, so the rules (one logical tab per .kitable file,
- * active-tab fallback on close, path remaps after moves and renames) are
+ * without side effects, so the rules (one tab per id, active-tab fallback on close, path remaps after moves and renames) are
  * unit-testable and independent of React. `useWorkspaceTabs` applies them
  * and owns persistence and the workspace switch.
  */
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
-import {
-  buildKitableWorkspaceTabId,
-  getKitableWorkspaceTabTitle,
-  getWorkspaceItemTitle,
-  remapWorkspaceBranchPath,
-} from '@/features/workspace/lib/workspace'
+import { getWorkspaceItemTitle, remapWorkspaceBranchPath } from '@/features/workspace/lib/workspace'
 
 export type TabsState = {
   tabs: WorkspaceTab[]
@@ -27,19 +21,6 @@ export type UpsertTabOptions = {
   insertAfterActive?: boolean
 }
 
-/** Table, dashboard, workflow, and file tabs of one .kitable share a single logical tab. */
-function getTabKitablePath(tab: WorkspaceTab): string {
-  if (tab.type === 'table') return tab.kitablePath
-  if (tab.type === 'dashboard') return tab.kitablePath
-  if (tab.type === 'workflow') return tab.kitablePath || ''
-  if (tab.type === 'document' && tab.path.toLowerCase().endsWith('.kitable')) return tab.path
-  return ''
-}
-
-function isSameLogicalTab(candidate: WorkspaceTab, tab: WorkspaceTab, kitablePath: string) {
-  return candidate.id === tab.id || (Boolean(kitablePath) && getTabKitablePath(candidate) === kitablePath)
-}
-
 /** Fallback active id after tabs at or around `removedIndex` disappear: the previous tab, else the first. */
 function fallbackActiveId(next: WorkspaceTab[], removedIndex: number): string {
   const fallback = next[Math.max(0, removedIndex - 1)] || next[0]
@@ -47,19 +28,14 @@ function fallbackActiveId(next: WorkspaceTab[], removedIndex: number): string {
 }
 
 export function upsertTab(state: TabsState, tab: WorkspaceTab, options: UpsertTabOptions = {}): TabsState {
-  const kitablePath = getTabKitablePath(tab)
-  const existingIndex = state.tabs.findIndex((item) => isSameLogicalTab(item, tab, kitablePath))
+  const existingIndex = state.tabs.findIndex((item) => item.id === tab.id)
   let tabs: WorkspaceTab[]
   if (existingIndex >= 0) {
     const existing = state.tabs[existingIndex]
     const merged = existing.type === 'document' && tab.type === 'document'
       ? { ...tab, uid: tab.uid || existing.uid }
       : tab
-    // Replace the first logical match in place and drop any other view of the same kitable.
-    tabs = state.tabs.flatMap((item, index) => {
-      if (!isSameLogicalTab(item, tab, kitablePath)) return [item]
-      return index === existingIndex ? [merged] : []
-    })
+    tabs = state.tabs.map((item, index) => (index === existingIndex ? merged : item))
   } else if (options.insertAfterActive && state.activeTabId) {
     const activeIndex = state.tabs.findIndex((item) => item.id === state.activeTabId)
     tabs = activeIndex >= 0
@@ -131,16 +107,14 @@ function remapPathTabId(tabId: string, sourcePath: string, targetPath: string) {
   return nextPath === path ? tabId : `${prefix}${nextPath}`
 }
 
-/** After a .kitable file rename, every view of that file collapses onto its new file-level tab. */
+/** After a table file rename, its workflow tab and its document tab follow the file. */
 export function renameTabPath(state: TabsState, fromPath: string, toPath: string): TabsState {
   if (!fromPath || !toPath || fromPath === toPath) return state
-  const kitableTabId = buildKitableWorkspaceTabId(toPath)
-  const kitableTitle = getKitableWorkspaceTabTitle(toPath)
   let changed = false
   const remapped = state.tabs.map((tab) => {
-    if ((tab.type === 'table' || tab.type === 'dashboard' || tab.type === 'workflow') && tab.kitablePath === fromPath) {
+    if (tab.type === 'workflow' && tab.tablePath === fromPath) {
       changed = true
-      return { ...tab, kitablePath: toPath, id: kitableTabId, title: kitableTitle }
+      return { ...tab, tablePath: toPath, id: `workflow:${toPath}` }
     }
     if (tab.type === 'document' && tab.path === fromPath) {
       changed = true
@@ -159,10 +133,7 @@ export function renameTabPath(state: TabsState, fromPath: string, toPath: string
 }
 
 function renameActiveTabId(activeId: string, fromPath: string, toPath: string) {
-  const kitableTabId = buildKitableWorkspaceTabId(toPath)
-  if (activeId === buildKitableWorkspaceTabId(fromPath)) return kitableTabId
-  if (activeId === `workflow:${fromPath}` || activeId.startsWith(`workflow:${fromPath}:`)) return kitableTabId
-  if (activeId.startsWith(`table:${fromPath}#`)) return kitableTabId
+  if (activeId === `workflow:${fromPath}`) return `workflow:${toPath}`
   if (activeId === `document:${fromPath}`) return `document:${toPath}`
   return activeId
 }

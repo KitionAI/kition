@@ -15,8 +15,6 @@ import type {
   WorkspaceStorageVerifyResult,
 } from '@/api/generated'
 
-export const PORTABLE_WORKSPACE_STORAGE_CAPABILITY = 'workspace_portable_storage_v1' as const
-
 export type {
   WorkspaceStorageInventory,
   WorkspaceStorageInventoryItem,

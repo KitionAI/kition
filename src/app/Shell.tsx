@@ -35,6 +35,7 @@ import { scheduleSearchBoot } from '@/features/search/service/searchBootSchedule
 import { loadVaultMarkdownFiles } from '@/features/document/editor/vault/vault-files'
 import { vaultClient } from '@/features/document/editor/vault/vault-client'
 import { extractNoteDocs } from '@/features/search/sources/noteSource'
+import { loadAllTableSearchDocs, loadTableSearchFile } from '@/features/search/sources/tableSource'
 import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
 import { navigateToHit } from '@/features/search/ui/navigateToHit'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
@@ -86,7 +87,6 @@ const navigateAdapters: NavigateAdapters = {
     window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: vp } }))
   },
   getCmViewForPath: () => null,   // V1 — flash wired in follow-up
-  getKitableHandle: () => null,   // V1 — focus wired in follow-up
   showToast: (msg) => { toast(msg) },
 }
 
@@ -151,14 +151,18 @@ function useSearchBoot(rootPath: string) {
               const document = await vaultClient.read(vaultPath)
               return document.content
             },
-            loadKitableTable: async (_vaultPath, _tableId) => {
-              throw new Error('TODO at integration time — provide loadKitableTable')
-            },
+            loadTableFile: (vaultPath) => loadTableSearchFile(vaultPath),
           })
 
           const scan = await loadSearchNoteDocs(() => cancelled)
           if (cancelled) return
-          await searchService.bulkLoad(scan.noteDocs)
+          // Table files are read through the Table kit; a build or runtime without it indexes notes only.
+          const tableDocs = isWebPreviewMode() ? [] : await loadAllTableSearchDocs().catch((error: unknown) => {
+            console.warn('[search] table files were not indexed', error)
+            return []
+          })
+          if (cancelled) return
+          await searchService.bulkLoad([...scan.noteDocs, ...tableDocs])
           if (!initOut.restoredFromDisk) setReady(true)
           console.info('[search boot]', {
             rootPath,
@@ -742,8 +746,8 @@ export function AppShell() {
             onOpenVaultLauncher={openVaultLauncherDialog}
             workflowOpen={workflowOpen}
             workflowContext={workflowContext}
-            workflowSchemaLookup={(documentId, tableId) =>
-              fetchWorkflowTableSchema(documentId, tableId, workflowContext?.tableName || 'Table')
+            workflowSchemaLookup={(documentPath, tableId) =>
+              fetchWorkflowTableSchema(documentPath, tableId, workflowContext?.tableName || 'Table')
             }
             onCloseWorkflow={closeWorkflowRoute}
             onOpenSearch={openSearch}

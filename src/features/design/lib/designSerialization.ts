@@ -148,9 +148,9 @@ const schema = z
         imagePath: z.string().refine(isPortableDesignPath).optional(),
         recordRef: z
           .object({
-            documentId: z.number().int().positive(),
-            tableId: z.number().int().positive(),
-            recordId: z.number().int().positive(),
+            path: z.string().min(1).max(1000),
+            tableId: z.string().min(1).max(64),
+            recordId: z.string().min(1).max(64),
             field: z.string().min(1).max(200),
           })
           .strict()

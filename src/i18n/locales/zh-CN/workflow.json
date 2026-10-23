@@ -201,10 +201,6 @@
     "renamed": "已重命名",
     "workflowDeleted": "工作流已删除"
   },
-  "kitableLeaf": {
-    "deleteConfirm": "确定要删除工作流“{{name}}”吗？这将永久移除该工作流及其运行历史。",
-    "nameFallback": "未命名工作流"
-  },
   "confirms": {
     "cancel": "取消",
     "fallbackLabel": "确认",

@@ -56,18 +56,6 @@ export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDi
   return <div className={cn('p-4', className)} {...props} />
 }
 
-export function Badge({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
-  return (
-    <span
-      className={cn(
-        'inline-flex min-h-6 items-center rounded-md border bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground',
-        className,
-      )}
-      {...props}
-    />
-  )
-}
-
 export const Input = React.forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement>

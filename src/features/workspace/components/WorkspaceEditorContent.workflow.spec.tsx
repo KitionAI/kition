@@ -9,9 +9,9 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/features/workflow/pages/WorkflowIndexPage', () => ({
-  WorkflowIndexPage: ({ onSelectWorkflow }: { onSelectWorkflow: (workflowId: string, kitablePath?: string) => void }) => (
+  WorkflowIndexPage: ({ onSelectWorkflow }: { onSelectWorkflow: (workflowId: string, tablePath?: string) => void }) => (
     <>
-      <button type="button" data-testid="mock-workflow-row" onClick={() => onSelectWorkflow('auto_1', 'Leads.kitable')}>
+      <button type="button" data-testid="mock-workflow-row" onClick={() => onSelectWorkflow('auto_1', 'Leads.ktable')}>
         Open scoped workflow
       </button>
       <button type="button" data-testid="mock-global-workflow-row" onClick={() => onSelectWorkflow('auto_2')}>
@@ -335,10 +335,10 @@ describe('WorkspaceEditorContent workflow routing', () => {
 
   it('renders email sync IDs with the email workflow detail surface', async () => {
     const tab = {
-      id: 'kitable:Mail/Emails.kitable',
+      id: 'workflow:Mail/Emails.ktable',
       type: 'workflow' as const,
       title: 'Emails',
-      kitablePath: 'Mail/Emails.kitable',
+      tablePath: 'Mail/Emails.ktable',
       workflowId: 'mail_1',
     }
     await render({
@@ -354,10 +354,10 @@ describe('WorkspaceEditorContent workflow routing', () => {
 
   it('renders form sync IDs with the form builder surface', async () => {
     const tab = {
-      id: 'kitable:Events.kitable',
+      id: 'workflow:Events.ktable',
       type: 'workflow' as const,
       title: 'Events',
-      kitablePath: 'Events.kitable',
+      tablePath: 'Events.ktable',
       workflowId: 'formsync_1',
     }
     await render({
@@ -371,7 +371,7 @@ describe('WorkspaceEditorContent workflow routing', () => {
     expect(container.querySelector('[data-testid="mock-workflow-detail"]')).toBeNull()
   })
 
-  it('opens a workflow from the global list in its resolved kitable tab', async () => {
+  it('opens a workflow from the global list in its resolved table file tab', async () => {
     const onOpenWorkflow = vi.fn()
     const onOpenGlobalWorkflow = vi.fn()
     const tab = { id: 'workflow:home', type: 'workflow' as const, title: 'Workflows' }
@@ -386,11 +386,11 @@ describe('WorkspaceEditorContent workflow routing', () => {
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="mock-workflow-row"]')?.click()
     })
-    expect(onOpenWorkflow).toHaveBeenCalledWith('Leads.kitable', 'auto_1')
+    expect(onOpenWorkflow).toHaveBeenCalledWith('Leads.ktable', 'auto_1')
     expect(onOpenGlobalWorkflow).not.toHaveBeenCalled()
   })
 
-  it('keeps workflows without a resolved kitable in the global tab', async () => {
+  it('keeps workflows without a resolved table file in the global tab', async () => {
     const onOpenGlobalWorkflow = vi.fn()
     const tab = { id: 'workflow:home', type: 'workflow' as const, title: 'Workflows' }
     await render({
@@ -406,13 +406,13 @@ describe('WorkspaceEditorContent workflow routing', () => {
     expect(onOpenGlobalWorkflow).toHaveBeenCalledWith('auto_2')
   })
 
-  it('keeps kitable workflow selection scoped to its kitable tab', async () => {
+  it('keeps the workflow selection of a table file scoped to its tab', async () => {
     const onOpenWorkflow = vi.fn()
     const tab = {
-      id: 'kitable:Leads.kitable',
+      id: 'workflow:Leads.ktable',
       type: 'workflow' as const,
       title: 'Leads',
-      kitablePath: 'Leads.kitable',
+      tablePath: 'Leads.ktable',
     }
     await render({
       ...baseProps(),
@@ -425,6 +425,6 @@ describe('WorkspaceEditorContent workflow routing', () => {
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="mock-global-workflow-row"]')?.click()
     })
-    expect(onOpenWorkflow).toHaveBeenCalledWith('Leads.kitable', 'auto_2')
+    expect(onOpenWorkflow).toHaveBeenCalledWith('Leads.ktable', 'auto_2')
   })
 })

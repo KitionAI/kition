@@ -16,7 +16,7 @@ const draft = {
   public_url: '',
   published: false,
   fields: [],
-  target: { document_id: '7', table_id: '11', field_mappings: [] },
+  target: { document_path: 'Events.ktable', table_id: '11', field_mappings: [] },
   schedule: { enabled: true, interval_minutes: 5 },
   status: 'paused',
   synced_submissions: 0,

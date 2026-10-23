@@ -18,7 +18,6 @@ describe('WorkspaceCreateMenu', () => {
         open: true,
         onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
-        onCreateTable: vi.fn(),
         onCreateBoard,
         kitCreations: [
           { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
@@ -64,7 +63,6 @@ describe('WorkspaceCreateMenu', () => {
         open: true,
         onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
-        onCreateTable: vi.fn(),
       }))
     })
 
@@ -86,7 +84,6 @@ describe('WorkspaceCreateMenu', () => {
         open: true,
         onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
-        onCreateTable: vi.fn(),
         onCreateBoard: vi.fn(),
         onCreateDesign: vi.fn(),
         kitCreations: [

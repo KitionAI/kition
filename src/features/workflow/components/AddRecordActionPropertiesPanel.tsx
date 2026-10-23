@@ -6,6 +6,7 @@ import type { BodyTemplate, TableSchema } from './BodyTemplateEditor.types'
 import { TriggerTableSelect, type TriggerTableOption } from './TriggerTableSelect'
 import { DrawerField, DrawerSection } from '../drawer/PropertiesDrawer'
 import type { WorkflowAddRecordConfig } from '@/api/workflows'
+import { targetDocumentPathOf, targetTableKeyOf } from '@/features/workflow/lib/workflowDraft'
 
 /**
  * AddRecordActionPropertiesPanel edits the `add_record` action's target
@@ -68,6 +69,9 @@ export interface AddRecordActionPropertiesPanelProps {
    *  shows up before the user even tries to Save. Pass undefined when the
    *  trigger has no table (e.g. scheduled_time) — the warning never fires. */
   triggerTableId?: string
+  /** The trigger table's file. A target without its own path names it, and
+   *  the loop warning only fires when the target is in the same file. */
+  triggerDocumentPath?: string
 }
 
 const EMPTY_SCHEMA: TableSchema = { id: '', name: '', fields: [] }
@@ -84,11 +88,14 @@ export function AddRecordActionPropertiesPanel({
   error,
   fieldErrors,
   triggerTableId,
+  triggerDocumentPath,
 }: AddRecordActionPropertiesPanelProps) {
   const { t } = useTranslation('workflow')
   const targetTableId = config?.targetTableId || ''
+  const targetKey = targetTableKeyOf(config?.targetDocumentPath, targetTableId, triggerDocumentPath)
   const isLoopback = Boolean(
-    triggerTableId && targetTableId && triggerTableId === targetTableId,
+    triggerTableId && targetTableId && triggerTableId === targetTableId
+      && targetDocumentPathOf(config?.targetDocumentPath, triggerDocumentPath) === String(triggerDocumentPath || '').trim(),
   )
   // valueByFieldId gives the BodyTemplateEditor a stable per-field reference
   // without forcing the parent to maintain a sparse fields array (the
@@ -102,14 +109,15 @@ export function AddRecordActionPropertiesPanel({
     return map
   }, [config])
 
-  function handleTargetTableChange(nextTableId: string) {
+  function handleTargetTableChange(nextKey: string) {
     // Wipe the fields array — the previous table's field IDs don't apply
-    // to the new schema. The parent's onChange handler resolves
-    // `targetDocumentId` from its own tableLabels map (it owns the
-    // documentId lookup, not this panel), so we emit just the targetTableId
-    // here and let the parent fill in the rest.
+    // to the new schema. The picked option carries the table's file path
+    // and stable id.
+    const option = tableOptions.find((item) => item.key === nextKey)
     onChange({
-      targetTableId: nextTableId,
+      targetTableId: option?.tableId || '',
+      targetDocumentPath: option?.documentPath || undefined,
+      targetDocumentId: option?.documentId || undefined,
       fields: [],
     })
   }
@@ -123,6 +131,7 @@ export function AddRecordActionPropertiesPanel({
     const next = value.parts.length === 0 ? without : [...without, { fieldId, value }]
     onChange({
       targetTableId: config?.targetTableId || '',
+      targetDocumentPath: config?.targetDocumentPath,
       targetDocumentId: config?.targetDocumentId,
       fields: next,
     })
@@ -136,7 +145,7 @@ export function AddRecordActionPropertiesPanel({
         error={error}
       >
         <TriggerTableSelect
-          value={targetTableId}
+          value={targetKey}
           options={tableOptions}
           onChange={handleTargetTableChange}
           disabled={disabled}

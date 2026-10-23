@@ -16,8 +16,8 @@ vi.mock('./api', () => ({
   syncFormSyncWorkflow: apiMock.sync,
   updateFormSyncWorkflow: apiMock.update,
 }))
-vi.mock('@/api/dataDocuments', () => ({
-  getDataDocument: dataDocumentMock.get,
+vi.mock('@/api/kitTables', () => ({
+  getTableFields: dataDocumentMock.get,
 }))
 
 import { FormSyncWorkflowPage } from './FormSyncWorkflowPage'
@@ -43,7 +43,7 @@ beforeEach(() => {
       required: false,
     }],
     target: {
-      document_id: '7',
+      document_path: 'Reservations.ktable',
       table_id: '11',
       field_mappings: [{
         source_key: 'reservation_time',
@@ -57,17 +57,13 @@ beforeEach(() => {
     updated_at: '2026-08-01T00:00:00.000Z',
   })
   dataDocumentMock.get.mockResolvedValue({
-    id: 7,
-    tables: [{
-      id: 11,
-      title: 'Reservations',
-      fields: [{
-        id: 21,
-        title: 'Reservation time',
-        name: 'reservation_time',
-        type: 'datetime',
-        readonly: false,
-      }],
+    table: { id: '11', name: 'reservations', title: 'Reservations', meta: {}, fields: [] },
+    items: [{
+      id: 21,
+      title: 'Reservation time',
+      name: 'reservation_time',
+      type: 'datetime',
+      readonly: false,
     }],
   })
 })

@@ -64,8 +64,8 @@ export function normalizeAppPathname(pathname: string): string {
 
 function readWorkflowContext(state: unknown): WorkflowRouteContext | null {
   const context = (state as { workflowContext?: Partial<WorkflowRouteContext> } | null)?.workflowContext
-  if (!context || !context.documentId || !context.tableId) return null
-  return { documentId: context.documentId, tableId: context.tableId, tableName: context.tableName || '' }
+  if (!context || !context.documentPath || !context.tableId) return null
+  return { documentPath: context.documentPath, tableId: context.tableId, tableName: context.tableName || '' }
 }
 
 export function parseAppLocation(input: { pathname: string; search: string; state: unknown }): AppLocation {

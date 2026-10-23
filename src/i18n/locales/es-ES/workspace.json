@@ -18,9 +18,7 @@
       "pdf": "PDF"
     },
     "folder": "Carpeta",
-    "newDashboard": "Nuevo panel",
     "newForm": "Nuevo formulario",
-    "newTable": "Nueva tabla",
     "newWorkflow": "Nuevo flujo de trabajo",
     "group": {
       "documents": "Documentos",
@@ -101,16 +99,6 @@
       "toc": "Esquema",
       "locked": "Bloquear página"
     },
-    "tableAction": {
-      "rename": "Cambiar nombre",
-      "duplicate": "Duplicar",
-      "downloadCsv": "Descargar CSV",
-      "importData": "Importar datos",
-      "api": "API",
-      "history": "Historial",
-      "share": "Compartir",
-      "delete": "Eliminar"
-    },
     "markdownMode": {
       "rich": "Vista de edición",
       "preview": "Vista de lectura",
@@ -147,7 +135,6 @@
     "workflowsTitle": "Flujos de trabajo",
     "boardTitle": "Tablero",
     "workflowsScoped": "Flujos de trabajo · {{name}}",
-    "untitledTable": "Tabla sin título",
     "untitledWorkflow": "Flujo de trabajo sin título",
     "videos": "Vídeos",
     "workflow": "Flujo de trabajo"
@@ -609,9 +596,6 @@
     "settings": "Configuración"
   },
   "errors": {
-    "kitableNotFound": "No se pudo localizar este table file en el disco.",
-    "kitableNoTables": "Este table file aún no tiene tablas — crea una tabla primero.",
-    "parentKitableNotFound": "No se pudo localizar el table file superior en el disco.",
     "createWorkflowFailed": "No se pudo crear el flujo de trabajo",
     "documentPathEmpty": "La ruta del documento no puede estar vacía",
     "nameEmpty": "El nombre no puede estar vacío",
@@ -623,8 +607,6 @@
     "onlyWorkspaceItemsRenamable": "Solo se pueden renombrar documentos, tablas y pizarras aquí.",
     "createDocumentFailed": "No se pudo crear el documento",
     "createBoardFailed": "No se pudo crear el tablero",
-    "createDashboardFailed": "Failed to create dashboard",
-    "createTableFailed": "No se pudo crear la tabla",
     "importMarkdownFailed": "No se pudo importar Markdown",
     "browserDevModeOpenDirectory": "Estás en modo de desarrollo del navegador y no puedes abrir directorios nativos. Inicia la aplicación de escritorio con pnpm dev e inténtalo de nuevo.",
     "browserDevModePickDirectory": "Estás en modo de desarrollo del navegador y no puedes elegir un directorio nativo. Inicia la aplicación de escritorio con pnpm dev e inténtalo de nuevo.",
@@ -638,25 +620,9 @@
     "restoredSavedVersion": "Restaurado a la versión guardada",
     "documentCreated": "Documento creado",
     "boardCreated": "Tablero creado",
-    "dashboardCreated": "Dashboard created",
-    "tableCreated": "Tabla creada",
-    "spreadsheetImported": "Hoja de cálculo importada como Kitable",
     "folderCreated": "Carpeta creada",
     "renamed": "Renombrado",
-    "alreadyInLocation": "Ya está en esta ubicación",
-    "tableDeleted": "Tabla eliminada"
-  },
-  "kitableSidebar": {
-    "collapse": "Contraer la barra lateral del archivo de tablas",
-    "expand": "Expandir la barra lateral del archivo de tablas",
-    "create": "Crear en el archivo de tablas",
-    "tableName": "Nombre de la tabla de datos",
-    "navLabel": "Archivo de tablas",
-    "tableMenu": "Abrir el menú de la tabla",
-    "searchPlaceholder": "Buscar tablas, paneles y flujos de trabajo",
-    "switchSection": "Cambiar de sección del archivo de tablas",
-    "renameTable": "Renombrar la tabla de datos",
-    "deleteTable": "Eliminar la tabla de datos"
+    "alreadyInLocation": "Ya está en esta ubicación"
   },
   "photoKit": {
     "unavailableTitle": "La edición de Photo no está disponible en esta versión",

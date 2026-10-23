@@ -104,8 +104,8 @@ describe('parseQuery', () => {
     expect(ast.must).toEqual([{ kind: 'regex', source: '^heading$', flags: '' }])
   })
 
-  it('parses kitable, field, view operators', () => {
-    expect(parseQuery('kitable:sales').must).toEqual([{ kind: 'field', op: 'kitable', value: 'sales' }])
+  it('parses table, field, view operators', () => {
+    expect(parseQuery('table:sales').must).toEqual([{ kind: 'field', op: 'table', value: 'sales' }])
     expect(parseQuery('field:notes').must).toEqual([{ kind: 'field', op: 'field', value: 'notes' }])
     expect(parseQuery('view:board').must).toEqual([{ kind: 'field', op: 'view', value: 'board' }])
   })

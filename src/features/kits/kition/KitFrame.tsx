@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
+import { isTableFilePath, notifyTableFilesChanged } from '@/api/kitTables'
 import { Button } from '@kition/app-ui'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { FileNotice } from '@/components/states'
@@ -15,6 +16,7 @@ import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange, type BridgeEditor } from './kitBridge'
 import { setKitDraft } from './kitDrafts'
+import { kitionActions } from './kitActions'
 import { kitionGenerate } from './kitGenerate'
 import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
@@ -119,6 +121,8 @@ async function writeForKit(path: string, readOnly: boolean, { path: wanted, byte
   if (mode === 'save' && readOnly) throw new Error(`${path} is open read-only`)
   const target = mode === 'save' ? documentPath(wanted, path) : await unusedPath(workspacePath(wanted))
   await writeKitFile(target, new Uint8Array(bytes), mode === 'save' ? { document: target } : {})
+  // Kition's own table pickers (workflows, form and email sync) read the saved tables.
+  if (isTableFilePath(target)) notifyTableFilesChanged(target)
   return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
 }
 
@@ -299,6 +303,9 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
             // The person's models for what the kit generates (Kit UI protocol section 7j): not for a
             // preview or a read-only document, which the kit cannot write an answer into.
             generate: preview || openedReadOnly ? undefined : (params) => kitionGenerate(params),
+            // Kition's features a kit offers controls for (section 7j): run a workflow on a record,
+            // start a design from one.
+            actions: preview || openedReadOnly ? undefined : kitionActions(path),
             ...collab?.handlers,
             // Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here.
             shortcut: (key) => {

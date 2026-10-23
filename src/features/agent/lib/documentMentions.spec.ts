@@ -31,9 +31,9 @@ describe('documentMentions', () => {
           },
           {
             type: 'file',
-            path: 'Docs/Data.kitable',
-            name: 'Data.kitable',
-            format: 'data',
+            path: 'Docs/Data.ktable',
+            name: 'Data.ktable',
+            format: 'table',
           },
         ],
       },
@@ -53,10 +53,10 @@ describe('documentMentions', () => {
       },
       {
         kind: 'file',
-        path: 'Docs/Data.kitable',
-        name: 'Data.kitable',
+        path: 'Docs/Data.ktable',
+        name: 'Data.ktable',
         title: 'Data',
-        format: 'data',
+        format: 'table',
       },
     ])
   })
@@ -204,17 +204,17 @@ describe('documentMentions', () => {
 
   it('stores document mentions separately from visible composer text', () => {
     const draft = buildAgentDraftWithDocumentMentions('Analyze this file', [
-      'Getting Started/Guides/Product Content/Product Content Studio.kitable',
+      'Getting Started/Guides/Product Content/Product Content Studio.ktable',
       'Notes/Todo.md',
     ])
 
     expect(stripAgentDocumentMentions(draft)).toBe('Analyze this file')
     expect(getUniqueAgentDocumentMentionPaths(draft)).toEqual([
-      'Getting Started/Guides/Product Content/Product Content Studio.kitable',
+      'Getting Started/Guides/Product Content/Product Content Studio.ktable',
       'Notes/Todo.md',
     ])
     expect(removeAgentDocumentMention(draft, 'Notes/Todo.md')).toBe(
-      'Analyze this file\n@{Getting Started/Guides/Product Content/Product Content Studio.kitable}',
+      'Analyze this file\n@{Getting Started/Guides/Product Content/Product Content Studio.ktable}',
     )
   })
 

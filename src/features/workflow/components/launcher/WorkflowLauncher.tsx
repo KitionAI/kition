@@ -7,7 +7,7 @@ import type { TableSchema } from '@/features/workflow/components/BodyTemplateEdi
 import { getBuiltinTemplates, type WorkflowTemplate } from '@/features/workflow/templates'
 import type { TriggerTableOption } from '@/features/workflow/components/TriggerTableSelect'
 import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTableLabels'
-import { createTableWorkspaceEntry } from '@/features/table/lib/tableCreation'
+import { createTableFile, listTableFiles, notifyTableFilesChanged, TABLE_FILE_EXTENSION, tableKey } from '@/api/kitTables'
 import { notify } from '@/lib/notify'
 import { WorkflowLauncherDecor } from './WorkflowLauncherDecor'
 import { WorkflowLauncherHero, type LauncherView } from './WorkflowLauncherHero'
@@ -16,26 +16,33 @@ import { WorkflowLauncherTemplateSheet } from './WorkflowLauncherTemplateSheet'
 
 export interface WorkflowLauncherProps {
   tableContext: WorkflowRouteContext
-  /** Called with the user's prompt and the effective (documentId,
+  /** Called with the user's prompt and the effective (documentPath,
    *  tableId, tableName) the AI should anchor the workflow on. When the
    *  launcher was mounted without a pre-bound table the tuple comes
    *  from the inline picker; otherwise it's the parent's tableContext
    *  unchanged. */
   onAiSubmit: (prompt: string, effectiveContext: WorkflowRouteContext) => void
-  schemaLookup?: (documentId: string, tableId: string) => Promise<TableSchema>
+  schemaLookup?: (documentPath: string, tableId: string) => Promise<TableSchema>
   /** Which hero variant to mount initially. Defaults to 'gallery' (the
    *  legacy landing). Pass 'ai-prompt' to drop the user directly into the
    *  chat-first surface — used by the "Chat with AI" path coming
    *  from the workspace mode dialog so the second click isn't required. */
   initialView?: LauncherView
-  /** Workspace root, forwarded to the inline AI-mode table picker so it
-   *  scopes its lookup the same way the trigger drawer does. Undefined
-   *  falls back to the cross-workspace fetch (used by tests + legacy
-   *  modal mount). */
+  /** Workspace root. Kept for callers; the table picker always lists the
+   *  open workspace's table files. */
   rootPath?: string
 }
 
-export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initialView = 'gallery', rootPath }: WorkflowLauncherProps) {
+/** `Untitled table.ktable`, or `Untitled table 2.ktable`, ... — the first name no file in `taken` has. */
+export function unusedUntitledTablePath(taken: readonly string[]): string {
+  const used = new Set(taken.map((path) => path.toLowerCase()))
+  for (let index = 1; ; index += 1) {
+    const path = `Untitled table${index === 1 ? '' : ` ${index}`}${TABLE_FILE_EXTENSION}`
+    if (!used.has(path.toLowerCase())) return path
+  }
+}
+
+export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initialView = 'gallery' }: WorkflowLauncherProps) {
   const [view, setView] = useState<LauncherView>(initialView)
   const [prompt, setPrompt] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -44,26 +51,29 @@ export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initi
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   // Inline AI-mode table picker state. Only consulted when the caller
   // mounted us without a pre-bound table.
-  const [pickedTableId, setPickedTableId] = useState('')
-  // Tracks the "create your first kitable" CTA shown when the picker
-  // has zero options. createTableWorkspaceEntry hits the data document
-  // API + dispatches kition:data-document:table:create, which
-  // useWorkflowTableLabels listens for and refreshes the picker
-  // automatically. We auto-select the freshly-created table so the
+  // The picked table's key: tableKey(path, tableId).
+  const [pickedTableKey, setPickedTableKey] = useState('')
+  // Tracks the "create your first table" CTA shown when the picker has
+  // zero options. It creates an unused `Untitled table.ktable` and calls
+  // notifyTableFilesChanged, which useWorkflowTableLabels listens for to
+  // refresh the picker. We auto-select the freshly-created table so the
   // user can submit immediately.
   const [creatingFirstTable, setCreatingFirstTable] = useState(false)
 
   const { t } = useTranslation('workflow')
   const templates = getBuiltinTemplates(t, { tableName: tableContext.tableName })
   const needsTablePicker = !tableContext.tableId
-  const { labels: tableLabels } = useWorkflowTableLabels(needsTablePicker ? rootPath : undefined)
+  const { labels: tableLabels } = useWorkflowTableLabels()
   const tablePickerOptions = useMemo<TriggerTableOption[]>(() => {
     if (!needsTablePicker) return []
     return Object.entries(tableLabels)
-      .map(([tableId, label]) => ({
-        tableId,
+      .map(([key, label]) => ({
+        key,
+        tableId: label.tableId,
         tableName: label.tableName,
         documentTitle: label.documentTitle,
+        documentPath: label.documentPath,
+        documentId: label.documentId,
       }))
       .sort((a, b) => {
         const doc = a.documentTitle.localeCompare(b.documentTitle)
@@ -112,52 +122,46 @@ export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initi
     const trimmed = prompt.trim()
     if (!trimmed) return
     if (needsTablePicker) {
-      if (!pickedTableId) return
-      const label = tableLabels[pickedTableId]
+      if (!pickedTableKey) return
+      const label = tableLabels[pickedTableKey]
       if (!label) return
       onAiSubmit(trimmed, {
-        documentId: label.documentId,
-        tableId: pickedTableId,
+        documentPath: label.documentPath,
+        tableId: label.tableId,
         tableName: label.tableName,
       })
       return
     }
     onAiSubmit(trimmed, tableContext)
-  }, [prompt, needsTablePicker, pickedTableId, tableLabels, tableContext, onAiSubmit])
+  }, [prompt, needsTablePicker, pickedTableKey, tableLabels, tableContext, onAiSubmit])
 
   const handleCreateFirstTable = useCallback(async () => {
     if (creatingFirstTable) return
-    if (!rootPath) {
-      // Without a workspace root we don't know where to put the kitable
-      // marker. The launcher only mounts the picker when rootPath is
-      // bound, so this is a guard for hostile callers — surface the
-      // error so the user isn't left wondering why nothing happened.
-      setErrorMessage(t('errors.createWorkflow'))
-      return
-    }
     setCreatingFirstTable(true)
     setErrorMessage(null)
     try {
-      const result = await createTableWorkspaceEntry({ rootPath })
-      // tableCreation skips the kition:data-document:table:create dispatch
-      // (it's intended for sidebar paths that own a richer wiring).
-      // Fire it here so useWorkflowTableLabels refreshes and the
-      // picker shows the new option without manual reload.
-      if (result.tableId != null) {
-        window.dispatchEvent(new CustomEvent('kition:data-document:table:create', {
-          detail: { vaultPath: result.document.path, tableId: result.tableId },
-        }))
+      const existing = await listTableFiles()
+      const path = unusedUntitledTablePath([
+        ...(existing.files || []).map((file) => file.path),
+        ...(existing.unreadable || []).map((file) => file.path),
+      ])
+      const result = await createTableFile(path)
+      // useWorkflowTableLabels refreshes on this, so the picker shows the
+      // new option without a manual reload.
+      notifyTableFilesChanged(result.path)
+      const firstTable = result.tables?.[0]
+      if (firstTable) {
         // Pre-select the new table so Submit goes from disabled to
         // enabled the moment the prompt has text. The user just made
         // this table; picking it for them respects their intent.
-        setPickedTableId(String(result.tableId))
+        setPickedTableKey(tableKey(result.path, firstTable.id))
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : t('errors.createWorkflow'))
     } finally {
       setCreatingFirstTable(false)
     }
-  }, [creatingFirstTable, rootPath, t])
+  }, [creatingFirstTable, t])
 
   const handleStartScratch = useCallback(async () => {
     setSubmitting(true)
@@ -167,7 +171,7 @@ export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initi
         name: 'Untitled workflow',
         description: '',
         enabled: false,
-        trigger: { type: 'record_created', documentId: tableContext.documentId, tableId: tableContext.tableId },
+        trigger: { type: 'record_created', documentPath: tableContext.documentPath, tableId: tableContext.tableId },
         action: {
           type: 'send_email',
           connectionId: '',
@@ -188,9 +192,9 @@ export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initi
     setBusyTemplateId(tpl.id)
     setErrorMessage(null)
     try {
-      const schema = schemaLookup ? await schemaLookup(tableContext.documentId, tableContext.tableId).catch(() => null) : null
+      const schema = schemaLookup ? await schemaLookup(tableContext.documentPath, tableContext.tableId).catch(() => null) : null
       const { input, unresolvedFieldNames } = createWorkflowFromTemplate(tpl, {
-        documentId: tableContext.documentId,
+        documentPath: tableContext.documentPath,
         tableId: tableContext.tableId,
         tableName: tableContext.tableName,
         schema,
@@ -247,12 +251,12 @@ export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initi
           onStartFromScratch={handleStartScratch}
           tablePicker={needsTablePicker ? {
             options: tablePickerOptions,
-            pickedTableId,
-            onPick: setPickedTableId,
-            emptyState: rootPath ? {
+            pickedTableKey,
+            onPick: setPickedTableKey,
+            emptyState: {
               onCreate: () => { void handleCreateFirstTable() },
               busy: creatingFirstTable,
-            } : undefined,
+            },
           } : undefined}
         />
         <WorkflowLauncherDecor />

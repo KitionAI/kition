@@ -38,7 +38,6 @@ describe('Agent image-generation public boundary', () => {
     )
     expect(schema.$defs.intent.properties.surface.enum).toEqual([
       'document',
-      'table',
       'whiteboard',
       'design',
       'chat',
@@ -56,7 +55,6 @@ describe('Agent image-generation public boundary', () => {
 
     expect(schema.$defs.intent.properties.instruction.maxLength).toBeLessThanOrEqual(12000)
     expect(schema.$defs.intent.properties.template_variables.maxProperties).toBeLessThanOrEqual(32)
-    expect(schema.$defs.tableTarget.properties.record_ids.maxItems).toBeLessThanOrEqual(100)
     expect(schema.$defs.portablePath.pattern).toContain('(?!/)')
     expect(serialized).not.toContain('api_key')
     expect(serialized).not.toContain('access_token')

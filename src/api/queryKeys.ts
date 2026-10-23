@@ -7,7 +7,6 @@
  * Conventions:
  *   ['workspace', root]                       everything under one root
  *   ['workspace', root, 'tree']               the file tree listing
- *   ['workspace', root, 'kitable-index']      table/dashboard/workflow leaves per .kitable
  *   ['workspace', root, 'document', path]     one document or data document by path
  *   ['workspace', root, 'records', ...]       record windows for one table
  *   ['runtime', 'workflows' | 'connections' | ...] workspace-independent runtime lists
@@ -16,7 +15,6 @@
 export const queryKeys = {
   workspace: (root: string) => ['workspace', root] as const,
   workspaceTree: (root: string) => ['workspace', root, 'tree'] as const,
-  kitableIndex: (root: string) => ['workspace', root, 'kitable-index'] as const,
   documentByPath: (root: string, path: string) => ['workspace', root, 'document', path] as const,
   records: (root: string, documentId: number, tableId: number, viewId?: number | null) =>
     ['workspace', root, 'records', documentId, tableId, viewId ?? null] as const,

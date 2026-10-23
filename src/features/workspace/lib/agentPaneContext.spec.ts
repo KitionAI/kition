@@ -12,7 +12,6 @@ import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import {
   deriveAgentPaneContext,
   resolveAgentActiveDocument,
-  resolveAgentDataTableTarget,
 } from './agentPaneContext'
 
 describe('deriveAgentPaneContext', () => {
@@ -61,7 +60,7 @@ describe('deriveAgentPaneContext', () => {
 
   it('file-viewer prose / data formats stay on the document pane', () => {
     // These formats are doc-like reads — keep the document suggestion set.
-    for (const format of ['markdown', 'docx', 'xlsx', 'pptx', 'csv', 'json', 'text', 'html', 'binary', 'data', 'table'] as const) {
+    for (const format of ['markdown', 'docx', 'xlsx', 'pptx', 'csv', 'json', 'text', 'html', 'binary', 'table'] as const) {
       const tab: WorkspaceTab = {
         id: `fv-${format}`,
         type: 'file-viewer',
@@ -80,34 +79,6 @@ describe('deriveAgentPaneContext', () => {
       title: 'Email on lead',
     }
     expect(deriveAgentPaneContext(tab)).toBe('workflow')
-  })
-
-  it('table tab → table', () => {
-    const tab: WorkspaceTab = {
-      id: 't1',
-      type: 'table',
-      title: 'Leads',
-      kitablePath: 'Leads.kitable',
-      tableId: 1,
-      format: 'data',
-    }
-    expect(deriveAgentPaneContext(tab)).toBe('table')
-  })
-
-  it('dashboard tab → table because it reports on kitable data', () => {
-    const tab: WorkspaceTab = {
-      id: 'dash-1',
-      type: 'dashboard',
-      title: 'Task Dashboard',
-      kitablePath: 'Tasks.kitable',
-      dashboardId: 'task-dashboard',
-      format: 'data',
-    }
-    expect(deriveAgentPaneContext(tab)).toBe('table')
-    expect(resolveAgentActiveDocument(tab)).toEqual({
-      path: 'Tasks.kitable',
-      format: 'data',
-    })
   })
 
   it('gallery tab → gallery', () => {
@@ -129,7 +100,6 @@ describe('deriveAgentPaneContext', () => {
     }
     expect(deriveAgentPaneContext(tab)).toBe('whiteboard')
     expect(resolveAgentActiveDocument(tab)).toEqual({ path: 'Planning.kiboard', format: 'board' })
-    expect(resolveAgentDataTableTarget(tab)).toBeNull()
   })
 })
 
@@ -152,53 +122,17 @@ describe('resolveAgentActiveDocument', () => {
     })).toEqual({ path: 'Reports/Quarter.pdf', format: 'pdf' })
   })
 
-  it('keeps a table bound to its kitable document', () => {
+  it('binds a workflow tab to its table file', () => {
     expect(resolveAgentActiveDocument({
-      id: 'table:Leads.kitable#7',
-      type: 'table',
+      id: 'workflow:Sales/Leads.ktable',
+      type: 'workflow',
       title: 'Leads',
-      kitablePath: 'Sales/Leads.kitable',
-      tableId: 7,
-      format: 'data',
-    })).toEqual({ path: 'Sales/Leads.kitable', format: 'data' })
-  })
-})
-
-describe('resolveAgentDataTableTarget', () => {
-  it('resolves the active Kitable table tab to its document path and table id', () => {
-    expect(resolveAgentDataTableTarget({
-      id: 'kitable:Reports/Jira.kitable',
-      type: 'table',
-      title: 'Jira',
-      kitablePath: 'Reports/Jira.kitable',
-      tableId: 17,
-      format: 'data',
-    })).toEqual({
-      documentPath: 'Reports/Jira.kitable',
-      tableId: 17,
-    })
-  })
-
-  it('keeps compatibility with legacy data-document tabs', () => {
-    expect(resolveAgentDataTableTarget({
-      id: 'document:Reports/Jira.kitable',
-      type: 'document',
-      title: 'Jira',
-      path: 'Reports/Jira.kitable',
-      format: 'data',
-    })).toEqual({
-      documentPath: 'Reports/Jira.kitable',
-      tableId: null,
-    })
-  })
-
-  it('does not treat ordinary documents as data-table targets', () => {
-    expect(resolveAgentDataTableTarget({
-      id: 'document:Notes.md',
-      type: 'document',
-      title: 'Notes',
-      path: 'Notes.md',
-      format: 'markdown',
-    })).toBeNull()
+      tablePath: 'Sales/Leads.ktable',
+    })).toEqual({ path: 'Sales/Leads.ktable', format: 'table' })
+    expect(resolveAgentActiveDocument({
+      id: 'workflow',
+      type: 'workflow',
+      title: 'Workflows',
+    })).toEqual({ path: '', format: undefined })
   })
 })

@@ -5,11 +5,6 @@ import type { SearchHit } from '../types'
 export type NavigateAdapters = {
   openVaultPath: (vaultPath: string) => Promise<void>
   getCmViewForPath: (vaultPath: string) => { dispatchFlash: (line: number, ch: number, length: number) => void } | null
-  getKitableHandle: (vaultPath: string) => {
-    focusRecord: (recordId: string, fieldId?: string) => void
-    focusFieldHeader: (fieldId: string) => void
-    switchToView: (viewId: string) => void
-  } | null
   showToast: (message: string) => void
 }
 
@@ -31,17 +26,5 @@ export async function navigateToHit(hit: SearchHit, adapters: NavigateAdapters):
     return
   }
 
-  if (doc.anchor.kind === 'record') {
-    const h = adapters.getKitableHandle(doc.vaultPath)
-    h?.focusRecord(doc.anchor.recordId, doc.anchor.fieldId)
-    return
-  }
-
-  if (doc.anchor.kind === 'meta') {
-    const h = adapters.getKitableHandle(doc.vaultPath)
-    if (!h) return
-    if (doc.anchor.metaKind === 'field') h.focusFieldHeader(doc.anchor.metaId)
-    else if (doc.anchor.metaKind === 'view') h.switchToView(doc.anchor.metaId)
-    // 'table' → opening is enough
-  }
+  // A table record or field opens its table file in the Table kit, which shows the table.
 }

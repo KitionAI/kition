@@ -10,14 +10,15 @@ type WorkspaceSidebarPanelProps = {
   activePath: string
   createMenuOpen: boolean
   createMenuTriggerPath: string
-  createMenuVariant?: 'workspace' | 'kitable'
+  createMenuVariant?: 'workspace' | 'tableFile'
   loading: boolean
   modifiedPaths: Set<string>
   moveTargets: WorkspaceTreeNode[]
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateInside: (node: WorkspaceTreeNode) => void
-  onCreateTable: () => void
+  /** A form for one of a table file's tables. */
+  onCreateFormForTable?: (node: WorkspaceTreeNode) => void
   onDelete: (node: WorkspaceTreeNode) => void
   onDuplicate: (node: WorkspaceTreeNode) => void
   onMoveToFolder: (node: WorkspaceTreeNode, targetNode: WorkspaceTreeNode | null) => void
@@ -27,9 +28,7 @@ type WorkspaceSidebarPanelProps = {
   onOpen: (path: string) => void
   onOpenCreateMenu: () => void
   onCloseCreateMenu: () => void
-  /** Called when the user picks `Create Workflow` on a .kitable container
-   *  row. Opens the mode-chooser dialog (template / chat AI) — when the
-   *  kitable has multiple tables a picker is shown first to resolve scope. */
+  /** Called when the user picks `New workflow` on a table file row. */
   onCreateWorkflowForTable?: (node: WorkspaceTreeNode) => void
   onRefresh?: () => void
   /** Opens the workspace-global Workflows tab. Surfaced as a lightning-bolt
@@ -69,7 +68,7 @@ export function WorkspaceSidebarPanel({
   onCreateFolder,
   onCreateDocument,
   onCreateInside,
-  onCreateTable,
+  onCreateFormForTable,
   onDelete,
   onDuplicate,
   onMoveToFolder,
@@ -115,7 +114,6 @@ export function WorkspaceSidebarPanel({
       onOpenCreateMenu={onOpenCreateMenu}
       onCloseCreateMenu={onCloseCreateMenu}
       onCreateFolder={onCreateFolder}
-      onCreateTable={onCreateTable}
       onCreateDocument={onCreateDocument}
       onPasteFiles={onPasteFiles}
       onRefresh={onRefresh}
@@ -153,8 +151,7 @@ export function WorkspaceSidebarPanel({
             onCloseCreateMenu={onCloseCreateMenu}
             onCreateFolder={onCreateFolder}
             onCreateDocument={onCreateDocument}
-            onCreateTable={onCreateTable}
-            onCreateBoard={onCreateBoard}
+                  onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
           />

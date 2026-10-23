@@ -18,7 +18,9 @@ import {
   filterNodeDescription,
   filterNodeStatus,
   filterNodeTitle,
-  resolveWorkflowKitablePath,
+  resolveWorkflowTableFilePath,
+  tableLabelFor,
+  targetTableKeyOf,
   toDraft,
   triggerLabel,
   triggerStatus,
@@ -33,7 +35,7 @@ const baseWorkflow: WorkflowDefinition = {
   name: 'Sample',
   description: '',
   enabled: false,
-  trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentId: 'doc_1' },
+  trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: '1', documentPath: 'CRM.ktable', documentId: 'kdm-crm' },
   action: {
     nodeId: 'action_1',
     type: 'send_email',
@@ -44,51 +46,55 @@ const baseWorkflow: WorkflowDefinition = {
   },
 } as any
 
-describe('resolveWorkflowKitablePath', () => {
-  const labels: Record<string, TableLabel> = {
-    tbl_leads: {
-      tableName: 'Leads',
-      documentTitle: 'CRM',
-      documentId: 'doc_1',
-      documentPath: 'CRM.kitable',
-    },
-    tbl_queue: {
-      tableName: 'Queue',
-      documentTitle: 'Publishing',
-      documentId: 'doc_2',
-      documentPath: 'Publishing.kitable',
-    },
-  }
-
-  it('uses the trigger document for record workflows', () => {
-    expect(resolveWorkflowKitablePath(baseWorkflow, labels)).toBe('CRM.kitable')
+describe('resolveWorkflowTableFilePath', () => {
+  it('uses the trigger\'s file for record workflows', () => {
+    expect(resolveWorkflowTableFilePath(baseWorkflow)).toBe('CRM.ktable')
   })
 
-  it('uses the add-record target for scheduled workflows without a trigger document', () => {
+  it('uses the add-record target for scheduled workflows without a trigger file', () => {
     const workflow = {
       ...baseWorkflow,
-      trigger: { ...baseWorkflow.trigger, type: 'scheduled_time', documentId: '', tableId: '' },
+      trigger: { ...baseWorkflow.trigger, type: 'scheduled_time', documentPath: '', documentId: '', tableId: '' },
       action: {
         ...baseWorkflow.action,
         type: 'add_record',
         addRecord: {
-          targetDocumentId: 'doc_2',
-          targetTableId: 'tbl_queue',
+          targetDocumentPath: 'Publishing.ktable',
+          targetTableId: '2',
           fields: [],
         },
       },
     } as WorkflowDefinition
 
-    expect(resolveWorkflowKitablePath(workflow, labels)).toBe('Publishing.kitable')
+    expect(resolveWorkflowTableFilePath(workflow)).toBe('Publishing.ktable')
   })
 
-  it('falls back to table labels for older workflows without document ids', () => {
+  it('answers empty for an unbound draft', () => {
     const workflow = {
       ...baseWorkflow,
-      trigger: { ...baseWorkflow.trigger, documentId: '', tableId: 'tbl_leads' },
+      trigger: { ...baseWorkflow.trigger, documentPath: '', tableId: '' },
     } as WorkflowDefinition
 
-    expect(resolveWorkflowKitablePath(workflow, labels)).toBe('CRM.kitable')
+    expect(resolveWorkflowTableFilePath(workflow)).toBe('')
+  })
+})
+
+describe('tableLabelFor / targetTableKeyOf', () => {
+  const labels: Record<string, TableLabel> = {
+    'CRM.ktable#1': { tableId: '1', tableName: 'Leads', documentTitle: 'CRM', documentId: 'kdm-crm', documentPath: 'CRM.ktable' },
+    'Publishing.ktable#1': { tableId: '1', tableName: 'Queue', documentTitle: 'Publishing', documentId: '', documentPath: 'Publishing.ktable' },
+  }
+
+  it('looks a table up by its file and id, never by id alone', () => {
+    expect(tableLabelFor(labels, 'CRM.ktable', '1')?.tableName).toBe('Leads')
+    expect(tableLabelFor(labels, 'Publishing.ktable', '1')?.tableName).toBe('Queue')
+    expect(tableLabelFor(labels, '', '1')).toBeUndefined()
+  })
+
+  it('keys a target by its own file, or the trigger\'s when it names none', () => {
+    expect(targetTableKeyOf('Publishing.ktable', '1', 'CRM.ktable')).toBe('Publishing.ktable#1')
+    expect(targetTableKeyOf(undefined, '1', 'CRM.ktable')).toBe('CRM.ktable#1')
+    expect(targetTableKeyOf(undefined, '', 'CRM.ktable')).toBe('')
   })
 })
 
@@ -282,7 +288,7 @@ describe('draftToValidationPatch', () => {
 
 describe('workflowStatus / triggerLabel', () => {
   const labels: Record<string, TableLabel> = {
-    tbl_leads: { tableName: 'Leads', documentTitle: 'CRM', documentId: 'doc_1', documentPath: 'crm.kitable' },
+    'CRM.ktable#1': { tableId: '1', tableName: 'Leads', documentTitle: 'CRM', documentId: 'kdm-crm', documentPath: 'CRM.ktable' },
   }
 
   it('returns "error" when the latest run failed even if enabled', () => {
@@ -373,7 +379,7 @@ describe('actionNodeDescription', () => {
       subject: { parts: [{ kind: 'text' as const, text: '' }] },
       body: { parts: [] },
       addRecord: {
-        targetTableId: 'tbl_dst',
+        targetTableId: '2',
         fields: [
           { fieldId: 'f1', value: { parts: [] } },
           { fieldId: 'f2', value: { parts: [] } },
@@ -381,9 +387,10 @@ describe('actionNodeDescription', () => {
       },
     }
     const labels: Record<string, TableLabel> = {
-      tbl_dst: { tableName: 'Followups', documentTitle: 'CRM', documentId: 'doc_1', documentPath: 'crm.kitable' },
+      'crm.ktable#2': { tableId: '2', tableName: 'Followups', documentTitle: 'crm', documentId: '', documentPath: 'crm.ktable' },
     }
-    expect(actionNodeDescription(draft, [], labels)).toBe('into Followups · 2 fields')
+    expect(actionNodeDescription(draft, [], labels, undefined, 'crm.ktable')).toBe('into Followups · 2 fields')
+    expect(actionNodeDescription(draft, [], labels, undefined, 'other.ktable')).toBe('into 2 · 2 fields')
   })
 
   it('send_email shows recipient and channel', () => {
@@ -454,6 +461,6 @@ describe('fallbackSchemaFromWorkflow', () => {
     }
     const schema = fallbackSchemaFromWorkflow(wf, body as any)
     expect(schema.fields.map((f) => f.id)).toEqual(['f_a', 'f_b'])
-    expect(schema.id).toBe('tbl_leads')
+    expect(schema.id).toBe('1')
   })
 })

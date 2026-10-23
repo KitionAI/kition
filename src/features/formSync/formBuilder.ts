@@ -1,12 +1,32 @@
-import type { DataField, DataTable } from '@kition/table-editor'
+import { getTableFields } from '@/api/kitTables'
 
 import type { FormSyncField, FormSyncFieldType } from './api'
+
+/** A field of a form's destination table, as the Table kit answers it. */
+export type FormTargetField = {
+  id: string | number
+  name: string
+  title: string
+  type: string
+  readonly?: boolean
+  required?: boolean
+  options?: { choices?: string[] } | null
+}
+
+/** A form's destination table: a table of a table file, with its fields. */
+export type FormTargetTable = { id: string; name: string; title: string; fields: FormTargetField[] }
+
+/** The destination table `tableId` of the table file `path`, with its fields. */
+export async function loadFormTargetTable(path: string, tableId: string): Promise<FormTargetTable> {
+  const { items, table } = await getTableFields({ path, tableId })
+  return { id: table.id, name: table.name, title: table.title, fields: items as FormTargetField[] }
+}
 
 export type FormSyncBuilderField = FormSyncField & {
   targetFieldTitle: string
 }
 
-export function buildInitialFormFields(table: DataTable): FormSyncBuilderField[] {
+export function buildInitialFormFields(table: FormTargetTable): FormSyncBuilderField[] {
   const usedKeys = new Set<string>()
   return (table.fields || []).flatMap((field) => {
     const type = toFormFieldType(field)
@@ -54,14 +74,14 @@ export function uniqueFieldKey(label: string, usedKeys: Set<string>) {
   return candidate
 }
 
-export function findTargetTable(
-  tables: DataTable[] | undefined,
+export function findTargetTable<T extends { id: string | number }>(
+  tables: T[] | undefined,
   tableId: string,
 ) {
   return (tables || []).find((table) => String(table.id) === String(tableId))
 }
 
-function toFormFieldType(field: DataField): FormSyncFieldType | null {
+function toFormFieldType(field: FormTargetField): FormSyncFieldType | null {
   if (field.type === 'long_text') return 'long_text'
   if (field.type === 'number') return 'number'
   if (field.type === 'date' || field.type === 'datetime') return 'datetime'

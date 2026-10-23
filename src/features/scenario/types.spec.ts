@@ -9,11 +9,11 @@ import {
 describe('parseScenarioBuildEvent', () => {
   it('parses base.created', () => {
     const ev = parseScenarioBuildEvent(
-      '{"kind":"base.created","baseId":"base_abc","baseName":"Receipt Management"}',
+      '{"kind":"base.created","path":"base_abc","baseName":"Receipt Management"}',
     )
     expect(ev).toEqual({
       kind: 'base.created',
-      baseId: 'base_abc',
+      path: 'base_abc',
       baseName: 'Receipt Management',
     })
   })
@@ -120,7 +120,7 @@ describe('parseScenarioBuildEvent', () => {
   })
 
   it('returns null for JSON missing kind', () => {
-    expect(parseScenarioBuildEvent('{"baseId":"x"}')).toBeNull()
+    expect(parseScenarioBuildEvent('{"path":"x"}')).toBeNull()
   })
 
   it('returns null for unknown kind', () => {
@@ -129,7 +129,7 @@ describe('parseScenarioBuildEvent', () => {
 
   it('returns null when required fields are missing', () => {
     expect(
-      parseScenarioBuildEvent('{"kind":"base.created","baseId":"x"}'),
+      parseScenarioBuildEvent('{"kind":"base.created","path":"x"}'),
     ).toBeNull()
     expect(
       parseScenarioBuildEvent(
@@ -156,7 +156,7 @@ describe('parseScenarioBuildEvent', () => {
     ).toBeNull()
     expect(
       parseScenarioBuildEvent(
-        '{"kind":"base.created","baseId":1,"baseName":"x"}',
+        '{"kind":"base.created","path":1,"baseName":"x"}',
       ),
     ).toBeNull()
   })
@@ -167,7 +167,7 @@ describe('isScenarioBuildEvent', () => {
     expect(
       isScenarioBuildEvent({
         kind: 'base.created',
-        baseId: 'b',
+        path: 'b',
         baseName: 'B',
       }),
     ).toBe(true)
@@ -191,7 +191,7 @@ describe('isScenarioBuildEvent', () => {
 describe('ScenarioBuildEvent discrimination', () => {
   it('narrows each kind to its specific fields', () => {
     const samples: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b', baseName: 'B' },
+      { kind: 'base.created', path: 'b', baseName: 'B' },
       { kind: 'table.created', tableId: 't', tableName: 'T' },
       { kind: 'fields.generated', stage: 'fields', count: 1 },
       { kind: 'records.generated', count: 1 },
@@ -205,7 +205,7 @@ describe('ScenarioBuildEvent discrimination', () => {
     for (const ev of samples) {
       switch (ev.kind) {
         case 'base.created':
-          seen.add(ev.baseId)
+          seen.add(ev.path)
           break
         case 'table.created':
           seen.add(ev.tableId)

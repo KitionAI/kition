@@ -4,7 +4,7 @@ import type { QueryAST, QueryNode, OpName } from '../types'
 const KNOWN_OPS = new Set<OpName>([
   'file', 'path', 'tag', 'section', 'block', 'line',
   'task', 'task-todo', 'task-done',
-  'kitable', 'field', 'view',
+  'table', 'field', 'view',
   'regex', 'match-case',
 ])
 

@@ -7,7 +7,7 @@ export type {
 } from './generated/agent-shell-approval'
 
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
-export type AgentTaskMode = 'auto' | 'browse' | 'table'
+export type AgentTaskMode = 'auto' | 'browse'
 /** How the agent edits open kit documents (Kit Standard 2.0 A12). */
 export type AgentKitEditMode = 'live' | 'draft'
 
@@ -23,31 +23,9 @@ export type { AgentLocalSource } from '@/types/agentLocalSource'
 export type AgentPaneContext =
   | 'document'
   | 'workflow'
-  | 'table'
   | 'gallery'
   | 'whiteboard'
   | 'design'
-
-export type AgentTablePlanContext = {
-  execution_mode?: string
-  summary?: string
-  source_scope?: string
-  entity_name?: string
-  proposed_fields?: string[]
-  created_field_titles?: string[]
-  recommended_unique_by?: string[]
-  final_unique_by?: string[]
-  estimated_create?: number
-  estimated_update?: number
-  estimated_skip?: number
-  actual_created?: number
-  actual_updated?: number
-  actual_skipped?: number
-  risks?: string[]
-  notes?: string[]
-  requires_apply_confirmation?: boolean
-  applied?: boolean
-}
 
 export type AgentSession = {
   id: number

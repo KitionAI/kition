@@ -48,7 +48,6 @@ function Surface({ tabs }: { tabs: WorkspaceTab[] }) {
     setActiveResourcePath: () => {},
     workflowOpen: false,
     openDesign: () => {},
-    openKitableContainer: () => {},
     openBoard: () => {},
     openDocument: async () => {},
   })

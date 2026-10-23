@@ -97,11 +97,6 @@ export function WorkspaceAgentPane({
       onReviewModifiedArtifact,
       onShellApprovalDecision: (request, decision) => agent.respondToAgentShellApproval(session.id, request, decision),
       onImportFiles: isDesktopRuntime() ? (files) => onImportFiles(files, 'attachments') : undefined,
-      onApplyPlan: (plan) => agent.sendAgentContextAction(session.id, {
-        content: 'Please execute the current write task directly using the confirmed table plan, writing the rows to the table now.',
-        executionMode: 'apply',
-        tablePlanContext: plan,
-      }),
       // Same mapping as the Agent's system prompt so the empty-state copy
       // matches the pane the user is looking at before the first message.
       paneContext: deriveAgentPaneContext(activeWorkspaceTab),

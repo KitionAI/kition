@@ -11,7 +11,7 @@ import {
   updateEmailSyncWorkflow,
 } from '@/api/emailSync'
 
-export const LEGACY_DEFAULT_EMAIL_SYNC_TABLE_PATH = 'Mail/Emails.kitable'
+export const LEGACY_DEFAULT_EMAIL_SYNC_TABLE_PATH = 'Mail/Emails.ktable'
 
 export type TableEmailSyncWorkflowState = {
   status: 'loading' | 'ready' | 'error'

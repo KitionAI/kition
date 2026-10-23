@@ -14,14 +14,12 @@ describe('getWorkspaceTabKit', () => {
     expect(getWorkspaceTabKit(tab({ type: 'design' }))).toBe('design')
     expect(getWorkspaceTabKit(tab({ type: 'board' }))).toBe('board')
     expect(getWorkspaceTabKit(tab({ type: 'document', format: 'markdown' }))).toBe('document')
-    expect(getWorkspaceTabKit(tab({ type: 'document', format: 'data' }))).toBe('table')
-    expect(getWorkspaceTabKit(tab({ type: 'workflow', kitablePath: '/w/a.kitable' }))).toBe('table')
+    expect(getWorkspaceTabKit(tab({ type: 'workflow', tablePath: '/w/a.ktable' }))).toBe('table')
   })
 
   it('has no kit for plain files and tools', () => {
     expect(getWorkspaceTabKit(tab({ type: 'file-viewer', format: 'image' }))).toBeNull()
     expect(getWorkspaceTabKit(tab({ type: 'gallery', kind: 'images' }))).toBeNull()
     expect(getWorkspaceTabKit(tab({ type: 'workflow' }))).toBeNull()
-    expect(getWorkspaceTabKit(tab({ type: 'dashboard' }))).toBeNull()
   })
 })

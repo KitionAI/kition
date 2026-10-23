@@ -206,13 +206,13 @@ describe('applySessionEvent', () => {
     expect(turn.end).toEqual({ reason: 'failed', error: 'stream closed', at: 8 })
   })
 
-  it('strips the table plan block from the reply', () => {
+  it('trims the reply', () => {
     const view = reduce([
       { seq: 0, at: 1, type: 'turn/start', turn: 1 },
       { seq: 1, at: 2, type: 'step/start', turn: 1, step: 1 },
       {
         seq: 2, at: 3, type: 'assistant/message', turn: 1, step: 1, stopReason: 'completed', provider: 'p', model: 'm',
-        content: 'Ready.\n```table_plan\n{"summary":"Import"}\n```',
+        content: '  Ready.\n',
       },
       { seq: 3, at: 4, type: 'turn/end', turn: 1, reason: 'completed' },
     ])

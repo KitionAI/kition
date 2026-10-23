@@ -19,7 +19,6 @@ type UseWorkspaceTabControllersOptions = {
   workflowOpen: boolean
   onCloseWorkflow?: () => void
   openDesign: (path: string) => void
-  openKitableContainer: (kitablePath: string) => void
   openBoard: (path: string) => void
   openDocument: (path: string) => Promise<void>
 }
@@ -61,7 +60,6 @@ export function useWorkspaceTabControllers({
   workflowOpen,
   onCloseWorkflow,
   openDesign,
-  openKitableContainer,
   openBoard,
   openDocument,
 }: UseWorkspaceTabControllersOptions) {
@@ -130,22 +128,16 @@ export function useWorkspaceTabControllers({
   // workspace lets the key reach the desktop shell and the browser.
   useShortcut('Mod+W', () => handleCloseWorkspaceTabById(activeWorkspaceTabId), { enabled: Boolean(activeWorkspaceTabId) })
 
-  // A scoped table/workflow tab belongs to its .kitable container: keep the
-  // primary tree focused on that container while the inner sidebar owns
-  // table and workflow selection.
+  // A board, a design, or a table file's workflow tab keeps the tree focused on its file.
   useEffect(() => {
     if (!activeWorkspaceTab) return
     switch (activeWorkspaceTab.type) {
-      case 'table':
-      case 'dashboard':
-        setActiveResourcePath(activeWorkspaceTab.kitablePath)
-        return
       case 'board':
       case 'design':
         setActiveResourcePath(activeWorkspaceTab.path)
         return
       case 'workflow':
-        if (activeWorkspaceTab.kitablePath) setActiveResourcePath(activeWorkspaceTab.kitablePath)
+        if (activeWorkspaceTab.tablePath) setActiveResourcePath(activeWorkspaceTab.tablePath)
         return
       default:
         return
@@ -158,10 +150,6 @@ export function useWorkspaceTabControllers({
       openDesign(document.path)
       return
     }
-    if (format === 'data' && document.path.toLowerCase().endsWith('.kitable')) {
-      openKitableContainer(document.path)
-      return
-    }
     upsertWorkspaceTab({
       id: `document:${document.path}`,
       type: 'document',
@@ -170,7 +158,7 @@ export function useWorkspaceTabControllers({
       format,
       uid: documentUid(),
     })
-  }, [openDesign, openKitableContainer, upsertWorkspaceTab])
+  }, [openDesign, upsertWorkspaceTab])
 
   const openFileViewerTab = useCallback((path: string, format: WorkspaceDocumentFormat) => {
     if (path.toLowerCase().endsWith('.kidesign')) {

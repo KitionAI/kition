@@ -7,8 +7,9 @@ import { WorkflowNewPage } from './WorkflowNewPage'
 vi.mock('@/services/desktopSettings', () => ({
   loadDesktopSettings: vi.fn(),
 }))
-vi.mock('@/api/dataDocuments', () => ({
-  listDataDocuments: vi.fn().mockResolvedValue({ items: [] }),
+vi.mock('@/api/kitTables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/kitTables')>()),
+  listTableFiles: vi.fn().mockResolvedValue({ files: [], unreadable: [] }),
 }))
 
 let container: HTMLDivElement

@@ -7,9 +7,12 @@ import type {
 } from '@/features/workflow/templates'
 
 export interface TemplateApplyContext {
-  /** Document of the table the user picked in the launcher. Always set;
-   *  scheduled_time templates ignore it (no table binding). */
-  documentId: string
+  /** The table file of the table the user picked in the launcher (its
+   *  workspace path); '' when no table is bound. scheduled_time templates
+   *  ignore it (no table binding). */
+  documentPath: string
+  /** The file's stable identity (its KDM root object id), when known. */
+  documentId?: string
   /** Table the user picked in the launcher. scheduled_time templates ignore
    *  this — they bind by clock, not by record event. */
   tableId: string
@@ -18,10 +21,11 @@ export interface TemplateApplyContext {
    *  bodies. Null when the schema fetch hasn't completed (template still
    *  applies, but field refs downgrade to fallback text). */
   schema: TableSchema | null
-  /** Other tables in the same kitable. Context-aware add_record templates
+  /** Other tables in the same table file. Context-aware add_record templates
    *  resolve their target table and target field IDs from this list. */
   tables?: Array<{
-    documentId: string
+    documentPath: string
+    documentId?: string
     tableId: string
     tableName: string
     schema: TableSchema | null
@@ -139,7 +143,7 @@ function resolveTrigger(
       // the "pick a table" gate. We still pass the picked tableId on the
       // payload as documentation: it tells the launcher "this came from
       // the X table's context" without enabling the table binding.
-      documentId: '',
+      documentPath: '',
       tableId: '',
       // Default the timezone to the browser's IANA name so newly-created
       // scheduled workflows fire when the user actually expects them to.
@@ -156,7 +160,8 @@ function resolveTrigger(
   }
   return {
     type: tpl.draft.trigger.type,
-    documentId: ctx.documentId,
+    documentPath: ctx.documentPath,
+    ...(ctx.documentId ? { documentId: ctx.documentId } : {}),
     tableId: ctx.tableId,
     requiredFields: resolveRequiredFields(
       tpl.draft.trigger.requiredFieldNames || [],
@@ -207,7 +212,8 @@ function resolveAction(
     })
     return emptyAction('lookup_record', {
       lookupRecord: {
-        targetDocumentId: target?.documentId,
+        targetDocumentPath: target?.documentPath,
+        targetDocumentId: target?.documentId || undefined,
         targetTableId: target?.tableId || '',
         matchFieldId: matchField?.id || '',
         matchValue: { parts: resolveBodyParts(lookup.matchValueParts, ctx.schema, unresolvedFieldNames) },
@@ -263,7 +269,8 @@ function resolveAction(
       subject: { parts: [] },
       body: { parts: [] },
       addRecord: {
-        targetDocumentId: target?.documentId,
+        targetDocumentPath: target?.documentPath,
+        targetDocumentId: target?.documentId || undefined,
         targetTableId: target?.tableId || '',
         fields: assignments,
       },

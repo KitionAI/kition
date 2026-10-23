@@ -65,7 +65,7 @@ export function WorkflowCanvasNodes(props: WorkflowCanvasNodesProps) {
                     : t('panels.home.nodeCard.stepActionGeneric', { index: stepIndex })
             }
             title={isTrigger ? t(triggerTitleI18nKey(selected.trigger.type)) : isFilter ? filterNodeTitle(node) : t(actionTitleI18nKey(draft.actionType))}
-            description={isTrigger ? props.triggerLabel : isFilter ? filterNodeDescription(node) : actionNodeDescription(draft, props.connections, props.tableLabels, t)}
+            description={isTrigger ? props.triggerLabel : isFilter ? filterNodeDescription(node) : actionNodeDescription(draft, props.connections, props.tableLabels, t, selected.trigger.documentPath)}
             status={deriveNodeStatus({ node, selected, draft, validation, latestRun, issues, streamingPhase: props.streamingPhase })}
             disabled={node.disabled}
             selected={props.selectedNodeId === node.nodeId}

@@ -163,7 +163,7 @@ export function EmailSyncWorkflowPage({ workflowId }: { workflowId: string }) {
       const tablePath = workflow.target.table_path
       await deleteEmailSyncWorkflow(workflow.id)
       window.dispatchEvent(new CustomEvent('kition:onboarding:open-local-workflow', {
-        detail: { kitablePath: tablePath },
+        detail: { tablePath: tablePath },
       }))
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to delete workflow')
@@ -446,7 +446,7 @@ function Metric({ label, value, danger = false }: { label: string; value: number
 }
 
 function tableName(path: string) {
-  return path.split(/[\\/]/).pop()?.replace(/\.kitable$/i, '') || 'Email'
+  return path.split(/[\\/]/).pop()?.replace(/\.ktable$/i, '') || 'Email'
 }
 
 function formatTime(value?: string) {

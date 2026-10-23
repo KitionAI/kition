@@ -498,7 +498,7 @@ function AgentToolImageStrip({ images, onOpenArtifact }: {
 
 function resolveAgentArtifactIcon(path: string): LucideIcon {
   const lowerPath = path.toLowerCase()
-  if (/\.(xlsx|xls|csv|tsv|kitable)$/i.test(lowerPath)) {
+  if (/\.(xlsx|xls|csv|tsv|ktable)$/i.test(lowerPath)) {
     return FileSpreadsheet
   }
   if (/\.docx$/i.test(lowerPath)) {

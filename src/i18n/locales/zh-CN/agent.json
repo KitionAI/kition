@@ -1,11 +1,4 @@
 {
-  "contextCards": {
-    "writeComplete": "写入完成",
-    "writePlan": "写入计划",
-    "noChanges": "无变化",
-    "writeResult": "写入结果",
-    "writeToTable": "写入表格"
-  },
   "buildProgress": {
     "buildingBase": "正在构建数据库…",
     "buildingInProgress": "构建进行中",
@@ -114,23 +107,6 @@
         "refine": {
           "label": "优化当前工作流",
           "prompt": "看一下当前工作流，给出下一步可以怎么优化。"
-        }
-      }
-    },
-    "table": {
-      "description": "让 agent 帮你总结、加列或查询这张表。",
-      "suggestions": {
-        "addStatusColumn": {
-          "label": "加一个状态列",
-          "prompt": "添加一个单选状态列，选项是 未开始、进行中、已完成。"
-        },
-        "summarizeTable": {
-          "label": "总结当前表",
-          "prompt": "总结当前表的列类型、主字段、行数。"
-        },
-        "fillCells": {
-          "label": "补全空单元格",
-          "prompt": "对当前列中每个空单元格，根据其它列的内容给出建议值。"
         }
       }
     },
@@ -263,12 +239,6 @@
       "source_adapter_catalog": "检查来源上下文",
       "web_search": "搜索网页",
       "web_fetch": "读取网页",
-      "data_table_create": "创建表格",
-      "data_table_schema": "读取表格结构",
-      "data_table_records": "读取表格记录",
-      "data_table_record_draft": "起草表格记录",
-      "data_table_add_fields": "添加表格字段",
-      "data_table_add_records": "写入表格记录",
       "image_search": "生成图片",
       "save_image_asset": "保存图片",
       "document_search": "搜索文档",
@@ -290,12 +260,6 @@
       "source_adapter_catalog": "检查来源上下文",
       "web_search": "搜索网页",
       "web_fetch": "读取网页",
-      "data_table_create": "创建表格",
-      "data_table_schema": "读取表格结构",
-      "data_table_records": "读取表格记录",
-      "data_table_record_draft": "起草表格记录",
-      "data_table_add_fields": "添加表格字段",
-      "data_table_add_records": "写入表格记录",
       "image_search": "生成图片",
       "save_image_asset": "保存图片",
       "document_search": "搜索文档",

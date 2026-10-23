@@ -1,7 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DATA_TABLE_ACTION_EVENT, type TableAction } from '@kition/table-editor'
 import type { EditorMode, EditorViewPreferences } from '@/features/workspace/hooks/useWorkspaceChrome'
 import { isDesktopRuntime, openWorkspaceFile, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
 
@@ -75,17 +74,6 @@ export function useWorkspaceTopbarActions({
     setItemMenuOpen(false)
   }, [activeDocument, restoreSavedVersion, setFeedback, setItemMenuOpen, t])
 
-  const runActiveDataTableAction = useCallback((action: TableAction) => {
-    if (!activeDocument || activeDocumentFormat !== 'data') {
-      return
-    }
-
-    window.dispatchEvent(new CustomEvent(DATA_TABLE_ACTION_EVENT, {
-      detail: { documentPath: activeDocument.path, action },
-    }))
-    setItemMenuOpen(false)
-  }, [activeDocument, activeDocumentFormat, setItemMenuOpen])
-
   const importMarkdownFile = useCallback(async (file?: File) => {
     if (!file || editorLocked) {
       return
@@ -119,7 +107,6 @@ export function useWorkspaceTopbarActions({
     canOpenInSystem: isDesktopRuntime(),
     importMarkdownFile,
     restoreSavedDraft,
-    runActiveDataTableAction,
     setEditorMode,
   }
 }

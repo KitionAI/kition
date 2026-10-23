@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { DataTable } from '@kition/table-editor/types/dataDocument'
-
-import { buildInitialFormFields, uniqueFieldKey } from './formBuilder'
+import { buildInitialFormFields, uniqueFieldKey, type FormTargetTable } from './formBuilder'
 
 describe('form builder', () => {
   it('creates editable form fields from compatible table fields', () => {
@@ -13,7 +11,7 @@ describe('form builder', () => {
         { id: 3, title: 'Room', name: 'room', type: 'single_select', required: false, readonly: false, options: { choices: ['Salon', 'Terrace'] } },
         { id: 4, title: 'Created at', name: 'created_at', type: 'created_time', required: false, readonly: true },
       ],
-    } as unknown as DataTable
+    } as unknown as FormTargetTable
 
     expect(buildInitialFormFields(table)).toEqual([
       expect.objectContaining({ key: 'contact_email', type: 'email', required: true, targetFieldTitle: 'Contact email' }),

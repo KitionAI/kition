@@ -18,24 +18,22 @@ describe('navigateToHit', () => {
     await navigateToHit(baseHit({}), {
       openVaultPath: vi.fn().mockResolvedValue(undefined),
       getCmViewForPath: () => ({ dispatchFlash }),
-      getKitableHandle: () => null,
       showToast: vi.fn(),
     })
     expect(dispatchFlash).toHaveBeenCalledWith(4, 0, expect.any(Number))
   })
 
-  it('focuses record for kitable_record hit', async () => {
-    const focusRecord = vi.fn()
+  it('opens the table file of a table_record hit', async () => {
+    const openVaultPath = vi.fn().mockResolvedValue(undefined)
     await navigateToHit(baseHit({
-      kind: 'kitable_record', vaultPath: 't.kitable',
+      kind: 'table_record', vaultPath: 't.ktable',
       anchor: { kind: 'record', tableId: 't1', recordId: 'r9' },
     }), {
-      openVaultPath: vi.fn().mockResolvedValue(undefined),
+      openVaultPath,
       getCmViewForPath: () => null,
-      getKitableHandle: () => ({ focusRecord, focusFieldHeader: vi.fn(), switchToView: vi.fn() }),
       showToast: vi.fn(),
     })
-    expect(focusRecord).toHaveBeenCalledWith('r9', undefined)
+    expect(openVaultPath).toHaveBeenCalledWith('t.ktable')
   })
 
   it('toasts when openVaultPath rejects', async () => {
@@ -43,7 +41,6 @@ describe('navigateToHit', () => {
     await navigateToHit(baseHit({}), {
       openVaultPath: vi.fn().mockRejectedValue(new Error('not found')),
       getCmViewForPath: () => null,
-      getKitableHandle: () => null,
       showToast,
     })
     expect(showToast).toHaveBeenCalledWith('File no longer exists')

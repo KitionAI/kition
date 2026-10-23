@@ -25,15 +25,16 @@ const workflow = {
   name: 'Leads',
   description: '',
   enabled: true,
-  trigger: { nodeId: 'trigger_1', type: 'record_created', documentId: 'doc-1', tableId: 'tbl-1', requiredFields: ['f1', 'f2'] },
+  trigger: { nodeId: 'trigger_1', type: 'record_created', documentPath: 'crm.ktable', documentId: 'kdm-crm', tableId: '1', requiredFields: ['f1', 'f2'] },
   action: { nodeId: 'action_1', type: 'send_email', body: { parts: [{ type: 'field_ref', fieldId: 'f9' }] } },
 } as unknown as WorkflowDefinition
 
 const schema = { fields: [{ id: 'f1', name: 'Name', type: 'text' }, { id: 'f3', name: 'Amount', type: 'number' }] } as TableSchema
 const labels: Record<string, TableLabel> = {
-  'tbl-1': { tableName: 'Leads', documentTitle: 'CRM', documentId: 'doc-1', documentPath: 'crm.kitable' },
-  'tbl-2': { tableName: 'Orders', documentTitle: 'Billing', documentId: 'doc-2', documentPath: 'billing.kitable' },
-  'tbl-3': { tableName: 'Accounts', documentTitle: 'CRM', documentId: 'doc-1', documentPath: 'crm.kitable' },
+  'crm.ktable#1': { tableId: '1', tableName: 'Leads', documentTitle: 'crm', documentId: 'kdm-crm', documentPath: 'crm.ktable' },
+  // The same table id in another file.
+  'billing.ktable#1': { tableId: '1', tableName: 'Orders', documentTitle: 'billing', documentId: 'kdm-billing', documentPath: 'billing.ktable' },
+  'crm.ktable#3': { tableId: '3', tableName: 'Accounts', documentTitle: 'crm', documentId: 'kdm-crm', documentPath: 'crm.ktable' },
 }
 
 describe('buildWorkflowSavePatch', () => {
@@ -47,19 +48,26 @@ describe('buildWorkflowSavePatch', () => {
     expect(patch.action).toMatchObject({ connectionId: 'c1', to: 'a@b.c' })
   })
 
-  it('resolves the add_record target document from the labels cache', () => {
-    const draft = { ...emptyDraft(), actionType: 'add_record', addRecord: { targetTableId: 'tbl-2', fields: [{ fieldId: 'f1', value: { parts: [] } }] } }
+  it('resolves the add_record target file\'s id from the labels cache', () => {
+    const draft = { ...emptyDraft(), actionType: 'add_record', addRecord: { targetTableId: '1', targetDocumentPath: 'billing.ktable', fields: [{ fieldId: 'f1', value: { parts: [] } }] } }
     const patch = buildWorkflowSavePatch({ draft, selected: workflow, graphNodes: [], tableLabels: labels })
-    expect(patch.action).toMatchObject({ type: 'add_record', addRecord: { targetTableId: 'tbl-2', targetDocumentId: 'doc-2' } })
+    expect(patch.action).toMatchObject({ type: 'add_record', addRecord: { targetTableId: '1', targetDocumentPath: 'billing.ktable', targetDocumentId: 'kdm-billing' } })
+  })
+
+  it('names the trigger\'s file when the add_record target has no path', () => {
+    const draft = { ...emptyDraft(), actionType: 'add_record', addRecord: { targetTableId: '3', fields: [] } }
+    const patch = buildWorkflowSavePatch({ draft, selected: workflow, graphNodes: [], tableLabels: labels })
+    expect(patch.action).toMatchObject({ addRecord: { targetTableId: '3', targetDocumentPath: 'crm.ktable', targetDocumentId: 'kdm-crm' } })
+    expect(patch.nodes?.[0].config).toMatchObject({ documentPath: 'crm.ktable', tableId: '1' })
   })
 })
 
 describe('trigger patches', () => {
   it('clears the table when moving to a schedule and clears the schedule when moving back', () => {
     const toSchedule = buildTriggerTypePatch(workflow.trigger, 'scheduled_time')
-    expect(toSchedule).toEqual({ nodeId: 'trigger_1', type: 'scheduled_time', documentId: '', tableId: '', requiredFields: [], schedule: { cron: '', timezone: '' } })
+    expect(toSchedule).toEqual({ nodeId: 'trigger_1', type: 'scheduled_time', documentPath: '', documentId: '', tableId: '', requiredFields: [], schedule: { cron: '', timezone: '' } })
     const back = buildTriggerTypePatch({ ...workflow.trigger, type: 'scheduled_time', schedule: { cron: '* * * * *', timezone: 'UTC' } }, 'record_updated')
-    expect(back).toEqual({ nodeId: 'trigger_1', type: 'record_updated', documentId: 'doc-1', tableId: 'tbl-1', schedule: { cron: '', timezone: '' } })
+    expect(back).toEqual({ nodeId: 'trigger_1', type: 'record_updated', documentPath: 'crm.ktable', documentId: 'kdm-crm', tableId: '1', schedule: { cron: '', timezone: '' } })
     const recordToRecord = buildTriggerTypePatch(workflow.trigger, 'record_updated')
     expect(recordToRecord.requiredFields).toEqual(['f1', 'f2'])
     expect(recordToRecord.schedule).toBeUndefined()
@@ -73,10 +81,10 @@ describe('trigger patches', () => {
   })
 
   it('rebinds the table and prunes dangling body refs only when asked', () => {
-    const plain = buildTriggerTablePatch({ selected: workflow, nextTableId: 'tbl-2', nextDocumentId: 'doc-2', pruneFieldIds: [], requiredFields: undefined })
+    const plain = buildTriggerTablePatch({ selected: workflow, nextTableId: '1', nextDocumentPath: 'billing.ktable', nextDocumentId: 'kdm-billing', pruneFieldIds: [], requiredFields: undefined })
     expect(plain.action).toBeUndefined()
-    expect(plain.trigger).toMatchObject({ type: 'record_created', tableId: 'tbl-2', documentId: 'doc-2', requiredFields: ['f1', 'f2'] })
-    const pruned = buildTriggerTablePatch({ selected: workflow, nextTableId: 'tbl-2', nextDocumentId: 'doc-2', pruneFieldIds: ['f9'], requiredFields: ['f1'] })
+    expect(plain.trigger).toMatchObject({ type: 'record_created', tableId: '1', documentPath: 'billing.ktable', documentId: 'kdm-billing', requiredFields: ['f1', 'f2'] })
+    const pruned = buildTriggerTablePatch({ selected: workflow, nextTableId: '1', nextDocumentPath: 'billing.ktable', nextDocumentId: 'kdm-billing', pruneFieldIds: ['f9'], requiredFields: ['f1'] })
     expect(pruned.trigger?.requiredFields).toEqual(['f1'])
     expect(pruned.action?.body?.parts?.some((part) => (part as { type?: string }).type === 'field_ref')).toBe(false)
     expect(sameStringList(['a'], ['a'])).toBe(true)
@@ -109,9 +117,12 @@ describe('graph and draft helpers', () => {
     expect(countRunsByStatus(runs)).toEqual({ all: 4, ok: 2, error: 1, skipped: 1 })
   })
 
-  it('scopes the trigger table picker to the kitable but keeps the bound table', () => {
-    expect(buildTriggerTableOptions(labels, undefined, '').map((option) => option.tableId)).toEqual(['tbl-2', 'tbl-3', 'tbl-1'])
-    expect(buildTriggerTableOptions(labels, 'crm.kitable', '').map((option) => option.tableId)).toEqual(['tbl-3', 'tbl-1'])
-    expect(buildTriggerTableOptions(labels, 'crm.kitable', 'tbl-2').map((option) => option.tableId)).toEqual(['tbl-2', 'tbl-3', 'tbl-1'])
+  it('scopes the trigger table picker to the table file but keeps the bound table', () => {
+    expect(buildTriggerTableOptions(labels, undefined, '').map((option) => option.key)).toEqual(['billing.ktable#1', 'crm.ktable#3', 'crm.ktable#1'])
+    expect(buildTriggerTableOptions(labels, 'crm.ktable', '').map((option) => option.key)).toEqual(['crm.ktable#3', 'crm.ktable#1'])
+    expect(buildTriggerTableOptions(labels, 'crm.ktable', 'billing.ktable#1').map((option) => option.key)).toEqual(['billing.ktable#1', 'crm.ktable#3', 'crm.ktable#1'])
+    expect(buildTriggerTableOptions(labels, undefined, '')[0]).toEqual({
+      key: 'billing.ktable#1', tableId: '1', tableName: 'Orders', documentTitle: 'billing', documentPath: 'billing.ktable', documentId: 'kdm-billing',
+    })
   })
 })

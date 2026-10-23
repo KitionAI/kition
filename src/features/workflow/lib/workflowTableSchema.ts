@@ -1,43 +1,34 @@
+import { getTableFields } from '@/api/kitTables'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
-import { resolveApiURL } from '@/services/desktop'
-import { windowSessionId } from '@/api/windowSession'
-import { runtimeFetch } from '@/services/runtimeAuth'
 
 /**
- * Pull schema for a single table off the data-document API. Shared by the
- * template creation flow (createWorkflowFromMode), the home-page trigger
- * editor (the lazy `schemaByTableId` cache), and any future entry point
- * that needs to render field references against a real table layout.
+ * Pull the schema of one table (the table file at `documentPath`, table
+ * `tableId` in it) through the Table kit. Shared by the template creation
+ * flow (createWorkflowFromMode), the home-page trigger editor (the lazy
+ * schema cache), and any future entry point that needs to render field
+ * references against a real table layout.
  *
- * Returns a TableSchema with normalised field IDs and names — uses
- * `title` when present (the human label) and falls back to `name` (the
- * stable identifier) so the body editor's "Insert field" picker matches
- * what the user sees in the table viewer.
+ * Returns a TableSchema with field ids as strings of the kit's ids and
+ * names from `title` when present (the human label), falling back to
+ * `name` (the stable identifier), so the body editor's "Insert field"
+ * picker matches what the user sees in the table.
  *
- * Throws on non-2xx so callers can `.catch(() => null)` and fall back to
+ * Rejects on failure so callers can `.catch(() => null)` and fall back to
  * an empty schema; the body editor downgrades to "missing field" warnings
  * in that case rather than dead-ending.
  */
 export async function fetchWorkflowTableSchema(
-  documentId: string,
+  documentPath: string,
   tableId: string,
-  tableName: string,
+  tableName?: string,
 ): Promise<TableSchema> {
-  // Bypasses src/api/request.ts (no response envelope to unwrap here beyond
-  // reading .data.items below), so this window's session has to be sent by
-  // hand to match every other /v1/data-documents request.
-  const res = await runtimeFetch(resolveApiURL(`/v1/data-documents/${documentId}/tables/${tableId}/fields`), {
-    headers: { 'Kition-Session': windowSessionId() },
-  })
-  if (!res.ok) throw new Error(`schema fetch failed (${res.status})`)
-  const envelope = (await res.json()) as {
-    data?: { items?: Array<{ id: number | string; name: string; title?: string; type: string }> }
-  }
-  const items = envelope.data?.items ?? []
-  const fields = items.map((f) => ({
-    id: String(f.id),
-    name: (f.title ?? '').trim() ? (f.title as string) : f.name,
-    type: f.type,
+  const result = await getTableFields({ path: documentPath, tableId })
+  const items = (result?.items ?? []) as Array<{ id?: number | string; name?: string; title?: string; type?: string }>
+  const fields = items.map((field) => ({
+    id: String(field.id ?? ''),
+    name: String(field.title ?? '').trim() ? String(field.title) : String(field.name ?? ''),
+    type: String(field.type ?? ''),
   }))
-  return { id: tableId, name: tableName, fields }
+  const name = tableName || result?.table?.title || result?.table?.name || 'Table'
+  return { id: tableId, name, fields }
 }

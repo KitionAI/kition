@@ -1,4 +1,4 @@
-import { Bot, ChevronDown, ChevronLeft, ChevronRight, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, X, Zap } from 'lucide-react'
+import { Bot, ChevronDown, ChevronLeft, ChevronRight, FileVideo2, Image as ImageIcon, PanelLeftOpen, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
@@ -9,10 +9,9 @@ import { canShowDocumentHistory, requestDocumentHistory } from '@/features/histo
 import { KitDraftTabMark } from '@/features/kits/public'
 import { cn } from '@kition/app-ui/utils'
 
-/** The workspace file a tab edits, for co-editing (kit documents, boards, Markdown documents, tables). */
+/** The workspace file a tab edits, for co-editing (kit documents, boards, Markdown documents). */
 function collabTabPath(tab: WorkspaceTab): string | null {
   if (tab.type === 'file-viewer' || tab.type === 'board' || tab.type === 'document') return tab.path
-  if (tab.type === 'table') return tab.kitablePath
   return null
 }
 
@@ -464,13 +463,10 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
     return <Icon className={cn('size-3.5', getWorkspaceItemIconColorClass(tab.format))} />
   }
   if (tab.type === 'workflow') {
-    if (tab.kitablePath) {
+    if (tab.tablePath) {
       return <KitIcon kit="table" small className="size-3.5" />
     }
     return <Zap className="size-3.5 text-brand" />
-  }
-  if (tab.type === 'dashboard') {
-    return <LayoutDashboard className="size-3.5 text-brand" />
   }
   const kit = getWorkspaceTabKit(tab)
   return <KitIcon kit={kit ?? 'document'} small className="size-3.5" />

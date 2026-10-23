@@ -21,7 +21,6 @@ function defaultProps(overrides: Partial<Parameters<typeof WorkspaceSidebar>[0]>
     onCloseCreateMenu: vi.fn(),
     onCreateFolder: vi.fn(),
     onCreateDocument: vi.fn(),
-    onCreateTable: vi.fn(),
     ...overrides,
   }
 }
@@ -133,7 +132,7 @@ describe('WorkspaceSidebar', () => {
 
     const options = Array.from(document.body.querySelectorAll('.document-create-option'))
       .map((option) => option.textContent?.trim())
-    expect(options).toEqual(['Document.md', 'Table', 'Folder'])
+    expect(options).toEqual(['Document.md', 'Folder'])
     expect(document.body.textContent).not.toContain('Import file')
   })
 

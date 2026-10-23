@@ -47,9 +47,6 @@ openspec/specs/*
 !openspec/specs/branding/
 !openspec/specs/branding/**
 
-# Local/performance data files
-/workspace/perf-*.kitable
-
 logs
 
 kition-extension.pem
@@ -57,7 +54,6 @@ src-tauri/binaries/
 src-tauri/gen/
 /target/
 src-tauri/target/
-.kitable
 test-workspace
 
 # JavaScript dependencies and build output

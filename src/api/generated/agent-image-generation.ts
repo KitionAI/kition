@@ -29,15 +29,6 @@ export type AgentImageGenerationDocumentTarget = {
   target_revision?: string
 }
 
-export type AgentImageGenerationTableTarget = {
-  type: "image.target.table"
-  data_document_id: number
-  table_id: number
-  record_ids?: number[]
-  attachment_field_id?: number
-  target_revision?: string
-}
-
 export type AgentImageGenerationWhiteboardTarget = {
   type: "image.target.whiteboard"
   board_path: AgentImageGenerationPortablePath
@@ -67,7 +58,7 @@ export type AgentImageGenerationDesignTarget = {
 /**
  * Generate and edit operations use the provider's configured image-capable model independently of the conversation's runtime_model.model_name. Clients keep the selected chat model unchanged; selecting a text-only chat model must not prevent image generation or editing.
  */
-export type AgentImageGenerationIntent = (unknown) & (unknown) & (unknown) & (unknown) & (unknown)
+export type AgentImageGenerationIntent = (unknown) & (unknown) & (unknown) & (unknown)
 
 export type AgentImageGenerationProvenance = {
   request_id: AgentImageGenerationIdentifier
@@ -122,6 +113,6 @@ export type AgentImageGenerationVariantMeta = {
 }
 
 /**
- * Typed image-generation intents shared by Agent conversations across documents, tables, and Boards, and how the runtime logs them: an image composer request is one session turn (agent-session-events.schema.json) whose variant i is a tool/call named image_generation with variantCall arguments and call id img_<first 24 hex of sha256(request_id)>_<i>, settled by a tool/result whose value is the artifact and whose meta is variantMeta (success, followed by deliverables/presented), or by a tool/result with isError whose content is the message and the error as JSON. A request id names one set of settings and is handled once: a repeat with the same settings changes nothing, even when the earlier attempt failed or was cancelled (retry with a new request id), and other settings are refused with HTTP 409.
+ * Typed image-generation intents shared by Agent conversations across documents, Boards, designs, and chat, and how the runtime logs them: an image composer request is one session turn (agent-session-events.schema.json) whose variant i is a tool/call named image_generation with variantCall arguments and call id img_<first 24 hex of sha256(request_id)>_<i>, settled by a tool/result whose value is the artifact and whose meta is variantMeta (success, followed by deliverables/presented), or by a tool/result with isError whose content is the message and the error as JSON. A request id names one set of settings and is handled once: a repeat with the same settings changes nothing, even when the earlier attempt failed or was cancelled (retry with a new request id), and other settings are refused with HTTP 409.
  */
 export type AgentImageGenerationContract = AgentImageGenerationIntent | AgentImageGenerationVariantCall | AgentImageGenerationVariantMeta

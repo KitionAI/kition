@@ -19,7 +19,7 @@ export interface SendTestOptions {
   /** Sample-row override. When provided, the backend skips its AI sample
    *  generator and renders the body with these fields verbatim. Drives the
    *  WF-U3 "use existing row" picker — the values come straight out of
-   *  /data-documents/.../records so the test mirrors what the workflow
+   *  the table's records (`listTableRecords`) so the test mirrors what the workflow
    *  would have sent for that actual record. */
   triggerFields?: Record<string, unknown>
 }

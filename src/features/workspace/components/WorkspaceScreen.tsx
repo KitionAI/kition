@@ -9,8 +9,6 @@ import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
-import { useKitableRegistration } from '@/features/workspace/hooks/useKitableRegistration'
 import {
   buildPrivateSectionTreeNodes,
 } from '@/features/workspace/lib/workspaceTree'
@@ -22,9 +20,7 @@ import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
-import type { DataDocument } from '@kition/table-editor'
-import { WorkspaceEditorFrame, type WorkspaceKitableSidebarActions } from '@/features/workspace/components/WorkspaceEditorFrame'
-import { FORM_SYNC_CHANGED_EVENT } from '@/features/formSync/api'
+import { WorkspaceEditorFrame } from '@/features/workspace/components/WorkspaceEditorFrame'
 import { WorkspaceAgentChrome } from '@/features/workspace/components/WorkspaceAgentChrome'
 import {
   WorkspaceScreenSidebar,
@@ -39,13 +35,11 @@ import { useWorkspaceTopbarActions } from '@/features/workspace/hooks/useWorkspa
 import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspaceTreeActions'
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
-import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
 import { useWorkspaceDesignAgentBridge } from '@/features/workspace/hooks/useWorkspaceDesignAgentBridge'
-import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
-import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorkspaceKitableOpeners'
+import { useWorkspaceOpeners } from '@/features/workspace/hooks/useWorkspaceOpeners'
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
 import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
@@ -68,7 +62,6 @@ import { buildDesignImageAgentInstruction } from '@/features/design/public'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
 import { isEditableWorkspaceFormat } from '@/features/workspace/lib/workspace'
 import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
-import { resolveActiveKitablePath, resolveKitableSidebarMode } from '@/features/workspace/lib/activeKitable'
 import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTurnUpdate'
 import { notify } from '@/lib/notify'
 import { cn } from '@kition/app-ui/utils'
@@ -128,22 +121,9 @@ export function WorkspaceScreen({
     treeItems,
     treeMetadata,
   } = workspaceTree
-  const kitableChildrenIndex = useKitableChildrenIndex(rootPath)
   const workspaceTreeNodes = useMemo(
-    () => buildPrivateSectionTreeNodes(
-      treeItems,
-      treeMetadata,
-      kitableChildrenIndex.tablesByKitablePath,
-      kitableChildrenIndex.dashboardsByKitablePath,
-      kitableChildrenIndex.workflowsByKitablePath,
-    ),
-    [
-      treeItems,
-      treeMetadata,
-      kitableChildrenIndex.tablesByKitablePath,
-      kitableChildrenIndex.dashboardsByKitablePath,
-      kitableChildrenIndex.workflowsByKitablePath,
-    ],
+    () => buildPrivateSectionTreeNodes(treeItems, treeMetadata),
+    [treeItems, treeMetadata],
   )
   // Pinned tabs storage is workspace-scoped; keep the module-level current root
   // in sync with rootPath so pin/unpin/list operations hit the right bucket.
@@ -151,17 +131,8 @@ export function WorkspaceScreen({
     setPinnedTabsWorkspace(rootPath)
     setInvalidationWorkspaceRoot(rootPath)
   }, [rootPath])
-  useKitableRegistration(files, kitableChildrenIndex)
   const [error, setError] = useState('')
   const [, setFeedback] = useState('')
-  // Group A: when the user picks "Create Workflow" from a kitable table
-  // leaf's "..." menu, we surface a mode chooser (template vs AI). The dialog
-  // can run scoped to a (documentId, tableId) pair OR entirely unbound
-  // (delayed table binding). When context is non-null the user picked a leaf
-  // table or a kitable with exactly one table; null signals "create a draft
-  // — the user will pick the table inside the trigger config panel
-  // afterwards". kitablePath, when set, controls where the resulting
-  // workflow lands in the workspace tree.
   const [documentToolbarPortal, setDocumentToolbarPortal] =
     useState<HTMLElement | null>(null)
   const handleDocumentToolbarMount = useCallback(
@@ -184,20 +155,6 @@ export function WorkspaceScreen({
     toggleSidebarSection,
   } = chrome
   const importInputRef = useRef<HTMLInputElement | null>(null)
-  // The kition:workflow:changed bus (dispatched from features/workflow/api
-  // on every patch/delete) drives a sidebar refresh so the per-kitable
-  // workflow leaves stay in lockstep with the workflow list.
-  useEffect(() => {
-    function onWorkflowChanged() {
-      void kitableChildrenIndex.refresh()
-    }
-    window.addEventListener('kition:workflow:changed', onWorkflowChanged)
-    window.addEventListener(FORM_SYNC_CHANGED_EVENT, onWorkflowChanged)
-    return () => {
-      window.removeEventListener('kition:workflow:changed', onWorkflowChanged)
-      window.removeEventListener(FORM_SYNC_CHANGED_EVENT, onWorkflowChanged)
-    }
-  }, [kitableChildrenIndex])
   const openDocumentTabRef = useRef<(document: WorkspaceDocument) => void>(
     () => {},
   )
@@ -223,7 +180,6 @@ export function WorkspaceScreen({
   const agentTurnContextRef = agentTurn.turnContextRef
   const handleAgentInsertionContextChange = agentTurn.handleInsertionContextChange
   const getAgentTurnContext = agentTurn.getTurnContext
-  const tableAgentRefreshRef = useRef<(() => Promise<void> | void) | null>(null)
   const documentSession = useWorkspaceDocumentSession({
     editorLocked: editorView.locked,
     editorMode: editorView.editorMode,
@@ -296,9 +252,6 @@ export function WorkspaceScreen({
         refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true }),
       ])
     },
-    onTableMutated: async () => {
-      await tableAgentRefreshRef.current?.()
-    },
     onWhiteboardPatch: whiteboardBridge.receivePatch,
     onWhiteboardPatchCancelled: whiteboardBridge.cancelPreview,
     onDesignPatch: designBridge.receivePatch,
@@ -368,15 +321,10 @@ export function WorkspaceScreen({
 
 
   const {
-    openKitableTable,
-    openKitableDashboard,
-    openKitableWorkflow,
+    openTableFileWorkflow,
     openWorkspaceWorkflow,
     openBoard,
-    openKitableContainer,
-  } = useWorkspaceKitableOpeners({
-    activeWorkspaceTab,
-    kitableChildrenIndex,
+  } = useWorkspaceOpeners({
     upsertWorkspaceTab,
     setActiveResourcePath,
     workflowOpen,
@@ -404,30 +352,15 @@ export function WorkspaceScreen({
     workflowOpen,
     onCloseWorkflow,
     openDesign: design.open,
-    openKitableContainer,
     openBoard,
     openDocument,
   })
 
-  const activeKitablePath = resolveActiveKitablePath(activeWorkspaceTab, activeDocumentFormat)
-  const activeKitableMode = resolveKitableSidebarMode(activeWorkspaceTab, workflowOpen)
-
-  const tableAgent = useWorkspaceTableAgentContext({ activeWorkspaceTab })
-  const {
-    context: tableAgentContext,
-    documentPath: tableAgentDocumentPath,
-    activeDataWorkspaceTableId,
-  } = tableAgent
-  tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
+  // The table file the workflow workbench is scoped to, when its tab names one.
+  const activeTableFilePath = activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.tablePath ?? '' : ''
   whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
   designBridge.setActiveDesignPath(activeWorkspaceTab?.type === 'design' ? activeWorkspaceTab.path : '')
-  agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({
-    activeWorkspaceTab,
-    tableAgentContext,
-    tableAgentDocumentPath,
-    docIdByKitablePath: kitableChildrenIndex.docIdByKitablePath,
-    activeDataWorkspaceTableId,
-  }))
+  agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({ activeWorkspaceTab }))
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
   const agentPanel = useWorkspaceAgentPanel({
     rootPath,
@@ -494,7 +427,6 @@ export function WorkspaceScreen({
     persistActiveDocument,
     remapWorkspaceTabPaths: remapOpenedPaths,
     renameWorkspaceTabPath,
-    renameKitableChildrenIndexPath: kitableChildrenIndex.renameKitablePath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,
     setAgentModifiedDocumentPaths,
@@ -510,8 +442,6 @@ export function WorkspaceScreen({
     createDocument,
     createDocumentInside,
     createFolder,
-    createTable,
-    createTableInsideKitable,
     deleteDocumentNode,
     importBrowserFiles,
     openWorkspaceFolder,
@@ -534,89 +464,20 @@ export function WorkspaceScreen({
 
   const templateDialogs = useWorkspaceTemplateDialogs({
     createDocument,
-    createTable,
     selectedPlatform,
-    kitableChildrenIndex,
-    upsertWorkspaceTab,
-    setActiveResourcePath,
-    updateTreeMetadata: workspaceTree.updateTreeMetadata,
-    setError,
-    setFeedback,
   })
-  const {
-    documentTemplateDialogState,
-    kitableTemplateDialogState,
-    openDocumentTemplateDialog,
-    closeDocumentTemplateDialog,
-    openKitableTemplateDialog,
-    closeKitableTemplateDialog,
-    createDocumentFromTemplate: handleCreateDocumentFromTemplate,
-    createKitableFromTemplate: handleCreateKitableFromTemplate,
-  } = templateDialogs
+  const { openDocumentTemplateDialog } = templateDialogs
 
   const rowActions = useWorkspaceTreeRowActions({
-    workspaceTabs,
-    activeWorkspaceTabId,
-    upsertWorkspaceTab,
-    kitableChildrenIndex,
-    activeResourcePath,
-    setActiveResourcePath,
-    setError,
-    setFeedback,
     deleteDocumentNode,
     renameWorkspaceNode,
   })
-  const {
-    renameKitableTableLeaf,
-    deleteKitableTableLeaf,
-  } = rowActions
-
-  // The mode chooser dialog runs against an optional (documentId, tableId)
-  // pair. Two routing rules drive how callers reach this:
-  //   - .kitable container row: look up the kitable's tables via the
-  //     children index. 0 tables → surface an error (kitable has nothing
-  //     for the workflow to react to yet). 1 table → open the mode
-  //     dialog with that table as the pre-bound scope. 2+ tables → pass all
-  //     table options into the dialog so the user chooses the trigger table
-  //     before selecting a template.
-  //   - virtual `table://` leaf: resolve the parent kitable + table from
-  //     the leaf path and open the mode dialog with that scope (legacy
-  //     entry, retained for callers that hand us a leaf node).
-  const workflowCreateMode = useWorkspaceWorkflowCreateMode({
-    kitableChildrenIndex,
-    upsertWorkspaceTab,
-    setActiveResourcePath,
-    updateTreeMetadata: workspaceTree.updateTreeMetadata,
-    setError,
-  })
-  const autoCreateModeState = workflowCreateMode.state
-  const autoCreateModeBusyKind = workflowCreateMode.busyKind
-  const autoCreateModeBusyTemplateId = workflowCreateMode.busyTemplateId
-  const autoCreateModeError = workflowCreateMode.error
-  const openWorkflowModeDialogForContext = workflowCreateMode.openForContext
-  const openWorkflowCreateModeDialog = workflowCreateMode.openForTreeNode
-  const createWorkflowFromKitableSidebar = workflowCreateMode.openForKitable
-  const closeWorkflowCreateModeDialog = workflowCreateMode.close
-  const handleWorkflowCreateModeSelect = workflowCreateMode.select
 
   const createFlows = useWorkspaceCreateFlows({
-    activeWorkspaceTab,
-    kitableChildrenIndex,
     createMenuFolder,
     createFolder,
-    createTableInsideKitable,
-    upsertWorkspaceTab,
-    setActiveResourcePath,
-    updateTreeMetadata: workspaceTree.updateTreeMetadata,
-    openKitableDashboard,
-    openKitableWorkflow,
-    setError,
+    openTableFileWorkflow,
   })
-  const {
-    createTableFromKitableSidebar,
-    createDashboardFromKitableSidebar,
-    createFormFromKitableSidebar,
-  } = createFlows
 
   const workspaceMoveTargets = useMemo(
     () => workspaceTree.flatTreeNodes.filter(
@@ -650,7 +511,7 @@ export function WorkspaceScreen({
         <WorkflowRoute
           workflowContext={workflowContext}
           schemaLookup={workflowSchemaLookup}
-          scopedKitablePath={activeKitablePath || undefined}
+          scopedTablePath={activeTableFilePath || undefined}
           onExit={onCloseWorkflow}
           rootPath={rootPath}
         />
@@ -716,7 +577,6 @@ export function WorkspaceScreen({
     activeDocumentFormat,
     activeResourcePath,
     treeState: workspaceTree,
-    renameKitableChildrenIndexPath: kitableChildrenIndex.renameKitablePath,
     ensureActiveDocumentSaved,
     setAgentModifiedDocumentPaths,
     remapWorkspaceTabPaths,
@@ -757,22 +617,13 @@ export function WorkspaceScreen({
     />
   ) : null
 
-  const handleTableFileImported = useCallback(async (path: string | undefined) => {
-    await refreshWorkspaceDocuments(path, { silent: true, treeOnly: true })
-    await kitableChildrenIndex.refresh()
-    if (path) openKitableContainer(path)
-  }, [kitableChildrenIndex, openKitableContainer, refreshWorkspaceDocuments])
-
   const { openSidebarPath } = useWorkspaceSidebarNavigation({
-    kitableChildrenIndex,
-    upsertWorkspaceTab,
-    setActiveResourcePath,
     workflowOpen,
     onCloseWorkflow,
     onCloseProfile,
     openDesign: design.open,
     openBoard,
-    openKitableContainer,
+    openWorkflows: (tablePath) => (tablePath ? openTableFileWorkflow(tablePath) : openWorkspaceWorkflow()),
     openDocument,
   })
 
@@ -797,11 +648,11 @@ export function WorkspaceScreen({
     expandPrivateSection: () => setSidebarSectionsExpanded((current) => ({ ...current, private: true })),
     createDocumentInside,
     openDocumentTemplateDialog,
-    openKitableTemplateDialog,
     createDesign: design.create,
     kitCreations,
     openBoardTemplateDialog: boardCreation.openTemplateDialog,
     openWorkspaceWorkflow,
+    openTableFileWorkflow,
     onCloseProfile,
   })
 
@@ -813,17 +664,10 @@ export function WorkspaceScreen({
     onOpenModelSettings: openModelSettings,
   })
 
-  const kitableSidebarActions: WorkspaceKitableSidebarActions = {
-    createDashboard: createDashboardFromKitableSidebar,
-    createTable: createTableFromKitableSidebar,
-    createForm: createFormFromKitableSidebar,
-    createWorkflow: createWorkflowFromKitableSidebar,
-    openDashboard: openKitableDashboard,
-    openTable: openKitableTable,
-    openWorkflow: openKitableWorkflow,
-    renameTableLeaf: renameKitableTableLeaf,
-    deleteTableLeaf: deleteKitableTableLeaf,
-  }
+  // The empty state's "New table": a table file from the Table kit, at the workspace root.
+  const createTableFile = useCallback(() => {
+    void kitCreations.find((kit) => kit.id === 'table')?.create('')
+  }, [kitCreations])
 
   return (
     <>
@@ -849,8 +693,6 @@ export function WorkspaceScreen({
         createFlows={createFlows}
         templateDialogs={templateDialogs}
         boardCreation={boardCreation}
-        workflowCreateMode={workflowCreateMode}
-        onTableFileImported={handleTableFileImported}
       />
       <WorkspaceLayout
         sidebarWidth={effectiveSidebarWidth}
@@ -881,7 +723,6 @@ export function WorkspaceScreen({
               onToggleSidebar: toggleSidebarCollapsed,
             }}
             desktop={isDesktopRuntime()}
-            onCreateWorkflowForTable={openWorkflowCreateModeDialog}
             onOpen={openSidebarPath}
             onOpenSearch={onOpenSearch}
             onRefreshed={() => notify.success(t('feedback.refreshed'))}
@@ -899,11 +740,6 @@ export function WorkspaceScreen({
         }
         editor={(
           <WorkspaceEditorFrame
-            kitablePath={activeKitablePath}
-            kitableMode={activeKitableMode}
-            activeTab={activeWorkspaceTab}
-            kitableChildrenIndex={kitableChildrenIndex}
-            kitableActions={kitableSidebarActions}
             workbench={workflowWorkbench}
             editor={{
               rootPath,
@@ -914,7 +750,6 @@ export function WorkspaceScreen({
               editorView,
               editorPreviewHtml,
               galleryPanelProps,
-              tableAgent,
               agentPanel,
               activeAgentSession: activeWorkspaceAgentSession,
               agentBusySessions,
@@ -931,10 +766,10 @@ export function WorkspaceScreen({
               },
               templateDialogs,
               workflows: {
-                createForKitable: createWorkflowFromKitableSidebar,
-                openKitableWorkflow,
+                openTableFileWorkflow,
                 openWorkspaceWorkflow,
               },
+              onCreateTable: createTableFile,
               onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
               documentTranslation,
               onAgentInsertionContextChange: handleAgentInsertionContextChange,

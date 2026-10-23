@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DataAttachment } from '@kition/table-editor/types/dataDocument'
+type DataAttachment = { name: string; url: string; mimeType?: string }
 import { designMarkdownLink, sendDesignToTable, type DesignHandoffApi } from './designHandoff'
 
-const ref = { documentId: 3, tableId: 9, recordId: 41, field: 'Designs' }
+const ref = { path: 'Shop.ktable', tableId: '9', recordId: '41', field: 'Designs' }
 const uploaded: DataAttachment = { name: 'Poster.png', url: 'attachments/poster.png', mimeType: 'image/png' }
 
 function api(current: unknown): DesignHandoffApi & { updateRecord: ReturnType<typeof vi.fn> } {
@@ -23,7 +23,7 @@ describe('design hand-off', () => {
     const client = api([existing, 'stray'])
     const file = new File([new Uint8Array([1])], 'Poster.png', { type: 'image/png' })
     await expect(sendDesignToTable(client, ref, file)).resolves.toEqual(uploaded)
-    expect(client.uploadAttachment).toHaveBeenCalledWith(3, 9, file)
+    expect(client.uploadAttachment).toHaveBeenCalledWith(ref, file)
     expect(client.updateRecord).toHaveBeenCalledWith(ref, { Designs: [existing, uploaded] })
   })
 

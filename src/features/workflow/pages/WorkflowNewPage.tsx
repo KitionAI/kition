@@ -8,19 +8,20 @@ import type { RuntimeWritingModel } from '@/types'
 
 export interface WorkflowNewPageProps {
   tableName: string
-  documentId?: string
+  /** The table file's workspace path. */
+  documentPath?: string
   tableId?: string
   onSubmit: (input: {
     prompt: string
     model: RuntimeWritingModel
-    /** The (documentId, tableId, tableName) tuple the AI build endpoint
-     *  must anchor the workflow on. For the kitable-scoped mount this
-     *  is the same as the (documentId, tableId, tableName) props; for
+    /** The (documentPath, tableId, tableName) tuple the AI build endpoint
+     *  must anchor the workflow on. For the table-file-scoped mount this
+     *  is the same as the (documentPath, tableId, tableName) props; for
      *  the no-context mount it comes from WorkflowLauncher's inline
      *  table picker. */
     context: WorkflowRouteContext
   }) => void
-  schemaLookup?: (documentId: string, tableId: string) => Promise<TableSchema>
+  schemaLookup?: (documentPath: string, tableId: string) => Promise<TableSchema>
   /** Initial launcher view. When the caller routes the user in for AI chat
    *  (mode=ai), pass 'ai-prompt' so the prompt textarea is the landing,
    *  not the gallery hero with a duplicate "Generate With AI" button. */
@@ -30,9 +31,9 @@ export interface WorkflowNewPageProps {
   rootPath?: string
 }
 
-export function WorkflowNewPage({ tableName, documentId, tableId, onSubmit, schemaLookup, initialView, rootPath }: WorkflowNewPageProps) {
+export function WorkflowNewPage({ tableName, documentPath, tableId, onSubmit, schemaLookup, initialView, rootPath }: WorkflowNewPageProps) {
   const tableContext = {
-    documentId: documentId || '',
+    documentPath: documentPath || '',
     tableId: tableId || '',
     tableName,
   }

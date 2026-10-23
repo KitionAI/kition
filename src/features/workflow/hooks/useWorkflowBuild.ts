@@ -101,7 +101,8 @@ async function* readSSE(
 export interface WorkflowBuildInput {
   prompt: string
   baseId: string
-  documentId: string
+  /** The table file's workspace path (`crm.ktable`). */
+  documentPath: string
   tableId: string
   model: RuntimeWritingModel
 }

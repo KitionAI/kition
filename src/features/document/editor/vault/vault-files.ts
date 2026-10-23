@@ -50,7 +50,7 @@ export async function loadVaultLinkableFiles(): Promise<VaultTreeItem[]> {
     try {
       const resp = await vaultClient.list()
       const all = flatten(resp.items).filter(
-        (t) => t.type === 'file' && /\.(md|kitable)$/i.test(t.path),
+        (t) => t.type === 'file' && /\.(md|ktable)$/i.test(t.path),
       )
       linkableCache = { fetchedAt: Date.now(), files: all }
       return all

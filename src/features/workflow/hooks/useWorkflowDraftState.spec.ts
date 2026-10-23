@@ -41,7 +41,7 @@ function makeWorkflow(over: Partial<WorkflowDefinition> = {}): WorkflowDefinitio
     name: 'Sample',
     description: '',
     enabled: false,
-    trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentId: 'doc_1' } as any,
+    trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentPath: 'crm.ktable' } as any,
     action: {
       nodeId: 'action_1',
       type: 'send_email',

@@ -12,8 +12,8 @@ import { triggerLabel, workflowStatus, type TableLabel } from '@/features/workfl
 import { FlowLine, StatusPill } from '@/features/workflow/pages/WorkflowHomePagePrimitives'
 
 export type WorkflowEmptyStateProps = {
-  scopedKitablePath?: string
-  scopedKitableLabel: string
+  scopedTablePath?: string
+  scopedTableFileLabel: string
   scopedWorkflows: WorkflowDefinition[]
   latestRuns: Record<string, WorkflowRunRecord | null>
   tableLabels: Record<string, TableLabel>
@@ -23,29 +23,29 @@ export type WorkflowEmptyStateProps = {
 }
 
 /**
- * What the page shows with no workflow open. Inside a .kitable with no
- * workflows: one create button, so templates bind under this kitable
+ * What the page shows with no workflow open. Inside a .ktable with no
+ * workflows: one create button, so templates bind under this table file
  * through the mode dialog. Outside any scope: the launcher hero. Inside a
  * scope that has workflows: an inline picker.
  */
 export function WorkflowEmptyState(props: WorkflowEmptyStateProps) {
   const { t } = useTranslation('workflow')
   const { launcher, scopedWorkflows } = props
-  if (scopedWorkflows.length === 0 && props.scopedKitablePath) {
+  if (scopedWorkflows.length === 0 && props.scopedTablePath) {
     return (
-      <div className="flex h-full flex-col items-center justify-center" data-testid="kitable-workflows-empty">
+      <div className="flex h-full flex-col items-center justify-center" data-testid="table-file-workflows-empty">
         <EmptyState
           icon={<FileText />}
           title={t('panels.home.emptyCreateTitle')}
           description={t('panels.home.emptyCreateHint')}
           action={(
-            <Button className="bg-primary hover:bg-primary/90" onClick={props.onOpenModeDialog} data-testid="kitable-workflows-create-cta">
+            <Button className="bg-primary hover:bg-primary/90" onClick={props.onOpenModeDialog} data-testid="table-file-workflows-create-cta">
               <Plus className="mr-1 size-4" />
               {t('panels.home.emptyCreateButton')}
             </Button>
           )}
         />
-        {launcher.error ? <p className="-mt-6 pb-6 text-xs text-destructive" data-testid="kitable-workflows-error">{launcher.error}</p> : null}
+        {launcher.error ? <p className="-mt-6 pb-6 text-xs text-destructive" data-testid="table-file-workflows-error">{launcher.error}</p> : null}
       </div>
     )
   }
@@ -60,15 +60,15 @@ export function WorkflowEmptyState(props: WorkflowEmptyStateProps) {
         busyAction={launcher.busyAction}
         busyTemplateId={launcher.busyTemplateId}
         errorMessage={launcher.error}
-        scopeLabel={props.scopedKitableLabel || undefined}
+        scopeLabel={props.scopedTableFileLabel || undefined}
       />
     )
   }
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-6" data-testid="kitable-workflows-picker">
+    <div className="mx-auto w-full max-w-3xl px-6 py-6" data-testid="table-file-workflows-picker">
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         {scopedWorkflows.map((workflow) => (
-          <div key={workflow.id} data-testid="kitable-workflows-picker-item" className="border-b border-border/60 last:border-b-0 bg-card hover:bg-muted/40">
+          <div key={workflow.id} data-testid="table-file-workflows-picker-item" className="border-b border-border/60 last:border-b-0 bg-card hover:bg-muted/40">
             <div
               role="button"
               tabIndex={0}

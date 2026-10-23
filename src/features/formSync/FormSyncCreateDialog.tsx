@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileInput } from 'lucide-react'
 
-import { getDataDocument } from '@/api/dataDocuments'
+import { listTableFiles, type KitTablesTable } from '@/api/kitTables'
 import { Button } from '@kition/app-ui/button'
 import {
   Dialog,
@@ -12,41 +12,42 @@ import {
   DialogTitle,
 } from '@kition/app-ui/dialog'
 import { Input } from '@kition/app-ui/input'
-import type { DataDocument, DataTable } from '@kition/table-editor'
 
 import { createFormSyncWorkflow, type FormSyncWorkflow } from './api'
-import { buildInitialFormFields, findTargetTable } from './formBuilder'
+import { buildInitialFormFields, findTargetTable, loadFormTargetTable } from './formBuilder'
 
 export function FormSyncCreateDialog({
   open,
-  documentId,
+  documentPath,
   initialTableId,
   onOpenChange,
   onCreated,
 }: {
   open: boolean
-  documentId: string
-  initialTableId?: number
+  /** The table file the form writes to. */
+  documentPath: string
+  initialTableId?: string
   onOpenChange: (open: boolean) => void
   onCreated: (workflow: FormSyncWorkflow) => void
 }) {
-  const [document, setDocument] = useState<DataDocument | null>(null)
+  const [tables, setTables] = useState<KitTablesTable[] | null>(null)
   const [tableId, setTableId] = useState('')
   const [name, setName] = useState('New form')
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving'>('idle')
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!open || !documentId) return
+    if (!open || !documentPath) return
     let cancelled = false
     setStatus('loading')
     setError('')
-    void getDataDocument(Number(documentId))
-      .then((nextDocument) => {
+    void listTableFiles()
+      .then(({ files }) => {
         if (cancelled) return
-        setDocument(nextDocument)
-        const selected = findTargetTable(nextDocument.tables, String(initialTableId || ''))
-          || nextDocument.tables?.[0]
+        const nextTables = files.find((file) => file.path === documentPath)?.tables ?? []
+        setTables(nextTables)
+        const selected = findTargetTable(nextTables, String(initialTableId || ''))
+          || nextTables[0]
         setTableId(selected?.id != null ? String(selected.id) : '')
         setName(selected?.title ? `${selected.title} form` : 'New form')
         setStatus('idle')
@@ -57,31 +58,31 @@ export function FormSyncCreateDialog({
         setStatus('idle')
       })
     return () => { cancelled = true }
-  }, [documentId, initialTableId, open])
+  }, [documentPath, initialTableId, open])
 
   const selectedTable = useMemo(
-    () => findTargetTable(document?.tables, tableId),
-    [document?.tables, tableId],
+    () => findTargetTable(tables ?? undefined, tableId),
+    [tables, tableId],
   )
 
   async function createDraft() {
     if (!selectedTable || !name.trim()) return
-    const fields = buildInitialFormFields(selectedTable)
-    if (fields.length === 0) {
-      setError('The selected table has no fields that can be used in a form.')
-      return
-    }
     setStatus('saving')
     setError('')
     try {
+      const fields = buildInitialFormFields(await loadFormTargetTable(documentPath, selectedTable.id))
+      if (fields.length === 0) {
+        setError('The selected table has no fields that can be used in a form.')
+        return
+      }
       const published = false
       const workflow = await createFormSyncWorkflow({
         name: name.trim(),
         template_id: createCustomTemplateId(),
         fields: fields.map(({ targetFieldTitle: _targetFieldTitle, ...field }) => field),
         target: {
-          document_id: documentId,
-          table_id: String(selectedTable.id),
+          document_path: documentPath,
+          table_id: selectedTable.id,
           field_mappings: fields.map((field) => ({
             source_key: field.key,
             target_field_title: field.targetFieldTitle,
@@ -126,12 +127,12 @@ export function FormSyncCreateDialog({
               onChange={(event) => {
                 const nextId = event.target.value
                 setTableId(nextId)
-                const table = findTargetTable(document?.tables, nextId)
+                const table = findTargetTable(tables ?? undefined, nextId)
                 if (table?.title) setName(`${table.title} form`)
               }}
               disabled={status === 'loading'}
             >
-              {(document?.tables || []).map((table: DataTable) => (
+              {(tables || []).map((table) => (
                 <option key={table.id} value={table.id}>{table.title || table.name}</option>
               ))}
             </select>

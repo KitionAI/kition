@@ -4,7 +4,6 @@ import type { AgentSession } from '@/api/agent'
 import type { WorkspaceAgentPanelState } from '@/features/workspace/components/WorkspaceAgentChrome'
 import { WorkspaceEditorContent } from '@/features/workspace/components/WorkspaceEditorContent'
 import { WorkspaceEditorPane } from '@/features/workspace/components/WorkspaceEditorPane'
-import type { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import type { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
 
@@ -34,7 +33,6 @@ export type WorkspaceScreenEditorInput = {
   editorView: { locked: boolean; editorMode: WorkspaceEditorContentProps['editorMode'] }
   editorPreviewHtml: string
   galleryPanelProps: WorkspaceEditorContentProps['galleryPanelProps']
-  tableAgent: Pick<ReturnType<typeof useWorkspaceTableAgentContext>, 'handleContextChange'>
   agentPanel: Pick<WorkspaceAgentPanelState, 'open' | 'setOpen' | 'setHistoryOpen'>
   activeAgentSession: AgentSession | null
   agentBusySessions: Set<number>
@@ -51,13 +49,15 @@ export type WorkspaceScreenEditorInput = {
   }
   templateDialogs: Pick<
     ReturnType<typeof useWorkspaceTemplateDialogs>,
-    'documentEditorFocusRequest' | 'openDocumentTemplateDialog' | 'openKitableTemplateDialog'
+    'documentEditorFocusRequest' | 'openDocumentTemplateDialog'
   >
   workflows: {
-    createForKitable: WorkspaceEditorContentProps['onCreateWorkflow']
-    openKitableWorkflow: WorkspaceEditorContentProps['onOpenWorkflow']
+    /** The workflows of one table file. */
+    openTableFileWorkflow: (tablePath: string, workflowId?: string) => void
     openWorkspaceWorkflow: (workflowId?: string) => void
   }
+  /** A new table file, from the Table kit. */
+  onCreateTable: () => void
   onAskDocumentAgent: WorkspaceEditorContentProps['onAskDocumentAgent']
   documentTranslation: WorkspaceEditorContentProps['documentTranslation']
   onAgentInsertionContextChange: WorkspaceEditorContentProps['onAgentInsertionContextChange']
@@ -67,7 +67,7 @@ export type WorkspaceScreenEditorInput = {
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { documentSession, tableAgent, agentPanel, activeAgentSession, whiteboard, design, templateDialogs, workflows } = input
+  const { documentSession, agentPanel, activeAgentSession, whiteboard, design, templateDialogs, workflows } = input
   const revision = documentSession.activeDocumentRevision
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
@@ -105,13 +105,11 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     onDesignAgentBridgeChange: design.onBridgeChange,
     onGenerateDesignImage: design.available ? design.onGenerateImage : undefined,
     onCancelDesignAgent: activeAgentSession ? () => input.stopAgentMessage(activeAgentSession.id) : undefined,
-    onTableAgentContextChange: tableAgent.handleContextChange,
-    onCreateWorkflow: workflows.createForKitable,
-    onOpenWorkflow: workflows.openKitableWorkflow,
+    onOpenWorkflow: workflows.openTableFileWorkflow,
     onOpenGlobalWorkflow: workflows.openWorkspaceWorkflow,
     onOpenWorkflows: () => workflows.openWorkspaceWorkflow(),
     onCreateDocument: () => templateDialogs.openDocumentTemplateDialog(''),
-    onCreateTable: () => templateDialogs.openKitableTemplateDialog(''),
+    onCreateTable: input.onCreateTable,
     onOpenAgent: () => {
       openAgentPanel()
       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
@@ -129,11 +127,6 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     onOpenDocument: (path) => void documentSession.openDocument(path),
     onToolbarMount: input.onToolbarMount,
     onSetEditorMode: input.onSetEditorMode,
-    tableAgentOpen: agentPanel.open,
-    onTableAgentOpenChange: (open) => {
-      agentPanel.setOpen(open)
-      agentPanel.setHistoryOpen(false)
-    },
     workspaceTabs: input.workspaceTabs,
     rootPath: input.rootPath,
   }

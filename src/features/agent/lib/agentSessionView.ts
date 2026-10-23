@@ -18,7 +18,6 @@ import type {
   AgentSessionEventsTurnEndReason,
 } from '@/api/generated/agent-session-events'
 import type { AgentStreamAssistantStreamFrame, AgentStreamStreamChunk } from '@/api/generated/agent-stream'
-import { replyWithoutTablePlan } from './agentTablePlan'
 
 export type AgentAssistantStreamFrame = AgentStreamAssistantStreamFrame
 
@@ -203,7 +202,7 @@ function settleRun(run: AgentToolRun | undefined, event: AgentSessionEventsToolR
 
 function lastReply(turn: AgentTurnView): string | undefined {
   const index = lastIndexWhere(turn.steps, (step) => Boolean(step.message?.content.trim()))
-  return index < 0 ? undefined : replyWithoutTablePlan(turn.steps[index].message!.content)
+  return index < 0 ? undefined : turn.steps[index].message!.content.trim()
 }
 
 function endTurn(turn: AgentTurnView, event: Extract<AgentSessionEventsSessionEvent, { type: 'turn/end' }>): AgentTurnView {

@@ -6,7 +6,7 @@ import * as React from 'react';
 import { cn } from './utils';
 import { useMounted } from './hooks/use-mounted';
 
-export function TooltipProvider({
+function TooltipProvider({
   delayDuration = 200,
   disableHoverableContent = true,
   skipDelayDuration = 0,
@@ -22,13 +22,13 @@ export function TooltipProvider({
   );
 }
 
-export const Tooltip = TooltipPrimitive.Root;
+const Tooltip = TooltipPrimitive.Root;
 
-export const TooltipTrigger = TooltipPrimitive.Trigger;
+const TooltipTrigger = TooltipPrimitive.Trigger;
 
 export const TooltipPortal = TooltipPrimitive.Portal;
 
-export function TooltipContent({
+function TooltipContent({
   className,
   sideOffset = 4,
   ...props

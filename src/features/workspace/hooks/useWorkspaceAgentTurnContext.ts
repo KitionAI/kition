@@ -13,8 +13,6 @@ type BuildTurnContextInput = Parameters<typeof buildAgentTurnContext>[0]
 
 const INITIAL_TURN_CONTEXT: AgentTurnContext = {
   activeDocumentPath: '',
-  activeDataDocumentId: 0,
-  activeDataTableId: 0,
   taskMode: 'auto',
 }
 
@@ -27,7 +25,7 @@ type UseWorkspaceAgentTurnContextOptions = {
 
 /**
  * The context attached to every Agent turn: what the user is looking at
- * (document, table, board, design) and the cursor-aware image insertion
+ * (document, workflow, board, design) and the cursor-aware image insertion
  * anchor. The workspace screen refreshes the base context during render;
  * `getTurnContext` finalizes it at send time.
  */

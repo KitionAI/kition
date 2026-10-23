@@ -35,8 +35,7 @@
     "dist-desktop/**",
     "src-tauri/target/**",
     "test-results/**",
-    "src/api/generated/**",
-    "packages/table-editor/src/generated/**"
+    "src/api/generated/**"
   ],
   "ignoreDependencies": [
     "@tauri-apps/cli",

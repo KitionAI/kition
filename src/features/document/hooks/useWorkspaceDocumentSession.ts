@@ -125,12 +125,10 @@ export function useWorkspaceDocumentSession({
   const [, setSessionTick] = useState(0)
 
   const activeDocumentRef = useRef<WorkspaceDocument | null>(null)
-  const activeDocumentFormatRef = useRef<WorkspaceDocumentFormat>('markdown')
   const activeSessionRef = useRef<DocumentSession | null>(null)
   const openedEntriesRef = useRef<Record<string, OpenedDocumentEntry>>({})
   const documentRevisionsRef = useRef<Record<string, PendingDocumentRevision>>({})
   const revisionSavingPathRef = useRef('')
-  const externalRefreshVersionRef = useRef(0)
   const rootPathRef = useRef(rootPath)
   const isModifiedRef = useRef(isModifiedDocumentPath)
   const clearModifiedRef = useRef(onClearModifiedDocumentPath)
@@ -141,7 +139,6 @@ export function useWorkspaceDocumentSession({
   const sessionWatchersRef = useRef(new Map<DocumentSession, () => void>())
 
   activeDocumentRef.current = activeDocument
-  activeDocumentFormatRef.current = activeDocumentFormat
   documentRevisionsRef.current = documentRevisions
   revisionSavingPathRef.current = revisionSavingPath
   isModifiedRef.current = isModifiedDocumentPath
@@ -351,7 +348,6 @@ export function useWorkspaceDocumentSession({
     updateEntries((current) => ({ ...current, [document.path]: entry }))
     // The refs at once: the session may open before the next render.
     activeDocumentRef.current = entry.document
-    activeDocumentFormatRef.current = draft.format
     setActiveDocument(entry.document)
     setActiveResourcePath('')
     setActiveDocumentFormat(draft.format)
@@ -585,7 +581,6 @@ export function useWorkspaceDocumentSession({
   /**
    * The agent changed the open document `path`. A Markdown document had the edit applied live by
    * its session (under review there), or, when the runtime wrote the file instead, merges it (D4).
-   * A data document is re-read and the difference offered for review.
    */
   async function refreshDocumentRevision(path: string) {
     const normalizedPath = normalizeDocumentRevisionPath(path)
@@ -596,24 +591,6 @@ export function useWorkspaceDocumentSession({
         onClearModifiedDocumentPath(normalizedPath)
       }
       return
-    }
-    const currentDocument = activeDocumentRef.current
-    if (!normalizedPath || currentDocument?.path !== normalizedPath || activeDocumentFormatRef.current !== 'data') {
-      return
-    }
-
-    const refreshVersion = ++externalRefreshVersionRef.current
-    try {
-      const nextDocument = await readWorkspaceDocument(normalizedPath)
-      if (externalRefreshVersionRef.current !== refreshVersion) return
-      if (activeDocumentRef.current?.path !== normalizedPath) return
-      void applyWorkspaceDocument(nextDocument)
-      setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, nextDocument))
-      onClearModifiedDocumentPath(normalizedPath)
-    } catch (requestError: unknown) {
-      if (externalRefreshVersionRef.current === refreshVersion) {
-        onError(errorMessage(requestError) || t('revision.refreshFailed'))
-      }
     }
   }
 
@@ -711,11 +688,7 @@ export function useWorkspaceDocumentSession({
         .then((workspace) => setTreeItems(workspace.items || []))
         .catch(() => {})
     }
-    if (change.eventType === 'unlink') return
-    // Markdown sessions merge their own file's changes; a data document is re-read for review.
-    if (change.path === activeDocumentRef.current?.path && activeDocumentFormatRef.current === 'data') {
-      void refreshDocumentRevision(change.path)
-    }
+    // Markdown sessions merge their own file's changes.
   }), [setTreeItems])
 
   // Cmd/Ctrl+S writes the active document now.

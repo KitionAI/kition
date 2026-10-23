@@ -4,9 +4,7 @@ import { ArrowLeft, MessageSquare } from 'lucide-react'
 
 import { BuildProgressCard } from '@/features/agent/components/BuildProgressCard'
 import { RightDrawer } from '@/components/RightDrawer'
-import { TableEditor } from '@kition/table-editor/TableEditor'
-import { KitionTableProviders } from '@/features/table/public'
-import type { DataRecordValue } from '@kition/table-editor'
+import { KitFrame } from '@/features/kits/public'
 import type {
   ScenarioBuildEvent,
   ScenarioBuildStatus,
@@ -15,20 +13,21 @@ import type {
 export interface ScenarioBuildPageProps {
   events: ScenarioBuildEvent[]
   status: ScenarioBuildStatus
-  baseId: string | null
+  basePath: string | null
   baseName: string | null
   error: string | null
   /** Called when the user wants to exit the build page and go back. */
   onClose: () => void
 }
 
+/** The Table kit's package, which shows the new table file. */
+const TABLE_KIT = { kitId: 'kit.table', dir: 'table-ui' }
+
 /**
  * Layout shown once a scenario build is in flight (or finished). The left
- * "central area" mounts the live `TableEditor` (Task 10) once both
- * `base.created` and `table.created` events have landed, and forwards
- * every subsequent `cell.ai.filled` event to it as an append-only patch
- * list so newly extracted cells flip from the AI placeholder to the real
- * value without any manual refresh.
+ * "central area" opens the new table file in the Table kit once both
+ * `base.created` and `table.created` events have landed; the runtime writes
+ * the AI-filled cells through the kit, so they appear in the open editor live.
  *
  * Drawer semantics (PRD §3.2):
  *   - Slide in from the right (200ms ease-out) — handled by RightDrawer's CSS
@@ -41,7 +40,7 @@ export interface ScenarioBuildPageProps {
 export function ScenarioBuildPage({
   events,
   status,
-  baseId,
+  basePath,
   baseName,
   error,
   onClose,
@@ -53,31 +52,12 @@ export function ScenarioBuildPage({
   const progressTitle = baseName ?? t('scenario.buildingBase')
 
   // Derive the tableId from the first `table.created` event in the
-  // stream so we know when it's safe to mount TableEditor (and tell
-  // it which marker payload to resolve).
+  // stream so we know when the table can be shown.
   const tableId = useMemo<string | null>(() => {
     for (const event of events) {
       if (event.kind === 'table.created') return event.tableId
     }
     return null
-  }, [events])
-
-  // Project the events stream down to just the cell-fill patches. This
-  // is what TableEditor consumes via its append-only `aiCellPatches`
-  // prop; events in any other order are filtered out so we don't have
-  // to think about kind discrimination inside the hook.
-  const aiCellPatches = useMemo(() => {
-    const out: Array<{ recordId: number; fieldId: number; value: DataRecordValue }> =
-      []
-    for (const event of events) {
-      if (event.kind !== 'cell.ai.filled') continue
-      out.push({
-        recordId: event.recordId,
-        fieldId: event.fieldId,
-        value: event.value as DataRecordValue,
-      })
-    }
-    return out
   }, [events])
 
   return (
@@ -119,9 +99,8 @@ export function ScenarioBuildPage({
           <ScenarioBuildCentralContent
             status={status}
             baseName={baseName}
-            baseId={baseId}
+            basePath={basePath}
             tableId={tableId}
-            aiCellPatches={aiCellPatches}
             error={error}
           />
         </div>
@@ -143,20 +122,14 @@ export function ScenarioBuildPage({
 function ScenarioBuildCentralContent({
   status,
   baseName,
-  baseId,
+  basePath,
   tableId,
-  aiCellPatches,
   error,
 }: {
   status: ScenarioBuildStatus
   baseName: string | null
-  baseId: string | null
+  basePath: string | null
   tableId: string | null
-  aiCellPatches: ReadonlyArray<{
-    recordId: number
-    fieldId: number
-    value: DataRecordValue
-  }>
   error: string | null
 }) {
   const { t } = useTranslation('settings')
@@ -169,24 +142,13 @@ function ScenarioBuildCentralContent({
     )
   }
 
-  // Once we have both the base (= DataDocument) and the first table,
-  // mount the live editor. The synthetic `scenario:<baseId>` document
-  // path is a sentinel — TableEditor's data hook short-circuits to
-  // `getDataDocument(<baseId>)` via the marker payload, so the path
-  // never hits the workspace filesystem.
-  if (baseId && tableId) {
-    const numericBaseId = Number(baseId)
-    if (Number.isFinite(numericBaseId) && numericBaseId > 0) {
-      return (
-        <KitionTableProviders>
-          <TableEditor
-            documentPath={`scenario:${baseId}`}
-            markerContent={JSON.stringify({ data_document_id: numericBaseId })}
-            aiCellPatches={aiCellPatches}
-          />
-        </KitionTableProviders>
-      )
-    }
+  // Once the table file and its table exist, show them in the Table kit.
+  if (basePath && tableId) {
+    return (
+      <div className="h-[70vh] min-h-[420px] overflow-hidden rounded-xl border border-border" data-testid="scenario-build-table">
+        <KitFrame kit={TABLE_KIT} path={basePath} active />
+      </div>
+    )
   }
 
   if (status === 'done') {
@@ -200,7 +162,7 @@ function ScenarioBuildCentralContent({
     )
   }
 
-  if (baseId) {
+  if (basePath) {
     return (
       <div className="rounded-lg border border-border bg-muted p-4 text-sm text-foreground">
         <p className="font-medium">

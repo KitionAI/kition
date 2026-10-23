@@ -37,9 +37,3 @@ export async function readBundledAssetText(value: string): Promise<string> {
   return new TextDecoder().decode(await readBundledAssetBytes(value))
 }
 
-export function bundledAssetArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer
-}

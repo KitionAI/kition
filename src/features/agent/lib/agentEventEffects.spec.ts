@@ -111,27 +111,6 @@ describe('effectsOfEvent', () => {
     expect(effects).toEqual([{ type: 'documents-modified', paths: ['Docs/From-args.md'] }])
   })
 
-  it('reports a created kitable and every table mutation', () => {
-    const { effects } = collect([
-      turnStart(),
-      call('t1', 'data_table_create', { title: 'Samples' }),
-      ok('t1', 'data_table_create', { path: 'Admissions/Low-threshold samples.kitable', document_id: 42, table_id: 7 }),
-      call('t2', 'data_table_add_records'),
-      ok('t2', 'data_table_add_records', { created: 2 }),
-      call('t3', 'data_table_create', { kitable_path: 'Admissions/Fallback.kitable' }),
-      ok('t3', 'data_table_create', {}),
-      call('t4', 'data_table_add_fields'),
-      failed('t4', 'data_table_add_fields'),
-    ])
-    expect(effects).toEqual([
-      { type: 'documents-modified', paths: ['Admissions/Low-threshold samples.kitable'] },
-      { type: 'table-mutated' },
-      { type: 'table-mutated' },
-      { type: 'documents-modified', paths: ['Admissions/Fallback.kitable'] },
-      { type: 'table-mutated' },
-    ])
-  })
-
   it('announces a configured SMTP connection', () => {
     const { effects } = collect([
       turnStart(),

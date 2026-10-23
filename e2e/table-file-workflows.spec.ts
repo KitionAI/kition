@@ -261,11 +261,7 @@ async function openTableFileWorkflowsTab(page: Page, docPath = DOC_PATH) {
   await row.getByRole('button', { name: 'Create inside this page' }).click()
   await page.getByTestId('table-file-action-create-workflow').click()
   await expect(page.locator(`[data-testid="workspace-workflow-workbench"][data-workflow-tab-id="workflow:${docPath}"]`)).toHaveCount(1)
-  // The menu's click also reaches the tree row and opens the file in the
-  // Table kit (see the fixme test below), so bring the workflow tab forward.
-  const workflowsTab = page.locator('.document-tab-list .document-tab', { hasText: 'Workflows' })
-  await workflowsTab.click()
-  await expect(workflowsTab).toHaveClass(/is-active/)
+  await expect(page.locator('.document-tab-list .document-tab', { hasText: 'Workflows' })).toHaveClass(/is-active/)
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -280,11 +276,7 @@ test.describe('table file workflows tab', () => {
     await expect(page.getByTestId('workflow-index-create')).toBeVisible()
   })
 
-  // Renderer bug: WorkspaceCreateMenu is portaled but stays a React child of
-  // the tree row, so the click on "Workflow" bubbles to the row's onClick
-  // (WorkspaceTree.tsx) and also opens the table file, which takes the
-  // active tab from the new workflow tab.
-  test.fixme('choosing Workflow on a table file keeps the new workflow tab active', async ({ page }) => {
+  test('choosing Workflow on a table file keeps the new workflow tab active', async ({ page }) => {
     await setup(page, SINGLE_TABLE)
     await page.goto('/')
     const row = treeRow(page, DOC_PATH)
@@ -305,11 +297,7 @@ test.describe('table file workflows tab', () => {
     await expect(page.locator('[data-testid="table-file-workflows-empty"]')).toHaveCount(0)
   })
 
-  // Renderer bug: in a table file's workflow tab, "Create workflow"
-  // (workflow-index-create) calls WorkflowIndexPage's onCreateWorkflow, which
-  // WorkspaceScreenEditor.tsx wires to openTableFileWorkflow(tablePath): it
-  // re-opens the same tab and never shows the create-mode dialog.
-  test.fixme('"From a template" fetches the table schema then POSTs a workflow bound to the file', async ({ page }) => {
+  test('"From a template" fetches the table schema then POSTs a workflow bound to the file', async ({ page }) => {
     const { tables, api } = await setup(page, SINGLE_TABLE)
     await openTableFileWorkflowsTab(page)
 
@@ -333,11 +321,7 @@ test.describe('table file workflows tab', () => {
     await expect(page.getByTestId('workflow-home-body-editor')).not.toBeEmpty()
   })
 
-  // Renderer bug: in a table file's workflow tab, "Create workflow"
-  // (workflow-index-create) calls WorkflowIndexPage's onCreateWorkflow, which
-  // WorkspaceScreenEditor.tsx wires to openTableFileWorkflow(tablePath): it
-  // re-opens the same tab and never shows the create-mode dialog.
-  test.fixme('a multi-table file lets the person choose the trigger table in the mode dialog', async ({ page }) => {
+  test('a multi-table file lets the person choose the trigger table in the mode dialog', async ({ page }) => {
     const { tables, api } = await setup(page, MULTI_TABLE)
     await openTableFileWorkflowsTab(page)
 
@@ -354,11 +338,7 @@ test.describe('table file workflows tab', () => {
     expect(tables.fieldsCalls[0]).toEqual({ path: DOC_PATH, tableId: '13' })
   })
 
-  // Renderer bug: in a table file's workflow tab, "Create workflow"
-  // (workflow-index-create) calls WorkflowIndexPage's onCreateWorkflow, which
-  // WorkspaceScreenEditor.tsx wires to openTableFileWorkflow(tablePath): it
-  // re-opens the same tab and never shows the create-mode dialog.
-  test.fixme('email inbox sync is launched from the shared template picker', async ({ page }) => {
+  test('email inbox sync is launched from the shared template picker', async ({ page }) => {
     const { api } = await setup(page, MULTI_TABLE)
     await page.route('**/api/v1/email-sync/workflows', (route) => fulfillJson(route, { code: 200, data: { items: [] } }))
     await openTableFileWorkflowsTab(page)
@@ -520,12 +500,7 @@ test.describe('table file workflows tab', () => {
     await expect(page.getByTestId('workflow-add-record-test-status')).toBeVisible()
   })
 
-  // Renderer bug: cloneAddRecord and cloneLookupRecord (workflowDraft.ts)
-  // copy targetDocumentId but drop targetDocumentPath, so a scheduled
-  // workflow (no trigger file) loses its target table file in the draft:
-  // the test status names "the target table" instead of "Tasks", and a save
-  // from the draft drops the target file.
-  test.fixme('a scheduled add-record workflow keeps its target table file in the draft', async ({ page }) => {
+  test('a scheduled add-record workflow keeps its target table file in the draft', async ({ page }) => {
     const { api } = await setup(page, STARTER_TASK_TABLES)
     await openTableFileWorkflowsTab(page)
     await expect.poll(() => api.workflowPosts).toHaveLength(2)

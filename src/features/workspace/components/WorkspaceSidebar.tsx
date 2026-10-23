@@ -24,7 +24,6 @@ export function WorkspaceSidebar({
   onCloseCreateMenu,
   onCreateFolder,
   onCreateDocument,
-  onCreateTable,
   onPasteFiles,
   onRefresh,
   onOpenWorkflows,
@@ -40,7 +39,7 @@ export function WorkspaceSidebar({
   privateExpanded: boolean
   createMenuOpen: boolean
   createMenuTriggerPath: string
-  createMenuVariant?: 'workspace' | 'kitable'
+  createMenuVariant?: 'workspace' | 'tableFile'
   treeContent: ReactNode
   mediaSections?: ReactNode
   onTogglePrivate: () => void
@@ -48,7 +47,6 @@ export function WorkspaceSidebar({
   onCloseCreateMenu: () => void
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
-  onCreateTable: () => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   onRefresh?: () => void
   /** Opens the workspace-global Workflows tab. Replaces the old root-level
@@ -189,10 +187,6 @@ export function WorkspaceSidebar({
             <Search className="size-4" />
           </button>
         </div>
-        {/* Workflows are reached via per-kitable virtual leaves now — the
-            previous global header button was removed because it implied
-            workflows are workspace-scoped, which conflicts with the
-            trigger.tableId binding. */}
         {onToggleSidebar ? (
           <button
             type="button"
@@ -242,7 +236,6 @@ export function WorkspaceSidebar({
                   variant={createMenuVariant ?? 'workspace'}
                   anchorEl={headerCreateAnchor}
                   onCreateFolder={onCreateFolder}
-                  onCreateTable={onCreateTable}
                   onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}

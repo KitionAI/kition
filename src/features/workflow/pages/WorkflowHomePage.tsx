@@ -38,7 +38,9 @@ import {
   filterNodeDescription,
   filterNodeStatus,
   filterNodeTitle,
-  parseIdAsNumber,
+  tableLabelFor,
+  targetDocumentPathOf,
+  triggerSchemaOf,
   toDraft,
   triggerLabel,
   triggerStatus,
@@ -140,6 +142,7 @@ import { useWorkflowGraphEditing } from '@/features/workflow/hooks/useWorkflowGr
 import { buildTriggerTableOptions, buildWorkflowSavePatch, countRunsByStatus, filterDryRunSample } from '@/features/workflow/lib/workflowPatches'
 import { useWorkflowValidation } from '@/features/workflow/hooks/useWorkflowValidation'
 import { dryRunFilter, retryWorkflowRun } from '@/api/workflows'
+import { tableKey } from '@/api/kitTables'
 
 
 type StatusFilter = 'all' | 'active' | 'failing' | 'disabled'
@@ -155,17 +158,13 @@ export interface WorkflowHomePageProps {
    *  the in-page X to avoid stacked close affordances. Defaults to false
    *  for the legacy modal mount. */
   hideClose?: boolean
-  /** When mounted from inside a .kitable tab the empty-state launcher copy
+  /** When mounted from inside a .ktable tab the empty-state launcher copy
    *  can reference the scope by name. Pure display — the launcher actions
    *  themselves no longer bind to a table at creation time (delayed
    *  binding). Undefined → no scope label is shown. */
-  scopedKitablePath?: string
-  /** Workspace root the page is mounted under. Forwarded to
-   *  useWorkflowTableLabels so the trigger-table picker stays in lockstep
-   *  with the file-tree's kitable index — without this the picker would
-   *  fetch every data document across all workspaces and tableId
-   *  collisions would silently overwrite the in-scope rows. Undefined for
-   *  the legacy modal mount, which never carried a workspace handle. */
+  scopedTablePath?: string
+  /** Workspace root the page is mounted under. Kept for callers; table
+   *  labels always come from the open workspace. */
   rootPath?: string
   onClose?: () => void
   /** When the upstream WorkflowRoute is mid-AI-build it passes the streaming
@@ -197,7 +196,7 @@ export interface StreamingPreview {
   createdId: string | null
 }
 
-export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = false, hideClose = false, scopedKitablePath, rootPath, onClose, streamingPreview, onStreamingComplete }: WorkflowHomePageProps) {
+export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = false, hideClose = false, scopedTablePath, rootPath, onClose, streamingPreview, onStreamingComplete }: WorkflowHomePageProps) {
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([])
   const [latestRuns, setLatestRuns] = useState<Record<string, WorkflowRunRecord | null>>({})
   const [selectedId, setSelectedId] = useState(initialSelectedId || '')
@@ -231,7 +230,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
   // Lazy schema cache. ensure() short-circuits on hit and dedupes
   // concurrent fetches on the same tableId — see useTableSchemaCache.
   const schemaCache = useTableSchemaCache()
-  const schemaByTableId = schemaCache.schemas
+  const schemaByTableKey = schemaCache.schemas
   const [confirm, setConfirm] = useState<ConfirmState | null>(null)
   const { t } = useTranslation('workflow')
   const [activeTab, setActiveTab] = useState<WorkflowDetailView>('configuration')
@@ -395,20 +394,14 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
   const hasValidationErrors = Object.keys(validation).length > 0 || serverValidation.errors.length > 0
   const activeCount = useMemo(() => workflows.filter((item) => item.enabled).length, [workflows])
   // Workflows visible in the current scope: when this page is mounted under
-  // a .kitable tab, the list and counts should reflect that kitable only.
-  // The mapping goes via `tableLabels[trigger.tableId].documentPath` so we
-  // don't need a second API round-trip — labels already carry the path.
-  // Workflows whose trigger is unbound (draft) or whose table is missing
-  // from labels (race during initial load) are excluded from the scoped
-  // view; they remain visible from the global Workflows tab.
+  // a .ktable tab, the list and counts should reflect that file only.
+  // The trigger names its table file by path. Workflows whose trigger is
+  // unbound (draft) are excluded from the scoped view; they remain visible
+  // from the global Workflows tab.
   const scopedWorkflows = useMemo(() => {
-    if (!scopedKitablePath) return workflows
-    return workflows.filter((workflow) => {
-      const tableId = workflow.trigger?.tableId || ''
-      const label = tableId ? tableLabels[tableId] : null
-      return label?.documentPath === scopedKitablePath
-    })
-  }, [workflows, scopedKitablePath, tableLabels])
+    if (!scopedTablePath) return workflows
+    return workflows.filter((workflow) => Boolean(workflow.trigger?.tableId) && workflow.trigger?.documentPath === scopedTablePath)
+  }, [workflows, scopedTablePath])
   const scopedActiveCount = useMemo(
     () => scopedWorkflows.filter((item) => item.enabled).length,
     [scopedWorkflows],
@@ -559,12 +552,12 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
 
   useEffect(() => {
     if (!selected) return
-    const documentId = selected.trigger.documentId
+    const documentPath = selected.trigger.documentPath
     const tableId = selected.trigger.tableId
-    if (!documentId || !tableId) return
+    if (!documentPath || !tableId) return
     // ensure() short-circuits internally on a cache hit, so we don't
-    // need to gate on schemaByTableId[tableId] here.
-    void schemaCache.ensure(documentId, tableId, tableLabels[tableId]?.tableName)
+    // need to gate on the cache here.
+    void schemaCache.ensure(documentPath, tableId, tableLabelFor(tableLabels, documentPath, tableId)?.tableName)
   }, [selected, tableLabels, schemaCache])
 
   // Lazy-fetch the add_record action's target-table schema. Lives separate
@@ -579,14 +572,15 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
       ? draft.lookupRecord?.targetTableId || selected.action.lookupRecord?.targetTableId
       : draft.addRecord?.targetTableId || selected.action.addRecord?.targetTableId
     if (!targetTableId) return
-    // documentId may come from the workflow itself or from tableLabels (the
-    // server doesn't always denormalise it onto action.addRecord).
-    const targetDocumentId = selected.action.type === 'lookup_record'
-      ? draft.lookupRecord?.targetDocumentId || selected.action.lookupRecord?.targetDocumentId || tableLabels[targetTableId]?.documentId
-      : draft.addRecord?.targetDocumentId || selected.action.addRecord?.targetDocumentId
-      || tableLabels[targetTableId]?.documentId
-    if (!targetDocumentId) return
-    void schemaCache.ensure(targetDocumentId, targetTableId, tableLabels[targetTableId]?.tableName)
+    // An empty target path means the trigger's table file.
+    const targetDocumentPath = targetDocumentPathOf(
+      selected.action.type === 'lookup_record'
+        ? draft.lookupRecord?.targetDocumentPath || selected.action.lookupRecord?.targetDocumentPath
+        : draft.addRecord?.targetDocumentPath || selected.action.addRecord?.targetDocumentPath,
+      selected.trigger.documentPath,
+    )
+    if (!targetDocumentPath) return
+    void schemaCache.ensure(targetDocumentPath, targetTableId, tableLabelFor(tableLabels, targetDocumentPath, targetTableId)?.tableName)
   }, [selected, draft.addRecord, draft.lookupRecord, tableLabels, schemaCache])
 
   const guardSwitchTo = useCallback((next: () => void) => {
@@ -671,7 +665,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
   }
 
   const ensureSchemaLoaded = useCallback(
-    (documentId: string, tableId: string) => schemaCache.ensure(documentId, tableId, tableLabels[tableId]?.tableName),
+    (documentPath: string, tableId: string) => schemaCache.ensure(documentPath, tableId, tableLabelFor(tableLabels, documentPath, tableId)?.tableName),
     [schemaCache, tableLabels],
   )
   const triggerEditor = useWorkflowTriggerEditor({
@@ -799,7 +793,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
       setFilterDryRun({ matched: true, reason: 'Empty filter matches every row' })
       return
     }
-    const sample = filterDryRunSample(schemaByTableId[selected.trigger.tableId])
+    const sample = filterDryRunSample(triggerSchemaOf(selected, schemaByTableKey))
     setFilterDryRunLoading(true)
     try {
       const result = await dryRunFilter(selected.id, expression, sample, selected.trigger.nodeId || 'trigger_1')
@@ -817,7 +811,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     // callback; we close over them via closure since the user button click
     // fires after render has stabilised.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, selectedNodeId, graphNodes, schemaByTableId])
+  }, [selected, selectedNodeId, graphNodes, schemaByTableKey])
 
   function openRunHistoryFor(workflow: WorkflowDefinition, run: WorkflowRunRecord | null) {
     guardSwitchTo(() => {
@@ -827,25 +821,25 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     })
   }
 
-  const selectedSchema = selected ? schemaByTableId[selected.trigger.tableId] || fallbackSchemaFromWorkflow(selected, draft.body) : null
+  const selectedSchema = selected ? triggerSchemaOf(selected, schemaByTableKey) || fallbackSchemaFromWorkflow(selected, draft.body) : null
   const selectedTriggerLabel = selected ? triggerLabel(selected, tableLabels, t) : ''
-  // Keep the scoped kitable label consistent with the file tree. The
+  // Keep the scoped table file label consistent with the file tree. The
   // selected workflow name already appears in the workflow tree, so the
   // detail topbar deliberately avoids repeating it.
-  const scopedKitableLabel = scopedKitablePath
-    ? scopedKitablePath.split('/').pop() || ''
+  const scopedTableFileLabel = scopedTablePath
+    ? scopedTablePath.split('/').pop() || ''
     : ''
-  const breadcrumbLeft = scopedKitableLabel || t('panels.home.workspaceFallback')
+  const breadcrumbLeft = scopedTableFileLabel || t('panels.home.workspaceFallback')
   const breadcrumbRight = t('panels.home.breadcrumb')
   // selectedTableLabel drives the "Run this action against a sample <X>"
   // copy in the test panel, which wants the actual bound table.
   const selectedTableLabel = selected
-    ? tableLabels[selected.trigger.tableId]?.tableName
-      || scopedKitableLabel
+    ? tableLabelFor(tableLabels, selected.trigger.documentPath, selected.trigger.tableId)?.tableName
+      || scopedTableFileLabel
       || t('panels.home.tableLabelUnbound', { defaultValue: 'Not bound' })
     : t('panels.home.tableLabelWorkspace', { defaultValue: 'Workspace' })
   const selectedAddRecordTargetLabel = draft.addRecord?.targetTableId
-    ? tableLabels[draft.addRecord.targetTableId]?.tableName
+    ? tableLabelFor(tableLabels, targetDocumentPathOf(draft.addRecord.targetDocumentPath, selected?.trigger.documentPath), draft.addRecord.targetTableId)?.tableName
       || t('panels.addRecord.testTargetFallback')
     : t('panels.addRecord.testTargetFallback')
   const selectedLatestRun = selected ? latestRuns[selected.id] || null : null
@@ -855,15 +849,18 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
   // option ("Not bound — draft") as the first item so the user can revert
   // to a draft workflow without leaving the drawer.
   //
-  // When `scopedKitablePath` is set (workflow created inside a .kitable
-  // tab), the picker is constrained to tables of that document — picking
-  // a table from a sibling kitable would silently move the workflow out
+  // When `scopedTablePath` is set (workflow created inside a .ktable
+  // tab), the picker is constrained to tables of that file — picking
+  // a table from a sibling table file would silently move the workflow out
   // of the user's current scope. The currently-bound tableId is always
   // kept in the list so a pre-existing out-of-scope binding still renders
   // as the selected option instead of falling back to the empty draft.
+  const selectedTriggerKey = selected?.trigger.tableId && selected.trigger.documentPath
+    ? tableKey(selected.trigger.documentPath, selected.trigger.tableId)
+    : ''
   const triggerTableOptions = useMemo(
-    () => buildTriggerTableOptions(tableLabels, scopedKitablePath, selected?.trigger.tableId || ''),
-    [tableLabels, scopedKitablePath, selected?.trigger.tableId],
+    () => buildTriggerTableOptions(tableLabels, scopedTablePath, selectedTriggerKey),
+    [tableLabels, scopedTablePath, selectedTriggerKey],
   )
 
   const selectedGraphNode = useMemo(
@@ -903,7 +900,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     dirty: isDirty,
     hasValidationErrors,
     schema: selectedSchema,
-    schemaByTableId,
+    schemaByTableKey,
     tableOptions: triggerTableOptions,
     nodeTest,
   } : null
@@ -920,7 +917,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
           <WorkflowDetailTopbar
             selected={selected}
             hideClose={hideClose}
-            scopedKitablePath={scopedKitablePath}
+            scopedTablePath={scopedTablePath}
             streamLocked={streamLocked}
             onClose={handleClose}
             toggle={{ saving: togglingEnabled, onToggle: (next) => void toggleSelected(next) }}
@@ -940,8 +937,8 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
             breadcrumbLeft={breadcrumbLeft}
             breadcrumbRight={breadcrumbRight}
             stats={{
-              total: scopedKitablePath ? scopedWorkflows.length : workflows.length,
-              active: scopedKitablePath ? scopedActiveCount : activeCount,
+              total: scopedTablePath ? scopedWorkflows.length : workflows.length,
+              active: scopedTablePath ? scopedActiveCount : activeCount,
             }}
             onClose={handleClose}
             onRefresh={handleRefresh}
@@ -1100,8 +1097,8 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
               </div>
             ) : status === 'done' ? (
               <WorkflowEmptyState
-                scopedKitablePath={scopedKitablePath}
-                scopedKitableLabel={scopedKitableLabel}
+                scopedTablePath={scopedTablePath}
+                scopedTableFileLabel={scopedTableFileLabel}
                 scopedWorkflows={scopedWorkflows}
                 latestRuns={latestRuns}
                 tableLabels={tableLabels}

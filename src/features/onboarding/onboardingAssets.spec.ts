@@ -15,18 +15,18 @@ describe('onboarding static assets', () => {
     expect(existsSync(resolve(dir, manifest.welcome.asset))).toBe(true)
     expect(manifest.documents).toEqual([])
     expect(manifest.tables.map((table: { filename: string }) => table.filename)).toEqual([
-      'Task Tracker.kitable',
-      'YouTube & TikTok Thumbnail Generator.kitable',
-      'Receipt OCR Table.kitable',
-      'Email Inbox Sync.kitable',
-      'Leads Landing Page.kitable',
-      'SDR Cold Call Manager.kitable',
-      'Product Launch Website.kitable',
-      'Batch Product Designer.kitable',
-      'Simple Client CRM.kitable',
-      'Restaurant Operations.kitable',
-      'Business Analytics Dashboard.kitable',
-      'Project Gantt Planner.kitable',
+      'Task Tracker.ktable',
+      'YouTube & TikTok Thumbnail Generator.ktable',
+      'Receipt OCR Table.ktable',
+      'Email Inbox Sync.ktable',
+      'Leads Landing Page.ktable',
+      'SDR Cold Call Manager.ktable',
+      'Product Launch Website.ktable',
+      'Batch Product Designer.ktable',
+      'Simple Client CRM.ktable',
+      'Restaurant Operations.ktable',
+      'Business Analytics Dashboard.ktable',
+      'Project Gantt Planner.ktable',
     ])
     expect(manifest.tables.map((table: { folder?: string }) => table.folder)).toEqual([
       'Projects & Planning',
@@ -48,9 +48,9 @@ describe('onboarding static assets', () => {
       expect(bytes.byteLength).toBeGreaterThan(100_000)
       expect(typeof table.filename).toBe('string')
       if ([
-        'Batch Product Designer.kitable',
-        'Receipt OCR Table.kitable',
-        'YouTube & TikTok Thumbnail Generator.kitable',
+        'Batch Product Designer.ktable',
+        'Receipt OCR Table.ktable',
+        'YouTube & TikTok Thumbnail Generator.ktable',
       ].includes(table.filename)) {
         expect(bytes.includes(Buffer.from('kition-bundled:/templates/'))).toBe(true)
         expect(bytes.includes(Buffer.from('image/webp'))).toBe(true)
@@ -91,8 +91,8 @@ describe('onboarding static assets', () => {
       (guide: { slug: string }) => guide.slug === 'email-automation',
     )
     expect(receiptGuide?.assets).toBeUndefined()
-    expect(emailGuide?.tableFile).toBe('Inbox.kitable')
-    const inboxTable = readFileSync(resolve(dir, 'email-automation/Inbox.kitable'))
+    expect(emailGuide?.tableFile).toBe('Inbox.ktable')
+    const inboxTable = readFileSync(resolve(dir, 'email-automation/Inbox.ktable'))
     expect(inboxTable.subarray(0, 16).toString('utf8')).toBe('SQLite format 3\u0000')
     expect(inboxTable.byteLength).toBeGreaterThan(100_000)
     expect(manifest.guides.map((guide: { displayName: string }) => guide.displayName)).toEqual([
@@ -130,7 +130,7 @@ describe('onboarding static assets', () => {
     expect(english).toContain('V_n = V_0(1 + r)^n')
     expect(english).toContain('Template Center')
     expect(english).toContain('Receipt OCR Table')
-    expect(english).toContain('[[Getting Started/Operations & Analytics/Restaurant Operations.kitable]]')
+    expect(english).toContain('[[Getting Started/Operations & Analytics/Restaurant Operations.ktable]]')
     expect(english).toContain('Settings > Onboarding Guides')
     expect(english).toContain('```text')
     expect(english).toContain('| Capability | What it means | What to try |')
@@ -139,14 +139,14 @@ describe('onboarding static assets', () => {
     expect(english).toContain('- [ ] Edit this page and save it.')
     expect(english.split('\n').length).toBeGreaterThan(100)
     expect(english).not.toContain('Contact Directory')
-    expect(english).toContain('[[Getting Started/Projects & Planning/Task Tracker.kitable]]')
+    expect(english).toContain('[[Getting Started/Projects & Planning/Task Tracker.ktable]]')
     expect(english).not.toContain('Workflow Examples/')
     expect(english).not.toContain('Guides/Email Automation/')
 
     expect(readdirSync(dir).filter((name) => /^welcome\..+\.md$/.test(name))).toEqual([])
     const emailAutomation = readFileSync(resolve(dir, 'email-automation/intro.md'), 'utf8')
     expect(emailAutomation).toContain('# Email Automation')
-    expect(emailAutomation).toContain('Getting Started/Guides/Email Automation/Inbox.kitable')
+    expect(emailAutomation).toContain('Getting Started/Guides/Email Automation/Inbox.ktable')
     expect(emailAutomation).toContain('imap.163.com')
     expect(emailAutomation).toContain('Select the **Document** value')
     expect(emailAutomation).toContain('`Scheduled trigger` followed by `Sync email inbox`')

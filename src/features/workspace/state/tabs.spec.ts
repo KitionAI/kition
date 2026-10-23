@@ -17,10 +17,8 @@ import {
 const doc = (path: string, extra: Partial<Extract<WorkspaceTab, { type: 'document' }>> = {}): WorkspaceTab =>
   ({ id: `document:${path}`, type: 'document', title: path, path, ...extra })
 const board = (path: string): WorkspaceTab => ({ id: `board:${path}`, type: 'board', title: path, path })
-const table = (kitablePath: string, tableId: number): WorkspaceTab =>
-  ({ id: `table:${kitablePath}#${tableId}`, type: 'table', title: 'T', kitablePath, tableId, format: 'data' })
-const workflow = (kitablePath: string, workflowId?: string): WorkspaceTab =>
-  ({ id: `workflow:${kitablePath}${workflowId ? `:${workflowId}` : ''}`, type: 'workflow', title: 'W', kitablePath, workflowId })
+const workflow = (tablePath: string, workflowId?: string): WorkspaceTab =>
+  ({ id: `workflow:${tablePath}`, type: 'workflow', title: 'W', tablePath, workflowId })
 
 const state = (tabs: WorkspaceTab[], activeTabId = tabs[0]?.id ?? ''): TabsState => ({ tabs, activeTabId })
 const ids = (s: TabsState) => s.tabs.map((tab) => tab.id)
@@ -47,13 +45,13 @@ describe('upsertTab', () => {
     expect(ids(next)).toEqual(['document:a.md', 'document:b.md'])
   })
 
-  it('keeps one logical tab per .kitable file across table, workflow, and file views', () => {
-    const start = state([doc('x.md'), table('Leads.kitable', 1)])
-    const next = upsertTab(start, workflow('Leads.kitable', 'wf_1'))
-    expect(ids(next)).toEqual(['document:x.md', 'workflow:Leads.kitable:wf_1'])
-    const again = upsertTab(next, doc('Leads.kitable'))
-    expect(ids(again)).toEqual(['document:x.md', 'document:Leads.kitable'])
+  it('keeps one workflow tab per table file, showing the workflow last opened', () => {
+    const start = state([doc('x.md'), workflow('Leads.ktable', 'wf_1')])
+    const next = upsertTab(start, workflow('Leads.ktable', 'wf_2'))
+    expect(ids(next)).toEqual(['document:x.md', 'workflow:Leads.ktable'])
+    expect(next.tabs[1]).toMatchObject({ workflowId: 'wf_2' })
   })
+
 })
 
 describe('updateTab', () => {
@@ -107,13 +105,14 @@ describe('remapTabPaths', () => {
 })
 
 describe('renameTabPath', () => {
-  it('collapses every view of a renamed .kitable onto its new file-level tab', () => {
-    const start = state([table('Leads.kitable', 1), workflow('Leads.kitable', 'wf'), doc('n.md')], 'table:Leads.kitable#1')
-    const next = renameTabPath(start, 'Leads.kitable', 'Customers.kitable')
-    expect(ids(next)).toEqual(['kitable:Customers.kitable', 'document:n.md'])
-    expect(next.tabs[0]).toMatchObject({ kitablePath: 'Customers.kitable', title: 'Customers' })
-    expect(next.activeTabId).toBe('kitable:Customers.kitable')
+  it('moves a renamed table file\'s workflow tab with it', () => {
+    const start = state([workflow('Leads.ktable', 'wf'), doc('n.md')], 'workflow:Leads.ktable')
+    const next = renameTabPath(start, 'Leads.ktable', 'Customers.ktable')
+    expect(ids(next)).toEqual(['workflow:Customers.ktable', 'document:n.md'])
+    expect(next.tabs[0]).toMatchObject({ tablePath: 'Customers.ktable' })
+    expect(next.activeTabId).toBe('workflow:Customers.ktable')
   })
+
 
   it('renames an open document tab and leaves unrelated tabs alone', () => {
     const start = state([doc('a.md'), doc('b.md')], 'document:a.md')

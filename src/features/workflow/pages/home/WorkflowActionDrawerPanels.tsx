@@ -14,7 +14,7 @@ import { TemplateTokenInput } from '@/features/workflow/components/TemplateToken
 import { DrawerField, DrawerSection } from '@/features/workflow/drawer/PropertiesDrawer'
 import type { useWorkflowNodeTest } from '@/features/workflow/hooks/useWorkflowNodeTest'
 import type { useWorkflowSendTest } from '@/features/workflow/hooks/useWorkflowSendTest'
-import { parseIdAsNumber, type ValidationErrors, type WorkflowDraft } from '@/features/workflow/lib/workflowDraft'
+import { targetTableKeyOf, type ValidationErrors, type WorkflowDraft } from '@/features/workflow/lib/workflowDraft'
 import { DEFAULT_ACTION_NODE_ID, type TriggerTableOption } from '@/features/workflow/lib/workflowPatches'
 import { drawerInputClassName } from '@/features/workflow/pages/WorkflowHomePagePrimitives'
 
@@ -33,7 +33,8 @@ export type WorkflowActionPanelContext = {
   dirty: boolean
   hasValidationErrors: boolean
   schema: TableSchema | null
-  schemaByTableId: Record<string, TableSchema>
+  /** Loaded schemas keyed by `tableKey(path, tableId)`. */
+  schemaByTableKey: Record<string, TableSchema>
   tableOptions: TriggerTableOption[]
   nodeTest: NodeTest
 }
@@ -62,16 +63,18 @@ export function WorkflowAddRecordDrawerPanel({ context, targetLabel }: { context
   const testBlocked = nodeTest.status === 'running' || context.hasValidationErrors || context.dirty
   const scheduled = selected.trigger.type === 'scheduled_time'
   const created = nodeTest.status === 'done' && nodeTest.result?.output?.recordId
+  const targetKey = targetTableKeyOf(draft.addRecord?.targetDocumentPath, draft.addRecord?.targetTableId, selected.trigger.documentPath)
   return (
     <>
       <AddRecordActionPropertiesPanel
         config={draft.addRecord || null}
         tableOptions={context.tableOptions}
-        targetSchema={draft.addRecord?.targetTableId ? context.schemaByTableId[draft.addRecord.targetTableId] || null : null}
+        targetSchema={targetKey ? context.schemaByTableKey[targetKey] || null : null}
         sourceSchema={context.schema}
         sourceNodeId={selected.trigger.nodeId || 'trigger_1'}
         sourceNodeTitle="1. Trigger"
         triggerTableId={selected.trigger.tableId}
+        triggerDocumentPath={selected.trigger.documentPath}
         onChange={(next) => setDraft((current) => ({ ...current, addRecord: next }))}
         disabled={context.saving}
         error={(context.validation.addRecordTarget ? t(`panels.home.validation.${context.validation.addRecordTarget}`) : '')
@@ -90,8 +93,8 @@ export function WorkflowAddRecordDrawerPanel({ context, targetLabel }: { context
               </Button>
             ) : (
               <SampleRowPicker
-                documentId={parseIdAsNumber(selected.trigger.documentId)}
-                tableId={parseIdAsNumber(selected.trigger.tableId)}
+                documentPath={selected.trigger.documentPath || null}
+                tableId={selected.trigger.tableId || null}
                 disabled={testBlocked}
                 onPick={(values) => { void nodeTest.run(selected.id, actionNodeId, { triggerFields: values }) }}
               />
@@ -126,7 +129,8 @@ export function WorkflowRecordActionDrawerPanel({ context }: { context: Workflow
         sourceSchema={context.schema}
         sourceNodeId={selected.trigger.nodeId || 'trigger_1'}
         tableOptions={context.tableOptions}
-        schemaByTableId={context.schemaByTableId}
+        schemaByTableKey={context.schemaByTableKey}
+        triggerDocumentPath={selected.trigger.documentPath}
         onUpdateRecordChange={(updateRecord) => setDraft((current) => ({ ...current, updateRecord }))}
         onLookupRecordChange={(lookupRecord) => setDraft((current) => ({ ...current, lookupRecord }))}
         onTransformRecordChange={(transformRecord) => setDraft((current) => ({ ...current, transformRecord }))}
@@ -137,8 +141,8 @@ export function WorkflowRecordActionDrawerPanel({ context }: { context: Workflow
           <p className="m-0 text-xs text-muted-foreground">{t('panels.recordActions.testDescription')}</p>
           <div className="mt-2">
             <SampleRowPicker
-              documentId={parseIdAsNumber(selected.trigger.documentId)}
-              tableId={parseIdAsNumber(selected.trigger.tableId)}
+              documentPath={selected.trigger.documentPath || null}
+              tableId={selected.trigger.tableId || null}
               disabled={nodeTest.status === 'running' || context.hasValidationErrors || context.dirty}
               onPick={(values, record) => { void nodeTest.run(selected.id, actionNodeId, { triggerFields: values, recordId: String(record.id) }) }}
             />

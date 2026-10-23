@@ -64,13 +64,13 @@ describe('applyPostFilters', () => {
     expect(out.map(h => h.id)).toEqual(['n1'])
   })
 
-  it('kitable: matches via kitable:<table> tag', () => {
+  it('table: matches via table:<table> tag', () => {
     const ast: QueryAST = {
-      must: [{ kind: 'field', op: 'kitable', value: 'orders' }],
+      must: [{ kind: 'field', op: 'table', value: 'orders' }],
       mustNot: [], flags: { matchCase: false },
     }
     const rec = noteHit({
-      id: 'k1', kind: 'kitable_record', tags: ['kitable:Orders'],
+      id: 'k1', kind: 'table_record', tags: ['table:Orders'],
       anchor: { kind: 'record', tableId: 't1', recordId: 'r1' },
     })
     expect(applyPostFilters([noteHit({}), rec], ast).map(h => h.id)).toEqual(['k1'])
@@ -82,7 +82,7 @@ describe('applyPostFilters', () => {
       mustNot: [], flags: { matchCase: false },
     }
     const rec = noteHit({
-      id: 'k1', kind: 'kitable_record', body: 'Customer: Alex\nNotes: Revenue anomaly',
+      id: 'k1', kind: 'table_record', body: 'Customer: Alex\nNotes: Revenue anomaly',
       anchor: { kind: 'record', tableId: 't1', recordId: 'r1' },
     })
     expect(applyPostFilters([noteHit({}), rec], ast).map(h => h.id)).toEqual(['k1'])
@@ -120,14 +120,14 @@ describe('applyPostFilters', () => {
     expect(applyPostFilters([a], ast).map(h => h.id)).toEqual(['n1'])
   })
 
-  it('field: on kitable_meta with metaKind=field matches by title', () => {
+  it('field: on table_meta with metaKind=field matches by title', () => {
     const ast: QueryAST = {
       must: [{ kind: 'field', op: 'field', value: 'notes' }],
       mustNot: [], flags: { matchCase: false },
     }
     const metaDoc = noteHit({
-      id: 'm1', kind: 'kitable_meta', title: 'Notes',
-      body: '', tags: ['kitable:Orders'],
+      id: 'm1', kind: 'table_meta', title: 'Notes',
+      body: '', tags: ['table:Orders'],
       anchor: { kind: 'meta', metaKind: 'field', tableId: 't1', metaId: 'f1' },
     })
     expect(applyPostFilters([noteHit({}), metaDoc], ast).map(h => h.id)).toEqual(['m1'])

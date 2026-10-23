@@ -47,8 +47,9 @@ async function mount(actionType: 'update_record' | 'lookup_record' | 'transform_
       actionType,
       sourceSchema,
       sourceNodeId: 'trigger_1',
-      tableOptions: [{ tableId: 'catalog', tableName: 'Product Catalog', documentTitle: 'Orders' }],
-      schemaByTableId: { catalog: targetSchema },
+      tableOptions: [{ key: 'orders.ktable#catalog', tableId: 'catalog', tableName: 'Product Catalog', documentTitle: 'orders', documentPath: 'orders.ktable', documentId: '' }],
+      schemaByTableKey: { 'orders.ktable#catalog': targetSchema },
+      triggerDocumentPath: 'orders.ktable',
       ...callbacks,
       ...overrides,
     }))

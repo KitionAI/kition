@@ -35,6 +35,7 @@ export function normaliseGraph(workflow: WorkflowDefinition | null): GraphState 
       nodeId: triggerNodeId,
       type: workflow.trigger.type,
       tableId: workflow.trigger.tableId,
+      documentPath: workflow.trigger.documentPath,
       documentId: workflow.trigger.documentId,
     },
   })

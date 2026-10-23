@@ -28,7 +28,8 @@ export type ScenarioFieldsStage = 'fields' | 'ai-fields'
 
 export interface ScenarioBaseCreatedEvent {
   kind: 'base.created'
-  baseId: string
+  /** The new table file's workspace path. */
+  path: string
   baseName: string
 }
 
@@ -109,7 +110,7 @@ export function isScenarioBuildEvent(
 
   switch (kind) {
     case 'base.created':
-      return isString(value.baseId) && isString(value.baseName)
+      return isString(value.path) && isString(value.baseName)
     case 'table.created':
       return isString(value.tableId) && isString(value.tableName)
     case 'fields.generated':
@@ -189,8 +190,8 @@ export interface UseScenarioBuildResult {
   events: ScenarioBuildEvent[]
   /** Current finite-state-machine status. */
   status: ScenarioBuildStatus
-  /** Convenience: the baseId from the first `base.created` event, or null. */
-  baseId: string | null
+  /** Convenience: the basePath from the first `base.created` event, or null. */
+  basePath: string | null
   /** Convenience: the baseName from the first `base.created` event, or null. */
   baseName: string | null
   /** Last error message if `status === 'error'`. */

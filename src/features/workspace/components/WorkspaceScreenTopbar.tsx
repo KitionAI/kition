@@ -92,7 +92,6 @@ export function buildWorkspaceTopbarProps(input: WorkspaceScreenTopbarInput): To
       chrome.setItemMenuOpen(false)
       if (activeDocument) void input.openWorkspaceFolder(activeDocument.path)
     },
-    onRunActiveDataTableAction: actions.runActiveDataTableAction,
     formatTime: formatWorkspaceTime,
   }
 }

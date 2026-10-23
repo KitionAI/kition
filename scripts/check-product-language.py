@@ -34,12 +34,8 @@ PROHIBITED_WORDS = (
 )
 
 
-def normalized_visible_text(value: str) -> str:
-    return re.sub(r"\.kitable\b", "", value, flags=re.IGNORECASE)
-
-
 def matched_word(value: str) -> str | None:
-    normalized = normalized_visible_text(value).casefold()
+    normalized = value.casefold()
     return next(
         (
             word

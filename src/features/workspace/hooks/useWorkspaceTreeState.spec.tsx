@@ -40,7 +40,7 @@ function loadTree(state: UseWorkspaceTreeStateResult) {
           },
         ],
       },
-      { type: 'file', path: 'Data.kitable', name: 'Data.kitable', format: 'data' },
+      { type: 'file', path: 'Data.ktable', name: 'Data.ktable', format: 'table' },
     ])
   })
 }
@@ -84,12 +84,4 @@ describe('useWorkspaceTreeState folder expansion', () => {
     expect(treeState?.expandedPaths).toEqual(new Set(['Articles']))
   })
 
-  it('keeps kitable files collapsed until explicitly toggled', () => {
-    const state = mountTreeState()
-    loadTree(state)
-
-    expect(treeState?.expandedPaths.has('Data.kitable')).toBe(false)
-    act(() => treeState?.toggleFolder('Data.kitable'))
-    expect(treeState?.expandedPaths.has('Data.kitable')).toBe(true)
-  })
 })

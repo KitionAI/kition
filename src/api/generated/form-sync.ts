@@ -26,7 +26,10 @@ export type FormSyncDefaultValue = {
 }
 
 export type FormSyncTarget = {
-  document_id: string
+  /**
+   * The target table file's workspace-relative path.
+   */
+  document_path: string
   table_id: string
   field_mappings: FormSyncFieldMapping[]
   defaults?: FormSyncDefaultValue[]

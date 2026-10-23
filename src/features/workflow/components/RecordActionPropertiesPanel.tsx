@@ -9,6 +9,7 @@ import type {
   WorkflowUpdateRecordConfig,
 } from '@/api/workflows'
 import { DrawerField, DrawerSection } from '@/features/workflow/drawer/PropertiesDrawer'
+import { targetTableKeyOf } from '@/features/workflow/lib/workflowDraft'
 
 import { BodyTemplateEditor } from './BodyTemplateEditor'
 import type { BodyTemplate, TableSchema } from './BodyTemplateEditor.types'
@@ -22,7 +23,10 @@ type Props = {
   sourceSchema: TableSchema
   sourceNodeId: string
   tableOptions: TriggerTableOption[]
-  schemaByTableId: Record<string, TableSchema>
+  /** Loaded schemas keyed by `tableKey(path, tableId)`. */
+  schemaByTableKey: Record<string, TableSchema>
+  /** The trigger table's file, which a target without its own path names. */
+  triggerDocumentPath?: string
   onUpdateRecordChange: (config: WorkflowUpdateRecordConfig) => void
   onLookupRecordChange: (config: WorkflowLookupRecordConfig) => void
   onTransformRecordChange: (config: WorkflowTransformRecordConfig) => void
@@ -68,22 +72,33 @@ function UpdateRecordPanel({ updateRecord, sourceSchema, sourceNodeId, onUpdateR
   )
 }
 
-function LookupRecordPanel({ lookupRecord, sourceSchema, sourceNodeId, tableOptions, schemaByTableId, onLookupRecordChange, error }: Props) {
+function LookupRecordPanel({ lookupRecord, sourceSchema, sourceNodeId, tableOptions, schemaByTableKey, triggerDocumentPath, onLookupRecordChange, error }: Props) {
   const { t } = useTranslation('workflow')
-  const targetSchema = schemaByTableId[lookupRecord?.targetTableId || '']
   const config: WorkflowLookupRecordConfig = lookupRecord || {
     targetTableId: '', matchFieldId: '', matchValue: { parts: [] }, writeBack: [],
   }
+  const targetKey = targetTableKeyOf(config.targetDocumentPath, config.targetTableId, triggerDocumentPath)
+  const targetSchema = targetKey ? schemaByTableKey[targetKey] : undefined
   function change(patch: Partial<WorkflowLookupRecordConfig>) {
     onLookupRecordChange({ ...config, ...patch })
+  }
+  function changeTable(nextKey: string) {
+    const option = tableOptions.find((item) => item.key === nextKey)
+    change({
+      targetTableId: option?.tableId || '',
+      targetDocumentPath: option?.documentPath || undefined,
+      targetDocumentId: option?.documentId || undefined,
+      matchFieldId: '',
+      writeBack: [],
+    })
   }
   return (
     <DrawerSection title={t('panels.recordActions.lookup.section')}>
       <DrawerField label={t('panels.recordActions.lookup.table')} error={error}>
         <TriggerTableSelect
-          value={config.targetTableId}
+          value={targetKey}
           options={tableOptions}
-          onChange={(targetTableId) => change({ targetTableId, matchFieldId: '', writeBack: [] })}
+          onChange={changeTable}
           draftLabel={t('panels.recordActions.lookup.tablePlaceholder')}
           testId="lookup-record-target-table"
         />

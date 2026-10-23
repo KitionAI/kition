@@ -41,7 +41,6 @@ export type WorkspaceScreenSidebarInput = {
   chrome: { privateExpanded: boolean; onTogglePrivate: () => void; onToggleSidebar: () => void }
   /** Desktop-only affordances (reveal in OS, file import and paste) are offered only when true. */
   desktop: boolean
-  onCreateWorkflowForTable: SidebarPanelProps['onCreateWorkflowForTable']
   onOpen: SidebarPanelProps['onOpen']
   onOpenSearch?: () => void
   /** Called after a manual refresh succeeds. */
@@ -62,7 +61,6 @@ export function buildWorkspaceSidebarPanelProps(input: WorkspaceScreenSidebarInp
     onMoveToFolder: (node, targetNode) => void treeActions.moveWorkspaceNodeToFolder(node, targetNode),
     onAddToChat: (node) => void chat.addNodeToChat(node),
     onAddToNewChat: (node) => void chat.addNodeToNewChat(node),
-    onCreateWorkflowForTable: input.onCreateWorkflowForTable,
     onRevealInOS: desktop ? (node) => void revealWorkspaceFolder(node.path) : undefined,
     onOpen: input.onOpen,
     onRefresh: () => {

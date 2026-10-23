@@ -38,7 +38,7 @@ async function doSnapshot() {
     const u8 = new TextEncoder().encode(JSON.stringify(payload))
     const ok = await writeSnapshot(db, u8, {
       version: 1, rootPath, builtAt: Date.now(), docCount: handle.size(),
-      sourceVersions: { note: '1', kitable: '1' },
+      sourceVersions: { note: '1', table: '2' },
     })
     if (ok) {
       await clearDirty(db)
@@ -63,7 +63,7 @@ self.onmessage = async (ev) => {
         let restored = false
         if (snap && snap.meta.rootPath === rootPath
             && snap.meta.sourceVersions.note === '1'
-            && snap.meta.sourceVersions.kitable === '1') {
+            && snap.meta.sourceVersions.table === '2') {
           try {
             const decoded = JSON.parse(new TextDecoder().decode(snap.blob))
             // Reject legacy snapshots (Orama-only) — they leave the side-channel
@@ -90,10 +90,10 @@ self.onmessage = async (ev) => {
       case 'bulkLoad': {
         if (!handle) throw new Error('index not initialized')
         await handle.bulkInsert(msg.docs)
-        emitter.tick(msg.docs[0]?.kind === 'note' ? 'note' : 'kitable', msg.docs.length)
+        emitter.tick(msg.docs[0]?.kind === 'note' ? 'note' : 'table', msg.docs.length)
         self.postMessage({ type: 'ack', requestId: msg.requestId })
         if (msg.isFinal) {
-          emitter.flush('note'); emitter.flush('kitable')
+          emitter.flush('note'); emitter.flush('table')
           await doSnapshot()
           emitter.flush('persist')
         }

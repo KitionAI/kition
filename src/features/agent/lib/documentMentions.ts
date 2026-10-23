@@ -31,7 +31,6 @@ export type AgentMentionSearchInput = {
 
 const mentionableFormats = new Set<WorkspaceDocumentFormat>([
   'markdown',
-  'data',
   'table',
   'text',
   'html',
@@ -133,7 +132,7 @@ export function isMentionableWorkspaceFormat(
   if (format && mentionableFormats.has(format)) {
     return true
   }
-  return /\.(md|markdown|kitable|txt|html|htm|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i.test(path)
+  return /\.(md|markdown|ktable|txt|html|htm|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i.test(path)
 }
 
 export function extractAgentDocumentMentionTokens(content: string) {
@@ -288,7 +287,7 @@ export function resolveAgentMentionDocumentPath(
 }
 
 function withoutMentionableExtension(value: string) {
-  return value.replace(/\.(?:md|markdown|kitable|txt|html?|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i, '')
+  return value.replace(/\.(?:md|markdown|ktable|txt|html?|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i, '')
 }
 
 function scoreMentionDocument(document: AgentMentionableDocument, query: string) {
@@ -441,13 +440,6 @@ export function buildAgentDocumentMentionPromptContext(input: {
       lines.push(
         'This current document is attached to the turn. Analyze it before responding; it is implicit context even without an @ mention.',
       )
-    } else if (
-      input.activeDocumentFormat === 'data'
-      || activeDocumentPath.toLowerCase().endsWith('.kitable')
-    ) {
-      lines.push(
-        'Analyze the current structured document with the active table context before responding; it is implicit context even without an @ mention.',
-      )
     } else {
       lines.push(
         'Read this exact path with document_read and analyze it before responding; it is implicit context even without an @ mention.',
@@ -461,14 +453,9 @@ export function buildAgentDocumentMentionPromptContext(input: {
     (document) => document.kind !== 'folder' && document.path !== activeDocumentPath,
   )
   const referencedFolders = input.referencedDocuments.filter((document) => document.kind === 'folder')
-  const structuredFiles = referencedFiles.filter(
-    (document) => document.format === 'data'
-      || document.path.toLowerCase().endsWith('.kitable'),
-  )
   const kitFiles = referencedFiles.filter((document) => kitFileKind(document.format, document.path))
   const textFiles = referencedFiles.filter(
-    (document) => !structuredFiles.includes(document)
-      && !kitFiles.includes(document)
+    (document) => !kitFiles.includes(document)
       && !isBinaryAttachmentMention(document.format, document.path),
   )
   const binaryFiles = referencedFiles.filter((document) => isBinaryAttachmentMention(document.format, document.path))
@@ -500,15 +487,6 @@ export function buildAgentDocumentMentionPromptContext(input: {
     }
     lines.push(
       'Do NOT call document_read on these binary attachments — their contents are already provided in this turn (images as vision input, pdf/pptx/docx/xlsx as extracted text blocks).',
-    )
-  }
-  if (structuredFiles.length) {
-    lines.push('Referenced structured workspace documents in this turn:')
-    for (const document of structuredFiles) {
-      lines.push(`- ${document.path}`)
-    }
-    lines.push(
-      'Analyze each referenced structured document with the table/data tools available for its exact path before responding.',
     )
   }
   if (referencedFolders.length) {

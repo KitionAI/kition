@@ -49,7 +49,7 @@ export function DialogOverlay({
 
 export const DialogClosePrimitive = DialogPrimitive.Close;
 
-export function DialogClose({
+function DialogClose({
   children,
   className,
   ...props
@@ -344,29 +344,6 @@ export function DialogContent({
         />
       )}
     </DialogContentProvider>
-  );
-}
-
-export function DialogBody({
-  children,
-  className,
-  ...props
-}: React.ComponentProps<'div'>) {
-  const fixed = useDialogContentValue('fixed');
-  const variant = useDialogValue('variant');
-
-  return (
-    <div
-      className={cn(
-        'flex w-full flex-col gap-4',
-        fixed && 'grow overflow-y-auto p-4',
-        variant === 'drawer' && 'p-4',
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
   );
 }
 

@@ -41,10 +41,10 @@ describe('parseAppLocation', () => {
   })
 
   it('keeps the workflow sub-path and takes its context from history state when complete', () => {
-    const context = { documentId: 'd1', tableId: 't1', tableName: 'Leads' }
+    const context = { documentPath: 'crm.ktable', tableId: '1', tableName: 'Leads' }
     expect(parseAppLocation({ pathname: '/workflow/new', search: '', state: { workflowContext: context } }))
       .toEqual({ view: 'workflow', pathname: '/workflow/new', context })
-    expect(parseAppLocation({ pathname: '/workflow', search: '', state: { workflowContext: { documentId: 'd1' } } }))
+    expect(parseAppLocation({ pathname: '/workflow', search: '', state: { workflowContext: { documentPath: 'crm.ktable' } } }))
       .toEqual({ view: 'workflow', pathname: '/workflow', context: null })
     expect(parseAppLocation({ pathname: '/workflow', search: '', state: null }).view).toBe('workflow')
   })

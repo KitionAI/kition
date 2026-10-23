@@ -442,7 +442,7 @@ async function executeRelease(options) {
     run('pnpm', ['check'], { cwd: rootDir })
     run('pnpm', ['perf:budget'], { cwd: rootDir })
     run('pnpm', ['test:table:e2e'], { cwd: rootDir })
-    run('pnpm', ['test:kitable:e2e'], { cwd: rootDir })
+    run('pnpm', ['test:ktable:e2e'], { cwd: rootDir })
     assertAllowedChanges(rootDir, ['package.json'])
 
     if (getStatusPaths(rootDir).length) {

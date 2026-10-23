@@ -26,7 +26,7 @@ const status = {
   portable: true,
   summary: {
     documents: 1,
-    kitables: 1,
+    tables: 1,
     assets: 2,
     workflows: 1,
     agent_sessions: 1,

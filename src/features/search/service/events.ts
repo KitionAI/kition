@@ -1,13 +1,15 @@
 // src/features/search/service/events.ts
 import type { SearchService } from './searchService'
 import { extractNoteDocs } from '../sources/noteSource'
-import { extractKitableDocs, type KitableTableInput } from '../sources/kitableSource'
+import { isTableFilePath, onTableFilesChanged } from '@/api/kitTables'
+import { extractTableDocs, type TableSearchInput } from '../sources/tableSource'
 
 const DEBOUNCE_MS = 300
 
 type Loaders = {
   readMarkdown: (vaultPath: string) => Promise<string>
-  loadKitableTable: (vaultPath: string, tableId: string) => Promise<KitableTableInput>
+  /** Every table of a table file, read through the Table kit. */
+  loadTableFile: (vaultPath: string) => Promise<TableSearchInput[]>
 }
 
 export function attachEventBridges(service: SearchService, loaders: Loaders): () => void {
@@ -30,54 +32,43 @@ export function attachEventBridges(service: SearchService, loaders: Loaders): ()
     void service.removeByVaultPath([vaultPath])
   }
 
-  const onKitableMutation = (vaultPath: string, tableId: string) => {
-    const key = `${vaultPath}::${tableId}`
-    if (recordBatch.has(key)) clearTimeout(recordBatch.get(key)!)
-    recordBatch.set(key, setTimeout(async () => {
-      recordBatch.delete(key)
+  const onTableFileChange = (vaultPath: string) => {
+    if (recordBatch.has(vaultPath)) clearTimeout(recordBatch.get(vaultPath)!)
+    recordBatch.set(vaultPath, setTimeout(async () => {
+      recordBatch.delete(vaultPath)
       try {
-        const input = await loaders.loadKitableTable(vaultPath, tableId)
-        // For V1: if any record/field/view of any table changes, we resync
-        // ALL tables in that .kitable. This is acceptable because each .kitable
-        // typically has 1-3 tables.
+        const tables = await loaders.loadTableFile(vaultPath)
         await service.removeByVaultPath([vaultPath])
-        await service.upsert(extractKitableDocs(input))
-      } catch (e) { console.warn('[search] kitable resync failed', vaultPath, tableId, e) }
+        await service.upsert(tables.flatMap(extractTableDocs))
+      } catch (e) { console.warn('[search] table file resync failed', vaultPath, e) }
     }, DEBOUNCE_MS))
   }
 
   function fileHandler(e: Event) {
     const detail = (e as CustomEvent).detail as { vaultPath: string; kind: 'create' | 'change' | 'delete' }
     if (!detail?.vaultPath) return
+    if (isTableFilePath(detail.vaultPath)) {
+      if (detail.kind === 'delete') void service.removeByVaultPath([detail.vaultPath])
+      else onTableFileChange(detail.vaultPath)
+      return
+    }
     if (!detail.vaultPath.endsWith('.md')) return
     if (detail.kind === 'delete') onNoteDelete(detail.vaultPath)
     else onNoteChange(detail.vaultPath)
   }
 
-  function recordHandler(e: Event) {
-    const d = (e as CustomEvent).detail as { vaultPath: string; tableId: string }
-    if (d?.vaultPath && d?.tableId) onKitableMutation(d.vaultPath, d.tableId)
-  }
-
   window.addEventListener('kition:workspace:file:change', fileHandler)
   window.addEventListener('kition:workspace:file:create', fileHandler)
   window.addEventListener('kition:workspace:file:delete', fileHandler)
-  ;[
-    'kition:data-document:record:upsert', 'kition:data-document:record:delete',
-    'kition:data-document:field:upsert', 'kition:data-document:field:delete',
-    'kition:data-document:view:upsert', 'kition:data-document:view:delete',
-    'kition:data-document:table:rename',
-  ].forEach(name => window.addEventListener(name, recordHandler))
+  // A table file saved from its editor, or written by a host feature in this window.
+  const stopTables = onTableFilesChanged((vaultPath) => {
+    if (vaultPath) onTableFileChange(vaultPath)
+  })
 
   return () => {
     window.removeEventListener('kition:workspace:file:change', fileHandler)
     window.removeEventListener('kition:workspace:file:create', fileHandler)
     window.removeEventListener('kition:workspace:file:delete', fileHandler)
-    ;[
-      'kition:data-document:record:upsert', 'kition:data-document:record:delete',
-      'kition:data-document:field:upsert', 'kition:data-document:field:delete',
-      'kition:data-document:view:upsert', 'kition:data-document:view:delete',
-      'kition:data-document:table:rename',
-    ].forEach(name => window.removeEventListener(name, recordHandler))
+    stopTables()
   }
 }

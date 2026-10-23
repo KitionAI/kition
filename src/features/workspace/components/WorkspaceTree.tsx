@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, LayoutDashboard, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Trash2, Zap } from 'lucide-react'
+import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Trash2, Zap } from 'lucide-react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -20,12 +20,7 @@ import {
   type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
 import { useDraftTitleForPath } from '@/features/workspace/lib/draftTitleStore'
-import {
-  getChildFolderPathForNode,
-  parseKitableDashboardVirtualPath,
-  parseKitableWorkflowVirtualPath,
-  parseKitableTableVirtualPath,
-} from '@/features/workspace/lib/workspaceTree'
+import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
 import { cn } from '@kition/app-ui/utils'
 import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
 
@@ -65,7 +60,7 @@ export function WorkspaceTree({
   onCloseCreateMenu,
   onCreateFolder,
   onCreateDocument,
-  onCreateTable,
+  onCreateFormForTable,
   onCreateBoard,
   onCreateDesign,
   kitCreations,
@@ -90,12 +85,7 @@ export function WorkspaceTree({
   onAddToNewChat?: (node: WorkspaceTreeNode) => void
   onRevealInOS?: (node: WorkspaceTreeNode) => void
   onImportFiles?: (files: File[], folder?: string) => void
-  /** Open the Workflow create-mode dialog scoped to a .kitable. The handler
-   *  receives the .kitable container node (e.g. row for `Leads.kitable`) and
-   *  is responsible for resolving the target table — if the kitable has
-   *  exactly one table, that table is used directly; otherwise the handler
-   *  pops a table picker before opening the mode dialog. The legacy
-   *  virtual-table-leaf entry has been retired in favour of this scope. */
+  /** Create a workflow for one of a table file's tables (the row of `Leads.ktable`). */
   onCreateWorkflowForTable?: (node: WorkspaceTreeNode) => void
   actionMenuPath?: string
   onActionMenuChange?: (path: string) => void
@@ -106,11 +96,12 @@ export function WorkspaceTree({
   onDragNodeEnd?: () => void
   createMenuOpen?: boolean
   createMenuTriggerPath?: string
-  createMenuVariant?: 'workspace' | 'kitable'
+  createMenuVariant?: 'workspace' | 'tableFile'
   onCloseCreateMenu?: () => void
   onCreateFolder?: () => void
   onCreateDocument?: (format: DocumentCreateFormat) => void
-  onCreateTable?: () => void
+  /** A form for one of a table file's tables (the table file's create menu). */
+  onCreateFormForTable?: (node: WorkspaceTreeNode) => void
   onCreateBoard?: () => void
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
@@ -237,58 +228,36 @@ export function WorkspaceTree({
         const isModified = node.type === 'file' && modifiedPaths.has(node.path)
         const isWorkflowsVirtual = node.virtual && node.path.startsWith('workflows://')
         const isWorkflowVirtual = node.virtual && node.path.startsWith('workflow://')
-        const isDashboardVirtual = node.virtual && node.path.startsWith('dashboard://')
-        const FormatIcon = isDashboardVirtual
-          ? LayoutDashboard
-          : isWorkflowsVirtual || isWorkflowVirtual
+        const FormatIcon = isWorkflowsVirtual || isWorkflowVirtual
             ? Zap
             : getWorkspaceItemIcon(node.format)
-        const formatIconColorClass = isWorkflowsVirtual || isWorkflowVirtual || isDashboardVirtual
+        const formatIconColorClass = isWorkflowsVirtual || isWorkflowVirtual
           ? 'text-brand'
           : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
         const isOrganizable = isOrganizableWorkspaceFormat(node.format)
-        const isKitableContainer = node.type === 'file'
+        // A table file opens in the Table kit; its tables are the kit's own tabs.
+        const isTableFile = node.type === 'file'
           && !node.virtual
-          && node.name.toLowerCase().endsWith('.kitable')
+          && node.name.toLowerCase().endsWith('.ktable')
         // A plain file that has absorbed a same-named sibling folder tracks its
         // expansion under the FOLDER path (which is what expandedPaths and
-        // persisted tree metadata key on), not the file path. Folders and kitables
-        // already key on node.path, so fall back to it for them.
-        const disclosureKey = isKitableContainer ? node.path : (node.folderPath ?? node.path)
+        // persisted tree metadata key on), not the file path. Folders already
+        // key on node.path, so fall back to it for them.
+        const disclosureKey = node.folderPath ?? node.path
         const expanded = expandedPaths.has(disclosureKey)
-        // Virtual leaf representing a backend table inside a .kitable. These
-        // rows are not real files but we still let the user rename / delete
-        // them (routed to data-document API) and spawn an workflow scoped
-        // to the table without going through a picker.
-        const isKitableTableLeaf = node.virtual && parseKitableTableVirtualPath(node.path) != null
-        const isKitableDashboardLeaf = node.virtual && parseKitableDashboardVirtualPath(node.path) != null
-        // Virtual leaf representing an individual workflow under a .kitable.
-        // Not a real file either — delete is routed through the workflow
-        // API by useKitableWorkflowLeafActions.
-        const parsedKitableWorkflow = node.virtual ? parseKitableWorkflowVirtualPath(node.path) : null
-        const isKitableWorkflowLeaf = parsedKitableWorkflow != null
-        const isFormSyncWorkflowLeaf = parsedKitableWorkflow?.workflowId.startsWith('formsync_') || false
-        const visibleChildren = isKitableContainer
-          ? node.children.filter((child) => !child.virtual)
-          : node.children
+        const visibleChildren = node.children
         const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder'
-        const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isKitableContainer)
-        const canDelete = isKitableTableLeaf
-          || isKitableDashboardLeaf
-          || (isKitableWorkflowLeaf && !isFormSyncWorkflowLeaf)
-          || (!node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path))))
+        const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isTableFile)
+        const canDelete = !node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path)))
         const canSetIcon = !node.virtual
-        const canRename = isKitableTableLeaf
-          || isKitableDashboardLeaf
-          || isKitableWorkflowLeaf
-          || (!node.virtual && (node.type === 'folder' || isOrganizable))
+        const canRename = !node.virtual && (node.type === 'folder' || isOrganizable)
         const canDuplicate = !node.virtual && node.type === 'file' && isOrganizable
         const canMove = !node.virtual && (node.type === 'folder' || isOrganizable)
         const canAddToChat = !node.virtual && Boolean(onAddToChat)
         const canAddToNewChat = !node.virtual && Boolean(onAddToNewChat)
         const canRevealInOS = !node.virtual && Boolean(onRevealInOS)
-        const canCreateWorkflowForTable = isKitableContainer && Boolean(onCreateWorkflowForTable)
+        const canCreateWorkflowForTable = isTableFile && Boolean(onCreateWorkflowForTable)
         const hasMenu = canSetIcon || canRename || canDuplicate || canMove || canDelete || canAddToChat || canAddToNewChat || canRevealInOS
         const actionMenuOpen = currentActionMenuPath === node.path
         const moveMenuOpen = moveMenuPath === node.path
@@ -329,7 +298,7 @@ export function WorkspaceTree({
           const rect = (rowEl ?? event.currentTarget).getBoundingClientRect()
           const ratio = rect.height ? (event.clientY - rect.top) / rect.height : 0.5
           const rawPosition: WorkspaceTreeDropPosition = ratio < 0.25 ? 'before' : ratio > 0.75 ? 'after' : 'inside'
-          const position: WorkspaceTreeDropPosition = isKitableContainer && rawPosition === 'inside' ? 'after' : rawPosition
+          const position: WorkspaceTreeDropPosition = node.type === 'file' && rawPosition === 'inside' && !node.folderPath ? 'after' : rawPosition
           handleDragNodeOver(node.path, position)
         }
 
@@ -344,7 +313,7 @@ export function WorkspaceTree({
             return
           }
           const draggedPath = event.dataTransfer.getData('text/plain')
-          const fallback: WorkspaceTreeDropPosition = isKitableContainer ? 'after' : 'inside'
+          const fallback: WorkspaceTreeDropPosition = 'inside'
           const position = currentDropIndicator?.path === node.path ? currentDropIndicator.position : fallback
           onDropNode(draggedPath, node.path, position)
         }
@@ -378,12 +347,6 @@ export function WorkspaceTree({
                   currentDraggingPath === node.path && 'is-dragging',
                   dropPosition === 'inside' && 'is-drop-target',
                 )}
-                data-testid={isKitableWorkflowLeaf
-                  ? 'kitable-workflow-leaf'
-                  : isKitableDashboardLeaf
-                    ? 'kitable-dashboard-leaf'
-                    : undefined}
-                data-workflow-id={isKitableWorkflowLeaf ? (parseKitableWorkflowVirtualPath(node.path)?.workflowId ?? '') : undefined}
                 style={{ paddingLeft: `${paddingLeft}px` }}
                 onContextMenu={(event) => {
                   // Right-click opens the same menu as the row's "more" button.
@@ -396,7 +359,11 @@ export function WorkspaceTree({
                   openActionMenu(node.path, trigger)
                 }}
                 onClick={(event) => {
-
+                  // A click in a portaled menu of this row (its create menu) bubbles here
+                  // through React, not the DOM: it is the menu's, never the row's.
+                  if (!event.currentTarget.contains(event.target as Node)) {
+                    return
+                  }
                   if (event.detail > 1) {
                     return
                   }
@@ -404,16 +371,6 @@ export function WorkspaceTree({
                     return
                   }
                   closeRowMenus()
-                  // A kitable is a selected workspace container, matching Feishu's
-                  // multidimensional-table entry. Only real folder children expand;
-                  // tables and workflows live in the inner navigation.
-                  if (isKitableContainer) {
-                    if (visibleChildren.length) {
-                      onToggleFolder(node.path)
-                    }
-                    onOpen(node.path)
-                    return
-                  }
                   if (node.type === 'file') {
                     onOpen(node.path)
                     return
@@ -515,11 +472,11 @@ export function WorkspaceTree({
                             anchorEl={createMenuAnchorEl}
                             onCreateFolder={onCreateFolder ?? (() => undefined)}
                             onCreateDocument={onCreateDocument ?? (() => undefined)}
-                            onCreateTable={onCreateTable ?? (() => undefined)}
                             onCreateBoard={onCreateBoard}
                             onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
+                            onCreateForm={isTableFile && onCreateFormForTable ? () => onCreateFormForTable(node) : undefined}
                           />
                         ) : null}
                       </span>
@@ -596,15 +553,6 @@ export function WorkspaceTree({
                               <button
                                 type="button"
                                 className="app-menu-item document-tree-menu-item"
-                                data-testid={
-                                  isKitableTableLeaf
-                                    ? 'kitable-table-action-rename'
-                                    : isKitableDashboardLeaf
-                                      ? 'kitable-dashboard-action-rename'
-                                    : isKitableWorkflowLeaf
-                                      ? 'kitable-workflow-action-rename'
-                                      : undefined
-                                }
                                 onClick={() => startRename(node)}
                               >
                                 <Pencil className="size-4" />
@@ -654,15 +602,6 @@ export function WorkspaceTree({
                               <button
                                 type="button"
                                 className="app-menu-item document-tree-menu-item is-danger"
-                                data-testid={
-                                  isKitableTableLeaf
-                                    ? 'kitable-table-action-delete'
-                                    : isKitableDashboardLeaf
-                                      ? 'kitable-dashboard-action-delete'
-                                    : isKitableWorkflowLeaf
-                                      ? 'kitable-workflow-action-delete'
-                                      : undefined
-                                }
                                 onClick={() => {
                                   setCurrentActionMenuPath('')
                                   onDelete(node)
@@ -766,7 +705,7 @@ export function WorkspaceTree({
                 onCloseCreateMenu={onCloseCreateMenu}
                 onCreateFolder={onCreateFolder}
                 onCreateDocument={onCreateDocument}
-                onCreateTable={onCreateTable}
+                onCreateFormForTable={onCreateFormForTable}
                 onCreateBoard={onCreateBoard}
                             onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}

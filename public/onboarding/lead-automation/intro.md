@@ -10,7 +10,7 @@ This guide demonstrates a complete record-triggered workflow without exposing se
 - Body: First Name, Last Name, Work Email, Company Name, Job Title, Reason for Contact, and Additional Notes
 - Initial state: off
 
-Open `Lead Follow-up.kitable`, then select **Workflows**. Kition creates the workflow on first open and binds every body token to the imported table's real field IDs.
+Open `Lead Follow-up.ktable`, then select **Workflows**. Kition creates the workflow on first open and binds every body token to the imported table's real field IDs.
 
 ## Inspect it safely
 

@@ -96,76 +96,12 @@ describe('workspacePersistence tabs', () => {
     expect(readWorkspaceTabs(ROOT_B)).toEqual([])
   })
 
-  it('drops persisted document tabs whose path ends in .kitable on restore', () => {
-    window.localStorage.setItem(
-      'kition.document.workspace-tabs.v2',
-      JSON.stringify({
-        [ROOT_A]: [
-          { id: 'document:Leads.kitable', type: 'document', title: 'Leads', path: 'Leads.kitable', format: 'data' },
-          { id: 'document:notes.md', type: 'document', title: 'Notes', path: 'notes.md', format: 'markdown' },
-        ],
-      }),
-    )
-    const restored = readWorkspaceTabs(ROOT_A)
-    expect(restored.map((t) => t.id)).toEqual(['document:notes.md'])
-  })
-
-  it('restores table tabs scoped to their kitable', () => {
-    const tableTab = {
-      id: 'table:Leads.kitable#7',
-      type: 'table' as const,
-      title: 'Leads',
-      kitablePath: 'Leads.kitable',
-      tableId: 7,
-      format: 'data' as const,
-    }
-    writeWorkspaceTabs(ROOT_A, [tableTab])
-
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([{
-      ...tableTab,
-      id: 'kitable:Leads.kitable',
-    }])
-  })
-
-  it('drops malformed table tabs (missing kitablePath or non-integer tableId)', () => {
-    window.localStorage.setItem(
-      'kition.document.workspace-tabs.v2',
-      JSON.stringify({
-        [ROOT_A]: [
-          { id: 'table:Leads.kitable#7', type: 'table', title: 'Leads', tableId: 7, format: 'data' }, // no kitablePath
-          { id: 'table:Leads.kitable#x', type: 'table', title: 'Leads', kitablePath: 'Leads.kitable', tableId: 'x', format: 'data' },
-          { id: 'table:Leads.kitable#7', type: 'table', title: 'Leads', kitablePath: 'Leads.kitable', tableId: 7, format: 'data' }, // valid
-        ],
-      }),
-    )
-
-    expect(readWorkspaceTabs(ROOT_A).map((t) => t.id)).toEqual(['kitable:Leads.kitable'])
-  })
-
-  it('restores dashboard tabs scoped to their kitable', () => {
-    const dashboardTab = {
-      id: 'dashboard:Tasks.kitable#task-dashboard',
-      type: 'dashboard' as const,
-      title: 'Task Dashboard',
-      kitablePath: 'Tasks.kitable',
-      dashboardId: 'task-dashboard',
-      format: 'data' as const,
-    }
-    writeWorkspaceTabs(ROOT_A, [dashboardTab])
-
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([{
-      ...dashboardTab,
-      id: 'kitable:Tasks.kitable',
-      title: 'Tasks',
-    }])
-  })
-
-  it('restores workflow tabs including optional kitablePath/workflowId', () => {
+  it('restores workflow tabs including optional tablePath/workflowId', () => {
     const scoped = {
-      id: 'workflow:Leads.kitable',
+      id: 'workflow:Leads.ktable',
       type: 'workflow' as const,
       title: 'Leads workflows',
-      kitablePath: 'Leads.kitable',
+      tablePath: 'Leads.ktable',
       workflowId: 'auto-99',
     }
     const global = {
@@ -175,31 +111,7 @@ describe('workspacePersistence tabs', () => {
     }
     writeWorkspaceTabs(ROOT_A, [scoped, global])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([{
-      ...scoped,
-      id: 'kitable:Leads.kitable',
-      title: 'Leads',
-    }, global])
-  })
-
-  it('merges legacy table/workflow tabs for the same kitable into one file tab', () => {
-    window.localStorage.setItem(
-      'kition.document.workspace-tabs.v2',
-      JSON.stringify({
-        [ROOT_A]: [
-          { id: 'table:Leads.kitable#7', type: 'table', title: 'Prospects', kitablePath: 'Leads.kitable', tableId: 7, format: 'data' },
-          { id: 'workflow:Leads.kitable:auto-99', type: 'workflow', title: 'Lead alert', kitablePath: 'Leads.kitable', workflowId: 'auto-99' },
-        ],
-      }),
-    )
-
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([{
-      id: 'kitable:Leads.kitable',
-      type: 'workflow',
-      title: 'Leads',
-      kitablePath: 'Leads.kitable',
-      workflowId: 'auto-99',
-    }])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([scoped, global])
   })
 
   it('restores a native Board tab with its durable .kiboard path', () => {

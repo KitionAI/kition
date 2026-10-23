@@ -4,7 +4,7 @@ This guide demonstrates AI fields as a repeatable production system rather than 
 
 ## Included table
 
-`Product Content Studio.kitable` starts with product concepts and shows fields for:
+`Product Content Studio.ktable` starts with product concepts and shows fields for:
 
 - hero product images
 - orthographic and feature views

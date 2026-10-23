@@ -1,6 +1,4 @@
 [
-  "packages/table-editor/src/dashboard/components/DashboardEditor.tsx|text|Dashboard unavailable",
-  "packages/table-editor/src/dashboard/components/DashboardEditor.tsx|text|Loading dashboard",
   "src/features/emailProviders/EmailProvidersPane.tsx|aria-label|Email providers",
   "src/features/emailProviders/EmailProvidersPane.tsx|aria-label|Search email providers",
   "src/features/emailProviders/EmailProvidersPane.tsx|text|Account credentials",
@@ -12,7 +10,7 @@
   "src/features/emailSync/EmailSyncSettingsPanel.tsx|text|Manual only",
   "src/features/emailSync/EmailSyncSettingsPanel.tsx|text|Synchronization settings",
   "src/features/emailSync/EmailSyncTableSelect.tsx|aria-label|Destination table",
-  "src/features/emailSync/EmailSyncTableSelect.tsx|aria-label|Tables in the current Kitable",
+  "src/features/emailSync/EmailSyncTableSelect.tsx|aria-label|Tables in the current table file",
   "src/features/emailSync/EmailSyncTriggerPanel.tsx|text|Every day",
   "src/features/emailSync/EmailSyncTriggerPanel.tsx|text|Every hour",
   "src/features/emailSync/EmailSyncTriggerPanel.tsx|text|Manual only",

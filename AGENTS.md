@@ -46,7 +46,7 @@ Before any AI agent declares a task complete, it must run:
 
 ```bash
 pnpm test:table:e2e
-pnpm test:kitable:e2e
+pnpm test:ktable:e2e
 ```
 
 The exit code of both must be 0. Fix failures before reporting completion.
@@ -58,8 +58,14 @@ The exit code of both must be 0. Fix failures before reporting completion.
   `export KITION_SKIP_E2E_HOOK=1`.
 - Codex has no blocking Stop hook and must run both commands manually.
 
-The inspection implementation is `scripts/inspect-table-widget.sh`. It
-covers the three GFM table widget row and column button regressions.
+The first gate is `scripts/inspect-table-widget.sh`. It covers the three GFM
+table widget row and column button regressions.
+
+The second gate is `scripts/inspect-ktable.sh`, which runs
+`e2e/table-kit.spec.ts`: the Table kit's pinned package in `KitFrame` (create,
+edit and save, host writes through the kit, `host/generate`, `host/action`). It
+fails, never skips, when `public/kits/table-ui/` is missing. The table editor's
+own interaction tests live in the kition-table repository and run there.
 
 ## UI Source Of Truth
 

@@ -1,14 +1,14 @@
 /**
  * Renaming the active document from its inline title. Moves the file,
  * then updates every client record that named the old path: the tree, the
- * kitable index, the document store index, Agent-modified paths, tabs, and
+ * workflows and syncs that name a table file, the document store index, Agent-modified paths, tabs, and
  * open document sessions. Errors are thrown so the title editor can roll back its
  * optimistic text.
  */
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { renameDataDocumentByPath } from '@/api/dataDocuments'
+import { reportTableFileRenamed } from '@/api/kitTables'
 import { syncDocumentFileMoved } from '@/features/workspace/lib/documentIdentity'
 import { remapPathSetAfterMove } from '@/features/workspace/lib/documentRename'
 import {
@@ -30,7 +30,6 @@ type UseWorkspaceDocumentTitleRenameOptions = {
   activeDocumentFormat: WorkspaceDocumentFormat | null | undefined
   activeResourcePath: string
   treeState: Pick<UseWorkspaceTreeStateResult, 'flatTreeNodes' | 'setTreeItems' | 'updateTreeMetadata'>
-  renameKitableChildrenIndexPath: (sourcePath: string, targetPath: string) => void
   ensureActiveDocumentSaved: () => Promise<boolean>
   setAgentModifiedDocumentPaths: Dispatch<SetStateAction<Set<string>>>
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
@@ -47,7 +46,6 @@ export function useWorkspaceDocumentTitleRename({
   activeDocumentFormat,
   activeResourcePath,
   treeState,
-  renameKitableChildrenIndexPath,
   ensureActiveDocumentSaved,
   setAgentModifiedDocumentPaths,
   remapWorkspaceTabPaths,
@@ -86,14 +84,12 @@ export function useWorkspaceDocumentTitleRename({
     try {
       const movedDocument = await moveWorkspaceDocument({ path, target_folder: targetFolder, target_name: targetName })
 
-      // Keep the runtime's data-document row and the children index on the
-      // new path. Best effort: a failure must not roll back the disk rename.
-      if (path !== movedDocument.path && path.toLowerCase().endsWith('.kitable')) {
-        renameKitableChildrenIndexPath(path, movedDocument.path)
-        renameDataDocumentByPath({ path, target_path: movedDocument.path, workspace_root: rootPath })
-          .catch((cleanupError) => {
-            console.warn('[workspace] failed to sync kitable backend index', cleanupError)
-          })
+      // Workflows and syncs that name a table file follow it. Best effort: a
+      // failure must not roll back the disk rename.
+      if (path !== movedDocument.path && path.toLowerCase().endsWith('.ktable')) {
+        reportTableFileRenamed(path, movedDocument.path).catch((cleanupError) => {
+          console.warn('[workspace] failed to follow a renamed table file', cleanupError)
+        })
       }
 
       // Keep the document's identity (and its child pages') on the new path; best effort too.
@@ -127,8 +123,7 @@ export function useWorkspaceDocumentTitleRename({
     ensureActiveDocumentSaved,
     remapOpenedDocuments,
     remapWorkspaceTabPaths,
-    renameKitableChildrenIndexPath,
-    rootPath,
+      rootPath,
     setAgentModifiedDocumentPaths,
     setActiveResourcePath,
     setError,
@@ -140,7 +135,7 @@ export function useWorkspaceDocumentTitleRename({
 
   /** Inline title edit: shows the new name at once and rolls back when the rename fails. */
   const saveDocumentTitle = useCallback(async (nextTitleInput: string) => {
-    if (!activeDocument || activeDocumentFormat === 'data') return
+    if (!activeDocument) return
     const currentTitle = getWorkspaceItemTitle(activeDocument.name)
     const nextTitle = nextTitleInput.trim() || currentTitle
     if (nextTitle === currentTitle) return

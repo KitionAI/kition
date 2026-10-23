@@ -22,23 +22,23 @@ const workflow = (id: string, tablePath: string): EmailSyncWorkflow => ({
 
 describe('table email sync workflow matching', () => {
   it('normalizes separators without changing the table identity', () => {
-    expect(normalizeEmailSyncTablePath('\\Projects\\Inbox.kitable\\')).toBe('Projects/Inbox.kitable')
+    expect(normalizeEmailSyncTablePath('\\Projects\\Inbox.ktable\\')).toBe('Projects/Inbox.ktable')
   })
 
-  it('returns only workflows bound to the current Kitable', () => {
+  it('returns only workflows bound to the current table file', () => {
     const result = filterEmailSyncWorkflowsByTablePath([
-      workflow('matching', 'Projects/Inbox.kitable'),
-      workflow('other', 'Projects/Archive.kitable'),
-    ], '/Projects/Inbox.kitable/')
+      workflow('matching', 'Projects/Inbox.ktable'),
+      workflow('other', 'Projects/Archive.ktable'),
+    ], '/Projects/Inbox.ktable/')
 
     expect(result.map((item) => item.id)).toEqual(['matching'])
   })
 
   it('migrates the single unused legacy default into the onboarding inbox', () => {
-    const legacy = workflow('legacy', 'Mail/Emails.kitable')
+    const legacy = workflow('legacy', 'Mail/Emails.ktable')
     const result = resolveEmailSyncTableBinding(
       [legacy],
-      'Getting Started/Guides/Email Automation/Inbox.kitable',
+      'Getting Started/Guides/Email Automation/Inbox.ktable',
     )
 
     expect(result.workflows).toEqual([])
@@ -46,10 +46,10 @@ describe('table email sync workflow matching', () => {
   })
 
   it('does not retarget a legacy workflow after messages were imported', () => {
-    const legacy = { ...workflow('legacy', 'Mail/Emails.kitable'), synced_messages: 12 }
+    const legacy = { ...workflow('legacy', 'Mail/Emails.ktable'), synced_messages: 12 }
     const result = resolveEmailSyncTableBinding(
       [legacy],
-      'Getting Started/Guides/Email Automation/Inbox.kitable',
+      'Getting Started/Guides/Email Automation/Inbox.ktable',
     )
 
     expect(result.migrationCandidate).toBeNull()

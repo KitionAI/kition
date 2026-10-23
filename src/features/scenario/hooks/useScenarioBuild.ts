@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getCurrentLocale } from '@/i18n'
 import { resolveApiURL } from '@/services/desktop'
-import { resolveAIConfigRuntimeModel } from '@/features/table/public'
+import { resolveGenerateRuntimeModel } from '@/features/kits/public'
 
 import {
   parseScenarioBuildEvent,
@@ -155,7 +155,7 @@ function isAbortError(err: unknown): boolean {
 /**
  * React hook that drives the scenario build SSE pipeline. The caller renders
  * progress in response to `events` / `status`, and triggers navigation when
- * `baseId` becomes non-null.
+ * `basePath` becomes non-null.
  *
  * State invariants:
  *   - `submit()` is single-shot: a second call while `status` is `submitting`
@@ -168,7 +168,7 @@ export function useScenarioBuild(): UseScenarioBuildResult {
   const { t } = useTranslation('settings')
   const [events, setEvents] = useState<ScenarioBuildEvent[]>([])
   const [status, setStatus] = useState<ScenarioBuildStatus>('idle')
-  const [baseId, setBaseId] = useState<string | null>(null)
+  const [basePath, setBasePath] = useState<string | null>(null)
   const [baseName, setBaseName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -216,7 +216,7 @@ export function useScenarioBuild(): UseScenarioBuildResult {
     }
     setEvents([])
     setStatus('idle')
-    setBaseId(null)
+    setBasePath(null)
     setBaseName(null)
     setError(null)
     // When there was no in-flight request nobody else will clear the flag.
@@ -235,7 +235,7 @@ export function useScenarioBuild(): UseScenarioBuildResult {
       // Reset state for a fresh submission.
       if (mountedRef.current) {
         setEvents([])
-        setBaseId(null)
+        setBasePath(null)
         setBaseName(null)
         setError(null)
       }
@@ -250,9 +250,7 @@ export function useScenarioBuild(): UseScenarioBuildResult {
       }
       // The active text model infers the schema and fills AI columns; without
       // one the runtime falls back to a default schema and skips AI fills.
-      const runtimeModel = await resolveAIConfigRuntimeModel({
-        type: 'summarize',
-      } as Parameters<typeof resolveAIConfigRuntimeModel>[0]).catch(() => undefined)
+      const runtimeModel = await resolveGenerateRuntimeModel('text').catch(() => undefined)
       if (runtimeModel) {
         formData.append('runtime_model', JSON.stringify(runtimeModel))
       }
@@ -302,7 +300,7 @@ export function useScenarioBuild(): UseScenarioBuildResult {
           if (mountedRef.current) {
             setEvents((prev) => [...prev, event])
             if (event.kind === 'base.created') {
-              setBaseId((prev) => prev ?? event.baseId)
+              setBasePath((prev) => prev ?? event.path)
               setBaseName((prev) => prev ?? event.baseName)
             }
           }
@@ -351,5 +349,5 @@ export function useScenarioBuild(): UseScenarioBuildResult {
     [safeSetError, safeSetStatus, t],
   )
 
-  return { events, status, baseId, baseName, error, submit, abort, reset }
+  return { events, status, basePath, baseName, error, submit, abort, reset }
 }

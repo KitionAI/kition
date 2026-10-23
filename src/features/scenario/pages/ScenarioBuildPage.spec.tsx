@@ -6,40 +6,11 @@ import type { ScenarioBuildEvent } from '@/features/scenario/types'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
-// Mock TableEditor so the spec can assert on the props ScenarioBuildPage
-// passes (documentPath, markerContent, aiCellPatches) without dragging in
-// the table editor's data-fetching pipeline. The mock renders a sentinel
-// node with serialized props so individual tests can read what was sent.
-type MockedTableEditorProps = {
-  documentPath: string
-  markerContent: string
-  aiCellPatches?: ReadonlyArray<{
-    recordId: number
-    fieldId: number
-    value: unknown
-  }>
-}
-const tableEditorRenders: MockedTableEditorProps[] = []
-vi.mock('@kition/table-editor/table/components/TableEditor', () => ({
-  TableEditor: (props: MockedTableEditorProps) => {
-    tableEditorRenders.push({
-      documentPath: props.documentPath,
-      markerContent: props.markerContent,
-      aiCellPatches: props.aiCellPatches
-        ? props.aiCellPatches.map((patch) => ({ ...patch }))
-        : undefined,
-    })
-    return createElement(
-      'div',
-      {
-        'data-testid': 'mock-table-editor',
-        'data-document-path': props.documentPath,
-        'data-marker-content': props.markerContent,
-        'data-patch-count': String(props.aiCellPatches?.length ?? 0),
-      },
-      'mock-table-editor',
-    )
-  },
+// Mock KitFrame so the spec can assert on the file ScenarioBuildPage shows
+// without loading the Table kit.
+vi.mock('@/features/kits/public', () => ({
+  KitFrame: (props: { path: string; kit: { kitId: string } }) =>
+    createElement('div', { 'data-testid': 'mock-kit-frame', 'data-path': props.path, 'data-kit': props.kit.kitId }, 'mock-kit-frame'),
 }))
 
 import { ScenarioBuildPage } from './ScenarioBuildPage'
@@ -67,7 +38,7 @@ async function unmount() {
 
 const baseCreated: ScenarioBuildEvent = {
   kind: 'base.created',
-  baseId: '123',
+  path: 'Receipts.ktable',
   baseName: 'Receipts',
 }
 
@@ -96,7 +67,6 @@ const cellAIFilled = (
 
 describe('ScenarioBuildPage', () => {
   beforeEach(() => {
-    tableEditorRenders.length = 0
   })
   afterEach(unmount)
 
@@ -106,7 +76,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -124,7 +94,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -139,7 +109,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -153,7 +123,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -177,7 +147,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -203,7 +173,7 @@ describe('ScenarioBuildPage', () => {
     expect(container.querySelector('[data-testid="right-drawer"]')).not.toBeNull()
   })
 
-  it('renders the central placeholder when baseId is present but no table yet', async () => {
+  it('renders the central placeholder when basePath is present but no table yet', async () => {
     // Without a `table.created` event we do NOT have a tableId; the
     // central area stays in the "waiting for table" placeholder so the
     // user has something to read while the orchestrator finishes table
@@ -213,7 +183,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated, fieldsGenerated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -225,96 +195,38 @@ describe('ScenarioBuildPage', () => {
     expect(central?.textContent).toContain('Receipts')
     // No table editor mounted yet.
     expect(
-      container.querySelector('[data-testid="mock-table-editor"]'),
+      container.querySelector('[data-testid="mock-kit-frame"]'),
     ).toBeNull()
   })
 
-  it('mounts TableEditor once both base.created and table.created have arrived', async () => {
+  it('shows the new table file in the Table kit once both base.created and table.created have arrived', async () => {
     await mount(
       createElement(ScenarioBuildPage, {
         events: [baseCreated, tableCreated, fieldsGenerated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
     )
-    const editor = container.querySelector(
-      '[data-testid="mock-table-editor"]',
-    )
-    expect(editor).not.toBeNull()
-    // documentPath is a synthetic scenario:<baseId> sentinel so the table
-    // editor's loader skips path-resolution lookups and goes straight to
-    // getDataDocument via the marker payload.
-    expect(editor?.getAttribute('data-document-path')).toBe('scenario:123')
-    const marker = JSON.parse(
-      editor?.getAttribute('data-marker-content') ?? '{}',
-    )
-    expect(marker).toEqual({ data_document_id: 123 })
+    const frame = container.querySelector('[data-testid="mock-kit-frame"]')
+    expect(frame?.getAttribute('data-path')).toBe('Receipts.ktable')
+    expect(frame?.getAttribute('data-kit')).toBe('kit.table')
   })
 
-  it('does NOT mount TableEditor before baseId arrives', async () => {
+  it('does not show the table before the file exists', async () => {
     await mount(
       createElement(ScenarioBuildPage, {
         events: [],
         status: 'submitting',
         baseName: null,
-        baseId: null,
+        basePath: null,
         error: null,
         onClose: () => {},
       }),
     )
-    expect(
-      container.querySelector('[data-testid="mock-table-editor"]'),
-    ).toBeNull()
-  })
-
-  it('forwards every cell.ai.filled event to TableEditor as a patch', async () => {
-    await mount(
-      createElement(ScenarioBuildPage, {
-        events: [
-          baseCreated,
-          tableCreated,
-          fieldsGenerated,
-          cellAIFilled(11, 21, 'apple'),
-          cellAIFilled(12, 21, 'banana'),
-          cellAIFilled(11, 22, 42),
-        ],
-        status: 'streaming',
-        baseName: 'Receipts',
-        baseId: '123',
-        error: null,
-        onClose: () => {},
-      }),
-    )
-    const editor = container.querySelector(
-      '[data-testid="mock-table-editor"]',
-    ) as HTMLElement
-    expect(editor.getAttribute('data-patch-count')).toBe('3')
-    const lastRender = tableEditorRenders[tableEditorRenders.length - 1]
-    expect(lastRender.aiCellPatches).toEqual([
-      { recordId: 11, fieldId: 21, value: 'apple' },
-      { recordId: 12, fieldId: 21, value: 'banana' },
-      { recordId: 11, fieldId: 22, value: 42 },
-    ])
-  })
-
-  it('passes an empty patch list when there are no cell.ai.filled events', async () => {
-    await mount(
-      createElement(ScenarioBuildPage, {
-        events: [baseCreated, tableCreated, fieldsGenerated],
-        status: 'streaming',
-        baseName: 'Receipts',
-        baseId: '123',
-        error: null,
-        onClose: () => {},
-      }),
-    )
-    const editor = container.querySelector(
-      '[data-testid="mock-table-editor"]',
-    ) as HTMLElement
-    expect(editor.getAttribute('data-patch-count')).toBe('0')
+    expect(container.querySelector('[data-testid="mock-kit-frame"]')).toBeNull()
   })
 
   it('renders the "done" central state when status=done', async () => {
@@ -323,7 +235,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated, { kind: 'done' }],
         status: 'done',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose: () => {},
       }),
@@ -340,7 +252,7 @@ describe('ScenarioBuildPage', () => {
         events: [],
         status: 'error',
         baseName: null,
-        baseId: null,
+        basePath: null,
         error: 'inference failed',
         onClose: () => {},
       }),
@@ -354,7 +266,7 @@ describe('ScenarioBuildPage', () => {
         events: [],
         status: 'submitting',
         baseName: null,
-        baseId: null,
+        basePath: null,
         error: null,
         onClose: () => {},
       }),
@@ -369,7 +281,7 @@ describe('ScenarioBuildPage', () => {
         events: [],
         status: 'submitting',
         baseName: null,
-        baseId: null,
+        basePath: null,
         error: null,
         onClose: () => {},
       }),
@@ -384,7 +296,7 @@ describe('ScenarioBuildPage', () => {
         events: [baseCreated],
         status: 'streaming',
         baseName: 'Receipts',
-        baseId: '123',
+        basePath: 'Receipts.ktable',
         error: null,
         onClose,
       }),

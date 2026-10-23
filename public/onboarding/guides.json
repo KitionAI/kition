@@ -7,7 +7,7 @@
       "summary": "Import an IMAP inbox into a local table, open full messages as Markdown, and configure outbound workflow email.",
       "intro": "intro.md",
       "seeds": [],
-      "tableFile": "Inbox.kitable"
+      "tableFile": "Inbox.ktable"
     },
     {
       "slug": "lead-automation",
@@ -15,7 +15,7 @@
       "summary": "Inspect a prebuilt record-created workflow with bound fields and an email action.",
       "intro": "intro.md",
       "seeds": [],
-      "tableFile": "Lead Follow-up.kitable"
+      "tableFile": "Lead Follow-up.ktable"
     },
     {
       "slug": "receipt-extraction",
@@ -23,7 +23,7 @@
       "summary": "Turn receipt files into structured fields that are ready to filter and review.",
       "intro": "intro.md",
       "seeds": [],
-      "tableFile": "Receipt Archive.kitable"
+      "tableFile": "Receipt Archive.ktable"
     },
     {
       "slug": "product-content",
@@ -31,7 +31,7 @@
       "summary": "Use AI fields to generate product visuals and channel-ready copy from a concept table.",
       "intro": "intro.md",
       "seeds": [],
-      "tableFile": "Product Content Studio.kitable"
+      "tableFile": "Product Content Studio.ktable"
     }
   ]
 }

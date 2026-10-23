@@ -399,11 +399,11 @@ describe('AgentChatPanel changed files', () => {
     expect(onOpenArtifact).not.toHaveBeenCalled()
   })
 
-  it('shows a created kitable in the same bottom changed-files card as documents', async () => {
+  it('lists every changed document in the same bottom changed-files card', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      view: viewOf('Write the guide and a table', [
+      view: viewOf('Write the guide and a checklist', [
         ...ran('p1', 'apply_patch', {}, { file_ops: [{ path: 'Docs/Admissions guide.md' }] }),
-        ...ran('t1', 'data_table_create', {}, { path: 'Admissions/Low-threshold samples.kitable' }),
+        ...ran('w1', 'document_write', { path: 'Admissions/Checklist.md' }, { path: 'Admissions/Checklist.md' }),
       ]),
     })))
 
@@ -415,7 +415,7 @@ describe('AgentChatPanel changed files', () => {
     expect(disclosure?.open).toBe(false)
     expect(changedFiles).toEqual([
       'Admissions guide.md',
-      'Low-threshold samples.kitable',
+      'Checklist.md',
     ])
   })
 })
@@ -570,7 +570,6 @@ describe('AgentChatPanel empty-state per pane', () => {
   describe.each([
     { pane: 'document', leakedStarter: 'Summarize this document' },
     { pane: 'workflow', leakedStarter: 'Email me on every new record' },
-    { pane: 'table', leakedStarter: 'Summarise this table' },
     { pane: 'gallery', leakedStarter: 'Describe each item' },
   ] as const)('needsModelConfig on pane $pane', ({ pane, leakedStarter }) => {
     it('hides the pane-specific suggestion and shows the Configure CTA instead', async () => {
@@ -711,7 +710,7 @@ describe('AgentChatPanel document references', () => {
     await unmount()
   })
 
-  const longPath = 'Getting Started/Guides/Product Content/Product Content Studio.kitable'
+  const longPath = 'Getting Started/Guides/Product Content/Product Content Studio.ktable'
 
   it('shows an attached document as a removable inline reference', async () => {
     const onRemoveDocumentContext = vi.fn()
@@ -721,21 +720,21 @@ describe('AgentChatPanel document references', () => {
       mentionableDocuments: [{
         kind: 'file',
         path: longPath,
-        name: 'Product Content Studio.kitable',
+        name: 'Product Content Studio.ktable',
         title: 'Product Content Studio',
-        format: 'data',
+        format: 'table',
       }],
       onRemoveDocumentContext,
     })))
 
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement
     expect(textarea.value).toBe('Analyze this document')
-    expect(container.textContent).toContain('Product Content Studio.kitable')
+    expect(container.textContent).toContain('Product Content Studio.ktable')
     expect(container.textContent).not.toContain('@{')
     expect(container.textContent).not.toContain('Getting Started/Guides')
 
     const remove = document.querySelector(
-      '[aria-label="Remove Product Content Studio.kitable"]',
+      '[aria-label="Remove Product Content Studio.ktable"]',
     ) as HTMLButtonElement
     await act(async () => {
       remove.click()
@@ -791,7 +790,7 @@ describe('AgentChatPanel document references', () => {
 
     const userMessage = container.querySelector('[data-role="user"]') as HTMLElement
     expect(userMessage.textContent).toContain('Summarize it')
-    expect(userMessage.textContent).not.toContain('Product Content Studio.kitable')
+    expect(userMessage.textContent).not.toContain('Product Content Studio.ktable')
     expect(userMessage.textContent).not.toContain('@{')
     expect(userMessage.textContent).not.toContain('Getting Started/Guides')
     expect(userMessage.querySelector('.agent-document-reference')).toBeNull()

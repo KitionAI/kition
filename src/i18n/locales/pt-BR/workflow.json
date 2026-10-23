@@ -201,10 +201,6 @@
     "renamed": "Renomeado",
     "workflowDeleted": "Fluxo de trabalho excluído"
   },
-  "kitableLeaf": {
-    "deleteConfirm": "Excluir o fluxo de trabalho \"{{name}}\"? Isso remove permanentemente o fluxo de trabalho e seu histórico de execuções.",
-    "nameFallback": "Fluxo de trabalho sem título"
-  },
   "confirms": {
     "cancel": "Cancelar",
     "fallbackLabel": "Confirmar",

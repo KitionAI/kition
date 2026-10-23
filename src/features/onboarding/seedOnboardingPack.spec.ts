@@ -13,7 +13,7 @@ const guideManifest: OnboardingGuideManifest = {
       intro: 'info.md',
       seeds: ['leads.csv'],
       assets: ['reference.jpg'],
-      tableFile: 'Lead Follow-up.kitable',
+      tableFile: 'Lead Follow-up.ktable',
     },
   ],
 }
@@ -30,8 +30,8 @@ const manifest: OnboardingManifest = {
     { asset: 'email-setup.md', filename: 'Email Setup.md', folder: 'Guides' },
   ],
   tables: [
-    { asset: 'TaskTracker.kitable', filename: 'Task Tracker.kitable', folder: 'Essentials' },
-    { asset: 'ReadingTracker.kitable', filename: 'Reading Tracker.kitable', folder: 'Essentials' },
+    { asset: 'TaskTracker.ktable', filename: 'Task Tracker.ktable', folder: 'Essentials' },
+    { asset: 'ReadingTracker.ktable', filename: 'Reading Tracker.ktable', folder: 'Essentials' },
   ],
   guides: { manifest: 'guides.json', folder: 'Guides' },
 }
@@ -61,10 +61,10 @@ describe('seedOnboardingPack', () => {
     expect(deps.writeDocument).toHaveBeenCalledWith('Getting Started/Guides/Email Setup.md', '# hi')
     expect(deps.importFile).toHaveBeenCalledTimes(5)
     expect(deps.importFile).toHaveBeenCalledWith(
-      expect.objectContaining({ folder: 'Getting Started/Essentials', filename: 'Task Tracker.kitable' }),
+      expect.objectContaining({ folder: 'Getting Started/Essentials', filename: 'Task Tracker.ktable' }),
     )
     expect(deps.importFile).toHaveBeenCalledWith(
-      expect.objectContaining({ folder: 'Getting Started/Essentials', filename: 'Reading Tracker.kitable' }),
+      expect.objectContaining({ folder: 'Getting Started/Essentials', filename: 'Reading Tracker.ktable' }),
     )
     expect(deps.createFolder).toHaveBeenCalledWith({
       parent_folder: 'Getting Started/Guides',

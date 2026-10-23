@@ -31,7 +31,7 @@ describe('WorkspaceWorkflowCreateModeDialog email sync template', () => {
         onOpenChange: vi.fn(),
         context: null,
         onSelect: vi.fn(),
-        emailSyncTablePath: 'Projects/Customer Requests.kitable',
+        emailSyncTablePath: 'Projects/Customer Requests.ktable',
         onSelectEmailSync,
       }))
       await Promise.resolve()
@@ -45,6 +45,6 @@ describe('WorkspaceWorkflowCreateModeDialog email sync template', () => {
     expect(template.textContent).toContain('Import every message from the selected IMAP mailbox')
 
     await act(async () => template.click())
-    expect(onSelectEmailSync).toHaveBeenCalledWith('Projects/Customer Requests.kitable', 'full')
+    expect(onSelectEmailSync).toHaveBeenCalledWith('Projects/Customer Requests.ktable', 'full')
   })
 })

@@ -79,7 +79,7 @@ describe('useWorkflowBuild', () => {
       JSON.stringify({ kind: 'done' }),
     ])
     const ref = await renderHook(() => useWorkflowBuild())
-    await act(async () => { await ref.current.submit({ prompt: 'p', baseId: 'b', documentId: 'd', tableId: 'tbl', model: STUB_MODEL }) })
+    await act(async () => { await ref.current.submit({ prompt: 'p', baseId: 'b', documentPath: 'crm.ktable', tableId: 'tbl', model: STUB_MODEL }) })
     expect(ref.current.status).toBe('done')
     expect(ref.current.workflowId).toBe('auto_1')
     const kinds: string[] = ref.current.events.map((e: WorkflowBuildEvent) => e.kind)
@@ -92,12 +92,12 @@ describe('useWorkflowBuild', () => {
       JSON.stringify({ kind: 'done' }),
     ])
     const ref = await renderHook(() => useWorkflowBuild())
-    await act(async () => { await ref.current.submit({ prompt: 'p', baseId: 'b', documentId: 'd', tableId: 'tbl', model: STUB_MODEL }) })
+    await act(async () => { await ref.current.submit({ prompt: 'p', baseId: 'b', documentPath: 'crm.ktable', tableId: 'tbl', model: STUB_MODEL }) })
     expect(ref.current.status).toBe('error')
     expect(ref.current.error).toContain('bad json')
   })
 
-  it('includes documentId + model in POST body', async () => {
+  it('includes documentPath + model in POST body', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(
         new Response(new ReadableStream({
@@ -111,7 +111,7 @@ describe('useWorkflowBuild', () => {
       await ref.current.submit({
         prompt: 'p',
         baseId: 'b',
-        documentId: 'doc_42',
+        documentPath: 'crm.ktable',
         tableId: 'tbl',
         model: {
           provider_type: 'openai',
@@ -126,7 +126,7 @@ describe('useWorkflowBuild', () => {
     const call = (fetchMock.mock.calls as unknown as [string, RequestInit][]).at(-1)!
     const init = call[1]
     const body = JSON.parse(init.body as string)
-    expect(body.documentId).toBe('doc_42')
+    expect(body.documentPath).toBe('crm.ktable')
     expect(body.model).toEqual({
       provider_type: 'openai',
       provider_label: 'OpenAI',
@@ -151,7 +151,7 @@ describe('useWorkflowBuild', () => {
       await ref.current.submit({
         prompt: 'p',
         baseId: 'b',
-        documentId: 'doc_42',
+        documentPath: 'crm.ktable',
         tableId: 'tbl',
         model: {
           provider_type: 'kition_console',
@@ -175,7 +175,7 @@ describe('useWorkflowBuild', () => {
       await ref.current.submit({
         prompt: 'p',
         baseId: 'b',
-        documentId: 'doc_42',
+        documentPath: 'crm.ktable',
         tableId: 'tbl',
         model: {
           provider_type: 'kition_console',

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
-import { graphNodesEqual, parseIdAsNumber } from '@/features/workflow/lib/workflowDraft'
+import { graphNodesEqual } from '@/features/workflow/lib/workflowDraft'
 
 const baseNode = (over: Partial<GraphNode> = {}): GraphNode => ({
   nodeId: 'trigger_1',
@@ -72,27 +72,5 @@ describe('graphNodesEqual', () => {
       baseNode({ nodeId: 'filter_1', kind: 'filter' }),
     ]
     expect(graphNodesEqual(a, b)).toBe(false)
-  })
-})
-
-describe('parseIdAsNumber', () => {
-  it('returns the numeric value for valid positive numbers', () => {
-    expect(parseIdAsNumber('42')).toBe(42)
-    expect(parseIdAsNumber('7')).toBe(7)
-  })
-
-  it('returns null for empty/undefined input so the picker can render its no-binding state', () => {
-    expect(parseIdAsNumber(undefined)).toBe(null)
-    expect(parseIdAsNumber('')).toBe(null)
-  })
-
-  it('returns null for non-numeric strings so a bad workflow definition does not call /records with NaN', () => {
-    expect(parseIdAsNumber('not-a-number')).toBe(null)
-    expect(parseIdAsNumber('1.2.3')).toBe(null)
-  })
-
-  it('returns null for zero and negative numbers — IDs in this schema are positive', () => {
-    expect(parseIdAsNumber('0')).toBe(null)
-    expect(parseIdAsNumber('-3')).toBe(null)
   })
 })

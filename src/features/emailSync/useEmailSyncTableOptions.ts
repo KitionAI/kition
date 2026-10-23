@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { openDataDocumentByPath } from '@/api/dataDocuments'
+import { isTableFilePath, listTableFiles } from '@/api/kitTables'
 import type { EmailSyncTableOption } from './EmailSyncTableSelect'
 
 export function useEmailSyncTableOptions(tablePath: string) {
@@ -10,28 +10,29 @@ export function useEmailSyncTableOptions(tablePath: string) {
 
   useEffect(() => {
     const normalizedPath = tablePath.trim()
-    if (!normalizedPath.endsWith('.kitable')) {
+    if (!isTableFilePath(normalizedPath)) {
       setOptions([])
       setLoading(false)
-      setError('Select a Kitable before choosing a destination table.')
+      setError('Select a table file before choosing a destination table.')
       return
     }
     let active = true
     setLoading(true)
     setError('')
-    void openDataDocumentByPath({ path: normalizedPath }).then((document) => {
+    void listTableFiles().then(({ files }) => {
       if (!active) return
-      const tables = (document.tables || []).map((table) => ({
-        id: table.id,
+      const file = files.find((candidate) => candidate.path === normalizedPath)
+      const tables = (file?.tables || []).map((table) => ({
+        id: Number(table.id),
         name: table.name,
         title: table.title || table.name || `Table ${table.id}`,
       }))
       setOptions(tables)
-      setError(tables.length ? '' : 'This Kitable has no data tables.')
+      setError(tables.length ? '' : 'This table file has no tables.')
     }).catch((requestError) => {
       if (!active) return
       setOptions([])
-      setError(requestError instanceof Error ? requestError.message : 'Failed to load tables from this Kitable.')
+      setError(requestError instanceof Error ? requestError.message : 'Failed to load the tables of this file.')
     }).finally(() => {
       if (active) setLoading(false)
     })

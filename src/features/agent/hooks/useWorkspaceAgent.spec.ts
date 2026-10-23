@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   ensurePortalAccountSessionRestored: vi.fn(),
   isDesktopRuntime: vi.fn(),
   listWorkspaceDocuments: vi.fn(),
-  importWorkspaceFileIntoDataTable: vi.fn(),
   notifyFromAgentEvent: vi.fn(),
   trackProductEventOnce: vi.fn(),
 }))
@@ -33,10 +32,6 @@ vi.mock('@/services/portalAccount', () => ({
 vi.mock('@/services/desktop', () => ({
   isDesktopRuntime: mocks.isDesktopRuntime,
   listWorkspaceDocuments: mocks.listWorkspaceDocuments,
-}))
-
-vi.mock('@/features/table/lib/importWorkspaceFileIntoDataTable', () => ({
-  importWorkspaceFileIntoDataTable: mocks.importWorkspaceFileIntoDataTable,
 }))
 
 vi.mock('@/services/desktopNotifications', () => ({
@@ -112,11 +107,6 @@ describe('useWorkspaceAgent hosted console restore', () => {
     mocks.listAgentSessions.mockResolvedValue({ items: [] })
     mocks.listAgentSessionEvents.mockResolvedValue({ items: [] })
     mocks.streamAgentMessage.mockResolvedValue(undefined)
-    mocks.importWorkspaceFileIntoDataTable.mockResolvedValue({
-      created: 0,
-      fieldCount: 0,
-      inferredFields: [],
-    })
     mocks.isDesktopRuntime.mockReturnValue(true)
   })
 
@@ -767,8 +757,6 @@ describe('useWorkspaceAgent hosted console restore', () => {
         getTurnContext: () => ({
           activeDocumentPath: 'Docs/Current.md',
           activeDocumentFormat: 'markdown',
-          activeDataDocumentId: 0,
-          activeDataTableId: 0,
           markdownImageInsertionContext: {
             documentPath: 'Docs/Current.md',
             cursorOffset: 20,
@@ -838,8 +826,6 @@ describe('useWorkspaceAgent hosted console restore', () => {
         getTurnContext: () => ({
           activeDocumentPath: 'Docs/Current.md',
           activeDocumentFormat: 'markdown',
-          activeDataDocumentId: 0,
-          activeDataTableId: 0,
         }),
       })
       return null
@@ -909,8 +895,6 @@ describe('useWorkspaceAgent hosted console restore', () => {
         getTurnContext: () => ({
           activeDocumentPath: 'Docs/Current.md',
           activeDocumentFormat: 'markdown',
-          activeDataDocumentId: 0,
-          activeDataTableId: 0,
         }),
       })
       return null
@@ -944,80 +928,6 @@ describe('useWorkspaceAgent hosted console restore', () => {
     }))
 
     await act(async () => root.unmount())
-    container.remove()
-  })
-
-  it('imports a referenced spreadsheet deterministically before the table agent responds', async () => {
-    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
-    const onTableMutated = vi.fn()
-    let latest: any = null
-    mocks.listWorkspaceDocuments.mockResolvedValue({
-      items: [{
-        type: 'file',
-        path: 'Reports/issues.xlsx',
-        name: 'issues.xlsx',
-        format: 'xlsx',
-      }],
-    })
-    mocks.importWorkspaceFileIntoDataTable.mockResolvedValue({
-      created: 7247,
-      fieldCount: 16,
-      inferredFields: [
-        { title: 'Owner', type: 'text' },
-        { title: 'Hours', type: 'number' },
-      ],
-    })
-
-    function Harness() {
-      latest = useWorkspaceAgent({
-        settings: createOpenAISettings(),
-        rootPath: '/test/workspace',
-        onError: vi.fn(),
-        onFeedback: vi.fn(),
-        onTableMutated,
-        getTurnContext: () => ({
-          activeDocumentPath: 'Issues.kitable',
-          activeDocumentFormat: 'data',
-          activeDataDocumentId: 12,
-          activeDataTableId: 34,
-          paneContext: 'table',
-          taskMode: 'table',
-        }),
-      })
-      return null
-    }
-
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    let root: Root | null = null
-    await act(async () => {
-      root = createRoot(container)
-      root.render(createElement(Harness))
-      await flushAsyncWork()
-    })
-    await act(async () => {
-      latest.setAgentDraft(16, 'Import @{Reports/issues.xlsx} into this table')
-    })
-    await act(async () => {
-      latest.sendAiComposerMessage(16)
-      await flushAsyncWork()
-    })
-
-    expect(mocks.importWorkspaceFileIntoDataTable).toHaveBeenCalledWith({
-      documentId: 12,
-      path: 'Reports/issues.xlsx',
-      tableId: 34,
-    })
-    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
-      executionMode: 'preview',
-      attachmentPaths: [],
-      promptContext: expect.stringContaining('Imported records: 7247'),
-    }))
-    expect(onTableMutated).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      root?.unmount()
-    })
     container.remove()
   })
 
@@ -1139,13 +1049,11 @@ describe('useWorkspaceAgent session events', () => {
       logged({ type: 'deliverables/presented', turn: 1, callId: 'd1', files: [{ path: 'Notes/plan.md' }] }),
       logged({ type: 'tool/call', callId: 'w1', name: 'whiteboard_propose_patch', arguments: {} }),
       logged({ type: 'tool/result', callId: 'w1', name: 'whiteboard_propose_patch', isError: false, content: [], value: { name: 'whiteboard_propose_patch', summary: 'Proposed', output: {} }, meta: { kind: 'whiteboard.patch', patch } }),
-      logged({ type: 'tool/call', callId: 't1', name: 'data_table_add_records', arguments: {} }),
-      logged({ type: 'tool/result', callId: 't1', name: 'data_table_add_records', isError: false, content: [], value: { name: 'data_table_add_records', summary: 'Wrote', output: { created: 1 } } }),
       logged({ type: 'step/start', turn: 1, step: 2 }),
       frame({ type: 'start', attemptId: 'a2', revision: 4, turn: 1, step: 2 }),
       frame({ type: 'chunk', attemptId: 'a2', revision: 5, index: 0, time: 2, chunk: { type: 'text-delta', index: 0, text: 'Done.' } }),
       logged({ type: 'assistant/message', content: 'Done.', stopReason: 'stop', model: 'm' }),
-      frame({ type: 'end', attemptId: 'a2', revision: 6, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 12 } }),
+      frame({ type: 'end', attemptId: 'a2', revision: 6, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 10 } }),
       logged({ type: 'turn/end', turn: 1, reason: 'completed' }),
       status('idle'),
     ]
@@ -1189,7 +1097,6 @@ describe('useWorkspaceAgent session events', () => {
     const callbacks = {
       onWorkspaceDocumentsModified: vi.fn(),
       onWorkspaceArtifactsSaved: vi.fn(),
-      onTableMutated: vi.fn(),
       onWhiteboardPatch: vi.fn(),
       onWhiteboardPatchCancelled: vi.fn(),
       getTurnContext: () => ({ paneContext: 'whiteboard', whiteboardContext: { board: { path: 'Boards/a.kiboard' } } }),
@@ -1201,7 +1108,7 @@ describe('useWorkspaceAgent session events', () => {
     await send(latest, 30, 'Plan it')
 
     const view = latest.current.agentSessionViews[30]
-    expect(view.cursor).toBe(13)
+    expect(view.cursor).toBe(11)
     expect(view.running).toBe(false)
     expect(view.turns[0]).toMatchObject({ userText: 'Plan it', reply: 'Done.', end: { reason: 'completed' } })
     expect(latest.current.agentPendingUserText[30]).toBeUndefined()
@@ -1211,12 +1118,11 @@ describe('useWorkspaceAgent session events', () => {
     expect(callbacks.onWhiteboardPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true, false])
     expect(callbacks.onWhiteboardPatch).toHaveBeenLastCalledWith({ boardPath: 'Boards/a.kiboard', patch, provisional: false, sessionId: 30 })
     expect(callbacks.onWhiteboardPatchCancelled).not.toHaveBeenCalled()
-    expect(callbacks.onTableMutated).toHaveBeenCalledTimes(1)
     expect(mocks.listWorkspaceDocuments).toHaveBeenCalled()
     expect(mocks.listAgentSessions).toHaveBeenCalled()
     expect(mocks.notifyFromAgentEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: 'task.completed' }))
     // The log is read before the send and again after the stream ends.
-    expect(mocks.listAgentSessionEvents.mock.calls.map(([id, after]) => [id, after])).toEqual([[30, -1], [30, 13]])
+    expect(mocks.listAgentSessionEvents.mock.calls.map(([id, after]) => [id, after])).toEqual([[30, -1], [30, 11]])
     await unmount()
   })
 

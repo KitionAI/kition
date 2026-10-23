@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { listDataDocuments } from '@/api/dataDocuments'
+import { getTableFields, listTableFiles } from '@/api/kitTables'
 import {
   deleteWorkflow,
   listWorkflowRuns,
@@ -60,17 +60,23 @@ vi.mock('@/features/workflow/lib/openWorkflowRoute', () => ({
   openWorkflowHome: vi.fn(),
 }))
 
-vi.mock('@/api/dataDocuments', () => ({
-  listDataDocuments: vi.fn().mockResolvedValue({
-    items: [{
-      title: 'Leads doc',
-      tables: [{
-        id: 'tbl_1',
-        title: 'Leads',
-      }],
-    }],
-  }),
+vi.mock('@/api/kitTables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/kitTables')>()),
+  listTableFiles: vi.fn(),
+  getTableFields: vi.fn(),
 }))
+
+function tableFile(path: string, documentId: string, tables: Array<{ id: string; title: string }>) {
+  return { path, documentId, dashboards: [], tables: tables.map((table) => ({ ...table, name: table.title.toLowerCase(), fields: [], meta: {} })) }
+}
+
+const LEADS_FIELDS = {
+  items: [
+    { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
+    { id: 'fld_email', name: 'email', title: 'Email', type: 'text' },
+  ],
+  table: { id: 'tbl_1', name: 'leads', title: 'Leads', fields: [], meta: {} },
+}
 
 let container: HTMLDivElement
 let root: Root | null = null
@@ -80,7 +86,7 @@ const workflow: WorkflowDefinition = {
   name: 'Lead follow-up',
   description: 'Email sales',
   enabled: false,
-  trigger: { nodeId: 'trigger_1', type: 'record_created', documentId: 'doc_1', tableId: 'tbl_1' },
+  trigger: { nodeId: 'trigger_1', type: 'record_created', documentPath: 'leads.ktable', tableId: 'tbl_1' },
   action: {
     nodeId: 'action_1',
     type: 'send_email',
@@ -128,26 +134,11 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }))
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      data: {
-        items: [
-          { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
-          { id: 'fld_email', name: 'email', title: 'Email', type: 'text' },
-        ],
-      },
-    }),
-  } as Response)
-  vi.mocked(listDataDocuments).mockResolvedValue({
-    items: [{
-      title: 'Leads doc',
-      tables: [{
-        id: 'tbl_1',
-        title: 'Leads',
-      }],
-    }],
-  } as any)
+  vi.mocked(getTableFields).mockReset().mockResolvedValue(LEADS_FIELDS)
+  vi.mocked(listTableFiles).mockReset().mockResolvedValue({
+    files: [tableFile('leads.ktable', 'kdm-leads', [{ id: 'tbl_1', title: 'Leads' }])],
+    unreadable: [],
+  })
   vi.mocked(listWorkflows).mockResolvedValue([workflow])
   vi.mocked(listWorkflowRuns).mockResolvedValue([])
   vi.mocked(listChannels).mockResolvedValue([{ channel: 'email_smtp', label: 'Email SMTP', icon: 'mail', description: '', auth: 'form', fields: [] }])
@@ -201,7 +192,7 @@ describe('WorkflowHomePage', () => {
     await mount(createElement(WorkflowHomePage))
 
     // Post route-split: /workflow renders WorkflowIndexPage; this page's
-    // own empty state is now the hero launcher (no kitable scope) rather
+    // own empty state is now the hero launcher (no table file scope) rather
 
     expect(container.querySelector('[data-testid="workflow-home-launcher"]')).not.toBeNull()
   })
@@ -324,11 +315,7 @@ describe('WorkflowHomePage', () => {
   })
 
   it('renders body tokens with fallback field labels when table schema cannot load', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: async () => ({ error: 'Failed to open data document' }),
-    } as Response)
+    vi.mocked(getTableFields).mockRejectedValue(new Error('Failed to open the table file'))
 
     await mount(createElement(WorkflowHomePage, { initialSelectedId: 'auto_1' }))
 
@@ -361,17 +348,7 @@ describe('WorkflowHomePage', () => {
           }),
         } as Response
       }
-      return {
-        ok: true,
-        json: async () => ({
-          data: {
-            items: [
-              { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
-              { id: 'fld_email', name: 'email', title: 'Email', type: 'text' },
-            ],
-          },
-        }),
-      } as Response
+      return { ok: false, status: 404, json: async () => ({}) } as Response
     })
 
     await mount(createElement(WorkflowHomePage, { initialSelectedId: 'auto_1' }))
@@ -436,23 +413,16 @@ describe('WorkflowHomePage', () => {
   })
 
   it('PATCHes the workflow trigger when the user picks a new table from the trigger drawer', async () => {
-    // Two docs / three tables — the rebind target lives in a *different*
-    // document than the currently bound table, so the test also covers
-    // documentId capture (not just tableId).
-    vi.mocked(listDataDocuments).mockResolvedValue({
-      items: [
-        {
-          id: 'doc_1',
-          title: 'Leads doc',
-          tables: [{ id: 'tbl_1', title: 'Leads' }],
-        },
-        {
-          id: 'doc_2',
-          title: 'Founders doc',
-          tables: [{ id: 'tbl_2', title: 'Founders' }],
-        },
+    // Two files — the rebind target lives in a *different* file than the
+    // currently bound table, so the test also covers the file's path and
+    // stable id (not just tableId).
+    vi.mocked(listTableFiles).mockResolvedValue({
+      files: [
+        tableFile('leads.ktable', 'kdm-leads', [{ id: 'tbl_1', title: 'Leads' }]),
+        tableFile('founders.ktable', 'kdm-founders', [{ id: 'tbl_2', title: 'Founders' }]),
       ],
-    } as any)
+      unreadable: [],
+    })
 
     await mount(createElement(WorkflowHomePage, { initialSelectedId: 'auto_1' }))
 
@@ -496,7 +466,8 @@ describe('WorkflowHomePage', () => {
       expect.objectContaining({
         trigger: expect.objectContaining({
           tableId: 'tbl_2',
-          documentId: 'doc_2',
+          documentPath: 'founders.ktable',
+          documentId: 'kdm-founders',
         }),
       }),
     )

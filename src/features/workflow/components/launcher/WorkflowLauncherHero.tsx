@@ -19,7 +19,7 @@ export interface WorkflowLauncherHeroProps {
   /** Optional table picker for the AI prompt page. Provided when the
    *  launcher mounted without a pre-bound table (top-level "Chat with
    *  AI" entry from the Workflows tab) so the user can pick the trigger
-   *  table inline before submitting. When omitted (kitable-scoped
+   *  table inline before submitting. When omitted (table-file-scoped
    *  launcher mount where the table is fixed), the readonly tableName
    *  display is rendered instead.
    *
@@ -29,8 +29,8 @@ export interface WorkflowLauncherHeroProps {
    *  permanently-disabled Start button. */
   tablePicker?: {
     options: TriggerTableOption[]
-    pickedTableId: string
-    onPick: (nextTableId: string) => void
+    pickedTableKey: string
+    onPick: (nextKey: string) => void
     emptyState?: {
       onCreate: () => void
       busy: boolean
@@ -91,7 +91,7 @@ function AiPromptHero(props: WorkflowLauncherHeroProps) {
   // gate Submit on a chosen tableId too. Without this the picker
   // implies "pick first", but submitting anyway would surface a raw
   // 400 from the backend.
-  const hasTable = tablePicker ? Boolean(tablePicker.pickedTableId) : Boolean(tableName)
+  const hasTable = tablePicker ? Boolean(tablePicker.pickedTableKey) : Boolean(tableName)
   const canSubmit = prompt.trim().length > 0 && hasTable && !submitting
 
   return (
@@ -135,14 +135,14 @@ function AiPromptHero(props: WorkflowLauncherHeroProps) {
         ) : (
           <div className="mt-1">
             <TriggerTableSelect
-              value={tablePicker.pickedTableId}
+              value={tablePicker.pickedTableKey}
               options={tablePicker.options}
               onChange={tablePicker.onPick}
               disabled={submitting}
               draftLabel={t('launcher.hero.aiPromptTablePickerPlaceholder')}
               testId="workflow-table-picker"
             />
-            {!tablePicker.pickedTableId ? (
+            {!tablePicker.pickedTableKey ? (
               <p className="mt-1 text-[11px] text-muted-foreground" data-testid="workflow-table-picker-hint">
                 {t('launcher.hero.aiPromptTablePickerHint')}
               </p>

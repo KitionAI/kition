@@ -38,7 +38,7 @@ export interface UseWorkflowModeDialogStateResult {
   /** Handles the dialog's choice callback. The chat branch has two
    *  flavors: when a context is already pinned it navigates to the
    *  /workflow/new?mode=ai surface; when context is null (top "Create"
-   *  button, kitable Workflows landing) it creates an unbound draft via
+   *  button, table file Workflows landing) it creates an unbound draft via
    *  the supplied runScratch — same delayed-binding contract the
    *  template branch uses — and pops the assistant panel so the user
    *  still has an AI affordance for refinement. The scratch branch is

@@ -53,49 +53,49 @@ describe('matchWikilinkTarget', () => {
     expect(matchWikilinkTarget(files, 'Test1.md')).toBe('Notes/Test1.md')
   })
 
-  it('matches a .kitable table by basename and full path', () => {
-    const withTable = [...files, { path: 'Getting Started/Reading List.kitable' }]
-    expect(matchWikilinkTarget(withTable, 'Reading List')).toBe('Getting Started/Reading List.kitable')
-    expect(matchWikilinkTarget(withTable, 'Reading List.kitable')).toBe('Getting Started/Reading List.kitable')
+  it('matches a .ktable table by basename and full path', () => {
+    const withTable = [...files, { path: 'Getting Started/Reading List.ktable' }]
+    expect(matchWikilinkTarget(withTable, 'Reading List')).toBe('Getting Started/Reading List.ktable')
+    expect(matchWikilinkTarget(withTable, 'Reading List.ktable')).toBe('Getting Started/Reading List.ktable')
     expect(matchWikilinkTarget(withTable, 'getting started/reading list')).toBe(
-      'Getting Started/Reading List.kitable',
+      'Getting Started/Reading List.ktable',
     )
   })
 
   it('resolves a path-qualified target relative to the current document', () => {
     const onboardingFiles = [
       { path: 'Getting Started/Welcome to Kition.md' },
-      { path: 'Getting Started/Guides/Email Automation/Inbox.kitable' },
+      { path: 'Getting Started/Guides/Email Automation/Inbox.ktable' },
     ]
     expect(matchWikilinkTarget(
       onboardingFiles,
-      'Guides/Email Automation/Inbox.kitable',
+      'Guides/Email Automation/Inbox.ktable',
       'Getting Started/Welcome to Kition.md',
-    )).toBe('Getting Started/Guides/Email Automation/Inbox.kitable')
+    )).toBe('Getting Started/Guides/Email Automation/Inbox.ktable')
   })
 
   it('prefers a same-folder basename match when a source path is available', () => {
     const duplicateFiles = [
-      { path: 'Archive/Inbox.kitable' },
-      { path: 'Projects/Inbox.kitable' },
+      { path: 'Archive/Inbox.ktable' },
+      { path: 'Projects/Inbox.ktable' },
     ]
     expect(matchWikilinkTarget(
       duplicateFiles,
-      'Inbox.kitable',
+      'Inbox.ktable',
       'Projects/Overview.md',
-    )).toBe('Projects/Inbox.kitable')
+    )).toBe('Projects/Inbox.ktable')
   })
 
   it('keeps a leading slash anchored to the workspace root', () => {
     const rootedFiles = [
-      { path: 'Inbox.kitable' },
-      { path: 'Projects/Inbox.kitable' },
+      { path: 'Inbox.ktable' },
+      { path: 'Projects/Inbox.ktable' },
     ]
     expect(matchWikilinkTarget(
       rootedFiles,
-      '/Inbox.kitable',
+      '/Inbox.ktable',
       'Projects/Overview.md',
-    )).toBe('Inbox.kitable')
+    )).toBe('Inbox.ktable')
   })
 
   it('returns null when no match', () => {

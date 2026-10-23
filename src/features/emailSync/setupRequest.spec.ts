@@ -18,17 +18,17 @@ describe('email sync setup requests', () => {
     const listener = vi.fn()
     window.addEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, listener)
 
-    requestEmailSyncSetup('Projects/Inbox.kitable', { runAfterSave: 'full' })
+    requestEmailSyncSetup('Projects/Inbox.ktable', { runAfterSave: 'full' })
     vi.runAllTimers()
 
     expect(listener).toHaveBeenCalledWith(expect.objectContaining({
       detail: {
-        tablePath: 'Projects/Inbox.kitable',
+        tablePath: 'Projects/Inbox.ktable',
         runAfterSave: 'full',
       },
     }))
-    expect(consumeEmailSyncSetupRequest('Projects/Inbox.kitable')).toEqual({
-      tablePath: 'Projects/Inbox.kitable',
+    expect(consumeEmailSyncSetupRequest('Projects/Inbox.ktable')).toEqual({
+      tablePath: 'Projects/Inbox.ktable',
       runAfterSave: 'full',
     })
 
@@ -38,7 +38,7 @@ describe('email sync setup requests', () => {
   it('ignores retry callbacks after the browser environment is gone', () => {
     vi.useFakeTimers()
 
-    requestEmailSyncSetup('Projects/Inbox.kitable')
+    requestEmailSyncSetup('Projects/Inbox.ktable')
     vi.stubGlobal('window', undefined)
 
     expect(() => vi.runAllTimers()).not.toThrow()

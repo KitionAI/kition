@@ -4,6 +4,7 @@ import type { NodeIssue, WorkflowDefinition } from '@/api/workflows'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { ScheduledTriggerPropertiesPanel } from '@/features/workflow/components/ScheduledTriggerPropertiesPanel'
 import { TriggerRequiredFieldsPanel } from '@/features/workflow/components/TriggerRequiredFieldsPanel'
+import { tableKey } from '@/api/kitTables'
 import { TriggerTableSelect } from '@/features/workflow/components/TriggerTableSelect'
 import { DrawerField, DrawerSection } from '@/features/workflow/drawer/PropertiesDrawer'
 import type { useWorkflowTriggerEditor } from '@/features/workflow/hooks/useWorkflowTriggerEditor'
@@ -60,9 +61,9 @@ export function WorkflowTriggerDrawerPanel({ selected, saving, serverErrors, tab
             hint={selected.trigger.tableId ? undefined : t('panels.drawer.trigger.tableHint')}
           >
             <TriggerTableSelect
-              value={selected.trigger.tableId || ''}
+              value={selected.trigger.tableId && selected.trigger.documentPath ? tableKey(selected.trigger.documentPath, selected.trigger.tableId) : ''}
               options={tableOptions}
-              onChange={(nextTableId) => { void editor.setTriggerTable(nextTableId) }}
+              onChange={(nextKey) => { void editor.setTriggerTable(nextKey) }}
               disabled={saving}
               testId="workflow-home-trigger-table"
             />

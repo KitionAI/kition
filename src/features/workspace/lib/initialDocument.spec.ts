@@ -5,7 +5,7 @@ import { resolveInitialDocumentPath } from './initialDocument'
 const items = [
   { path: 'Home.md' },
   { path: 'notes/a.md' },
-  { path: 'data/leads.kitable', format: 'data' as const },
+  { path: 'data/leads.ktable', format: 'table' as const },
   { path: 'assets/logo.png' },
 ]
 

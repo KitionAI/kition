@@ -19,8 +19,6 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //                                  "Summarize this document" reads as a bug
 //                                  when the user is staring at a PNG
 //   workflow        → 'workflow'  (workflow editor)
-//   table           → 'table'     (data-table editor)
-//   dashboard       → 'table'     (data reporting over a table)
 //   gallery         → 'gallery'   (image gallery)
 //   board           → 'whiteboard' (native SVG board)
 //   design          → 'design'    (artboard editor)
@@ -50,9 +48,6 @@ export function deriveAgentPaneContext(
       }
     case 'workflow':
       return 'workflow'
-    case 'table':
-    case 'dashboard':
-      return 'table'
     case 'design':
       return 'design'
     case 'gallery':
@@ -81,13 +76,10 @@ export function resolveAgentActiveDocument(
     case 'document':
     case 'file-viewer':
       return { path: tab.path, format: tab.format }
-    case 'table':
-    case 'dashboard':
-      return { path: tab.kitablePath, format: 'data' }
     case 'workflow':
       return {
-        path: tab.kitablePath || '',
-        format: tab.kitablePath ? 'data' : undefined,
+        path: tab.tablePath || '',
+        format: tab.tablePath ? 'table' : undefined,
       }
     case 'board':
       return { path: tab.path, format: 'board' }
@@ -101,29 +93,4 @@ export function resolveAgentActiveDocument(
       return { path: '' }
     }
   }
-}
-
-export function resolveAgentDataTableTarget(
-  tab: WorkspaceTab | null | undefined,
-): { documentPath: string; tableId: number | null } | null {
-  if (!tab) {
-    return null
-  }
-  if (tab.type === 'table') {
-    return {
-      documentPath: String(tab.kitablePath || '').trim(),
-      tableId: tab.tableId,
-    }
-  }
-  if (
-    tab.type === 'document'
-    && tab.format === 'data'
-    && tab.path.toLowerCase().endsWith('.kitable')
-  ) {
-    return {
-      documentPath: String(tab.path || '').trim(),
-      tableId: null,
-    }
-  }
-  return null
 }

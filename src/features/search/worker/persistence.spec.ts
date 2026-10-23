@@ -20,7 +20,7 @@ describe('persistence', () => {
     db = await openSearchDb(ROOT_HASH)
     await writeSnapshot(db, new Uint8Array([1, 2, 3, 4]), {
       version: 1, rootPath: '/test', builtAt: Date.now(), docCount: 2,
-      sourceVersions: { note: '1', kitable: '1' },
+      sourceVersions: { note: '1', table: '2' },
     })
     const snap = await readSnapshot(db)
     expect(snap).not.toBeNull()
@@ -42,7 +42,7 @@ describe('persistence', () => {
     db = await openSearchDb(ROOT_HASH)
     const result = await writeSnapshot(db, new Uint8Array([1, 2, 3]), {
       version: 1, rootPath: '/test', builtAt: Date.now(), docCount: 1,
-      sourceVersions: { note: '1', kitable: '1' },
+      sourceVersions: { note: '1', table: '2' },
     })
     expect(result).toBe(true)
   })
@@ -56,7 +56,7 @@ describe('persistence', () => {
     try {
       const result = await writeSnapshot(db, new Uint8Array([9, 8, 7]), {
         version: 1, rootPath: '/test', builtAt: Date.now(), docCount: 5,
-        sourceVersions: { note: '1', kitable: '1' },
+        sourceVersions: { note: '1', table: '2' },
       })
       expect(result).toBe(false)
     } finally {
@@ -69,7 +69,7 @@ describe('persistence', () => {
     const db2 = await openSearchDb('hash-bbbb-3333-4444')
     await writeSnapshot(db1, new Uint8Array([9]), {
       version: 1, rootPath: '/x', builtAt: 0, docCount: 0,
-      sourceVersions: { note: '1', kitable: '1' },
+      sourceVersions: { note: '1', table: '2' },
     })
     const snap2 = await readSnapshot(db2)
     db1.close()

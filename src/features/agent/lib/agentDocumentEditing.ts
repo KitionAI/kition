@@ -2,7 +2,7 @@ import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 import { isBinaryAttachmentMention } from './documentMentions'
 
-const structuredDocumentFormats = new Set<WorkspaceDocumentFormat>(['data', 'table'])
+const structuredDocumentFormats = new Set<WorkspaceDocumentFormat>(['table'])
 
 export function buildAgentDocumentEditingPromptContext(input: {
   activeDocumentPath?: string
@@ -13,7 +13,7 @@ export function buildAgentDocumentEditingPromptContext(input: {
   if (
     !path
     || structuredDocumentFormats.has(input.activeDocumentFormat || 'markdown')
-    || path.toLowerCase().endsWith('.kitable')
+    || path.toLowerCase().endsWith('.ktable')
     || isBinaryAttachmentMention(input.activeDocumentFormat, path)
   ) {
     return ''

@@ -25,7 +25,6 @@ import type {
   EditorTextStyle,
   EditorViewPreferences,
 } from '@/features/workspace/hooks/useWorkspaceChrome'
-import type { TableAction } from '@kition/table-editor'
 
 type EditorPreferenceKey = 'smallText' | 'fullWidth' | 'toc' | 'locked'
 
@@ -48,10 +47,6 @@ type WorkspaceDocumentItemMenuProps = {
   onTriggerImport: () => void
 }
 
-type WorkspaceTableItemMenuProps = {
-  onOpenWorkspaceFolder: () => void
-  onRunActiveDataTableAction: (action: TableAction) => void
-}
 
 const workspaceEditorModeOptions = [
   { value: 'rich' as const, labelKey: 'itemMenu.mode.rich' },
@@ -65,25 +60,6 @@ const workspaceEditorPreferenceOptions: Array<{ key: EditorPreferenceKey; labelK
   { key: 'fullWidth', labelKey: 'itemMenu.preference.fullWidth' },
   { key: 'toc', labelKey: 'itemMenu.preference.toc' },
   { key: 'locked', labelKey: 'itemMenu.preference.locked' },
-]
-
-const workspaceTablePrimaryActions: Array<{ action: TableAction; labelKey: string; icon: typeof Edit3 }> = [
-  { action: 'rename', labelKey: 'itemMenu.tableAction.rename', icon: Edit3 },
-  { action: 'duplicate', labelKey: 'itemMenu.tableAction.duplicate', icon: FileText },
-]
-
-const workspaceTableSecondaryActions: Array<{
-  action: TableAction
-  labelKey: string
-  icon: typeof Download
-  trailingChevron?: boolean
-}> = [
-  { action: 'download_csv', labelKey: 'itemMenu.tableAction.downloadCsv', icon: Download },
-  { action: 'import_csv', labelKey: 'itemMenu.tableAction.importData', icon: FileUp, trailingChevron: true },
-  { action: 'copy_api', labelKey: 'itemMenu.tableAction.api', icon: Terminal },
-  { action: 'history', labelKey: 'itemMenu.tableAction.history', icon: History, trailingChevron: true },
-  { action: 'share', labelKey: 'itemMenu.tableAction.share', icon: Link2 },
-  { action: 'delete', labelKey: 'itemMenu.tableAction.delete', icon: Trash2 },
 ]
 
 export function WorkspaceDocumentItemMenu({
@@ -253,54 +229,6 @@ export function WorkspaceMarkdownItemMenu({
           <FolderOpen className="size-4" />
           {t('itemMenu.openContainingFolder')}
         </button>
-      </div>
-    </div>
-  )
-}
-
-export function WorkspaceTableItemMenu({
-  onOpenWorkspaceFolder,
-  onRunActiveDataTableAction,
-}: WorkspaceTableItemMenuProps) {
-  const { t } = useTranslation('workspace')
-  return (
-    <div className="document-topbar-menu document-table-topbar-menu" data-window-drag-exclude="true">
-      <div className="py-1">
-        {workspaceTablePrimaryActions.map((item) => {
-          const Icon = item.icon
-          return (
-            <button key={item.action} type="button" className="document-menu-command" onClick={() => onRunActiveDataTableAction(item.action)}>
-              <Icon className="size-4" />
-              {t(item.labelKey)}
-            </button>
-          )
-        })}
-        <button
-          type="button"
-          className="document-menu-command"
-          onClick={onOpenWorkspaceFolder}
-        >
-          <FolderOpen className="size-4" />
-          {t('itemMenu.openContainingFolder')}
-        </button>
-      </div>
-      <div className="document-menu-separator" />
-      <div className="py-1">
-        {workspaceTableSecondaryActions.map((item) => {
-          const Icon = item.icon
-          return (
-            <button
-              key={item.action}
-              type="button"
-              className={cn('document-menu-command', item.action === 'delete' && 'is-danger')}
-              onClick={() => onRunActiveDataTableAction(item.action)}
-            >
-              <Icon className="size-4" />
-              <span className="min-w-0 flex-1">{t(item.labelKey)}</span>
-              {item.trailingChevron ? <ChevronRight className="ml-auto size-4 text-muted-foreground" /> : null}
-            </button>
-          )
-        })}
       </div>
     </div>
   )

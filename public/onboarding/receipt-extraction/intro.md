@@ -4,7 +4,7 @@ This guide shows how file context can become structured, reviewable table data.
 
 ## Included table
 
-`Receipt Archive.kitable` contains example rows for:
+`Receipt Archive.ktable` contains example rows for:
 
 - source filename
 - vendor and address

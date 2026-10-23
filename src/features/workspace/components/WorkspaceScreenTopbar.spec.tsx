@@ -24,7 +24,7 @@ function buildInput(overrides: Partial<WorkspaceScreenTopbarInput> = {}) {
     documentToolbarPortal: portal,
     importInputRef: { current: null },
     chrome: chrome as never,
-    actions: { importMarkdownFile: vi.fn(async () => undefined), restoreSavedDraft: vi.fn(), runActiveDataTableAction: vi.fn(), setEditorMode: vi.fn() } as never,
+    actions: { importMarkdownFile: vi.fn(async () => undefined), restoreSavedDraft: vi.fn(), setEditorMode: vi.fn() } as never,
     derived: { activeItemWordCount: 12, canImportSource: true },
     documentSession: {
       activeDocument: { path: 'plan.md', name: 'plan.md', content: '', updated_at: '2026-09-01T00:00:00Z' },
@@ -44,7 +44,7 @@ function buildInput(overrides: Partial<WorkspaceScreenTopbarInput> = {}) {
 describe('buildWorkspaceTopbarProps', () => {
   it('mounts the document toolbar only while a document tab is active', () => {
     expect(buildWorkspaceTopbarProps(buildInput().input).documentToolbarPortal).toBe(portal)
-    const table: WorkspaceTab = { id: 't', type: 'table', title: 'T', kitablePath: 'a.kitable', tableId: 1, format: 'data' }
+    const table: WorkspaceTab = { id: 'w', type: 'workflow', title: 'W', tablePath: 'a.ktable' }
     const { input } = buildInput()
     input.tabs = { ...input.tabs, activeWorkspaceTab: table }
     expect(buildWorkspaceTopbarProps(input).documentToolbarPortal).toBeNull()

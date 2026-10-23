@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Claude Code Stop hook: refuse to end a task while either mandatory e2e gate
-# (pnpm test:table:e2e, the GFM table widget; pnpm test:kitable:e2e, the Table
-# kit) is failing.
+# (pnpm test:table:e2e, the GFM table widget; pnpm test:ktable:e2e, Kition
+# around the Table kit, e2e/table-kit.spec.ts) is failing.
 #
 # Reads the hook payload from stdin. When stop_hook_active is already true the
 # hook is re-entering itself and exits 0 to avoid recursion. Set
@@ -43,7 +43,7 @@ fi
 
 cd "$APP_DIR"
 
-GATES=("test:table:e2e" "test:kitable:e2e")
+GATES=("test:table:e2e" "test:ktable:e2e")
 
 for gate in "${GATES[@]}"; do
   echo "[post-task-e2e] running pnpm run $gate in $APP_DIR" >&2

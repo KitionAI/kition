@@ -29,7 +29,7 @@ describe('createWorkflow', () => {
       name: 'My welcome email',
       description: '',
       enabled: false,
-      trigger: { type: 'record_created', documentId: 'd1', tableId: 't1' },
+      trigger: { type: 'record_created', documentPath: 'Leads.ktable', tableId: 't1' },
       action: { type: 'send_email', connectionId: '', to: 'you@example.com', subject: { parts: [{ kind: 'text' as const, text: 'Hi' }] }, body: { parts: [{ kind: 'text', text: 'hi' }] } },
     })
 
@@ -56,7 +56,7 @@ describe('createWorkflow', () => {
       name: 'X',
       description: '',
       enabled: false,
-      trigger: { type: 'record_created', documentId: 'd1', tableId: 't1' },
+      trigger: { type: 'record_created', documentPath: 'Leads.ktable', tableId: 't1' },
       action: { type: 'send_email', connectionId: '', to: 'a@b.c', subject: { parts: [{ kind: 'text' as const, text: 'S' }] }, body: { parts: [{ kind: 'text', text: 't' }] } },
     })
     window.removeEventListener('kition:workflow:changed', listener)

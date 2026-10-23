@@ -36,7 +36,7 @@ const input = {
   },
   password: 'app-password',
   target: {
-    table_path: 'Mail/Emails.kitable',
+    table_path: 'Mail/Emails.ktable',
     content_folder: 'Mail/Messages',
     attachment_folder: 'Mail/Attachments',
   },
@@ -68,11 +68,11 @@ describe('email sync API', () => {
   it('runs one incremental sync through the dedicated endpoint', async () => {
     const reload = vi.fn()
     window.addEventListener('kition:workspace-reload', reload)
-    requestMock.post.mockResolvedValueOnce({ imported: 2, table_path: 'Mail/Emails.kitable' })
+    requestMock.post.mockResolvedValueOnce({ imported: 2, table_path: 'Mail/Emails.ktable' })
     await runEmailSyncWorkflow('mail_1')
     expect(requestMock.post).toHaveBeenCalledWith('/v1/email-sync/workflows/mail_1/sync', {})
     expect((reload.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
-      preferredPath: 'Mail/Emails.kitable',
+      preferredPath: 'Mail/Emails.ktable',
       treeOnly: true,
     })
     window.removeEventListener('kition:workspace-reload', reload)
@@ -81,11 +81,11 @@ describe('email sync API', () => {
   it('refreshes the workspace at the full-sync destination', async () => {
     const reload = vi.fn()
     window.addEventListener('kition:workspace-reload', reload)
-    requestMock.post.mockResolvedValueOnce({ imported: 20, table_path: 'Mail/Archive.kitable' })
+    requestMock.post.mockResolvedValueOnce({ imported: 20, table_path: 'Mail/Archive.ktable' })
     await runAllEmailSyncWorkflow('mail_1')
     expect(requestMock.post).toHaveBeenCalledWith('/v1/email-sync/workflows/mail_1/sync-all', {})
     expect((reload.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
-      preferredPath: 'Mail/Archive.kitable',
+      preferredPath: 'Mail/Archive.ktable',
       treeOnly: true,
     })
     window.removeEventListener('kition:workspace-reload', reload)

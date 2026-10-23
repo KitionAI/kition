@@ -29,7 +29,7 @@ const sampleGuide: OnboardingGuide = {
   intro: 'intro.md',
   seeds: ['orders.csv', 'prompts.md'],
   assets: ['reference.jpg'],
-  tableFile: 'Lead Follow-up.kitable',
+  tableFile: 'Lead Follow-up.ktable',
 }
 
 describe('onboardingGuideFolderExists', () => {
@@ -117,7 +117,7 @@ describe('importOnboardingGuide', () => {
       })
     }
     expect([...byFilename.keys()].sort()).toEqual([
-      'Lead Follow-up.kitable', 'orders.csv', 'prompts.md', 'reference.jpg',
+      'Lead Follow-up.ktable', 'orders.csv', 'prompts.md', 'reference.jpg',
     ])
     for (const seed of ['orders.csv', 'prompts.md']) {
       expect(byFilename.get(seed)).toEqual({
@@ -125,7 +125,7 @@ describe('importOnboardingGuide', () => {
         hasContent: true,
       })
     }
-    expect(byFilename.get('Lead Follow-up.kitable')).toEqual({
+    expect(byFilename.get('Lead Follow-up.ktable')).toEqual({
       folder: 'Getting Started/Guides/Lead Automation',
       hasContent: true,
     })
@@ -140,7 +140,7 @@ describe('importOnboardingGuide', () => {
 
     const filenames = (importWorkspaceFile as ReturnType<typeof vi.fn>).mock.calls
       .map((call) => call[0].filename)
-    expect(filenames).not.toContain('Lead Follow-up.kitable')
+    expect(filenames).not.toContain('Lead Follow-up.ktable')
     expect(importWorkspaceFile).toHaveBeenCalledTimes(3)
   })
 

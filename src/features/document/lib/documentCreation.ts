@@ -5,7 +5,7 @@ import {
 } from '@/services/desktop'
 
 export type DocumentPlatform = 'page' | 'note'
-export type DocumentCreateFormat = 'markdown' | 'table'
+export type DocumentCreateFormat = 'markdown'
 export type DocumentCreationPreset = {
   title: string
   content: string

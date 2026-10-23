@@ -39,7 +39,7 @@ function workflowFromInput(input: any, id: string): WorkflowDefinition {
 function makeDeps(overrides: Partial<EnsureOnboardingWorkflowDeps> = {}): EnsureOnboardingWorkflowDeps {
   let sequence = 0
   return {
-    listDocuments: vi.fn().mockResolvedValue({ items: [] }),
+    listFiles: vi.fn().mockResolvedValue({ files: [], unreadable: [] }),
     createTable: vi.fn() as any,
     fetchSchema: vi.fn() as any,
     create: vi.fn(async (input) => workflowFromInput(input, `auto_${++sequence}`)),
@@ -48,7 +48,7 @@ function makeDeps(overrides: Partial<EnsureOnboardingWorkflowDeps> = {}): Ensure
       name: 'patched',
       description: '',
       enabled: Boolean(patch.enabled),
-      trigger: { nodeId: 'trigger_1', type: 'record_updated', documentId: '7', tableId: '12' },
+      trigger: { nodeId: 'trigger_1', type: 'record_updated', documentPath: 'Task Tracker.ktable', tableId: '12' },
       action: { nodeId: 'action_1', type: 'add_record', to: '', subject: { parts: [] }, body: { parts: [] } },
     } as WorkflowDefinition)),
     storage: memoryStorage(),
@@ -60,11 +60,13 @@ describe('ensureOnboardingWorkflow', () => {
   it('creates the disabled lead email workflow only for the onboarding lead table file', async () => {
     const storage = memoryStorage()
     const deps = makeDeps({
-      listDocuments: vi.fn().mockResolvedValue({
-        items: [{
-          id: 'onboarding-leads',
-          path: 'Getting Started/Guides/Lead Automation/Lead Follow-up.kitable',
-          tables: [{ id: 1, title: 'Leads', name: 'leads' }],
+      listFiles: vi.fn().mockResolvedValue({
+        unreadable: [],
+        files: [{
+          documentId: 'onboarding-leads',
+          dashboards: [],
+          path: 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable',
+          tables: [{ id: '1', fields: [], title: 'Leads', name: 'leads' }],
         }],
       }),
       fetchSchema: vi.fn().mockResolvedValue({
@@ -84,7 +86,7 @@ describe('ensureOnboardingWorkflow', () => {
       storage,
     })
     const input = {
-      scopedKitablePath: 'Getting Started/Guides/Lead Automation/Lead Follow-up.kitable',
+      tableFilePath: 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable',
       rootPath: '/vault',
       workflows: [],
       translate,
@@ -101,6 +103,7 @@ describe('ensureOnboardingWorkflow', () => {
       enabled: false,
       trigger: expect.objectContaining({
         type: 'record_created',
+        documentPath: 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable',
         documentId: 'onboarding-leads',
         tableId: '1',
       }),
@@ -113,17 +116,19 @@ describe('ensureOnboardingWorkflow', () => {
 
   it('does not provision the lead email workflow for an unrelated lead table file', async () => {
     const deps = makeDeps({
-      listDocuments: vi.fn().mockResolvedValue({
-        items: [{
-          id: 7,
-          path: 'Sales/Lead Follow-up.kitable',
-          tables: [{ id: 12, title: 'Leads', name: 'leads' }],
+      listFiles: vi.fn().mockResolvedValue({
+        unreadable: [],
+        files: [{
+          documentId: 'kdm-7',
+          dashboards: [],
+          path: 'Sales/Lead Follow-up.ktable',
+          tables: [{ id: '12', fields: [], title: 'Leads', name: 'leads' }],
         }],
       }),
     })
 
     const result = await ensureOnboardingWorkflow({
-      scopedKitablePath: 'Sales/Lead Follow-up.kitable',
+      tableFilePath: 'Sales/Lead Follow-up.ktable',
       rootPath: '/vault',
       workflows: [],
       translate,
@@ -135,17 +140,19 @@ describe('ensureOnboardingWorkflow', () => {
 
   it('creates the fully bound Content Ideas workflow', async () => {
     const deps = makeDeps({
-      listDocuments: vi.fn().mockResolvedValue({
-        items: [{
-          id: 7,
-          path: 'Getting Started/Content Pipeline.kitable',
+      listFiles: vi.fn().mockResolvedValue({
+        unreadable: [],
+        files: [{
+          documentId: 'kdm-7',
+          dashboards: [],
+          path: 'Getting Started/Content Pipeline.ktable',
           tables: [
-            { id: 12, title: 'Content Ideas', name: 'content_ideas' },
-            { id: 13, title: 'Publishing Queue', name: 'publishing_queue' },
+            { id: '12', fields: [], title: 'Content Ideas', name: 'content_ideas' },
+            { id: '13', fields: [], title: 'Publishing Queue', name: 'publishing_queue' },
           ],
         }],
       }),
-      fetchSchema: vi.fn(async (_documentId: string, tableId: string) => ({
+      fetchSchema: vi.fn(async (_documentPath: string, tableId: string) => ({
         id: tableId,
         name: tableId === '12' ? 'Content Ideas' : 'Publishing Queue',
         fields: tableId === '12'
@@ -165,7 +172,7 @@ describe('ensureOnboardingWorkflow', () => {
       })),
     })
     const result = await ensureOnboardingWorkflow({
-      scopedKitablePath: 'Getting Started/Content Pipeline.kitable',
+      tableFilePath: 'Getting Started/Content Pipeline.ktable',
       rootPath: '/vault',
       workflows: [],
       translate,
@@ -181,15 +188,17 @@ describe('ensureOnboardingWorkflow', () => {
 
   it('adds the missing Completed Tasks table and creates both Tasks workflows', async () => {
     const deps = makeDeps({
-      listDocuments: vi.fn().mockResolvedValue({
-        items: [{
-          id: 7,
-          path: 'Getting Started/Projects & Planning/Task Tracker.kitable',
-          tables: [{ id: 12, title: 'Tasks', name: 'tasks' }],
+      listFiles: vi.fn().mockResolvedValue({
+        unreadable: [],
+        files: [{
+          documentId: 'kdm-7',
+          dashboards: [],
+          path: 'Getting Started/Projects & Planning/Task Tracker.ktable',
+          tables: [{ id: '12', fields: [], title: 'Tasks', name: 'tasks' }],
         }],
       }),
-      createTable: vi.fn().mockResolvedValue({ id: 13, title: 'Completed Tasks', name: 'completed_tasks' }) as any,
-      fetchSchema: vi.fn(async (_documentId: string, tableId: string) => ({
+      createTable: vi.fn().mockResolvedValue({ id: '13', fields: [], title: 'Completed Tasks', name: 'completed_tasks' }),
+      fetchSchema: vi.fn(async (_documentPath: string, tableId: string) => ({
         id: tableId,
         name: tableId === '12' ? 'Tasks' : 'Completed Tasks',
         fields: tableId === '12'
@@ -209,13 +218,18 @@ describe('ensureOnboardingWorkflow', () => {
       })),
     })
     const result = await ensureOnboardingWorkflow({
-      scopedKitablePath: 'Getting Started/Projects & Planning/Task Tracker.kitable',
+      tableFilePath: 'Getting Started/Projects & Planning/Task Tracker.ktable',
       rootPath: '/vault',
       workflows: [],
       translate,
     }, deps)
 
-    expect(deps.createTable).toHaveBeenCalledWith(7, expect.objectContaining({ title: 'Completed Tasks' }))
+    expect(deps.createTable).toHaveBeenCalledWith(
+      'Getting Started/Projects & Planning/Task Tracker.ktable',
+      'Completed Tasks',
+      expect.arrayContaining([expect.objectContaining({ title: 'Task', name: 'task', type: 'text', primary: true, required: true })]),
+      'onboarding',
+    )
     expect(result.created).toHaveLength(2)
     expect(deps.create).toHaveBeenCalledTimes(2)
     expect(deps.patch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
@@ -231,9 +245,9 @@ describe('ensureOnboardingWorkflow', () => {
   it.each([
     {
       label: 'Expenses update action',
-      path: 'Getting Started/Expense Review.kitable',
+      path: 'Getting Started/Expense Review.ktable',
       sourceName: 'Expenses',
-      tables: [{ id: 12, title: 'Expenses', name: 'expenses' }],
+      tables: [{ id: '12', fields: [], title: 'Expenses', name: 'expenses' }],
       schemas: {
         '12': [
           { id: '201', name: 'Amount', type: 'number' },
@@ -245,11 +259,11 @@ describe('ensureOnboardingWorkflow', () => {
     },
     {
       label: 'Orders catalog lookup',
-      path: 'Getting Started/Order Fulfillment.kitable',
+      path: 'Getting Started/Order Fulfillment.ktable',
       sourceName: 'Orders',
       tables: [
-        { id: 12, title: 'Orders', name: 'orders' },
-        { id: 13, title: 'Product Catalog', name: 'product_catalog' },
+        { id: '12', fields: [], title: 'Orders', name: 'orders' },
+        { id: '13', fields: [], title: 'Product Catalog', name: 'product_catalog' },
       ],
       schemas: {
         '12': [
@@ -269,9 +283,9 @@ describe('ensureOnboardingWorkflow', () => {
     },
     {
       label: 'CRM contact deterministic transforms',
-      path: 'Getting Started/Sales & Customer/Simple Client CRM.kitable',
+      path: 'Getting Started/Sales & Customer/Simple Client CRM.ktable',
       sourceName: 'Contacts',
-      tables: [{ id: 12, title: 'Contacts', name: 'contacts' }],
+      tables: [{ id: '12', fields: [], title: 'Contacts', name: 'contacts' }],
       schemas: {
         '12': [
           { id: '201', name: 'Email', type: 'text' },
@@ -284,15 +298,15 @@ describe('ensureOnboardingWorkflow', () => {
     },
   ])('provisions the runnable $label onboarding workflow', async ({ path, sourceName, tables, schemas, actionType }) => {
     const deps = makeDeps({
-      listDocuments: vi.fn().mockResolvedValue({ items: [{ id: 7, path, tables }] }),
-      fetchSchema: vi.fn(async (_documentId: string, tableId: string) => ({
+      listFiles: vi.fn().mockResolvedValue({ files: [{ path, documentId: 'kdm-7', tables, dashboards: [] }], unreadable: [] }),
+      fetchSchema: vi.fn(async (_documentPath: string, tableId: string) => ({
         id: tableId,
         name: tableId === '13' ? 'Product Catalog' : sourceName,
         fields: schemas[tableId as keyof typeof schemas],
       })),
     })
     const result = await ensureOnboardingWorkflow({
-      scopedKitablePath: path,
+      tableFilePath: path,
       rootPath: '/vault',
       workflows: [],
       translate,
@@ -327,16 +341,18 @@ describe('ensureOnboardingWorkflow', () => {
   it('does not recreate scenarios after their markers were written', async () => {
     const storage = memoryStorage()
     const docs = {
-      items: [{
-        id: 7,
-        path: 'Getting Started/Content Pipeline.kitable',
+      unreadable: [],
+      files: [{
+        documentId: 'kdm-7',
+        dashboards: [],
+        path: 'Getting Started/Content Pipeline.ktable',
         tables: [
-          { id: 12, title: 'Content Ideas', name: 'content_ideas' },
-          { id: 13, title: 'Publishing Queue', name: 'publishing_queue' },
+          { id: '12', fields: [], title: 'Content Ideas', name: 'content_ideas' },
+          { id: '13', fields: [], title: 'Publishing Queue', name: 'publishing_queue' },
         ],
       }],
     }
-    const schema = vi.fn(async (_documentId: string, tableId: string) => ({
+    const schema = vi.fn(async (_documentPath: string, tableId: string) => ({
       id: tableId,
       name: '',
       fields: tableId === '12'
@@ -354,14 +370,14 @@ describe('ensureOnboardingWorkflow', () => {
             { id: '305', name: 'Automation Note', type: 'text' },
           ],
     }))
-    const firstDeps = makeDeps({ listDocuments: vi.fn().mockResolvedValue(docs), fetchSchema: schema, storage })
+    const firstDeps = makeDeps({ listFiles: vi.fn().mockResolvedValue(docs), fetchSchema: schema, storage })
     await ensureOnboardingWorkflow({
-      scopedKitablePath: 'Getting Started/Content Pipeline.kitable', rootPath: '/vault', workflows: [], translate,
+      tableFilePath: 'Getting Started/Content Pipeline.ktable', rootPath: '/vault', workflows: [], translate,
     }, firstDeps)
 
-    const secondDeps = makeDeps({ listDocuments: vi.fn().mockResolvedValue(docs), fetchSchema: schema, storage })
+    const secondDeps = makeDeps({ listFiles: vi.fn().mockResolvedValue(docs), fetchSchema: schema, storage })
     const result = await ensureOnboardingWorkflow({
-      scopedKitablePath: 'Getting Started/Content Pipeline.kitable', rootPath: '/vault', workflows: [], translate,
+      tableFilePath: 'Getting Started/Content Pipeline.ktable', rootPath: '/vault', workflows: [], translate,
     }, secondDeps)
     expect(result).toEqual({ created: [], existing: [] })
     expect(secondDeps.create).not.toHaveBeenCalled()

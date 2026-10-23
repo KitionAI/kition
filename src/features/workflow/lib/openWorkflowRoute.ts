@@ -6,7 +6,8 @@
 // editor then opens with an empty trigger and the user picks the table
 // inside the trigger config panel (or asks the AI to bind it).
 export type WorkflowRouteContext = {
-  documentId: string
+  /** The table file's workspace path (`crm.ktable`). */
+  documentPath: string
   tableId: string
   tableName: string
 }

@@ -4,7 +4,8 @@
  *
  * Signals:
  * - File watcher events from the desktop process (add / change / unlink),
- *   scoped to the changed path and, for .kitable files, the kitable index.
+ *   scoped to the changed path; a changed table file also tells the table pickers
+ *   (`TABLE_FILES_CHANGED_EVENT`).
  * - `kition:workspace-reload`, the manual "re-read the tree" event.
  * - The runtime change events dispatched by the API modules after a write
  *   (workflows, form sync, email sync, connections).
@@ -15,6 +16,7 @@ import { queryKeys, workspaceRootKey } from '@/api/queryKeys'
 import { subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { WORKFLOW_CHANGED_EVENT, WORKFLOW_ENABLED_CHANGED_EVENT } from '@/lib/workflowEvents'
 import { CONNECTIONS_CHANGED_EVENT } from './connections'
+import { isTableFilePath, notifyTableFilesChanged } from './kitTables'
 import { EMAIL_SYNC_CHANGED_EVENT } from './emailSync'
 import { FORM_SYNC_CHANGED_EVENT } from './formSync'
 
@@ -27,10 +29,6 @@ export function setInvalidationWorkspaceRoot(root: string | null | undefined) {
   currentWorkspaceRoot = workspaceRootKey(root)
 }
 
-function isKitablePath(path: string) {
-  return path.toLowerCase().endsWith('.kitable')
-}
-
 /** Invalidates the queries that a single file change can affect. */
 export function invalidateForWorkspaceChange(queryClient: QueryClient, change: WorkspaceDocumentExternalChange) {
   const root = currentWorkspaceRoot
@@ -40,9 +38,7 @@ export function invalidateForWorkspaceChange(queryClient: QueryClient, change: W
   if (change.eventType !== 'change') {
     tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.workspaceTree(root) }))
   }
-  if (isKitablePath(change.path)) {
-    tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.kitableIndex(root) }))
-  }
+  if (isTableFilePath(change.path) && typeof window !== 'undefined') notifyTableFilesChanged(change.path)
   return Promise.all(tasks)
 }
 
@@ -54,7 +50,6 @@ function invalidateWorkflows(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.workflows() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.formSyncWorkflows() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.kitableIndex(currentWorkspaceRoot) }),
   ])
 }
 

@@ -2,7 +2,7 @@
 
 This onboarding guide connects personal email to two different Kition workflows:
 
-1. **Inbox sync** imports IMAP messages into a local `.kitable` and stores each full message as Markdown.
+1. **Inbox sync** imports IMAP messages into a local `.ktable` and stores each full message as Markdown.
 2. **Workflow delivery** sends outbound email through a reusable SMTP connection.
 
 Start with inbox sync. It produces useful local data without sending any email.
@@ -13,7 +13,7 @@ This guide includes an empty, schema-complete inbox table. The recommended confi
 
 ```text
 Getting Started/Guides/Email Automation/
-├── Inbox.kitable
+├── Inbox.ktable
 └── intro.md
 
 Mail/
@@ -23,7 +23,7 @@ Mail/
     └── <message-key>/<attachment>
 ```
 
-The included `Inbox.kitable` is empty until the first successful sync. It contains one row per imported message afterward. Select the **Document** value in any row to open the complete email as a Markdown document inside Kition.
+The included `Inbox.ktable` is empty until the first successful sync. It contains one row per imported message afterward. Select the **Document** value in any row to open the complete email as a Markdown document inside Kition.
 
 | Table field | Purpose |
 | --- | --- |
@@ -46,11 +46,11 @@ The included `Inbox.kitable` is empty until the first successful sync. It contai
 - Confirm that the active runtime exposes the `email_sync` capability. Kition hides inbox sync when the runtime does not support it.
 - Decide whether attachments should be downloaded. Message text is always stored locally; attachments are optional.
 
-Credentials are encrypted by the local runtime. They are not written into Markdown documents or `.kitable` files.
+Credentials are encrypted by the local runtime. They are not written into Markdown documents or `.ktable` files.
 
 ## Configure the included inbox sync workflow
 
-1. Open `Getting Started/Guides/Email Automation/Inbox.kitable`.
+1. Open `Getting Started/Guides/Email Automation/Inbox.ktable`.
 2. Select **Workflow**. The included workflow opens as `Scheduled trigger` followed by `Sync email inbox`.
 3. Select the `Sync email inbox` action node.
 4. Select the provider account and enter a clear workflow name, such as `Personal inbox`.
@@ -60,7 +60,7 @@ Credentials are encrypted by the local runtime. They are not written into Markdo
 
 | Destination | Recommended value |
 | --- | --- |
-| Table path | `Getting Started/Guides/Email Automation/Inbox.kitable` |
+| Table path | `Getting Started/Guides/Email Automation/Inbox.ktable` |
 | Markdown folder | `Mail/Messages` |
 | Attachment folder | `Mail/Attachments` |
 | Interval | `15` minutes |
@@ -70,7 +70,7 @@ The schedule interval must be between 5 and 1,440 minutes. Disable the schedule 
 
 ## Verify the first import
 
-1. Open `Getting Started/Guides/Email Automation/Inbox.kitable` from the workspace tree.
+1. Open `Getting Started/Guides/Email Automation/Inbox.ktable` from the workspace tree.
 2. Confirm that message metadata appears as table rows.
 3. Select a value in the **Document** column.
 4. Confirm that the full message opens as Markdown.
@@ -156,7 +156,7 @@ Kition identifies an imported message with the workflow, mailbox, provider `UIDV
 - **Only recent messages appeared**: the provider is limiting the history exposed to IMAP. For 163 Mail and 126 Mail, set the client receive range to all messages in the webmail POP3, SMTP, and IMAP settings, then run **Sync all** again.
 - **TLS failed**: verify that port `993` uses TLS. Use STARTTLS only when the provider explicitly requires it.
 - **Connection timed out**: check the firewall, VPN, proxy, and provider security controls.
-- **No rows appeared**: run **Sync now** again, inspect the workflow error, and confirm the target path ends in `.kitable`.
+- **No rows appeared**: run **Sync now** again, inspect the workflow error, and confirm the target path ends in `.ktable`.
 - **Attachments are missing**: enable attachment download, then sync a message that has not already completed or recreate the workflow for a clean import target.
 
 ## Configure outbound workflow email
@@ -222,7 +222,7 @@ Inbox sync reads email through IMAP. Workflows send email through a separate reu
 
 ## Connect an outbound workflow
 
-1. Open [[../Lead Automation/Lead Follow-up.kitable]] and select **Workflows**.
+1. Open [[../Lead Automation/Lead Follow-up.ktable]] and select **Workflows**.
 2. Open the **Send email** action.
 3. Select the saved SMTP connection.
 4. Replace the sample recipient with an address you control.

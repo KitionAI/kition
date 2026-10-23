@@ -42,7 +42,7 @@ async function mount(runAfterSave?: 'full') {
   await act(async () => {
     root = createRoot(container)
     root.render(createElement(EmailSyncOnboardingWorkflowPage, {
-      tablePath: 'Getting Started/Guides/Email Automation/Inbox.kitable',
+      tablePath: 'Getting Started/Guides/Email Automation/Inbox.ktable',
       runAfterSave,
       onSaved: vi.fn(),
     }))
@@ -74,6 +74,6 @@ describe('EmailSyncOnboardingWorkflowPage', () => {
     expect(editor?.getAttribute('data-enabled')).toBe('true')
     expect(editor?.getAttribute('data-interval')).toBe('15')
     expect(editor?.getAttribute('data-run-after-save')).toBe('full')
-    expect(editor?.textContent).toContain('Getting Started/Guides/Email Automation/Inbox.kitable')
+    expect(editor?.textContent).toContain('Getting Started/Guides/Email Automation/Inbox.ktable')
   })
 })

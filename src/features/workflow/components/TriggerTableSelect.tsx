@@ -6,15 +6,23 @@ import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
 import { cn } from '@kition/app-ui/utils'
 
 export type TriggerTableOption = {
+  /** `tableKey(documentPath, tableId)`: the option's value in the picker. */
+  key: string
   tableId: string
   tableName: string
   documentTitle: string
+  /** The table file's workspace path. */
+  documentPath: string
+  /** The file's KDM root object id; '' when unknown. */
+  documentId: string
 }
 
 type TriggerTableSelectProps = {
+  /** The selected option's key (`tableKey(path, tableId)`); '' for none. */
   value: string
   options: TriggerTableOption[]
-  onChange: (nextTableId: string) => void
+  /** Called with the picked option's key, or '' for the draft row. */
+  onChange: (nextKey: string) => void
   disabled?: boolean
   /** Native sentinel option ("— Not bound (draft) —") is always rendered
    *  as the first item so users can revert to the draft state without
@@ -31,7 +39,7 @@ const buttonClassName = cn(
 )
 
 function formatOptionLabel(option: TriggerTableOption): string {
-  // The workflow editor lives inside a kitable scope, so the document
+  // The workflow editor lives inside a table file scope, so the document
   // title prefix would be redundant ("333 · 6666" vs just "6666"). Show
   // the table name on its own — the scope is already implied by which
   // tab the user is in.
@@ -48,7 +56,7 @@ export function TriggerTableSelect({
 }: TriggerTableSelectProps) {
   const { t } = useTranslation('workflow')
   const effectiveDraftLabel = draftLabel ?? t('panels.triggerTable.draftLabel')
-  const selected = value ? options.find((option) => option.tableId === value) || null : null
+  const selected = value ? options.find((option) => option.key === value) || null : null
   const triggerLabel = selected ? formatOptionLabel(selected) : effectiveDraftLabel
   const isPlaceholder = !selected
   // Controlled open state so picking a row can close the popover. Radix's
@@ -56,8 +64,8 @@ export function TriggerTableSelect({
   // `PopoverClose` and our popover.tsx wrapper doesn't re-export one.
   const [open, setOpen] = useState(false)
 
-  function handlePick(nextTableId: string) {
-    onChange(nextTableId)
+  function handlePick(nextKey: string) {
+    onChange(nextKey)
     setOpen(false)
   }
 
@@ -100,10 +108,10 @@ export function TriggerTableSelect({
           ) : (
             options.map((option) => (
               <SelectRow
-                key={option.tableId}
+                key={option.key}
                 label={formatOptionLabel(option)}
-                selected={selected?.tableId === option.tableId}
-                onSelect={() => handlePick(option.tableId)}
+                selected={selected?.key === option.key}
+                onSelect={() => handlePick(option.key)}
               />
             ))
           )}

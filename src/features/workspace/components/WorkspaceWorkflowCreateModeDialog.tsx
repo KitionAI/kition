@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@kition/app-ui'
+import { tableKey } from '@/api/kitTables'
 import { WorkflowLauncherTemplateCard } from '@/features/workflow/components/launcher/WorkflowLauncherTemplateCard'
 import {
   getBuiltinTemplates,
@@ -31,7 +32,7 @@ type WorkspaceWorkflowCreateModeDialogProps = {
    *  dialog still renders but no scope chip is shown — the caller is
    *  responsible for picking a table first (e.g. via the table picker dialog). */
   context: WorkflowRouteContext | null
-  /** All tables in the active kitable. Multi-table kitables expose this as a
+  /** All tables in the active table file. Multi-table files expose this as a
    *  source-table selector before the user chooses a template. */
   tableOptions?: WorkflowRouteContext[]
   /** Called when the user picks an option. The dialog handles its own close
@@ -54,12 +55,12 @@ const EMPTY_TABLE_OPTIONS: WorkflowRouteContext[] = []
  * Mode chooser for creating an workflow from inside the workspace.
  *
  * Two surface paths reach this dialog:
- *   1. The "..." menu on a virtual `table://` leaf inside a `.kitable` — the
+ *   1. The "..." menu on a virtual `table://` leaf inside a `.ktable` — the
  *      caller pre-resolves `context` from the row, so no table picker is
  *      needed.
- *   2. The hideList Kitable Workflows landing page CTA — the caller may have
+ *   2. The hideList table file Workflows landing page CTA — the caller may have
  *      to flow through `WorkspaceWorkflowTablePickerDialog` first when the
- *      kitable has multiple tables.
+ *      table file has multiple tables.
  *
  * Either way the dialog itself is "dumb": it surfaces the two options
  * (From a template / Created by chat (AI)) and emits the user's choice. The
@@ -88,12 +89,15 @@ export function WorkspaceWorkflowCreateModeDialog({
   useEffect(() => {
     if (open) {
       setView('mode')
-      setSelectedTableId(context?.tableId || tableOptions[0]?.tableId || '')
+      const first = tableOptions[0]
+      setSelectedTableId(context?.tableId
+        ? tableKey(context?.documentPath || '', context?.tableId)
+        : first ? tableKey(first.documentPath, first.tableId) : '')
     }
-  }, [open, context?.tableId, tableOptions])
+  }, [open, context?.documentPath, context?.tableId, tableOptions])
 
   const effectiveContext = useMemo(() => {
-    return tableOptions.find((item) => item.tableId === selectedTableId) || context
+    return tableOptions.find((item) => tableKey(item.documentPath, item.tableId) === selectedTableId) || context
   }, [context, selectedTableId, tableOptions])
   const templates = useMemo(
     () => getBuiltinTemplates(t, { tableName: effectiveContext?.tableName }),
@@ -111,7 +115,7 @@ export function WorkspaceWorkflowCreateModeDialog({
         data-testid="workspace-workflow-create-mode-dialog"
         data-context-table-name={effectiveContext?.tableName || ''}
         data-context-table-id={effectiveContext?.tableId || ''}
-        data-context-document-id={effectiveContext?.documentId || ''}
+        data-context-document-path={effectiveContext?.documentPath || ''}
       >
         <DialogHeader className="space-y-1.5 border-b px-6 py-4">
           <DialogTitle>
@@ -140,7 +144,7 @@ export function WorkspaceWorkflowCreateModeDialog({
                 data-testid="workflow-create-source-table"
               >
                 {tableOptions.map((option) => (
-                  <option key={option.tableId} value={option.tableId}>{option.tableName}</option>
+                  <option key={tableKey(option.documentPath, option.tableId)} value={tableKey(option.documentPath, option.tableId)}>{option.tableName}</option>
                 ))}
               </select>
             </label>

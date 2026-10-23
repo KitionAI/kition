@@ -5,20 +5,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/api/workflows', () => ({
   createWorkflow: vi.fn(),
 }))
+vi.mock('@/api/kitTables', async (importOriginal) => {
+  const actual: any = await importOriginal()
+  return {
+    ...actual,
+    listTableFiles: vi.fn(),
+    createTableFile: vi.fn(),
+  }
+})
 vi.mock('@/features/workflow/lib/openWorkflowRoute', async (importOriginal) => {
   const actual: any = await importOriginal()
   return { ...actual, openWorkflowHome: vi.fn() }
 })
 
 import * as api from '@/api/workflows'
+import * as kitTables from '@/api/kitTables'
 import * as router from '@/features/workflow/lib/openWorkflowRoute'
-import { WorkflowLauncher } from './WorkflowLauncher'
+import { unusedUntitledTablePath, WorkflowLauncher } from './WorkflowLauncher'
 import type { WorkflowLauncherProps } from './WorkflowLauncher'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const tableContext = {
-  documentId: 'doc1',
+  documentPath: 'crm.ktable',
   tableId: 't1',
   tableName: 'Leads',
 }
@@ -55,6 +64,8 @@ beforeEach(() => {
   document.body.appendChild(container)
   vi.mocked(api.createWorkflow).mockReset()
   vi.mocked(router.openWorkflowHome).mockReset()
+  vi.mocked(kitTables.listTableFiles).mockReset().mockResolvedValue({ files: [], unreadable: [] })
+  vi.mocked(kitTables.createTableFile).mockReset()
 })
 
 afterEach(async () => {
@@ -232,5 +243,40 @@ describe('WorkflowLauncher', () => {
     await mount(createElement(WorkflowLauncher, baseProps))
     expect(queryByTestId('workflow-prompt')).toBeNull()
     expect(container.textContent).toContain('Automate any task with workflows')
+  })
+
+  it('creates an unused untitled table file from the empty picker and selects its table', async () => {
+    vi.mocked(kitTables.listTableFiles).mockResolvedValue({
+      files: [{ path: 'Untitled table.ktable', documentId: 'kdm-1', tables: [{ id: '1', name: 'Table', title: 'Table', fields: [], meta: {} }], dashboards: [] }],
+      unreadable: [],
+    })
+    vi.mocked(kitTables.createTableFile).mockResolvedValue({ path: 'Untitled table 2.ktable', tables: [{ id: '1', name: 'Table', title: 'Table', fields: [], meta: {} }] })
+    const changed: Array<string | undefined> = []
+    const off = kitTables.onTableFilesChanged((path) => { changed.push(path) })
+    try {
+      // No table bound: the AI page shows the inline picker. Empty labels
+      // (before the first fetch lands) show the "create one" card.
+      vi.mocked(kitTables.listTableFiles).mockResolvedValueOnce({ files: [], unreadable: [] })
+      await mount(createElement(WorkflowLauncher, { ...baseProps, tableContext: { documentPath: '', tableId: '', tableName: '' }, initialView: 'ai-prompt' }))
+      await flush()
+      const cta = queryByTestId('workflow-table-picker-empty-cta')
+      expect(cta).not.toBeNull()
+      await act(async () => {
+        cta!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        await Promise.resolve()
+      })
+      await flush()
+      expect(kitTables.createTableFile).toHaveBeenCalledWith('Untitled table 2.ktable')
+      expect(changed).toContain('Untitled table 2.ktable')
+    } finally {
+      off()
+    }
+  })
+})
+
+describe('unusedUntitledTablePath', () => {
+  it('numbers past the names already taken', () => {
+    expect(unusedUntitledTablePath([])).toBe('Untitled table.ktable')
+    expect(unusedUntitledTablePath(['Untitled table.ktable', 'untitled table 2.ktable'])).toBe('Untitled table 3.ktable')
   })
 })

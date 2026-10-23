@@ -41,12 +41,12 @@ describe('request api client', () => {
     fetchMock.mockResolvedValue(jsonResponse({ code: 200, data: [] }))
     const mod = await loadRequestModule()
 
-    const response = await mod.default.get('/v1/data-documents', { params: { workspace_root: '/vault', query: undefined } })
+    const response = await mod.default.get('/v1/workflows', { params: { workspace_root: '/vault', query: undefined } })
 
     expect(waitForDesktopBackendReady).toHaveBeenCalledTimes(1)
-    expect(normalizeApiPath).toHaveBeenCalledWith('/v1/data-documents')
+    expect(normalizeApiPath).toHaveBeenCalledWith('/v1/workflows')
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('/api/v1/data-documents?workspace_root=%2Fvault')
+    expect(url).toBe('/api/v1/workflows?workspace_root=%2Fvault')
     expect(init.method).toBe('GET')
     expect((init.headers as Record<string, string>)['X-Locale']).toBeTruthy()
     expect(response).toEqual([])
@@ -56,7 +56,7 @@ describe('request api client', () => {
     waitForDesktopBackendReady.mockResolvedValue(false)
     const mod = await loadRequestModule()
 
-    await expect(mod.default.get('/v1/data-documents')).rejects.toThrow('Desktop backend is not ready yet, please retry shortly')
+    await expect(mod.default.get('/v1/workflows')).rejects.toThrow('Desktop backend is not ready yet, please retry shortly')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -127,54 +127,6 @@ describe('request api client', () => {
 
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
     await expect(mod.default.get('/v1/x')).rejects.toThrow('Network error, please check your connection')
-  })
-
-  it('sends a stable Kition-Session header on data-document requests only', async () => {
-    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
-    const mod = await loadRequestModule()
-    const { windowSessionId, resetWindowSessionIdForTests } = await import('./windowSession')
-    resetWindowSessionIdForTests()
-
-    await mod.default.get('/v1/data-documents/1')
-    await mod.default.post('/v1/data-documents/1/transact', { ops: [] })
-    await mod.default.get('/v1/workflows')
-
-    const [, dataDocInit] = fetchMock.mock.calls[0] as [string, RequestInit]
-    const [, transactInit] = fetchMock.mock.calls[1] as [string, RequestInit]
-    const [, otherInit] = fetchMock.mock.calls[2] as [string, RequestInit]
-    const sessionId = windowSessionId()
-    expect(new Headers(dataDocInit.headers).get('Kition-Session')).toBe(sessionId)
-    expect(new Headers(transactInit.headers).get('Kition-Session')).toBe(sessionId)
-    expect(new Headers(otherInit.headers).get('Kition-Session')).toBeNull()
-  })
-
-  it('matches the data-documents path at a boundary, not just a shared prefix', async () => {
-    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
-    const mod = await loadRequestModule()
-
-    await mod.default.get('/v1/data-documents')
-    await mod.default.get('/v1/data-documents?workspace_root=%2Fvault')
-    await mod.default.get('/v1/data-documents-unrelated-route')
-
-    const [, bareInit] = fetchMock.mock.calls[0] as [string, RequestInit]
-    const [, queryInit] = fetchMock.mock.calls[1] as [string, RequestInit]
-    const [, unrelatedInit] = fetchMock.mock.calls[2] as [string, RequestInit]
-    expect(new Headers(bareInit.headers).has('Kition-Session')).toBe(true)
-    expect(new Headers(queryInit.headers).has('Kition-Session')).toBe(true)
-    expect(new Headers(unrelatedInit.headers).has('Kition-Session')).toBe(false)
-  })
-
-  it('sends Kition-Origin only when the caller opts in', async () => {
-    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
-    const mod = await loadRequestModule()
-
-    await mod.default.post('/v1/data-documents/1/tables/1/records', { values: {} }, { origin: 'template' })
-    await mod.default.get('/v1/data-documents/1')
-
-    const [, templatedInit] = fetchMock.mock.calls[0] as [string, RequestInit]
-    const [, plainInit] = fetchMock.mock.calls[1] as [string, RequestInit]
-    expect(new Headers(templatedInit.headers).get('Kition-Origin')).toBe('template')
-    expect(new Headers(plainInit.headers).get('Kition-Origin')).toBeNull()
   })
 
   it('rethrows the caller abort untouched', async () => {

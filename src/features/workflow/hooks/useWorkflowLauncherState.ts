@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
 
 import { createWorkflow } from '@/api/workflows'
-import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
+import { createWorkflowFromMode } from '@/features/workflow/lib/createWorkflowFromMode'
+import type { WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkflowTemplate } from '@/features/workflow/templates'
 
 /**
@@ -32,13 +33,15 @@ export interface UseWorkflowLauncherStateResult {
    *  with a clean slate. */
   clearError: () => void
   /** Run the "Start from scratch" path. Awaits the createWorkflow call,
-   *  refreshes the list, and reports the new id via onCreated. */
-  runScratch: () => Promise<void>
+   *  refreshes the list, and reports the new id via onCreated. With a
+   *  `context`, the draft's trigger is bound to that table. */
+  runScratch: (context?: WorkflowRouteContext | null) => Promise<void>
   /** Run the "From template" path. Threads the template through
    *  createWorkflowFromTemplate first, and forwards the unresolved
    *  field-name list into sessionStorage so the post-creation page
-   *  banner has the handoff payload (see WF-U4). */
-  runTemplate: (template: WorkflowTemplate) => Promise<void>
+   *  banner has the handoff payload (see WF-U4). With a `context`, the
+   *  table's schema resolves the template's fields. */
+  runTemplate: (template: WorkflowTemplate, context?: WorkflowRouteContext | null) => Promise<void>
   /** Fire the assistant-panel open event. No state changes. */
   handleAgent: () => void
 }
@@ -59,10 +62,10 @@ export function useWorkflowLauncherState(deps: UseWorkflowLauncherStateDeps): Us
 
   const clearError = useCallback(() => setError(null), [])
 
-  const runScratch = useCallback(async () => {
+  const runScratch = useCallback(async (context?: WorkflowRouteContext | null) => {
     setBusyAction('scratch')
     try {
-      // Draft workflow with delayed table binding: documentId/tableId stay
+      // Draft workflow with delayed table binding: documentPath/tableId stay
       // empty so the user picks the table from the trigger panel. The
       // trigger type is seeded as record_created — the drawer's event
       // dropdown shows record_created as its default anyway, and leaving
@@ -74,7 +77,7 @@ export function useWorkflowLauncherState(deps: UseWorkflowLauncherStateDeps): Us
         name: 'Untitled workflow',
         description: '',
         enabled: false,
-        trigger: { type: 'record_created', documentId: '', tableId: '' },
+        trigger: { type: 'record_created', documentPath: context?.documentPath ?? '', tableId: context?.tableId ?? '' },
         action: {
           type: 'send_email',
           connectionId: '',
@@ -92,20 +95,14 @@ export function useWorkflowLauncherState(deps: UseWorkflowLauncherStateDeps): Us
     }
   }, [deps])
 
-  const runTemplate = useCallback(async (template: WorkflowTemplate) => {
+  const runTemplate = useCallback(async (template: WorkflowTemplate, context?: WorkflowRouteContext | null) => {
     setBusyAction('template')
     setBusyTemplateId(template.id)
     try {
-      // No schema yet — template body parts fall back to literal
+      // Without a table, template body parts fall back to literal
       // placeholders; the user binds a table from the trigger config
       // panel and the placeholders resolve at that point.
-      const { input, unresolvedFieldNames } = createWorkflowFromTemplate(template, {
-        documentId: '',
-        tableId: '',
-        tableName: '',
-        schema: null,
-      })
-      const def = await createWorkflow(input)
+      const { workflow: def, unresolvedFieldNames } = await createWorkflowFromMode(template, context ?? null)
       if (unresolvedFieldNames.length > 0) {
         try {
           window.sessionStorage.setItem(

@@ -22,7 +22,7 @@ function normalizeWorkspacePath(path: string): string {
 }
 
 function stripLinkExt(p: string): string {
-  return p.replace(/\.(md|kitable)$/i, '')
+  return p.replace(/\.(md|ktable)$/i, '')
 }
 
 function basename(p: string): string {

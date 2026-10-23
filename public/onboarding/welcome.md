@@ -46,24 +46,24 @@ Documents remain portable files. Tables keep typed fields, views, records, forms
 
 ## Explore the template library
 
-Open **Template Center** from the workspace create menu. Each template creates an independent `.kitable` file, so you can safely change fields, views, records, forms, and workflows without modifying the original template.
+Open **Template Center** from the workspace create menu. Each template creates an independent `.ktable` file, so you can safely change fields, views, records, forms, and workflows without modifying the original template.
 
 The built-in templates cover different kinds of work:
 
 | Template | Best for | Notable structure |
 | --- | --- | --- |
-| [[Getting Started/Projects & Planning/Task Tracker.kitable]] | Delivery planning and ownership | Status, priority, assignee, and due-date views |
-| [[Getting Started/Sales & Customer/Simple Client CRM.kitable]] | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
-| [[Getting Started/Sales & Customer/Leads Landing Page.kitable]] | Capturing and qualifying inbound leads | Form, pipeline, source, and estimated-value fields |
-| [[Getting Started/Sales & Customer/SDR Cold Call Manager.kitable]] | Prioritizing outbound calls and follow-up | Call stages, attempts, calendar, and ownership |
-| [[Getting Started/Projects & Planning/Product Launch Website.kitable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
-| [[Getting Started/Projects & Planning/Project Gantt Planner.kitable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
-| [[Getting Started/Operations & Analytics/Business Analytics Dashboard.kitable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
-| [[Getting Started/Operations & Analytics/Email Inbox Sync.kitable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
-| [[Getting Started/AI & Creative/Receipt OCR Table.kitable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
-| [[Getting Started/AI & Creative/YouTube & TikTok Thumbnail Generator.kitable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
-| [[Getting Started/AI & Creative/Batch Product Designer.kitable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
-| [[Getting Started/Operations & Analytics/Restaurant Operations.kitable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
+| [[Getting Started/Projects & Planning/Task Tracker.ktable]] | Delivery planning and ownership | Status, priority, assignee, and due-date views |
+| [[Getting Started/Sales & Customer/Simple Client CRM.ktable]] | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
+| [[Getting Started/Sales & Customer/Leads Landing Page.ktable]] | Capturing and qualifying inbound leads | Form, pipeline, source, and estimated-value fields |
+| [[Getting Started/Sales & Customer/SDR Cold Call Manager.ktable]] | Prioritizing outbound calls and follow-up | Call stages, attempts, calendar, and ownership |
+| [[Getting Started/Projects & Planning/Product Launch Website.ktable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
+| [[Getting Started/Projects & Planning/Project Gantt Planner.ktable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
+| [[Getting Started/Operations & Analytics/Business Analytics Dashboard.ktable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
+| [[Getting Started/Operations & Analytics/Email Inbox Sync.ktable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
+| [[Getting Started/AI & Creative/Receipt OCR Table.ktable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
+| [[Getting Started/AI & Creative/YouTube & TikTok Thumbnail Generator.ktable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
+| [[Getting Started/AI & Creative/Batch Product Designer.ktable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
+| [[Getting Started/Operations & Analytics/Restaurant Operations.ktable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
 
 > [!note] Template copies are independent
 > If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
@@ -79,21 +79,21 @@ Getting Started/
   Welcome to Kition.md
   logo.png
   AI & Creative/
-    Batch Product Designer.kitable
-    Receipt OCR Table.kitable
-    YouTube & TikTok Thumbnail Generator.kitable
+    Batch Product Designer.ktable
+    Receipt OCR Table.ktable
+    YouTube & TikTok Thumbnail Generator.ktable
   Sales & Customer/
-    Leads Landing Page.kitable
-    SDR Cold Call Manager.kitable
-    Simple Client CRM.kitable
+    Leads Landing Page.ktable
+    SDR Cold Call Manager.ktable
+    Simple Client CRM.ktable
   Projects & Planning/
-    Product Launch Website.kitable
-    Project Gantt Planner.kitable
-    Task Tracker.kitable
+    Product Launch Website.ktable
+    Project Gantt Planner.ktable
+    Task Tracker.ktable
   Operations & Analytics/
-    Business Analytics Dashboard.kitable
-    Email Inbox Sync.kitable
-    Restaurant Operations.kitable
+    Business Analytics Dashboard.ktable
+    Email Inbox Sync.ktable
+    Restaurant Operations.ktable
 Projects/
   Product launch/
   Customer research/
@@ -128,7 +128,7 @@ $$
 
 Form views let you choose which table fields are visible, required, or read-only for respondents.
 
-1. Open a `.kitable` file and select the target table.
+1. Open a `.ktable` file and select the target table.
 2. Add or open a **Form** view.
 3. Set the title, description, field order, visibility, and required fields.
 4. Preview the form and submit a local test response.

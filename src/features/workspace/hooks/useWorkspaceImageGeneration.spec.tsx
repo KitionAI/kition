@@ -36,7 +36,7 @@ it('offers a chat review target in the gallery only when the runtime supports it
   let target: AgentImageTarget | undefined
   function Harness() {
     target = useWorkspaceImageGeneration('/test/workspace', {
-      paneContext: 'gallery', activeDocumentPath: '', activeDataDocumentId: 0, activeDataTableId: 0,
+      paneContext: 'gallery', activeDocumentPath: '',
     }).target
     return null
   }

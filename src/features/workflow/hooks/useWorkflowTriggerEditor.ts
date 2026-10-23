@@ -23,7 +23,7 @@ import type { ConfirmState } from '@/features/workflow/pages/WorkflowHomePageCon
 type UseWorkflowTriggerEditorOptions = {
   selected: WorkflowDefinition | null
   tableLabels: Record<string, TableLabel>
-  ensureSchema: (documentId: string, tableId: string) => Promise<TableSchema | null>
+  ensureSchema: (documentPath: string, tableId: string) => Promise<TableSchema | null>
   setWorkflows: Dispatch<SetStateAction<WorkflowDefinition[]>>
   setSavingDraft: (saving: boolean) => void
   setError: (message: string) => void
@@ -57,15 +57,16 @@ export function useWorkflowTriggerEditor({
     }
   }, [setError, setSavingDraft, setWorkflows])
 
-  const commitTriggerTableSwap = useCallback(async (input: { nextTableId: string; nextDocumentId: string; pruneFieldIds: string[] }) => {
+  const commitTriggerTableSwap = useCallback(async (input: { nextTableId: string; nextDocumentPath: string; nextDocumentId: string; pruneFieldIds: string[] }) => {
     if (!selected) return
     await commit(async () => {
       // Required-field ids the new table does not have can never gate a run; drop them.
       const currentRequired = selected.trigger.requiredFields || []
-      const schema = currentRequired.length > 0 ? await ensureSchema(input.nextDocumentId, input.nextTableId) : null
+      const schema = currentRequired.length > 0 ? await ensureSchema(input.nextDocumentPath, input.nextTableId) : null
       return patchWorkflow(selected.id, buildTriggerTablePatch({
         selected,
         nextTableId: input.nextTableId,
+        nextDocumentPath: input.nextDocumentPath,
         nextDocumentId: input.nextDocumentId,
         pruneFieldIds: input.pruneFieldIds,
         requiredFields: pruneRequiredFieldIds(currentRequired, schema),
@@ -73,16 +74,19 @@ export function useWorkflowTriggerEditor({
     }, 'Failed to update trigger table')
   }, [commit, ensureSchema, selected])
 
-  /** Bind or rebind the trigger's table; an empty id unbinds it back to a draft. */
-  const setTriggerTable = useCallback(async (nextTableId: string) => {
+  /** Bind or rebind the trigger's table by its `tableKey`; an empty key unbinds it back to a draft. */
+  const setTriggerTable = useCallback(async (nextKey: string) => {
     if (!selected) return
-    const label = nextTableId ? tableLabels[nextTableId] : null
+    const label = nextKey ? tableLabels[nextKey] : null
+    if (nextKey && !label) return
+    const nextTableId = label?.tableId || ''
+    const nextDocumentPath = label?.documentPath || ''
     const nextDocumentId = label?.documentId || ''
-    if (nextTableId === selected.trigger.tableId && nextDocumentId === selected.trigger.documentId) return
+    if (nextTableId === (selected.trigger.tableId || '') && nextDocumentPath === (selected.trigger.documentPath || '')) return
 
     // add_record bodies are per-field templates and are not checked yet.
-    if (nextTableId && nextDocumentId && selected.action.type !== 'add_record') {
-      const schema = await ensureSchema(nextDocumentId, nextTableId)
+    if (nextTableId && nextDocumentPath && selected.action.type !== 'add_record') {
+      const schema = await ensureSchema(nextDocumentPath, nextTableId)
       const danglingIds = schema ? findDanglingFieldRefs(selected.action.body, schema) : []
       if (danglingIds.length > 0) {
         await new Promise<void>((resolve) => {
@@ -92,7 +96,7 @@ export function useWorkflowTriggerEditor({
             confirmLabel: t('confirms.switchTriggerTable.confirm'),
             destructive: true,
             onConfirm: () => {
-              void commitTriggerTableSwap({ nextTableId, nextDocumentId, pruneFieldIds: danglingIds }).then(resolve, resolve)
+              void commitTriggerTableSwap({ nextTableId, nextDocumentPath, nextDocumentId, pruneFieldIds: danglingIds }).then(resolve, resolve)
             },
           })
           // Cancel keeps the current table; callers do not await beyond errors.
@@ -100,7 +104,7 @@ export function useWorkflowTriggerEditor({
         return
       }
     }
-    await commitTriggerTableSwap({ nextTableId, nextDocumentId, pruneFieldIds: [] })
+    await commitTriggerTableSwap({ nextTableId, nextDocumentPath, nextDocumentId, pruneFieldIds: [] })
   }, [commitTriggerTableSwap, ensureSchema, selected, setConfirm, t, tableLabels])
 
   /** An empty cron leaves a scheduled draft the runtime accepts while disabled. */

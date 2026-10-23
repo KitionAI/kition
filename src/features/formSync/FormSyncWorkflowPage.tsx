@@ -14,11 +14,9 @@ import {
   Trash2,
 } from 'lucide-react'
 
-import { getDataDocument } from '@/api/dataDocuments'
 import { Button } from '@kition/app-ui/button'
 import { Input } from '@kition/app-ui/input'
 import { Switch } from '@kition/app-ui/switch'
-import type { DataField, DataTable } from '@kition/table-editor'
 
 import {
   getFormSyncWorkflow,
@@ -27,7 +25,7 @@ import {
   type FormSyncFieldType,
   type FormSyncWorkflow,
 } from './api'
-import { createBuilderField, findTargetTable, type FormSyncBuilderField } from './formBuilder'
+import { createBuilderField, loadFormTargetTable, type FormSyncBuilderField, type FormTargetField, type FormTargetTable } from './formBuilder'
 
 const fieldTypes: Array<{ value: FormSyncFieldType; label: string }> = [
   { value: 'text', label: 'Short text' },
@@ -41,7 +39,7 @@ const fieldTypes: Array<{ value: FormSyncFieldType; label: string }> = [
 
 export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
   const [workflow, setWorkflow] = useState<FormSyncWorkflow | null>(null)
-  const [targetTable, setTargetTable] = useState<DataTable | null>(null)
+  const [targetTable, setTargetTable] = useState<FormTargetTable | null>(null)
   const [name, setName] = useState('')
   const [fields, setFields] = useState<FormSyncBuilderField[]>([])
   const [scheduleEnabled, setScheduleEnabled] = useState(true)
@@ -55,8 +53,7 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
     setError('')
     try {
       const nextWorkflow = await getFormSyncWorkflow(workflowId)
-      const document = await getDataDocument(Number(nextWorkflow.target.document_id))
-      const table = findTargetTable(document.tables, nextWorkflow.target.table_id) || null
+      const table = await loadFormTargetTable(nextWorkflow.target.document_path, nextWorkflow.target.table_id).catch(() => null)
       const mappings = new Map(nextWorkflow.target.field_mappings.map((mapping) => (
         [mapping.source_key, mapping.target_field_title]
       )))
@@ -325,7 +322,7 @@ function FormFieldEditor({
   field: FormSyncBuilderField
   index: number
   total: number
-  targetFields: DataField[]
+  targetFields: FormTargetField[]
   onChange: (patch: Partial<FormSyncBuilderField>) => void
   onMove: (direction: -1 | 1) => void
   onDelete: () => void

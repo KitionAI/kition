@@ -18,6 +18,7 @@ import type {
 import type { GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
 import { STREAMING_WORKFLOW_ID } from '@/features/workflow/lib/aiBuildPreview'
+import { tableKey } from '@/api/kitTables'
 
 /**
  * Pure helpers extracted out of WorkflowHomePage as part of WF-C1. Keeping
@@ -61,45 +62,53 @@ export type WorkflowDraft = {
 }
 
 export type TableLabel = {
+  /** The table's id in its file (`"1"`); unique only within that file. */
+  tableId: string
   tableName: string
+  /** The table file's name without `.ktable`. */
   documentTitle: string
-  /** The data-doc path the table belongs to. Required so the trigger
-   *  panel can rebind both documentId and tableId in a single edit
-   *  (the backend's trigger config is `{documentId, tableId, type}`). */
+  /** The file's stable identity (its KDM root object id); '' when unknown. */
   documentId: string
-  /** Filesystem path of the owning document (e.g. `t2.kitable`). Used by
-   *  the trigger Table picker to constrain choices to the kitable scope
-   *  the workflow was created under. */
+  /** The table file's workspace path (`crm.ktable`). Label maps are keyed by
+   *  `tableKey(documentPath, tableId)`, since table ids collide across files. */
   documentPath: string
 }
 
-export function resolveWorkflowKitablePath(
-  workflow: WorkflowDefinition,
+/** The label of `tableId` in the file at `documentPath`, if the workspace has it. */
+export function tableLabelFor(
   labels: Record<string, TableLabel>,
-): string {
-  const documentIds = [
-    workflow.trigger?.documentId,
-    workflow.action?.addRecord?.targetDocumentId,
-    workflow.action?.lookupRecord?.targetDocumentId,
+  documentPath: string | undefined,
+  tableId: string | undefined,
+): TableLabel | undefined {
+  if (!documentPath || !tableId) return undefined
+  return labels[tableKey(documentPath, tableId)]
+}
+
+/** A target table's file path: its own, or the trigger's when the target names none. */
+export function targetDocumentPathOf(targetPath: string | undefined, triggerPath: string | undefined): string {
+  return String(targetPath || '').trim() || String(triggerPath || '').trim()
+}
+
+/** The `tableKey` of an action's target table; '' when no table is picked. */
+export function targetTableKeyOf(targetPath: string | undefined, targetTableId: string | undefined, triggerPath: string | undefined): string {
+  const path = targetDocumentPathOf(targetPath, triggerPath)
+  return targetTableId && path ? tableKey(path, targetTableId) : ''
+}
+
+/** The trigger table's loaded schema, if the cache (keyed by `tableKey`) has it. */
+export function triggerSchemaOf(workflow: WorkflowDefinition, schemas: Record<string, TableSchema>): TableSchema | undefined {
+  const { documentPath, tableId } = workflow.trigger
+  return documentPath && tableId ? schemas[tableKey(documentPath, tableId)] : undefined
+}
+
+/** The table file a workflow works in: the trigger's, else an action target's. */
+export function resolveWorkflowTableFilePath(workflow: WorkflowDefinition): string {
+  const paths = [
+    workflow.trigger?.documentPath,
+    workflow.action?.addRecord?.targetDocumentPath,
+    workflow.action?.lookupRecord?.targetDocumentPath,
   ].map((value) => String(value || '').trim()).filter(Boolean)
-
-  for (const documentId of documentIds) {
-    const label = Object.values(labels).find((item) => item.documentId === documentId)
-    if (label?.documentPath) return label.documentPath
-  }
-
-  const tableIds = [
-    workflow.trigger?.tableId,
-    workflow.action?.addRecord?.targetTableId,
-    workflow.action?.lookupRecord?.targetTableId,
-  ].map((value) => String(value || '').trim()).filter(Boolean)
-
-  for (const tableId of tableIds) {
-    const documentPath = labels[tableId]?.documentPath
-    if (documentPath) return documentPath
-  }
-
-  return ''
+  return paths[0] || ''
 }
 
 /** ValidationErrors values are STABLE CODES, not display strings — pass them
@@ -188,7 +197,8 @@ export function cloneBody(body: BodyTemplate): BodyTemplate {
  *  body relies on. */
 export function cloneAddRecord(config: WorkflowAddRecordConfig): WorkflowAddRecordConfig {
   return {
-    targetDocumentId: config.targetDocumentId,
+    targetDocumentPath: config.targetDocumentPath,
+    ...(config.targetDocumentId ? { targetDocumentId: config.targetDocumentId } : {}),
     targetTableId: config.targetTableId,
     fields: (config.fields || []).map((entry) => ({
       fieldId: entry.fieldId,
@@ -206,7 +216,8 @@ export function cloneUpdateRecord(config: WorkflowUpdateRecordConfig): WorkflowU
 
 export function cloneLookupRecord(config: WorkflowLookupRecordConfig): WorkflowLookupRecordConfig {
   return {
-    targetDocumentId: config.targetDocumentId,
+    targetDocumentPath: config.targetDocumentPath,
+    ...(config.targetDocumentId ? { targetDocumentId: config.targetDocumentId } : {}),
     targetTableId: config.targetTableId,
     matchFieldId: config.matchFieldId,
     matchValue: cloneBody(config.matchValue),
@@ -413,19 +424,6 @@ export function pruneBody(body: BodyTemplate, removeFieldIds: string[]): BodyTem
 
 // ─── id parsing + graph helpers ──────────────────────────────────────────
 
-/** parseIdAsNumber converts the workflow's string-typed documentId / tableId
- *  into the numeric form the data-documents API expects. Empty strings or
- *  non-numeric values produce null so the caller (SampleRowPicker) can
- *  gracefully render its "no binding yet" state instead of fetching with
- *  NaN. Exported only for the spec — keep the contract pinned so a future
- *  numeric-ID schema change is caught by the test rather than blowing up
- *  the picker silently. */
-export function parseIdAsNumber(raw: string | undefined): number | null {
-  if (!raw) return null
-  const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? n : null
-}
-
 /** graphNodesEqual short-circuits on length and structural diffs before
  *  falling back to a deep JSON compare on the per-node config object. The
  *  goal is to skip the double JSON.stringify of the whole array on every
@@ -493,7 +491,7 @@ export function triggerLabel(
     const verb = tx(triggerVerbI18nKey(workflow.trigger.type), { fallback: triggerVerb(workflow.trigger.type) })
     return `${verb} · —`
   }
-  const label = labels[tableId]
+  const label = tableLabelFor(labels, workflow.trigger.documentPath, tableId)
   const verb = tx(triggerVerbI18nKey(workflow.trigger.type), { fallback: triggerVerb(workflow.trigger.type) })
   if (!label) return `${verb} · ${tx('panels.home.nodeCard.unknownTable', { fallback: 'Unknown table' })}`
   return `${verb} · ${label.tableName}`
@@ -616,11 +614,13 @@ export function actionNodeDescription(
   connections: ConnectionView[],
   tableLabels: Record<string, TableLabel>,
   t?: (key: string, opts?: Record<string, unknown>) => string,
+  triggerDocumentPath = '',
 ): string {
   const tx = t || ((_k: string, opts?: Record<string, unknown>) => (opts?.fallback as string) || _k)
   if (draft.actionType === 'add_record') {
     const targetTableId = draft.addRecord?.targetTableId || ''
-    const targetName = targetTableId ? tableLabels[targetTableId]?.tableName || targetTableId : tx('panels.home.nodeCard.noTarget', { fallback: 'no target' })
+    const targetPath = targetDocumentPathOf(draft.addRecord?.targetDocumentPath, triggerDocumentPath)
+    const targetName = targetTableId ? tableLabelFor(tableLabels, targetPath, targetTableId)?.tableName || targetTableId : tx('panels.home.nodeCard.noTarget', { fallback: 'no target' })
     const fieldCount = (draft.addRecord?.fields || []).length
     return tx('panels.home.nodeCard.addRecordDescription', { target: targetName, count: fieldCount, fallback: `into ${targetName} · ${fieldCount} field${fieldCount === 1 ? '' : 's'}` })
   }
@@ -630,7 +630,8 @@ export function actionNodeDescription(
   }
   if (draft.actionType === 'lookup_record') {
     const tableId = draft.lookupRecord?.targetTableId || ''
-    const target = tableId ? tableLabels[tableId]?.tableName || tableId : tx('panels.home.nodeCard.noTarget', { fallback: 'no target' })
+    const targetPath = targetDocumentPathOf(draft.lookupRecord?.targetDocumentPath, triggerDocumentPath)
+    const target = tableId ? tableLabelFor(tableLabels, targetPath, tableId)?.tableName || tableId : tx('panels.home.nodeCard.noTarget', { fallback: 'no target' })
     return tx('panels.home.nodeCard.lookupRecordDescription', { target, fallback: `find a match in ${target} and fill this row` })
   }
   if (draft.actionType === 'transform_record') {

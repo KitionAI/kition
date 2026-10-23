@@ -201,10 +201,6 @@
     "renamed": "Renamed",
     "workflowDeleted": "Workflow deleted"
   },
-  "kitableLeaf": {
-    "deleteConfirm": "Delete workflow \"{{name}}\"? This permanently removes the workflow and its run history.",
-    "nameFallback": "Untitled workflow"
-  },
   "confirms": {
     "cancel": "Cancel",
     "fallbackLabel": "Confirm",

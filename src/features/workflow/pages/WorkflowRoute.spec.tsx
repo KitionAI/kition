@@ -13,10 +13,10 @@ vi.mock('@/services/desktop', () => ({
 }))
 vi.mock('@/services/desktopSettings', () => ({ loadDesktopSettings: vi.fn() }))
 vi.mock('./WorkflowHomePage', () => ({
-  WorkflowHomePage: ({ streamingPreview, scopedKitablePath }: { streamingPreview?: { workflow?: { id?: string; name?: string } | null; status?: string; createdId?: string | null } | null; scopedKitablePath?: string }) => (
+  WorkflowHomePage: ({ streamingPreview, scopedTablePath }: { streamingPreview?: { workflow?: { id?: string; name?: string } | null; status?: string; createdId?: string | null } | null; scopedTablePath?: string }) => (
     <div
       data-testid="workflow-home-page"
-      data-scoped-kitable-path={scopedKitablePath ?? ''}
+      data-scoped-table-path={scopedTablePath ?? ''}
       data-streaming-status={streamingPreview?.status ?? ''}
       data-streaming-workflow-id={streamingPreview?.workflow?.id ?? ''}
       data-streaming-created-id={streamingPreview?.createdId ?? ''}
@@ -28,11 +28,11 @@ vi.mock('./WorkflowHomePage', () => ({
 // so the route tests can assert on data-testid="workflow-index-page" without
 // dragging the real index page's API + data-doc fetches into this spec.
 vi.mock('./WorkflowIndexPage', () => ({
-  WorkflowIndexPage: ({ initialModeDialogOpen, scopedKitablePath }: { initialModeDialogOpen?: boolean; scopedKitablePath?: string }) => (
+  WorkflowIndexPage: ({ initialModeDialogOpen, scopedTablePath }: { initialModeDialogOpen?: boolean; scopedTablePath?: string }) => (
     <div
       data-testid="workflow-index-page"
       data-initial-mode-dialog-open={initialModeDialogOpen ? 'true' : 'false'}
-      data-scoped-kitable-path={scopedKitablePath ?? ''}
+      data-scoped-table-path={scopedTablePath ?? ''}
     />
   ),
 }))
@@ -86,18 +86,18 @@ describe('WorkflowRoute', () => {
     expect(container.querySelector('[data-testid="workflow-home-page"]')).not.toBeNull()
   })
 
-  it('forwards the active kitable scope to the workflow index route', async () => {
+  it('forwards the active table file scope to the workflow index route', async () => {
     window.history.replaceState({}, '', '/workflow')
     await mount(createElement(WorkflowRoute, {
       workflowContext: null,
-      scopedKitablePath: 'Getting Started/Tasks.kitable',
+      scopedTablePath: 'Getting Started/Tasks.ktable',
       rootPath: '/tmp/workspace',
       schemaLookup: async () => ({ id: 'tbl', name: 'Tasks', fields: [] }),
     }))
     expect(
       container.querySelector('[data-testid="workflow-index-page"]')
-        ?.getAttribute('data-scoped-kitable-path'),
-    ).toBe('Getting Started/Tasks.kitable')
+        ?.getAttribute('data-scoped-table-path'),
+    ).toBe('Getting Started/Tasks.ktable')
   })
 
   it('opens WorkflowIndexPage with the create-mode dialog pre-open when /workflow/new has no context', async () => {
@@ -112,7 +112,7 @@ describe('WorkflowRoute', () => {
   it('mounts WorkflowNewPage at /workflow/new', async () => {
     window.history.replaceState({}, '', '/workflow/new')
     await mount(createElement(WorkflowRoute, {
-      workflowContext: { documentId: 'doc_1', tableId: 'tbl', tableName: 'Leads' },
+      workflowContext: { documentPath: 'crm.ktable', tableId: 'tbl', tableName: 'Leads' },
       schemaLookup: async () => ({ id: 'tbl', name: 'Leads', fields: [] }),
     }))
     expect(container.querySelector('[data-testid="workflow-new-page"]')).not.toBeNull()
@@ -124,7 +124,7 @@ describe('WorkflowRoute', () => {
   it('without ?mode=ai, launches the gallery hero (default editor mode)', async () => {
     window.history.replaceState({}, '', '/workflow/new')
     await mount(createElement(WorkflowRoute, {
-      workflowContext: { documentId: 'doc_1', tableId: 'tbl', tableName: 'Leads' },
+      workflowContext: { documentPath: 'crm.ktable', tableId: 'tbl', tableName: 'Leads' },
       schemaLookup: async () => ({ id: 'tbl', name: 'Leads', fields: [] }),
     }))
     expect(container.querySelector('[data-testid="workflow-prompt"]')).toBeNull()
@@ -138,7 +138,7 @@ describe('WorkflowRoute', () => {
   it('with ?mode=ai, mounts the AI prompt hero directly', async () => {
     window.history.replaceState({}, '', '/workflow/new?mode=ai')
     await mount(createElement(WorkflowRoute, {
-      workflowContext: { documentId: 'doc_1', tableId: 'tbl', tableName: 'Leads' },
+      workflowContext: { documentPath: 'crm.ktable', tableId: 'tbl', tableName: 'Leads' },
       schemaLookup: async () => ({ id: 'tbl', name: 'Leads', fields: [] }),
     }))
     expect(container.querySelector('[data-testid="workflow-prompt"]')).not.toBeNull()
@@ -149,7 +149,7 @@ describe('WorkflowRoute', () => {
   it('with history.state.workflowMode="ai" (no URL query), mounts the AI prompt', async () => {
     window.history.replaceState({ workflowMode: 'ai' }, '', '/workflow/new')
     await mount(createElement(WorkflowRoute, {
-      workflowContext: { documentId: 'doc_1', tableId: 'tbl', tableName: 'Leads' },
+      workflowContext: { documentPath: 'crm.ktable', tableId: 'tbl', tableName: 'Leads' },
       schemaLookup: async () => ({ id: 'tbl', name: 'Leads', fields: [] }),
     }))
     expect(container.querySelector('[data-testid="workflow-prompt"]')).not.toBeNull()
@@ -172,7 +172,7 @@ describe('WorkflowRoute', () => {
 
     window.history.replaceState({}, '', '/workflow/new')
     await mount(createElement(WorkflowRoute, {
-      workflowContext: { documentId: 'doc_1', tableId: 'tbl', tableName: 'Leads' },
+      workflowContext: { documentPath: 'crm.ktable', tableId: 'tbl', tableName: 'Leads' },
       schemaLookup: async () => ({ id: 'tbl', name: 'Leads', fields: [{ id: 'fld_a', name: 'A', type: 'text' }] }),
     }))
     await act(async () => {

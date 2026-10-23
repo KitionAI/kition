@@ -3,14 +3,14 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockMoveWorkspaceDocument = vi.fn()
-const mockRenameDataDocumentByPath = vi.fn()
+const mockReportTableFileRenamed = vi.fn(async (..._args: unknown[]) => ({ updated: 1 }))
 const mockSyncDocumentFileMoved = vi.fn(async (..._args: unknown[]) => {})
 
 vi.mock('@/services/desktop', () => ({
   moveWorkspaceDocument: (...args: unknown[]) => mockMoveWorkspaceDocument(...args),
 }))
-vi.mock('@/api/dataDocuments', () => ({
-  renameDataDocumentByPath: (...args: unknown[]) => mockRenameDataDocumentByPath(...args),
+vi.mock('@/api/kitTables', () => ({
+  reportTableFileRenamed: (...args: unknown[]) => mockReportTableFileRenamed(...args),
 }))
 vi.mock('@/features/workspace/lib/documentIdentity', () => ({
   syncDocumentFileMoved: (...args: unknown[]) => mockSyncDocumentFileMoved(...args),
@@ -45,7 +45,6 @@ async function mount(overrides: Partial<Options> = {}) {
     remapWorkspaceTabPaths: vi.fn(),
     remapOpenedDocuments: vi.fn(),
     setActiveResourcePath: vi.fn(),
-    renameKitableChildrenIndexPath: vi.fn(),
     setSaving: vi.fn(),
     setError: vi.fn(),
     setFeedback: vi.fn(),
@@ -76,8 +75,7 @@ beforeEach(() => {
   document.body.appendChild(container)
   root = createRoot(container)
   mockMoveWorkspaceDocument.mockReset()
-  mockRenameDataDocumentByPath.mockReset()
-  mockRenameDataDocumentByPath.mockResolvedValue({ renamed: true })
+  mockReportTableFileRenamed.mockClear()
   mockSyncDocumentFileMoved.mockClear()
 })
 
@@ -100,7 +98,7 @@ describe('useWorkspaceDocumentTitleRename', () => {
     expect(calls.setAgentModifiedDocumentPaths).toHaveBeenCalledTimes(1)
     expect(calls.setFeedback).toHaveBeenLastCalledWith('feedback.nameUpdated')
     expect(calls.setSaving.mock.calls.map(([value]) => value)).toEqual([true, false])
-    expect(mockRenameDataDocumentByPath).not.toHaveBeenCalled()
+    expect(mockReportTableFileRenamed).not.toHaveBeenCalled()
     // Optimistic update, then the moved item replaces it; no rollback.
     expect(calls.setTreeItems).toHaveBeenCalledTimes(2)
   })
@@ -122,17 +120,16 @@ describe('useWorkspaceDocumentTitleRename', () => {
     expect(mockSyncDocumentFileMoved).not.toHaveBeenCalled()
   })
 
-  it('syncs the runtime index for a .kitable rename', async () => {
-    mockMoveWorkspaceDocument.mockResolvedValue({ path: 'crm.kitable', name: 'crm.kitable', content: '' })
-    const { api, calls } = await mount({
-      activeDocument: { path: 'leads.kitable', name: 'leads.kitable', content: '' },
+  it('tells the workflows and syncs that name a renamed table file', async () => {
+    mockMoveWorkspaceDocument.mockResolvedValue({ path: 'crm.ktable', name: 'crm.ktable', content: '' })
+    const { api } = await mount({
+      activeDocument: { path: 'leads.ktable', name: 'leads.ktable', content: '' },
       treeState: { flatTreeNodes: [], setTreeItems: vi.fn() as never, updateTreeMetadata: vi.fn() },
     })
 
     await act(async () => { await api.saveDocumentTitle('crm') })
 
-    expect(calls.renameKitableChildrenIndexPath).toHaveBeenCalledWith('leads.kitable', 'crm.kitable')
-    expect(mockRenameDataDocumentByPath).toHaveBeenCalledWith({ path: 'leads.kitable', target_path: 'crm.kitable', workspace_root: '/vault' })
+    expect(mockReportTableFileRenamed).toHaveBeenCalledWith('leads.ktable', 'crm.ktable')
   })
 
   it('rolls the tree back and reports the error when the move fails', async () => {
@@ -147,13 +144,9 @@ describe('useWorkspaceDocumentTitleRename', () => {
     expect(calls.remapWorkspaceTabPaths).not.toHaveBeenCalled()
   })
 
-  it('does nothing for data documents, unchanged titles, or when the save before rename fails', async () => {
+  it('does nothing for unchanged titles, or when the save before rename fails', async () => {
     const unchanged = await mount()
     await act(async () => { await unchanged.api.saveDocumentTitle('old') })
-    expect(mockMoveWorkspaceDocument).not.toHaveBeenCalled()
-
-    const data = await mount({ activeDocumentFormat: 'data' })
-    await act(async () => { await data.api.saveDocumentTitle('new') })
     expect(mockMoveWorkspaceDocument).not.toHaveBeenCalled()
 
     const unsaved = await mount({ ensureActiveDocumentSaved: vi.fn(async () => false) })

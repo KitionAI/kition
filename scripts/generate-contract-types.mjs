@@ -24,14 +24,6 @@ import { fileURLToPath } from 'node:url'
 const repositoryDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const contractsDir = resolve(repositoryDir, 'contracts/runtime')
 const outputDir = resolve(repositoryDir, 'src/api/generated')
-// Packages under packages/ import nothing from src/, so they get their own copy of the contract
-// modules they use (and the ones those import).
-const packageOutputs = [
-  {
-    dir: resolve(repositoryDir, 'packages/table-editor/src/generated'),
-    stems: ['data-documents-transact', 'data-import', 'table-changed'],
-  },
-]
 const check = process.argv.includes('--check')
 
 function pascal(value) {
@@ -199,14 +191,7 @@ function generate() {
 
 const outputs = generate()
 
-function packageFiles(stems) {
-  return new Map(stems.map((stem) => [`${stem}.ts`, outputs.get(`${stem}.ts`)]))
-}
-
-const targets = [
-  { dir: outputDir, files: outputs },
-  ...packageOutputs.map(({ dir, stems }) => ({ dir, files: packageFiles(stems) })),
-]
+const targets = [{ dir: outputDir, files: outputs }]
 
 if (check) {
   const stale = []
@@ -233,5 +218,5 @@ if (check) {
     mkdirSync(dir, { recursive: true })
     for (const [name, content] of files) writeFileSync(resolve(dir, name), content)
   }
-  console.log(`[contracts] wrote ${outputs.size} files to src/api/generated and package copies`)
+  console.log(`[contracts] wrote ${outputs.size} files to src/api/generated`)
 }

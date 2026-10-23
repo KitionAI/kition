@@ -106,7 +106,7 @@ export function useWorkspaceTabs({
     setState((current) => remapTabPaths(current, sourcePath, targetPath))
   }, [])
 
-  // Remap the single file-level kitable tab when its file is renamed.
+  // A renamed table file keeps its workflow tab.
   const renameWorkspaceTabPath = useCallback((fromPath: string, toPath: string) => {
     setState((current) => renameTabPath(current, fromPath, toPath))
   }, [])

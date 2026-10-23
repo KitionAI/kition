@@ -1,4 +1,4 @@
-import type { DataDocument } from '@kition/table-editor'
+import type { KitTablesFile } from '@/api/kitTables'
 
 import type { FormSyncWorkflow } from './api'
 
@@ -16,10 +16,11 @@ export function readLocalFormSyncWorkflows(
   return workflows.filter(isLocalFormSyncWorkflow)
 }
 
-export function readDocumentFormSyncWorkflows(
-  documents: DataDocument[],
+/** The unpublished forms kept in the tables they write to (each table's `form_sync_workflows`). */
+export function readTableFileFormSyncWorkflows(
+  files: KitTablesFile[],
 ): LocalFormSyncWorkflow[] {
-  return documents.flatMap((document) => readLocalFormSyncWorkflows(document.meta))
+  return files.flatMap((file) => file.tables.flatMap((table) => readLocalFormSyncWorkflows(table.meta)))
 }
 
 export function writeLocalFormSyncWorkflow(

@@ -12,7 +12,6 @@ import {
 import {
   buildPrivateSectionTreeNodes,
   collectAllFolderPaths,
-  collectAllKitableFilePaths,
   flattenWorkspaceDocumentItems,
   flattenWorkspaceTreeNodes,
 } from '@/features/workspace/lib/workspaceTree'
@@ -78,9 +77,7 @@ export function useWorkspaceTreeState(): UseWorkspaceTreeStateResult {
   )
 
   const allFolderPaths = useMemo(() => collectAllFolderPaths(treeItems), [treeItems])
-  const allKitableFilePaths = useMemo(() => collectAllKitableFilePaths(treeItems), [treeItems])
   const expandedPaths = useMemo(() => {
-    const collapsed = new Set(treeMetadata.collapsed)
     const expandedFolders = new Set(treeMetadata.expandedFolders)
     const next = new Set<string>()
     // Folders default to collapsed. Only paths the user explicitly expanded
@@ -90,16 +87,8 @@ export function useWorkspaceTreeState(): UseWorkspaceTreeStateResult {
         next.add(path)
       }
     })
-    // Kitable files: default COLLAPSED — include (i.e. expand) only when the
-    // user has toggled them, which adds them to the `collapsed` set (inverted
-    // semantics so the same `toggleFolder` mechanic works for both cases).
-    allKitableFilePaths.forEach((path) => {
-      if (collapsed.has(path)) {
-        next.add(path)
-      }
-    })
     return next
-  }, [allFolderPaths, allKitableFilePaths, treeMetadata.collapsed, treeMetadata.expandedFolders])
+  }, [allFolderPaths, treeMetadata.expandedFolders])
 
   const updateTreeMetadata = useCallback((updater: (metadata: WorkspaceTreeMetadata) => WorkspaceTreeMetadata) => {
     setTreeMetadataMap((current) => {
@@ -119,25 +108,15 @@ export function useWorkspaceTreeState(): UseWorkspaceTreeStateResult {
 
   const toggleFolder = useCallback((path: string) => {
     updateTreeMetadata((current) => {
-      if (!allKitableFilePaths.has(path)) {
-        const expandedFolders = new Set(current.expandedFolders)
-        if (expandedFolders.has(path)) {
-          expandedFolders.delete(path)
-        } else {
-          expandedFolders.add(path)
-        }
-        return { ...current, expandedFolders: [...expandedFolders] }
-      }
-
-      const collapsed = new Set(current.collapsed)
-      if (collapsed.has(path)) {
-        collapsed.delete(path)
+      const expandedFolders = new Set(current.expandedFolders)
+      if (expandedFolders.has(path)) {
+        expandedFolders.delete(path)
       } else {
-        collapsed.add(path)
+        expandedFolders.add(path)
       }
-      return { ...current, collapsed: [...collapsed] }
+      return { ...current, expandedFolders: [...expandedFolders] }
     })
-  }, [allKitableFilePaths, updateTreeMetadata])
+  }, [updateTreeMetadata])
 
   const expandFolders = useCallback((paths: string[]) => {
     const targets = paths.filter((path) => typeof path === 'string' && path.length > 0)

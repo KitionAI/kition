@@ -1,8 +1,8 @@
 /**
  * What the workspace must do when a live session event or stream frame
- * arrives: reload modified documents, refresh the tree, refresh tables,
- * announce connections, and preview or cancel canvas patches. Pure: the hook
- * runs the returned effects. Each function takes the session view as it was
+ * arrives: reload modified documents, refresh the tree, announce
+ * connections, and preview or cancel canvas patches. Pure: the hook runs
+ * the returned effects. Each function takes the session view as it was
  * before the input is applied, so replayed input yields no effects.
  */
 import type { AgentDesignPatch } from '@/api/generated/agent-design'
@@ -23,7 +23,6 @@ import {
 export type AgentEffect =
   | { type: 'documents-modified'; paths: string[] }
   | { type: 'deliverables-saved'; paths: string[] }
-  | { type: 'table-mutated' }
   | {
     type: 'connections-changed'
     detail: { source: 'configure_smtp_connection'; connectionId: string; workflowId: string; workflowAttached: boolean }
@@ -32,12 +31,6 @@ export type AgentEffect =
   | { type: 'whiteboard-patch-cancelled' }
   | { type: 'design-patch'; patch: AgentDesignPatch; provisional: boolean }
   | { type: 'design-patch-cancelled' }
-
-const TABLE_MUTATION_TOOL_NAMES = new Set([
-  'data_table_create',
-  'data_table_add_fields',
-  'data_table_add_records',
-])
 
 /** Canvas patch tools: tool name, patch `type`, and the effect it drives. */
 const PATCH_TOOLS = [
@@ -87,21 +80,6 @@ function modifiedPaths(run: AgentToolRun): string[] {
     const path = typeof outputPath === 'string' ? outputPath : typeof inputPath === 'string' ? inputPath : ''
     return path ? [path] : []
   }
-  if (run.name === 'data_table_create') {
-    const path = [
-      field(output, 'path'),
-      field(output, 'document_path'),
-      field(output, 'kitable_path'),
-      field(output, 'vault_path'),
-      field(field(output, 'document'), 'path'),
-      field(field(output, 'data'), 'path'),
-      field(input, 'path'),
-      field(input, 'document_path'),
-      field(input, 'kitable_path'),
-      field(input, 'vault_path'),
-    ].find((value) => typeof value === 'string' && value.trim())
-    return typeof path === 'string' ? [path] : []
-  }
   if (run.name === 'apply_patch') {
     const fileOps = field(output, 'file_ops')
     const changes = field(output, 'changes')
@@ -122,7 +100,6 @@ function completedRunEffects(run: AgentToolRun): AgentEffect[] {
   const effects: AgentEffect[] = []
   const paths = modifiedPaths(run)
   if (paths.length) effects.push({ type: 'documents-modified', paths })
-  if (TABLE_MUTATION_TOOL_NAMES.has(run.name)) effects.push({ type: 'table-mutated' })
   if (run.name === 'configure_smtp_connection') {
     const id = field(run.output, 'id')
     const workflowId = field(run.output, 'workflow_id')

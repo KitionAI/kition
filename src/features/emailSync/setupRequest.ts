@@ -18,7 +18,7 @@ export function requestEmailSyncSetup(
     // The workflow tab still opens when session storage is unavailable.
   }
   window.dispatchEvent(new CustomEvent('kition:onboarding:open-local-workflow', {
-    detail: { kitablePath: tablePath },
+    detail: { tablePath: tablePath },
   }))
   for (const delay of SETUP_EVENT_RETRY_DELAYS) {
     window.setTimeout(() => {

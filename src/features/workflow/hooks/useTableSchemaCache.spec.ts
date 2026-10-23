@@ -57,11 +57,11 @@ describe('useTableSchemaCache', () => {
     const captured = { value: null as ReturnType<typeof useTableSchemaCache> | null }
     await mount(createElement(HookSurface, { onResult: (r) => { captured.value = r } }))
     let resolved: any
-    await act(async () => { resolved = await captured.value!.ensure('doc_1', 'tbl_a', 'A') })
+    await act(async () => { resolved = await captured.value!.ensure('crm.ktable', 'tbl_a', 'A') })
     expect(resolved).toEqual(schema)
-    await settle(captured, () => captured.value?.schemas['tbl_a'] !== undefined)
-    expect(captured.value!.schemas['tbl_a']).toEqual(schema)
-    expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledWith('doc_1', 'tbl_a', 'A')
+    await settle(captured, () => captured.value?.schemas['crm.ktable#tbl_a'] !== undefined)
+    expect(captured.value!.schemas['crm.ktable#tbl_a']).toEqual(schema)
+    expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledWith('crm.ktable', 'tbl_a', 'A')
   })
 
   it('ensure() short-circuits on a cache hit without re-fetching', async () => {
@@ -69,9 +69,9 @@ describe('useTableSchemaCache', () => {
     vi.mocked(fetchWorkflowTableSchema).mockResolvedValueOnce(schema as any)
     const captured = { value: null as ReturnType<typeof useTableSchemaCache> | null }
     await mount(createElement(HookSurface, { onResult: (r) => { captured.value = r } }))
-    await act(async () => { await captured.value!.ensure('doc_1', 'tbl_a') })
+    await act(async () => { await captured.value!.ensure('crm.ktable', 'tbl_a') })
     // Second call — must reuse the cached value, not call the fetcher again.
-    await act(async () => { await captured.value!.ensure('doc_1', 'tbl_a') })
+    await act(async () => { await captured.value!.ensure('crm.ktable', 'tbl_a') })
     expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledTimes(1)
   })
 
@@ -85,8 +85,8 @@ describe('useTableSchemaCache', () => {
     // so the fetcher is only invoked once.
     let p1!: Promise<any>; let p2!: Promise<any>
     await act(async () => {
-      p1 = captured.value!.ensure('doc_1', 'tbl_a')
-      p2 = captured.value!.ensure('doc_1', 'tbl_a')
+      p1 = captured.value!.ensure('crm.ktable', 'tbl_a')
+      p2 = captured.value!.ensure('crm.ktable', 'tbl_a')
     })
     expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledTimes(1)
     await act(async () => { resolveFetch(schema); await p1; await p2 })
@@ -99,13 +99,13 @@ describe('useTableSchemaCache', () => {
     const captured = { value: null as ReturnType<typeof useTableSchemaCache> | null }
     await mount(createElement(HookSurface, { onResult: (r) => { captured.value = r } }))
     let resolved: any
-    await act(async () => { resolved = await captured.value!.ensure('doc_1', 'tbl_a') })
+    await act(async () => { resolved = await captured.value!.ensure('crm.ktable', 'tbl_a') })
     expect(resolved).toBeNull()
-    expect(captured.value!.schemas['tbl_a']).toBeUndefined()
+    expect(captured.value!.schemas['crm.ktable#tbl_a']).toBeUndefined()
     // The failed fetch shouldn't be cached — a later ensure() should
     // be allowed to re-try the fetcher (recovery from transient errors).
     vi.mocked(fetchWorkflowTableSchema).mockResolvedValueOnce({ id: 'tbl_a', name: 'A', fields: [] } as any)
-    await act(async () => { await captured.value!.ensure('doc_1', 'tbl_a') })
+    await act(async () => { await captured.value!.ensure('crm.ktable', 'tbl_a') })
     expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledTimes(2)
   })
 
@@ -113,20 +113,33 @@ describe('useTableSchemaCache', () => {
     vi.mocked(fetchWorkflowTableSchema).mockResolvedValueOnce({ id: 'tbl_a', name: 'A', fields: [] } as any)
     const captured = { value: null as ReturnType<typeof useTableSchemaCache> | null }
     await mount(createElement(HookSurface, { onResult: (r) => { captured.value = r } }))
-    await act(async () => { await captured.value!.ensure('doc_1', 'tbl_a') })
-    expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledWith('doc_1', 'tbl_a', 'Table')
+    await act(async () => { await captured.value!.ensure('crm.ktable', 'tbl_a') })
+    expect(vi.mocked(fetchWorkflowTableSchema)).toHaveBeenCalledWith('crm.ktable', 'tbl_a', 'Table')
   })
 
-  it('caches schemas per tableId independently', async () => {
+  it('caches schemas per table independently', async () => {
     vi.mocked(fetchWorkflowTableSchema)
       .mockResolvedValueOnce({ id: 'tbl_a', name: 'A', fields: [] } as any)
       .mockResolvedValueOnce({ id: 'tbl_b', name: 'B', fields: [] } as any)
     const captured = { value: null as ReturnType<typeof useTableSchemaCache> | null }
     await mount(createElement(HookSurface, { onResult: (r) => { captured.value = r } }))
-    await act(async () => { await captured.value!.ensure('doc_1', 'tbl_a') })
-    await act(async () => { await captured.value!.ensure('doc_1', 'tbl_b') })
-    await settle(captured, () => captured.value?.schemas['tbl_b'] !== undefined)
-    expect(captured.value!.schemas['tbl_a'].name).toBe('A')
-    expect(captured.value!.schemas['tbl_b'].name).toBe('B')
+    await act(async () => { await captured.value!.ensure('crm.ktable', 'tbl_a') })
+    await act(async () => { await captured.value!.ensure('crm.ktable', 'tbl_b') })
+    await settle(captured, () => captured.value?.schemas['crm.ktable#tbl_b'] !== undefined)
+    expect(captured.value!.schemas['crm.ktable#tbl_a'].name).toBe('A')
+    expect(captured.value!.schemas['crm.ktable#tbl_b'].name).toBe('B')
+  })
+
+  it('keeps the same table id in two files apart', async () => {
+    vi.mocked(fetchWorkflowTableSchema)
+      .mockResolvedValueOnce({ id: '1', name: 'Leads', fields: [] } as any)
+      .mockResolvedValueOnce({ id: '1', name: 'Deals', fields: [] } as any)
+    const captured = { value: null as ReturnType<typeof useTableSchemaCache> | null }
+    await mount(createElement(HookSurface, { onResult: (r) => { captured.value = r } }))
+    await act(async () => { await captured.value!.ensure('crm.ktable', '1') })
+    await act(async () => { await captured.value!.ensure('sales.ktable', '1') })
+    await settle(captured, () => captured.value?.schemas['sales.ktable#1'] !== undefined)
+    expect(captured.value!.schemas['crm.ktable#1'].name).toBe('Leads')
+    expect(captured.value!.schemas['sales.ktable#1'].name).toBe('Deals')
   })
 })

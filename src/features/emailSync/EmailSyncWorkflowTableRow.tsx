@@ -39,7 +39,7 @@ export function EmailSyncWorkflowTableRow({
         ? 'bg-success/15 text-success-foreground'
       : 'bg-muted text-muted-foreground'
   const dotClass = failing ? 'bg-destructive' : enabled ? 'bg-success' : 'bg-muted-foreground/60'
-  const tableName = tableTitle || tablePath.split(/[\\/]/).pop()?.replace(/\.kitable$/i, '') || 'Table'
+  const tableName = tableTitle || tablePath.split(/[\\/]/).pop()?.replace(/\.ktable$/i, '') || 'Table'
   const trigger = workflow.schedule.enabled
     ? `IMAP · Every ${workflow.schedule.interval_minutes} min`
     : 'IMAP · Manual'

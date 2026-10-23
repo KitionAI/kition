@@ -1,9 +1,5 @@
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import {
-  buildKitableWorkspaceTabId,
-  getKitableWorkspaceTabTitle,
-  type WorkspaceTab,
-} from '@/features/workspace/lib/workspace'
+import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 
 export type WorkspaceTreeMetadata = {
   icons: Record<string, string>
@@ -354,12 +350,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
     }
     const item = raw as Record<string, unknown>
     if (item.type === 'document' && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.path === 'string') {
-      // Drop legacy document tabs pointing at .kitable files — those are now
-      // opened as table: / workflow: virtual tabs. Keeping them would cause
-      // the tab to try to load the raw JSON blob and fail on restore.
-      if (item.path.toLowerCase().endsWith('.kitable')) {
-        return []
-      }
       return [{
         id: item.id,
         type: 'document',
@@ -376,52 +366,18 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         kind: item.kind,
       }]
     }
-    if (item.type === 'table'
-      && typeof item.id === 'string'
-      && typeof item.title === 'string'
-      && typeof item.kitablePath === 'string'
-      && item.kitablePath.length > 0
-      && Number.isInteger(item.tableId)
-      && (item.tableId as number) > 0
-    ) {
-      return [{
-        id: buildKitableWorkspaceTabId(item.kitablePath),
-        type: 'table',
-        title: getKitableWorkspaceTabTitle(item.kitablePath),
-        kitablePath: item.kitablePath,
-        tableId: item.tableId as number,
-        format: 'data',
-      }]
-    }
-    if (item.type === 'dashboard'
-      && typeof item.id === 'string'
-      && typeof item.title === 'string'
-      && typeof item.kitablePath === 'string'
-      && item.kitablePath.length > 0
-      && typeof item.dashboardId === 'string'
-      && item.dashboardId.length > 0
-    ) {
-      return [{
-        id: buildKitableWorkspaceTabId(item.kitablePath),
-        type: 'dashboard',
-        title: getKitableWorkspaceTabTitle(item.kitablePath),
-        kitablePath: item.kitablePath,
-        dashboardId: item.dashboardId,
-        format: 'data',
-      }]
-    }
     if (item.type === 'workflow' && typeof item.id === 'string' && typeof item.title === 'string') {
-      const kitablePath = typeof item.kitablePath === 'string' && item.kitablePath.length > 0
-        ? item.kitablePath
+      const tablePath = typeof item.tablePath === 'string' && item.tablePath.length > 0
+        ? item.tablePath
         : undefined
       const workflowId = typeof item.workflowId === 'string' && item.workflowId.length > 0
         ? item.workflowId
         : undefined
       return [{
-        id: kitablePath ? buildKitableWorkspaceTabId(kitablePath) : item.id,
+        id: tablePath ? `workflow:${tablePath}` : item.id,
         type: 'workflow',
-        title: kitablePath ? getKitableWorkspaceTabTitle(kitablePath) : item.title,
-        ...(kitablePath ? { kitablePath } : {}),
+        title: item.title,
+        ...(tablePath ? { tablePath } : {}),
         ...(workflowId ? { workflowId } : {}),
       }]
     }

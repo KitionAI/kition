@@ -24,12 +24,13 @@ describe('eventsToPreviewWorkflow', () => {
     const events: WorkflowBuildEvent[] = [
       { kind: 'workflow.generated', workflowId: 'wf_1', name: 'My WF', description: 'd' },
     ]
-    const wf = eventsToPreviewWorkflow(events, schema, 'doc_1')
+    const wf = eventsToPreviewWorkflow(events, schema, 'crm.ktable', 'kdm-crm')
     expect(wf).not.toBeNull()
     expect(wf!.id).toBe('wf_1')
     expect(wf!.name).toBe('My WF')
     expect(wf!.trigger.tableId).toBe('tbl_1')
-    expect(wf!.trigger.documentId).toBe('doc_1')
+    expect(wf!.trigger.documentPath).toBe('crm.ktable')
+    expect(wf!.trigger.documentId).toBe('kdm-crm')
     expect(wf!.action.type).toBe('send_email')
     // Should still produce both nodes + edge so the canvas renders skeletons.
     expect(wf!.nodes).toHaveLength(2)
@@ -41,7 +42,7 @@ describe('eventsToPreviewWorkflow', () => {
       { kind: 'workflow.generated', workflowId: 'wf_1', name: 'My WF', description: 'd' },
       { kind: 'trigger.generated', nodeId: 't_real', triggerType: 'record_created', tableId: 'tbl_overridden', config: {} },
     ]
-    const wf = eventsToPreviewWorkflow(events, schema, 'doc_1')
+    const wf = eventsToPreviewWorkflow(events, schema, 'crm.ktable', 'kdm-crm')
     expect(wf!.trigger.nodeId).toBe('t_real')
     expect(wf!.trigger.tableId).toBe('tbl_overridden')
     expect(wf!.trigger.type).toBe('record_created')
@@ -52,7 +53,7 @@ describe('eventsToPreviewWorkflow', () => {
       { kind: 'workflow.generated', workflowId: 'wf_1', name: 'My WF', description: 'd' },
       { kind: 'action.generated', nodeId: 'a_real', actionType: 'send_email', config: { to: 'a@b.com', subject: 'Hi' } },
     ]
-    const wf = eventsToPreviewWorkflow(events, schema, 'doc_1')
+    const wf = eventsToPreviewWorkflow(events, schema, 'crm.ktable', 'kdm-crm')
     expect(wf!.action.nodeId).toBe('a_real')
     expect(wf!.action.to).toBe('a@b.com')
     expect(wf!.action.subject).toEqual({ parts: [{ kind: 'text', text: 'Hi' }] })
@@ -63,7 +64,7 @@ describe('eventsToPreviewWorkflow', () => {
       { kind: 'workflow.generated', workflowId: 'wf_1', name: 'My WF', description: 'd' },
       { kind: 'action.generated', nodeId: 'a_real', actionType: 'send_email', config: { to: 'x', subject: { parts: [{ kind: 'text', text: 'kept' }] }, body: { parts: [] } } },
     ]
-    const wf = eventsToPreviewWorkflow(events, schema, 'doc_1')
+    const wf = eventsToPreviewWorkflow(events, schema, 'crm.ktable', 'kdm-crm')
     expect(wf!.action.subject).toEqual({ parts: [{ kind: 'text', text: 'kept' }] })
   })
 
@@ -73,6 +74,7 @@ describe('eventsToPreviewWorkflow', () => {
     ]
     const wf = eventsToPreviewWorkflow(events, null)
     expect(wf!.trigger.tableId).toBe('')
+    expect(wf!.trigger.documentPath).toBeUndefined()
     expect(wf!.trigger.documentId).toBeUndefined()
   })
 })
@@ -140,7 +142,7 @@ describe('withStreamingId / STREAMING_WORKFLOW_ID', () => {
     const events: WorkflowBuildEvent[] = [
       { kind: 'workflow.generated', workflowId: 'wf_future', name: 'N', description: 'd' },
     ]
-    const wf = eventsToPreviewWorkflow(events, schema, 'doc_1')!
+    const wf = eventsToPreviewWorkflow(events, schema, 'crm.ktable', 'kdm-crm')!
     const streaming = withStreamingId(wf)
     expect(streaming.id).toBe(STREAMING_WORKFLOW_ID)
     expect(streaming.name).toBe('N')

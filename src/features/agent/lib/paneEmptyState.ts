@@ -1,5 +1,5 @@
 // Empty-state copy varies by pane because "Summarize this document"
-// makes no sense when the right pane is a workflow editor or a table.
+// makes no sense when the right pane is a workflow editor.
 // The strings live under agent.json's `emptyState.<pane>` namespace
 // (one suggestion key per card); we materialise them through a t() callable
 // so locale switches actually update the panel.
@@ -25,7 +25,6 @@ export type AgentEmptyStateConfig = { description: string; suggestions: AgentEmp
 export const PANE_SUGGESTIONS: Record<AgentPaneContext, readonly string[]> = {
   document: ['summarize', 'launchPlan', 'checklist'],
   workflow: ['emailOnRecord', 'remindOnDate', 'refine'],
-  table: ['addStatusColumn', 'summarizeTable', 'fillCells'],
   gallery: ['describeEach', 'groupByTopic', 'pickHero'],
   whiteboard: ['generateMindMap', 'organizeBoard', 'generateImage'],
   design: ['headline', 'palette', 'background'],

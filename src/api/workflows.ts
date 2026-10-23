@@ -65,6 +65,9 @@ export type WorkflowEdge = {
  *  target table's field IDs to BodyTemplate values (so trigger output can be
  *  templated into cells the same way send_email subjects/bodies are). */
 export type WorkflowAddRecordConfig = {
+  /** The target table file's workspace path; empty for the trigger's file. */
+  targetDocumentPath?: string
+  /** The target table file's stable identity (its KDM root object id). */
   targetDocumentId?: string
   targetTableId: string
   fields: { fieldId: string; value: BodyTemplate }[]
@@ -76,6 +79,9 @@ export type WorkflowUpdateRecordConfig = {
 }
 
 export type WorkflowLookupRecordConfig = {
+  /** The target table file's workspace path; empty for the trigger's file. */
+  targetDocumentPath?: string
+  /** The target table file's stable identity (its KDM root object id). */
   targetDocumentId?: string
   targetTableId: string
   matchFieldId: string
@@ -103,6 +109,9 @@ export type WorkflowDefinition = {
   trigger: {
     nodeId: string
     type: 'record_created' | 'record_updated' | 'record_created_or_updated' | 'scheduled_time' | 'record_date_reached' | string
+    /** The trigger table's file, by workspace path (`Leads.ktable`). */
+    documentPath?: string
+    /** The file's stable identity (its KDM root object id), kept across renames. */
     documentId?: string
     tableId: string
     /** Only populated when type === 'scheduled_time'. Mirrors the Go
@@ -170,6 +179,7 @@ export type WorkflowPatch = {
   trigger?: {
     nodeId?: string
     type?: 'record_created' | 'record_updated' | 'record_created_or_updated' | 'scheduled_time' | 'record_date_reached' | ''
+    documentPath?: string
     documentId?: string
     tableId?: string
     /** Replaces the stored schedule wholesale when present. Sent by the
@@ -258,10 +268,11 @@ export type CreateWorkflowInput = {
     // template path: the trigger carries a cron expression instead of a
     // table binding (TableID stays empty by design). Empty string '' is
     // allowed for draft workflows (delayed binding): the server's
-    // Validate() tolerates empty type/documentId/tableId when Enabled=false,
+    // Validate() tolerates empty type/documentPath/tableId when Enabled=false,
     // so the UI can start a workflow without binding a table.
     type: 'record_created' | 'record_updated' | 'record_created_or_updated' | 'scheduled_time' | 'record_date_reached' | ''
-    documentId: string
+    documentPath: string
+    documentId?: string
     tableId: string
     requiredFields?: string[]
     /** Only populated when type === 'scheduled_time'. Carries the initial
@@ -390,20 +401,12 @@ export function testWorkflowNode(
     ok?: boolean
     skipped?: string
     input?: { to: string; subject: string; body: string }
-    output?: { recordId?: string; tableId?: string; documentId?: string; values?: Record<string, unknown>; matched?: boolean; changed?: boolean; matchedRecordId?: string }
+    output?: { recordId?: string; tableId?: string; documentPath?: string; values?: Record<string, unknown>; matched?: boolean; changed?: boolean; matchedRecordId?: string }
     error?: string
   }>(
     `/v1/workflows/${workflowId}/nodes/${nodeId}/test`,
     body || {},
   )
-}
-
-// listWorkflowsForTable powers the file-tree virtual node — given a
-// tableId, returns workflows whose trigger references it.
-export function listWorkflowsForTable(tableId: string) {
-  return request
-    .get<{ items?: WorkflowDefinition[] }>(`/v1/tables/${tableId}/workflows`)
-    .then((response) => response.items || [])
 }
 
 // previewSchedule asks the server for the next 3 fire times for a (cron, tz)
@@ -425,4 +428,9 @@ export function previewSchedule(cron: string, timezone: string) {
   return request.get<SchedulePreviewResponse>(
     `/v1/workflows/_preview/schedule?${params.toString()}`,
   )
+}
+
+/** Runs a workflow on one record of its trigger table (a table's button field, `host/action` `workflow.run`). */
+export function runWorkflowOnRecord(workflowId: string, input: { documentPath: string; tableId: string; recordId: string }) {
+  return request.post<{ ok: boolean; error?: string; run?: WorkflowRunRecord }>(`/v1/workflows/${encodeURIComponent(workflowId)}/run-record`, input, { suppressErrorMessage: true })
 }

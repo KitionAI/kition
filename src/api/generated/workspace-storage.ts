@@ -18,7 +18,10 @@ export type WorkspaceStorageAssetReference = {
 
 export type WorkspaceStorageSummary = {
   documents: number
-  kitables: number
+  /**
+   * Table files (.ktable); the Table kit owns their contents.
+   */
+  tables: number
   assets: number
   workflows: number
   agent_sessions: number
@@ -46,7 +49,7 @@ export type WorkspaceStorageStatus = {
 }
 
 export type WorkspaceStorageInventoryItem = {
-  kind: "document" | "kitable" | "asset" | "workflow" | "workflow_run" | "agent_session" | "agent_session_events" | "sync_state" | "workspace_metadata"
+  kind: "document" | "table" | "asset" | "workflow" | "workflow_run" | "agent_session" | "agent_session_events" | "sync_state" | "workspace_metadata"
   workspace_path: WorkspaceStoragePortablePath
   size_bytes: number
   sha256?: string

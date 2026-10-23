@@ -18,9 +18,7 @@
       "pdf": "PDF"
     },
     "folder": "Папка",
-    "newDashboard": "Новая панель",
     "newForm": "Новая форма",
-    "newTable": "Новая таблица",
     "newWorkflow": "Новый рабочий процесс",
     "group": {
       "documents": "Документы",
@@ -101,16 +99,6 @@
       "toc": "Оглавление",
       "locked": "Заблокировать страницу"
     },
-    "tableAction": {
-      "rename": "Переименовать",
-      "duplicate": "Дублировать",
-      "downloadCsv": "Скачать CSV",
-      "importData": "Импорт данных",
-      "api": "API",
-      "history": "История",
-      "share": "Поделиться",
-      "delete": "Удалить"
-    },
     "markdownMode": {
       "rich": "Режим редактирования",
       "preview": "Режим чтения",
@@ -147,7 +135,6 @@
     "workflowsTitle": "Процессы",
     "boardTitle": "Доска",
     "workflowsScoped": "Процессы · {{name}}",
-    "untitledTable": "Таблица без названия",
     "untitledWorkflow": "Процесс без названия",
     "videos": "Видео",
     "workflow": "Процесс"
@@ -609,9 +596,6 @@
     "settings": "Настройки"
   },
   "errors": {
-    "kitableNotFound": "Не удалось найти этот table file на диске.",
-    "kitableNoTables": "В этом table file пока нет таблиц — сначала создайте таблицу.",
-    "parentKitableNotFound": "Не удалось найти родительский table file на диске.",
     "createWorkflowFailed": "Не удалось создать процесс",
     "documentPathEmpty": "Путь к документу не может быть пустым",
     "nameEmpty": "Имя не может быть пустым",
@@ -623,8 +607,6 @@
     "onlyWorkspaceItemsRenamable": "Сюда можно переименовывать только документы, таблицы и доски.",
     "createDocumentFailed": "Не удалось создать документ",
     "createBoardFailed": "Не удалось создать доску",
-    "createDashboardFailed": "Failed to create dashboard",
-    "createTableFailed": "Не удалось создать таблицу",
     "importMarkdownFailed": "Не удалось импортировать Markdown",
     "browserDevModeOpenDirectory": "Вы работаете в режиме разработки в браузере и не можете открывать нативные каталоги. Запустите настольное приложение через pnpm dev и повторите попытку.",
     "browserDevModePickDirectory": "Вы работаете в режиме разработки в браузере и не можете выбрать нативный каталог. Запустите настольное приложение через pnpm dev и повторите попытку.",
@@ -638,25 +620,9 @@
     "restoredSavedVersion": "Восстановлено до сохранённой версии",
     "documentCreated": "Документ создан",
     "boardCreated": "Доска создана",
-    "dashboardCreated": "Dashboard created",
-    "tableCreated": "Таблица создана",
-    "spreadsheetImported": "Таблица импортирована как Kitable",
     "folderCreated": "Папка создана",
     "renamed": "Переименовано",
-    "alreadyInLocation": "Уже находится в этом месте",
-    "tableDeleted": "Таблица удалена"
-  },
-  "kitableSidebar": {
-    "collapse": "Свернуть боковую панель файла таблиц",
-    "expand": "Развернуть боковую панель файла таблиц",
-    "create": "Создать в файле таблиц",
-    "tableName": "Название таблицы данных",
-    "navLabel": "Файл таблиц",
-    "tableMenu": "Открыть меню таблицы",
-    "searchPlaceholder": "Поиск таблиц, дашбордов и рабочих процессов",
-    "switchSection": "Переключить раздел файла таблиц",
-    "renameTable": "Переименовать таблицу данных",
-    "deleteTable": "Удалить таблицу данных"
+    "alreadyInLocation": "Уже находится в этом месте"
   },
   "photoKit": {
     "unavailableTitle": "Редактирование Photo недоступно в этой сборке",

@@ -23,14 +23,14 @@ export function EmailSyncTableSelect({
   options,
   loading,
   disabled,
-  kitablePath,
+  tablePath,
   onChange,
 }: {
   value: number | null
   options: EmailSyncTableOption[]
   loading?: boolean
   disabled?: boolean
-  kitablePath: string
+  tablePath: string
   onChange: (tableId: number) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -71,9 +71,9 @@ export function EmailSyncTableSelect({
         >
           <Command>
             <CommandInput placeholder="Search tables..." data-testid="email-sync-table-search" />
-            <CommandList role="listbox" aria-label="Tables in the current Kitable">
+            <CommandList role="listbox" aria-label="Tables in the current table file">
               <CommandEmpty>No matching tables.</CommandEmpty>
-              <CommandGroup heading="Tables in this Kitable">
+              <CommandGroup heading="Tables in this table file">
                 {options.map((option) => (
                   <CommandItem
                     key={option.id}
@@ -93,8 +93,8 @@ export function EmailSyncTableSelect({
           </Command>
         </PopoverContent>
       </Popover>
-      <p className="truncate text-xs text-muted-foreground" title={kitablePath}>
-        Current Kitable: {kitablePath}
+      <p className="truncate text-xs text-muted-foreground" title={tablePath}>
+        Current table file: {tablePath}
       </p>
     </div>
   )

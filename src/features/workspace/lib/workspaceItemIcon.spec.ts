@@ -6,7 +6,7 @@ import { getWorkspaceItemIcon, getWorkspaceItemKitIcon } from './workspace'
 describe('getWorkspaceItemKitIcon', () => {
   it.each([
     ['markdown', 'document'],
-    ['data', 'table'],
+    ['table', 'table'],
     ['table', 'table'],
     ['docx', 'word'],
     ['xlsx', 'sheet'],

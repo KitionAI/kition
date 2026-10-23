@@ -1,5 +1,5 @@
 import type { ApiTimestamp } from '@/types'
-import { toEpochMs } from '@kition/table-editor'
+import { toEpochMs } from '@/lib/timestamps'
 import { Bot, ChevronsRight, History, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'

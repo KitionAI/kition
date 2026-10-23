@@ -8,7 +8,6 @@ import type {
   AgentShellApprovalDecision,
   AgentShellApprovalRequest,
   AgentShellApprovalResponse,
-  AgentTablePlanContext,
   AgentPaneContext,
   AgentTaskMode,
 } from '@/api/agent'
@@ -75,11 +74,6 @@ import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentWhiteboardPatch } from '@kition/board-editor'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
-import {
-  buildCompletedTableFileImportPromptContext,
-  isTableFileImportRequest,
-} from '@/features/agent/lib/tableFileImportIntent'
-import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
 import { retryWhileSessionBusy } from '@/features/agent/lib/agentSendRetry'
 import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
@@ -88,8 +82,6 @@ import type { MarkdownImageInsertionContext } from '@/features/document/editor/e
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
   activeDocumentFormat?: WorkspaceDocumentFormat
-  activeDataDocumentId?: number | null
-  activeDataTableId?: number | null
   taskMode?: AgentTaskMode
   /** Active workbench tab type. Forwarded to streamAgentMessage so the
    *  backend can swap pane-specific instructions in the system prompt
@@ -97,7 +89,7 @@ type WorkspaceAgentTurnContext = {
    *  editor). Defaults to "document" upstream when omitted. */
   paneContext?: AgentPaneContext
   /** Workflow id (when pane is workflow) so the backend can inject a
-   *  compact trigger/action/bound-table summary into the skill
+   *  compact trigger/action summary into the skill
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
   whiteboardContext?: AgentWhiteboardContext
@@ -115,7 +107,6 @@ type UseWorkspaceAgentOptions = {
   onSettingsSaved?: (settings: DesktopSettingsState) => void
   onWorkspaceArtifactsSaved?: (sessionId: number) => Promise<void>
   onWorkspaceDocumentsModified?: (paths: string[], sessionId: number) => void | Promise<void>
-  onTableMutated?: () => void | Promise<void>
   onWhiteboardPatch?: (input: {
     boardPath: string
     patch: AgentWhiteboardPatch
@@ -175,7 +166,6 @@ export function useWorkspaceAgent({
   onSettingsSaved,
   onWorkspaceArtifactsSaved,
   onWorkspaceDocumentsModified,
-  onTableMutated,
   onWhiteboardPatch,
   onWhiteboardPatchCancelled,
   onDesignPatch,
@@ -573,7 +563,6 @@ export function useWorkspaceAgent({
       content?: string
       hideUserMessage?: boolean
       executionMode?: AgentExecutionMode
-      tablePlanContext?: AgentTablePlanContext
       imageGenerationIntent?: AgentImageGenerationIntent
       localSources?: AgentLocalSource[]
       shellApproval?: AgentShellApprovalResponse
@@ -654,7 +643,6 @@ export function useWorkspaceAgent({
 
     const abortController = new AbortController()
     agentAbortControllers.current[sessionId] = abortController
-    let tableMutated = false
     let documentsChanged = false
     let whiteboardPathForTurn = ''
     let designPathForTurn = ''
@@ -674,9 +662,6 @@ export function useWorkspaceAgent({
           // it even if the turn later fails.
           void onWorkspaceArtifactsSaved?.(sessionId)
           void refreshMentionableDocuments()
-          return
-        case 'table-mutated':
-          tableMutated = true
           return
         case 'connections-changed':
           // The workflow drawer refreshes its connection list on this signal.
@@ -767,52 +752,19 @@ export function useWorkspaceAgent({
         ].join('\n'),
         documents: availableMentionableDocuments,
       })
-      const referencedImportFile = mentionResolution.resolved.find((document) => (
-        document.kind === 'file'
-        && /\.(?:csv|tsv|xlsx|xls)$/i.test(document.path)
-      ))
-      const shouldImportReferencedFile = followup?.hideUserMessage !== true
-        && turnContext?.paneContext === 'table'
-        && Number(turnContext.activeDataDocumentId) > 0
-        && Number(turnContext.activeDataTableId) > 0
-        && referencedImportFile
-        && isTableFileImportRequest(content)
-      let promptContext = buildAgentDocumentMentionPromptContext({
-        activeDocumentPath,
-        activeDocumentFormat,
-        referencedDocuments: shouldImportReferencedFile
-          ? mentionResolution.resolved.filter((document) => document.path !== referencedImportFile.path)
-          : mentionResolution.resolved,
-        unresolvedTokens: mentionResolution.unresolved,
-      })
-      promptContext = [
-        promptContext,
+      const promptContext = [
+        buildAgentDocumentMentionPromptContext({
+          activeDocumentPath,
+          activeDocumentFormat,
+          referencedDocuments: mentionResolution.resolved,
+          unresolvedTokens: mentionResolution.unresolved,
+        }),
         buildAgentDocumentEditingPromptContext({
           activeDocumentPath,
           activeDocumentFormat,
           markdownImageInsertionContext: turnContext?.markdownImageInsertionContext,
         }),
       ].filter(Boolean).join('\n\n')
-      let executionMode = followup?.executionMode
-      if (shouldImportReferencedFile && referencedImportFile) {
-        const imported = await importWorkspaceFileIntoDataTable({
-          documentId: Number(turnContext?.activeDataDocumentId),
-          path: referencedImportFile.path,
-          tableId: Number(turnContext?.activeDataTableId),
-        })
-        tableMutated = true
-        executionMode = 'preview'
-        promptContext = [
-          promptContext,
-          buildCompletedTableFileImportPromptContext({
-            fieldCount: imported.fieldCount,
-            fields: imported.inferredFields,
-            path: referencedImportFile.path,
-            recordCount: imported.created,
-          }),
-        ].filter(Boolean).join('\n\n')
-        onFeedback(`Imported ${imported.created} records with ${imported.fieldCount} fields`)
-      }
       const attachmentPaths = Array.from(new Set([
         ...(isBinaryAttachmentMention(activeDocumentFormat, activeDocumentPath)
           ? [activeDocumentPath]
@@ -820,8 +772,7 @@ export function useWorkspaceAgent({
         ...mentionResolution.resolved
           .filter(
             (document) => document.kind !== 'folder'
-              && isBinaryAttachmentMention(document.format, document.path)
-              && document.path !== referencedImportFile?.path,
+              && isBinaryAttachmentMention(document.format, document.path),
           )
           .map((document) => document.path),
       ]))
@@ -840,17 +791,14 @@ export function useWorkspaceAgent({
         attachmentPaths,
         localSources: followup?.localSources ?? agentLocalSources[sessionId] ?? [],
         activeDocumentPath: requestActiveDocumentPath,
-        activeDataDocumentId: turnContext?.activeDataDocumentId ?? 0,
-        activeDataTableId: turnContext?.activeDataTableId ?? 0,
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
         whiteboardContext: turnContext?.whiteboardContext,
         designContext: turnContext?.designContext,
         taskMode: turnContext?.taskMode,
         imageGenerationIntent: followup?.imageGenerationIntent,
-        executionMode,
+        executionMode: followup?.executionMode,
         kitEditMode: getAgentKitEditMode(),
-        tablePlanContext: followup?.tablePlanContext,
         shellApproval: followup?.shellApproval,
         hideUserMessage: followup?.hideUserMessage === true,
         modelId: selectedAgentModel.key,
@@ -861,10 +809,7 @@ export function useWorkspaceAgent({
         onNotification,
       }), { signal: abortController.signal })
 
-      if (tableMutated) {
-        await onTableMutated?.()
-      }
-      if (tableMutated || documentsChanged) {
+      if (documentsChanged) {
         await refreshMentionableDocuments()
       }
       void refreshAgentSessions(undefined, { silent: true })
@@ -913,7 +858,6 @@ export function useWorkspaceAgent({
     onError,
     onFeedback,
     onWorkspaceArtifactsSaved,
-    onTableMutated,
     onWhiteboardPatch,
     onWhiteboardPatchCancelled,
     onDesignPatch,
@@ -955,7 +899,6 @@ export function useWorkspaceAgent({
     input: {
       content: string
       executionMode?: AgentExecutionMode
-      tablePlanContext?: AgentTablePlanContext
       imageGenerationIntent?: AgentImageGenerationIntent
     },
   ) => {
@@ -963,7 +906,6 @@ export function useWorkspaceAgent({
       content: input.content,
       hideUserMessage: true,
       executionMode: input.executionMode,
-      tablePlanContext: input.tablePlanContext,
       imageGenerationIntent: input.imageGenerationIntent,
     })
   }, [sendAgentMessage])

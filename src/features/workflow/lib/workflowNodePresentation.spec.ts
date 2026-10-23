@@ -9,7 +9,7 @@ import { deriveNodeStatus, issueMessageFor, resolveActionInlineError } from './w
 
 const selected = {
   id: 'wf', name: 'W', description: '', enabled: true,
-  trigger: { nodeId: 'trigger_1', type: 'record_created', documentId: 'd', tableId: 't' },
+  trigger: { nodeId: 'trigger_1', type: 'record_created', documentPath: 'crm.ktable', tableId: 't' },
   action: { nodeId: 'action_1', type: 'send_email', body: { parts: [] } },
 } as unknown as WorkflowDefinition
 const draft = { ...emptyDraft(), actionType: 'send_email', connectionId: 'c1', to: 'a@b.c', subject: { parts: [{ kind: 'text' as const, text: 's' }] }, body: { parts: [{ kind: 'text' as const, text: 'b' }] } }

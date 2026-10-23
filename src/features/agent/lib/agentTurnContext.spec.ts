@@ -5,30 +5,15 @@ import { resolveMarkdownImageInsertionContext } from '@/features/document/editor
 import { buildAgentTurnContext, finalizeAgentTurnContext } from './agentTurnContext'
 
 describe('buildAgentTurnContext', () => {
-  it('uses indexed Kitable ids while the table editor context is still hydrating', () => {
+  it('forwards the active document path and format', () => {
     expect(buildAgentTurnContext({
-      activeDocumentPath: 'Reports/Jira.kitable',
-      activeDocumentFormat: 'data',
-      activeDataDocumentId: 12,
-      activeDataTableId: 34,
-      paneContext: 'table',
+      activeDocumentPath: ' Reports/Jira.ktable ',
+      activeDocumentFormat: 'table',
+      paneContext: 'document',
     })).toMatchObject({
-      activeDocumentPath: 'Reports/Jira.kitable',
-      activeDataDocumentId: 12,
-      activeDataTableId: 34,
-      paneContext: 'table',
-    })
-  })
-
-  it('prefers the fully loaded table editor context over fallback ids', () => {
-    expect(buildAgentTurnContext({
-      activeDocument: { id: 56 } as never,
-      activeTable: { id: 78 } as never,
-      activeDataDocumentId: 12,
-      activeDataTableId: 34,
-    })).toMatchObject({
-      activeDataDocumentId: 56,
-      activeDataTableId: 78,
+      activeDocumentPath: 'Reports/Jira.ktable',
+      activeDocumentFormat: 'table',
+      paneContext: 'document',
     })
   })
 

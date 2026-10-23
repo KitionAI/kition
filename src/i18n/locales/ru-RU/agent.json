@@ -1,11 +1,4 @@
 {
-  "contextCards": {
-    "writeComplete": "Запись завершена",
-    "writePlan": "План записи",
-    "noChanges": "Нет изменений",
-    "writeResult": "результат записи",
-    "writeToTable": "Записать в таблицу"
-  },
   "buildProgress": {
     "buildingBase": "Создание базы...",
     "buildingInProgress": "Создание выполняется",
@@ -114,23 +107,6 @@
         "refine": {
           "label": "Доработать этот процесс",
           "prompt": "Посмотрите на текущий процесс и предложите следующее улучшение."
-        }
-      }
-    },
-    "table": {
-      "description": "Попросите агента обобщить, добавить столбцы или сделать запрос к этой таблице.",
-      "suggestions": {
-        "addStatusColumn": {
-          "label": "Добавить столбец статуса",
-          "prompt": "Добавить столбец статуса с одиночным выбором и вариантами: Не начато, В работе, Готово."
-        },
-        "summarizeTable": {
-          "label": "Обобщить эту таблицу",
-          "prompt": "Обобщить текущую таблицу — типы столбцов, основное поле, количество строк."
-        },
-        "fillCells": {
-          "label": "Заполнить пустые ячейки",
-          "prompt": "Для каждой пустой ячейки в активном столбце предложить значение на основе других столбцов."
         }
       }
     },
@@ -263,12 +239,6 @@
       "source_adapter_catalog": "Inspect Source Context",
       "web_search": "Web Search",
       "web_fetch": "Web Fetch",
-      "data_table_create": "Create Table",
-      "data_table_schema": "Table Schema",
-      "data_table_records": "Table Records",
-      "data_table_record_draft": "Draft Table Records",
-      "data_table_add_fields": "Add Table Fields",
-      "data_table_add_records": "Add Table Records",
       "image_search": "Image Generation",
       "save_image_asset": "Save Image",
       "document_search": "Document Search",
@@ -290,12 +260,6 @@
       "source_adapter_catalog": "Inspect source context",
       "web_search": "Web search",
       "web_fetch": "Web fetch",
-      "data_table_create": "Create data table",
-      "data_table_schema": "Inspect table schema",
-      "data_table_records": "Read table records",
-      "data_table_record_draft": "Draft table records",
-      "data_table_add_fields": "Add table fields",
-      "data_table_add_records": "Write table records",
       "image_search": "Generate images",
       "save_image_asset": "Save image",
       "document_search": "Search documents",

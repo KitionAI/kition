@@ -1,13 +1,13 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
 import { KitIcon, kitIconComponent } from '@/components/KitIcon'
-import { FileInput, FolderPlus, LayoutDashboard, Zap } from 'lucide-react'
+import { FileInput, FolderPlus, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { documentCreateFormatOptions, type DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 
-type WorkspaceCreateMenuVariant = 'workspace' | 'kitable'
+type WorkspaceCreateMenuVariant = 'workspace' | 'tableFile'
 type WorkspaceCreateMenuPlacement = 'top' | 'bottom'
 
 // Estimated dimensions for off-screen detection. Real menu size depends on
@@ -42,8 +42,6 @@ export function WorkspaceCreateMenu({
   anchorEl,
   onCreateFolder,
   onCreateDocument,
-  onCreateDashboard,
-  onCreateTable,
   onCreateBoard,
   onCreateDesign,
   kitCreations,
@@ -60,17 +58,12 @@ export function WorkspaceCreateMenu({
   anchorEl?: HTMLElement | null
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
-  onCreateDashboard?: () => void
-  onCreateTable: () => void
   onCreateBoard?: () => void
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
   onCreateForm?: () => void
-  /** Kitable variant only — adds a "Create Workflow" entry that defers to
-   *  the table picker / mode dialog the same way the legacy "..." menu
-   *  entry did. Undefined hides the option so non-kitable callers stay
-   *  unchanged. */
+  /** Table file variant only: a workflow for one of the file's tables. */
   onCreateWorkflow?: () => void
 }) {
   const { t } = useTranslation('workspace')
@@ -83,14 +76,14 @@ export function WorkspaceCreateMenu({
 
   const createItems: CreateItem[] = [
     ...documentCreateFormatOptions.map<CreateItem>((item) => {
-      const FormatIcon = resolveWorkspaceCreateIcon(item.value)
+      const FormatIcon = resolveWorkspaceCreateIcon()
       return {
         id: item.value,
-        group: item.value === 'table' ? 'data' : 'documents',
+        group: 'documents' as const,
         label: t('createMenu.format.' + item.value),
         icon: <FormatIcon className="size-4" />,
         extension: item.value === 'markdown' ? 'md' : undefined,
-        onClick: () => (item.value === 'table' ? onCreateTable() : onCreateDocument(item.value)),
+        onClick: () => onCreateDocument(item.value),
       }
     }),
     ...(onCreateBoard ? [{ id: 'board', group: 'visual', label: t('createMenu.format.board'), icon: <KitIcon kit="board" small className="size-4" />, testId: 'workspace-create-board', onClick: onCreateBoard } satisfies CreateItem] : []),
@@ -106,36 +99,14 @@ export function WorkspaceCreateMenu({
     })),
   ].sort((a, b) => createRank(a.id) - createRank(b.id))
 
-  const content: ReactNode = variant === 'kitable' ? (
-    // Inside a .kitable the inline `+` menu creates tables and — when the
-    // caller wires the optional handlers — also creates dashboards and defers
-    // workflows to the table picker / mode dialog, so all resources spawned
-    // inside this kitable live on the same trigger.
+  const content: ReactNode = variant === 'tableFile' ? (
+    // On a table file the inline `+` menu adds a form or a workflow for its tables.
     <>
-      <button
-        type="button"
-        className="document-create-option"
-        onClick={onCreateTable}
-      >
-        <KitIcon kit="table" small className="size-4" />
-        <span>{t('createMenu.newTable')}</span>
-      </button>
-      {onCreateDashboard ? (
-        <button
-          type="button"
-          className="document-create-option"
-          data-testid="kitable-action-create-dashboard"
-          onClick={onCreateDashboard}
-        >
-          <LayoutDashboard className="size-4" />
-          <span>{t('createMenu.newDashboard')}</span>
-        </button>
-      ) : null}
       {onCreateForm ? (
         <button
           type="button"
           className="document-create-option"
-          data-testid="kitable-action-create-form"
+          data-testid="table-file-action-create-form"
           onClick={onCreateForm}
         >
           <FileInput className="size-4" />
@@ -146,7 +117,7 @@ export function WorkspaceCreateMenu({
         <button
           type="button"
           className="document-create-option"
-          data-testid="kitable-action-create-workflow"
+          data-testid="table-file-action-create-workflow"
           onClick={onCreateWorkflow}
         >
           <Zap className="size-4" />
@@ -241,8 +212,8 @@ function portableExtension(extension: string) {
   return PORTABLE_EXTENSIONS.has(extension) ? extension : undefined
 }
 
-function resolveWorkspaceCreateIcon(format: DocumentCreateFormat) {
-  return kitIconComponent(format === 'table' ? 'table' : 'document', { small: true })
+function resolveWorkspaceCreateIcon() {
+  return kitIconComponent('document', { small: true })
 }
 
 // Anchored menu placement: pin the top-left of the menu near the

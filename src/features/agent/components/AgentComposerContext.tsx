@@ -55,7 +55,7 @@ function referenceIcon(document: AgentDocumentReference) {
   const extension = document.path.split('.').pop()?.toLowerCase()
   if (extension === 'kiboard') return PenTool
   if (extension === 'sql') return Database
-  if (/^(kitable|csv|xlsx?|tsv)$/.test(extension || '')) return FileSpreadsheet
+  if (/^(ktable|csv|xlsx?|tsv)$/.test(extension || '')) return FileSpreadsheet
   if (/^(png|jpe?g|webp|gif|svg|avif)$/.test(extension || '')) return FileImage
   if (/^(tsx?|jsx?|go|py|rs|java|json|ya?ml|sh|css|html)$/.test(extension || '')) return FileCode2
   return FileText

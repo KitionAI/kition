@@ -7,7 +7,6 @@ import enWorkspace from './locales/en-US/workspace.json'
 import enWorkspaceLauncher from './locales/en-US/workspaceLauncher.json'
 import enAgent from './locales/en-US/agent.json'
 import enDocument from './locales/en-US/document.json'
-import enTable from './locales/en-US/table.json'
 import enErrors from './locales/en-US/errors.json'
 import enWorkflow from './locales/en-US/workflow.json'
 import enConnections from './locales/en-US/connections.json'
@@ -37,7 +36,6 @@ const resources = {
     workspaceLauncher: enWorkspaceLauncher,
     agent: enAgent,
     document: enDocument,
-    table: enTable,
     errors: enErrors,
     workflow: enWorkflow,
     connections: enConnections,

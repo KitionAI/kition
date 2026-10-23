@@ -15,7 +15,7 @@ import type {
 let mockState: {
   events: ScenarioBuildEvent[]
   status: ScenarioBuildStatus
-  baseId: string | null
+  basePath: string | null
   baseName: string | null
   error: string | null
 }
@@ -25,7 +25,7 @@ const reset = vi.fn(() => {
   mockState = {
     events: [],
     status: 'idle',
-    baseId: null,
+    basePath: null,
     baseName: null,
     error: null,
   }
@@ -35,7 +35,7 @@ vi.mock('@/features/scenario/hooks/useScenarioBuild', () => ({
   useScenarioBuild: (): UseScenarioBuildResult => ({
     events: mockState.events,
     status: mockState.status,
-    baseId: mockState.baseId,
+    basePath: mockState.basePath,
     baseName: mockState.baseName,
     error: mockState.error,
     submit,
@@ -78,7 +78,7 @@ beforeEach(() => {
   mockState = {
     events: [],
     status: 'idle',
-    baseId: null,
+    basePath: null,
     baseName: null,
     error: null,
   }
@@ -102,9 +102,9 @@ describe('ScenarioRoute', () => {
 
   it('renders ScenarioBuildPage when status is streaming', async () => {
     mockState = {
-      events: [{ kind: 'base.created', baseId: 'b1', baseName: 'Receipts' }],
+      events: [{ kind: 'base.created', path: 'b1', baseName: 'Receipts' }],
       status: 'streaming',
-      baseId: 'b1',
+      basePath: 'b1',
       baseName: 'Receipts',
       error: null,
     }
@@ -121,7 +121,7 @@ describe('ScenarioRoute', () => {
     mockState = {
       events: [],
       status: 'submitting',
-      baseId: null,
+      basePath: null,
       baseName: null,
       error: null,
     }
@@ -158,9 +158,9 @@ describe('ScenarioRoute', () => {
 
   it('clicking Back on the build page resets the hook and calls onExit', async () => {
     mockState = {
-      events: [{ kind: 'base.created', baseId: 'b1', baseName: 'Receipts' }],
+      events: [{ kind: 'base.created', path: 'b1', baseName: 'Receipts' }],
       status: 'streaming',
-      baseId: 'b1',
+      basePath: 'b1',
       baseName: 'Receipts',
       error: null,
     }
@@ -180,7 +180,7 @@ describe('ScenarioRoute', () => {
     mockState = {
       events: [],
       status: 'aborted',
-      baseId: null,
+      basePath: null,
       baseName: null,
       error: null,
     }
@@ -195,7 +195,7 @@ describe('ScenarioRoute', () => {
     mockState = {
       events: [],
       status: 'streaming',
-      baseId: null,
+      basePath: null,
       baseName: null,
       error: null,
     }

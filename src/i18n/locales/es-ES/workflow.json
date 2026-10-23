@@ -201,10 +201,6 @@
     "renamed": "Nombre cambiado",
     "workflowDeleted": "Flujo de trabajo eliminado"
   },
-  "kitableLeaf": {
-    "deleteConfirm": "¿Eliminar el flujo de trabajo \"{{name}}\"? Esto elimina permanentemente el flujo de trabajo y su historial de ejecuciones.",
-    "nameFallback": "Flujo de trabajo sin título"
-  },
   "confirms": {
     "cancel": "Cancelar",
     "fallbackLabel": "Confirmar",

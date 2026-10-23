@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getDesktopBackendStatus } from '@/services/desktop'
-import { openDataDocumentByPath } from '@/api/dataDocuments'
+import { listTableFiles } from '@/api/kitTables'
 import {
   createEmailSyncWorkflow,
   listEmailSyncWorkflows,
@@ -16,9 +16,7 @@ vi.mock('@/services/desktop', () => ({
   getDesktopBackendStatus: vi.fn(),
 }))
 
-vi.mock('@/api/dataDocuments', () => ({
-  openDataDocumentByPath: vi.fn(),
-}))
+vi.mock('@/api/kitTables', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/kitTables')>()), listTableFiles: vi.fn() }))
 
 vi.mock('@kition/app-ui/confirm', () => ({
   useConfirm: () => vi.fn(async () => true),
@@ -36,6 +34,13 @@ vi.mock('@/api/emailSync', () => ({
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
+
+/** The table file listing: every file the spec names holds `tables`. */
+function filesWith(tables: Array<{ id: number; name: string; title: string }>) {
+  const paths = ['Mail/Emails.ktable', 'Projects/Sales.ktable', 'Projects/Customer Requests.ktable', 'Getting Started/Guides/Email Automation/Inbox.ktable']
+  return { files: paths.map((path) => ({ path, documentId: null, dashboards: [], tables: tables.map((table) => ({ ...table, id: String(table.id), meta: {}, fields: [] })) })), unreadable: [] }
+}
+
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -43,7 +48,7 @@ const workflow = {
   id: 'mail_1',
   name: '163 Mail inbox',
   connection: { host: 'imap.163.com', port: 993, tls_mode: 'tls', username: 'person@163.com', mailbox: 'INBOX' },
-  target: { table_path: 'Mail/Emails.kitable', table_id: 12, content_folder: 'Mail/Messages', attachment_folder: 'Mail/Attachments' },
+  target: { table_path: 'Mail/Emails.ktable', table_id: 12, content_folder: 'Mail/Messages', attachment_folder: 'Mail/Attachments' },
   schedule: { enabled: false, interval_minutes: 15 },
   include_attachments: true,
   status: 'paused',
@@ -57,9 +62,7 @@ beforeEach(() => {
   document.body.appendChild(container)
   Element.prototype.scrollIntoView = vi.fn()
   vi.mocked(getDesktopBackendStatus).mockResolvedValue({ capabilities: ['email_sync'] } as never)
-  vi.mocked(openDataDocumentByPath).mockResolvedValue({
-    tables: [{ id: 12, name: 'inbox', title: 'Inbox' }],
-  } as never)
+  vi.mocked(listTableFiles).mockResolvedValue(filesWith([{ id: 12, name: 'inbox', title: 'Inbox' }]) as never)
   vi.mocked(listEmailSyncWorkflows).mockResolvedValue([])
   vi.mocked(createEmailSyncWorkflow).mockResolvedValue(workflow as never)
   vi.mocked(startEmailSyncRun).mockResolvedValue({
@@ -74,7 +77,7 @@ beforeEach(() => {
     skipped: 0,
     failed: 0,
     current_batch: 0,
-    table_path: 'Mail/Emails.kitable',
+    table_path: 'Mail/Emails.ktable',
     created_at: '2026-07-22T00:00:00Z',
     updated_at: '2026-07-22T00:00:00Z',
   })
@@ -148,7 +151,7 @@ describe('EmailSyncSettingsPanel', () => {
       password: 'app-password',
       connection: expect.objectContaining({ host: 'imap.163.com', port: 993, tls_mode: 'tls', mailbox: 'INBOX' }),
       target: {
-        table_path: 'Getting Started/Guides/Email Automation/Inbox.kitable',
+        table_path: 'Getting Started/Guides/Email Automation/Inbox.ktable',
         table_id: 12,
         content_folder: 'Mail/Messages',
         attachment_folder: 'Mail/Attachments',
@@ -180,29 +183,27 @@ describe('EmailSyncSettingsPanel', () => {
 
   it('opens a prefilled setup form requested from a table workflow tab', async () => {
     await mount('gmail', {
-      requestedTablePath: 'Getting Started/Guides/Email Automation/Inbox.kitable',
+      requestedTablePath: 'Getting Started/Guides/Email Automation/Inbox.ktable',
     })
 
     expect(container.querySelector('[data-testid="email-sync-table-select"]')?.textContent).toContain('Inbox')
-    expect(container.textContent).toContain('Current Kitable: Getting Started/Guides/Email Automation/Inbox.kitable')
+    expect(container.textContent).toContain('Current table file: Getting Started/Guides/Email Automation/Inbox.ktable')
   })
 
   it('keeps a requested table in create mode when the provider has another destination', async () => {
     vi.mocked(listEmailSyncWorkflows).mockResolvedValue([workflow as never])
-    await mount('163', { requestedTablePath: 'Projects/Customer Requests.kitable' })
+    await mount('163', { requestedTablePath: 'Projects/Customer Requests.ktable' })
 
-    expect(container.textContent).toContain('Current Kitable: Projects/Customer Requests.kitable')
+    expect(container.textContent).toContain('Current table file: Projects/Customer Requests.ktable')
     expect(container.querySelector('[data-testid="email-sync-status-summary"]')).toBeNull()
   })
 
-  it('searches tables in the current Kitable and saves the selected table ID', async () => {
-    vi.mocked(openDataDocumentByPath).mockResolvedValue({
-      tables: [
+  it('searches tables in the current table file and saves the selected table ID', async () => {
+    vi.mocked(listTableFiles).mockResolvedValue(filesWith([
         { id: 12, name: 'prospects', title: 'Prospects' },
         { id: 13, name: 'touchpoints', title: 'Touchpoints' },
-      ],
-    } as never)
-    await mount('163', { requestedTablePath: 'Projects/Sales.kitable' })
+      ]) as never)
+    await mount('163', { requestedTablePath: 'Projects/Sales.ktable' })
     await flush()
 
     await act(async () => {
@@ -225,7 +226,7 @@ describe('EmailSyncSettingsPanel', () => {
 
     expect(createEmailSyncWorkflow).toHaveBeenCalledWith(expect.objectContaining({
       target: expect.objectContaining({
-        table_path: 'Projects/Sales.kitable',
+        table_path: 'Projects/Sales.ktable',
         table_id: 13,
       }),
     }))

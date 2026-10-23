@@ -3,7 +3,7 @@ import type { IndexableDoc, QueryAST, QueryNode, SearchHit } from '../types'
 function normalizeTag(s: string): string { return s.replace(/^#/, '').toLowerCase() }
 
 function tableNameFromTags(tags: string[]): string | null {
-  for (const t of tags) if (t.startsWith('kitable:')) return t.slice('kitable:'.length)
+  for (const t of tags) if (t.startsWith('table:')) return t.slice('table:'.length)
   return null
 }
 
@@ -45,24 +45,24 @@ function nodeMatches(node: QueryNode, doc: IndexableDoc, matchCase: boolean): bo
         case 'task':       return doc.tags.includes('__task__')
         case 'task-todo':  return doc.tags.includes('__task_todo__')
         case 'task-done':  return doc.tags.includes('__task_done__')
-        case 'kitable': {
-          if (doc.kind !== 'kitable_record' && doc.kind !== 'kitable_meta') return false
+        case 'table': {
+          if (doc.kind !== 'table_record' && doc.kind !== 'table_meta') return false
           const tableName = tableNameFromTags(doc.tags)
           if (!tableName) return false
           return cmp(tableName).includes(cmp(node.value))
         }
         case 'field': {
-          if (doc.kind === 'kitable_record') {
+          if (doc.kind === 'table_record') {
             const lines = doc.body.split('\n')
             return lines.some(l => cmp(l).startsWith(cmp(node.value) + ':'))
           }
-          if (doc.kind === 'kitable_meta' && doc.anchor.kind === 'meta' && doc.anchor.metaKind === 'field') {
+          if (doc.kind === 'table_meta' && doc.anchor.kind === 'meta' && doc.anchor.metaKind === 'field') {
             return cmp(doc.title).includes(cmp(node.value))
           }
           return false
         }
         case 'view':
-          return doc.kind === 'kitable_meta'
+          return doc.kind === 'table_meta'
             && doc.anchor.kind === 'meta' && doc.anchor.metaKind === 'view'
             && cmp(doc.title).includes(cmp(node.value))
       }

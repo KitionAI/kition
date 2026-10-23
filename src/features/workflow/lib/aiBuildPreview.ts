@@ -40,6 +40,7 @@ export function withStreamingId(def: WorkflowDefinition): WorkflowDefinition {
 export function eventsToPreviewWorkflow(
   events: WorkflowBuildEvent[],
   tableSchema: TableSchema | null,
+  documentPath?: string,
   documentId?: string,
 ): WorkflowDefinition | null {
   const wEv = events.find((e) => e.kind === 'workflow.generated')
@@ -56,12 +57,14 @@ export function eventsToPreviewWorkflow(
         nodeId: tEv.nodeId,
         type: tEv.triggerType,
         tableId: tEv.tableId,
+        documentPath,
         documentId,
       }
     : {
         nodeId: triggerNodeId,
         type: 'record_created',
         tableId: tableSchema?.id ?? '',
+        documentPath,
         documentId,
       }
 

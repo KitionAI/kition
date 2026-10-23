@@ -15,7 +15,7 @@ type BrowserWorkspaceRecord = {
 
 function inferWorkspaceDocumentFormat(path: string): WorkspaceDocumentFormat {
   const lower = path.toLowerCase()
-  if (lower.endsWith('.kitable')) return 'data'
+  if (lower.endsWith('.ktable')) return 'table'
   if (lower.endsWith('.kidesign')) return 'design'
   if (lower.endsWith('.kiboard')) return 'board'
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
@@ -49,7 +49,7 @@ function getBrowserWorkspaceParentPath(path: string) {
 
 function getBrowserWorkspaceStem(path: string) {
   const filename = path.split('/').pop() || path
-  return filename.replace(/\.(md|markdown|kitable)$/i, '')
+  return filename.replace(/\.(md|markdown)$/i, '')
 }
 
 function pickUniqueBrowserWorkspaceDocumentPath(
@@ -57,7 +57,7 @@ function pickUniqueBrowserWorkspaceDocumentPath(
   targetFolder: string,
   filename: string,
 ) {
-  const extensionMatch = filename.match(/\.(md|markdown|kitable)$/i)
+  const extensionMatch = filename.match(/\.(md|markdown)$/i)
   const extension = extensionMatch?.[0] || '.md'
   const stem = extensionMatch ? filename.slice(0, -extension.length) : filename
   const normalizedFilename = extensionMatch ? filename : `${filename}${extension}`
@@ -425,13 +425,12 @@ export async function createWorkspaceDocument(request: WorkspaceDocumentCreateRe
 
   const records = loadBrowserWorkspaceDocuments()
   const folder = normalizeWorkspaceDocumentPath(request.folder || '')
-  const format = request.format === 'data' ? 'data' : 'markdown'
-  const fallbackTitle = format === 'data' ? 'Untitled table' : 'Untitled note'
+  const fallbackTitle = 'Untitled note'
   const title = String(request.title || fallbackTitle).trim() || fallbackTitle
-  const extension = format === 'data' ? '.kitable' : '.md'
-  const filename = /\.(md|kitable)$/i.test(title) ? title.replace(/\.(md|kitable)$/i, extension) : `${title}${extension}`
+  const extension = '.md'
+  const filename = /\.md$/i.test(title) ? title : `${title}${extension}`
   let documentPath = folder ? `${folder}/${filename}` : filename
-  const stem = documentPath.replace(/\.(md|kitable)$/i, '')
+  const stem = documentPath.replace(/\.md$/i, '')
   let index = 2
 
   while (records[documentPath]) {
@@ -439,15 +438,7 @@ export async function createWorkspaceDocument(request: WorkspaceDocumentCreateRe
     index += 1
   }
 
-  const content = format === 'data'
-    ? JSON.stringify({
-      version: 1,
-      format: 'kition-data-document',
-      title: documentPath.split('/').pop()?.replace(/\.kitable$/i, '') || title,
-    }, null, 2)
-    : ''
-
-  return writeWorkspaceDocument(documentPath, content)
+  return writeWorkspaceDocument(documentPath, '')
 }
 
 function isMissingDesktopHandlerError(error: unknown) {
@@ -563,7 +554,7 @@ export async function moveWorkspaceDocument(request: WorkspaceDocumentMoveReques
   const oldChildPrefix = sourceParent
     ? `${sourceParent}/${getBrowserWorkspaceStem(normalizedPath)}/`
     : `${getBrowserWorkspaceStem(normalizedPath)}/`
-  const newChildPrefix = `${nextPath.replace(/\.(md|markdown|kitable)$/i, '')}/`
+  const newChildPrefix = `${nextPath.replace(/\.(md|markdown)$/i, '')}/`
 
   for (const [path, childRecord] of Object.entries({ ...records })) {
     if (!path.startsWith(oldChildPrefix)) {
@@ -670,7 +661,7 @@ export async function deleteWorkspaceDocument(path: string): Promise<WorkspaceDo
 
   delete records[normalizedPath]
 
-  const childPrefix = `${normalizedPath.replace(/\.(md|markdown|kitable)$/i, '')}/`
+  const childPrefix = `${normalizedPath.replace(/\.(md|markdown)$/i, '')}/`
   Object.keys(records).forEach((recordPath) => {
     if (recordPath.startsWith(childPrefix)) {
       delete records[recordPath]

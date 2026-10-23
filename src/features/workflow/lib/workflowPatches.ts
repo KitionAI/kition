@@ -7,9 +7,10 @@
 import type { WorkflowAddRecordConfig, WorkflowDefinition, WorkflowPatch } from '@/api/workflows'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import type { InsertableActionType } from '@/features/workflow/canvas/WorkflowNodePicker'
+import type { TriggerTableOption } from '@/features/workflow/components/TriggerTableSelect'
 import { filtersForPatch, type GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
-import { cloneBody, pruneBody, type TableLabel, type WorkflowDraft } from '@/features/workflow/lib/workflowDraft'
+import { cloneBody, pruneBody, tableLabelFor, targetDocumentPathOf, type TableLabel, type WorkflowDraft } from '@/features/workflow/lib/workflowDraft'
 
 export type WorkflowTriggerPatch = NonNullable<WorkflowPatch['trigger']>
 export type WorkflowTriggerType = 'record_created' | 'record_updated' | 'record_created_or_updated' | 'scheduled_time' | 'record_date_reached'
@@ -19,16 +20,20 @@ const DEFAULT_TRIGGER_NODE_ID = 'trigger_1'
 export const DEFAULT_ACTION_NODE_ID = 'action_1'
 
 function actionPayload(draft: WorkflowDraft, selected: WorkflowDefinition, tableLabels: Record<string, TableLabel>) {
-  // The add_record panel only emits targetTableId; the runtime needs the
-  // owning document too, which the labels cache already knows.
+  // The target names its table file by path (the trigger's when empty); the
+  // file's stable id comes from the labels cache when the draft lacks it.
   const addRecord: WorkflowAddRecordConfig | undefined = draft.actionType === 'add_record' && draft.addRecord
-    ? {
-        targetTableId: draft.addRecord.targetTableId,
-        targetDocumentId: draft.addRecord.targetDocumentId
-          || tableLabels[draft.addRecord.targetTableId]?.documentId
-          || undefined,
-        fields: (draft.addRecord.fields || []).map((entry) => ({ fieldId: entry.fieldId, value: cloneBody(entry.value) })),
-      }
+    ? (() => {
+        const target = draft.addRecord
+        const targetDocumentPath = targetDocumentPathOf(target.targetDocumentPath, selected.trigger.documentPath)
+        const label = tableLabelFor(tableLabels, targetDocumentPath, target.targetTableId)
+        return {
+          targetTableId: target.targetTableId,
+          targetDocumentPath: targetDocumentPath || undefined,
+          targetDocumentId: target.targetDocumentId || label?.documentId || undefined,
+          fields: (target.fields || []).map((entry) => ({ fieldId: entry.fieldId, value: cloneBody(entry.value) })),
+        }
+      })()
     : undefined
   switch (draft.actionType) {
     case 'add_record':
@@ -61,7 +66,7 @@ export function buildWorkflowSavePatch(input: {
     {
       nodeId: triggerNodeId,
       kind: 'trigger' as const,
-      config: { nodeId: triggerNodeId, type: selected.trigger.type, tableId: selected.trigger.tableId, documentId: selected.trigger.documentId },
+      config: { nodeId: triggerNodeId, type: selected.trigger.type, tableId: selected.trigger.tableId, documentPath: selected.trigger.documentPath, documentId: selected.trigger.documentId },
     },
     ...filtersForPatch({ nodes: graphNodes, edges: [] }),
     { nodeId: actionNodeId, kind: 'action' as const, config: { nodeId: actionNodeId, ...action.node } },
@@ -85,12 +90,14 @@ export function buildTriggerTypePatch(trigger: WorkflowDefinition['trigger'], ne
   const currentType = trigger.type || 'record_created'
   const patch: WorkflowTriggerPatch = { nodeId: trigger.nodeId, type: nextType }
   if (nextType === 'scheduled_time') {
+    patch.documentPath = ''
     patch.documentId = ''
     patch.tableId = ''
     patch.requiredFields = []
     patch.schedule = { cron: trigger.schedule?.cron || '', timezone: trigger.schedule?.timezone || '' }
     return patch
   }
+  patch.documentPath = trigger.documentPath || ''
   patch.documentId = trigger.documentId || ''
   patch.tableId = trigger.tableId || ''
   if (currentType === 'scheduled_time') {
@@ -113,6 +120,8 @@ export function pruneRequiredFieldIds(current: readonly string[], schema: TableS
 export function buildTriggerTablePatch(input: {
   selected: WorkflowDefinition
   nextTableId: string
+  nextDocumentPath: string
+  /** The new file's KDM id; '' when unknown. */
   nextDocumentId: string
   pruneFieldIds: readonly string[]
   requiredFields: string[] | undefined
@@ -122,6 +131,7 @@ export function buildTriggerTablePatch(input: {
     ...selected.trigger,
     // Binding from an empty draft defaults to record_created; an existing type is kept.
     type: (selected.trigger.type || 'record_created') as WorkflowTriggerType,
+    documentPath: input.nextDocumentPath,
     documentId: input.nextDocumentId,
     tableId: input.nextTableId,
   }
@@ -172,21 +182,29 @@ export function filterDryRunSample(schema: TableSchema | undefined): Record<stri
   return sample
 }
 
-export type TriggerTableOption = { tableId: string; tableName: string; documentTitle: string }
+export type { TriggerTableOption }
 
 /**
  * Tables the trigger picker offers, sorted by document then table. Inside a
- * .kitable scope only that document's tables show, plus the currently bound
- * table so an out-of-scope binding still renders as selected.
+ * .ktable scope only that file's tables show, plus the currently bound
+ * table (`currentKey`, a `tableKey`) so an out-of-scope binding still
+ * renders as selected.
  */
 export function buildTriggerTableOptions(
   tableLabels: Record<string, TableLabel>,
-  scopedKitablePath: string | undefined,
-  currentTableId: string,
+  scopedTableFilePath: string | undefined,
+  currentKey: string,
 ): TriggerTableOption[] {
   return Object.entries(tableLabels)
-    .filter(([tableId, label]) => !scopedKitablePath || tableId === currentTableId || label.documentPath === scopedKitablePath)
-    .map(([tableId, label]) => ({ tableId, tableName: label.tableName, documentTitle: label.documentTitle }))
+    .filter(([key, label]) => !scopedTableFilePath || key === currentKey || label.documentPath === scopedTableFilePath)
+    .map(([key, label]) => ({
+      key,
+      tableId: label.tableId,
+      tableName: label.tableName,
+      documentTitle: label.documentTitle,
+      documentPath: label.documentPath,
+      documentId: label.documentId,
+    }))
     .sort((a, b) => a.documentTitle.localeCompare(b.documentTitle) || a.tableName.localeCompare(b.tableName))
 }
 

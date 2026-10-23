@@ -6,7 +6,6 @@ import { Button } from '@kition/app-ui'
 import {
   WorkspaceDocumentItemMenu,
   WorkspaceMarkdownItemMenu,
-  WorkspaceTableItemMenu,
 } from '@/features/workspace/components/WorkspaceItemMenu'
 import { WorkspaceTabStrip } from '@/features/workspace/components/WorkspaceTabStrip'
 import type {
@@ -14,7 +13,6 @@ import type {
   EditorTextStyle,
   EditorViewPreferences,
 } from '@/features/workspace/hooks/useWorkspaceChrome'
-import type { TableAction } from '@kition/table-editor'
 import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
 
 export function WorkspaceTopbar({
@@ -43,7 +41,6 @@ export function WorkspaceTopbar({
   onTriggerImport,
   onOpenExportDialog,
   onOpenWorkspaceFolder,
-  onRunActiveDataTableAction,
   formatTime,
 }: {
   tabsPortal: HTMLElement | null
@@ -71,7 +68,6 @@ export function WorkspaceTopbar({
   onTriggerImport: () => void
   onOpenExportDialog: () => void
   onOpenWorkspaceFolder: () => void
-  onRunActiveDataTableAction: (action: TableAction) => void
   formatTime: (value?: string | null) => string
 }) {
   const itemMenuRef = useRef<HTMLSpanElement | null>(null)
@@ -104,12 +100,7 @@ export function WorkspaceTopbar({
               <MoreHorizontal className="size-4" />
             </Button>
             {itemMenuOpen ? (
-              activeItemFormat === 'data' ? (
-                <WorkspaceTableItemMenu
-                  onOpenWorkspaceFolder={onOpenWorkspaceFolder}
-                  onRunActiveDataTableAction={onRunActiveDataTableAction}
-                />
-              ) : activeItemFormat === 'markdown' ? (
+              activeItemFormat === 'markdown' ? (
                 <WorkspaceMarkdownItemMenu
                   onOpenInSystem={onOpenInSystem}
                   openingInSystem={openingInSystem}

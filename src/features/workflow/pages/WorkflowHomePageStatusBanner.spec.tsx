@@ -14,7 +14,7 @@ const selected = {
   name: 'Lookup',
   description: '',
   enabled: true,
-  trigger: { nodeId: 'trigger_1', type: 'record_created_or_updated', documentId: '1', tableId: '2' },
+  trigger: { nodeId: 'trigger_1', type: 'record_created_or_updated', documentPath: 'crm.ktable', tableId: '2' },
   action: { nodeId: 'action_1', type: 'lookup_record', body: { parts: [] } },
 } as WorkflowDefinition
 

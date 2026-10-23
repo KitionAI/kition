@@ -116,7 +116,6 @@ export type WorkspaceDocumentExternalChange = {
 
 export type WorkspaceDocumentFormat =
   | 'markdown'
-  | 'data'
   | 'docx'
   | 'xlsx'
   | 'pptx'

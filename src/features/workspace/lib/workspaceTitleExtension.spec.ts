@@ -7,7 +7,7 @@ describe('getWorkspaceItemTitle', () => {
   it.each([
     ['Launch.md', 'Launch'],
     ['Notes.markdown', 'Notes'],
-    ['Leads.kitable', 'Leads'],
+    ['Leads.ktable', 'Leads'],
     ['Plan.kiboard', 'Plan'],
     ['Poster.kidesign', 'Poster'],
     ['Report.docx', 'Report'],

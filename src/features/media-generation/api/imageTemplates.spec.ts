@@ -90,7 +90,7 @@ describe('Kition Cloud image template catalog', () => {
     }))
     vi.stubGlobal('fetch', fetchMock)
     for (const accessToken of ['account-a', 'account-b', undefined]) {
-      await listImageTemplates({ locale: 'en-US', surface: 'table', accessToken })
+      await listImageTemplates({ locale: 'en-US', surface: 'document', accessToken })
     }
     for (const call of fetchMock.mock.calls) expect(call[1].headers['If-None-Match']).toBeUndefined()
   })
@@ -100,7 +100,7 @@ describe('Kition Cloud image template catalog', () => {
       headers: { ETag: '"r1"', 'Cache-Control': 'no-store' },
     }))
     vi.stubGlobal('fetch', fetchMock)
-    const query = { locale: 'en-US', surface: 'table' as const }
+    const query = { locale: 'en-US', surface: 'document' as const }
     await listImageTemplates(query)
     await listImageTemplates(query)
     expect(fetchMock.mock.calls[1][1].headers['If-None-Match']).toBeUndefined()

@@ -28,7 +28,8 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     openDocument: vi.fn(),
   }
   const agentPanel = { open: false, setOpen: vi.fn(), setHistoryOpen: vi.fn() }
-  const templateDialogs = { documentEditorFocusRequest: 3, openDocumentTemplateDialog: vi.fn(), openKitableTemplateDialog: vi.fn() }
+  const templateDialogs = { documentEditorFocusRequest: 3, openDocumentTemplateDialog: vi.fn() }
+  const onCreateTable = vi.fn()
   const input: WorkspaceScreenEditorInput = {
     rootPath: '/vault',
     workspaceTabs: [],
@@ -38,7 +39,6 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     editorView: { locked: false, editorMode: 'rich' },
     editorPreviewHtml: '',
     galleryPanelProps: null,
-    tableAgent: { handleContextChange: vi.fn() } as never,
     agentPanel,
     activeAgentSession: session,
     agentBusySessions: new Set([5]),
@@ -46,7 +46,8 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     whiteboard: { available: true, onBridgeChange: vi.fn(), onGenerateImage: undefined },
     design: { available: true, onBridgeChange: vi.fn(), onGenerateImage: undefined },
     templateDialogs,
-    workflows: { createForKitable: vi.fn(), openKitableWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
+    workflows: { openTableFileWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
+    onCreateTable,
     onAskDocumentAgent: vi.fn(),
     documentTranslation: undefined,
     onAgentInsertionContextChange: vi.fn(),
@@ -55,7 +56,7 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     onSetEditorMode: vi.fn(),
     ...overrides,
   }
-  return { input, documentSession, agentPanel, templateDialogs }
+  return { input, documentSession, agentPanel, templateDialogs, onCreateTable }
 }
 
 describe('buildWorkspaceEditorContentProps', () => {
@@ -111,17 +112,14 @@ describe('buildWorkspaceEditorContentProps', () => {
     expect(agentPanel.setOpen).toHaveBeenCalledWith(true)
     expect(agentPanel.setHistoryOpen).toHaveBeenCalledWith(false)
     expect(listener).toHaveBeenCalledTimes(1)
-
-    props.onTableAgentOpenChange(false)
-    expect(agentPanel.setOpen).toHaveBeenLastCalledWith(false)
   })
 
-  it('opens template dialogs at the workspace root from the empty state', () => {
-    const { input, templateDialogs } = buildInput()
+  it('opens the document templates at the workspace root, and a new table file, from the empty state', () => {
+    const { input, templateDialogs, onCreateTable } = buildInput()
     const props = buildWorkspaceEditorContentProps(input)
     props.onCreateDocument()
     props.onCreateTable()
     expect(templateDialogs.openDocumentTemplateDialog).toHaveBeenCalledWith('')
-    expect(templateDialogs.openKitableTemplateDialog).toHaveBeenCalledWith('')
+    expect(onCreateTable).toHaveBeenCalledOnce()
   })
 })

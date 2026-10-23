@@ -11,7 +11,7 @@ import { supportsDiscoveredDesktopModelCapability } from '@/services/modelCapabi
 
 export { supportsDiscoveredDesktopModelCapability } from '@/services/modelCapabilities'
 
-export type MediaModelOption = {
+type MediaModelOption = {
   value: string
   label: string
   modelName: string
@@ -95,47 +95,3 @@ export function resolvePreferredDesktopMediaModel(
   return undefined
 }
 
-export async function loadMediaModelOptions(capability: ModelCapability): Promise<MediaModelOption[]> {
-  const [backendRes, desktopSettings] = await Promise.all([getAIModels(capability), loadDesktopSettings()])
-
-  const backendModels = unwrapArrayResponse<AIModel>(backendRes)
-  const backendOptions = backendModels.map((model) => ({
-    value: `backend:${model.id}`,
-    label: `${model.name} (${model.provider})`,
-    modelName: model.model_name,
-    provider: model.provider,
-    source: 'backend' as const,
-    aiModelId: model.id,
-    isDefault: model.is_default,
-  }))
-
-  const desktopOptions: MediaModelOption[] = []
-  for (const [kind, provider] of Object.entries(desktopSettings.providers) as Array<[DesktopProviderKind, DesktopProviderConfig]>) {
-    // Kition Cloud receives its access token from the securely stored portal
-    // session during sign-in. Every other provider uses user-supplied credentials.
-    if (!canUseDesktopProvider(kind, provider)) continue
-    if (!provider.discoveredModels?.length) {
-      continue
-    }
-    if (!desktopCapabilityMap[kind].includes(capability)) {
-      continue
-    }
-
-    for (const modelName of provider.discoveredModels) {
-      if (!supportsDiscoveredDesktopModelCapability(modelName, capability)) {
-        continue
-      }
-      desktopOptions.push({
-        value: `desktop:${kind}:${modelName}`,
-        label: `${modelName} (${provider.label || kind}) [Desktop]`,
-        modelName,
-        provider: provider.label || kind,
-        source: 'desktop',
-        providerKind: kind,
-        runtimeModel: buildDesktopRuntimeModel(kind, provider, modelName),
-      })
-    }
-  }
-
-  return [...desktopOptions, ...backendOptions]
-}

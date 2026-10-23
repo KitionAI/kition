@@ -57,12 +57,12 @@ vi.mock('@/features/emailSync/EmailSyncWorkflowPage', () => ({
 let container: HTMLDivElement
 let root: Root | null = null
 
-async function mount(scopedKitablePath = 'Getting Started/Guides/Lead Automation/Lead Follow-up.kitable') {
+async function mount(scopedTablePath = 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable') {
   const onSelectWorkflow = vi.fn()
   await act(async () => {
     root = createRoot(container)
     root.render(createElement(WorkflowIndexPage, {
-      scopedKitablePath,
+      scopedTablePath,
       rootPath: '/vault',
       onSelectWorkflow,
     }))
@@ -118,12 +118,12 @@ afterEach(() => {
 describe('WorkflowIndexPage onboarding workflow preparation', () => {
   it('opens the email sync workflow canvas when the page mounts after template navigation', async () => {
     vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
-    requestEmailSyncSetup('Projects/Email Inbox Sync.kitable', { runAfterSave: 'full' })
+    requestEmailSyncSetup('Projects/Email Inbox Sync.ktable', { runAfterSave: 'full' })
 
-    await mount('Projects/Email Inbox Sync.kitable')
+    await mount('Projects/Email Inbox Sync.ktable')
 
     const canvas = container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')
-    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.kitable')
+    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.ktable')
     expect(canvas?.getAttribute('data-run-after-save')).toBe('full')
     expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
   })
@@ -132,19 +132,19 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
     vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
     vi.mocked(isEmailInboxSyncTemplateTable).mockResolvedValueOnce(true)
 
-    await mount('Projects/Email Inbox Sync.kitable')
+    await mount('Projects/Email Inbox Sync.ktable')
 
     const canvas = container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')
-    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.kitable')
+    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.ktable')
     expect(canvas?.getAttribute('data-run-after-save')).toBe('full')
     expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
   })
 
-  it('materializes and opens the lead email workflow for its scoped Kitable', async () => {
+  it('materializes and opens the lead email workflow for its scoped table file', async () => {
     const onSelectWorkflow = await mount()
 
     expect(ensureOnboardingWorkflow).toHaveBeenCalledWith(expect.objectContaining({
-      scopedKitablePath: 'Getting Started/Guides/Lead Automation/Lead Follow-up.kitable',
+      tableFilePath: 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable',
       rootPath: '/vault',
       workflows: [],
     }))
@@ -160,7 +160,7 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
         id: 'mail_1',
         name: 'Personal inbox',
         connection: { host: 'imap.example.com', port: 993, tls_mode: 'tls', username: 'person@example.com', mailbox: 'INBOX' },
-        target: { table_path: 'Projects/Customer Requests.kitable', content_folder: 'Mail', attachment_folder: 'Mail/Attachments' },
+        target: { table_path: 'Projects/Customer Requests.ktable', content_folder: 'Mail', attachment_folder: 'Mail/Attachments' },
         schedule: { enabled: true, interval_minutes: 15 },
         include_attachments: true,
         status: 'active',
@@ -181,31 +181,31 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
           skipped: 8,
           failed: 0,
           current_batch: 3,
-          table_path: 'Projects/Customer Requests.kitable',
+          table_path: 'Projects/Customer Requests.ktable',
           created_at: '2026-07-22T00:00:00Z',
           updated_at: '2026-07-22T00:01:00Z',
         },
       },
       error: '',
     })
-    const onSelectWorkflow = await mount('Projects/Customer Requests.kitable')
+    const onSelectWorkflow = await mount('Projects/Customer Requests.ktable')
 
     expect(container.querySelector('[data-testid="email-sync-workflow-row"]')?.textContent)
       .toContain('Personal inbox')
     expect(container.querySelector('[data-testid="email-sync-workflow-row"]')?.textContent)
       .toContain('Sync all · 240 / 500 processed')
     container.querySelector<HTMLTableRowElement>('[data-testid="email-sync-workflow-row"]')?.click()
-    expect(onSelectWorkflow).toHaveBeenCalledWith('mail_1', 'Projects/Customer Requests.kitable')
+    expect(onSelectWorkflow).toHaveBeenCalledWith('mail_1', 'Projects/Customer Requests.ktable')
     expect(container.querySelector('[data-testid="table-email-sync-workflow-index"]')).toBeNull()
     expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
   })
 
   it('opens the included email sync workflow for the onboarding inbox', async () => {
     vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
-    await mount('Getting Started/Guides/Email Automation/Inbox.kitable')
+    await mount('Getting Started/Guides/Email Automation/Inbox.ktable')
 
     expect(container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')?.textContent)
-      .toBe('Getting Started/Guides/Email Automation/Inbox.kitable')
+      .toBe('Getting Started/Guides/Email Automation/Inbox.ktable')
     expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
     expect(ensureOnboardingWorkflow).not.toHaveBeenCalled()
   })
@@ -219,7 +219,7 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
         name: 'Personal inbox',
         connection: { host: 'imap.example.com', port: 993, tls_mode: 'tls', username: 'person@example.com', mailbox: 'INBOX' },
         target: {
-          table_path: 'Getting Started/Guides/Email Automation/Inbox.kitable',
+          table_path: 'Getting Started/Guides/Email Automation/Inbox.ktable',
           content_folder: 'Mail/Messages',
           attachment_folder: 'Mail/Attachments',
         },
@@ -234,7 +234,7 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
       error: '',
     })
 
-    const onSelectWorkflow = await mount('Getting Started/Guides/Email Automation/Inbox.kitable')
+    const onSelectWorkflow = await mount('Getting Started/Guides/Email Automation/Inbox.ktable')
 
     expect(container.querySelector('[data-testid="mock-email-sync-workflow-page"]')?.textContent)
       .toBe('mail_onboarding')

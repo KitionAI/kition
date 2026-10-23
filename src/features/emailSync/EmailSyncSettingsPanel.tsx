@@ -175,7 +175,7 @@ export function EmailSyncSettingsPanel({
     && Number(form.port) > 0
     && effectiveUsername.trim()
     && form.mailbox.trim()
-    && form.tablePath.trim().endsWith('.kitable')
+    && form.tablePath.trim().endsWith('.ktable')
     && selectedDestinationTable
     && form.contentFolder.trim()
     && form.attachmentFolder.trim()
@@ -316,7 +316,7 @@ export function EmailSyncSettingsPanel({
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase text-muted-foreground">Inbox Sync</p>
             <h2 className="mt-1 text-lg font-semibold text-foreground">Synchronization settings</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Import messages into a Kitable and keep readable Markdown copies.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Import messages into a table file and keep readable Markdown copies.</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <span className="text-xs font-medium text-muted-foreground">{workflow?.schedule.enabled || (!workflow && form.enabled) ? 'Enabled' : 'Disabled'}</span>
@@ -375,7 +375,7 @@ export function EmailSyncSettingsPanel({
               options={destinationTables}
               loading={destinationTablesLoading}
               disabled={busy !== ''}
-              kitablePath={form.tablePath}
+              tablePath={form.tablePath}
               onChange={(tableId) => setForm({ ...form, tableId: String(tableId) })}
             />
             {destinationTablesError ? <p className="text-xs text-destructive" role="alert">{destinationTablesError}</p> : null}
@@ -615,7 +615,7 @@ function formFromWorkflow(workflow: EmailSyncWorkflow): FormState {
 }
 
 function tableName(path: string) {
-  return path.split(/[\\/]/).pop()?.replace(/\.kitable$/i, '') || 'Inbox'
+  return path.split(/[\\/]/).pop()?.replace(/\.ktable$/i, '') || 'Inbox'
 }
 
 function isNetEaseMailboxProvider(providerId: EmailProviderId) {

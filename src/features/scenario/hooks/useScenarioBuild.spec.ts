@@ -8,8 +8,8 @@ vi.mock('@/services/desktop', () => ({
   resolveApiURL: (path: string) => `/api${path.startsWith('/') ? path : `/${path}`}`,
 }))
 
-vi.mock('@/features/table/public', () => ({
-  resolveAIConfigRuntimeModel: async () => undefined,
+vi.mock('@/features/kits/public', () => ({
+  resolveGenerateRuntimeModel: async () => undefined,
 }))
 
 vi.mock('@/i18n', () => ({
@@ -49,7 +49,7 @@ function jsonFrame(payload: unknown): string {
 }
 
 const HAPPY_PATH_PAYLOADS = [
-  { kind: 'base.created', baseId: 'base_abc', baseName: 'Receipts' },
+  { kind: 'base.created', path: 'base_abc', baseName: 'Receipts' },
   { kind: 'table.created', tableId: 'tbl_xyz', tableName: 'Receipts' },
   { kind: 'fields.generated', stage: 'fields', count: 4 },
   { kind: 'fields.generated', stage: 'ai-fields', count: 2 },
@@ -123,7 +123,7 @@ describe('useScenarioBuild — initial state', () => {
     const result = harness.get()
     expect(result.status).toBe('idle')
     expect(result.events).toEqual([])
-    expect(result.baseId).toBeNull()
+    expect(result.basePath).toBeNull()
     expect(result.baseName).toBeNull()
     expect(result.error).toBeNull()
     await harness.unmount()
@@ -153,7 +153,7 @@ describe('useScenarioBuild — happy path', () => {
     const result = harness.get()
     expect(result.events).toHaveLength(8)
     expect(result.status).toBe('done')
-    expect(result.baseId).toBe('base_abc')
+    expect(result.basePath).toBe('base_abc')
     expect(result.baseName).toBe('Receipts')
     expect(result.error).toBeNull()
     expect(fetchSpy).toHaveBeenCalledTimes(1)
@@ -168,11 +168,11 @@ describe('useScenarioBuild — happy path', () => {
     await harness.unmount()
   })
 
-  it('captures baseId from the first base.created and ignores later overrides', async () => {
+  it('captures basePath from the first base.created and ignores later overrides', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        jsonFrame({ kind: 'base.created', baseId: 'base_first', baseName: 'First' }),
-        jsonFrame({ kind: 'base.created', baseId: 'base_second', baseName: 'Second' }),
+        jsonFrame({ kind: 'base.created', path: 'base_first', baseName: 'First' }),
+        jsonFrame({ kind: 'base.created', path: 'base_second', baseName: 'Second' }),
         jsonFrame({ kind: 'done' }),
       ]),
     )
@@ -184,7 +184,7 @@ describe('useScenarioBuild — happy path', () => {
     await act(async () => {
       await submission
     })
-    expect(harness.get().baseId).toBe('base_first')
+    expect(harness.get().basePath).toBe('base_first')
     expect(harness.get().baseName).toBe('First')
     await harness.unmount()
   })
@@ -224,7 +224,7 @@ describe('useScenarioBuild — happy path', () => {
       )
     })
     await act(async () => {
-      pushChunk!(jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }))
+      pushChunk!(jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }))
     })
     await waitFor(() => harness.get().status === 'streaming', { tag: 'streaming' })
 
@@ -246,7 +246,7 @@ describe('useScenarioBuild — framing', () => {
   it('parses two events delivered in a single chunk', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }) +
+        jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }) +
           jsonFrame({ kind: 'done' }),
       ]),
     )
@@ -267,7 +267,7 @@ describe('useScenarioBuild — framing', () => {
   })
 
   it('reassembles a single event split across two chunks', async () => {
-    const frame = jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' })
+    const frame = jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' })
     const split = Math.floor(frame.length / 2)
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([frame.slice(0, split), frame.slice(split), jsonFrame({ kind: 'done' })]),
@@ -280,7 +280,7 @@ describe('useScenarioBuild — framing', () => {
     await act(async () => {
       await submission
     })
-    expect(harness.get().baseId).toBe('b')
+    expect(harness.get().basePath).toBe('b')
     expect(harness.get().status).toBe('done')
     await harness.unmount()
   })
@@ -288,7 +288,7 @@ describe('useScenarioBuild — framing', () => {
   it('tolerates CRLF framing', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        `data: ${JSON.stringify({ kind: 'base.created', baseId: 'b', baseName: 'B' })}\r\n\r\n`,
+        `data: ${JSON.stringify({ kind: 'base.created', path: 'b', baseName: 'B' })}\r\n\r\n`,
         `data: ${JSON.stringify({ kind: 'done' })}\r\n\r\n`,
       ]),
     )
@@ -301,7 +301,7 @@ describe('useScenarioBuild — framing', () => {
       await submission
     })
     expect(harness.get().status).toBe('done')
-    expect(harness.get().baseId).toBe('b')
+    expect(harness.get().basePath).toBe('b')
     await harness.unmount()
   })
 
@@ -309,7 +309,7 @@ describe('useScenarioBuild — framing', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
         `: heartbeat\n\n`,
-        jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }),
+        jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }),
         `: another comment\n\n`,
         jsonFrame({ kind: 'done' }),
       ]),
@@ -330,7 +330,7 @@ describe('useScenarioBuild — framing', () => {
   it('flushes a final event without trailing blank line at EOF', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }),
+        jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }),
         // No trailing "\n\n"
         `data: ${JSON.stringify({ kind: 'done' })}\n`,
       ]),
@@ -353,7 +353,7 @@ describe('useScenarioBuild — framing', () => {
     // covers the no-space variant which we exercise here.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        `data:${JSON.stringify({ kind: 'base.created', baseId: 'b', baseName: 'B' })}\n\n`,
+        `data:${JSON.stringify({ kind: 'base.created', path: 'b', baseName: 'B' })}\n\n`,
         jsonFrame({ kind: 'done' }),
       ]),
     )
@@ -365,7 +365,7 @@ describe('useScenarioBuild — framing', () => {
     await act(async () => {
       await submission
     })
-    expect(harness.get().baseId).toBe('b')
+    expect(harness.get().basePath).toBe('b')
     expect(harness.get().status).toBe('done')
     await harness.unmount()
   })
@@ -416,7 +416,7 @@ describe('useScenarioBuild — errors', () => {
   it('transitions to error on inline error event and ignores subsequent frames', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }),
+        jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }),
         jsonFrame({ kind: 'error', code: 'inference', message: 'llm refused' }),
         jsonFrame({ kind: 'done' }),
       ]),
@@ -512,7 +512,7 @@ describe('useScenarioBuild — abort and reset', () => {
       submission = harness.get().submit('p', [])
     })
     await act(async () => {
-      pushChunk!(jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }))
+      pushChunk!(jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }))
     })
     await waitFor(() => harness.get().status === 'streaming', { tag: 'streaming' })
 
@@ -528,7 +528,7 @@ describe('useScenarioBuild — abort and reset', () => {
     await harness.unmount()
   })
 
-  it('reset() clears events, status, error, baseId, baseName', async () => {
+  it('reset() clears events, status, error, basePath, baseName', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks(HAPPY_PATH_PAYLOADS.map((p) => jsonFrame(p))),
     )
@@ -548,7 +548,7 @@ describe('useScenarioBuild — abort and reset', () => {
     const result = harness.get()
     expect(result.status).toBe('idle')
     expect(result.events).toEqual([])
-    expect(result.baseId).toBeNull()
+    expect(result.basePath).toBeNull()
     expect(result.baseName).toBeNull()
     expect(result.error).toBeNull()
     await harness.unmount()
@@ -585,7 +585,7 @@ describe('useScenarioBuild — abort and reset', () => {
       submission = harness.get().submit('p', [])
     })
     await act(async () => {
-      pushChunk!(jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }))
+      pushChunk!(jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }))
     })
     await waitFor(() => harness.get().status === 'streaming', { tag: 'streaming' })
     await harness.unmount()
@@ -726,7 +726,7 @@ describe('useScenarioBuild — reset() mid-stream stays idle', () => {
       submission = harness.get().submit('p', [])
     })
     await act(async () => {
-      pushChunk!(jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }))
+      pushChunk!(jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }))
     })
     await waitFor(() => harness.get().status === 'streaming', { tag: 'streaming' })
 
@@ -759,7 +759,7 @@ describe('useScenarioBuild — unknown SSE frame tolerance', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }),
+        jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }),
         jsonFrame({ kind: 'progress.tick', value: 42 }),
         jsonFrame({ kind: 'table.created', tableId: 't', tableName: 'T' }),
         jsonFrame({ kind: 'done' }),
@@ -795,7 +795,7 @@ describe('useScenarioBuild — unknown SSE frame tolerance', () => {
     // Fix 4f
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       streamFromChunks([
-        jsonFrame({ kind: 'base.created', baseId: 'b', baseName: 'B' }),
+        jsonFrame({ kind: 'base.created', path: 'b', baseName: 'B' }),
         `data:\n\n`,
         jsonFrame({ kind: 'done' }),
       ]),

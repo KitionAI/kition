@@ -5,7 +5,7 @@ export type SnapshotMeta = {
   rootPath: string
   builtAt: number
   docCount: number
-  sourceVersions: { note: string; kitable: string }
+  sourceVersions: { note: string; table: string }
 }
 
 export type DirtyOp =

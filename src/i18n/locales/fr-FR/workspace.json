@@ -18,9 +18,7 @@
       "pdf": "PDF"
     },
     "folder": "Dossier",
-    "newDashboard": "Nouveau tableau de bord",
     "newForm": "Nouveau formulaire",
-    "newTable": "Nouvelle table",
     "newWorkflow": "Nouveau flux de travail",
     "group": {
       "documents": "Documents",
@@ -101,16 +99,6 @@
       "toc": "Plan",
       "locked": "Verrouiller la page"
     },
-    "tableAction": {
-      "rename": "Renommer",
-      "duplicate": "Dupliquer",
-      "downloadCsv": "Télécharger le CSV",
-      "importData": "Importer des données",
-      "api": "API",
-      "history": "Historique",
-      "share": "Partager",
-      "delete": "Supprimer"
-    },
     "markdownMode": {
       "rich": "Vue édition",
       "preview": "Vue lecture",
@@ -147,7 +135,6 @@
     "workflowsTitle": "Workflows",
     "boardTitle": "Tableau",
     "workflowsScoped": "Workflows · {{name}}",
-    "untitledTable": "Table sans titre",
     "untitledWorkflow": "Workflow sans titre",
     "videos": "Vidéos",
     "workflow": "Workflow"
@@ -609,9 +596,6 @@
     "settings": "Paramètres"
   },
   "errors": {
-    "kitableNotFound": "Impossible de localiser ce table file sur le disque.",
-    "kitableNoTables": "Ce table file n'a pas encore de tables — créez d'abord une table.",
-    "parentKitableNotFound": "Impossible de localiser le table file parent sur le disque.",
     "createWorkflowFailed": "Échec de la création du workflow",
     "documentPathEmpty": "Le chemin du document ne peut pas être vide",
     "nameEmpty": "Le nom ne peut pas être vide",
@@ -623,8 +607,6 @@
     "onlyWorkspaceItemsRenamable": "Seuls les documents, tableaux et tableaux blancs peuvent être renommés ici.",
     "createDocumentFailed": "Échec de la création du document",
     "createBoardFailed": "Échec de la création du tableau",
-    "createDashboardFailed": "Failed to create dashboard",
-    "createTableFailed": "Échec de la création de la table",
     "importMarkdownFailed": "Échec de l'importation du Markdown",
     "browserDevModeOpenDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas ouvrir de répertoires natifs. Lancez l'application de bureau via pnpm dev et réessayez.",
     "browserDevModePickDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas choisir de répertoire natif. Lancez l'application de bureau via pnpm dev et réessayez.",
@@ -638,25 +620,9 @@
     "restoredSavedVersion": "Rétabli à la version enregistrée",
     "documentCreated": "Document créé",
     "boardCreated": "Tableau créé",
-    "dashboardCreated": "Dashboard created",
-    "tableCreated": "Table créée",
-    "spreadsheetImported": "Feuille de calcul importée comme Kitable",
     "folderCreated": "Dossier créé",
     "renamed": "Renommé",
-    "alreadyInLocation": "Déjà à cet emplacement",
-    "tableDeleted": "Table supprimée"
-  },
-  "kitableSidebar": {
-    "collapse": "Réduire la barre latérale du fichier de tables",
-    "expand": "Déployer la barre latérale du fichier de tables",
-    "create": "Créer dans le fichier de tables",
-    "tableName": "Nom de la table de données",
-    "navLabel": "Fichier de tables",
-    "tableMenu": "Ouvrir le menu de la table",
-    "searchPlaceholder": "Rechercher des tables, tableaux de bord et workflows",
-    "switchSection": "Changer de section du fichier de tables",
-    "renameTable": "Renommer la table de données",
-    "deleteTable": "Supprimer la table de données"
+    "alreadyInLocation": "Déjà à cet emplacement"
   },
   "photoKit": {
     "unavailableTitle": "L’édition Photo n’est pas disponible dans cette version",

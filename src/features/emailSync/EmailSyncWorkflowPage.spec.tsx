@@ -9,7 +9,7 @@ import {
   startEmailSyncRun,
 } from '@/api/emailSync'
 import { EmailSyncWorkflowPage } from './EmailSyncWorkflowPage'
-import { openDataDocumentByPath } from '@/api/dataDocuments'
+import { listTableFiles } from '@/api/kitTables'
 
 vi.mock('@/api/emailSync', () => ({
   EMAIL_SYNC_CHANGED_EVENT: 'kition:email-sync:changed',
@@ -23,7 +23,7 @@ vi.mock('@/api/emailSync', () => ({
 }))
 
 vi.mock('@kition/app-ui/confirm', () => ({ useConfirm: () => vi.fn().mockResolvedValue(true) }))
-vi.mock('@/api/dataDocuments', () => ({ openDataDocumentByPath: vi.fn() }))
+vi.mock('@/api/kitTables', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/kitTables')>()), listTableFiles: vi.fn() }))
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -31,7 +31,7 @@ const workflow = {
   id: 'mail_1',
   name: '163 Mail inbox',
   connection: { host: 'imap.163.com', port: 993, tls_mode: 'tls', username: 'person@163.com', mailbox: 'INBOX' },
-  target: { table_path: 'Mail/Emails.kitable', table_id: 12, content_folder: 'Mail/Messages', attachment_folder: 'Mail/Attachments' },
+  target: { table_path: 'Mail/Emails.ktable', table_id: 12, content_folder: 'Mail/Messages', attachment_folder: 'Mail/Attachments' },
   schedule: { enabled: true, interval_minutes: 15 },
   include_attachments: true,
   status: 'syncing',
@@ -52,10 +52,17 @@ const activeRun = {
   skipped: 8,
   failed: 0,
   current_batch: 3,
-  table_path: 'Mail/Emails.kitable',
+  table_path: 'Mail/Emails.ktable',
   started_at: '2026-07-22T00:00:00Z',
   created_at: '2026-07-22T00:00:00Z',
   updated_at: '2026-07-22T00:01:00Z',
+}
+
+
+/** The table file listing: every file the spec names holds `tables`. */
+function filesWith(tables: Array<{ id: number; name: string; title: string }>) {
+  const paths = ['Mail/Emails.ktable', 'Projects/Sales.ktable', 'Projects/Customer Requests.ktable', 'Getting Started/Guides/Email Automation/Inbox.ktable']
+  return { files: paths.map((path) => ({ path, documentId: null, dashboards: [], tables: tables.map((table) => ({ ...table, id: String(table.id), meta: {}, fields: [] })) })), unreadable: [] }
 }
 
 let container: HTMLDivElement
@@ -68,9 +75,7 @@ beforeEach(() => {
   vi.mocked(listEmailSyncRuns).mockResolvedValue([activeRun as never])
   vi.mocked(cancelEmailSyncRun).mockResolvedValue({ ...activeRun, status: 'canceling' } as never)
   vi.mocked(startEmailSyncRun).mockResolvedValue({ ...activeRun, status: 'queued' } as never)
-  vi.mocked(openDataDocumentByPath).mockResolvedValue({
-    tables: [{ id: 12, name: 'inbox', title: 'Inbox' }],
-  } as never)
+  vi.mocked(listTableFiles).mockResolvedValue(filesWith([{ id: 12, name: 'inbox', title: 'Inbox' }]) as never)
 })
 
 afterEach(() => {

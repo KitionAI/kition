@@ -17,10 +17,10 @@ import { EmailSyncWorkflowPage } from '@/features/emailSync/EmailSyncWorkflowPag
 
 export interface WorkflowRouteProps {
   workflowContext: WorkflowRouteContext | null
-  schemaLookup: (documentId: string, tableId: string) => Promise<TableSchema>
-  /** Keeps index/detail/build surfaces scoped to the kitable that launched
+  schemaLookup: (documentPath: string, tableId: string) => Promise<TableSchema>
+  /** Keeps index/detail/build surfaces scoped to the table file that launched
    *  the workflow route instead of falling back to the workspace-global list. */
-  scopedKitablePath?: string
+  scopedTablePath?: string
   /** Wired by Shell so Home and Build can fully unmount the route via React state. */
   onExit?: () => void
   /** Active workspace root. Forwarded to the no-context AI prompt page
@@ -126,11 +126,11 @@ function useLocationPath() {
   return useSyncExternalStore(subscribeToLocation, () => window.location.pathname + window.location.search)
 }
 
-export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath, onExit, rootPath }: WorkflowRouteProps) {
+export function WorkflowRoute({ workflowContext, schemaLookup, scopedTablePath, onExit, rootPath }: WorkflowRouteProps) {
   const build = useWorkflowBuild()
   const [schema, setSchema] = useState<TableSchema | null>(null)
   const [lastPrompt, setLastPrompt] = useState('')
-  const [lastDocumentId, setLastDocumentId] = useState<string | undefined>(undefined)
+  const [lastDocumentPath, setLastDocumentPath] = useState<string | undefined>(undefined)
   useLocationPath()
   const mode = resolveRouteMode(workflowContext)
 
@@ -140,17 +140,17 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
     build.reset()
     setSchema(null)
     setLastPrompt('')
-    setLastDocumentId(undefined)
-  }, [workflowContext?.documentId, workflowContext?.tableId, mode])
+    setLastDocumentPath(undefined)
+  }, [workflowContext?.documentPath, workflowContext?.tableId, mode])
 
   const onSubmit = async ({ prompt, model, context }: { prompt: string; model: WorkflowBuildInput['model']; context: WorkflowRouteContext }) => {
-    const { documentId, tableId } = context
-    if (!documentId || !tableId) return
-    const s = await schemaLookup(documentId, tableId)
+    const { documentPath, tableId } = context
+    if (!documentPath || !tableId) return
+    const s = await schemaLookup(documentPath, tableId)
     setSchema(s)
     setLastPrompt(prompt)
-    setLastDocumentId(documentId)
-    await build.submit({ prompt, baseId: 'b', documentId, tableId, model })
+    setLastDocumentPath(documentPath)
+    await build.submit({ prompt, baseId: 'b', documentPath, tableId, model })
   }
 
   // Synthesize a streaming preview while the build pipeline is in flight. The
@@ -160,7 +160,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
   const createdId = useMemo(() => findCreatedWorkflowId(build.events), [build.events])
   const streamingPreview: StreamingPreview | null = useMemo(() => {
     if (build.status === 'idle') return null
-    const raw = eventsToPreviewWorkflow(build.events, schema, lastDocumentId)
+    const raw = eventsToPreviewWorkflow(build.events, schema, lastDocumentPath)
     return {
       workflow: raw ? withStreamingId(raw) : null,
       status: build.status,
@@ -170,7 +170,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
       schema,
       createdId,
     }
-  }, [build.status, build.events, build.error, schema, lastDocumentId, lastPrompt, createdId])
+  }, [build.status, build.events, build.error, schema, lastDocumentPath, lastPrompt, createdId])
 
   // Persist the real id into history.state the moment workflow.created arrives
   // so WorkflowHomePage can both pick it up via initialSelectedId on a future
@@ -188,7 +188,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
   if (mode === 'index') {
     return (
       <WorkflowIndexPage
-        scopedKitablePath={scopedKitablePath}
+        scopedTablePath={scopedTablePath}
         rootPath={rootPath}
         onSelectWorkflow={openWorkflowDetail}
         onClose={onExit}
@@ -203,7 +203,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
       // Shouldn't reach here, but fall back to index
       return (
         <WorkflowIndexPage
-          scopedKitablePath={scopedKitablePath}
+          scopedTablePath={scopedTablePath}
           rootPath={rootPath}
           onSelectWorkflow={openWorkflowDetail}
           onClose={onExit}
@@ -216,7 +216,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
       ) : (
         <WorkflowHomePage
           initialSelectedId={workflowId}
-          scopedKitablePath={scopedKitablePath}
+          scopedTablePath={scopedTablePath}
           rootPath={rootPath}
           onClose={onExit}
         />
@@ -233,7 +233,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
     return (
       <WorkflowIndexPage
         initialModeDialogOpen
-        scopedKitablePath={scopedKitablePath}
+        scopedTablePath={scopedTablePath}
         rootPath={rootPath}
         onSelectWorkflow={openWorkflowDetail}
         onClose={onExit}
@@ -261,7 +261,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
       return (
         <WorkflowNewPage
           tableName={workflowContext!.tableName}
-          documentId={workflowContext!.documentId}
+          documentPath={workflowContext!.documentPath}
           tableId={workflowContext!.tableId}
           onSubmit={onSubmit}
           schemaLookup={schemaLookup}
@@ -272,7 +272,7 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedKitablePath
     return (
       <WorkflowHomePage
         streamingPreview={streamingPreview}
-        scopedKitablePath={scopedKitablePath}
+        scopedTablePath={scopedTablePath}
         rootPath={rootPath}
         onStreamingComplete={() => build.reset()}
         onClose={onExit}

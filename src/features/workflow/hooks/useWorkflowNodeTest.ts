@@ -9,7 +9,7 @@ export interface NodeTestResult {
   output?: {
     recordId?: string
     tableId?: string
-    documentId?: string
+    documentPath?: string
     values?: Record<string, unknown>
     matched?: boolean
     changed?: boolean

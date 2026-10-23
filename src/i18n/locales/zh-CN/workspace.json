@@ -18,9 +18,7 @@
       "pdf": "PDF"
     },
     "folder": "文件夹",
-    "newDashboard": "新仪表板",
     "newForm": "新表单",
-    "newTable": "新建表格",
     "newWorkflow": "新建工作流",
     "group": {
       "documents": "文档",
@@ -101,16 +99,6 @@
       "toc": "大纲",
       "locked": "锁定页面"
     },
-    "tableAction": {
-      "rename": "重命名",
-      "duplicate": "复制",
-      "downloadCsv": "下载 CSV",
-      "importData": "导入数据",
-      "api": "API",
-      "history": "历史",
-      "share": "分享",
-      "delete": "删除"
-    },
     "markdownMode": {
       "rich": "编辑视图",
       "preview": "阅读视图",
@@ -147,7 +135,6 @@
     "workflowsTitle": "工作流",
     "boardTitle": "画板",
     "workflowsScoped": "工作流 · {{name}}",
-    "untitledTable": "未命名表格",
     "untitledWorkflow": "未命名工作流",
     "videos": "视频",
     "workflow": "工作流"
@@ -609,9 +596,6 @@
     "settings": "设置"
   },
   "errors": {
-    "kitableNotFound": "无法在磁盘上定位此 kitable。",
-    "kitableNoTables": "此 kitable 还没有表格 — 请先创建一个表格。",
-    "parentKitableNotFound": "无法在磁盘上定位父级 kitable。",
     "createWorkflowFailed": "创建工作流失败",
     "documentPathEmpty": "文档路径不能为空",
     "nameEmpty": "名称不能为空",
@@ -623,8 +607,6 @@
     "onlyWorkspaceItemsRenamable": "此处仅支持重命名文档、表格和画板。",
     "createDocumentFailed": "创建文档失败",
     "createBoardFailed": "创建画板失败",
-    "createDashboardFailed": "创建仪表盘失败",
-    "createTableFailed": "创建表格失败",
     "importMarkdownFailed": "导入 Markdown 失败",
     "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev 启动桌面应用后重试。",
     "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev 启动桌面应用后重试。",
@@ -638,25 +620,9 @@
     "restoredSavedVersion": "已还原到保存的版本",
     "documentCreated": "文档已创建",
     "boardCreated": "画板已创建",
-    "dashboardCreated": "仪表板已创建",
-    "tableCreated": "表格已创建",
-    "spreadsheetImported": "电子表格已导入为 Kitable",
     "folderCreated": "文件夹已创建",
     "renamed": "已重命名",
-    "alreadyInLocation": "已在当前位置",
-    "tableDeleted": "表格已删除"
-  },
-  "kitableSidebar": {
-    "collapse": "收起数据表文件侧栏",
-    "expand": "展开数据表文件侧栏",
-    "create": "在数据表文件中创建",
-    "tableName": "数据表名称",
-    "navLabel": "数据表文件",
-    "tableMenu": "打开数据表菜单",
-    "searchPlaceholder": "搜索数据表、仪表盘和工作流",
-    "switchSection": "切换数据表文件分区",
-    "renameTable": "重命名数据表",
-    "deleteTable": "删除数据表"
+    "alreadyInLocation": "已在当前位置"
   },
   "photoKit": {
     "unavailableTitle": "此版本不支持 Photo 编辑",

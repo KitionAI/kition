@@ -24,7 +24,8 @@ const baseTpl: WorkflowTemplate = {
 }
 
 const ctx = {
-  documentId: 'd1',
+  documentPath: 'crm.ktable',
+  documentId: 'kdm-crm',
   tableId: 't1',
   tableName: 'Leads',
   schema: { id: 't1', name: 'Leads', fields: [{ id: 'f_name', name: 'Name', type: 'text' }] },
@@ -77,10 +78,11 @@ describe('createWorkflowFromTemplate', () => {
     expect(out1.input.action.to).toBe('you@example.com')  // no email runtime resolution — placeholder used
   })
 
-  it('injects context tableId/documentId and forces enabled=false + empty connectionId', () => {
+  it('injects context tableId/documentPath and forces enabled=false + empty connectionId', () => {
     const out = createWorkflowFromTemplate(baseTpl, ctx)
     expect(out.input.trigger.tableId).toBe('t1')
-    expect(out.input.trigger.documentId).toBe('d1')
+    expect(out.input.trigger.documentPath).toBe('crm.ktable')
+    expect(out.input.trigger.documentId).toBe('kdm-crm')
     expect(out.input.enabled).toBe(false)
     expect(out.input.action.connectionId).toBe('')
   })
@@ -106,13 +108,14 @@ describe('createWorkflowFromTemplate', () => {
     const out = createWorkflowFromTemplate(dateTpl, ctx)
     expect(out.input.trigger.type).toBe('record_date_reached')
     expect(out.input.trigger.tableId).toBe('t1')
-    expect(out.input.trigger.documentId).toBe('d1')
+    expect(out.input.trigger.documentPath).toBe('crm.ktable')
+    expect(out.input.trigger.documentId).toBe('kdm-crm')
     expect(out.input.enabled).toBe(false)
   })
 
   it('emits a scheduled_time trigger with cron and no table binding', () => {
     // The "At scheduled time" trigger fires by clock, not by record event —
-    // tableId/documentId stay empty even though the launcher passed them in.
+    // tableId/documentPath stay empty even though the launcher passed them in.
     // The backend's Validate() special-cases scheduled_time to skip the
     // "trigger_table_empty" gate; if we accidentally forwarded the picked
     // tableId, the workflow would still validate but the canvas's "Object"
@@ -134,7 +137,8 @@ describe('createWorkflowFromTemplate', () => {
     expect(out.input.trigger.type).toBe('scheduled_time')
     expect(out.input.trigger.schedule?.cron).toBe('0 11 * * *')
     expect(out.input.trigger.tableId).toBe('')
-    expect(out.input.trigger.documentId).toBe('')
+    expect(out.input.trigger.documentPath).toBe('')
+    expect(out.input.trigger.documentId).toBeUndefined()
   })
 
   it('emits an add_record action with empty target + fields (delayed binding)', () => {
@@ -193,7 +197,7 @@ describe('createWorkflowFromTemplate', () => {
   it('fully binds and enables the local Content Ideas to Publishing Queue template', () => {
     const [tpl] = getBuiltinTemplates((key) => key, { tableName: 'Content Ideas' })
     const out = createWorkflowFromTemplate(tpl, {
-      documentId: 'doc_content',
+      documentPath: 'content.ktable',
       tableId: 'tbl_ideas',
       tableName: 'Content Ideas',
       schema: {
@@ -207,7 +211,7 @@ describe('createWorkflowFromTemplate', () => {
         ],
       },
       tables: [{
-        documentId: 'doc_content',
+        documentPath: 'content.ktable',
         tableId: 'tbl_queue',
         tableName: 'Publishing Queue',
         schema: {
@@ -239,7 +243,7 @@ describe('createWorkflowFromTemplate', () => {
     const tpl = getBuiltinTemplates((key) => key, { tableName: 'Tasks' })
       .find((item) => item.id === 'archive-completed-tasks')!
     const out = createWorkflowFromTemplate(tpl, {
-      documentId: 'doc_tasks',
+      documentPath: 'tasks.ktable',
       tableId: 'tbl_tasks',
       tableName: 'Tasks',
       schema: {
@@ -253,7 +257,7 @@ describe('createWorkflowFromTemplate', () => {
         ],
       },
       tables: [{
-        documentId: 'doc_tasks',
+        documentPath: 'tasks.ktable',
         tableId: 'tbl_completed',
         tableName: 'Completed Tasks',
         schema: {
@@ -289,7 +293,7 @@ describe('createWorkflowFromTemplate', () => {
   it('fully binds the high-value expense update action and its condition', () => {
     const template = getBuiltinTemplates((key) => key, { tableName: 'Expenses' })[0]
     const out = createWorkflowFromTemplate(template, {
-      documentId: 'doc_expenses',
+      documentPath: 'expenses.ktable',
       tableId: 'tbl_expenses',
       tableName: 'Expenses',
       schema: {
@@ -315,7 +319,7 @@ describe('createWorkflowFromTemplate', () => {
   it('fully binds the order catalog lookup and write-back mappings', () => {
     const template = getBuiltinTemplates((key) => key, { tableName: 'Orders' })[0]
     const out = createWorkflowFromTemplate(template, {
-      documentId: 'doc_orders',
+      documentPath: 'orders.ktable',
       tableId: 'tbl_orders',
       tableName: 'Orders',
       schema: {
@@ -329,7 +333,7 @@ describe('createWorkflowFromTemplate', () => {
         ],
       },
       tables: [{
-        documentId: 'doc_orders',
+        documentPath: 'orders.ktable',
         tableId: 'tbl_catalog',
         tableName: 'Product Catalog',
         schema: {
@@ -348,7 +352,7 @@ describe('createWorkflowFromTemplate', () => {
     expect(out.unresolvedFieldNames).toEqual([])
     expect(out.input.enabled).toBe(true)
     expect(out.input.action.lookupRecord).toEqual({
-      targetDocumentId: 'doc_orders',
+      targetDocumentPath: 'orders.ktable',
       targetTableId: 'tbl_catalog',
       matchFieldId: 'catalog_sku',
       matchValue: { parts: [{ kind: 'field_ref', fieldRef: { nodeId: 'trigger_1', fieldId: 'order_sku' } }] },
@@ -363,7 +367,7 @@ describe('createWorkflowFromTemplate', () => {
   it('fully binds the contact cleanup transform operations', () => {
     const template = getBuiltinTemplates((key) => key, { tableName: 'Contacts' })[0]
     const out = createWorkflowFromTemplate(template, {
-      documentId: 'doc_contacts',
+      documentPath: 'contacts.ktable',
       tableId: 'tbl_contacts',
       tableName: 'Contacts',
       schema: {

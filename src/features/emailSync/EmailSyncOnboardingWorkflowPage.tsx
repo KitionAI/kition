@@ -109,5 +109,5 @@ export function EmailSyncOnboardingWorkflowPage({
 }
 
 function tableName(path: string) {
-  return path.split(/[\\/]/).pop()?.replace(/\.kitable$/i, '') || ''
+  return path.split(/[\\/]/).pop()?.replace(/\.ktable$/i, '') || ''
 }

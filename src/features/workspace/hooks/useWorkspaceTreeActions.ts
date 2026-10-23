@@ -19,7 +19,6 @@ type UseWorkspaceTreeActionsOptions = {
   forgetOpenedDocuments: (predicate: (path: string) => boolean) => void
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
   renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
-  renameKitableChildrenIndexPath?: (fromPath: string, toPath: string) => void
   setActiveResourcePath: Dispatch<SetStateAction<string>>
   setActiveWorkspaceTabId: (tabId: string) => void
   setAgentModifiedDocumentPaths: Dispatch<SetStateAction<Set<string>>>
@@ -42,7 +41,6 @@ export function useWorkspaceTreeActions({
   persistActiveDocument,
   remapWorkspaceTabPaths,
   renameWorkspaceTabPath,
-  renameKitableChildrenIndexPath,
   setActiveResourcePath,
   setActiveWorkspaceTabId,
   setAgentModifiedDocumentPaths,
@@ -86,8 +84,7 @@ export function useWorkspaceTreeActions({
     refreshWorkspaceDocuments: loaderActions.refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
-    renameKitableChildrenIndexPath,
-    rootPath: treeState.rootPath,
+      rootPath: treeState.rootPath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,
     setAgentModifiedDocumentPaths,

@@ -1,6 +1,6 @@
 /**
  * Sharing a document for co-editing, and opening a document someone shared: kit documents, boards,
- * Markdown documents, and tables alike (`collabDocuments.ts`).
+ * and Markdown documents alike (`collabDocuments.ts`).
  *
  * **Share.** The document is saved first, so its file and the replica stored with it carry the
  * document's KDM identity (`docId`), then its whole history (an export from nothing) is the
@@ -12,11 +12,9 @@
  * come from the server, and Kition makes the file `Shared/<name>` from them: a kit document with
  * the kit's engine in a worker (`writeKitFileFromReplica`: the replica opens with no file bytes,
  * is saved as the file's format, and the replica it saved with is stored under the new file's
- * stamp), a board, Markdown document, or table by its own editor's means (a table with the blobs
- * its attachments name), each as that same replica, so its editor opens the file as it and the
- * relay joins its room.
+ * stamp), a board or Markdown document by its own editor's means, each as that same replica,
+ * so its editor opens the file as it and the relay joins its room.
  */
-import { createTableFromReplica } from '@/api/dataDocumentsReplica'
 import { loadDocumentStore } from '@/features/document/public'
 import { KITION_KIT_HOST, writeKitFileFromReplica, type KitSdkManifest } from '@/features/kits/public'
 import { loadBoardSharedFile } from '@/features/whiteboard/public'
@@ -160,18 +158,8 @@ async function snapshotBlobs(client: SyncClient, docId: string, snapshot: Uint8A
   return encodeBlobSection(entries)
 }
 
-function base64(bytes: Uint8Array) {
-  let binary = ''
-  for (let start = 0; start < bytes.length; start += 0x8000) binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000))
-  return btoa(binary)
-}
-
-function fromBase64(text: string) {
-  return Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
-}
-
 /**
- * Writes a shared document Kition edits itself (a board, a Markdown document, a table) as a new
+ * Writes a shared document Kition edits itself (a board, a Markdown document) as a new
  * file in `folder`: answers its path and the replica version it holds, or `null` for another kit.
  */
 async function writeHostFile(client: SyncClient, docId: string, kit: string, name: string, snapshot: Uint8Array, folder: string) {
@@ -184,13 +172,6 @@ async function writeHostFile(client: SyncClient, docId: string, kit: string, nam
     const { path, root } = await freePath(folder, name, 'md')
     const { createDocumentFromReplica } = await loadDocumentStore()
     return { path, version: await createDocumentFromReplica(path, snapshot, { expectedRoot: root }) }
-  }
-  if (kit === HOST_KITS.table) {
-    const { path } = await freePath(folder, name, 'kitable')
-    // Attachments the table holds as blobs come from the server with the snapshot.
-    const blobs = await snapshotBlobs(client, docId, snapshot)
-    const created = await createTableFromReplica({ path, changes: base64(snapshot), ...(blobs.length ? { blobs: base64(blobs) } : {}) })
-    return { path, version: fromBase64(created.version) }
   }
   return null
 }

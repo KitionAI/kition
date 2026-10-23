@@ -16,8 +16,8 @@ beforeEach(() => { container = document.createElement('div'); document.body.appe
 afterEach(() => { root?.unmount(); container.remove() })
 
 const TABLE_OPTIONS: TriggerTableOption[] = [
-  { tableId: 't_users', tableName: 'Users', documentTitle: 'CRM' },
-  { tableId: 't_leads', tableName: 'Leads', documentTitle: 'CRM' },
+  { key: 'crm.ktable#t_users', tableId: 't_users', tableName: 'Users', documentTitle: 'crm', documentPath: 'crm.ktable', documentId: 'kdm-crm' },
+  { key: 'crm.ktable#t_leads', tableId: 't_leads', tableName: 'Leads', documentTitle: 'crm', documentPath: 'crm.ktable', documentId: 'kdm-crm' },
 ]
 
 const USERS_SCHEMA: TableSchema = {
@@ -93,7 +93,7 @@ describe('AddRecordActionPropertiesPanel', () => {
     const rows = document.body.querySelectorAll('[role="option"]')
     const leadsRow = Array.from(rows).find((r) => r.textContent?.includes('Leads')) as HTMLElement
     await act(async () => { leadsRow.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
-    expect(onChange).toHaveBeenCalledWith({ targetTableId: 't_leads', fields: [] })
+    expect(onChange).toHaveBeenCalledWith({ targetTableId: 't_leads', targetDocumentPath: 'crm.ktable', targetDocumentId: 'kdm-crm', fields: [] })
   })
 
   it('renders a panel-level error next to the target picker', async () => {
@@ -161,6 +161,7 @@ describe('AddRecordActionPropertiesPanel', () => {
       sourceNodeId: 'trigger_1',
       sourceNodeTitle: '1. Trigger',
       triggerTableId: 't_users',
+      triggerDocumentPath: 'crm.ktable',
       onChange: () => {},
     }))
     const warn = container.querySelector('[data-testid="add-record-loop-warning"]')
@@ -177,6 +178,21 @@ describe('AddRecordActionPropertiesPanel', () => {
       sourceNodeId: 'trigger_1',
       sourceNodeTitle: '1. Trigger',
       triggerTableId: 't_leads',
+      onChange: () => {},
+    }))
+    expect(container.querySelector('[data-testid="add-record-loop-warning"]')).toBeNull()
+  })
+
+  it('does not render the loop warning when the same table id is in another file', async () => {
+    await mount(createElement(AddRecordActionPropertiesPanel, {
+      config: { targetTableId: 't_users', targetDocumentPath: 'other.ktable', fields: [] },
+      tableOptions: TABLE_OPTIONS,
+      targetSchema: USERS_SCHEMA,
+      sourceSchema: null,
+      sourceNodeId: 'trigger_1',
+      sourceNodeTitle: '1. Trigger',
+      triggerTableId: 't_users',
+      triggerDocumentPath: 'crm.ktable',
       onChange: () => {},
     }))
     expect(container.querySelector('[data-testid="add-record-loop-warning"]')).toBeNull()

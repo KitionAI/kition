@@ -12,7 +12,7 @@ export function SearchResultItem({ hit, onClick }: { hit: SearchHit; onClick: ()
     const dir = doc.vaultPath.includes('/') ? doc.vaultPath.slice(0, doc.vaultPath.lastIndexOf('/')) : ''
     const folder = dir.split('/').filter(Boolean).pop()
     source = folder || t('search.groups.document')
-  } else if (doc.kind === 'kitable_record') {
+  } else if (doc.kind === 'table_record') {
     source = t('search.groups.record')
   } else {
     source = t('search.groups.fieldsViews')

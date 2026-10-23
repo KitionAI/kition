@@ -1,5 +1,5 @@
 import { createWorkflow, patchWorkflow, type WorkflowDefinition } from '@/api/workflows'
-import { listDataDocuments } from '@/api/dataDocuments'
+import { listTableFiles, type KitTablesFile } from '@/api/kitTables'
 import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
 import type { WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
 // The schema fetcher used to live here; it moved to its own file (WF-C1e)
@@ -39,16 +39,18 @@ export async function createWorkflowFromMode(
 ): Promise<CreateWorkflowFromModeResult> {
   const schema = context
     ? await fetchWorkflowTableSchema(
-        context.documentId,
+        context.documentPath,
         context.tableId,
         context.tableName,
       ).catch(() => null)
     : null
-  const tables = context
-    ? await loadSiblingTableContexts(template, context).catch(() => [])
+  const file = context ? await findTableFile(context.documentPath).catch(() => null) : null
+  const tables = context && file
+    ? await loadSiblingTableContexts(template, context, file).catch(() => [])
     : []
   const { input, graphPatch, unresolvedFieldNames } = createWorkflowFromTemplate(template, {
-    documentId: context?.documentId ?? '',
+    documentPath: context?.documentPath ?? '',
+    documentId: file?.documentId || undefined,
     tableId: context?.tableId ?? '',
     tableName: context?.tableName ?? '',
     schema,
@@ -61,26 +63,31 @@ export async function createWorkflowFromMode(
   return { workflow, unresolvedFieldNames }
 }
 
+async function findTableFile(path: string): Promise<KitTablesFile | null> {
+  if (!path) return null
+  const result = await listTableFiles()
+  return (result.files || []).find((item) => item.path === path) || null
+}
+
 async function loadSiblingTableContexts(
   template: WorkflowTemplate,
   context: WorkflowRouteContext,
+  file: KitTablesFile,
 ) {
   if (template.draft.action.type !== 'add_record' || !template.draft.action.targetTableName) {
     return []
   }
-  const docs = await listDataDocuments()
-  const document = (docs.items || []).find((item) => String(item.id) === String(context.documentId))
-  if (!document) return []
   const wanted = template.draft.action.targetTableName.trim().toLocaleLowerCase()
-  const table = (document.tables || []).find((item) => {
+  const table = (file.tables || []).find((item) => {
     return [item.title, item.name].some((value) => String(value || '').trim().toLocaleLowerCase() === wanted)
   })
   if (!table) return []
   const tableId = String(table.id)
   const tableName = String(table.title || table.name || template.draft.action.targetTableName)
-  const targetSchema = await fetchWorkflowTableSchema(context.documentId, tableId, tableName).catch(() => null)
+  const targetSchema = await fetchWorkflowTableSchema(context.documentPath, tableId, tableName).catch(() => null)
   return [{
-    documentId: context.documentId,
+    documentPath: context.documentPath,
+    documentId: file.documentId || undefined,
     tableId,
     tableName,
     schema: targetSchema,

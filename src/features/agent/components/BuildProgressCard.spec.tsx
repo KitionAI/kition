@@ -93,7 +93,7 @@ describe('BuildProgressCard', () => {
   // 2. First event triggers running on first pending subtask
   it('sets Generate fields to running when first event arrives (base.created)', async () => {
     const events: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b1', baseName: 'X' },
+      { kind: 'base.created', path: 'b1.ktable', baseName: 'X' },
     ]
     await mount(render(events))
     const statuses = getRowStatuses()
@@ -105,7 +105,7 @@ describe('BuildProgressCard', () => {
 
   it('progress is still 0% when only base.created received', async () => {
     const events: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b1', baseName: 'X' },
+      { kind: 'base.created', path: 'b1.ktable', baseName: 'X' },
     ]
     await mount(render(events))
     expect(getPercentText()).toBe('0%')
@@ -114,7 +114,7 @@ describe('BuildProgressCard', () => {
   // 3. fields.generated stage='fields' marks Generate fields done
   it('marks Generate fields done and Generate AI fields running', async () => {
     const events: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b1', baseName: 'X' },
+      { kind: 'base.created', path: 'b1.ktable', baseName: 'X' },
       { kind: 'fields.generated', stage: 'fields', count: 3 },
     ]
     await mount(render(events))
@@ -127,7 +127,7 @@ describe('BuildProgressCard', () => {
 
   it('shows 25% when Generate fields is done', async () => {
     const events: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b1', baseName: 'X' },
+      { kind: 'base.created', path: 'b1.ktable', baseName: 'X' },
       { kind: 'fields.generated', stage: 'fields', count: 3 },
     ]
     await mount(render(events))
@@ -137,7 +137,7 @@ describe('BuildProgressCard', () => {
   // 4. All 4 subtasks done at 100%
   it('marks all rows done at 100% when all 4 events received', async () => {
     const events: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b1', baseName: 'X' },
+      { kind: 'base.created', path: 'b1.ktable', baseName: 'X' },
       { kind: 'fields.generated', stage: 'fields', count: 3 },
       { kind: 'fields.generated', stage: 'ai-fields', count: 2 },
       { kind: 'records.generated', count: 10 },
@@ -185,7 +185,7 @@ describe('BuildProgressCard', () => {
   // 7. Stable derivation
   it('produces identical status markers when rerendered with the same events', async () => {
     const events: ScenarioBuildEvent[] = [
-      { kind: 'base.created', baseId: 'b1', baseName: 'X' },
+      { kind: 'base.created', path: 'b1.ktable', baseName: 'X' },
       { kind: 'fields.generated', stage: 'fields', count: 3 },
     ]
     await mount(render(events))

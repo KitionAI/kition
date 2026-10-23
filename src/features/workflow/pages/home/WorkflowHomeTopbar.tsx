@@ -5,7 +5,6 @@ import type { WorkflowDefinition } from '@/api/workflows'
 import { Button } from '@kition/app-ui'
 import { SampleRowPicker } from '@/features/workflow/components/SampleRowPicker'
 import { WorkflowStatusToggle } from '@/features/workflow/components/WorkflowStatusToggle'
-import { parseIdAsNumber } from '@/features/workflow/lib/workflowDraft'
 import { WorkflowHomeActionsMenu, type WorkflowDetailView } from '@/features/workflow/pages/WorkflowHomeActionsMenu'
 
 const RECORD_TRIGGER_TYPES = new Set(['record_created', 'record_updated', 'record_created_or_updated'])
@@ -13,7 +12,7 @@ const RECORD_TRIGGER_TYPES = new Set(['record_created', 'record_updated', 'recor
 export type WorkflowDetailTopbarProps = {
   selected: WorkflowDefinition
   hideClose: boolean
-  scopedKitablePath?: string
+  scopedTablePath?: string
   streamLocked: boolean
   onClose: () => void
   toggle: { saving: boolean; onToggle: (next: boolean) => void }
@@ -24,12 +23,12 @@ export type WorkflowDetailTopbarProps = {
 }
 
 /** One bar for the open workflow: back, on/off, run test, save, and the More menu. The workspace already names the workflow, so this bar does not. */
-export function WorkflowDetailTopbar({ selected, hideClose, scopedKitablePath, streamLocked, onClose, toggle, runTest, save, actions }: WorkflowDetailTopbarProps) {
+export function WorkflowDetailTopbar({ selected, hideClose, scopedTablePath, streamLocked, onClose, toggle, runTest, save, actions }: WorkflowDetailTopbarProps) {
   const { t } = useTranslation('workflow')
   const runDisabled = streamLocked || runTest.running || runTest.blocked
   return (
     <div
-      className={`flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 text-sm ${scopedKitablePath ? 'h-14' : 'h-12'}`}
+      className={`flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 text-sm ${scopedTablePath ? 'h-14' : 'h-12'}`}
       data-testid="workflow-home-topbar"
     >
       {hideClose ? null : (
@@ -54,8 +53,8 @@ export function WorkflowDetailTopbar({ selected, hideClose, scopedKitablePath, s
             </Button>
             {RECORD_TRIGGER_TYPES.has(selected.trigger.type) ? (
               <SampleRowPicker
-                documentId={parseIdAsNumber(selected.trigger.documentId)}
-                tableId={parseIdAsNumber(selected.trigger.tableId)}
+                documentPath={selected.trigger.documentPath || null}
+                tableId={selected.trigger.tableId || null}
                 disabled={runDisabled}
                 onPick={(values) => runTest.onRunWithRow(values)}
               />

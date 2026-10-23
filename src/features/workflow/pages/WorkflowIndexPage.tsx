@@ -8,7 +8,8 @@ import type { WorkflowDefinition } from '@/api/workflows'
 import { WORKFLOW_CHANGED_EVENT, listWorkflowRuns, listWorkflows } from '@/api/workflows'
 import {
   type TableLabel,
-  resolveWorkflowKitablePath,
+  resolveWorkflowTableFilePath,
+  tableLabelFor,
   triggerLabel,
   workflowStatus,
 } from '@/features/workflow/lib/workflowDraft'
@@ -19,7 +20,8 @@ import {
 import { relativeTime, type RelativeTimeStrings } from '@/features/workflow/pages/WorkflowHomePageRunHistory'
 import { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowLauncherState'
 import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTableLabels'
-import { openWorkflowRoute, openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
+import { openWorkflowRoute, openWorkflowDetail, type WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
+import { listTableFiles } from '@/api/kitTables'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
 import { ensureOnboardingWorkflow } from '@/features/workflow/lib/ensureOnboardingWorkflow'
 import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/onboardingGuideManifest'
@@ -38,17 +40,15 @@ import type { EmailSyncRun, EmailSyncWorkflow } from '@/api/emailSync'
 import { isEmailInboxSyncTemplateTable } from '@/features/emailSync/templateSetup'
 
 export interface WorkflowIndexPageProps {
-  /** Scope to a specific kitable. Filters list and query to workflows bound
+  /** Scope to a specific table file. Filters list and query to workflows bound
    *  to tables within this document. */
-  scopedKitablePath?: string
-  /** Workspace root for scopedKitablePath resolution. */
+  scopedTablePath?: string
+  /** Workspace root for scopedTablePath resolution. */
   rootPath?: string
   /** Preview workflow being built via AI, to pin at top of list */
   streamingPreview?: any | null
   /** Called when user clicks a row */
-  onSelectWorkflow: (workflowId: string, kitablePath?: string) => void
-  /** Context-aware create entry supplied by Kitable workspace tabs. */
-  onCreateWorkflow?: () => void
+  onSelectWorkflow: (workflowId: string, tableFilePath?: string) => void
   /** Called when close button clicked (only present in certain mounts) */
   onClose?: () => void
   /** Open create-mode dialog on mount */
@@ -75,11 +75,10 @@ const timeStrings: RelativeTimeStrings = {
 }
 
 export function WorkflowIndexPage({
-  scopedKitablePath,
+  scopedTablePath,
   rootPath,
   streamingPreview,
   onSelectWorkflow,
-  onCreateWorkflow,
   onClose,
   initialModeDialogOpen = false,
 }: WorkflowIndexPageProps) {
@@ -92,16 +91,36 @@ export function WorkflowIndexPage({
     error: '',
   })
   const [modeDialogOpen, setModeDialogOpen] = useState(initialModeDialogOpen)
+  // A table file's tab creates workflows for that file: its tables are the dialog's choices.
+  const [tableOptions, setTableOptions] = useState<WorkflowRouteContext[]>([])
+  useEffect(() => {
+    if (!modeDialogOpen || !scopedTablePath) return
+    let current = true
+    void listTableFiles().then((result) => {
+      if (!current) return
+      const file = (result.files || []).find((item) => item.path === scopedTablePath)
+      setTableOptions((file?.tables || []).map((table) => ({
+        documentPath: scopedTablePath,
+        tableId: String(table.id),
+        tableName: table.title || table.name,
+      })))
+    }, () => {
+      if (current) setTableOptions([])
+    })
+    return () => {
+      current = false
+    }
+  }, [modeDialogOpen, scopedTablePath])
   const [emailSyncCanvasRequest, setEmailSyncCanvasRequest] = useState<EmailSyncCanvasRequest | null>(() => (
-    scopedKitablePath ? consumeEmailSyncSetupRequest(scopedKitablePath) : null
+    scopedTablePath ? consumeEmailSyncSetupRequest(scopedTablePath) : null
   ))
   const [emailSyncTemplateTable, setEmailSyncTemplateTable] = useState(false)
-  const emailSync = useTableEmailSyncWorkflows(scopedKitablePath)
+  const emailSync = useTableEmailSyncWorkflows(scopedTablePath)
   const [onboardingPreparation, setOnboardingPreparation] = useState<{
     key: string
     status: 'checking' | 'done'
   } | null>(null)
-  const onboardingKey = scopedKitablePath ? `${rootPath || ''}\u0000${scopedKitablePath}` : ''
+  const onboardingKey = scopedTablePath ? `${rootPath || ''}\u0000${scopedTablePath}` : ''
   const loadVersionRef = useRef(0)
   const onboardingAttemptRef = useRef('')
   const emailTemplateSetupAttemptRef = useRef('')
@@ -114,8 +133,8 @@ export function WorkflowIndexPage({
   onSelectWorkflowRef.current = onSelectWorkflow
   workflowsRef.current = state.workflows
   translateRef.current = t
-  const isEmailAutomationOnboardingTable = Boolean(scopedKitablePath)
-    && normalizeEmailSyncTablePath(scopedKitablePath!) === EMAIL_AUTOMATION_TABLE_PATH
+  const isEmailAutomationOnboardingTable = Boolean(scopedTablePath)
+    && normalizeEmailSyncTablePath(scopedTablePath!) === EMAIL_AUTOMATION_TABLE_PATH
 
   useEffect(() => {
     mountedRef.current = true
@@ -159,7 +178,7 @@ export function WorkflowIndexPage({
   })
 
   // Keep already-mounted index tabs in sync with creates, edits and deletes.
-  // Kitable tabs stay mounted while another tab is active, so mount-only
+  // Table file tabs stay mounted while another tab is active, so mount-only
   // loading otherwise leaves the index showing the snapshot from before a
   // template was created.
   useEffect(() => {
@@ -175,61 +194,61 @@ export function WorkflowIndexPage({
   }, [loadWorkflows])
 
   useEffect(() => {
-    const pendingRequest = scopedKitablePath
-      ? consumeEmailSyncSetupRequest(scopedKitablePath)
+    const pendingRequest = scopedTablePath
+      ? consumeEmailSyncSetupRequest(scopedTablePath)
       : null
     if (pendingRequest) setEmailSyncCanvasRequest(pendingRequest)
 
     function handleEmailSyncSetup(event: Event) {
       const detail = (event as CustomEvent<EmailSyncCanvasRequest>).detail
       const tablePath = String(detail?.tablePath || '').trim()
-      const pendingRequest = scopedKitablePath
-        ? consumeEmailSyncSetupRequest(scopedKitablePath)
+      const pendingRequest = scopedTablePath
+        ? consumeEmailSyncSetupRequest(scopedTablePath)
         : null
       const detailMatches = Boolean(
         tablePath
-        && scopedKitablePath
-        && normalizeEmailSyncTablePath(tablePath) === normalizeEmailSyncTablePath(scopedKitablePath),
+        && scopedTablePath
+        && normalizeEmailSyncTablePath(tablePath) === normalizeEmailSyncTablePath(scopedTablePath),
       )
       const request = pendingRequest || (detailMatches ? detail : null)
-      if (request && scopedKitablePath) {
+      if (request && scopedTablePath) {
         setModeDialogOpen(false)
         setEmailSyncCanvasRequest({
-          tablePath: scopedKitablePath,
+          tablePath: scopedTablePath,
           ...(request.runAfterSave === 'full' ? { runAfterSave: 'full' } : {}),
         })
       }
     }
     window.addEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, handleEmailSyncSetup)
     return () => window.removeEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, handleEmailSyncSetup)
-  }, [scopedKitablePath])
+  }, [scopedTablePath])
 
   useEffect(() => {
     if (
-      !scopedKitablePath
+      !scopedTablePath
       || emailSync.status !== 'ready'
       || emailSync.workflows.length > 0
     ) return
-    const key = `${rootPath || ''}\u0000${normalizeEmailSyncTablePath(scopedKitablePath)}`
+    const key = `${rootPath || ''}\u0000${normalizeEmailSyncTablePath(scopedTablePath)}`
     if (emailTemplateSetupAttemptRef.current === key) return
     emailTemplateSetupAttemptRef.current = key
     setEmailSyncTemplateTable(false)
     let active = true
-    void isEmailInboxSyncTemplateTable(scopedKitablePath, rootPath).then((matches) => {
+    void isEmailInboxSyncTemplateTable(scopedTablePath).then((matches) => {
       if (!active || !matches) return
       setEmailSyncTemplateTable(true)
     })
     return () => {
       active = false
     }
-  }, [emailSync.status, emailSync.workflows.length, rootPath, scopedKitablePath])
+  }, [emailSync.status, emailSync.workflows.length, rootPath, scopedTablePath])
 
   // Onboarding table files ship runnable scenarios, not just gallery cards. A
   // single new scenario opens directly; table files with several stay on the
   // list so the user can compare the available workflows.
   useEffect(() => {
-    if (!scopedKitablePath || state.status !== 'done') return
-    const key = `${rootPath || ''}\u0000${scopedKitablePath}`
+    if (!scopedTablePath || state.status !== 'done') return
+    const key = `${rootPath || ''}\u0000${scopedTablePath}`
     if (onboardingAttemptRef.current === key) return
     onboardingAttemptRef.current = key
     if (isEmailAutomationOnboardingTable) {
@@ -238,7 +257,7 @@ export function WorkflowIndexPage({
     }
     setOnboardingPreparation({ key, status: 'checking' })
     void ensureOnboardingWorkflow({
-      scopedKitablePath,
+      tableFilePath: scopedTablePath,
       rootPath,
       workflows: workflowsRef.current,
       translate: translateRef.current,
@@ -255,39 +274,29 @@ export function WorkflowIndexPage({
       console.warn('onboarding workflow initialization failed', err)
       setOnboardingPreparation({ key, status: 'done' })
     })
-  }, [isEmailAutomationOnboardingTable, loadWorkflows, rootPath, scopedKitablePath, state.status])
+  }, [isEmailAutomationOnboardingTable, loadWorkflows, rootPath, scopedTablePath, state.status])
 
-  // Scope workflows to kitable if provided
+  // Scope workflows to the table file if provided
   const scopedWorkflows = useMemo(() => {
-    if (!scopedKitablePath) return state.workflows
-    return state.workflows.filter((workflow) => {
-      const tableId = workflow.trigger?.tableId
-        || workflow.action?.addRecord?.targetTableId
-        || ''
-      const label = tableId ? tableLabels[tableId] : null
-      return label?.documentPath === scopedKitablePath
-    })
-  }, [state.workflows, scopedKitablePath, tableLabels])
-  const onboardingPending = Boolean(scopedKitablePath)
+    if (!scopedTablePath) return state.workflows
+    return state.workflows.filter((workflow) => resolveWorkflowTableFilePath(workflow) === scopedTablePath)
+  }, [state.workflows, scopedTablePath])
+  const onboardingPending = Boolean(scopedTablePath)
     && state.status === 'done'
     && (onboardingPreparation?.key !== onboardingKey || onboardingPreparation.status !== 'done')
 
   const handleCreateWorkflow = (choice: WorkspaceWorkflowCreateModeChoice) => {
     if (choice.kind === 'chat') {
       setModeDialogOpen(false)
-      openWorkflowRoute(null, { mode: 'ai' })
+      openWorkflowRoute(choice.context, { mode: 'ai' })
     } else if (choice.kind === 'template') {
-      void launcher.runTemplate(choice.template)
+      void launcher.runTemplate(choice.template, choice.context)
     } else if (choice.kind === 'scratch') {
-      void launcher.runScratch()
+      void launcher.runScratch(choice.context)
     }
   }
 
   const openCreateWorkflow = () => {
-    if (onCreateWorkflow) {
-      onCreateWorkflow()
-      return
-    }
     launcher.clearError()
     setModeDialogOpen(true)
   }
@@ -299,10 +308,8 @@ export function WorkflowIndexPage({
       return
     }
     const workflow = state.workflows.find((item) => item.id === workflowId)
-    const kitablePath = workflow
-      ? resolveWorkflowKitablePath(workflow, tableLabels)
-      : ''
-    onSelectWorkflow(workflowId, kitablePath || undefined)
+    const tableFilePath = workflow ? resolveWorkflowTableFilePath(workflow) : ''
+    onSelectWorkflow(workflowId, tableFilePath || undefined)
   }
 
   const usesEmailSyncCanvas = isEmailAutomationOnboardingTable
@@ -334,7 +341,7 @@ export function WorkflowIndexPage({
   if (showEmailSyncOnboardingWorkflow) {
     return (
       <EmailSyncOnboardingWorkflowPage
-        tablePath={scopedKitablePath!}
+        tablePath={scopedTablePath!}
         runAfterSave={emailSyncCanvasRequest?.runAfterSave || (emailSyncTemplateTable ? 'full' : undefined)}
         onSaved={(workflow) => {
           setEmailSyncCanvasRequest(null)
@@ -385,12 +392,13 @@ export function WorkflowIndexPage({
         <WorkspaceWorkflowCreateModeDialog
           open={modeDialogOpen}
           onOpenChange={setModeDialogOpen}
-          context={null}
+          context={tableOptions[0] ?? null}
+          tableOptions={tableOptions}
           onSelect={handleCreateWorkflow}
           busyKind={launcher.busyAction === 'ai' ? 'chat' : launcher.busyAction}
           busyTemplateId={launcher.busyTemplateId}
           errorMessage={launcher.error}
-          emailSyncTablePath={scopedKitablePath}
+          emailSyncTablePath={scopedTablePath}
           onSelectEmailSync={(tablePath, runAfterSave) => {
             setModeDialogOpen(false)
             setEmailSyncCanvasRequest({ tablePath, runAfterSave })
@@ -457,7 +465,7 @@ function WorkflowDefinitionTable({
             workflow={workflow}
             latestRun={emailSyncLatestRuns[workflow.id] || null}
             tablePath={workflow.target.table_path}
-            tableTitle={workflow.target.table_id ? tableLabels[String(workflow.target.table_id)]?.tableName : undefined}
+            tableTitle={workflow.target.table_id != null ? tableLabelFor(tableLabels, workflow.target.table_path, String(workflow.target.table_id))?.tableName : undefined}
             onOpen={() => onRowClick(workflow.id)}
           />
         ))}
@@ -527,7 +535,7 @@ function WorkflowTableRow({
 
   // Extract table name for display
   const tableId = workflow.trigger?.tableId
-  const tableLabel = tableId ? tableLabels[tableId] : null
+  const tableLabel = tableLabelFor(tableLabels, workflow.trigger?.documentPath, tableId)
   const tableName = tableLabel?.tableName || '—'
 
   // Trigger label

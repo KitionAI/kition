@@ -1,5 +1,5 @@
 import type { ApiTimestamp } from '@/types'
-import { toEpochMs } from '@kition/table-editor'
+import { toEpochMs } from '@/lib/timestamps'
 import { FileImage, FileText, FileVideo2, Volume2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { kitIconComponent, type KitIconId } from '@/components/KitIcon'
@@ -36,29 +36,11 @@ export type WorkspaceTab =
       id: string
       type: 'workflow'
       title: string
-      /** Optional: open the home view scoped to a specific kitable's tables.
-       *  When undefined the tab shows the global list. Path matches a kitable
-       *  file path (e.g. "Leads.kitable") so the user can return to its
-       *  table picker without re-resolving the doc tree. */
-      kitablePath?: string
+      /** Optional: open the home view scoped to one table file's tables (e.g.
+       *  "Leads.ktable"). When undefined the tab shows the global list. */
+      tablePath?: string
       /** Optional: pre-select a specific workflow id when the tab mounts. */
       workflowId?: string
-    }
-  | {
-      id: string
-      type: 'table'
-      title: string
-      kitablePath: string
-      tableId: number
-      format: 'data'  // existing format===data branches keep working
-    }
-  | {
-      id: string
-      type: 'dashboard'
-      title: string
-      kitablePath: string
-      dashboardId: string
-      format: 'data'
     }
 
 export type WorkspaceTreeNode = {
@@ -83,10 +65,10 @@ export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', 
 /**
  * Formats Kition's own editors (and `inferWorkspaceItemFormat` below) already know, with no kit
  * registry entry: aliases a kit's preview understands but never creates (`pptx`, `xls`, `ppt`,
- * `psb`, `kphoto`), and the native `.kitable`/`.kiboard`/`.kidesign`/Markdown/media formats.
+ * `psb`, `kphoto`), and the native `.kiboard`/`.kidesign`/Markdown/media formats.
  */
 const workspaceNonKitExtensions = [
-  'md', 'markdown', 'kitable', 'kiboard', 'kidesign',
+  'md', 'markdown', 'kiboard', 'kidesign',
   'pptx', 'xls', 'ppt', 'psb', 'kphoto',
   'csv', 'tsv', 'json', 'txt', 'html', 'htm',
   'png', 'jpe?g', 'gif', 'webp', 'svg',
@@ -102,7 +84,7 @@ const workspaceTitleExtensionPattern = new RegExp(
   `\\.(${[...new Set([...workspaceNonKitExtensions, ...kitCreateExtensions()])].join('|')})$`,
   'i',
 )
-const workspaceEditableExtensionPattern = /\.(md|markdown|kitable|kiboard|kidesign)$/i
+const workspaceEditableExtensionPattern = /\.(md|markdown|kiboard|kidesign)$/i
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -153,12 +135,6 @@ function formatRelativeDateTime(value?: ApiTimestamp | null) {
 }
 
 export function inferWorkspaceItemFormat(path: string, content?: string): WorkspaceDocumentFormat {
-  if (isWorkspaceDataMarkerContent(content)) {
-    return 'data'
-  }
-  if (path.toLowerCase().endsWith('.kitable')) {
-    return 'data'
-  }
   if (path.toLowerCase().endsWith('.ktable')) return 'table'
   if (path.toLowerCase().endsWith('.kidesign')) return 'design'
   if (path.toLowerCase().endsWith('.kiboard')) {
@@ -221,34 +197,8 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   return 'markdown'
 }
 
-export function isWorkspaceDataMarkerContent(content?: string) {
-  const trimmed = String(content || '').trim()
-  if (!trimmed.startsWith('{')) {
-    return false
-  }
-
-  try {
-    const marker = JSON.parse(trimmed) as { format?: string }
-    return marker.format === 'kition-data-document'
-  } catch {
-    return false
-  }
-}
-
 export function getWorkspaceItemTitle(name: string) {
   return name.replace(workspaceTitleExtensionPattern, '')
-}
-
-export const KITABLE_WORKSPACE_TAB_PREFIX = 'kitable:'
-
-/** Kitable tabs represent the file, while table/workflow are internal views. */
-export function buildKitableWorkspaceTabId(kitablePath: string) {
-  return `${KITABLE_WORKSPACE_TAB_PREFIX}${kitablePath}`
-}
-
-export function getKitableWorkspaceTabTitle(kitablePath: string) {
-  const filename = kitablePath.split('/').pop() || kitablePath
-  return getWorkspaceItemTitle(filename)
 }
 
 export function renameWorkspaceDocumentPath(path: string, title: string) {
@@ -260,11 +210,7 @@ export function renameWorkspaceDocumentPath(path: string, title: string) {
 
   const filename = normalizedPath.split('/').pop() || normalizedPath
   const extension = filename.match(workspaceEditableExtensionPattern)?.[0] || ''
-  const fallbackTitle = extension.toLowerCase() === '.kitable'
-    ? 'Untitled table'
-    : extension.toLowerCase() === '.kiboard'
-      ? 'Untitled board'
-      : 'Untitled note'
+  const fallbackTitle = extension.toLowerCase() === '.kiboard' ? 'Untitled board' : 'Untitled note'
   const nextFilename = `${trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle}${extension}`
   const parentPath = normalizedPath.includes('/')
     ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
@@ -299,7 +245,6 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
   switch (format) {
     case 'markdown':
       return 'document'
-    case 'data':
     case 'table':
       return 'table'
     case 'docx':
@@ -325,21 +270,20 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
   }
 }
 
-/** The kit whose color and icon a tab shows; plain files, galleries, workflows, and dashboards have none. */
+/** The kit whose color and icon a tab shows; plain files, galleries, and workflows have none. */
 export function getWorkspaceTabKit(tab: WorkspaceTab): KitIconId | null {
   switch (tab.type) {
     case 'gallery':
-    case 'dashboard':
       return null
     case 'file-viewer':
       return getWorkspaceItemKitIcon(tab.format)
     case 'workflow':
-      return tab.kitablePath ? 'table' : null
+      return tab.tablePath ? 'table' : null
     case 'design':
     case 'board':
       return tab.type
     default:
-      return 'format' in tab && tab.format === 'data' ? 'table' : 'document'
+      return 'document'
   }
 }
 
@@ -368,7 +312,6 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
       return 'text-sky-500'
     case 'docx':
       return 'text-blue-600'
-    case 'data':
     case 'table':
     case 'xlsx':
     case 'csv':
@@ -408,7 +351,6 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
 export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
   const labels: Record<WorkspaceDocumentFormat, string> = {
     markdown: 'MD',
-    data: 'Table',
     table: 'Table',
     docx: 'Word',
     xlsx: 'Excel',
@@ -473,7 +415,7 @@ export function filterWorkspaceTreeItems(
 }
 
 export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'markdown' || format === 'data' || format === 'html'
+  return format === 'markdown' || format === 'html'
 }
 
 export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {

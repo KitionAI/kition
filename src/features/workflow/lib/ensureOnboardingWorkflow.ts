@@ -1,4 +1,4 @@
-import { createDataTable, listDataDocuments } from '@/api/dataDocuments'
+import { createTable, listTableFiles, notifyTableFilesChanged, type KitTablesFieldSeed } from '@/api/kitTables'
 import {
   createWorkflow,
   patchWorkflow,
@@ -9,12 +9,13 @@ import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkfl
 import { fetchWorkflowTableSchema } from '@/features/workflow/lib/workflowTableSchema'
 import { getBuiltinTemplates } from '@/features/workflow/templates'
 import { getOnboardingWorkflowTemplate } from '@/features/workflow/templates/onboarding'
-import type { DataTableSeed } from '@kition/table-editor'
 
-const LEGACY_CONTENT_MARKER_VERSION = 1
-const MARKER_VERSION = 2
+const MARKER_VERSION = 3
 
 type OnboardingWorkflowStorage = Pick<Storage, 'getItem' | 'setItem'>
+
+/** A table the scenario adds to the file when it is missing. */
+type OnboardingTableSeed = { title: string; fields: KitTablesFieldSeed[] }
 
 type OnboardingScenario = {
   id: string
@@ -22,8 +23,7 @@ type OnboardingScenario = {
   sourceTableName: string
   targetTableName: string
   pathSuffix?: string
-  targetTableSeed?: DataTableSeed
-  legacyContentMarker?: boolean
+  targetTableSeed?: OnboardingTableSeed
   actionType?: string
   allowDisabledDraft?: boolean
 }
@@ -34,7 +34,7 @@ const ONBOARDING_SCENARIOS: OnboardingScenario[] = [
     templateId: 'lead-submission-email',
     sourceTableName: 'Leads',
     targetTableName: 'Leads',
-    pathSuffix: 'Guides/Lead Automation/Lead Follow-up.kitable',
+    pathSuffix: 'Guides/Lead Automation/Lead Follow-up.ktable',
     actionType: 'send_email',
     allowDisabledDraft: true,
   },
@@ -43,7 +43,6 @@ const ONBOARDING_SCENARIOS: OnboardingScenario[] = [
     templateId: 'content-idea-to-publishing-queue',
     sourceTableName: 'Content Ideas',
     targetTableName: 'Publishing Queue',
-    legacyContentMarker: true,
   },
   {
     id: 'archive-completed-tasks',
@@ -52,7 +51,6 @@ const ONBOARDING_SCENARIOS: OnboardingScenario[] = [
     targetTableName: 'Completed Tasks',
     targetTableSeed: {
       title: 'Completed Tasks',
-      name: 'completed_tasks',
       fields: [
         { title: 'Task', name: 'task', type: 'text', primary: true, required: true },
         { title: 'Status', name: 'status', type: 'single_select', options: { choices: ['Todo', 'In Progress', 'Done'] } },
@@ -60,7 +58,6 @@ const ONBOARDING_SCENARIOS: OnboardingScenario[] = [
         { title: 'Notes', name: 'notes', type: 'long_text' },
         { title: 'Automation Note', name: 'automation_note', type: 'long_text' },
       ],
-      views: [{ title: 'Archive', type: 'grid' }],
     },
   },
   {
@@ -76,14 +73,12 @@ const ONBOARDING_SCENARIOS: OnboardingScenario[] = [
     targetTableName: 'Reading Journal',
     targetTableSeed: {
       title: 'Reading Journal',
-      name: 'reading_journal',
       fields: [
         { title: 'Article', name: 'article', type: 'text', primary: true, required: true },
         { title: 'Status', name: 'status', type: 'single_select', options: { choices: ['Unread', 'Reading', 'Read'] } },
         { title: 'Source URL', name: 'source_url', type: 'url' },
         { title: 'Journal Note', name: 'journal_note', type: 'long_text' },
       ],
-      views: [{ title: 'Journal', type: 'grid' }],
     },
   },
   {
@@ -110,15 +105,17 @@ const ONBOARDING_SCENARIOS: OnboardingScenario[] = [
 ]
 
 export interface EnsureOnboardingWorkflowInput {
-  scopedKitablePath: string
+  /** The table file's workspace path. */
+  tableFilePath: string
+  /** The workspace root; it only scopes the localStorage markers. */
   rootPath?: string
   workflows: WorkflowDefinition[]
   translate: (key: string) => string
 }
 
 export interface EnsureOnboardingWorkflowDeps {
-  listDocuments: typeof listDataDocuments
-  createTable: typeof createDataTable
+  listFiles: typeof listTableFiles
+  createTable: typeof createTable
   fetchSchema: typeof fetchWorkflowTableSchema
   create: typeof createWorkflow
   patch: typeof patchWorkflow
@@ -133,8 +130,8 @@ export interface EnsureOnboardingWorkflowResult {
 const inFlight = new Map<string, Promise<EnsureOnboardingWorkflowResult>>()
 
 const defaultDeps: Omit<EnsureOnboardingWorkflowDeps, 'storage'> = {
-  listDocuments: listDataDocuments,
-  createTable: createDataTable,
+  listFiles: listTableFiles,
+  createTable,
   fetchSchema: fetchWorkflowTableSchema,
   create: createWorkflow,
   patch: patchWorkflow,
@@ -149,7 +146,7 @@ export function ensureOnboardingWorkflow(
   input: EnsureOnboardingWorkflowInput,
   overrides: Partial<EnsureOnboardingWorkflowDeps> = {},
 ): Promise<EnsureOnboardingWorkflowResult> {
-  const key = `${input.rootPath || ''}\u0000${input.scopedKitablePath}`
+  const key = `${input.rootPath || ''}\u0000${input.tableFilePath}`
   const current = inFlight.get(key)
   if (current) return current
 
@@ -168,48 +165,40 @@ async function ensureOnboardingWorkflowsOnce(
   input: EnsureOnboardingWorkflowInput,
   deps: EnsureOnboardingWorkflowDeps,
 ): Promise<EnsureOnboardingWorkflowResult> {
-  const docs = await deps.listDocuments(
-    input.rootPath ? { workspace_root: input.rootPath } : undefined,
-  )
-  const document = (docs.items || []).find(
-    (item) => normalizePath(String(item.path || '')) === normalizePath(input.scopedKitablePath),
-  )
-  if (!document?.id) return { created: [], existing: [] }
+  const files = await deps.listFiles()
+  const filePath = normalizePath(input.tableFilePath)
+  const file = (files.files || []).find((item) => normalizePath(String(item.path || '')) === filePath)
+  if (!file) return { created: [], existing: [] }
 
-  const documentId = String(document.id)
-  const tables = [...(document.tables || [])]
+  const documentPath = file.path
+  const documentId = file.documentId || undefined
+  const tables = [...(file.tables || [])]
   const created: WorkflowDefinition[] = []
   const existing: WorkflowDefinition[] = []
 
   for (const scenario of ONBOARDING_SCENARIOS) {
-    if (scenario.pathSuffix && !pathEndsWith(input.scopedKitablePath, scenario.pathSuffix)) {
+    if (scenario.pathSuffix && !pathEndsWith(documentPath, scenario.pathSuffix)) {
       continue
     }
     const source = findTable(tables, scenario.sourceTableName)
     if (!source) continue
 
-    const marker = markerKey(input.rootPath, documentId, scenario.id)
-    const legacyMarker = scenario.legacyContentMarker
-      ? legacyContentMarkerKey(input.rootPath, documentId)
-      : ''
+    const marker = markerKey(input.rootPath, documentPath, scenario.id)
     let target = findTable(tables, scenario.targetTableName)
     const matched = target
-      ? input.workflows.find((workflow) => matchesScenario(workflow, scenario, documentId, String(source.id), String(target.id)))
+      ? input.workflows.find((workflow) => matchesScenario(workflow, scenario, documentPath, String(source.id), String(target.id)))
       : undefined
     if (matched) {
       writeMarker(deps.storage, marker)
-      if (legacyMarker) writeMarker(deps.storage, legacyMarker)
       existing.push(matched)
       continue
     }
-    if (readMarker(deps.storage, marker) || (legacyMarker && readMarker(deps.storage, legacyMarker))) {
-      continue
-    }
+    if (readMarker(deps.storage, marker)) continue
 
     if (!target && scenario.targetTableSeed) {
-      target = await deps.createTable(Number(document.id), scenario.targetTableSeed)
+      target = await deps.createTable(documentPath, scenario.targetTableSeed.title, scenario.targetTableSeed.fields, 'onboarding')
       tables.push(target)
-      dispatchTableCreated(input.scopedKitablePath, target.id)
+      notifyTableFilesChanged(documentPath)
     }
     if (!target) continue
 
@@ -222,16 +211,18 @@ async function ensureOnboardingWorkflowsOnce(
     const targetTableId = String(target.id)
     const sourceTableName = source.title || source.name || scenario.sourceTableName
     const targetTableName = target.title || target.name || scenario.targetTableName
-    const sourceSchema = await deps.fetchSchema(documentId, sourceTableId, sourceTableName)
+    const sourceSchema = await deps.fetchSchema(documentPath, sourceTableId, sourceTableName)
     const targetSchema = targetTableId === sourceTableId
       ? sourceSchema
-      : await deps.fetchSchema(documentId, targetTableId, targetTableName)
+      : await deps.fetchSchema(documentPath, targetTableId, targetTableName)
     const application = createWorkflowFromTemplate(template, {
+      documentPath,
       documentId,
       tableId: sourceTableId,
       tableName: sourceTableName,
       schema: sourceSchema,
       tables: [{
+        documentPath,
         documentId,
         tableId: targetTableId,
         tableName: targetTableName,
@@ -248,7 +239,6 @@ async function ensureOnboardingWorkflowsOnce(
       workflow = await deps.patch(workflow.id, application.graphPatch)
     }
     writeMarker(deps.storage, marker)
-    if (legacyMarker) writeMarker(deps.storage, legacyMarker)
     created.push(workflow)
   }
 
@@ -258,14 +248,14 @@ async function ensureOnboardingWorkflowsOnce(
 function matchesScenario(
   workflow: WorkflowDefinition,
   scenario: OnboardingScenario,
-  documentId: string,
+  documentPath: string,
   sourceTableId: string,
   targetTableId: string,
 ) {
   const triggerMatches = scenario.id === 'weekday-priority-planning'
     ? workflow.trigger?.type === 'scheduled_time'
       && workflow.trigger.schedule?.cron === '0 9 * * 1-5'
-    : String(workflow.trigger?.documentId || '') === documentId
+    : normalizePath(String(workflow.trigger?.documentPath || '')) === normalizePath(documentPath)
       && String(workflow.trigger?.tableId || '') === sourceTableId
   if (!triggerMatches) return false
   const actionType = scenario.actionType || 'add_record'
@@ -307,13 +297,6 @@ function isConfiguredEmailAction(action: CreateWorkflowInput['action']) {
   return Boolean(action.to.trim() && subjectReady && action.body?.parts?.length)
 }
 
-function dispatchTableCreated(vaultPath: string, tableId: number | string | undefined) {
-  if (typeof window === 'undefined' || tableId == null) return
-  window.dispatchEvent(new CustomEvent('kition:data-document:table:create', {
-    detail: { vaultPath, tableId: Number(tableId) },
-  }))
-}
-
 function browserStorage(): OnboardingWorkflowStorage | null {
   try {
     return typeof window === 'undefined' ? null : window.localStorage
@@ -322,12 +305,8 @@ function browserStorage(): OnboardingWorkflowStorage | null {
   }
 }
 
-function markerKey(rootPath: string | undefined, documentId: string, scenarioId: string) {
-  return `kition.onboarding-workflow.v${MARKER_VERSION}.${hash(`${rootPath || ''}:${documentId}:${scenarioId}`)}`
-}
-
-function legacyContentMarkerKey(rootPath: string | undefined, documentId: string) {
-  return `kition.onboarding-workflow.v${LEGACY_CONTENT_MARKER_VERSION}.${hash(`${rootPath || ''}:${documentId}`)}`
+function markerKey(rootPath: string | undefined, documentPath: string, scenarioId: string) {
+  return `kition.onboarding-workflow.v${MARKER_VERSION}.${hash(`${rootPath || ''}:${normalizePath(documentPath)}:${scenarioId}`)}`
 }
 
 function hash(value: string) {

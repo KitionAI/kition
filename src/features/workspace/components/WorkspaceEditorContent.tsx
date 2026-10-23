@@ -53,13 +53,7 @@ const DocumentRevisionReview = lazy(() =>
 const MarkdownSourceEditor = lazy(() =>
   import('@/features/document/components/MarkdownSourceEditor').then((module) => ({ default: module.MarkdownSourceEditor })),
 )
-const TableEditorPane = lazy(() =>
-  import('@/features/table/components/TableEditorPane').then((module) => ({ default: module.TableEditorPane })),
-)
 const KitFilePane = lazy(() => import('./kits/KitFilePane').then((module) => ({ default: module.KitFilePane })))
-const DashboardEditorPane = lazy(() =>
-  import('@/features/dashboard/components/DashboardEditorPane').then((module) => ({ default: module.DashboardEditorPane })),
-)
 const WorkspaceMediaPanel = lazy(() =>
   import('@/features/workspace/components/WorkspaceMediaPanel').then((module) => ({ default: module.WorkspaceMediaPanel })),
 )
@@ -157,9 +151,7 @@ type WorkspaceEditorContentProps = {
   onCancelDesignAgent?: () => void
   onGenerateDesignImage?: (request: ImageStudioRequest) => Promise<ImageStudioStartResult>
   onGenerateWhiteboardImage?: (request: WhiteboardImageGenerationRequest) => Promise<WhiteboardImageGenerationStartResult>
-  onTableAgentContextChange?: ComponentProps<typeof TableEditorPane>['onAgentContextChange']
-  onCreateWorkflow?: (kitablePath: string) => void
-  onOpenWorkflow?: (kitablePath: string, workflowId: string) => void
+  onOpenWorkflow?: (tablePath: string, workflowId: string) => void
   onOpenGlobalWorkflow?: (workflowId: string) => void
   onOpenWorkflows: () => void
   onCreateDocument: () => void
@@ -176,12 +168,10 @@ type WorkspaceEditorContentProps = {
   onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
 
   onOpenDocument?: (path: string, opts?: { line?: number; section?: string }) => void
-  onTableAgentOpenChange: (open: boolean) => void
 
   onToolbarMount?: (node: HTMLElement | null) => void
 
   onSetEditorMode: (mode: 'rich' | 'split' | 'source' | 'preview') => void
-  tableAgentOpen: boolean
   designRoot?: string
   workspaceTabs: WorkspaceTab[]
   /** Active workspace root. Forwarded to mounted workbench panes that
@@ -222,8 +212,6 @@ export function WorkspaceEditorContent({
   onWhiteboardAgentBridgeChange,
   onCancelWhiteboardAgent,
   onGenerateWhiteboardImage,
-  onTableAgentContextChange,
-  onCreateWorkflow,
   onOpenWorkflow,
   onOpenGlobalWorkflow,
   onOpenWorkflows,
@@ -237,10 +225,8 @@ export function WorkspaceEditorContent({
   onDecideDocumentRevisionChange,
   onResolveAllDocumentRevisionChanges,
   onOpenDocument,
-  onTableAgentOpenChange,
   onToolbarMount,
   onSetEditorMode,
-  tableAgentOpen,
   designRoot,
   workspaceTabs,
   rootPath,
@@ -331,28 +317,25 @@ export function WorkspaceEditorContent({
                   <WorkflowHomePage
                     hideClose
                     initialSelectedId={tab.workflowId}
-                    scopedKitablePath={tab.kitablePath}
+                    scopedTablePath={tab.tablePath}
                     rootPath={rootPath}
                   />
                 )}
               </EditorPaneBoundary>
             ) : (
-              // Index mode: show list of workflows scoped to kitable
+              // Index mode: show list of workflows scoped to a table file
               <EditorPaneBoundary fallback={null}>
                 <WorkflowIndexPage
-                  scopedKitablePath={tab.kitablePath}
+                  scopedTablePath={tab.tablePath}
                   rootPath={rootPath}
-                  onSelectWorkflow={(workflowId, resolvedKitablePath) => {
-                    const kitablePath = tab.kitablePath || resolvedKitablePath
-                    if (kitablePath && onOpenWorkflow) {
-                      onOpenWorkflow(kitablePath, workflowId)
+                  onSelectWorkflow={(workflowId, resolvedTablePath) => {
+                    const tablePath = tab.tablePath || resolvedTablePath
+                    if (tablePath && onOpenWorkflow) {
+                      onOpenWorkflow(tablePath, workflowId)
                       return
                     }
                     openGlobalWorkflow(workflowId)
                   }}
-                  onCreateWorkflow={tab.kitablePath && onCreateWorkflow
-                    ? () => onCreateWorkflow(tab.kitablePath!)
-                    : undefined}
                 />
               </EditorPaneBoundary>
             )}
@@ -419,97 +402,6 @@ export function WorkspaceEditorContent({
             </EditorPaneBoundary>
           </div>
         ))}
-      {/* Table and dashboard tabs hardcode format:'data', so they don't need the activeDocumentFormat guard. */}
-      <div
-        className={cn(
-          'document-keepalive-view document-data-editor-stack',
-          (
-            activeWorkspaceTab?.type === 'table' ||
-            activeWorkspaceTab?.type === 'dashboard' ||
-            (
-              activeWorkspaceTab?.type === 'document' &&
-              activeDocumentFormat === 'data'
-            )
-          ) &&
-            'is-active',
-        )}
-      >
-        {workspaceTabs
-          .filter((tab): tab is Extract<WorkspaceTab, { type: 'document' }> => tab.type === 'document')
-          .map((tab) => {
-            const entry = getOpenedDocument(tab.path)
-            if (!entry || entry.format !== 'data') {
-              return null
-            }
-
-            const isActiveDataTab =
-              activeWorkspaceTabId === tab.id &&
-              activeWorkspaceTab?.type === 'document' &&
-              activeDocumentFormat === 'data'
-
-            return (
-              <div
-                key={tab.path}
-                className={cn('document-data-editor-stack__pane', isActiveDataTab && 'is-active')}
-              >
-                <EditorPaneBoundary>
-                  <TableEditorPane
-                    documentPath={entry.document.path}
-                    markerContent={entry.document.content}
-                    agentOpen={tableAgentOpen}
-                    onOpenDocument={onOpenDocument}
-                    onAgentContextChange={onTableAgentContextChange}
-                    onAgentOpenChange={onTableAgentOpenChange}
-                  />
-                </EditorPaneBoundary>
-              </div>
-            )
-          })}
-        {workspaceTabs
-          .filter((tab): tab is Extract<WorkspaceTab, { type: 'table' }> => tab.type === 'table')
-          .map((tab) => {
-            const isActiveTableTab =
-              activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'table'
-            return (
-              <div
-                key={tab.id}
-                className={cn('document-data-editor-stack__pane', isActiveTableTab && 'is-active')}
-              >
-                {/* table tab is identified by pinnedTableId, not by parsing a marker file */}
-                <EditorPaneBoundary>
-                  <TableEditorPane
-                    documentPath={tab.kitablePath}
-                    markerContent=""
-                    pinnedTableId={tab.tableId}
-                    agentOpen={tableAgentOpen}
-                    onOpenDocument={onOpenDocument}
-                    onAgentContextChange={onTableAgentContextChange}
-                    onAgentOpenChange={onTableAgentOpenChange}
-                  />
-                </EditorPaneBoundary>
-              </div>
-            )
-          })}
-        {workspaceTabs
-          .filter((tab): tab is Extract<WorkspaceTab, { type: 'dashboard' }> => tab.type === 'dashboard')
-          .map((tab) => {
-            const isActiveDashboardTab =
-              activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'dashboard'
-            return (
-              <div
-                key={tab.id}
-                className={cn('document-data-editor-stack__pane', isActiveDashboardTab && 'is-active')}
-              >
-                <EditorPaneBoundary>
-                  <DashboardEditorPane
-                    documentPath={tab.kitablePath}
-                    dashboardId={tab.dashboardId}
-                  />
-                </EditorPaneBoundary>
-              </div>
-            )
-          })}
-      </div>
       {activeWorkspaceTab?.type === 'document'
       && activeDocumentFormat === 'html'
       && !activeDocumentRevision ? (
@@ -534,7 +426,6 @@ export function WorkspaceEditorContent({
       ) : null}
       {activeWorkspaceTab?.type === 'document'
       && !activeDocumentRevision
-      && activeDocumentFormat !== 'data'
       && activeDocumentFormat !== 'html' ? (
         <div className="workspace-document-shell">
           {activeAgentReview && activeDocumentSession ? (
@@ -628,7 +519,7 @@ export function WorkspaceEditorContent({
                 .filter((tab): tab is Extract<WorkspaceTab, { type: 'document' }> => tab.type === 'document')
                 .map((tab) => {
                   const entry = getOpenedDocument(tab.path)
-                  if (!entry || entry.format === 'data' || entry.format === 'html') {
+                  if (!entry || entry.format === 'html') {
                     return null
                   }
 

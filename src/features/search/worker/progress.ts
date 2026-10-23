@@ -1,8 +1,8 @@
 import type { WorkerProgress, WorkerOutbound } from '../types'
 
 export function makeProgressEmitter(post: (msg: WorkerOutbound) => void, throttleEvery = 50) {
-  const counters = { note: 0, kitable: 0, persist: 0 }
-  const totals: Record<WorkerProgress['phase'], number> = { note: 1, kitable: 1, persist: 1 }
+  const counters = { note: 0, table: 0, persist: 0 }
+  const totals: Record<WorkerProgress['phase'], number> = { note: 1, table: 1, persist: 1 }
   let pending = 0
   return {
     setTotal(phase: WorkerProgress['phase'], total: number) { totals[phase] = Math.max(1, total) },

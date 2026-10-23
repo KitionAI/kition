@@ -8,11 +8,11 @@ describe('workflow route helpers', () => {
     const listener = vi.fn()
     window.addEventListener('popstate', listener)
 
-    openWorkflowRoute({ documentId: '42', tableId: '7', tableName: 'Leads' })
+    openWorkflowRoute({ documentPath: 'crm.ktable', tableId: '7', tableName: 'Leads' })
 
     const call = pushSpy.mock.calls.at(-1)!
     expect(call[0]).toMatchObject({
-      workflowContext: { documentId: '42', tableId: '7', tableName: 'Leads' },
+      workflowContext: { documentPath: 'crm.ktable', tableId: '7', tableName: 'Leads' },
     })
     expect(call[2]).toBe('/workflow/new')
     expect(listener).toHaveBeenCalled()
@@ -23,7 +23,7 @@ describe('workflow route helpers', () => {
 
   it('pushes the workflow home without carrying a stale context', () => {
     window.history.replaceState({
-      workflowContext: { documentId: 'old', tableId: 'old', tableName: 'Old' },
+      workflowContext: { documentPath: 'old.ktable', tableId: 'old', tableName: 'Old' },
       keep: true,
     }, '', '/documents')
     const pushSpy = vi.spyOn(window.history, 'pushState')
