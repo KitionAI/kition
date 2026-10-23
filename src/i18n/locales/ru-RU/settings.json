@@ -76,8 +76,6 @@
       "sectionDescription": "Направляет каждый исходящий запрос — среда выполнения (SMTP, вебхуки, консоль), окно приложения и автообновление — через один и тот же прокси.",
       "enableTitle": "Использовать прокси",
       "enableDescription": "Когда выключено, трафик идёт напрямую.",
-      "enabled": "Включено",
-      "disabled": "Отключено",
       "schemeLabel": "Схема",
       "schemeOptions": {
         "http": "HTTP CONNECT",
@@ -196,8 +194,6 @@
     "regionLabel": "Действия настроек"
   },
   "common": {
-    "enabled": "Включено",
-    "disabled": "Отключено",
     "open": "Открыть",
     "saved": "Сохранено",
     "saveFailed": "Не удалось сохранить настройки",
@@ -372,8 +368,6 @@
     "add": "Добавить",
     "loading": "Загрузка…",
     "empty": "No MCP servers configured. Add one to let the Agent invoke external tools.",
-    "enabled": "Включено",
-    "disabled": "Отключено",
     "connected": "Подключено · инструментов: {{count}}",
     "disconnected": "Отключено",
     "disconnectedWithError": "Отключено: {{error}}",

@@ -76,8 +76,6 @@
       "sectionDescription": "Roteia todas as requisições de saída — runtime (SMTP, webhooks, console), janela do app e atualizador automático — pelo mesmo proxy.",
       "enableTitle": "Usar proxy",
       "enableDescription": "Quando desativado, o tráfego vai direto.",
-      "enabled": "Ativado",
-      "disabled": "Desativado",
       "schemeLabel": "Esquema",
       "schemeOptions": {
         "http": "HTTP CONNECT",
@@ -196,8 +194,6 @@
     "regionLabel": "Ações de configurações"
   },
   "common": {
-    "enabled": "Ativado",
-    "disabled": "Desativado",
     "open": "Abrir",
     "saved": "Salvo",
     "saveFailed": "Falha ao salvar as configurações",
@@ -372,8 +368,6 @@
     "add": "Adicionar",
     "loading": "Carregando…",
     "empty": "No MCP servers configured. Add one to let the Agent invoke external tools.",
-    "enabled": "Ativado",
-    "disabled": "Desativado",
     "connected": "Conectado · {{count}} ferramentas",
     "disconnected": "Desconectado",
     "disconnectedWithError": "Desconectado: {{error}}",

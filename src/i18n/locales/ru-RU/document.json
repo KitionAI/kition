@@ -1190,8 +1190,6 @@
     "scaleError": "Процент масштаба должен быть числом от 10 до 100",
     "exporting": "Экспорт...",
     "exportFile": "Экспортировать файл",
-    "toggleOn": "Вкл",
-    "toggleOff": "Выкл",
     "pdfDesktopOnly": "Для экспорта в PDF требуется настольное приложение",
     "formats": {
       "markdown": "Markdown (.md)",

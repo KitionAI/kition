@@ -76,8 +76,6 @@
       "sectionDescription": "运行时（SMTP / Webhook / Console）、桌面窗口、自动更新都会走这里配置的代理。",
       "enableTitle": "启用代理",
       "enableDescription": "关闭时直连。",
-      "enabled": "已启用",
-      "disabled": "已禁用",
       "schemeLabel": "协议",
       "schemeOptions": {
         "http": "HTTP CONNECT",
@@ -196,8 +194,6 @@
     "regionLabel": "设置操作"
   },
   "common": {
-    "enabled": "已启用",
-    "disabled": "已禁用",
     "open": "打开",
     "saved": "已保存",
     "saveFailed": "保存设置失败",
@@ -372,8 +368,6 @@
     "add": "新增",
     "loading": "加载中…",
     "empty": "尚未配置 MCP 服务器。添加一个即可让智能体调用外部工具。",
-    "enabled": "已启用",
-    "disabled": "已禁用",
     "connected": "已连接 · {{count}} 个工具",
     "disconnected": "未连接",
     "disconnectedWithError": "未连接：{{error}}",

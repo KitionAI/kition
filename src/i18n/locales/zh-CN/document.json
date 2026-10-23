@@ -1190,8 +1190,6 @@
     "scaleError": "缩放百分比必须是 10 到 100 之间的数字",
     "exporting": "正在导出…",
     "exportFile": "导出文件",
-    "toggleOn": "开",
-    "toggleOff": "关",
     "pdfDesktopOnly": "PDF 导出需要桌面应用",
     "formats": {
       "markdown": "扣分(.md)",

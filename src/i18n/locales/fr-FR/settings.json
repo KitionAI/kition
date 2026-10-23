@@ -76,8 +76,6 @@
       "sectionDescription": "Achemine chaque requête sortante — moteur d'exécution (SMTP, webhooks, console), fenêtre de bureau et outil de mise à jour automatique — via le même proxy.",
       "enableTitle": "Utiliser un proxy",
       "enableDescription": "Lorsque désactivé, le trafic passe en direct.",
-      "enabled": "Activé",
-      "disabled": "Désactivé",
       "schemeLabel": "Schéma",
       "schemeOptions": {
         "http": "HTTP CONNECT",
@@ -196,8 +194,6 @@
     "regionLabel": "Actions des paramètres"
   },
   "common": {
-    "enabled": "Activé",
-    "disabled": "Désactivé",
     "open": "Ouvrir",
     "saved": "Enregistré",
     "saveFailed": "Échec de l'enregistrement des paramètres",
@@ -372,8 +368,6 @@
     "add": "Ajouter",
     "loading": "Chargement…",
     "empty": "No MCP servers configured. Add one to let the Agent invoke external tools.",
-    "enabled": "Activé",
-    "disabled": "Désactivé",
     "connected": "Connecté · {{count}} outils",
     "disconnected": "Déconnecté",
     "disconnectedWithError": "Déconnecté : {{error}}",

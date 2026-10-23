@@ -1190,8 +1190,6 @@
     "scaleError": "Scale percent must be a number between 10 and 100",
     "exporting": "Exporting...",
     "exportFile": "Export file",
-    "toggleOn": "On",
-    "toggleOff": "Off",
     "pdfDesktopOnly": "PDF export requires the desktop app",
     "formats": {
       "markdown": "Markdown (.md)",

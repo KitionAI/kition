@@ -76,8 +76,6 @@
       "sectionDescription": "Enruta todas las solicitudes salientes — entorno de ejecución (SMTP, webhooks, consola), ventana de escritorio y actualizador automático — a través del mismo proxy.",
       "enableTitle": "Usar proxy",
       "enableDescription": "Cuando está desactivado, el tráfico va directo.",
-      "enabled": "Activado",
-      "disabled": "Desactivado",
       "schemeLabel": "Esquema",
       "schemeOptions": {
         "http": "HTTP CONNECT",
@@ -196,8 +194,6 @@
     "regionLabel": "Acciones de ajustes"
   },
   "common": {
-    "enabled": "Activado",
-    "disabled": "Desactivado",
     "open": "Abrir",
     "saved": "Guardado",
     "saveFailed": "No se pudieron guardar los ajustes",
@@ -372,8 +368,6 @@
     "add": "Añadir",
     "loading": "Cargando…",
     "empty": "No MCP servers configured. Add one to let the Agent invoke external tools.",
-    "enabled": "Activado",
-    "disabled": "Desactivado",
     "connected": "Conectado · {{count}} herramientas",
     "disconnected": "Desconectado",
     "disconnectedWithError": "Desconectado: {{error}}",

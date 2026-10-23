@@ -76,8 +76,6 @@
       "sectionDescription": "Routes every outbound request — runtime (SMTP, webhooks, console), desktop window, and auto-updater — through the same proxy.",
       "enableTitle": "Use proxy",
       "enableDescription": "When off, traffic goes direct.",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
       "schemeLabel": "Scheme",
       "schemeOptions": {
         "http": "HTTP CONNECT",
@@ -196,8 +194,6 @@
     "regionLabel": "Settings actions"
   },
   "common": {
-    "enabled": "Enabled",
-    "disabled": "Disabled",
     "open": "Open",
     "saved": "Saved",
     "saveFailed": "Failed to save settings",
@@ -372,8 +368,6 @@
     "add": "Add",
     "loading": "Loading…",
     "empty": "No MCP servers configured. Add one to let the Agent invoke external tools.",
-    "enabled": "Enabled",
-    "disabled": "Disabled",
     "connected": "Connected · {{count}} tools",
     "disconnected": "Disconnected",
     "disconnectedWithError": "Disconnected: {{error}}",
