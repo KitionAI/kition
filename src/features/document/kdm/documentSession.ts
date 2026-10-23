@@ -478,7 +478,8 @@ export class DocumentSession {
     if (text !== review.after) {
       this.endTyping()
       if (text === review.before && review.untouched && review.groups > 0) {
-        for (let step = 0; step < review.groups; step += 1) opened.replica.undo()
+        // The agent's steps are its own undo scope (KitModel 1.1 M12a): take them back there.
+        for (let step = 0; step < review.groups; step += 1) opened.replica.undoIn('agent')
       } else {
         // Three-way: only what the reviewer took back changes; edits that reached the text since stay.
         this.applyFrom(review.after, text, person(LOCAL_PERSON, 'review'))
@@ -504,8 +505,12 @@ export class DocumentSession {
     if (!this.opened) return false
     this.endTyping()
     const review = this.review
-    const exact = Boolean(review?.untouched && review.groups > 0)
-    const undone = this.opened.replica.undo()
+    // The person's Undo keeps the agent's steps (KitModel 1.1 M12a), except while the agent's edit is
+    // under review and the text is still what it made (nothing changed since, or the person undid
+    // what they changed): then Undo takes back the agent's newest step, in the agent's scope, as the
+    // review's own way to take the edit back.
+    const exact = Boolean(review && review.groups > 0 && (review.untouched || this.text() === review.after))
+    const undone = this.opened.replica.undoIn(exact ? 'agent' : 'person')
     if (undone && review && this.review === review) this.afterUndo(review, exact)
     return undone
   }

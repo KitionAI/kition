@@ -612,7 +612,8 @@ impl Kit {
                 title: "Undo".to_owned(),
                 description: None,
                 group: "edit".to_owned(),
-                params: json!({ "type": "object", "additionalProperties": false }),
+                // Engine contract 2 E14a: the undo scope, else the origin's.
+                params: json!({ "type": "object", "additionalProperties": false, "properties": { "scope": { "enum": ["person", "agent"] } } }),
                 mutates: true,
                 enabled: !read_only && can_undo,
                 menu: Vec::new(),
@@ -634,7 +635,8 @@ impl Kit {
     fn execute(&self, params: CommandsExecuteParams, step: &mut Step) -> Handled {
         let allowed: &[&str] = match params.command.as_str() {
             "text.append" => &["text"],
-            "text.clear" | "edit.undo" => &[],
+            "text.clear" => &[],
+            "edit.undo" => &["scope"],
             _ => return Err(RpcError::kit(ErrorReason::CommandNotFound)),
         };
         let unknown: Vec<Value> = params

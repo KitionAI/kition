@@ -569,6 +569,39 @@ async fn draft_preview(
     }
 }
 
+/// The agent's steps with every `edit.undo` and `edit.redo` in the agent's undo scope
+/// (`{"scope":"agent"}`, engine contract 2 E14a, KitModel 1.1 M12a), so an agent's undo or
+/// revert takes back only its own steps and never the person's. A scope the step names stays.
+fn in_agent_scope(steps: &[Value]) -> Vec<Value> {
+    steps
+        .iter()
+        .map(|step| {
+            let command = step
+                .get("command")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            if command != "edit.undo" && command != "edit.redo" {
+                return step.clone();
+            }
+            let mut step = step.clone();
+            if let Some(object) = step.as_object_mut() {
+                let params = object
+                    .entry("params")
+                    .or_insert_with(|| Value::Object(Map::new()));
+                if !params.is_object() {
+                    *params = Value::Object(Map::new());
+                }
+                if let Some(params) = params.as_object_mut() {
+                    params
+                        .entry("scope")
+                        .or_insert_with(|| Value::String("agent".to_owned()));
+                }
+            }
+            step
+        })
+        .collect()
+}
+
 async fn run_on_draft(
     kits: &KitManager,
     kit: &'static KitDefinition,
@@ -580,6 +613,7 @@ async fn run_on_draft(
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
         .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
+    let steps = &in_agent_scope(steps);
     let document = match draft_at(kits, kit, &path, true).await? {
         DraftAt::Editor(document) => document,
         DraftAt::Headless(id) => return run_on_headless_draft(kits, kit, &path, &id, steps).await,
@@ -977,6 +1011,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
         .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
+    let steps = &in_agent_scope(steps);
     let save = input.get("save").and_then(Value::as_bool) != Some(false);
     if let Some(document) = live(kits, kit, &path).await {
         let mut answer = kits
@@ -1078,6 +1113,27 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_agents_undo_and_redo_steps_run_in_its_undo_scope() {
+        let steps = vec![
+            json!({ "command": "text.append", "params": { "text": "a" } }),
+            json!({ "command": "edit.undo" }),
+            json!({ "command": "edit.redo", "params": { "steps": 2 } }),
+            json!({ "command": "edit.undo", "params": { "scope": "person" } }),
+        ];
+        let scoped = in_agent_scope(&steps);
+        assert_eq!(scoped[0], steps[0]);
+        assert_eq!(
+            scoped[1],
+            json!({ "command": "edit.undo", "params": { "scope": "agent" } })
+        );
+        assert_eq!(
+            scoped[2],
+            json!({ "command": "edit.redo", "params": { "steps": 2, "scope": "agent" } })
+        );
+        assert_eq!(scoped[3], steps[3]);
+    }
 
     #[test]
     fn summarizes_diagnostics_by_severity() {

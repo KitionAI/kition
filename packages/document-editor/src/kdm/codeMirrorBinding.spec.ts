@@ -353,10 +353,13 @@ describe('TextBinding: lifecycle', () => {
     replica.transact(agent('agent:x'), (tx) => tx.textInsert(rootId, DOCUMENT_BODY, 0, '>'))
     const second = mount()
     expect(second.state.doc.toString()).toBe('>abcd')
-    // The history lives in the replica: undo reaches back past the remount.
+    // The history lives in the replica: undo reaches back past the remount. The person's undo
+    // takes back their own typing and keeps the agent's later edit (KitModel 1.1 M12a); the
+    // agent's undo scope takes that back.
     replica.undo()
-    expect(second.state.doc.toString()).toBe('abcd')
-    replica.undo()
+    expect(second.state.doc.toString()).toBe('>abc')
+    expect(replica.canUndo()).toBe(false)
+    replica.undoIn('agent')
     expect(second.state.doc.toString()).toBe('abc')
   })
 

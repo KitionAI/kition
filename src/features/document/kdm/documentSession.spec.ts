@@ -458,7 +458,10 @@ describe('DocumentSession: file changes', () => {
     await settle()
     await expect(result).resolves.toEqual({ applied: true, content: 'a\nB\nc\n' })
     expect(disk.files.get(PATH)).toBe('a\nB\nc\n')
-    expect(session.replica!.canUndo()).toBe(true)
+    // The agent's step is in the agent's undo scope (KitModel 1.1 M12a), not the person's.
+    expect(session.replica!.canUndoIn('agent')).toBe(true)
+    expect(session.replica!.canUndo()).toBe(false)
+    // While the edit is under review and untouched, Undo takes it back.
     session.undo()
     expect(session.text()).toBe('a\nb\n')
   })

@@ -219,8 +219,14 @@ The JavaScript class the macro generates (`KitSdkDocument` in
 | `free()` | Releases the document |
 
 Commands must include `edit.undo` and `edit.redo`; the shared frame's Undo and
-Redo call them. Shortcuts are written `Cmd+Shift+Z`, `Alt+Backspace`, `F12`;
-`Cmd` means Control off macOS.
+Redo call them. They work in an undo scope (engine contract 2 E14a,
+`KitModel 1.1` M12a): the one their optional `scope` parameter names
+(`"person"` or `"agent"`), else the scope of the origin they run as. Kition's
+agent runs its kit steps as origin `agent`, and its kit tools send every
+`edit.undo` and `edit.redo` step with `{"scope":"agent"}`
+(`crates/kition-kits/src/tools.rs`), so the agent's undo or revert takes back
+only its own steps, never the person's. Shortcuts are written `Cmd+Shift+Z`,
+`Alt+Backspace`, `F12`; `Cmd` means Control off macOS.
 
 Prove the contract twice: `check_contract` in the kit's Rust tests, and the
 built WebAssembly with `node scripts/check-kit-sdk.mjs --kit <kit>` after an
