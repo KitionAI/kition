@@ -237,17 +237,34 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | P | Y | P | P | Y | Y | P | P |
-| Word | N | N | N | N | N | Y | N | N | N |
-| Sheet | N | N | N | N | N | N | N | N | N |
+| Slide | P | P | P | P | P | Y | Y | P | P |
+| Word | Y | P | P | P | Y | Y | P | Y | Y |
+| Sheet | Y | P | P | P | Y | Y | P | Y | Y |
+
+Text warp is `KitDrawing 1.3` (DR26 to DR28). The shared geometry is
+`kition_drawing::warp`: each preset is an envelope (the curves the text's top
+and bottom follow) or an arch, approximating Office's preset families rather
+than their exact guide formulas, so warped text is not yet a strict-fidelity
+match. Every kit lays its text out flat, stretches the glyph outlines over the
+text area and bends them with that geometry. `drawing.text` and
+`drawing.insert` take `warp` (a preset, `{preset, adjust}`, or `null`), and
+`drawing.describe` reports it. Shape Format's shared Transform menu
+(`DrawingWarpMenu`) offers 14 presets in every kit. Hit testing and the caret
+use the flat text in every kit.
 
 - **Slide:** `insert.wordArt` makes a text box with large, styled runs (fill
-  and outline per style number). Text warp (`a:prstTxWarp`) and text effects
-  are not modelled as editable properties. The text stays editable.
-- **Word:** `insert.wordArt` inserts formatted body text, not a drawing
-  object.
-- **Sheet:** `insert.wordArt` is listed in the feature catalog with no
-  drawing object behind it.
+  and outline per style number). The body keeps a warp's preset name only:
+  adjust values are dropped when the file is read, and `drawing.text` refuses
+  them as `unsupported`. Warped text is drawn without its paragraph animation
+  states and text effects. WordArt Styles › Transform runs `format.transform`
+  on the selection.
+- **Word:** a shape keeps its warp with adjust values (`wps:bodyPr/a:prstTxWarp`).
+  The display list draws warped text as filled paths, so PDF export bends it
+  too; underlines and highlights in warped text are not drawn. `insert.wordArt`
+  still inserts formatted body text, not a drawing object.
+- **Sheet:** the warp lives in the shape's kept text body, with its adjust
+  values. The page draws it bent with the shape; printing to PDF draws the
+  text flat.
 
 ## Reference corpus
 
