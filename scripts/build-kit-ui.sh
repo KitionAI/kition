@@ -50,6 +50,14 @@ if [[ -n "$in_kition" ]]; then
 else
   cp "$kit_repo/LICENSE" "$kit_repo/NOTICE" "$out/"
 fi
+# The kit's KDM schema (kit.json `model.schema`, platform rule K12) travels with the package as
+# model/schema.json: the schema its engine was built with, which hosts and @kition/sdk read.
+schema="$(node -p "require('$kit_repo/kit.json').model?.schema ?? ''")"
+if [[ -n "$schema" ]]; then
+  [[ -f "$kit_repo/$schema" ]] || { echo "$kit_repo/kit.json names model.schema $schema, which is missing" >&2; exit 1; }
+  mkdir -p "$out/model"
+  cp "$kit_repo/$schema" "$out/model/schema.json"
+fi
 commit="$(git -C "$kit_repo" rev-parse HEAD)"
 # The package's identity, and its brand color for scripts/check-kit-brands.mjs.
 node -e '
