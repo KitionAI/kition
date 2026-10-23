@@ -112,7 +112,7 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`. */
   capabilities: string[]
   /**
    * The capability sets this host serves (KHP `spec/index.md` section 3.1, minor version 1.5), such as
@@ -313,6 +313,51 @@ export function fileErrorReason(error: unknown): KitFileErrorReason | null {
   return (FILE_ERROR_REASONS as readonly string[]).includes(reason as string) ? (reason as KitFileErrorReason) : null
 }
 
+/**
+ * Host generation (capability `generate`, protocol section 7j, minor version 2.2; a Kition platform
+ * request, not KHP): the kit builds the prompt from what its document holds and asks the host for
+ * the model call; the host runs the person's model settings and never hands the kit a key (UI-G2).
+ */
+export type KitGeneratePart = { type: 'text'; text: string } | { type: 'image'; mime: string; bytes: ArrayBuffer } | { type: 'image'; url: string }
+export type KitGenerateMessage = { role: 'system' | 'user'; parts: KitGeneratePart[] }
+export type KitGenerateParams = {
+  /** What the kit generates for; `ai-field` (an AI field's cell) is the one defined value. */
+  purpose: string
+  output: 'text' | 'image'
+  /** The document's preference, a hint only: the host answers the model it used. */
+  model?: string
+  messages: KitGenerateMessage[]
+  /** `size` is `WIDTHxHEIGHT`, for images; the host may ignore any of them. */
+  options?: { maxTokens?: number; temperature?: number; size?: string }
+}
+export type KitGenerateResult = { text?: string; image?: { mime: string; bytes: ArrayBuffer }; model?: string; usage?: { inputTokens?: number; outputTokens?: number } }
+
+/** The reasons a `host/generate` is refused (`error.data.reason` of a `-32000`). */
+export const GENERATE_ERROR_REASONS = ['unavailable', 'not-allowed', 'quota', 'refused', 'too-large', 'timeout', 'failed'] as const
+export type KitGenerateErrorReason = (typeof GENERATE_ERROR_REASONS)[number]
+
+/**
+ * Host actions (capability `action:<id>`, section 7j): a host feature the kit offers a control
+ * for, from a person's gesture only. Defined ids: `workflow.run` (`{ workflowId, tableId, recordId }`)
+ * and `design.fromRecord` (`{ title, fields, record? }`); other ids are the host's.
+ */
+export const HOST_ACTION_CAPABILITY_PREFIX = 'action:'
+export type KitActionParams = { id: string; params: Record<string, unknown> }
+export type KitActionResult = { done: boolean; message?: string }
+
+/** The reasons a `host/action` is refused (`error.data.reason` of a `-32000`). */
+export const ACTION_ERROR_REASONS = ['not-allowed', 'no-gesture', 'not-found', 'failed'] as const
+export type KitActionErrorReason = (typeof ACTION_ERROR_REASONS)[number]
+
+/** The reason a `host/generate` or `host/action` was refused, from the error the host answered; `null` for any other failure. */
+export function hostRequestErrorReason(error: unknown): KitGenerateErrorReason | KitActionErrorReason | null {
+  if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
+  const reason = (error.data as { reason?: unknown }).reason
+  if ((GENERATE_ERROR_REASONS as readonly string[]).includes(reason as string)) return reason as KitGenerateErrorReason
+  if ((ACTION_ERROR_REASONS as readonly string[]).includes(reason as string)) return reason as KitActionErrorReason
+  return null
+}
+
 /** Requests the host sends, with their params and results. */
 export type HostToKit = {
   'ui/initialize': [InitializeParams, InitializeResult]
@@ -399,6 +444,10 @@ export type KitToHost = {
   'files/release': [{ handles: string[] }, Record<string, never>]
   /** Shows the system's print dialog (capability `print`); only from a person's gesture. */
   'files/print': [KitFilesPrintParams, { printed: boolean }]
+  /** A model call the host runs for the kit (capability `generate`, section 7j). Image bytes are transferred. */
+  'host/generate': [KitGenerateParams, KitGenerateResult]
+  /** Runs one of the host's actions (capability `action:<id>`, section 7j); only from a person's gesture. */
+  'host/action': [KitActionParams, KitActionResult]
 }
 
 /** Notifications the kit sends. */

@@ -37,14 +37,16 @@ import {
   type ModelBatchResult,
   type StoredReplica,
   type KitDiagnostic,
+  HOST_ACTION_CAPABILITY_PREFIX,
 } from './protocol'
 import { FILES_METHODS, openFileSession, type KitFileSession, type KitFilesOptions } from './files'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
-export { fileErrorReason } from './protocol'
+export { fileErrorReason, hostRequestErrorReason, ACTION_ERROR_REASONS, GENERATE_ERROR_REASONS } from './protocol'
 export { extensionOf, fileError, openFileSession, sanitizeFileName, unusedName, FILES_METHODS } from './files'
 export type { FilesMethod, KitFileCommitMode, KitFileEntry, KitFileGrant, KitFileGrantFlow, KitFileRef, KitFileSession, KitFileStaging, KitFilesManifest, KitFilesOptions, KitFilesStorage } from './files'
 export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams } from './protocol'
+export type { KitActionErrorReason, KitActionParams, KitActionResult, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGenerateResult } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
@@ -101,6 +103,18 @@ export type KitHostHandlers = {
    * tells the kit what they share.
    */
   presence?: (presence: KitPresence) => void
+  /**
+   * `host/generate`: run a model for the kit with the person's settings (capability `generate`,
+   * section 7j). Refuse with a `KitRpcError(-32000, …, { reason })`, `reason` one of
+   * `GENERATE_ERROR_REASONS`. Never give the kit a key or an endpoint (UI-G2).
+   */
+  generate?: (params: Params<'host/generate'>) => Result<'host/generate'>
+  /**
+   * `host/action`: the host's actions by id, each listed as capability `action:<id>` (section
+   * 7j), such as `workflow.run` and `design.fromRecord`. An id the host does not serve is refused
+   * with reason `not-allowed`.
+   */
+  actions?: Record<string, (params: Record<string, unknown>) => Result<'host/action'>>
 }
 
 export type MountOptions = {
@@ -218,6 +232,9 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   const { handlers } = options
   const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize, lease: handlers.leases, presence: handlers.presence }
   const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
+  if (handlers.generate) capabilities.push('generate')
+  const actions = Object.entries(handlers.actions ?? {}).filter(([, run]) => typeof run === 'function')
+  capabilities.push(...actions.map(([id]) => `${HOST_ACTION_CAPABILITY_PREFIX}${id}`))
   if (options.files) capabilities.push('files', ...(options.files.pick ? ['files-pick'] : []), ...(options.files.print ? ['print'] : []))
   const timeout = options.timeoutMs ?? 120_000
 
@@ -255,6 +272,12 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
     peer.handle('host/leases', async () => {
       if (!handlers.leases) unsupported('host/leases')
       return { leases: await handlers.leases.list() }
+    })
+    peer.handle('host/generate', (params) => (handlers.generate ? handlers.generate(params) : unsupported('host/generate')))
+    peer.handle('host/action', (params) => {
+      const run = typeof params?.id === 'string' ? actions.find(([id]) => id === params.id)?.[1] : undefined
+      if (!run) throw new KitRpcError(-32000, `this host does not serve the action ${String(params?.id)}`, { reason: 'not-allowed' })
+      return run(params.params && typeof params.params === 'object' ? params.params : {})
     })
     const files = options.files ? openFileSession({ ...options.files, readOnly: options.document.readOnly === true, revoked: (handles) => peer.notify('files/revoked', { handles }) }) : null
     if (files) for (const method of FILES_METHODS) peer.handle(method, (params) => files.serve(method, params as never))
