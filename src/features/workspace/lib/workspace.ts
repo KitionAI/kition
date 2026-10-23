@@ -136,6 +136,7 @@ function formatRelativeDateTime(value?: ApiTimestamp | null) {
 
 export function inferWorkspaceItemFormat(path: string, content?: string): WorkspaceDocumentFormat {
   if (path.toLowerCase().endsWith('.ktable')) return 'table'
+  if (path.toLowerCase().endsWith('.kboard')) return 'board'
   if (path.toLowerCase().endsWith('.kidesign')) return 'design'
   if (path.toLowerCase().endsWith('.kiboard')) {
     return 'board'
@@ -427,7 +428,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

@@ -62,7 +62,6 @@ export function WorkspaceTree({
   onCreateFolder,
   onCreateDocument,
   onCreateFormForTable,
-  onCreateBoard,
   onCreateDesign,
   kitCreations,
   depth = 0,
@@ -103,7 +102,6 @@ export function WorkspaceTree({
   onCreateDocument?: (format: DocumentCreateFormat) => void
   /** A form for one of a table file's tables (the table file's create menu). */
   onCreateFormForTable?: (node: WorkspaceTreeNode) => void
-  onCreateBoard?: () => void
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
@@ -479,7 +477,6 @@ export function WorkspaceTree({
                             anchorEl={createMenuAnchorEl}
                             onCreateFolder={onCreateFolder ?? (() => undefined)}
                             onCreateDocument={onCreateDocument ?? (() => undefined)}
-                            onCreateBoard={onCreateBoard}
                             onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
@@ -713,7 +710,6 @@ export function WorkspaceTree({
                 onCreateFolder={onCreateFolder}
                 onCreateDocument={onCreateDocument}
                 onCreateFormForTable={onCreateFormForTable}
-                onCreateBoard={onCreateBoard}
                             onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
                 depth={depth + 1}

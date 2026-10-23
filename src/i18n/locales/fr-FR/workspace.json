@@ -728,6 +728,10 @@
     "unavailableTitle": "L’édition Table n’est pas disponible dans cette version",
     "unavailableBody": "Les fichiers Table s’ouvrent dans Kition lorsque le moteur Table est inclus."
   },
+  "boardKit": {
+    "unavailableTitle": "La modification des tableaux blancs n’est pas disponible dans cette version",
+    "unavailableBody": "Les tableaux blancs s’ouvrent dans Kition lorsque le moteur Board est inclus."
+  },
   "collab": {
     "share": "Partager pour coédition",
     "sharing": "Partage…",

@@ -35,7 +35,6 @@ type WorkspaceSidebarPanelProps = {
    *  icon in the sidebar header — replaces the old root-level virtual
    *  "Workflows" node so the tree stays clean. */
   onOpenWorkflows?: () => void
-  onCreateBoard?: () => void
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
@@ -77,7 +76,6 @@ export function WorkspaceSidebarPanel({
   onCloseCreateMenu,
   onRefresh,
   onOpenWorkflows,
-  onCreateBoard,
   onCreateDesign,
   kitCreations,
   onRename,
@@ -118,7 +116,6 @@ export function WorkspaceSidebarPanel({
       onPasteFiles={onPasteFiles}
       onRefresh={onRefresh}
       onOpenWorkflows={onOpenWorkflows}
-      onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
       onOpenSearch={onOpenSearch}
@@ -151,7 +148,6 @@ export function WorkspaceSidebarPanel({
             onCloseCreateMenu={onCloseCreateMenu}
             onCreateFolder={onCreateFolder}
             onCreateDocument={onCreateDocument}
-                  onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
           />

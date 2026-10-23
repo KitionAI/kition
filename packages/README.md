@@ -79,8 +79,8 @@ one hides what needs it (the image button needs `importImage`, Create design `de
 images show only self-contained URLs without `resolveFileURL`). Kition's host is
 `src/features/whiteboard/host/kitionBoardHost.ts`; the file binding, image generation, and the
 agent bridge stay in `src/features/whiteboard`. Its strings are Kition's `workspace` and
-`imageGeneration` namespaces, and its styles Kition's, as for the table editor. The Board kit
-(`packages/board-kit`) is this editor and model packaged as a standard kit.
+`imageGeneration` namespaces, and its styles Kition's, as for the table editor. New boards are
+`.kboard` files, which the Board kit (KitionAI/kition-board) edits.
 
 ## `@kition/document-editor`
 

@@ -48,12 +48,12 @@ export type DesktopHost = {
 
 const editable = /\.(md|markdown|kiboard|kidesign)$/i
 const textual = /\.(md|markdown|kiboard|kidesign|txt|csv|tsv|json|html|htm)$/i
-const supported = /\.(md|markdown|ktable|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kitionfilm|kvector|keffect|kdesign|dxf|kitionslide|mp4|mov|webm|mp3|wav|m4a)$/i
+const supported = /\.(md|markdown|ktable|kboard|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kitionfilm|kvector|keffect|kdesign|dxf|kitionslide|mp4|mov|webm|mp3|wav|m4a)$/i
 
 function formatOf(file: string) {
   const extension = path.extname(file).toLowerCase()
   const formats: Record<string, string> = {
-    '.ktable': 'table', '.kidesign': 'design', '.kiboard': 'board', '.md': 'markdown', '.markdown': 'markdown',
+    '.ktable': 'table', '.kboard': 'board', '.kidesign': 'design', '.kiboard': 'board', '.md': 'markdown', '.markdown': 'markdown',
     '.docx': 'docx', '.xlsx': 'xlsx', '.xls': 'xlsx', '.pptx': 'pptx', '.ppt': 'pptx', '.pdf': 'pdf',
     '.csv': 'csv', '.tsv': 'csv', '.json': 'json', '.txt': 'text', '.html': 'html', '.htm': 'html',
     '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image', '.webp': 'image', '.svg': 'image',

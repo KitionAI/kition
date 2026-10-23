@@ -80,31 +80,8 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('pdf', 'PdfDocument', { format: 'pdf', icon: 'pdf', preview: true, create: { id: 'pdf', extension: KIT_CREATE_EXTENSION.pdf, baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', group: 'documents' } }),
   // Kition's host features (workflows, form and email sync) reach a table's records through the kit too.
   kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
+  kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
 ]
-
-/**
- * The Board kit (`kit.board`, `scripts/build-kit-ui.sh board`, packages/board-kit): Kition's own
- * board model and editor packaged as a kit, with a TypeScript engine. Kition opens `.kiboard` files
- * in its native board editor; for parity checks, a development build opens them in the kit instead
- * when `localStorage['kition.dev.boardKit']` is `'1'`. Without the kit's package the native editor
- * shows (`preview`).
- */
-const BOARD_KIT: KitEditorEntry = {
-  ...kit('board', 'BoardDocument', { format: 'board', icon: 'board', preview: true }),
-  engine: { kitId: 'kit.board', dir: 'board-ui/engine', module: 'kition_board_engine', documentClass: 'BoardDocument' },
-}
-
-const BOARD_KIT_DEV_FLAG = 'kition.dev.boardKit'
-
-/** The Board kit, when this development build opens `path` in it (`BOARD_KIT_DEV_FLAG`). */
-export function boardKitForDevelopment(path: string): KitEditorEntry | null {
-  if (!import.meta.env.DEV || !/\.kiboard$/i.test(path)) return null
-  try {
-    return window.localStorage.getItem(BOARD_KIT_DEV_FLAG) === '1' ? BOARD_KIT : null
-  } catch {
-    return null
-  }
-}
 
 /**
  * The Document kit (`kit.document`, `scripts/build-kit-ui.sh document`, packages/document-kit):

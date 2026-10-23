@@ -728,6 +728,10 @@
     "unavailableTitle": "La edición de Table no está disponible en esta versión",
     "unavailableBody": "Los archivos de Table se abren en Kition cuando se incluye el motor Table."
   },
+  "boardKit": {
+    "unavailableTitle": "La edición de pizarras no está disponible en esta versión",
+    "unavailableBody": "Las pizarras se abren en Kition cuando se incluye el motor de Board."
+  },
   "collab": {
     "share": "Compartir para coedición",
     "sharing": "Compartiendo…",

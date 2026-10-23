@@ -18,6 +18,7 @@ export const KIT_CREATE_EXTENSION = {
   slide: 'kitionslide',
   pdf: 'pdf',
   table: 'ktable',
+  board: 'kboard',
 } as const
 
 /** Every extension a kit's create menu item makes, for a workspace tab title to drop. */

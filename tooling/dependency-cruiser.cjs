@@ -89,7 +89,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    // A kit's web/ app (packages/board-kit/web, packages/document-kit/web) is built by its own toolchain from Kition's styles and strings.
+    // A kit's web/ app (packages/document-kit/web) is built by its own toolchain from Kition's styles and strings.
     exclude: { path: ['\\.spec\\.(ts|tsx)$', '^packages/[^/]+/web/'] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },

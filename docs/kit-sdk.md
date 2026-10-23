@@ -429,50 +429,17 @@ editor's own behavior is tested in the kit's repository.
 
 ### The Board kit
 
-`kit.board` (`packages/board-kit`) packages Kition's board the same way, but
-lives in Kition (`path` in `kits/sdks.json`): its engine is a TypeScript one
-(`engine.runtime` `ts-worker`, platform rule K11), `BoardDocument`, made
-with kition-sdk's `@kition/kit-engine` (`kitEngineClass`, Kition's copy in
-`src/lib/kit-engine`) from `BoardStore` and the board's commands in
-`packages/board-editor`; `web/scripts` and `vite.engine.config.ts` bundle it as
-`engine/kition_board_engine.js` with Loro's WebAssembly beside it, and kit-ui's
-engine worker loads it like a wasm-pack module. The editor (`web/`) is
-`packages/board-editor` in the kit-ui shell with an empty `BoardHost`: it keeps
-its own replica of the board, loaded from the engine's snapshot, and exchanges
-changes with the engine's replica (`WorkerRelay`), which the host saves and
-co-edits through. `packages/board-kit/kit.json` is a KHP 1.0 manifest on engine contract 2
-(`distribution: default`, `model/schema.json`, which a test keeps equal to
-`boardSchema`). `scripts/build-kit-ui.sh board` builds the package;
-`scripts/publish-kit.sh board --dry-run` packs it (publishing kits that live in
-Kition waits for a release location). Kition keeps its native board editor; a
-development build opens `.kiboard` files in the kit when
-`localStorage['kition.dev.boardKit']` is `'1'` and the package is built, and
-`e2e/board-embedded.spec.ts` edits a board there, saves it, and reopens it
-natively. The shell's Undo and Redo follow the engine; the board's own Undo is
-in the editor.
-
-The Board kit is L6: `packages/board-kit/src/engine/boardConvergence.spec.ts`
-runs kition-sdk's TypeScript convergence suite (`@kition/convergence`,
-Kition's copy in `src/lib/convergence`) on `BoardDocument`. Its adapter
-drives replicas through the board's commands and the contract 2 replica
-members; random edits come from the whole command catalogue (elements,
-connectors with bindings, groups and frames, pages); the probe's label is the
-text field the text scenarios type into (its lines are the paragraphs), and
-reparent swaps two frames, whose `parent` reference must end without a cycle.
-Its view check compares the store with a fresh read of the replica and holds
-the board's invariants in the view and the state. Every scenario passes but
-`blobs-late` (an image names a workspace file, so the schema has no blob
-field). `KITION_CONVERGENCE_REPORT=<file>` writes the report for
-`check-manifest.mjs --convergence`. The suite found four board bugs, fixed in
-`packages/board-editor` with regression tests in `boardStore.kdm.spec.ts`:
-a page or element deleted while another replica moved it in its list left a
-list entry naming nothing; elements added to (or moved onto) a page another
-replica deleted stayed in the document on no page, some naming deleted
-parents (they are now deleted, as the page deletion deleted the others); a
-command could store a parent the reader drops (a frame nested in its own
-child, a cycle), so reopening the file changed it; and the store's indexes
-after a deletion were not positions, so the next regroup could write another
-order than the view showed.
+`kit.board` (`KitionAI/kition-board`, package `public/kits/board-ui`) is a
+normal kit: `.kboard` files open in its own editor in `KitFrame`, and its Rust
+engine (`kition_board_sdk`, `BoardDocument`) and editor live in its
+repository, published and pinned like every other kit. The create menu's Board
+item makes an empty board with the engine in the page, and the agent's
+`board_*` tools run on the headless `kit-board` for files no editor has open
+(`KITS` in `crates/kition-kits`). `e2e/board-embedded.spec.ts` (in
+`make kit-e2e`) covers what Kition adds around the kit: opening, drawing,
+saving through Kition, and creating a board; the editor's own behavior is
+tested in the kit's repository. Kition's native board editor
+(`src/features/whiteboard`, `.kiboard` files) is being removed.
 
 ### The Document kit
 
@@ -503,7 +470,7 @@ it, and reopens it natively. Images show only URLs that load by themselves,
 and pasted images stay links: the host's files are not the kit's.
 
 `packages/document-kit/src/engine/documentConvergence.spec.ts` runs the
-convergence suite on `MarkdownDocument` the way the Board kit does: random
+convergence suite on `MarkdownDocument`: random
 edits from the whole catalogue (typing with CJK and emoji, ranges deleted and
 replaced, whole texts written, comment threads added, answered, resolved, and
 deleted); the text scenarios type into the Markdown text, whose lines are its
@@ -587,7 +554,7 @@ Kit repository:
    TypeScript harness, `@kition/convergence`: a `KitEngineAdapter` subclass
    over its `kitEngineClass` document in a vitest spec, asserting
    `report.level6()` and writing `report.toJsonText()` to
-   `KITION_CONVERGENCE_REPORT` (the Board kit's `boardConvergence.spec.ts`).
+   `KITION_CONVERGENCE_REPORT` (the Document kit's `documentConvergence.spec.ts`).
 2c. Implement `KitDocument::check` (kition-sdk `docs/platform/sets/agent.md`, A21–A23): diagnostics with
    stable `<kit>.<name>` codes, a `target`, and a `fix` command hint where
    one exists, errors first, each code covered by a synthetic test. Agents

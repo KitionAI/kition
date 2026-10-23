@@ -20,7 +20,7 @@ import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEm
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@kition/app-ui/utils'
-import { boardKitForDevelopment, documentKitForDevelopment } from './kits/kitEditors'
+import { documentKitForDevelopment } from './kits/kitEditors'
 import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
@@ -381,24 +381,16 @@ export function WorkspaceEditorContent({
             )}
           >
             <EditorPaneBoundary>
-              {(() => {
-                const nativeEditor = (
-                  <WhiteboardEditorPane
-                    agentAvailable={whiteboardAgentAvailable}
-                    agentBusy={whiteboardAgentBusy}
-                    onAgentBridgeChange={onWhiteboardAgentBridgeChange}
-                    onCancelAgent={onCancelWhiteboardAgent}
-                    onGenerateImage={onGenerateWhiteboardImage}
-                    onOpenAgent={onOpenAgent}
-                    path={tab.path}
-                    title={tab.title}
-                  />
-                )
-                // Development only: the Board kit, for parity checks (`BOARD_KIT_DEV_FLAG`).
-                const boardKit = boardKitForDevelopment(tab.path)
-                const active = activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'board'
-                return boardKit ? <KitFilePane kit={boardKit} path={tab.path} active={active} preview={nativeEditor} /> : nativeEditor
-              })()}
+              <WhiteboardEditorPane
+                agentAvailable={whiteboardAgentAvailable}
+                agentBusy={whiteboardAgentBusy}
+                onAgentBridgeChange={onWhiteboardAgentBridgeChange}
+                onCancelAgent={onCancelWhiteboardAgent}
+                onGenerateImage={onGenerateWhiteboardImage}
+                onOpenAgent={onOpenAgent}
+                path={tab.path}
+                title={tab.title}
+              />
             </EditorPaneBoundary>
           </div>
         ))}

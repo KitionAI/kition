@@ -90,6 +90,13 @@ const CASES: &[Case] = &[
         params: || json!({ "tableId": 1, "values": { "title": "Review the plan" } }),
         file_command: ("document.save", || json!({ "path": "elsewhere.ktable" })),
     },
+    Case {
+        kit: "kit.board",
+        fixture: "Plan.kboard",
+        command: "element.create",
+        params: || json!({ "elements": [{ "kind": "shape", "position": { "x": 300, "y": 200 }, "size": { "w": 240, "h": 120 } }] }),
+        file_command: ("document.save", || json!({ "path": "elsewhere.kboard" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

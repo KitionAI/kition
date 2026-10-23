@@ -16,6 +16,7 @@ type BrowserWorkspaceRecord = {
 function inferWorkspaceDocumentFormat(path: string): WorkspaceDocumentFormat {
   const lower = path.toLowerCase()
   if (lower.endsWith('.ktable')) return 'table'
+  if (lower.endsWith('.kboard')) return 'board'
   if (lower.endsWith('.kidesign')) return 'design'
   if (lower.endsWith('.kiboard')) return 'board'
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'

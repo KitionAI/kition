@@ -38,6 +38,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".kitionslide" => "slide",
         // Tables, edited in the Table kit.
         ".ktable" => "table",
+        // Boards, edited in the Board kit.
+        ".kboard" => "board",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -98,6 +100,7 @@ pub fn is_supported(path: &str) -> bool {
             "dxf",
             "kitionslide",
             "ktable",
+            "kboard",
             "mp4",
             "mov",
             "webm",
@@ -134,6 +137,10 @@ mod tests {
         assert_eq!(infer_format("data/Tasks.ktable"), "table");
         assert!(is_supported("data/Tasks.ktable"));
         assert!(!is_text("data/Tasks.ktable"));
+        assert_eq!(infer_format("plans/Roadmap.kboard"), "board");
+        assert!(is_supported("plans/Roadmap.kboard"));
+        assert!(!is_text("plans/Roadmap.kboard"));
+        assert!(!is_editable("plans/Roadmap.kboard"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");

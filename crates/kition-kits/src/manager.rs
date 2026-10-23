@@ -296,6 +296,26 @@ pub const KITS: &[KitDefinition] = &[
             command: "table.records.create",
         },
     },
+    // Edited in the page through its SDK; `kit-board` serves the agent for files no editor has open.
+    KitDefinition {
+        id: "kit.board",
+        name: "Board",
+        binary_env: "KITION_KIT_BOARD_BINARY",
+        extensions: &["kboard"],
+        creates: &[("kboard", "kboard")],
+        base_name: "Untitled board",
+        embeds: false,
+        exports: &["png", "svg", "pdf"],
+        agent: KitAgent {
+            prefix: "board",
+            noun: "board",
+            formats: ".kboard",
+            reports: "its pages, frames, and element counts",
+            covers: "shapes, sticky notes, text, connectors, frames, mind maps, templates, layout, pages, and more; `element.create` adds elements",
+            queries: "`connector`, `frame`, or `mindmap`",
+            command: "element.create",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

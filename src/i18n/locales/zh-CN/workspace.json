@@ -728,6 +728,10 @@
     "unavailableTitle": "此版本不支持 Table 编辑",
     "unavailableBody": "包含 Table 引擎时，Table 文件会在 Kition 中打开。"
   },
+  "boardKit": {
+    "unavailableTitle": "此版本不支持编辑白板",
+    "unavailableBody": "包含白板引擎时，白板文件会在 Kition 中打开。"
+  },
   "collab": {
     "share": "共享以协同编辑",
     "sharing": "正在共享…",

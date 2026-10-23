@@ -662,7 +662,6 @@ export function WorkspaceScreen({
     openDocumentTemplateDialog,
     createDesign: design.create,
     kitCreations,
-    openBoardTemplateDialog: boardCreation.openTemplateDialog,
     openWorkspaceWorkflow,
     openTableFileWorkflow,
     onCloseProfile,

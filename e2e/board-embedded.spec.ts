@@ -1,121 +1,74 @@
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { existsSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
-import { openInKitFrame } from './helpers/embeddedKit'
-import { dismissFirstRunActivation } from './helpers/onboarding'
-import { canReadBlobBodies } from './helpers/requestBody'
+import { expect, test } from '@playwright/test'
+import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
 
 /**
- * The Board kit (`kit.board`, packages/board-kit), which Kition does not use for its own boards: a
- * development build opens `.kiboard` files in it when this flag is set (`boardKitForDevelopment`
- * in kitEditors.ts).
+ * Kition's boards are `.kboard` files the Board kit (`kit.board`, KitionAI/kition-board) edits in
+ * its own editor (KitFrame). This covers what Kition adds around the kit: opening a board from the
+ * tree, saving through Kition's file API, and the create menu making a new board with the kit's
+ * engine in the page. The editor's own behavior is tested in the kit's repository.
  */
-const BOARD_KIT_DEV_FLAG = 'kition.dev.boardKit'
-/** Set in the tab's session storage, the next load opens boards natively again. */
-const NATIVE_MARK = 'e2e.board-embedded.native'
 
-type BoardDoc = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array }
-type BoardSdk = { BoardDocument: { create(name: string, width: number, height: number): BoardDoc; open(name: string, bytes: Uint8Array): BoardDoc } }
+type NodeBoardDocument = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
+const engine = kitEngine<{ BoardDocument: { create(name: string, width: number, height: number): NodeBoardDocument; open(name: string, bytes: Uint8Array): NodeBoardDocument } }>('board', 'kition_board_sdk')
 
-/** The kit's TypeScript engine in its package (`ts-worker`), loaded in Node to make and read fixtures. */
-const engineDir = path.join(process.cwd(), 'public', 'kits', 'board-ui', 'engine')
-const built = existsSync(path.join(engineDir, 'kition_board_engine.js')) && existsSync(path.join(engineDir, '..', 'kit-ui.json'))
-async function loadEngine() {
-  const sdk = (await import(pathToFileURL(path.join(engineDir, 'kition_board_engine.js')).href)) as BoardSdk & { default: (init: { base: string; read: (file: string) => Promise<Uint8Array> }) => Promise<void> }
-  await sdk.default({ base: pathToFileURL(engineDir + path.sep).href, read: async (file) => new Uint8Array(await fs.readFile(path.join(engineDir, file))) })
-  return sdk
-}
-
-const note = (id: string, text: string, x: number) => ({ id, kind: 'rectangle', x, y: 120, width: 180, height: 110, text, shapeType: 'rectangle', shapeStyle: 'sticky' })
-
-/** A board made by the engine the kit runs: two notes. */
+/** A board made by the engine the page runs: one shape. */
 async function planFixture() {
-  const sdk = await loadEngine()
-  const doc = sdk.BoardDocument.create('Plan.kiboard', 1920, 1080)
-  doc.execute('element.create', JSON.stringify({ elements: [note('note-goals', 'Goals', 120), note('note-risks', 'Risks', 380)] }))
-  return Buffer.from(doc.save())
+  const sdk = await engine.load()
+  const doc = sdk.BoardDocument.create('Plan.kboard', 1920, 1080)
+  doc.execute('element.create', JSON.stringify({ elements: [{ kind: 'shape', position: { x: 40, y: 40 }, size: { w: 160, h: 100 } }] }))
+  const bytes = Buffer.from(doc.save())
+  doc.free()
+  return bytes
 }
 
-/** The element count of a saved board, read by the engine. */
+/** The element count of a saved board, as the engine reads it. */
 async function elementsOf(bytes: Buffer) {
-  const sdk = await loadEngine()
-  return (JSON.parse(sdk.BoardDocument.open('Plan.kiboard', bytes).inspect()) as { elements: number }).elements
+  const sdk = await engine.load()
+  const doc = sdk.BoardDocument.open('Saved.kboard', bytes)
+  const elements = (JSON.parse(doc.inspect()) as { elements: number }).elements
+  doc.free()
+  return elements
 }
 
-async function openBoardsInKitUntilNative(page: Page) {
-  await page.addInitScript(
-    ({ flag, mark }) => {
-      if (window.sessionStorage.getItem(mark)) window.localStorage.removeItem(flag)
-      else window.localStorage.setItem(flag, '1')
-    },
-    { flag: BOARD_KIT_DEV_FLAG, mark: NATIVE_MARK },
-  )
-}
-
-/** Draws a rectangle on the kit's board canvas, by page coordinates of its scene. */
-async function drawRectangle(page: Page, kit: FrameLocator) {
-  await kit.getByTestId('whiteboard-tool-rectangle').click()
-  const bounds = await kit.getByTestId('whiteboard-svg-scene').boundingBox()
-  if (!bounds) throw new Error('the board scene is not measurable')
-  await page.mouse.move(bounds.x + 300, bounds.y + 420)
-  await page.mouse.down()
-  await page.mouse.move(bounds.x + 460, bounds.y + 520, { steps: 8 })
-  await page.mouse.up()
-}
-
-test('opens a board in the Board kit, draws on it, saves it, and Kition opens the saved file natively', async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!built, 'the Board kit is not built into public/kits/board-ui (scripts/build-kit-ui.sh board)')
-  test.setTimeout(180_000)
-  await openBoardsInKitUntilNative(page)
-  const name = 'Plan.kiboard'
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, name, await planFixture(), {}, { persist: true })
+test('opens a board in the Board kit’s own editor, draws on it, and saves it through Kition', async ({ page, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Board kit is not built into public/kits/board-ui (scripts/fetch-kits.mjs or scripts/build-kit-ui.sh board)')
+  test.setTimeout(120_000)
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Plan.kboard', await planFixture())
   try {
-    // Kition's own board editor, inside the kit's frame, over the kit's TypeScript engine.
-    await expect(kit.getByTestId('whiteboard-editor-pane')).toBeVisible({ timeout: 60_000 })
-    await expect(kit.getByTestId('board-title')).toHaveText(name)
-    // kit-ui's editor frame, in the kit's default display mode (kit.json `ui.display`).
-    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'line')
-    await expect(kit.locator('[data-element-id="note-goals"]')).toBeVisible()
-    await expect(kit.locator('[data-element-id="note-risks"]')).toBeVisible()
-    await expect(kit.locator('[data-element-id]')).toHaveCount(2)
+    await expect(kit.getByTestId('board-status')).toContainText('1 elements', { timeout: 60_000 })
+    await expect(page.getByTestId('kit-opening')).toHaveCount(0)
 
-    // An edit in the editor reaches the engine: the document is unsaved.
-    await drawRectangle(page, kit)
-    await expect(kit.locator('[data-element-id]')).toHaveCount(3)
-    await expect(kit.getByTestId('board-unsaved')).toBeVisible()
+    // Draw a rectangle with the shape tool, in an empty part of the view.
+    const canvas = (await kit.getByTestId('board-canvas').boundingBox())!
+    await page.mouse.click(canvas.x + canvas.width * 0.7, canvas.y + canvas.height * 0.2)
+    await page.keyboard.press('r')
+    await page.mouse.move(canvas.x + canvas.width * 0.6, canvas.y + canvas.height * 0.6)
+    await page.mouse.down()
+    await page.mouse.move(canvas.x + canvas.width * 0.6 + 160, canvas.y + canvas.height * 0.6 + 100, { steps: 8 })
+    await page.mouse.up()
+    await expect(kit.getByTestId('board-status')).toContainText('2 elements')
     await page.screenshot({ path: testInfo.outputPath('board-embedded.png') })
 
-    // Focus hides the board's tool palette; the frame's Focus bar names the active tool instead.
-    await expect(kit.getByTestId('whiteboard-toolbar')).toBeVisible()
-    await kit.getByTestId('board-mode').click()
-    await kit.getByTestId('board-mode-focus').click()
-    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'focus')
-    await expect(kit.getByTestId('whiteboard-toolbar')).toHaveCount(0)
-    await expect(kit.getByTestId('board-focus-tool')).toBeVisible()
-    await kit.getByTestId('board-focus-exit').click()
-    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'line')
-    await expect(kit.getByTestId('whiteboard-toolbar')).toBeVisible()
+    await page.keyboard.press('ControlOrMeta+s')
+    await expect.poll(() => saves.map((save) => save.path), { timeout: 30_000 }).toEqual(['Plan.kboard'])
+    expect(await elementsOf(saves[0]!.bytes)).toBe(2)
+  } finally {
+    await host.dispose()
+  }
+})
 
-    await kit.getByTestId('board-save').click()
-    await expect(kit.getByTestId('board-unsaved')).toHaveCount(0, { timeout: 30_000 })
-    // The editor's replica and the engine's exchanged every change without a failure.
-    await expect(kit.getByText('The board could not sync with its engine')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual([name])
-    if (canReadBlobBodies(browserName)) expect(await elementsOf(saves[0].bytes)).toBe(3)
-
-    // Reopened without the kit: Kition's native board editor shows the saved file.
-    await page.evaluate((mark) => window.sessionStorage.setItem(mark, '1'), NATIVE_MARK)
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await dismissFirstRunActivation(page)
-    await page.locator('.document-tree-row', { hasText: 'Plan' }).first().click()
-    const native = page.locator(`[data-testid="whiteboard-editor-pane"][data-board-path="${name}"]`)
-    await expect(native).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByTestId('kit-frame')).toHaveCount(0)
-    await expect(native.locator('[data-element-id]')).toHaveCount(3)
-    await expect(native.locator('[data-element-id="note-goals"]')).toBeVisible()
-    await page.screenshot({ path: testInfo.outputPath('board-native.png') })
+test('makes a new board with the Board kit’s engine from the create menu and opens it in the kit', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Board kit is not built into public/kits/board-ui (scripts/fetch-kits.mjs or scripts/build-kit-ui.sh board)')
+  test.setTimeout(120_000)
+  const { host, saves } = await openKitWorkspace(page, baseURL!, {}, { persist: true })
+  try {
+    await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+    await page.getByRole('group', { name: 'Visual' }).getByTestId('workspace-create-board').click()
+    await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled board.kboard'])
+    expect(await elementsOf(saves[0]!.bytes)).toBe(0)
+    await expect(page.getByTestId('kit-frame')).toBeVisible()
+    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(kit.getByTestId('board-status')).toContainText('0 elements', { timeout: 60_000 })
   } finally {
     await host.dispose()
   }

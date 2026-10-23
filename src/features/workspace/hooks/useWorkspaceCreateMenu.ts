@@ -21,7 +21,6 @@ type UseWorkspaceCreateMenuOptions = {
   createDesign: (folder?: string) => Promise<unknown> | void
   /** Kit items (Image, Video project), each making a file in a folder. */
   kitCreations: readonly KitCreationSource[]
-  openBoardTemplateDialog: (folder?: string) => void
   openWorkspaceWorkflow: () => void
   /** A workflow for one of a table file's tables. */
   openTableFileWorkflow: (tablePath: string) => void
@@ -44,7 +43,6 @@ export function useWorkspaceCreateMenu({
   openDocumentTemplateDialog,
   createDesign,
   kitCreations,
-  openBoardTemplateDialog,
   openWorkspaceWorkflow,
   openTableFileWorkflow,
   onCloseProfile,
@@ -107,10 +105,6 @@ export function useWorkspaceCreateMenu({
         void kit.create(createMenuFolder)
       },
     })),
-    onCreateBoard: () => {
-      onCloseProfile?.()
-      openBoardTemplateDialog(createMenuFolder)
-    },
   }), [
     closeCreateMenu,
     createDesign,
@@ -121,7 +115,6 @@ export function useWorkspaceCreateMenu({
     createMenuVariant,
     expandPrivateSection,
     onCloseProfile,
-    openBoardTemplateDialog,
     openCreateFormatMenu,
     openDocumentTemplateDialog,
     openTableFileWorkflow,

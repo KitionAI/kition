@@ -18,8 +18,8 @@ describe('WorkspaceCreateMenu', () => {
         open: true,
         onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
-        onCreateBoard,
         kitCreations: [
+          { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: onCreateBoard },
           { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
           { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kitionslide', onCreate: vi.fn() },
           { id: 'sheet', label: 'createMenu.format.sheet', kit: 'sheet', group: 'data', extension: 'xlsx', onCreate: vi.fn() },
@@ -84,10 +84,10 @@ describe('WorkspaceCreateMenu', () => {
         open: true,
         onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
-        onCreateBoard: vi.fn(),
         onCreateDesign: vi.fn(),
         kitCreations: [
           { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
+          { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: vi.fn() },
           { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
         ],
       }))

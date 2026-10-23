@@ -78,6 +78,7 @@ const KIT_FILE_KINDS = [
   // PowerPoint files stay attachments whose text is extracted; only .kitionslide files are kit-only.
   { format: 'slide', extensions: /\.kitionslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
   { format: 'table', extensions: /\.ktable$/i, prefix: 'table', kit: 'Table', one: 'a table file', many: 'table files', data: 'table data' },
+  { format: 'board', extensions: /\.kboard$/i, prefix: 'board', kit: 'Board', one: 'a board', many: 'boards', data: 'board data' },
 ] as const
 
 type KitFileKind = (typeof KIT_FILE_KINDS)[number]

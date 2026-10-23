@@ -42,7 +42,6 @@ export function WorkspaceCreateMenu({
   anchorEl,
   onCreateFolder,
   onCreateDocument,
-  onCreateBoard,
   onCreateDesign,
   kitCreations,
   onCreateForm,
@@ -58,7 +57,6 @@ export function WorkspaceCreateMenu({
   anchorEl?: HTMLElement | null
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
-  onCreateBoard?: () => void
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
@@ -86,7 +84,6 @@ export function WorkspaceCreateMenu({
         onClick: () => onCreateDocument(item.value),
       }
     }),
-    ...(onCreateBoard ? [{ id: 'board', group: 'visual', label: t('createMenu.format.board'), icon: <KitIcon kit="board" small className="size-4" />, testId: 'workspace-create-board', onClick: onCreateBoard } satisfies CreateItem] : []),
     ...(onCreateDesign ? [{ id: 'design', group: 'visual', label: t('design:suite'), icon: <KitIcon kit="design" small className="size-4" />, testId: 'workspace-create-design', onClick: onCreateDesign } satisfies CreateItem] : []),
     ...(kitCreations ?? []).map<CreateItem>((kit) => ({
       id: kit.id,
