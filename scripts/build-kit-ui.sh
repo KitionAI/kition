@@ -7,8 +7,8 @@
 #
 # The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
 # path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too. A kit whose
-# editor is Kition's own (the board and document kits) builds it from this checkout, or KITION_DIR. A kit that
-# lives in Kition (`path` in kits/sdks.json, the board kit) is built from that folder of this
+# editor is Kition's own (the document kit) builds it from this checkout, or KITION_DIR. A kit that
+# lives in Kition (`path` in kits/sdks.json, the document kit) is built from that folder of this
 # checkout, or of KITION_DIR; its licence is Kition's.
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example slide}"

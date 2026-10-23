@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the board and document kits); `path` is a kit that lives in Kition (the board and document kits, built from that folder; `runtime: ts-worker`, a TypeScript engine that scripts/check-kit-sdk.mjs leaves to check-manifest --module); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
+  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the document kit); `path` is a kit that lives in Kition (the document kit, built from that folder; `runtime: ts-worker`, a TypeScript engine that scripts/check-kit-sdk.mjs leaves to check-manifest --module); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
   "photo": {
     "repository": "KitionAI/kition-photo",
     "crate": "kition-photo-sdk",
@@ -206,27 +206,19 @@
     }
   },
   "board": {
-    "repository": "KitionAI/kition",
-    "path": "packages/board-kit",
-    "module": "kition_board_engine",
+    "repository": "KitionAI/kition-board",
+    "crate": "kition-board-sdk",
+    "module": "kition_board_sdk",
     "class": "BoardDocument",
-    "runtime": "ts-worker",
-    "name": "Plan.kiboard",
-    "kition": true,
-    "optional": true,
+    "name": "Plan.kboard",
     "edit": {
       "command": "element.create",
       "params": {
         "elements": [
           {
-            "id": "note-1",
-            "kind": "rectangle",
-            "x": 0,
-            "y": 0,
-            "width": 160,
-            "height": 100,
-            "text": "Plan",
-            "shapeType": "rectangle"
+            "kind": "shape",
+            "position": { "x": 40, "y": 40 },
+            "size": { "w": 160, "h": 100 }
           }
         ]
       }

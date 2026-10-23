@@ -11,9 +11,9 @@
 # only: clean clones of the kit, kition-sdk, and kition-fonts (origin/main, or KIT_REF, SDK_REF,
 # and FONTS_REF) side by side in a scratch folder, so local changes never reach a package; and of
 # Kition itself (origin/main, or KITION_REF) for a kit marked `kition` in kits/sdks.json, whose
-# engine and editor are Kition's own (the board and document kits). A version is published once; bump `version`
+# engine and editor are Kition's own (the document kit). A version is published once; bump `version`
 # in the kit's kit.json to publish a change. A kit that lives in Kition (`path` in kits/sdks.json,
-# the board kit) is built from the Kition clone alone; it packs with --dry-run, and is not published
+# the document kit) is built from the Kition clone alone; it packs with --dry-run, and is not published
 # until where its packages are released is decided.
 set -euo pipefail
 kit="${1:?usage: scripts/publish-kit.sh <kit> [--dry-run]}"
