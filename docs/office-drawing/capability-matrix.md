@@ -109,9 +109,15 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   Evidence: each kit's `gradient_fills_…` engine test, Word's
   `a_gradient_fill_runs_from_its_first_colour_to_its_last` pixel test, and the
   Word and Sheet browser runs in Chromium and WebKit.
-  Still open in Phase 2: grouping in Sheet, connectors, effect formatting
-  (shadow, glow) through the shared description, gradients in Word's PDF
-  export, and rich text in shapes.
+  Shadow and glow (`KitDrawing 1.4`, DR24): described and set through
+  `drawing.format` in Slide and Word, from Shape Format's shared Effects menu
+  in Word (Slide's own Format pane sets them there); Sheet shapes have no
+  effects, so the command answers `unsupported` and the menu is left out.
+  Word's PDF export now paints gradient fills as shadings. Evidence: the
+  `shadows_and_glows_…` engine tests, Word's `a_gradient_fill_is_a_shading`
+  PDF test, and the Word and Sheet browser runs in Chromium and WebKit.
+  Still open in Phase 2: grouping and effects in Sheet, connectors, and rich
+  text in shapes.
 
 ## Charts
 
