@@ -137,6 +137,17 @@ and checks read-only refusal.)*
   editor does not offer them. Trendlines, error bars, secondary-axis and
   combination-chart formatting are preserved but not yet editable.
 
+- **Visual fidelity (Slide, 2026-10-22):** against the frozen baseline's chart
+  set and settings, data table rows and the plot area border now follow the
+  reference: mean SSIM 0.9506 to 0.9528, median 0.9645 to 0.9662, 1,167 of
+  1,971 slides better and 380 worse. Strict passes stay at 1. Every chart deck
+  sets its text in fonts the kits cannot ship (Microsoft YaHei, PingFang, and
+  others), so no chart slide can reach the strict gate until open decision F1
+  in the [baseline](baseline.md) is made; the best slide without that
+  limit still differs in anti-aliasing and pattern-fill phase. Installed fonts
+  are now found by their names in other languages, which helps on machines
+  that have them (Windows with Microsoft YaHei), not in the measurement.
+
 ## Ink
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
