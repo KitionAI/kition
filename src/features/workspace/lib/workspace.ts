@@ -8,6 +8,7 @@ import type {
   WorkspaceDocumentFormat,
   WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
+import { kitCreateExtensions } from '@/features/workspace/components/kits/kitFormats'
 
 export type WorkspaceMediaKind = 'images' | 'videos'
 
@@ -78,7 +79,29 @@ export type WorkspaceTreeNode = {
 export type WorkspaceTreeDropPosition = 'before' | 'inside' | 'after'
 
 export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', '🗂️', '✅', '🚧', '⭐', '🔖', '🧩', '📌']
-const workspaceTitleExtensionPattern = /\.(md|markdown|kitable|kiboard|kidesign|docx|xlsx|xls|pptx|ppt|pdf|csv|tsv|json|txt|html|htm|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i
+
+/**
+ * Formats Kition's own editors (and `inferWorkspaceItemFormat` below) already know, with no kit
+ * registry entry: aliases a kit's preview understands but never creates (`pptx`, `xls`, `ppt`,
+ * `psb`, `kphoto`), and the native `.kitable`/`.kiboard`/`.kidesign`/Markdown/media formats.
+ */
+const workspaceNonKitExtensions = [
+  'md', 'markdown', 'kitable', 'kiboard', 'kidesign',
+  'pptx', 'xls', 'ppt', 'psb', 'kphoto',
+  'csv', 'tsv', 'json', 'txt', 'html', 'htm',
+  'png', 'jpe?g', 'gif', 'webp', 'svg',
+  'mp4', 'mov', 'webm', 'mp3', 'wav', 'm4a',
+]
+
+/**
+ * Drops a workspace file's extension from its tab title: every format the app knows, kit-owned
+ * (from the kit registry's create extensions, `kitEditors.ts`, so a kit's own extension never
+ * drifts out of date here) or not (`workspaceNonKitExtensions`).
+ */
+const workspaceTitleExtensionPattern = new RegExp(
+  `\\.(${[...new Set([...workspaceNonKitExtensions, ...kitCreateExtensions()])].join('|')})$`,
+  'i',
+)
 const workspaceEditableExtensionPattern = /\.(md|markdown|kitable|kiboard|kidesign)$/i
 
 export function formatCompactNumber(value: number) {
