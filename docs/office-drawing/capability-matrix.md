@@ -76,6 +76,24 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   KDM objects of their own; presets come from the shared catalog; the editor
   selects, moves, resizes, turns, formats and types into shapes.)*
 
+- **Phase 2, adjust handles and arrange (2026-10-22).** kition-sdk's shared
+  gestures add adjust handles (`adjust_handles`, `hit_adjust`,
+  `Gesture::adjusting`: a drag previews the new outline and commits one
+  `drawing.format`), now in Word's and Sheet's editors (Slide had its own).
+  `drawing.arrange` (`KitDrawing 1.4`, DR21; `kition_drawing::arrange`)
+  moves objects in their stack in all three kits, and Shape Format's shared
+  Arrange menus run it. Word keeps a floating object's place in the stack
+  (`relativeHeight`) and lays a page's floating objects out in that order;
+  inline objects have no place in it. Sheet keeps charts above shapes, so
+  each moves among its own kind, and now saves the drawing part in the order
+  it draws (charts were written under shapes). Evidence: the kits' engine
+  tests (`floating_objects_move_in_the_stack…`,
+  `shapes_and_charts_move_in_their_stacks…`,
+  `objects_move_in_the_slides_stack…`, `a_shapes_adjust_handle_reshapes_it…`)
+  and the Word and Sheet `web/tests/drawing.mjs` runs in Chromium and WebKit.
+  Still open in Phase 2: grouping through the shared commands, connectors,
+  gradient and effect formatting, and rich text in shapes.
+
 ## Charts
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
