@@ -24,6 +24,7 @@ describe('WorkspaceCreateMenu', () => {
           { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
           { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kitionslide', onCreate: vi.fn() },
           { id: 'sheet', label: 'createMenu.format.sheet', kit: 'sheet', group: 'data', extension: 'xlsx', onCreate: vi.fn() },
+          { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
           { id: 'word', label: 'createMenu.format.word', kit: 'word', group: 'documents', extension: 'docx', onCreate: vi.fn() },
           { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
         ],
@@ -67,7 +68,7 @@ describe('WorkspaceCreateMenu', () => {
       }))
     })
 
-    expect(Array.from(container.querySelectorAll('[role="group"]')).map((group) => group.getAttribute('aria-label'))).toEqual(['Documents', 'Data'])
+    expect(Array.from(container.querySelectorAll('[role="group"]')).map((group) => group.getAttribute('aria-label'))).toEqual(['Documents'])
 
     await act(async () => root?.unmount())
     container.remove()
@@ -88,7 +89,10 @@ describe('WorkspaceCreateMenu', () => {
         onCreateTable: vi.fn(),
         onCreateBoard: vi.fn(),
         onCreateDesign: vi.fn(),
-        kitCreations: [{ id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() }],
+        kitCreations: [
+          { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
+          { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
+        ],
       }))
     })
 

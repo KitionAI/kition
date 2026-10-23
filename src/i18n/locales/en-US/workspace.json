@@ -758,6 +758,10 @@
     "unavailableTitle": "PDF editing is not available in this build",
     "unavailableBody": "PDF files open in Kition when the PDF engine is included."
   },
+  "tableKit": {
+    "unavailableTitle": "Table editing is not available in this build",
+    "unavailableBody": "Table files open in Kition when the Table engine is included."
+  },
   "collab": {
     "share": "Share for co-editing",
     "sharing": "Sharing…",

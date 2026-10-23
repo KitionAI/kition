@@ -758,6 +758,10 @@
     "unavailableTitle": "L’édition PDF n’est pas disponible dans cette version",
     "unavailableBody": "Les fichiers PDF s’ouvrent dans Kition lorsque le moteur PDF est inclus."
   },
+  "tableKit": {
+    "unavailableTitle": "L’édition Table n’est pas disponible dans cette version",
+    "unavailableBody": "Les fichiers Table s’ouvrent dans Kition lorsque le moteur Table est inclus."
+  },
   "collab": {
     "share": "Partager pour coédition",
     "sharing": "Partage…",

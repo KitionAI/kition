@@ -1,6 +1,6 @@
-# Kit (Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, PDF) shortcuts for building, trying, and testing the kits.
+# Kit (Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, PDF, Table) shortcuts for building, trying, and testing the kits.
 # See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kition-photo,
-# ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-word, ../kition-sheet, ../kition-pdf); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-word, ../kition-sheet, ../kition-pdf, ../kition-table); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
 #   make kit-dev      build what is missing, then run Kition with the kits
@@ -19,8 +19,9 @@ KIT_SLIDE_REPO ?= $(REPO_ROOT)/../kition-slide
 KIT_WORD_REPO ?= $(REPO_ROOT)/../kition-word
 KIT_SHEET_REPO ?= $(REPO_ROOT)/../kition-sheet
 KIT_PDF_REPO ?= $(REPO_ROOT)/../kition-pdf
+KIT_TABLE_REPO ?= $(REPO_ROOT)/../kition-table
 # Each kit's package (its own editor and its engine, Kit UI protocol), built into public/kits/<kit>-ui.
-KIT_UIS := photo film vector effect design cad slide word sheet pdf
+KIT_UIS := photo film vector effect design cad slide word sheet pdf table
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -31,7 +32,7 @@ E2E_PORT ?= 3123
 KIT_E2E := e2e/slide-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kdm-smoke.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
-SDK_KITS := film vector effect design cad slide word sheet pdf
+SDK_KITS := film vector effect design cad slide word sheet pdf table
 kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kit-$(1)
 SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
@@ -71,14 +72,14 @@ $(PHOTO_BINARY):
 
 kit-photo-binary: $(PHOTO_BINARY)
 
-# kit-film, kit-vector, kit-effect, kit-design, kit-cad, kit-slide, kit-word, kit-sheet, kit-pdf: the kit's own document over the Kit Protocol.
+# kit-film, kit-vector, kit-effect, kit-design, kit-cad, kit-slide, kit-word, kit-sheet, kit-pdf, kit-table: the kit's own document over the Kit Protocol.
 $(SDK_BINARIES):
 	@cd "$(abspath $(dir $@)/../..)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p $(notdir $@)
 
 kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
 
 kit-dev: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS))) $(PHOTO_BINARY) $(SDK_BINARIES)
-	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, and PDF: open a .psd, .kitionfilm, .kvector, .keffect, .kdesign, .dxf, .kitionslide, .pptx, .docx, .xlsx, or .pdf, or use the New menu."
+	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, PDF, and Table: open a .psd, .kitionfilm, .kvector, .keffect, .kdesign, .dxf, .kitionslide, .pptx, .docx, .xlsx, .pdf, or .ktable, or use the New menu."
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))

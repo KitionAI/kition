@@ -37,6 +37,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".dxf" => "cad",
         // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
         ".kitionslide" => "slide",
+        // Tables, edited in the Table kit.
+        ".ktable" => "table",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -97,6 +99,7 @@ pub fn is_supported(path: &str) -> bool {
             "kdesign",
             "dxf",
             "kitionslide",
+            "ktable",
             "mp4",
             "mov",
             "webm",
@@ -131,6 +134,9 @@ mod tests {
         assert!(is_supported("plans/Floor.dxf"));
         assert_eq!(infer_format("talks/Launch.kitionslide"), "slide");
         assert!(is_supported("talks/Launch.kitionslide"));
+        assert_eq!(infer_format("data/Tasks.ktable"), "table");
+        assert!(is_supported("data/Tasks.ktable"));
+        assert!(!is_text("data/Tasks.ktable"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");

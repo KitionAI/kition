@@ -78,6 +78,7 @@ const KIT_FILE_KINDS = [
   { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
   // PowerPoint files stay attachments whose text is extracted; only .kitionslide files are kit-only.
   { format: 'slide', extensions: /\.kitionslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
+  { format: 'table', extensions: /\.ktable$/i, prefix: 'table', kit: 'Table', one: 'a table file', many: 'table files', data: 'table data' },
 ] as const
 
 type KitFileKind = (typeof KIT_FILE_KINDS)[number]
@@ -442,7 +443,6 @@ export function buildAgentDocumentMentionPromptContext(input: {
       )
     } else if (
       input.activeDocumentFormat === 'data'
-      || input.activeDocumentFormat === 'table'
       || activeDocumentPath.toLowerCase().endsWith('.kitable')
     ) {
       lines.push(
@@ -463,7 +463,6 @@ export function buildAgentDocumentMentionPromptContext(input: {
   const referencedFolders = input.referencedDocuments.filter((document) => document.kind === 'folder')
   const structuredFiles = referencedFiles.filter(
     (document) => document.format === 'data'
-      || document.format === 'table'
       || document.path.toLowerCase().endsWith('.kitable'),
   )
   const kitFiles = referencedFiles.filter((document) => kitFileKind(document.format, document.path))

@@ -20,7 +20,7 @@ import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEm
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@kition/app-ui/utils'
-import { boardKitForDevelopment, documentKitForDevelopment, tableKitForDevelopment } from './kits/kitEditors'
+import { boardKitForDevelopment, documentKitForDevelopment } from './kits/kitEditors'
 import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
@@ -453,21 +453,14 @@ export function WorkspaceEditorContent({
                 className={cn('document-data-editor-stack__pane', isActiveDataTab && 'is-active')}
               >
                 <EditorPaneBoundary>
-                  {(() => {
-                    const nativeEditor = (
-                      <TableEditorPane
-                        documentPath={entry.document.path}
-                        markerContent={entry.document.content}
-                        agentOpen={tableAgentOpen}
-                        onOpenDocument={onOpenDocument}
-                        onAgentContextChange={onTableAgentContextChange}
-                        onAgentOpenChange={onTableAgentOpenChange}
-                      />
-                    )
-                    // Development only: the Table kit, for parity checks (`TABLE_KIT_DEV_FLAG`).
-                    const tableKit = tableKitForDevelopment(tab.path)
-                    return tableKit ? <KitFilePane kit={tableKit} path={tab.path} active={isActiveDataTab} preview={nativeEditor} /> : nativeEditor
-                  })()}
+                  <TableEditorPane
+                    documentPath={entry.document.path}
+                    markerContent={entry.document.content}
+                    agentOpen={tableAgentOpen}
+                    onOpenDocument={onOpenDocument}
+                    onAgentContextChange={onTableAgentContextChange}
+                    onAgentOpenChange={onTableAgentOpenChange}
+                  />
                 </EditorPaneBoundary>
               </div>
             )

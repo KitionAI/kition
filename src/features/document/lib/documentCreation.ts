@@ -23,7 +23,6 @@ export const documentCreateFormatOptions: Array<{
   description: string
 }> = [
   { value: 'markdown', label: 'Document', description: 'Save as .md and edit in a single pane' },
-  { value: 'table', label: 'Table', description: 'Create a .kitable and enter the native table editor' },
 ]
 
 export function getDocumentParentPath(path: string) {

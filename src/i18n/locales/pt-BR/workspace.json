@@ -758,6 +758,10 @@
     "unavailableTitle": "A edição de PDF não está disponível nesta versão",
     "unavailableBody": "Arquivos do PDF abrem no Kition quando o mecanismo PDF está incluído."
   },
+  "tableKit": {
+    "unavailableTitle": "A edição de Table não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Table abrem no Kition quando o mecanismo Table está incluído."
+  },
   "collab": {
     "share": "Compartilhar para coedição",
     "sharing": "Compartilhando…",

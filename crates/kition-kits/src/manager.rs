@@ -275,6 +275,27 @@ pub const KITS: &[KitDefinition] = &[
             command: "page_rotate",
         },
     },
+    // Edited in the page through its SDK; `kit-table` serves the agent and the host table client
+    // (workflows, form and email sync) for files no editor has open.
+    KitDefinition {
+        id: "kit.table",
+        name: "Table",
+        binary_env: "KITION_KIT_TABLE_BINARY",
+        extensions: &["ktable"],
+        creates: &[("ktable", "ktable")],
+        base_name: "Untitled table",
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "table",
+            noun: "table file",
+            formats: ".ktable",
+            reports: "its tables, fields, views, and record counts",
+            covers: "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `table.records.create` adds a record",
+            queries: "`records`, `fields`, or `views`",
+            command: "table.records.create",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

@@ -78,27 +78,9 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('slide', 'SlideDocument', { format: 'pptx', icon: 'slide', preview: true }),
   // US Letter, in points.
   kit('pdf', 'PdfDocument', { format: 'pdf', icon: 'pdf', preview: true, create: { id: 'pdf', extension: KIT_CREATE_EXTENSION.pdf, baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', group: 'documents' } }),
+  // Kition's host features (workflows, form and email sync) reach a table's records through the kit too.
+  kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
 ]
-
-/**
- * The Table kit (`kit.table`, `scripts/build-kit-ui.sh table`): Kition's own table engine and
- * editor packaged as a kit for other applications. It is not in `KIT_EDITORS`: Kition opens
- * `.kitable` files in its native table editor on the runtime. For parity checks, a development
- * build opens them in the kit instead when `localStorage['kition.dev.tableKit']` is `'1'`.
- */
-const TABLE_KIT = kit('table', 'TableDocument', { format: 'data', icon: 'table', preview: true })
-
-const TABLE_KIT_DEV_FLAG = 'kition.dev.tableKit'
-
-/** The Table kit, when this development build opens `path` in it (`TABLE_KIT_DEV_FLAG`). */
-export function tableKitForDevelopment(path: string): KitEditorEntry | null {
-  if (!import.meta.env.DEV || !/\.kitable$/i.test(path)) return null
-  try {
-    return window.localStorage.getItem(TABLE_KIT_DEV_FLAG) === '1' ? TABLE_KIT : null
-  } catch {
-    return null
-  }
-}
 
 /**
  * The Board kit (`kit.board`, `scripts/build-kit-ui.sh board`, packages/board-kit): Kition's own

@@ -758,6 +758,10 @@
     "unavailableTitle": "Редактирование PDF недоступно в этой сборке",
     "unavailableBody": "Файлы PDF открываются в Kition, когда в сборку включён движок PDF."
   },
+  "tableKit": {
+    "unavailableTitle": "Редактирование Table недоступно в этой сборке",
+    "unavailableBody": "Файлы Table открываются в Kition, когда в сборку включён движок Table."
+  },
   "collab": {
     "share": "Открыть для совместного редактирования",
     "sharing": "Открываем доступ…",
