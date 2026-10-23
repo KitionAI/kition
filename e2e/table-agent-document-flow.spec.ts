@@ -5,7 +5,7 @@ import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
-test('workspace chat can auto-open saved docs and target @{mentions} without a bound table', async ({ page, baseURL }) => {
+test('workspace chat can auto-open saved docs and target @{mentions}', async ({ page, baseURL }) => {
   test.setTimeout(90_000)
   expect(baseURL).toBeTruthy()
 
@@ -26,7 +26,6 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
       window.localStorage.removeItem('kition.document.recent.workspaces.v1')
       window.localStorage.removeItem('kition.document.last-active-path.v1')
       window.localStorage.removeItem('kition.document.workspace-tabs.v1')
-      window.localStorage.removeItem('kition.table-agent.safe-mode.v1')
     })
 
     await page.evaluate(async () => {
@@ -218,10 +217,11 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
 
     expect(requestBodies[0].body).toMatchObject({
       active_document_path: createdDocs.mentionPath,
-      active_data_document_id: 0,
-      active_data_table_id: 0,
       save_markdown: false,
     })
+    // The agent has no table tools, so a turn names no bound table.
+    expect(requestBodies[0].body).not.toHaveProperty('active_data_document_id')
+    expect(requestBodies[0].body).not.toHaveProperty('active_data_table_id')
 
     await composer.fill(`Use @{${createdDocs.mentionPath}} and summarize it`)
     await sendButton.click()
@@ -243,8 +243,6 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
 
     expect(requestBodies[1].body).toMatchObject({
       active_document_path: createdDocs.mentionPath,
-      active_data_document_id: 0,
-      active_data_table_id: 0,
       save_markdown: false,
     })
     expect(String(requestBodies[1].body.prompt_context || '')).toContain(createdDocs.mentionPath)
@@ -261,8 +259,6 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
     await expect(changedFilesCard.locator('.agent-changed-file').filter({ hasText: mentionTitle })).toBeVisible()
     expect(requestBodies[2].body).toMatchObject({
       active_document_path: createdDocs.mentionPath,
-      active_data_document_id: 0,
-      active_data_table_id: 0,
       runtime_model: {
         provider_type: 'openai',
         model_name: 'gpt-test',

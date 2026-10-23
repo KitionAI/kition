@@ -105,80 +105,6 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
     302: ['glm-4.5-air', 'doubao-1.5-pro'],
   }
 
-  const templatePlatforms = [
-    {
-      id: 'wechat',
-      name: 'WeChat Official Account',
-      categories: [
-        { id: 'article', name: 'Article' },
-        { id: 'newsletter', name: 'Newsletter' },
-      ],
-    },
-    {
-      id: 'douyin',
-      name: 'TikTok',
-      categories: [{ id: 'script', name: 'Short Video Script' }],
-    },
-  ]
-
-  const templates = [
-    {
-      id: 501,
-      name: 'Long-Form Publisher Article',
-      description: 'A structured article with a summary, introduction, sections, and closing action items.',
-      thumbnail: '',
-      platform: 'wechat',
-      category: 'article',
-      style: 'editorial',
-      styles: {},
-      format_rules: {},
-      ai_prompt: '',
-      content_structure: {},
-      is_system: true,
-      is_public: true,
-      use_count: 32,
-      created_at: '2026-04-10T00:00:00Z',
-      updated_at: '2026-04-20T00:00:00Z',
-    },
-    {
-      id: 502,
-      name: 'TikTok List Script',
-      description: 'A conclusion-first script with concise points and closing tags.',
-      thumbnail: '',
-      platform: 'douyin',
-      category: 'script',
-      style: 'lifestyle',
-      styles: {},
-      format_rules: {},
-      ai_prompt: '',
-      content_structure: {},
-      is_system: true,
-      is_public: true,
-      use_count: 18,
-      created_at: '2026-04-08T00:00:00Z',
-      updated_at: '2026-04-18T00:00:00Z',
-    },
-    {
-      id: 503,
-      name: 'Growth Retrospective',
-      description: 'A team retrospective organized around data, conclusions, and next actions.',
-      thumbnail: '',
-      platform: 'wechat',
-      category: 'article',
-      style: 'analysis',
-      styles: {},
-      format_rules: {},
-      ai_prompt: '',
-      content_structure: {},
-      is_system: false,
-      is_public: false,
-      user_id: 1,
-      use_count: 6,
-      created_at: '2026-04-15T00:00:00Z',
-      updated_at: '2026-04-19T00:00:00Z',
-    },
-  ]
-
   const modelUsageLogs = [
     {
       id: 901,
@@ -244,8 +170,6 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
 
   const agentSessions: any[] = []
   let nextAgentSessionId = 701
-  const dataImportJobs = new Map<string, any>()
-  let nextDataImportJobId = 1
 
   await page.route('**/health', async (route) => {
     await route.fulfill({
@@ -262,6 +186,11 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
     const url = new URL(request.url())
     const path = url.pathname
     const method = request.method()
+
+    // No table files unless a spec mocks them (helpers/kitTables.ts, registered after this).
+    if (method === 'GET' && path === '/api/v1/kit-tables') {
+      return fulfill(route, { code: 200, data: { files: [], unreadable: [] } })
+    }
 
     if (method === 'GET' && path === '/api/v1/auth/me') {
       return fulfill(route, {
@@ -385,74 +314,6 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
           },
         },
       })
-    }
-
-    if (method === 'POST' && path === '/api/v1/data-imports/preview') {
-      return fulfill(route, {
-        code: 200,
-        data: {
-          import_token: 'mock-import-token',
-          source: { kind: 'upload', upload_name: 'issues.csv' },
-          filename: 'issues.csv',
-          format: 'csv',
-          encoding: 'utf-8',
-          delimiter: ',',
-          row_count: 2,
-          field_count: 3,
-          fields: [
-            { index: 0, title: 'Owner', type: 'text', nullable: false, sample_values: ['alice', 'bob'] },
-            { index: 1, title: 'Status', type: 'single_select', nullable: false, options: { choices: ['Open', 'Done'] }, sample_values: ['Open', 'Done'] },
-            { index: 2, title: 'Hours', type: 'number', nullable: false, sample_values: [2.5, 1] },
-          ],
-          sample_rows: [['alice', 'Open', 2.5], ['bob', 'Done', 1]],
-          warnings: [],
-          sheets: [],
-        },
-      })
-    }
-
-    if (method === 'POST' && path === '/api/v1/data-imports') {
-      const id = `mock-import-${nextDataImportJobId++}`
-      const now = '2026-04-21T04:20:00Z'
-      const job = {
-        id,
-        status: 'completed',
-        stage: 'completed',
-        processed_rows: 2,
-        total_rows: 2,
-        result: {
-          document_id: 1,
-          table_id: 1,
-          rows_total: 2,
-          rows_created: 2,
-          rows_updated: 0,
-          rows_skipped: 0,
-          fields_created: 3,
-          fields_updated: 0,
-          warnings: [],
-        },
-        created_at: now,
-        updated_at: now,
-      }
-      dataImportJobs.set(id, job)
-      return fulfill(route, { code: 200, data: job })
-    }
-
-    const dataImportJobMatch = path.match(/^\/api\/v1\/data-imports\/([^/]+)$/)
-    if (dataImportJobMatch && method === 'GET') {
-      const job = dataImportJobs.get(decodeURIComponent(dataImportJobMatch[1]))
-      return fulfill(route, job
-        ? { code: 200, data: job }
-        : { code: 404, message: 'Import job not found' }, job ? 200 : 404)
-    }
-    if (dataImportJobMatch && method === 'DELETE') {
-      const id = decodeURIComponent(dataImportJobMatch[1])
-      const current = dataImportJobs.get(id)
-      const canceled = current ? { ...current, status: 'canceled', stage: 'canceled' } : null
-      if (canceled) dataImportJobs.set(id, canceled)
-      return fulfill(route, canceled
-        ? { code: 200, data: canceled }
-        : { code: 404, message: 'Import job not found' }, canceled ? 200 : 404)
     }
 
     if (method === 'GET' && path === '/api/v1/agent/sessions') {
@@ -579,94 +440,6 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
       return fulfill(route, {
         code: 200,
         data: created,
-      })
-    }
-
-    if (method === 'GET' && path === '/api/v1/templates/platforms') {
-      return fulfill(route, {
-        code: 200,
-        data: {
-          platforms: templatePlatforms,
-        },
-      })
-    }
-
-    if (method === 'GET' && path === '/api/v1/templates') {
-      const platform = url.searchParams.get('platform') || ''
-      const search = (url.searchParams.get('search') || '').trim().toLowerCase()
-      const isSystem = url.searchParams.get('is_system')
-      const filtered = templates.filter((item) => {
-        if (platform && item.platform !== platform) {
-          return false
-        }
-        if (isSystem === 'true' && !item.is_system) {
-          return false
-        }
-        if (isSystem === 'false' && item.is_system) {
-          return false
-        }
-        if (!search) {
-          return true
-        }
-        return `${item.name} ${item.description || ''} ${item.platform}`.toLowerCase().includes(search)
-      })
-
-      return fulfill(route, {
-        code: 200,
-        data: {
-          total: filtered.length,
-          items: filtered,
-        },
-      })
-    }
-
-    if (method === 'POST' && path === '/api/v1/templates') {
-      const created = {
-        id: Math.max(...templates.map((item) => item.id), 500) + 1,
-        name: 'New Custom Template',
-        description: 'A basic template created from the workspace.',
-        thumbnail: '',
-        platform: 'wechat',
-        category: 'article',
-        style: 'custom',
-        styles: {},
-        format_rules: {},
-        ai_prompt: '',
-        content_structure: {},
-        is_system: false,
-        is_public: false,
-        user_id: 1,
-        use_count: 0,
-        created_at: '2026-04-21T03:50:00Z',
-        updated_at: '2026-04-21T03:50:00Z',
-      }
-
-      templates.unshift(created)
-
-      return fulfill(route, {
-        code: 200,
-        data: created,
-      })
-    }
-
-    const templateUseMatch = path.match(/^\/api\/v1\/templates\/(\d+)\/use$/)
-    if (method === 'POST' && templateUseMatch) {
-      const templateId = Number(templateUseMatch[1] || 0)
-      const template = templates.find((item) => item.id === templateId)
-
-      if (!template) {
-        return fulfill(route, { detail: 'Template not found' }, 404)
-      }
-
-      template.use_count += 1
-      template.updated_at = '2026-04-21T03:55:00Z'
-
-      return fulfill(route, {
-        code: 200,
-        data: {
-          message: 'ok',
-          use_count: template.use_count,
-        },
       })
     }
 

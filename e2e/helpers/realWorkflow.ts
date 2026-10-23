@@ -11,7 +11,8 @@ function runtimeTokenHeader(): Record<string, string> {
 }
 
 export type RealWorkflowFixture = {
-  documentId: string
+  /** The fixture's `.ktable` file, by workspace path. */
+  documentPath: string
   tableId: string
   tableName: string
   fields: {
@@ -63,28 +64,29 @@ export async function resetRealBackend() {
 
 export async function createRealWorkflowFixture(): Promise<RealWorkflowFixture> {
   const stamp = Date.now().toString(36)
-  const doc = await apiFetch<JsonRecord>('/data-documents', {
+  const documentPath = `workflow-e2e-${stamp}.ktable`
+  await apiFetch<JsonRecord>('/kit-tables/files', {
+    method: 'POST',
+    body: JSON.stringify({ path: documentPath, title: `Starter ${stamp}` }),
+  })
+  const table = await apiFetch<JsonRecord>('/kit-tables/tables', {
     method: 'POST',
     body: JSON.stringify({
-      title: `Workflow E2E ${stamp}`,
-      path: `workflow-e2e-${stamp}.kitable`,
-      tables: [{
-        title: `Leads ${stamp}`,
-        name: `leads_${stamp}`,
-        fields: [
-          { title: 'First Name', name: 'first_name', type: 'text', primary: true, required: true },
-          { title: 'Email', name: 'email', type: 'text', required: true },
-          { title: 'Company', name: 'company', type: 'text' },
-        ],
-        views: [{ title: 'All', type: 'grid' }],
-      }],
+      path: documentPath,
+      title: `Leads ${stamp}`,
+      fields: [
+        { title: 'First Name', name: 'first_name', type: 'text', primary: true, required: true },
+        { title: 'Email', name: 'email', type: 'text', required: true },
+        { title: 'Company', name: 'company', type: 'text' },
+      ],
     }),
   })
-  const table = doc.tables?.[0]
-  if (!doc.id || !table?.id) {
-    throw new Error(`Failed to create real workflow data document: ${JSON.stringify(doc)}`)
+  if (!table?.id) {
+    throw new Error(`Failed to create the real workflow table: ${JSON.stringify(table)}`)
   }
-  const fieldsResponse = await apiFetch<{ items?: JsonRecord[] }>(`/data-documents/${doc.id}/tables/${table.id}/fields`)
+  const fieldsResponse = await apiFetch<{ items?: JsonRecord[] }>(
+    `/kit-tables/fields?${new URLSearchParams({ path: documentPath, tableId: String(table.id) })}`,
+  )
   const byName = new Map((fieldsResponse.items || []).map((field) => [String(field.name), String(field.id)]))
   const firstName = byName.get('first_name')
   const email = byName.get('email')
@@ -93,7 +95,7 @@ export async function createRealWorkflowFixture(): Promise<RealWorkflowFixture> 
     throw new Error(`Expected seeded fields first_name/email/company, got ${JSON.stringify(fieldsResponse.items || [])}`)
   }
   return {
-    documentId: String(doc.id),
+    documentPath,
     tableId: String(table.id),
     tableName: String(table.title || table.name),
     fields: { firstName, email, company },
@@ -102,9 +104,11 @@ export async function createRealWorkflowFixture(): Promise<RealWorkflowFixture> 
 }
 
 export async function createRealRecord(fixture: RealWorkflowFixture, values?: Record<string, unknown>) {
-  return apiFetch<JsonRecord>(`/data-documents/${fixture.documentId}/tables/${fixture.tableId}/records`, {
+  return apiFetch<JsonRecord>('/kit-tables/records', {
     method: 'POST',
     body: JSON.stringify({
+      path: fixture.documentPath,
+      tableId: fixture.tableId,
       values: {
         first_name: 'Bieber',
         email: 'bieber@example.com',
@@ -113,10 +117,6 @@ export async function createRealRecord(fixture: RealWorkflowFixture, values?: Re
       },
     }),
   })
-}
-
-export async function deleteRealDataDocument(documentId: string) {
-  return apiFetch<JsonRecord>(`/data-documents/${documentId}`, { method: 'DELETE' })
 }
 
 export async function fetchWorkflows() {
@@ -354,7 +354,7 @@ export async function openWorkflowDetailPage(page: Page, workflowId: string) {
  *  submit coverage lives in vitest (WorkflowRoute.spec.tsx).
  *
  *  Passing a `fixture` short-circuits the inline table picker by writing
- *  the (documentId, tableId, tableName) directly into history.state as a
+ *  the (documentPath, tableId, tableName) directly into history.state as a
  *  workflowContext — WorkflowRoute resolves that to mode 'build' which
  *  hands the tuple to WorkflowNewPage as fixed props. Without a fixture
  *  the route resolves to 'ai-no-context' and the picker is rendered
@@ -371,7 +371,7 @@ export async function openWorkflowAiNewPage(page: Page, fixture?: RealWorkflowFi
     window.history.pushState(state, '', '/workflow/new?mode=ai')
     window.dispatchEvent(new PopStateEvent('popstate', { state }))
   }, fixture ? {
-    documentId: fixture.documentId,
+    documentPath: fixture.documentPath,
     tableId: fixture.tableId,
     tableName: fixture.tableName,
   } : null)
@@ -382,7 +382,7 @@ export async function openWorkflowNewForFixture(page: Page, fixture: RealWorkflo
   await page.evaluate((context) => {
     window.history.pushState({ ...(window.history.state || {}), workflowContext: context }, '', '/workflow/new')
     window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }))
-  }, { documentId: fixture.documentId, tableId: fixture.tableId, tableName: fixture.tableName })
+  }, { documentPath: fixture.documentPath, tableId: fixture.tableId, tableName: fixture.tableName })
   await expect(page.getByTestId('workflow-new-page')).toBeVisible()
 }
 

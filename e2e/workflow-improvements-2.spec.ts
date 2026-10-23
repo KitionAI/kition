@@ -110,7 +110,7 @@ test('B1 inserting a filter then saving sends nodes/edges in PATCH body', async 
         description: '',
         enabled: false,
         schemaVer: 2,
-        trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentId: 'doc_1' },
+        trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentPath: 'crm/Leads.ktable' },
         action: { nodeId: 'action_1', type: 'send_email', to: 'team@example.com', subject: 'New Lead', body: { parts: [{ kind: 'text', text: 'Hi team' }] }, connectionId: 'conn_a' },
         nodes: (body as Record<string, unknown>).nodes,
         edges: (body as Record<string, unknown>).edges,

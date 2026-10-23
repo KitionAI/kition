@@ -5,7 +5,7 @@ const API_BASE = process.env.KITION_E2E_API_BASE_URL || 'http://127.0.0.1:18141/
 type Json = Record<string, any>
 type Scenario = {
   workflowId: string
-  documentId: string
+  documentPath: string
   tableId: string
   recordId: string
   expected: Record<string, unknown>
@@ -13,7 +13,7 @@ type Scenario = {
 
 type EmailScenario = {
   workflowId: string
-  documentId: string
+  documentPath: string
   tableId: string
   fieldIds: string[]
 }
@@ -34,14 +34,23 @@ function fieldId(table: Json, name: string) {
   return String(field.id)
 }
 
-async function createDocument(body: Json) {
-  return api<Json>('/data-documents', { method: 'POST', body: JSON.stringify(body) })
+/** Makes a `.ktable` file at `path` and adds `tables` to it through the Table kit. */
+async function createDocument(body: { path: string; tables: Array<{ title: string; fields: Json[] }> }) {
+  await api<Json>('/kit-tables/files', { method: 'POST', body: JSON.stringify({ path: body.path }) })
+  const tables: Json[] = []
+  for (const table of body.tables) {
+    tables.push(await api<Json>('/kit-tables/tables', {
+      method: 'POST',
+      body: JSON.stringify({ path: body.path, title: table.title, fields: table.fields }),
+    }))
+  }
+  return { path: body.path, tables }
 }
 
-async function createRecord(documentId: string, tableId: string, values: Json) {
-  return api<Json>(`/data-documents/${documentId}/tables/${tableId}/records`, {
+async function createRecord(path: string, tableId: string, values: Json) {
+  return api<Json>('/kit-tables/records', {
     method: 'POST',
-    body: JSON.stringify({ values }),
+    body: JSON.stringify({ path, tableId, values }),
   })
 }
 
@@ -52,10 +61,9 @@ async function createWorkflow(body: Json) {
 
 async function setupLeadEmail(): Promise<EmailScenario> {
   const doc = await createDocument({
-    title: 'Leads',
-    path: 'Getting Started/Guides/Lead Automation/Lead Follow-up.kitable',
+    path: 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable',
     tables: [{
-      title: 'Leads', name: 'leads',
+      title: 'Leads',
       fields: [
         { title: 'First Name', name: 'first_name', type: 'text', primary: true, required: true },
         { title: 'Last Name', name: 'last_name', type: 'text' },
@@ -66,7 +74,6 @@ async function setupLeadEmail(): Promise<EmailScenario> {
         { title: 'Reason for Contact', name: 'reason_for_contact', type: 'text' },
         { title: 'Additional Notes', name: 'additional_notes', type: 'long_text' },
       ],
-      views: [{ title: 'Leads', type: 'grid' }],
     }],
   })
   const table = doc.tables[0]
@@ -80,7 +87,7 @@ async function setupLeadEmail(): Promise<EmailScenario> {
     'additional_notes',
   ]
   const fieldIds = fieldNames.map((name) => fieldId(table, name))
-  await createRecord(String(doc.id), String(table.id), {
+  await createRecord(doc.path, String(table.id), {
     first_name: 'John',
     last_name: 'Doe',
     work_email: 'john.doe@example.com',
@@ -100,7 +107,7 @@ async function setupLeadEmail(): Promise<EmailScenario> {
     enabled: false,
     trigger: {
       type: 'record_created',
-      documentId: String(doc.id),
+      documentPath: doc.path,
       tableId: String(table.id),
     },
     action: {
@@ -123,7 +130,7 @@ async function setupLeadEmail(): Promise<EmailScenario> {
   })
   return {
     workflowId: String(workflow.id),
-    documentId: String(doc.id),
+    documentPath: doc.path,
     tableId: String(table.id),
     fieldIds,
   }
@@ -131,23 +138,22 @@ async function setupLeadEmail(): Promise<EmailScenario> {
 
 async function setupExpense(): Promise<Scenario> {
   const doc = await createDocument({
-    title: 'Expenses', path: `onboarding-expenses-${Date.now()}.kitable`,
+    path: `onboarding-expenses-${Date.now()}.ktable`,
     tables: [{
-      title: 'Expenses', name: 'expenses',
+      title: 'Expenses',
       fields: [
         { title: 'Item', name: 'item', type: 'text', primary: true, required: true },
         { title: 'Amount', name: 'amount', type: 'number', required: true },
         { title: 'Status', name: 'status', type: 'single_select', options: { choices: ['Draft', 'Needs review'] } },
         { title: 'Review Note', name: 'review_note', type: 'long_text' },
       ],
-      views: [{ title: 'All expenses', type: 'grid' }],
     }],
   })
   const table = doc.tables[0]
-  const record = await createRecord(String(doc.id), String(table.id), { item: 'Conference tickets', amount: 2400, status: 'Draft' })
+  const record = await createRecord(doc.path, String(table.id), { item: 'Conference tickets', amount: 2400, status: 'Draft' })
   const workflow = await createWorkflow({
     name: 'Flag high-value expenses for review', enabled: false,
-    trigger: { type: 'record_created_or_updated', documentId: String(doc.id), tableId: String(table.id), requiredFields: [fieldId(table, 'amount')] },
+    trigger: { type: 'record_created_or_updated', documentPath: doc.path, tableId: String(table.id), requiredFields: [fieldId(table, 'amount')] },
     action: {
       type: 'update_record', connectionId: '', to: '', subject: { parts: [] }, body: { parts: [] },
       updateRecord: { target: 'trigger_record', fields: [
@@ -165,47 +171,47 @@ async function setupExpense(): Promise<Scenario> {
     }),
   })
   return {
-    workflowId: String(workflow.id), documentId: String(doc.id), tableId: String(table.id), recordId: String(record.id),
+    workflowId: String(workflow.id), documentPath: doc.path, tableId: String(table.id), recordId: String(record.id),
     expected: { status: 'Needs review', review_note: 'Automatically flagged because the amount is above 1000' },
   }
 }
 
 async function setupOrders(): Promise<Scenario> {
   const doc = await createDocument({
-    title: 'Orders', path: `onboarding-orders-${Date.now()}.kitable`,
+    path: `onboarding-orders-${Date.now()}.ktable`,
     tables: [
       {
-        title: 'Orders', name: 'orders',
+        title: 'Orders',
         fields: [
           { title: 'Order', name: 'order', type: 'text', primary: true, required: true },
           { title: 'SKU', name: 'sku', type: 'text', required: true },
           { title: 'Product Name', name: 'product_name', type: 'text' },
           { title: 'Unit Price', name: 'unit_price', type: 'number' },
           { title: 'Category', name: 'category', type: 'text' },
-        ], views: [{ title: 'Orders', type: 'grid' }],
+        ],
       },
       {
-        title: 'Product Catalog', name: 'product_catalog',
+        title: 'Product Catalog',
         fields: [
           { title: 'SKU', name: 'sku', type: 'text', primary: true, required: true },
           { title: 'Product Name', name: 'product_name', type: 'text', required: true },
           { title: 'Unit Price', name: 'unit_price', type: 'number' },
           { title: 'Category', name: 'category', type: 'text' },
-        ], views: [{ title: 'Catalog', type: 'grid' }],
+        ],
       },
     ],
   })
   const orders = doc.tables[0]
   const catalog = doc.tables[1]
-  await createRecord(String(doc.id), String(catalog.id), { sku: 'KB-101', product_name: 'Kition Keyboard', unit_price: 129, category: 'Hardware' })
-  const order = await createRecord(String(doc.id), String(orders.id), { order: 'Order #1001', sku: 'KB-101' })
+  await createRecord(doc.path, String(catalog.id), { sku: 'KB-101', product_name: 'Kition Keyboard', unit_price: 129, category: 'Hardware' })
+  const order = await createRecord(doc.path, String(orders.id), { order: 'Order #1001', sku: 'KB-101' })
   const workflow = await createWorkflow({
     name: 'Fill orders from the product catalog', enabled: false,
-    trigger: { type: 'record_created_or_updated', documentId: String(doc.id), tableId: String(orders.id), requiredFields: [fieldId(orders, 'sku')] },
+    trigger: { type: 'record_created_or_updated', documentPath: doc.path, tableId: String(orders.id), requiredFields: [fieldId(orders, 'sku')] },
     action: {
       type: 'lookup_record', connectionId: '', to: '', subject: { parts: [] }, body: { parts: [] },
       lookupRecord: {
-        targetDocumentId: String(doc.id), targetTableId: String(catalog.id), matchFieldId: fieldId(catalog, 'sku'),
+        targetDocumentPath: doc.path, targetTableId: String(catalog.id), matchFieldId: fieldId(catalog, 'sku'),
         matchValue: { parts: [{ kind: 'field_ref', fieldRef: { nodeId: 'trigger_1', fieldId: fieldId(orders, 'sku') } }] },
         writeBack: [
           { sourceFieldId: fieldId(catalog, 'product_name'), targetFieldId: fieldId(orders, 'product_name') },
@@ -216,30 +222,30 @@ async function setupOrders(): Promise<Scenario> {
     },
   })
   return {
-    workflowId: String(workflow.id), documentId: String(doc.id), tableId: String(orders.id), recordId: String(order.id),
+    workflowId: String(workflow.id), documentPath: doc.path, tableId: String(orders.id), recordId: String(order.id),
     expected: { product_name: 'Kition Keyboard', unit_price: 129, category: 'Hardware' },
   }
 }
 
 async function setupContacts(): Promise<Scenario> {
   const doc = await createDocument({
-    title: 'Contacts', path: `onboarding-contacts-${Date.now()}.kitable`,
+    path: `onboarding-contacts-${Date.now()}.ktable`,
     tables: [{
-      title: 'Contacts', name: 'contacts',
+      title: 'Contacts',
       fields: [
         { title: 'Name', name: 'name', type: 'text', primary: true, required: true },
         { title: 'Email', name: 'email', type: 'text', required: true },
         { title: 'Phone', name: 'phone', type: 'text', required: true },
         { title: 'Email Domain', name: 'email_domain', type: 'text' },
         { title: 'Normalized Phone', name: 'normalized_phone', type: 'text' },
-      ], views: [{ title: 'Contacts', type: 'grid' }],
+      ],
     }],
   })
   const table = doc.tables[0]
-  const record = await createRecord(String(doc.id), String(table.id), { name: 'Alex', email: 'Alex@Example.COM', phone: '+86 138-0013-8000' })
+  const record = await createRecord(doc.path, String(table.id), { name: 'Alex', email: 'Alex@Example.COM', phone: '+86 138-0013-8000' })
   const workflow = await createWorkflow({
     name: 'Normalize contact details', enabled: false,
-    trigger: { type: 'record_created_or_updated', documentId: String(doc.id), tableId: String(table.id), requiredFields: [fieldId(table, 'email'), fieldId(table, 'phone')] },
+    trigger: { type: 'record_created_or_updated', documentPath: doc.path, tableId: String(table.id), requiredFields: [fieldId(table, 'email'), fieldId(table, 'phone')] },
     action: {
       type: 'transform_record', connectionId: '', to: '', subject: { parts: [] }, body: { parts: [] },
       transformRecord: { operations: [
@@ -249,7 +255,7 @@ async function setupContacts(): Promise<Scenario> {
     },
   })
   return {
-    workflowId: String(workflow.id), documentId: String(doc.id), tableId: String(table.id), recordId: String(record.id),
+    workflowId: String(workflow.id), documentPath: doc.path, tableId: String(table.id), recordId: String(record.id),
     expected: { email_domain: 'example.com', normalized_phone: '8613800138000' },
   }
 }
@@ -264,7 +270,7 @@ async function runFromExistingRow(page: Page, scenario: Scenario) {
   await page.locator(`[data-testid="workflow-home-sample-row-option"][data-record-id="${scenario.recordId}"]`).click()
   await expect(page.getByTestId('workflow-record-action-test-status')).toBeVisible({ timeout: 20_000 })
   await expect.poll(async () => {
-    const result = await api<{ items: Json[] }>(`/data-documents/${scenario.documentId}/tables/${scenario.tableId}/records`)
+    const result = await api<{ items: Json[] }>(`/kit-tables/records?${new URLSearchParams({ path: scenario.documentPath, tableId: scenario.tableId })}`)
     const record = result.items.find((item) => String(item.id) === scenario.recordId)
     return Object.entries(scenario.expected).every(([key, value]) => record?.values?.[key] === value)
   }, { timeout: 20_000 }).toBe(true)
@@ -290,7 +296,7 @@ test.describe.serial('real onboarding workflow actions', () => {
     expect(workflow.enabled).toBe(false)
     expect(workflow.trigger).toEqual(expect.objectContaining({
       type: 'record_created',
-      documentId: case3.documentId,
+      documentPath: case3.documentPath,
       tableId: case3.tableId,
     }))
     expect(workflow.action).toEqual(expect.objectContaining({

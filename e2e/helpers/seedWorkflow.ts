@@ -1,5 +1,10 @@
 import type { Page, Route } from '@playwright/test'
 
+import { kitTableFile, mockKitTables } from './kitTables'
+
+/** The table file every seeded workflow triggers on. */
+export const SEED_TABLE_PATH = 'crm/Leads.ktable'
+
 /**
  * SeedWorkflowOptions configures the workflow seeding fixtures used
  * across the e2e suites for the P0/P1 workflow improvements. Each spec
@@ -14,7 +19,7 @@ export type SeedWorkflowOptions = {
     nodeId?: string
     type?: 'record_created' | 'record_updated' | 'record_created_or_updated'
     tableId?: string
-    documentId?: string
+    documentPath?: string
   }
   action?: {
     nodeId?: string
@@ -44,7 +49,7 @@ export async function seedWorkflow(page: Page, options: SeedWorkflowOptions = {}
       nodeId: triggerNodeId,
       type: options.trigger?.type ?? 'record_created',
       tableId: options.trigger?.tableId ?? 'tbl_leads',
-      documentId: options.trigger?.documentId ?? 'doc_1',
+      documentPath: options.trigger?.documentPath ?? SEED_TABLE_PATH,
     },
     action: {
       nodeId: actionNodeId,
@@ -121,16 +126,13 @@ export async function seedWorkflow(page: Page, options: SeedWorkflowOptions = {}
       }] }),
     }),
   )
-  await page.route('**/v1/data-documents/*/tables/*/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
+  await mockKitTables(page, [kitTableFile(SEED_TABLE_PATH, [{
+    id: 'tbl_leads',
+    title: 'Leads',
+    fields: [
       { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
       { id: 'fld_country', name: 'country', title: 'Country', type: 'text' },
       { id: 'fld_email', name: 'email', title: 'Email', type: 'email' },
-    ], total: 3 } }) }),
-  )
-  await page.route('**/v1/data-documents', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [{ id: 'doc_1', title: 'Leads workspace', tables: [{ id: 'tbl_leads', title: 'Leads', name: 'leads' }] }] }),
-    }),
-  )
+    ],
+  }])])
 }

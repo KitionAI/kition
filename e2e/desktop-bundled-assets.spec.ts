@@ -8,10 +8,10 @@ import { installDesktopHost } from './helpers/desktopHost'
 const EXPECTED_FIRST_RUN_FILES = [
   'Getting Started/Welcome to Kition.md',
   'Getting Started/logo.png',
-  'Getting Started/Projects & Planning/Task Tracker.kitable',
-  'Getting Started/AI & Creative/Receipt OCR Table.kitable',
-  'Getting Started/Operations & Analytics/Email Inbox Sync.kitable',
-  'Getting Started/Sales & Customer/Simple Client CRM.kitable',
+  'Getting Started/Projects & Planning/Task Tracker.ktable',
+  'Getting Started/AI & Creative/Receipt OCR Table.ktable',
+  'Getting Started/Operations & Analytics/Email Inbox Sync.ktable',
+  'Getting Started/Sales & Customer/Simple Client CRM.ktable',
 ]
 
 test('the desktop renderer loads onboarding and brand assets from its own origin', async ({ page, baseURL }) => {

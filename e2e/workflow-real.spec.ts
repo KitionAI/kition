@@ -6,7 +6,6 @@ import {
   createRealWorkflowFixture,
   createRealEmailConnectionFromSettings,
   createRealRecord,
-  deleteRealDataDocument,
   fetchWorkflow,
   fetchWorkflows,
   fetchConnections,
@@ -240,11 +239,12 @@ test.describe.serial('workflow real no-mock e2e', () => {
     await sendRealTestEmail(workflowId)
   })
 
-  test('keeps Run test useful when the source data document is unavailable', async ({ page }) => {
+  test('keeps Run test useful when the source table file is unavailable', async ({ page }) => {
     test.setTimeout(60_000)
     test.skip(!workflowId, 'build test must create a real workflow first')
 
-    await deleteRealDataDocument(fixture.documentId)
+    // Point the trigger at a table file that does not exist.
+    await patchRealWorkflow(workflowId, { trigger: { documentPath: `missing-${fixture.documentPath}`, tableId: fixture.tableId } })
     await openWorkflowDetailPage(page, workflowId)
     // Body editor renders the fallback (raw field id chips) instead of
     // crashing on the missing schema.
@@ -254,7 +254,7 @@ test.describe.serial('workflow real no-mock e2e', () => {
     await page.getByTestId('workflow-home-run-test').click()
     await expect(page.getByTestId('workflow-home-run-test-status')).toContainText('Test email delivered', { timeout: 30_000 })
     await expect(page.getByTestId('workflow-home-run-test-body')).not.toContainText('{{')
-    await expect(page.getByText('Failed to open data document')).toHaveCount(0)
+    await expect(page.getByText(/Failed to open/)).toHaveCount(0)
   })
 
   test('requires delete confirmation and clears selection after delete', async ({ page }) => {

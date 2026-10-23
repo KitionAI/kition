@@ -1,6 +1,7 @@
 import { expect, test, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { kitTableFile, mockKitTables } from './helpers/kitTables'
 import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
 
 /**
@@ -41,7 +42,7 @@ async function seedAddRecordWorkflow(page: import('@playwright/test').Page, opti
       nodeId: 'trigger_1',
       type: 'record_created',
       tableId: triggerTableId,
-      documentId: 'doc_1',
+      documentPath: 'crm/Leads.ktable',
     },
     action: {
       nodeId: 'action_1',
@@ -52,7 +53,7 @@ async function seedAddRecordWorkflow(page: import('@playwright/test').Page, opti
       body: { parts: [] },
       addRecord: {
         targetTableId,
-        targetDocumentId: 'doc_1',
+        targetDocumentPath: 'crm/Leads.ktable',
         fields: [
           { fieldId: 'fld_priority', value: { parts: [{ kind: 'text', text: 'high' }] } },
         ],
@@ -108,23 +109,17 @@ async function seedAddRecordWorkflow(page: import('@playwright/test').Page, opti
   // The trigger table and the add_record's target table share this schema mock;
   // it returns the same field list either way. That's fine for the loop-warning
   // test — the warning fires on the table-ID match, not the schema content.
-  await page.route('**/v1/data-documents/*/tables/*/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
-      { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
-      { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
-    ], total: 2 } }) }),
-  )
-  await page.route('**/v1/data-documents', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [{
-        id: 'doc_1', title: 'Leads workspace',
-        tables: [
-          { id: 'tbl_leads', title: 'Leads', name: 'leads' },
-          { id: 'tbl_followups', title: 'Followups', name: 'followups' },
-        ],
-      }] }),
-    }),
-  )
+  // The trigger table and the add_record's target table share one field list.
+  // That's fine for the loop-warning test: the warning fires on the table-ID
+  // match, not the schema content.
+  const fields = [
+    { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
+    { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
+  ]
+  await mockKitTables(page, [kitTableFile('crm/Leads.ktable', [
+    { id: 'tbl_leads', title: 'Leads', fields },
+    { id: 'tbl_followups', title: 'Followups', fields },
+  ])])
 }
 
 test('T2.1 same-table add_record renders amber loop warning on the action panel', async ({ page }) => {

@@ -3,8 +3,8 @@ import { test } from '@playwright/test'
 // Phase J — Task 35 follow-up
 //
 // The plan called for three Playwright specs covering:
-//   1. full-text search happy path (notes + Kitable)
-//   2. operator coverage (file:/kitable:/field:/task-todo:/regex:)
+//   1. full-text search happy path (notes + table files)
+//   2. operator coverage (file:/table:/field:/task-todo:/regex:)
 //   3. vault switch isolation
 //
 // Implementing them required infrastructure that does NOT yet exist:

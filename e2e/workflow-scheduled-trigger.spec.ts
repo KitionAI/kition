@@ -1,6 +1,7 @@
 import { expect, test, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { mockKitTables } from './helpers/kitTables'
 import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
 
 /**
@@ -32,7 +33,7 @@ async function seedScheduledWorkflow(page: import('@playwright/test').Page) {
       nodeId: 'trigger_1',
       type: 'scheduled_time',
       tableId: '',
-      documentId: '',
+      documentPath: '',
       schedule: { cron: '0 9 * * *', timezone: 'UTC' },
     },
     action: {
@@ -108,10 +109,7 @@ async function seedScheduledWorkflow(page: import('@playwright/test').Page) {
       }] }),
     }),
   )
-  await page.route('**/v1/data-documents', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [] }) }),
-  )
+  await mockKitTables(page, [])
 }
 
 test('T1.1 frequency picker and time-of-day rewrite the cron string preview', async ({ page }) => {

@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { kitTableFile, mockKitTables } from './helpers/kitTables'
 
 const VAULT_PATH = '/tmp/kition-workflow-e2e-vault'
 
@@ -91,21 +92,11 @@ async function mockWorkflowBuild(page: Page) {
 }
 
 async function mockSchema(page: Page) {
-  // Backend's documentId-scoped fields endpoint, wrapped in the standard
-  // {code, message, data: {items, total}} envelope from core.Response.
-  await page.route('**/v1/data-documents/*/tables/*/fields', (route) => {
-    route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify({
-        code: 0,
-        message: '',
-        data: {
-          items: [{ id: 'fld_first', name: 'first_name', title: 'First Name', type: 'text' }],
-          total: 1,
-        },
-      }),
-    })
-  })
+  const fields = [{ id: 'fld_first', name: 'first_name', title: 'First Name', type: 'text' }]
+  await mockKitTables(page, [kitTableFile('crm/Leads.ktable', [
+    { id: 'tbl_leads', title: 'Leads', fields },
+    { id: '7', title: 'Leads', fields },
+  ])])
 }
 
 /**
@@ -124,7 +115,7 @@ async function mockWorkflowsHomeReads(page: Page) {
           name: 'Form Submission Email Notification to Sales',
           description: 'd',
           enabled: false,
-          trigger: { nodeId: 'n1', type: 'record_created', tableId: 'tbl_leads', documentId: '1' },
+          trigger: { nodeId: 'n1', type: 'record_created', tableId: 'tbl_leads', documentPath: 'crm/Leads.ktable' },
           action: {
             nodeId: 'n2',
             type: 'send_email',
@@ -158,7 +149,7 @@ async function mockWorkflowsHomeReads(page: Page) {
 
 /**
  * Shell.tsx only mounts WorkflowRoute when history.state carries an
- * workflowContext (documentId + tableId + tableName). In production the
+ * workflowContext (documentPath + tableId + tableName). In production the
  * WorkspaceScreen Automate topbar button pushes this state before navigating;
  * in tests we inject it directly.
  */
@@ -166,7 +157,7 @@ async function gotoWorkflowNew(page: Page) {
   await page.addInitScript(() => {
     if (window.location.pathname.startsWith('/workflow')) {
       window.history.replaceState(
-        { workflowContext: { documentId: '1', tableId: '7', tableName: 'Leads' } },
+        { workflowContext: { documentPath: 'crm/Leads.ktable', tableId: '7', tableName: 'Leads' } },
         '',
         window.location.pathname,
       )

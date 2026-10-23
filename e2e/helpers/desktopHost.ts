@@ -46,14 +46,14 @@ export type DesktopHost = {
   dispose: () => Promise<void>
 }
 
-const editable = /\.(md|markdown|kitable|kiboard|kidesign)$/i
+const editable = /\.(md|markdown|kiboard|kidesign)$/i
 const textual = /\.(md|markdown|kiboard|kidesign|txt|csv|tsv|json|html|htm)$/i
-const supported = /\.(md|markdown|kitable|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kitionfilm|kvector|keffect|kdesign|dxf|kitionslide|mp4|mov|webm|mp3|wav|m4a)$/i
+const supported = /\.(md|markdown|ktable|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kitionfilm|kvector|keffect|kdesign|dxf|kitionslide|mp4|mov|webm|mp3|wav|m4a)$/i
 
 function formatOf(file: string) {
   const extension = path.extname(file).toLowerCase()
   const formats: Record<string, string> = {
-    '.kitable': 'data', '.kidesign': 'design', '.kiboard': 'board', '.md': 'markdown', '.markdown': 'markdown',
+    '.ktable': 'table', '.kidesign': 'design', '.kiboard': 'board', '.md': 'markdown', '.markdown': 'markdown',
     '.docx': 'docx', '.xlsx': 'xlsx', '.xls': 'xlsx', '.pptx': 'pptx', '.ppt': 'pptx', '.pdf': 'pdf',
     '.csv': 'csv', '.tsv': 'csv', '.json': 'json', '.txt': 'text', '.html': 'html', '.htm': 'html',
     '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image', '.webp': 'image', '.svg': 'image',
@@ -354,7 +354,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     read_workspace_document: async ({ request }) => {
       checkRoot(request || {})
       const { relative, absolute } = resolve(request?.path)
-      if (!textual.test(relative) && formatOf(relative) !== 'data') throw new Error('this workspace file is not text-editable')
+      if (!textual.test(relative)) throw new Error('this workspace file is not text-editable')
       return documentResponse(relative, absolute)
     },
     stat_workspace_document: async ({ request }) => {
@@ -491,10 +491,8 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       const folder = normalize(request?.folder, true)
       const folderPath = resolve(folder, true).absolute
       await fs.mkdir(folderPath, { recursive: true })
-      const format = request?.format === 'data' ? 'data' : 'markdown'
-      const extension = format === 'data' ? '.kitable' : '.md'
-      const base = sanitize(String(request?.title || ''), format === 'data' ? 'Untitled table' : 'Untitled note').replace(/\.(md|kitable)$/i, '')
-      const name = await uniqueName(folderPath, `${base}${extension}`, true)
+      const base = sanitize(String(request?.title || ''), 'Untitled note').replace(/\.md$/i, '')
+      const name = await uniqueName(folderPath, `${base}.md`, true)
       const absolute = path.join(folderPath, name)
       await fs.writeFile(absolute, '')
       return documentResponse(join(folder, name), absolute)

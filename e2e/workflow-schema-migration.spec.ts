@@ -1,6 +1,7 @@
 import { expect, test, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { kitTableFile, mockKitTables } from './helpers/kitTables'
 import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
 
 test.beforeEach(async ({ page }) => {
@@ -26,7 +27,7 @@ async function seedLegacyWorkflow(page: import('@playwright/test').Page, options
       // Deliberately no nodeId — normaliseGraph defaults to 'trigger_1'.
       type: 'record_created',
       tableId: 'tbl_leads',
-      documentId: 'doc_1',
+      documentPath: 'crm/Leads.ktable',
     },
     action: {
       // Same — no nodeId on the wire.
@@ -70,16 +71,9 @@ async function seedLegacyWorkflow(page: import('@playwright/test').Page, options
       }] }),
     }),
   )
-  await page.route('**/v1/data-documents/*/tables/*/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
-      { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
-    ], total: 1 } }) }),
-  )
-  await page.route('**/v1/data-documents', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [{ id: 'doc_1', title: 'Leads', tables: [{ id: 'tbl_leads', title: 'Leads', name: 'leads' }] }] }),
-    }),
-  )
+  await mockKitTables(page, [kitTableFile('crm/Leads.ktable', [{ id: 'tbl_leads', title: 'Leads', fields: [
+    { id: 'fld_name', name: 'name', title: 'Name', type: 'text' },
+  ] }])])
 }
 
 test('T6.1 v0 workflow renders trigger + action on the canvas with no nodes[] payload', async ({ page }) => {
@@ -124,7 +118,7 @@ test('T6.4 explicit schemaVer=0 with empty nodes[]/edges[] still renders cleanly
       description: '',
       enabled: false,
       schemaVer: 0,
-      trigger: { type: 'record_created', tableId: 'tbl_leads', documentId: 'doc_1' },
+      trigger: { type: 'record_created', tableId: 'tbl_leads', documentPath: 'crm/Leads.ktable' },
       action: { type: 'send_email', to: 'x@example.com', subject: 's', body: { parts: [] } },
       nodes: [],
       edges: [],

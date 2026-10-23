@@ -90,7 +90,6 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
       window.localStorage.removeItem('kition.document.recent.workspaces.v1')
       window.localStorage.removeItem('kition.document.last-active-path.v1')
       window.localStorage.removeItem('kition.document.workspace-tabs.v1')
-      window.localStorage.removeItem('kition.table-agent.safe-mode.v1')
     })
     await configureMockAgent(page)
 
@@ -175,8 +174,6 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
     expect(requestBody()).toBeDefined()
     expect(requestBody()).toMatchObject({
       active_document_path: fixture.documentPath,
-      active_data_document_id: 0,
-      active_data_table_id: 0,
     })
     const promptContext = String(requestBody()?.prompt_context || '')
     expect(promptContext).toContain('Preferred safe image insertion: line 6')

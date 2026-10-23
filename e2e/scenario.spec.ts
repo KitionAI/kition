@@ -86,7 +86,7 @@ const FAKE_PNG = Buffer.from([
  */
 function buildHappyPathSseBody(): string {
   const events = [
-    { kind: 'base.created', baseId: 'b1', baseName: 'Test Base' },
+    { kind: 'base.created', path: 'Test Base.ktable', baseName: 'Test Base' },
     { kind: 'table.created', tableId: 't1', tableName: 'Receipts' },
     { kind: 'fields.generated', stage: 'fields', count: 2 },
     { kind: 'fields.generated', stage: 'ai-fields', count: 3 },
@@ -109,128 +109,6 @@ async function mockScenarioBuildSse(page: Page, sseBody: string) {
       body: sseBody,
     })
   })
-}
-
-/**
- * The /scenario build page mounts TableEditor once `base.created` +
- * `table.created` land, and TableEditor reaches out to /api/v1/data-documents
- * to resolve the marker. Tests only care about the build view layout flipping —
- * we just need the request to not 500 and not hang. Return a minimal but valid
- * document payload so the editor doesn't bail loudly. Route is registered
- * before the test that needs it so the table mount doesn't blow up the suite.
- */
-async function mockMinimalDataDocumentApi(page: Page) {
-  await page.route('**/api/v1/data-documents/**', async (route: Route) => {
-    const request = route.request()
-    const url = new URL(request.url())
-    const path = url.pathname
-    const method = request.method()
-
-    // POST /data-documents/open — resolve the marker payload to a document
-    if (method === 'POST' && path === '/api/v1/data-documents/open') {
-      return route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 200,
-          data: minimalDocumentFixture(),
-        }),
-      })
-    }
-    // GET /data-documents/1 — full document
-    if (method === 'GET' && /^\/api\/v1\/data-documents\/\d+$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 200,
-          data: minimalDocumentFixture(),
-        }),
-      })
-    }
-    // GET /data-documents/1/tables/11/records — empty rows are fine
-    if (method === 'GET' && /\/tables\/\d+\/records$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 200,
-          data: { items: [], total: 0, offset: 0, limit: 200 },
-        }),
-      })
-    }
-    // Catch-all empty success for PATCH view / etc.
-    return route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: 200, data: {} }),
-    })
-  })
-}
-
-function minimalDocumentFixture() {
-  return {
-    id: 1,
-    user_id: 1,
-    workspace_root: '/tmp/kition-scenario-vault',
-    path: 'scenario:1',
-    title: 'Test Base',
-    description: '',
-    icon: '',
-    color: '',
-    meta: null,
-    created_at: '2026-06-01T00:00:00.000Z',
-    updated_at: '2026-06-01T00:00:00.000Z',
-    tables: [
-      {
-        id: 11,
-        user_id: 1,
-        document_id: 1,
-        name: 'receipts',
-        title: 'Receipts',
-        description: '',
-        order: 0,
-        primary_field_id: 101,
-        meta: null,
-        fields: [
-          {
-            id: 101,
-            user_id: 1,
-            document_id: 1,
-            table_id: 11,
-            name: 'title',
-            title: 'Title',
-            type: 'text',
-            required: false,
-            unique: false,
-            readonly: false,
-            is_primary: true,
-            order: 0,
-            options: null,
-            created_at: '2026-06-01T00:00:00.000Z',
-            updated_at: '2026-06-01T00:00:00.000Z',
-          },
-        ],
-        views: [
-          {
-            id: 201,
-            user_id: 1,
-            document_id: 1,
-            table_id: 11,
-            title: 'Grid view',
-            type: 'grid',
-            order: 0,
-            locked: false,
-            config: {},
-            created_at: '2026-06-01T00:00:00.000Z',
-            updated_at: '2026-06-01T00:00:00.000Z',
-          },
-        ],
-        created_at: '2026-06-01T00:00:00.000Z',
-        updated_at: '2026-06-01T00:00:00.000Z',
-      },
-    ],
-  }
 }
 
 test.describe('scenario — talk-to-process-files happy path', () => {
@@ -284,7 +162,6 @@ test.describe('scenario — talk-to-process-files happy path', () => {
     page,
   }) => {
     await mockScenarioBuildSse(page, buildHappyPathSseBody())
-    await mockMinimalDataDocumentApi(page)
 
     await page.goto('/scenario')
     await expect(page.getByTestId('scenario-heading')).toBeVisible()
@@ -304,6 +181,8 @@ test.describe('scenario — talk-to-process-files happy path', () => {
     })
     await expect(page.getByTestId('scenario-heading')).toHaveCount(0)
     await expect(page.getByTestId('right-drawer')).toBeVisible()
+    // The new table file opens in the Table kit once its first table exists.
+    await expect(page.getByTestId('scenario-build-table')).toBeVisible()
 
     // All 4 progress rows reached "done" — terminal state for the build.
     for (const index of [0, 1, 2, 3]) {
@@ -322,7 +201,6 @@ test.describe('scenario — talk-to-process-files happy path', () => {
     page,
   }) => {
     await mockScenarioBuildSse(page, buildHappyPathSseBody())
-    await mockMinimalDataDocumentApi(page)
 
     await page.goto('/scenario')
 
@@ -353,7 +231,6 @@ test.describe('scenario — talk-to-process-files happy path', () => {
     page,
   }) => {
     await mockScenarioBuildSse(page, buildHappyPathSseBody())
-    await mockMinimalDataDocumentApi(page)
 
     await page.goto('/scenario')
 

@@ -1,6 +1,7 @@
 import { expect, test, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { kitTableFile, mockKitTables } from './helpers/kitTables'
 import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
 
 /**
@@ -42,7 +43,7 @@ async function seedDanglingRefWorkflow(page: import('@playwright/test').Page, op
       nodeId: 'trigger_1',
       type: 'record_created',
       tableId: 'tbl_leads',
-      documentId: 'doc_1',
+      documentPath: 'crm/Leads.ktable',
     },
     action: {
       nodeId: 'action_1',
@@ -92,25 +93,22 @@ async function seedDanglingRefWorkflow(page: import('@playwright/test').Page, op
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ issues: [] }) })
   )
 
-  // Per-table schemas. The pattern matcher captures the tableId out of the
-  // URL so we can return shape-appropriate fields.
-  await page.route('**/v1/data-documents/doc_1/tables/tbl_leads/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
+  // Per-table schemas; the table list drives the trigger-table picker's options.
+  await mockKitTables(page, [kitTableFile('crm/Leads.ktable', [
+    { id: 'tbl_leads', title: 'Leads', fields: [
       { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
       { id: 'fld_country', name: 'country', title: 'Country', type: 'text' },
-    ], total: 2 } }) }),
-  )
-  await page.route('**/v1/data-documents/doc_1/tables/tbl_followups/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: options.nextTableHasReferencedField ? [
+    ] },
+    { id: 'tbl_followups', title: 'Followups', fields: options.nextTableHasReferencedField ? [
       // Echo fld_priority back when the test wants a clean swap path.
       { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
       { id: 'fld_followup_date', name: 'followup_date', title: 'Followup date', type: 'date' },
     ] : [
-      // Default: no fld_priority → swap is dangling and the dialog should fire.
+      // Default: no fld_priority, so the swap is dangling and the dialog should fire.
       { id: 'fld_followup_date', name: 'followup_date', title: 'Followup date', type: 'date' },
       { id: 'fld_owner', name: 'owner', title: 'Owner', type: 'text' },
-    ], total: 2 } }) }),
-  )
+    ] },
+  ])])
 
   await page.route('**/v1/channels', (route: Route) =>
     route.fulfill({ status: 200, contentType: 'application/json',
@@ -124,19 +122,6 @@ async function seedDanglingRefWorkflow(page: import('@playwright/test').Page, op
         settings: { host: 'smtp.example.com', port: 587, username: 'u', tlsMode: 'starttls', from: 'noreply@example.com', fromName: '' },
         status: 'active', lastErrorMessage: '', usedByCount: 1,
         createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      }] }),
-    }),
-  )
-  // Document list — drives the trigger-table picker's options.
-  // The labels hook scopes the request with ?workspace_root=, so match the query too.
-  await page.route(/\/v1\/data-documents(?:\?.*)?$/, (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [{
-        id: 'doc_1', title: 'Leads workspace',
-        tables: [
-          { id: 'tbl_leads', title: 'Leads', name: 'leads' },
-          { id: 'tbl_followups', title: 'Followups', name: 'followups' },
-        ],
       }] }),
     }),
   )

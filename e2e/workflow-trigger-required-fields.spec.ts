@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { kitTableFile, mockKitTables } from './helpers/kitTables'
 import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
 
 /**
@@ -19,7 +20,7 @@ import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
  * — this file only asserts the required-fields side.
  */
 
-async function seedStaleRequiredFieldsWorkflow(page: Page) {
+async function seedStaleRequiredFieldsWorkflow(page: Page, options: { followupsKeepPriority?: boolean } = {}) {
   // tbl_leads has fld_priority, fld_country. The workflow's trigger
   // requiredFields lists fld_priority + two STALE IDs that don't exist
   // anywhere. After switching to tbl_followups (which has different
@@ -36,7 +37,7 @@ async function seedStaleRequiredFieldsWorkflow(page: Page) {
       nodeId: 'trigger_1',
       type: 'record_created',
       tableId: 'tbl_leads',
-      documentId: 'doc_1',
+      documentPath: 'crm/Leads.ktable',
       requiredFields: ['fld_priority', 'fld_legacy_ghost_a', 'fld_legacy_ghost_b'],
     },
     action: {
@@ -84,18 +85,19 @@ async function seedStaleRequiredFieldsWorkflow(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ issues: [] }) }),
   )
 
-  await page.route('**/v1/data-documents/doc_1/tables/tbl_leads/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
+  await mockKitTables(page, [kitTableFile('crm/Leads.ktable', [
+    { id: 'tbl_leads', title: 'Leads', fields: [
       { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
       { id: 'fld_country', name: 'country', title: 'Country', type: 'text' },
-    ], total: 2 } }) }),
-  )
-  await page.route('**/v1/data-documents/doc_1/tables/tbl_followups/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
+    ] },
+    { id: 'tbl_followups', title: 'Followups', fields: options.followupsKeepPriority ? [
+      { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
+      { id: 'fld_followup_date', name: 'followup_date', title: 'Followup date', type: 'date' },
+    ] : [
       { id: 'fld_followup_date', name: 'followup_date', title: 'Followup date', type: 'date' },
       { id: 'fld_owner', name: 'owner', title: 'Owner', type: 'text' },
-    ], total: 2 } }) }),
-  )
+    ] },
+  ])])
   await page.route('**/v1/channels', (route: Route) =>
     route.fulfill({
       status: 200, contentType: 'application/json',
@@ -110,19 +112,6 @@ async function seedStaleRequiredFieldsWorkflow(page: Page) {
         settings: { host: 'smtp.example.com', port: 587, username: 'u', tlsMode: 'starttls', from: 'noreply@example.com', fromName: '' },
         status: 'active', lastErrorMessage: '', usedByCount: 1,
         createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      }] }),
-    }),
-  )
-  // The labels hook scopes the request with ?workspace_root=, so match the query too.
-  await page.route(/\/v1\/data-documents(?:\?.*)?$/, (route: Route) =>
-    route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [{
-        id: 'doc_1', title: 'Leads workspace',
-        tables: [
-          { id: 'tbl_leads', title: 'Leads', name: 'leads' },
-          { id: 'tbl_followups', title: 'Followups', name: 'followups' },
-        ],
       }] }),
     }),
   )
@@ -177,16 +166,8 @@ test('R2 stale rows disappear from the panel after the table swap', async ({ pag
 })
 
 test('R3 a table swap that keeps a valid required ID preserves it in the PATCH', async ({ page }) => {
-  const fixture = await seedStaleRequiredFieldsWorkflow(page)
-  // Override the followups schema so fld_priority is still present on
-  // the new table. Registered AFTER seed so this handler takes precedence
-  // (Playwright matches routes in LIFO order).
-  await page.route('**/v1/data-documents/doc_1/tables/tbl_followups/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [
-      { id: 'fld_priority', name: 'priority', title: 'Priority', type: 'single_select' },
-      { id: 'fld_followup_date', name: 'followup_date', title: 'Followup date', type: 'date' },
-    ], total: 2 } }) }),
-  )
+  // The followups schema keeps fld_priority, so it stays valid on the new table.
+  const fixture = await seedStaleRequiredFieldsWorkflow(page, { followupsKeepPriority: true })
   await page.goto('/workflow/auto_stale')
   await expect(page.getByTestId('workflow-canvas')).toBeVisible()
   await page.locator('[data-testid="workflow-canvas-node"][data-node-role="trigger"]').click()

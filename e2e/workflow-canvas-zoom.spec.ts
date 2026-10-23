@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { kitTableFile, mockKitTables } from './helpers/kitTables'
 
 const VAULT_PATH = '/tmp/kition-workflow-canvas-zoom-e2e-vault'
 
@@ -74,7 +75,7 @@ async function seedWorkflow(page: Page) {
     description: '',
     enabled: false,
     schemaVer: 2,
-    trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentId: 'doc_1' },
+    trigger: { nodeId: 'trigger_1', type: 'record_created', tableId: 'tbl_leads', documentPath: 'crm/Leads.ktable' },
     action: {
       nodeId: 'action_1',
       type: 'send_email',
@@ -118,15 +119,7 @@ async function seedWorkflow(page: Page) {
       }] }),
     }),
   )
-  await page.route('**/v1/data-documents/*/tables/*/fields', (route: Route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 0, message: '', data: { items: [], total: 0 } }) }),
-  )
-  await page.route('**/v1/data-documents', (route: Route) =>
-    route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify({ items: [{ id: 'doc_1', title: 'Leads workspace', tables: [{ id: 'tbl_leads', title: 'Leads', name: 'leads' }] }] }),
-    }),
-  )
+  await mockKitTables(page, [kitTableFile('crm/Leads.ktable', [{ id: 'tbl_leads', title: 'Leads', fields: [] }])])
 }
 
 /** Extract the {tx, ty, scale} currently set on the content layer. */

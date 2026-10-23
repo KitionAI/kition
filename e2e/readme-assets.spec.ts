@@ -9,7 +9,7 @@ import { createBoardRecordsFromElements } from '../packages/board-editor/src/lib
 const CAPTURE_ENABLED = process.env.KITION_CAPTURE_README_ASSETS === '1'
 const VAULT_PATH = '/tmp/Kition Demo'
 const WELCOME_PATH = 'Getting Started/Welcome to Kition.md'
-const TABLE_PATH = 'Content Pipeline.kitable'
+const TABLE_PATH = 'Content Pipeline.ktable'
 const BOARD_PATH = 'Product Launch.kiboard'
 const WELCOME_CONTENT = readFileSync(new URL('../public/onboarding/welcome.md', import.meta.url), 'utf8')
 const LOGO_CONTENT = readFileSync(new URL('../public/onboarding/logo.png', import.meta.url))
@@ -174,7 +174,7 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
             type: 'file' as const,
             path: tablePath,
             name: tablePath,
-            format: 'kitable' as const,
+            format: 'table' as const,
             size: 2048,
             updated_at: updatedAt,
           },
