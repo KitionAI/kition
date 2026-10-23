@@ -2,14 +2,14 @@
 import type { SearchService } from './searchService'
 import { extractNoteDocs } from '../sources/noteSource'
 import { isTableFilePath, onTableFilesChanged } from '@/api/kitTables'
-import { extractTableDocs, type TableSearchInput } from '../sources/tableSource'
+import { reindexTableFile, type TableSearchFile } from '../sources/tableSource'
 
 const DEBOUNCE_MS = 300
 
 type Loaders = {
   readMarkdown: (vaultPath: string) => Promise<string>
-  /** Every table of a table file, read through the Table kit. */
-  loadTableFile: (vaultPath: string) => Promise<TableSearchInput[]>
+  /** Every table of a table file, read through the Table kit, with the file's stamp. */
+  loadTableFile: (vaultPath: string) => Promise<TableSearchFile>
 }
 
 export function attachEventBridges(service: SearchService, loaders: Loaders): () => void {
@@ -37,9 +37,7 @@ export function attachEventBridges(service: SearchService, loaders: Loaders): ()
     recordBatch.set(vaultPath, setTimeout(async () => {
       recordBatch.delete(vaultPath)
       try {
-        const tables = await loaders.loadTableFile(vaultPath)
-        await service.removeByVaultPath([vaultPath])
-        await service.upsert(tables.flatMap(extractTableDocs))
+        await reindexTableFile(service, vaultPath, loaders.loadTableFile)
       } catch (e) { console.warn('[search] table file resync failed', vaultPath, e) }
     }, DEBOUNCE_MS))
   }

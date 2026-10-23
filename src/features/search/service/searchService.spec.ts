@@ -10,7 +10,7 @@ class MockWorker {
     queueMicrotask(() => {
       if (msg.type === 'init') {
         this.onmessage?.(new MessageEvent('message', {
-          data: { type: 'ready', requestId: msg.requestId, restoredFromDisk: false, docCount: 0 },
+          data: { type: 'ready', requestId: msg.requestId, restoredFromDisk: false, docCount: 0, stamps: {} },
         }))
       } else if (msg.type === 'query') {
         this.onmessage?.(new MessageEvent('message', {

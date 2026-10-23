@@ -35,7 +35,7 @@ import { scheduleSearchBoot } from '@/features/search/service/searchBootSchedule
 import { loadVaultMarkdownFiles } from '@/features/document/editor/vault/vault-files'
 import { vaultClient } from '@/features/document/editor/vault/vault-client'
 import { extractNoteDocs } from '@/features/search/sources/noteSource'
-import { loadAllTableSearchDocs, loadTableSearchFile } from '@/features/search/sources/tableSource'
+import { loadTableSearchFile, syncTableSearchDocs } from '@/features/search/sources/tableSource'
 import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
 import { navigateToHit } from '@/features/search/ui/navigateToHit'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
@@ -156,14 +156,18 @@ function useSearchBoot(rootPath: string) {
 
           const scan = await loadSearchNoteDocs(() => cancelled)
           if (cancelled) return
-          // Table files are read through the Table kit; a build or runtime without it indexes notes only.
-          const tableDocs = isWebPreviewMode() ? [] : await loadAllTableSearchDocs().catch((error: unknown) => {
-            console.warn('[search] table files were not indexed', error)
-            return []
-          })
-          if (cancelled) return
-          await searchService.bulkLoad([...scan.noteDocs, ...tableDocs])
+          await searchService.bulkLoad(scan.noteDocs)
           if (!initOut.restoredFromDisk) setReady(true)
+          // Table files are read through the Table kit, after the notes and one at a time: only the
+          // ones new or written since the index last read them (a build or runtime without the kit
+          // indexes notes only).
+          const tables = isWebPreviewMode()
+            ? null
+            : await syncTableSearchDocs(searchService, initOut.stamps, () => cancelled).catch((error: unknown) => {
+              console.warn('[search] table files were not indexed', error)
+              return null
+            })
+          if (cancelled) return
           console.info('[search boot]', {
             rootPath,
             restoredFromDisk: initOut.restoredFromDisk,
@@ -171,6 +175,7 @@ function useSearchBoot(rootPath: string) {
             mdFileCount: scan.mdFileCount,
             noteDocCount: scan.noteDocs.length,
             readFailures: scan.readFailures,
+            tables,
           })
         } catch (error) {
           if (!cancelled) console.warn('[search] boot failed', error)

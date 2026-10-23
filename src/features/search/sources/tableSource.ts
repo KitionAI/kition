@@ -1,4 +1,4 @@
-import { getTableFields, listTableFiles, listTableRecords } from '@/api/kitTables'
+import { getTableFields, listTableFileStamps, listTableFiles, listTableRecords } from '@/api/kitTables'
 import type { IndexableDoc, MetaAnchor, RecordAnchor } from '../types'
 
 type FieldType =
@@ -131,12 +131,15 @@ export function extractTableDocs(input: TableSearchInput): IndexableDoc[] {
   return docs
 }
 
+/** A table file as search reads it: its stamp when read (null when the runtime gave none), and its tables. */
+export type TableSearchFile = { stamp: string | null; tables: TableSearchInput[] }
+
 /** Every table of the table file `vaultPath`, with its fields and records, read through the Table kit. */
-export async function loadTableSearchFile(vaultPath: string): Promise<TableSearchInput[]> {
-  const { files } = await listTableFiles()
+export async function loadTableSearchFile(vaultPath: string): Promise<TableSearchFile> {
+  const { files } = await listTableFiles({ path: vaultPath })
   const file = files.find((candidate) => candidate.path === vaultPath)
-  if (!file) return []
-  return Promise.all(file.tables.map(async (table) => {
+  if (!file) return { stamp: null, tables: [] }
+  const tables = await Promise.all(file.tables.map(async (table) => {
     const [{ items }, page] = await Promise.all([
       getTableFields({ path: vaultPath, tableId: table.id }),
       listTableRecords({ path: vaultPath, tableId: table.id }),
@@ -156,14 +159,50 @@ export async function loadTableSearchFile(vaultPath: string): Promise<TableSearc
       records: (page.items || []).map((record) => ({ id: String(record.id), values: (record.values || {}) as Record<string, unknown> })),
     }
   }))
+  return { stamp: file.stamp ?? null, tables }
 }
 
-/** Every table file of the workspace, for the search index's first load. */
-export async function loadAllTableSearchDocs(): Promise<IndexableDoc[]> {
-  const { files } = await listTableFiles()
-  const docs: IndexableDoc[] = []
-  for (const file of files) {
-    for (const table of await loadTableSearchFile(file.path)) docs.push(...extractTableDocs(table))
+/** What table indexing needs of the search service. */
+export type TableSearchIndex = {
+  upsert: (docs: IndexableDoc[], stamps?: Record<string, string>) => Promise<void>
+  removeByVaultPath: (vaultPaths: string[]) => Promise<void>
+}
+
+/** Reads one table file and replaces its docs in the index, with the stamp it was read at. */
+export async function reindexTableFile(index: TableSearchIndex, vaultPath: string, load = loadTableSearchFile) {
+  const file = await load(vaultPath)
+  await index.removeByVaultPath([vaultPath])
+  await index.upsert(file.tables.flatMap(extractTableDocs), file.stamp ? { [vaultPath]: file.stamp } : undefined)
+}
+
+/**
+ * Brings the index's table files up to date incrementally: asks for every table file's stamp
+ * (no file is read for it), drops the files that are gone, and reads only the files that are new
+ * or whose stamp changed since they were indexed (`indexed`), one at a time. A restored index with
+ * nothing changed reads no table file. Stops early when `cancelled()`.
+ */
+export async function syncTableSearchDocs(
+  index: TableSearchIndex,
+  indexed: Record<string, string>,
+  cancelled: () => boolean = () => false,
+  load = loadTableSearchFile,
+) {
+  const { files } = await listTableFileStamps()
+  const current = new Map(files.map((file) => [file.path, file.stamp]))
+  const gone = Object.keys(indexed).filter((path) => !current.has(path))
+  if (gone.length) await index.removeByVaultPath(gone)
+  let read = 0
+  let failed = 0
+  for (const [path, stamp] of current) {
+    if (cancelled()) break
+    if (indexed[path] === stamp) continue
+    try {
+      await reindexTableFile(index, path, load)
+      read += 1
+    } catch (error) {
+      failed += 1
+      console.warn('[search] failed to index a table file', path, error)
+    }
   }
-  return docs
+  return { files: current.size, read, removed: gone.length, failed }
 }

@@ -79,6 +79,8 @@ async fn host_features_write_closed_files_through_the_kit() {
         .unwrap_or_else(|| panic!("no primary field"));
 
     // A workflow's record, by field id: saved to the file, reported, and not the person's undo.
+    let stamp = client.stamp("crm/Leads.ktable");
+    assert!(stamp.is_some() && client.stamp("crm/Missing.ktable").is_none());
     let record = client
         .create_record(
             "crm/Leads.ktable",
@@ -89,6 +91,11 @@ async fn host_features_write_closed_files_through_the_kit() {
         .await
         .unwrap_or_else(|err| panic!("create record: {err}"));
     assert_eq!(record.values.get(&title.name), Some(&json!("Ada")));
+    assert_ne!(
+        client.stamp("crm/Leads.ktable"),
+        stamp,
+        "a write changes the stamp search reads again by"
+    );
     match next_event(&mut events).await {
         Some(DomainEvent::RecordCreated(created)) => {
             assert_eq!(created.document_path, "crm/Leads.ktable");

@@ -70,14 +70,16 @@ export type WorkerProgress = {
 export type WorkerInbound =
   | { type: 'init';              requestId: string; rootPath: string; rootHash: string }
   | { type: 'bulkLoad';          requestId: string; docs: IndexableDoc[]; isFinal: boolean }
-  | { type: 'upsert';            requestId: string; docs: IndexableDoc[] }
+  /** `stamps`: the source files these docs were read from, at the stamp they were read at (table files). */
+  | { type: 'upsert';            requestId: string; docs: IndexableDoc[]; stamps?: Record<string, string> }
   | { type: 'remove';            requestId: string; ids: string[] }
   | { type: 'removeByVaultPath'; requestId: string; vaultPaths: string[] }
   | { type: 'query';             requestId: string; ast: QueryAST; limit: number }
   | { type: 'destroy';           requestId: string }
 
 export type WorkerOutbound =
-  | { type: 'ready';   requestId: string; restoredFromDisk: boolean; docCount: number }
+  /** `stamps`: each indexed table file's stamp when it was read, from the restored snapshot. */
+  | { type: 'ready';   requestId: string; restoredFromDisk: boolean; docCount: number; stamps: Record<string, string> }
   | WorkerProgress
   | { type: 'results'; requestId: string; hits: SearchHit[]; truncated: boolean }
   | { type: 'ack';     requestId: string }

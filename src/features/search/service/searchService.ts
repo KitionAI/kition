@@ -45,7 +45,7 @@ export class SearchService {
     return () => { this.onErrorCbs.delete(cb) }
   }
 
-  async init(rootPath: string): Promise<{ restoredFromDisk: boolean; docCount: number }> {
+  async init(rootPath: string): Promise<{ restoredFromDisk: boolean; docCount: number; stamps: Record<string, string> }> {
     if (this.client) await this.destroy()
     this.currentRootPath = rootPath
     const worker = this.factory()
@@ -56,7 +56,7 @@ export class SearchService {
       type: 'init', requestId: rid(), rootPath, rootHash: await rootHash(rootPath),
     })
     if (out.type !== 'ready') throw new Error('init failed: unexpected response')
-    return { restoredFromDisk: out.restoredFromDisk, docCount: out.docCount }
+    return { restoredFromDisk: out.restoredFromDisk, docCount: out.docCount, stamps: out.stamps ?? {} }
   }
 
   async destroy(): Promise<void> {
@@ -85,9 +85,10 @@ export class SearchService {
     }
   }
 
-  async upsert(docs: IndexableDoc[]): Promise<void> {
+  /** `stamps`: the source files the docs were read from, at the stamp they were read at. */
+  async upsert(docs: IndexableDoc[], stamps?: Record<string, string>): Promise<void> {
     if (!this.client) throw new Error('service not initialized')
-    await this.client.send({ type: 'upsert', requestId: rid(), docs })
+    await this.client.send({ type: 'upsert', requestId: rid(), docs, ...(stamps ? { stamps } : {}) })
   }
 
   async remove(ids: string[]): Promise<void> {

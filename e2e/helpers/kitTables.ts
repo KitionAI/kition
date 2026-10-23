@@ -67,8 +67,13 @@ function tableOf(table: KitTableFixture) {
   }
 }
 
+/** A fixture file's stamp: it changes with what the file holds, as a written file's does. */
+function stampOf(file: KitTableFileFixture) {
+  return String(JSON.stringify(file.tables).length)
+}
+
 function fileOf(file: KitTableFileFixture) {
-  return { path: file.path, documentId: file.documentId ?? null, tables: file.tables.map(tableOf), dashboards: [] }
+  return { path: file.path, documentId: file.documentId ?? null, stamp: stampOf(file), tables: file.tables.map(tableOf), dashboards: [] }
 }
 
 function json(route: Route, body: unknown, status = 200) {
@@ -105,7 +110,11 @@ export async function mockKitTables(page: Page, files: KitTableFileFixture[]): P
 
     if (method === 'GET' && endpoint === '') {
       state.listCalls += 1
-      return json(route, { files: state.files.map(fileOf), unreadable: [] })
+      const only = url.searchParams.get('path')
+      return json(route, { files: state.files.filter((file) => !only || file.path === only).map(fileOf), unreadable: [] })
+    }
+    if (method === 'GET' && endpoint === '/stamps') {
+      return json(route, { files: state.files.map((file) => ({ path: file.path, stamp: stampOf(file) })) })
     }
     if (method === 'GET' && endpoint === '/fields') {
       const path = url.searchParams.get('path') || ''

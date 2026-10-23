@@ -16,6 +16,7 @@ import type {
   KitTablesRecord,
   KitTablesRecordsPage,
   KitTablesRenamedResult,
+  KitTablesStampList,
   KitTablesTable,
   KitTablesWriteRecordResult,
 } from './generated/kit-tables'
@@ -33,9 +34,18 @@ export function isTableFilePath(path: string | null | undefined) {
 /** A table named the way host features store it. */
 export type TableRef = { path: string; tableId: string }
 
-/** Every table file in the workspace, with its tables and dashboards. */
-export function listTableFiles(options?: { signal?: AbortSignal }) {
-  return request.get<KitTablesFileList>('/v1/kit-tables', { signal: options?.signal, suppressErrorMessage: true })
+/** Every table file in the workspace (or only `path`), with its tables and dashboards; each read through the Table kit. */
+export function listTableFiles(options?: { path?: string; signal?: AbortSignal }) {
+  return request.get<KitTablesFileList>('/v1/kit-tables', {
+    ...(options?.path ? { params: { path: options.path } } : {}),
+    signal: options?.signal,
+    suppressErrorMessage: true,
+  })
+}
+
+/** Every table file with its stamp, which changes whenever the file is written; reads none of them. */
+export function listTableFileStamps(options?: { signal?: AbortSignal }) {
+  return request.get<KitTablesStampList>('/v1/kit-tables/stamps', { signal: options?.signal, suppressErrorMessage: true })
 }
 
 /** Makes a new table file at `path` with the kit's starter table (titled `title` when given). */

@@ -191,6 +191,9 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
     if (method === 'GET' && path === '/api/v1/kit-tables') {
       return fulfill(route, { code: 200, data: { files: [], unreadable: [] } })
     }
+    if (method === 'GET' && path === '/api/v1/kit-tables/stamps') {
+      return fulfill(route, { code: 200, data: { files: [] } })
+    }
 
     if (method === 'GET' && path === '/api/v1/auth/me') {
       return fulfill(route, {

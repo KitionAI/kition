@@ -42,6 +42,7 @@ impl axum::extract::FromRef<KitTablesState> for AuthConfig {
 pub fn router(state: KitTablesState) -> Router {
     Router::new()
         .route("/kit-tables", get(list))
+        .route("/kit-tables/stamps", get(stamps))
         .route("/kit-tables/files", post(create_file))
         .route("/kit-tables/tables", post(create_table))
         .route("/kit-tables/tables/update", post(update_table))
@@ -121,17 +122,55 @@ fn file_json(file: &FileInfo) -> Value {
     })
 }
 
-async fn list(State(state): State<KitTablesState>, _user: CurrentUser) -> AppResult<Response> {
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ListQuery {
+    /// One table file instead of every one.
+    path: String,
+}
+
+async fn list(
+    State(state): State<KitTablesState>,
+    _user: CurrentUser,
+    Query(query): Query<ListQuery>,
+) -> AppResult<Response> {
+    let paths = if query.path.trim().is_empty() {
+        state.tables.table_files()
+    } else {
+        vec![checked(&query.path)?]
+    };
     let mut files = Vec::new();
     let mut unreadable = Vec::new();
-    for path in state.tables.table_files() {
+    for path in paths {
+        // The stamp before the read: a write meanwhile leaves an older stamp, read again later.
+        let stamp = state.tables.stamp(&path);
         match state.tables.describe_cached(&path).await {
-            Ok(file) => files.push(file_json(&file)),
+            Ok(file) => {
+                let mut file = file_json(&file);
+                if let Some(stamp) = stamp {
+                    file["stamp"] = json!(stamp);
+                }
+                files.push(file);
+            }
             Err(error) if error.unavailable => return Err(refusal(error)),
             Err(error) => unreadable.push(json!({ "path": path, "error": error.message })),
         }
     }
     Ok(ok(json!({ "files": files, "unreadable": unreadable })))
+}
+
+/// Every table file with its stamp, without reading any: what changed since a stamp seen before.
+async fn stamps(State(state): State<KitTablesState>, _user: CurrentUser) -> AppResult<Response> {
+    let files: Vec<Value> = state
+        .tables
+        .table_files()
+        .into_iter()
+        .filter_map(|path| {
+            let stamp = state.tables.stamp(&path)?;
+            Some(json!({ "path": path, "stamp": stamp }))
+        })
+        .collect();
+    Ok(ok(json!({ "files": files })))
 }
 
 #[derive(Deserialize, Default)]

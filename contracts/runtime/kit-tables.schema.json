@@ -2,10 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/kit-tables.schema.json",
   "title": "Kition Table Files for Host Features",
-  "description": "/api/v1/kit-tables: the workspace's .ktable files as Kition's own features see them (the workflow editor's table and field pickers, form and email sync targets, the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.",
+  "description": "/api/v1/kit-tables: the workspace's .ktable files (all of them, or the one ?path= names) as Kition's own features see them (the workflow editor's table and field pickers, form and email sync targets, the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.",
   "$ref": "#/$defs/fileList",
   "x-endpoints": {
-    "list": "GET /api/v1/kit-tables",
+    "list": "GET /api/v1/kit-tables?path=",
+    "stamps": "GET /api/v1/kit-tables/stamps",
     "createFile": "POST /api/v1/kit-tables/files",
     "createTable": "POST /api/v1/kit-tables/tables",
     "updateTable": "POST /api/v1/kit-tables/tables/update",
@@ -62,8 +63,31 @@
       "properties": {
         "path": { "$ref": "#/$defs/tablePath" },
         "documentId": { "type": ["string", "null"] },
+        "stamp": { "$ref": "#/$defs/stamp" },
         "tables": { "type": "array", "items": { "$ref": "#/$defs/table" } },
         "dashboards": { "type": "array", "items": { "$ref": "#/$defs/dashboard" } }
+      }
+    },
+    "stamp": {
+      "type": "string",
+      "description": "Changes whenever the file is written (its modification time and size), so a reader can tell whether what it read before is current. Taken before the file was read."
+    },
+    "fileStamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "stamp"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "stamp": { "$ref": "#/$defs/stamp" }
+      }
+    },
+    "stampList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files"],
+      "description": "Every table file with its stamp, without reading any (search reads only the files whose stamp changed).",
+      "properties": {
+        "files": { "type": "array", "items": { "$ref": "#/$defs/fileStamp" } }
       }
     },
     "unreadableFile": {

@@ -887,6 +887,19 @@ impl TableClient {
         Ok(tables)
     }
 
+    /// The file's stamp, which changes whenever it is written: its modification time in
+    /// milliseconds and its size. `None` when it does not exist.
+    pub fn stamp(&self, path: &str) -> Option<String> {
+        let meta = std::fs::metadata(self.inner.kits.workspace_dir()?.join(path)).ok()?;
+        let modified = meta
+            .modified()
+            .ok()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_millis();
+        Some(format!("{modified}-{}", meta.len()))
+    }
+
     /// Every table file in the workspace, by path, skipping hidden folders.
     pub fn table_files(&self) -> Vec<String> {
         let Some(root) = self.inner.kits.workspace_dir() else {
