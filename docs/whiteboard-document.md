@@ -6,9 +6,7 @@ list ordering, per-author undo, and merge-safe concurrent edits. This page
 describes how that model is laid out and how the editor reads and writes it.
 The Whiteboard is a built-in document type, not a kit (see
 [kit-sdk.md](kit-sdk.md) for that separate system). See
-[document-model.md](document-model.md) for the Markdown document's own KDM replica, and
-[table-document.md](table-document.md) for the Table's — a relational projection of its replica,
-rather than a direct view of it, which is why its document model is laid out differently again.
+[document-model.md](document-model.md) for the Markdown document's own KDM replica.
 
 ## Where the KDM comes from
 

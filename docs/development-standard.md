@@ -97,7 +97,7 @@ Verification:
 - List focused tests for the affected surface.
 - Run pnpm run build:check for UI or TypeScript changes.
 - Run python3 scripts/check-i18n.py.
-- Run pnpm test:table:e2e and pnpm test:kitable:e2e before completion.
+- Run pnpm test:table:e2e and pnpm test:ktable:e2e before completion.
 ```
 
 ## Implementation Rules
@@ -149,7 +149,7 @@ gates.
 | Documentation only | Link review, `python3 scripts/check-i18n.py`, branding check |
 | React component or hook | Focused Vitest file, `pnpm run build:check` |
 | Shared UI or layout | Focused tests, `pnpm run build:check`, visual review |
-| Table behavior | Focused tests, `pnpm test:kitable:e2e`, required table widget gate |
+| Table behavior | Focused tests, `pnpm test:ktable:e2e`, required table widget gate |
 | Workflow or scenario | Focused tests and the matching inspection command |
 | Desktop shell or packaging | `pnpm check:desktop`, `pnpm test:desktop:unit`, and relevant desktop E2E |
 | Runtime contract | Contract/mock tests plus black-box integration with an explicit binary |
@@ -159,7 +159,7 @@ Before completion, always run:
 ```bash
 python3 scripts/check-i18n.py
 pnpm test:table:e2e
-pnpm test:kitable:e2e
+pnpm test:ktable:e2e
 ```
 
 For normal code changes, also run:

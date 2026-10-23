@@ -101,7 +101,7 @@ task, describe every input, choose an output format, and recover when a step
 goes wrong. Kition moves that complexity into familiar work surfaces:
 documents, table fields, records, templates, and workflows.
 
-The built-in scenarios below are ordinary `.kitable` files. Their prompts,
+The built-in scenarios below are ordinary `.ktable` files. Their prompts,
 field relationships, generated assets, and review states stay visible and can
 be adapted to a real project.
 

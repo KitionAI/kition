@@ -8,8 +8,10 @@ Providers**, choose a provider, and enter the account address plus the provider
 credential. The account address and provider credential are stored once per
 provider and reused by inbox and delivery workflows.
 
-Inbox synchronization is configured from the destination Kitable. Open its
-**Workflow** view, select **New workflow**, and choose **Sync an email inbox**.
+Inbox synchronization is configured from the destination table, a `.ktable`
+file. Open its workflows from the sidebar, select **New workflow**, and choose
+**Full email inbox sync**. The workflow names the table by its file path and
+table id.
 The workflow owns its mailbox, destination, schedule, attachment policy,
 current progress, and run history. Email Providers does not own sync execution.
 

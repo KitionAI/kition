@@ -66,7 +66,7 @@ Quy trình tài liệu trở nên có kiểm soát: mô tả mục tiêu bằng 
 
 ## Bắt đầu từ công việc, không phải lời nhắc trống
 
-Kition lưu ngữ cảnh trong tài liệu, trường bảng, bản ghi, mẫu và quy trình. Các kịch bản tích hợp là tệp `.kitable` thông thường và có thể được điều chỉnh cho dự án thực tế.
+Kition lưu ngữ cảnh trong tài liệu, trường bảng, bản ghi, mẫu và quy trình. Các kịch bản tích hợp là tệp `.ktable` thông thường và có thể được điều chỉnh cho dự án thực tế.
 
 ### Tạo hàng loạt nội dung chiến dịch
 

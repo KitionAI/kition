@@ -84,11 +84,11 @@ tests.
 | `pnpm test:e2e` | Mock-backed renderer black-box flows |
 | `pnpm test:desktop:e2e` | Desktop flows against the mocked desktop bridge |
 | `pnpm test:table:e2e` | Required table-widget regression gate |
-| `pnpm test:kitable:e2e` | Required Table kit (Kitable) regression gate |
+| `pnpm test:ktable:e2e` | Required Table kit regression gate (`e2e/table-kit.spec.ts`) |
 | `pnpm build:check` | Runtime lock, assets, notices, types, and renderer build |
 
 Feature-specific inspection commands remain available in `package.json` for
-Kitable, Scenario, Workflow, and Agent work.
+Table kit, Scenario, Workflow, and Agent work.
 
 ## Before Opening a Pull Request
 
@@ -98,7 +98,7 @@ Run the same core checks used by CI:
 pnpm check
 pnpm test:e2e
 pnpm test:table:e2e
-pnpm test:kitable:e2e
+pnpm test:ktable:e2e
 ```
 
 For desktop shell changes, also run `pnpm check:desktop` and

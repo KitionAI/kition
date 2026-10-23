@@ -163,7 +163,7 @@ Architecture extraction is complete only after its functional gates and no-regre
 
 Run the affected SDK and kit test suites, format/lint checks, contract checks, and convergence tests. Validate built engines with `pnpm check:kit-sdks`, check dependency boundaries with `pnpm check:deps`, and validate each manifest using the Kit Standard's `tools/check-manifest.mjs`. Record kit changes in their `KITION_CHANGES.md` files.
 
-For Kition changes, run `python3 scripts/check-i18n.py`, `pnpm test:table:e2e`, and `pnpm test:kitable:e2e`. Run `pnpm check:desktop` when Rust changes affect the Kition workspace. Shared editor controls follow [the design specification](design.md), and all published packages remain self-contained.
+For Kition changes, run `python3 scripts/check-i18n.py`, `pnpm test:table:e2e`, and `pnpm test:ktable:e2e`. Run `pnpm check:desktop` when Rust changes affect the Kition workspace. Shared editor controls follow [the design specification](design.md), and all published packages remain self-contained.
 
 ## Migration risks and controls
 

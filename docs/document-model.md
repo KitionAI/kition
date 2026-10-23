@@ -8,9 +8,8 @@ writes when no window has the file open — and the replica adds editing history
 concurrent edits on top of it, privately, on this machine. This page describes that model and how
 the editor, the desktop shell, and the agent read and write it. See
 [whiteboard-document.md](whiteboard-document.md) for the Whiteboard's own (differently shaped) KDM
-document, [table-document.md](table-document.md) for the Table's (a relational projection of its
-KDM replica, rather than a direct view of it), and [kit-sdk.md](kit-sdk.md) for the separate Kit
-SDK system. Kition opens a Markdown document natively, as a built-in document type; the same
+document, and [kit-sdk.md](kit-sdk.md) for the separate Kit SDK system (tables are `.ktable`
+files the Table kit edits). Kition opens a Markdown document natively, as a built-in document type; the same
 model and editor are also packaged as the standard kit `kit.document` (`packages/document-kit`,
 see [kit-sdk.md](kit-sdk.md)) for other applications, which a development build opens `.md`
 files in for parity checks.

@@ -294,7 +294,12 @@ items with `primary`.
   next to the document), Kition's shortcuts forwarded back (`HOST_SHORTCUTS`:
   Cmd+. opens the command palette from inside a kit, whose own Cmd+K stays
   the kit's), and the Kit AI
-  bridge forwarded to the frame as `ai/*`. It mounts on the protocol's
+  bridge forwarded to the frame as `ai/*`. Kition also answers `host/generate`
+  with the person's models (`kitGenerate.ts`, `POST /v1/ai/generate`,
+  `contracts/runtime/ai-generate.schema.json`) and `host/action` with its
+  own actions (`kitActions.ts`: `workflow.run` through
+  `POST /v1/workflows/{id}/run-record`, and `design.fromRecord`); neither is
+  offered to a preview or a read-only document. It mounts on the protocol's
   `ready` handshake, never the frame's `load` event, and abandons a mount its
   effect no longer needs.
 - Writes go through `PUT /v1/kits/files`, and the runtime keeps the same
@@ -397,20 +402,21 @@ items with `primary`.
 
 ### The Table kit
 
-`kit.table` (`KitionAI/kition-table`) packages Kition's own table document for
-other applications: its engine is `crates/kition-kitable` and
-`crates/kition-table-api` compiled to WebAssembly (SQLite included), and its
-editor is `packages/table-editor` over a data source on that engine. This is
-the one kit whose editor source lives in Kition: Table is a built-in document
-type whose editor Kition already owns, so the kit builds it from a Kition
-checkout (`kits/sdks.json` marks it `kition`, and `scripts/publish-kit.sh`
-clones Kition next to the kit). Kition itself keeps its native, runtime-backed
-table editor: the kit is not in `KIT_EDITORS`, and `kits/sdks.json` marks it
-`optional` (a build need not ship it). For parity checks, a development build
-opens `.kitable` files in the kit when `localStorage['kition.dev.tableKit']` is
-`'1'` and the package is built (`scripts/build-kit-ui.sh table`);
-`e2e/table-embedded.spec.ts` edits a table there, saves it, and reopens it
-natively.
+`kit.table` (`KitionAI/kition-table`, package `public/kits/table-ui`) is a
+normal kit: `.ktable` files open in its own editor in `KitFrame`, and its
+engine and editor live in its repository. Kition has no table engine or
+table editor of its own. Kition's host features (workflows, form and email
+sync, the scenario builder, the workspace tree) read and write tables through
+the host table client, `crates/kition-tableclient`: through the Kit AI bridge
+when an editor has the file open, so the edit arrives live, and through the
+headless `kit-table` otherwise. Its writes carry a `system:<feature>` origin
+and never join the person's undo; workflow triggers read
+`table.changes.since`. The renderer reaches it through `/v1/kit-tables*`
+(`contracts/runtime/kit-tables.schema.json`, `src/api/kitTables.ts`), and
+workflows, form sync, and email sync name a table by its file path
+(`documentPath`) and table id. `pnpm test:ktable:e2e`
+(`e2e/table-kit.spec.ts`) covers what Kition adds around the kit; the
+editor's own behavior is tested in the kit's repository.
 
 ### The Board kit
 
@@ -631,7 +637,7 @@ the runtime at the executables (`KITION_KIT_<KIT>_BINARY`).
 
 Finish with `pnpm run check`, `pnpm check:desktop`, `python3
 scripts/check-i18n.py`, the kit's e2e, `pnpm test:table:e2e`, and
-`pnpm test:kitable:e2e`. Then try it in the real desktop app (`pnpm dev`)
+`pnpm test:ktable:e2e`. Then try it in the real desktop app (`pnpm dev`)
 with a large file.
 
 ## 6. Rules Learned The Hard Way

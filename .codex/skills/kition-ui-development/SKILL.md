@@ -21,7 +21,7 @@ Use this skill for frontend changes in the Kition client repository.
 - Put AI chat, agent timeline, and agent-only helpers in `src/features/agent`.
 - Put Agent session state, streaming lifecycle, and model-selection hooks in `src/features/agent`.
 - Keep `Shell.tsx` as route-level shell glue; do not move new Agent presentation logic or editor-page assembly back into it.
-- Treat Agent as a first-class domain alongside document, table, and settings.
+- Treat Agent as a first-class domain alongside document, kits, and settings.
 - Keep editor workspace pages on a stable chrome: topbar, sidebar, tab strip, editor pane.
 - Keep workspace tree, media gallery, tab strip, topbar, and sidebar inside `src/features/workspace/components`.
 - Keep workspace navigation helper types and workspace display logic inside `src/features/workspace/lib`.
@@ -38,11 +38,10 @@ Use this skill for frontend changes in the Kition client repository.
 - Keep document rich editor panes and markdown split panes inside `src/features/document/components`.
 - Move editor chrome presentation into workspace feature components instead of growing page-level JSX inline.
 - Keep desktop settings subscription and synchronization hooks inside `src/features/settings/hooks`.
-- Keep the table editor and table-only commands inside `packages/table-editor`, and table creation and the Kition table host inside `src/features/table`.
-- Keep table editor pane wrappers inside `src/features/table/components`.
+- Never build a table editor in Kition: `.ktable` files open in the Table kit's own editor in `KitFrame` (`src/features/kits`), and Kition's own features reach tables through `src/api/kitTables.ts`.
 - Use `Workspace*` names for editor shell and navigation concerns.
 - Use `Document*` names for rich-text document flows.
-- Use `Table*` names for structured table flows.
+- Use `Kit*` names for kit frames, kit editors, and their host.
 - Use `Agent*` names for AI chat and agent execution flows.
 - Do not create or restore a `src/react` directory.
 - Do not introduce new catch-all UI folders like `data/` when a domain folder already exists.

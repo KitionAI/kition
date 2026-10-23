@@ -66,7 +66,7 @@ So entsteht ein kontrollierter Dokumentablauf: Beschreiben Sie das Ziel in natü
 
 ## Mit der Arbeit beginnen, nicht mit einer leeren Eingabe
 
-Kition hält den Aufgabenkontext in Dokumenten, Tabellenfeldern, Datensätzen, Vorlagen und Workflows fest. Die integrierten Szenarien sind gewöhnliche `.kitable`-Dateien und können an echte Projekte angepasst werden.
+Kition hält den Aufgabenkontext in Dokumenten, Tabellenfeldern, Datensätzen, Vorlagen und Workflows fest. Die integrierten Szenarien sind gewöhnliche `.ktable`-Dateien und können an echte Projekte angepasst werden.
 
 ### Kampagnenmaterial stapelweise erzeugen
 

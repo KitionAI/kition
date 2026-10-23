@@ -12,10 +12,10 @@ references, but never secret values.
 
 ## Current Boundary
 
-- Markdown documents and `.kitable` files are already workspace-addressed.
+- Markdown documents and `.ktable` table files are already workspace-addressed.
 - Document image persistence can write into the workspace.
-- Table attachments are represented by URLs such as `/uploads/...`, which are
-  not portable when the upload directory is outside the workspace.
+- Table attachments are stored inside their `.ktable` file by the Table kit,
+  so they move with it.
 - Some workspace metadata is browser-local rather than workspace-owned.
 - Runtime identity currently needs a stable workspace manifest identity before
   a workspace can move to another filesystem path without changing identity.
@@ -38,7 +38,7 @@ references, but never secret values.
   Documents/
   Tables/
   *.md
-  *.kitable
+  *.ktable
 ```
 
 All persisted paths are workspace-relative. Absolute paths, hostnames,
@@ -70,7 +70,7 @@ migration. Private runtime implementation remains outside this repository.
 
 ## Implemented Runtime Behavior
 
-- New table uploads and AI-generated images are written to the content-addressed
+- AI-generated images are written to the content-addressed
   workspace asset directory and carry `assetId`, `sha256`, and `workspacePath`
   metadata.
 - The runtime reads both portable workspace assets and legacy `/uploads/...`
@@ -85,8 +85,9 @@ migration. Private runtime implementation remains outside this repository.
   under `.kition/sync/` and restored at startup. Passwords, tokens, and email
   secret payloads are excluded and must be reconnected on a new device.
 - The storage endpoints inventory files, verify content hashes, detect legacy
-  and external references, and migrate Markdown and `.kitable` attachment
-  references with dry-run support.
+  and external references, and migrate Markdown attachment references with
+  dry-run support. The inventory counts `.ktable` files as `tables` (item kind
+  `table`); the Table kit owns their contents.
 
 ## Migration Guarantees
 
@@ -109,10 +110,7 @@ migration. Private runtime implementation remains outside this repository.
 - Confirm that no workspace-owned persisted record contains a real absolute
   host path or secret value.
 
-Git provides complete backup and restoration in the first release. `.kitable`
-files are a Kit Data Model (KDM) replica and merge concurrent edits
-automatically at the object level — including a sync tool or another machine
-replacing the file on disk with an edited copy — as
-[table-document.md](table-document.md) describes; this storage contract does
-not add anything on top of that. Concurrent merging of binary assets is a
-separate problem and is not guaranteed by this storage contract.
+Git provides complete backup and restoration in the first release. `.ktable`
+files belong to the Table kit, and this storage contract does not add
+anything on top of them. Concurrent merging of binary assets is a separate
+problem and is not guaranteed by this storage contract.

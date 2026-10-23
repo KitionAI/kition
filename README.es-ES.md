@@ -66,7 +66,7 @@ Así se crea un flujo documental controlado: describe el objetivo en lenguaje na
 
 ## Empieza con el trabajo, no con un mensaje vacío
 
-Kition conserva el contexto en documentos, campos de tabla, registros, plantillas y flujos de trabajo. Los escenarios integrados son archivos `.kitable` normales que se pueden adaptar a proyectos reales.
+Kition conserva el contexto en documentos, campos de tabla, registros, plantillas y flujos de trabajo. Los escenarios integrados son archivos `.ktable` normales que se pueden adaptar a proyectos reales.
 
 ### Generar recursos de campaña por lotes
 

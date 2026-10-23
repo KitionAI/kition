@@ -66,7 +66,7 @@ Le travail documentaire devient ainsi contrôlable : décrivez l’objectif en l
 
 ## Commencez par le travail, pas par une invite vide
 
-Kition conserve le contexte dans les documents, les champs de tableau, les enregistrements, les modèles et les workflows. Les scénarios intégrés sont de simples fichiers `.kitable` adaptables à un projet réel.
+Kition conserve le contexte dans les documents, les champs de tableau, les enregistrements, les modèles et les workflows. Les scénarios intégrés sont de simples fichiers `.ktable` adaptables à un projet réel.
 
 ### Générer des ressources de campagne par lots
 
