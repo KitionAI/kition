@@ -1451,22 +1451,22 @@ export interface FilmCommands extends CommandMap {
   "project.viewPreset.delete": { /** 1 to 10 */ slot?: number }
   /** Freeform Layout. Params: {"bin":binId?,"width":f32?} */
   "project.freeform.layout": { /** binId? */ bin?: Json; width?: number }
-  /** Move Clip Cards. Params: {"items":[id]?,"x":f32,"y":f32,"snap":bool?} | {"positions":{"<id>":[x,y]}}. Changes the document. */
-  "project.freeform.move": { items?: Array<number>; snap?: boolean; x?: number; y?: number }
-  /** Clip Size. Params: {"items":[id]?,"size":f32?,"step":1|-1?}. Changes the document. */
-  "project.freeform.resize": { items?: Array<number>; size?: number; step?: 1 | -1 }
-  /** Align to Grid. Params: {"bin":binId?,"grid":f32?}. Changes the document. */
-  "project.freeform.alignToGrid": { /** binId? */ bin?: Json; grid?: number }
-  /** Reset to Grid. Params: {"bin":binId?}. Changes the document. */
-  "project.freeform.reset": { /** binId? */ bin?: Json }
-  /** Stack Clips. Params: {"items":[id]?}. Changes the document. */
-  "project.freeform.stack": { items?: Array<number> }
-  /** Unstack Clips. Params: {"items":[id]?}. Changes the document. */
-  "project.freeform.unstack": { items?: Array<number> }
-  /** Save Arrangement. Params: {"name":str,"bin":binId?}. Changes the document. */
-  "project.freeform.saveArrangement": { /** binId? */ bin?: Json; name?: string }
-  /** Restore Arrangement. Params: {"name":str,"bin":binId?}. Changes the document. */
-  "project.freeform.restoreArrangement": { /** binId? */ bin?: Json; name?: string }
+  /** Move Clip Cards. Params: {"items":[id]?,"x":f32,"y":f32,"snap":bool?,"width":f32?} | {"positions":{"<id>":[x,y]},"width":f32?}. Changes the document. */
+  "project.freeform.move": { items?: Array<number>; snap?: boolean; width?: number; x?: number; y?: number }
+  /** Clip Size. Params: {"items":[id]?,"size":f32?,"step":1|-1?,"width":f32?}. Changes the document. */
+  "project.freeform.resize": { items?: Array<number>; size?: number; step?: 1 | -1; width?: number }
+  /** Align to Grid. Params: {"bin":binId?,"grid":f32?,"width":f32?}. Changes the document. */
+  "project.freeform.alignToGrid": { /** binId? */ bin?: Json; grid?: number; width?: number }
+  /** Reset to Grid. Params: {"bin":binId?,"width":f32?}. Changes the document. */
+  "project.freeform.reset": { /** binId? */ bin?: Json; width?: number }
+  /** Stack Clips. Params: {"items":[id]?,"width":f32?}. Changes the document. */
+  "project.freeform.stack": { items?: Array<number>; width?: number }
+  /** Unstack Clips. Params: {"items":[id]?,"width":f32?}. Changes the document. */
+  "project.freeform.unstack": { items?: Array<number>; width?: number }
+  /** Save Arrangement. Params: {"name":str,"bin":binId?,"width":f32?}. Changes the document. */
+  "project.freeform.saveArrangement": { /** binId? */ bin?: Json; name?: string; width?: number }
+  /** Restore Arrangement. Params: {"name":str,"bin":binId?,"width":f32?}. Changes the document. */
+  "project.freeform.restoreArrangement": { /** binId? */ bin?: Json; name?: string; width?: number }
   /** Delete Arrangement. Params: {"name":str,"bin":binId?}. Changes the document. */
   "project.freeform.deleteArrangement": { /** binId? */ bin?: Json; name?: string }
   /** List Arrangements. Params: {"bin":binId?} */
@@ -1503,6 +1503,8 @@ export interface FilmCommands extends CommandMap {
   "clip.setTimeInterpolation": { clips?: Array<number>; mode?: "frameSampling" | "frameBlending" | "opticalFlow" }
   /** Search Bin Contents. Params: {"bin":id} */
   "project.searchBinItems": { /** an id */ bin?: number }
+  /** List Search Bins. Params: {} */
+  "project.searchBins": Record<string, never>
   /** Edit Search Bin. Params: {"bin":id,"name":str?,"column":str?,"operator":str?,"text":str?,"rows":[..]?,"matchAll":bool?,"caseSensitive":bool?}. Changes the document. */
   "project.editSearchBin": { /** an id */ bin?: number; caseSensitive?: boolean; column?: string; matchAll?: boolean; name?: string; operator?: string; /** [..]? */ rows?: Array<Json>; text?: string }
   /** Delete Search Bin. Params: {"bin":id}. Changes the document. */

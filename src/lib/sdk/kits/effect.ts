@@ -985,7 +985,7 @@ export interface EffectCommands extends CommandMap {
   "comp.saveFrameAsPsd": { /** comp (no type given) */ comp?: Json; scale?: number; time?: number }
   /** ProEXR. Params: {path (.exr), comp?, time?, scale?} ? a multi-layer OpenEXR: composite R,G,B,A + `<layer>.R/G/B/A` per layer (linear, premultiplied). Changes the document. */
   "comp.saveFrameAsExr": { /** comp (no type given) */ comp?: Json; scale?: number; time?: number }
-  /** Watch Folder. Params: {folder, stop?: bool} ? watches the folder for .kitioneffect files with queued renders, renders them and writes `<project>.status.json`. Changes the document. */
+  /** Watch Folder. Params: {folder, stop?: bool} ? watches the folder for .keffect files with queued renders, renders them and writes `<project>.status.json`. Changes the document. */
   "file.watchFolder": { /** folder (no type given) */ folder?: Json; stop?: boolean }
   /** Poll Watch Folder. Params: {folder? (default: the watched one)} ? renders new projects now: {watching, rendered: [{project, state: done|failed, items: [{comp, status, output}]}]}. Changes the document. */
   "file.watchFolder.poll": Record<string, never>

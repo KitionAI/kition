@@ -1170,8 +1170,6 @@ export interface PhotoCommands extends CommandMap {
   "edit.preferences.workspace": Record<string, never>
   /** Tools.... Params: {} */
   "edit.preferences.tools": Record<string, never>
-  /** History Log.... Params: {} */
-  "edit.preferences.historyLog": Record<string, never>
   /** File Handling.... Params: {} */
   "edit.preferences.fileHandling": Record<string, never>
   /** Export.... Params: {} */
@@ -1534,8 +1532,8 @@ export interface PhotoCommands extends CommandMap {
   "notes.delete": { index?: number }
   /** Notes. Params: {} ? notes (index, author, text, colour, position, open, modified) */
   "notes.list": Record<string, never>
-  /** Notes.... Params: {"path":".psd|.psb|.kitionphoto with notes"}. Changes the document. */
-  "file.import.notes": { path?: ".psd" | ".psb" | ".kitionphoto with notes" }
+  /** Notes.... Params: {"path":".psd|.psb|.kphoto with notes"}. Changes the document. */
+  "file.import.notes": { path?: ".psd" | ".psb" | ".kphoto with notes" }
   /** Go to State. Params: {"state":index} (History entry, 0 = oldest; the states Redo steps through follow the current one) ? {current}: undoes or redoes to it in one command. Changes the document. */
   "history.goTo": { state?: number }
   /** Delete State. Params: {"state":index?} (History entry, 0 = oldest; default the current state) ? {states,current}: removes the state and every later one. Changes the document. */
@@ -1682,8 +1680,8 @@ export interface PhotoCommands extends CommandMap {
   "file.print": { bpc?: boolean; center?: boolean; centerCropMarks?: boolean; colorHandling?: "printerManages" | "kitionPhotoManages" | "noColorManagement"; /** 1 to 999 */ copies?: number; cornerCropMarks?: boolean; description?: boolean; /** render the PDF, report the lp command, don't spool */ dryRun?: boolean; intent?: "perceptual" | "relative" | "saturation" | "absolute"; labels?: boolean; /** in? */ left?: Json; orientation?: "portrait" | "landscape"; /** pdf path? (print to PDF; then "send" defaults to false); print to PDF; then "send" defaults to false */ output?: Json; /** "letter|legal|tabloid|a3|a4|a5|4x6|5x7"|[w,h] pt="letter"; default "letter" */ paper?: Json; /** default printer */ printer?: string; /** profile? (kitionPhotoManages); kitionPhotoManages */ printerProfile?: Json; registrationMarks?: boolean; /** percent */ scale?: number; scaleToFit?: boolean; send?: boolean; /** in? */ top?: Json }
   /** Print One Copy. Params: {} (the last Print settings, one copy; any Print key overrides) */
   "file.printOneCopy": Record<string, never>
-  /** Package.... Params: {"dir":folder,"format":"kitionphoto|psd|psb"="kitionphoto"} ? {folder, document, links, missing} (copies the document and its linked files into <dir>/<name>/, relinked to Links/). Changes the document. */
-  "file.package": { /** folder */ dir?: Json; format?: "kitionphoto" | "psd" | "psb" }
+  /** Package.... Params: {"dir":folder,"format":"kphoto|psd|psb"="kphoto"} ? {folder, document, links, missing} (copies the document and its linked files into <dir>/<name>/, relinked to Links/). Changes the document. */
+  "file.package": { /** folder */ dir?: Json; format?: "kphoto" | "psd" | "psb" }
   /** Paths to Illustrator.... Params: {"path":str? (.ai; omit to return the text),"paths":"all|work|<path name>"="all"} ? {path, paths} */
   "file.export.pathsToIllustrator": { /** .ai; omit to return the text */ path?: string; paths?: "all" | "work" | "<path name>" }
   /** Auto-Select Layer. Params: {"x":px,"y":px,"target":"layer|group"="layer","select":bool=true,"mode":"replace|toggle|add"="replace","list":bool=false (return every layer with pixels there, topmost first)} ? {layer} | {layers} */
