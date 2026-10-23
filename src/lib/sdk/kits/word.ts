@@ -598,7 +598,7 @@ export interface WordCommands extends CommandMap {
   "insert.dropCap": Record<string, never>
   /** Horizontal Line. Params: {}. Changes the document. */
   "insert.horizontalLine": Record<string, never>
-  /** WordArt. Params: {}. Changes the document. */
+  /** WordArt. Params: {"text"?: string, "warp"?: preset (textArchUp, textWave1, textInflate...)}. Changes the document. */
   "insert.wordArt": Record<string, never>
   /** Text from File. Params: {"path": string}. Changes the document. */
   "insert.textFromFile": { path?: string }
@@ -1028,6 +1028,8 @@ export interface WordCommands extends CommandMap {
   "drawing.format": { ids?: Array<number> }
   /** Set Drawing Object Text. Params: {"id", "text"? | "paragraphs"?}. Changes the document. */
   "drawing.text": Record<string, never>
+  /** Connect Drawing Objects. Params: {"from": id, "to": id, "fromSite"?, "toSite"?, "geometry"?: {"preset": "straightConnector1"|"bentConnector3"|"curvedConnector3"}} (floating shapes). Changes the document. */
+  "drawing.connect": { /** an id */ from?: number; /** an id */ to?: number }
   /** Group Drawing Objects. Params: {"ids": [id]} (two or more floating shapes and pictures in the body, on one page). Changes the document. */
   "drawing.group": { ids?: Array<number> }
   /** Ungroup Drawing Objects. Params: {"ids": [id]} (groups). Changes the document. */

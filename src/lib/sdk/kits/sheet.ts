@@ -430,6 +430,8 @@ export interface SheetCommands extends CommandMap {
   "insert.icons": { /** at (no type given) */ at?: Json; /** a colour such as #rrggbb */ color?: string; /** chart|table|sum|filter|lock|comment|picture|book|folder|search|calc|check|... */ name?: Json; size?: number }
   /** Text Box. Params: {at?, width?, height?, text?}. Changes the document. */
   "insert.textBox": { /** at (no type given) */ at?: Json; height?: number; text?: string; width?: number }
+  /** WordArt. Params: {text?, warp?: preset (textArchUp, textWave1, textInflate...)}. Changes the document. */
+  "insert.wordArt": { text?: string; /** preset (textArchUp, textWave1, textInflate...); textArchUp, textWave1, textInflate... */ warp?: Json }
   /** Edit Text Box. Params: {id: textBox id, text: string}. Changes the document. */
   "shape.setText": { /** textBox id */ id?: Json; text?: string }
   /** Delete Object. Params: {kind: chart|image|shape, id}. Changes the document. */
@@ -742,6 +744,12 @@ export interface SheetCommands extends CommandMap {
   "drawing.format": { /** fill (no type given) */ fill?: Json; /** geometry (no type given) */ geometry?: Json; ids?: Array<number>; /** stroke (no type given) */ stroke?: Json }
   /** Set Drawing Object Text. Params: {id, text? | paragraphs?}. Changes the document. */
   "drawing.text": { id?: number }
+  /** Connect Drawing Objects. Params: {from, to, fromSite?, toSite?, geometry?: {preset: straightConnector1|bentConnector3|curvedConnector3}}. Changes the document. */
+  "drawing.connect": { /** from (no type given) */ from?: Json; /** fromSite (no type given) */ fromSite?: Json; geometry?: { preset?: "straightConnector1" | "bentConnector3" | "curvedConnector3" }; /** to (no type given) */ to?: Json; /** toSite (no type given) */ toSite?: Json }
+  /** Group Drawing Objects. Params: {ids} (two or more shapes or groups on the sheet, not in a group). Changes the document. */
+  "drawing.group": { ids?: Array<number> }
+  /** Ungroup Drawing Objects. Params: {ids} (groups). Changes the document. */
+  "drawing.ungroup": { ids?: Array<number> }
   /** Arrange Drawing Objects. Params: {ids, order: front|back|forward|backward} (charts stay above shapes). Changes the document. */
   "drawing.arrange": { ids?: Array<number>; order?: "front" | "back" | "forward" | "backward" }
   /** Change Chart. Params: {id, kind?, title?: text|null, legend?: top|bottom|left|right|null, dataLabels?, gridlines?, xTitle?, yTitle?, series?: [{name, values, color?}] (colours only: the data are the cells)}. Changes the document. */

@@ -19,6 +19,8 @@ export type KitEngineCommand = {
   enabled: boolean
   /** The parameters as a JSON schema (`ParameterSchemaSpec`); commands with one can be agent tools. */
   schema?: Record<string, unknown> | null
+  /** What the command answers, as one `ValueSchemaSpec` (KHP A1 `output.schema`); optional. */
+  outputSchema?: Record<string, unknown> | null
   /** Parameter notes for an agent. */
   params?: string | null
 }

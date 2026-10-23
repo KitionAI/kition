@@ -10,6 +10,8 @@ export type KitCommandInfo = {
   params?: string | null
   description?: string
   schema?: unknown
+  /** What the command answers, as one `ValueSchemaSpec` (KHP A1 `output.schema`). */
+  outputSchema?: unknown
   mutates?: boolean
   enabled?: boolean
 }

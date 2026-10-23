@@ -461,6 +461,8 @@ export interface SlideCommands extends CommandMap {
   "drawing.text": { /** {anchor, insets, wrap, autofit} */ body?: { anchor?: Json; autofit?: Json; insets?: Json; wrap?: Json }; id?: number }
   /** Arrange Drawing Objects. Params: {ids, order: front|back|forward|backward}. Changes the document. */
   "drawing.arrange": { ids?: Array<number>; order?: "front" | "back" | "forward" | "backward" }
+  /** Connect Drawing Objects. Params: {from, to, fromSite?, toSite?, geometry?: {preset: straightConnector1|bentConnector3|curvedConnector3}}. Changes the document. */
+  "drawing.connect": { /** from (no type given) */ from?: Json; /** fromSite (no type given) */ fromSite?: Json; geometry?: { preset?: "straightConnector1" | "bentConnector3" | "curvedConnector3" }; /** to (no type given) */ to?: Json; /** toSite (no type given) */ toSite?: Json }
   /** Group Drawing Objects. Params: {ids} (two or more objects on the slide, not in a group). Changes the document. */
   "drawing.group": { ids?: Array<number> }
   /** Ungroup Drawing Objects. Params: {ids} (groups). Changes the document. */
