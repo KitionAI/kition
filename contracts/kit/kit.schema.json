@@ -392,6 +392,10 @@
           ],
           "description": "The kit draws its editor (embedded, over the Kit UI protocol), platform K8. Host-drawn editors (\"host\") are retired."
         },
+        "display": {
+          "enum": ["menus", "line", "classic"],
+          "description": "The editor's default display mode (platform U5c): menus, a single line of commands, or the classic ribbon. Focus is entered, never a default."
+        },
         "entry": {
           "type": "string",
           "pattern": "^[^/][^:]*\\.html$",

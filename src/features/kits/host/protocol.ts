@@ -54,12 +54,21 @@ export type KitUiHostButton = {
   pressed?: boolean
 }
 
+/**
+ * The editor's display modes (section 9): `menus` (tabs open as drop-down menus, no command
+ * area), `line` (one row of the selected tab's main commands), `classic` (the full ribbon), and
+ * `focus` (no chrome but a small floating bar).
+ */
+export type KitDisplayMode = 'menus' | 'line' | 'classic' | 'focus'
+
 /** What the host hides, disables, and adds, and what the person hid (protocol section 9). */
 export type KitUiConfig = {
   hide?: string[]
   disable?: string[]
   add?: KitUiHostButton[]
   personal?: { hide?: string[] }
+  /** The display modes the person may choose (absent or empty: all) and the one the editor opens in. */
+  modes?: { allowed?: KitDisplayMode[]; default?: KitDisplayMode }
 }
 
 /** One element of a kit's editor, as `ui/elements` lists it. */
