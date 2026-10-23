@@ -356,7 +356,7 @@ async fn renamed(
     if from.is_empty() || to.is_empty() {
         return Err(AppError::bad_request("`from` and `to` required"));
     }
-    state.tables.forget(from);
+    state.tables.moved(from, to);
     let updated = match &state.renamed {
         Some(hook) => hook(from, to).map_err(AppError::internal)?,
         None => 0,

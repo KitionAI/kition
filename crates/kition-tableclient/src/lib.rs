@@ -263,12 +263,45 @@ pub fn is_table_path(path: &str) -> bool {
         })
 }
 
+/// Where the triggers keep each table file's `changes.since` cursor, in the workspace's own
+/// store: a restart reports the edits made after the last report, and never one twice.
+const CURSORS_FILE: &str = ".kition/tables/changes.json";
+
+/// The cursors file: `{ "files": { "<path>": "<version>" } }`.
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+struct Cursors {
+    #[serde(default)]
+    files: HashMap<String, String>,
+}
+
+fn read_cursors(file: Option<&Path>) -> HashMap<String, String> {
+    file.and_then(|file| std::fs::read(file).ok())
+        .and_then(|bytes| serde_json::from_slice::<Cursors>(&bytes).ok())
+        .map(|cursors| cursors.files)
+        .unwrap_or_default()
+}
+
+/// Writes the cursors beside the file, then moves them over it, so a crash leaves the old ones.
+fn write_cursors(file: &Path, files: &HashMap<String, String>) -> std::io::Result<()> {
+    if let Some(parent) = file.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let bytes = serde_json::to_vec_pretty(&Cursors {
+        files: files.clone(),
+    })?;
+    let staged = file.with_extension("json.tmp");
+    std::fs::write(&staged, bytes)?;
+    std::fs::rename(&staged, file)
+}
+
 struct Inner {
     kits: KitManager,
     events: EventBus,
     queues: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
-    /// The version of each file the triggers last reported changes up to.
+    /// The version of each file the triggers last reported changes up to, kept in
+    /// `cursors_file` across restarts.
     versions: Mutex<HashMap<String, String>>,
+    cursors_file: Option<std::path::PathBuf>,
     /// Each closed file's description, with the modification time it was read at.
     described: Mutex<HashMap<String, (std::time::SystemTime, FileInfo)>>,
 }
@@ -281,12 +314,15 @@ pub struct TableClient {
 
 impl TableClient {
     pub fn new(kits: KitManager, events: EventBus) -> Self {
+        let cursors_file = kits.workspace_dir().map(|dir| dir.join(CURSORS_FILE));
+        let versions = read_cursors(cursors_file.as_deref());
         Self {
             inner: Arc::new(Inner {
                 kits,
                 events,
                 queues: Mutex::default(),
-                versions: Mutex::default(),
+                versions: Mutex::new(versions),
+                cursors_file,
                 described: Mutex::default(),
             }),
         }
@@ -320,11 +356,30 @@ impl TableClient {
     }
 
     pub(crate) fn set_version(&self, path: &str, version: String) {
-        self.inner
+        self.update_versions(|versions| {
+            if versions.get(path) == Some(&version) {
+                return false;
+            }
+            versions.insert(path.to_owned(), version);
+            true
+        });
+    }
+
+    /// Changes the cursors and, when `change` answers that it changed them, saves them.
+    fn update_versions(&self, change: impl FnOnce(&mut HashMap<String, String>) -> bool) {
+        let mut versions = self
+            .inner
             .versions
             .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(path.to_owned(), version);
+            .unwrap_or_else(PoisonError::into_inner);
+        if !change(&mut versions) {
+            return;
+        }
+        if let Some(file) = &self.inner.cursors_file
+            && let Err(error) = write_cursors(file, &versions)
+        {
+            tracing::warn!(%error, "the table triggers' cursors were not saved");
+        }
     }
 
     /// Runs `steps` on the table file `path`, in order, and answers each step's `result`. With
@@ -705,18 +760,44 @@ impl TableClient {
         Ok(file)
     }
 
-    /// Drops what the client remembers of `path` (renamed, deleted).
+    /// Drops what the client remembers of `path`, a deleted file or folder.
     pub fn forget(&self, path: &str) {
+        let under = |known: &String| known == path || known.starts_with(&format!("{path}/"));
         self.inner
             .described
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .retain(|known, _| known != path && !known.starts_with(&format!("{path}/")));
+            .retain(|known, _| !under(known));
+        self.update_versions(|versions| {
+            let before = versions.len();
+            versions.retain(|known, _| !under(known));
+            versions.len() != before
+        });
+    }
+
+    /// Follows a file or folder renamed from `from` to `to`: its description is read again, and
+    /// the triggers' cursors move with it (a rename keeps the document and its versions).
+    pub fn moved(&self, from: &str, to: &str) {
+        let (from, to) = (from.trim_end_matches('/'), to.trim_end_matches('/'));
+        let under = |known: &String| known == from || known.starts_with(&format!("{from}/"));
         self.inner
-            .versions
+            .described
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .retain(|known, _| known != path && !known.starts_with(&format!("{path}/")));
+            .retain(|known, _| !under(known));
+        self.update_versions(|versions| {
+            let moving: Vec<String> = versions
+                .keys()
+                .filter(|known| under(known))
+                .cloned()
+                .collect();
+            for known in &moving {
+                if let Some(version) = versions.remove(known) {
+                    versions.insert(format!("{to}{}", &known[from.len()..]), version);
+                }
+            }
+            !moving.is_empty()
+        });
     }
 
     /// The document's KDM root object id, from the headless kit's object model.
@@ -869,6 +950,30 @@ mod tests {
         assert_eq!(keyed.get("email"), Some(&json!("a@example.com")));
         assert!(keyed.contains_key("title"));
         assert!(!keyed.contains_key("other"));
+    }
+
+    #[test]
+    fn cursors_survive_a_restart_and_follow_renames_and_deletes() {
+        let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let open = || {
+            TableClient::new(
+                KitManager::new(Some(dir.path().to_path_buf()), Vec::new()),
+                EventBus::default(),
+            )
+        };
+        let client = open();
+        client.set_version("crm/Leads.ktable", "v1".into());
+        client.set_version("crm/Deals.ktable", "v2".into());
+        client.set_version("Other.ktable", "v3".into());
+        let restarted = open();
+        assert_eq!(restarted.version("crm/Leads.ktable").as_deref(), Some("v1"));
+        restarted.moved("crm", "sales");
+        restarted.forget("Other.ktable");
+        let again = open();
+        assert_eq!(again.version("crm/Leads.ktable"), None);
+        assert_eq!(again.version("sales/Leads.ktable").as_deref(), Some("v1"));
+        assert_eq!(again.version("sales/Deals.ktable").as_deref(), Some("v2"));
+        assert_eq!(again.version("Other.ktable"), None);
     }
 
     #[test]

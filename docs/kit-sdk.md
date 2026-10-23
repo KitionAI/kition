@@ -411,7 +411,9 @@ the host table client, `crates/kition-tableclient`: through the Kit AI bridge
 when an editor has the file open, so the edit arrives live, and through the
 headless `kit-table` otherwise. Its writes carry a `system:<feature>` origin
 and never join the person's undo; workflow triggers read
-`table.changes.since`. The renderer reaches it through `/v1/kit-tables*`
+`table.changes.since` from a cursor kept per file in the workspace
+(`.kition/tables/changes.json`), so a restart neither drops nor repeats
+an edit. The renderer reaches it through `/v1/kit-tables*`
 (`contracts/runtime/kit-tables.schema.json`, `src/api/kitTables.ts`), and
 workflows, form sync, and email sync name a table by its file path
 (`documentPath`) and table id. They follow the file: a rename or move

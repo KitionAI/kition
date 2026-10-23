@@ -8,6 +8,10 @@
 //! the headless kit saves a file, and publishes the same events for records that people, the
 //! agent, or extensions created or updated. Writes under a `system:` or `import:` origin are not
 //! reported: the host published its own already, and imports never triggered workflows.
+//!
+//! The version reported up to is kept per file in the workspace (`.kition/tables/changes.json`),
+//! so after a restart the first report starts where the last one stopped: edits made in between
+//! are reported, and none is reported twice.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -192,6 +196,8 @@ impl TableClient {
                 params,
             )
         };
+        // A document the agent closed already is reported with the next change: the cursor
+        // stays where it was.
         let answer = match ask(since.clone()).await {
             Ok(executed) => executed.result.map(|answer| answer["result"].clone()),
             Err(_) => ask(String::new())
