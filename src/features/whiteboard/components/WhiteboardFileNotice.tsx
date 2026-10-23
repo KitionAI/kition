@@ -51,7 +51,7 @@ export function WhiteboardFileNotice({
 
   return (
     <FileNotice
-      title={t('whiteboard.file.title', { title })}
+      title={t('kitEditor.openFailedTitle', { name: title })}
       message={t(BOARD_FILE_PROBLEM_MESSAGES[problem])}
       data-testid="whiteboard-file-notice"
       data-problem={problem}

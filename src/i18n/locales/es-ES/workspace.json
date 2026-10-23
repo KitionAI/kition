@@ -211,7 +211,6 @@
   },
   "whiteboard": {
     "file": {
-      "title": "No se puede abrir {{title}}",
       "unsupported": "Este tablero se guardó en un formato anterior que esta versión de Kition ya no abre. El archivo no se ha modificado.",
       "newerVersion": "Este tablero se creó con una versión más reciente de Kition. Actualiza Kition para abrirlo. El archivo no se ha modificado.",
       "notABoard": "Este archivo no es un tablero de Kition o está dañado. El archivo no se ha modificado.",
