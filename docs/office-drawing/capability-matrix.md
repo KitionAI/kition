@@ -98,9 +98,11 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   the group shows it but is changed through its group (`unsupported`
   otherwise). Word's editor adds objects to the selection with Shift, and
   Shape Format's shared Group and Ungroup run the commands (Word
-  `web/tests/drawing.mjs`, Chromium and WebKit). Sheet does not offer groups
-  yet: its groups are a key on each member and its editor selects one object,
-  so the shared buttons stay disabled there.
+  `web/tests/drawing.mjs`, Chromium and WebKit). Sheet groups too (since
+  2026-10-23): a group's key is an object id, the group is one object in the
+  sheet's list, moving or sizing it carries its members, and the editor
+  selects and drags it as one, with Shift adding to the selection
+  (`shapes_group_move_and_resize_together…`, Sheet browser runs).
   Gradient fills (`KitDrawing 1.4`, DR23): described and set through
   `drawing.format` in all three kits, from Shape Format's shared gradient
   presets in Word and Sheet (Slide's own Format pane sets them there). Word
@@ -111,8 +113,9 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   Word and Sheet browser runs in Chromium and WebKit.
   Shadow and glow (`KitDrawing 1.4`, DR24): described and set through
   `drawing.format` in Slide and Word, from Shape Format's shared Effects menu
-  in Word (Slide's own Format pane sets them there); Sheet shapes have no
-  effects, so the command answers `unsupported` and the menu is left out.
+  in Word and Sheet (Slide's own Format pane sets them there). Sheet shapes
+  keep them since 2026-10-23 (read from and written as `a:effectLst`, drawn
+  under the shape).
   Word's PDF export now paints gradient fills as shadings. Evidence: the
   `shadows_and_glows_…` engine tests, Word's `a_gradient_fill_is_a_shading`
   PDF test, and the Word and Sheet browser runs in Chromium and WebKit.
@@ -122,7 +125,8 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   box story, Sheet into a text body it draws and saves, Slide into its text
   body (each kit's `shape_text_takes_runs_…` test, save and reopen included).
   A colour is read as `#RRGGBB` or a theme slot wherever one goes.
-  Still open in Phase 2: grouping and effects in Sheet, and connectors.
+  Still open in Phase 2: connectors (Slide edits them; Word and Sheet only
+  read them).
 
 ## Charts
 
