@@ -43,17 +43,28 @@ export async function serveWorkspace(page: Page, root: string) {
   })
 }
 
+/** A kit editor's display mode, by kit id: kit-ui keeps the person's choice in the page's storage. */
+export type KitModes = Record<string, 'menus' | 'line' | 'classic'>
+
+/**
+ * Pins kit editors' display modes before the page loads, for specs that click the Classic ribbon or
+ * a kit's menus.
+ */
+export async function pinKitModes(page: Page, modes: KitModes) {
+  for (const [kit, mode] of Object.entries(modes)) await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [`kui.mode.${kit}`, mode] as const)
+}
+
 /**
  * Kition on a desktop workspace whose files kits read through the file server. Files Kition saves
  * through its file API are recorded in `saves`, and with `persist` also written to the workspace.
  * The runtime's file grants (`/v1/kits/grants`) are served over the workspace; `grants` holds
- * their sessions.
+ * their sessions. `modes` pins kit editors' display modes (`{ 'kit.word': 'classic' }`, `pinKitModes`).
  */
 export async function openKitWorkspace(
   page: Page,
   baseURL: string,
   files: Record<string, Buffer> = {},
-  { persist = false, desktop = {} as DesktopHostOptions, routes = async (_page: Page) => {} } = {},
+  { persist = false, desktop = {} as DesktopHostOptions, routes = async (_page: Page) => {}, modes = {} as KitModes } = {},
 ) {
   const host = await installDesktopHost(page, desktop)
   for (const [name, content] of Object.entries(files)) {
@@ -73,6 +84,7 @@ export async function openKitWorkspace(
   })
   // A spec's own answers, over the mocks above.
   await routes(page)
+  await pinKitModes(page, modes)
   await page.goto(new URL('/documents', baseURL).toString(), { waitUntil: 'domcontentloaded' })
   await dismissFirstRunActivation(page)
   return { host, saves, grants }

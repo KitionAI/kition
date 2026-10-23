@@ -28,10 +28,14 @@ async function entitiesOf(bytes: Buffer) {
   return count
 }
 
+// The tests click the Classic ribbon's tools (CAD opens in Menus), which needs a wide window (Home:
+// about 1630 px beside the sidebar); a narrower one steps down to Single line.
+test.use({ viewport: { width: 1920, height: 1000 } })
+
 test('opens a drawing in the CAD kit’s own editor, draws in it, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!engine.built, 'the CAD kit editor is not built into public/kits/cad-ui')
   test.setTimeout(120_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Plan.dxf', await planFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Plan.dxf', await planFixture(), {}, { modes: { 'kit.cad': 'classic' } })
   try {
     await expect(kit.getByTestId('cad-status')).toHaveText('1 objects', { timeout: 60_000 })
     await expect(kit.getByTestId('ribbon-tab-home')).toHaveText('Home')
@@ -72,7 +76,7 @@ test('keeps a CAD drawing’s replica across a save and a reopen, and opens a fi
   test.skip(!kitPackageHasReplicaInfo('cad', 'kition_cad_sdk'), 'the CAD kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh cad')
   test.setTimeout(180_000)
   const name = 'Replica.dxf'
-  const { host, kit } = await openInKitFrame(page, baseURL!, name, await planFixture(), {}, { persist: true })
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await planFixture(), {}, { persist: true, modes: { 'kit.cad': 'classic' } })
   const reopen = async () => {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)

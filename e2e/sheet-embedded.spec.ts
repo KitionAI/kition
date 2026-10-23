@@ -30,10 +30,13 @@ async function cellOf(bytes: Buffer, cell: string) {
   return value
 }
 
+// The tests click the Classic ribbon, which needs a wide window (Home: about 1680 px beside the sidebar); a narrower one steps down to Single line.
+test.use({ viewport: { width: 2000, height: 1000 } })
+
 test('opens a workbook in the Sheet kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
   test.setTimeout(120_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Budget.xlsx', await budgetFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Budget.xlsx', await budgetFixture(), {}, { modes: { 'kit.sheet': 'classic' } })
   try {
     await expect(kit.getByTestId('sheet-status')).toHaveText('Sheet1 · A1', { timeout: 60_000 })
     await expect(kit.getByTestId('ribbon-tab-home')).toHaveText('Home')
@@ -79,7 +82,7 @@ test('keeps a workbook’s replica across a save and a reopen, and opens a file 
   test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_sdk'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
   test.setTimeout(180_000)
   const name = 'Replica.xlsx'
-  const { host, kit } = await openInKitFrame(page, baseURL!, name, await budgetFixture(), {}, { persist: true })
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await budgetFixture(), {}, { persist: true, modes: { 'kit.sheet': 'classic' } })
   const reopen = async () => {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)

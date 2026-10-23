@@ -4,7 +4,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, test } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
-import { openInKitFrame, openTreeFile, replicaVersion, serveWorkspace } from './helpers/embeddedKit'
+import { openInKitFrame, openTreeFile, pinKitModes, replicaVersion, serveWorkspace } from './helpers/embeddedKit'
 import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
@@ -49,6 +49,9 @@ async function textOf(bytes: Buffer) {
   return text
 }
 
+// The tests click the Classic ribbon, which needs a wide window: a narrower one steps down to Single line.
+test.use({ viewport: { width: 1920, height: 1000 } })
+
 test('opens a Word document in the Word kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Word kit editor is not built into public/kits/word-ui')
   test.setTimeout(120_000)
@@ -65,6 +68,8 @@ test('opens a Word document in the Word kit’s own editor, edits it there, and 
       await fulfillJson(route, { code: 200, message: 'success', data: { path: target, bytes: bytes.length } })
     })
 
+    // The test clicks the Classic ribbon's buttons.
+    await pinKitModes(page, { 'kit.word': 'classic' })
     await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Letter' }).first().click()
@@ -108,7 +113,7 @@ test('keeps a Word document’s replica across a save and a reopen, and opens a 
   test.skip(!kitPackageHasReplicaInfo('word', 'kition_word_sdk'), 'the Word kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh word')
   test.setTimeout(180_000)
   const name = 'Replica.docx'
-  const { host, kit } = await openInKitFrame(page, baseURL!, name, await letterFixture(), {}, { persist: true })
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await letterFixture(), {}, { persist: true, modes: { 'kit.word': 'classic' } })
   const reopen = async () => {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)

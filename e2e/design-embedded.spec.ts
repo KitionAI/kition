@@ -20,9 +20,9 @@ async function flyerFixture() {
 test('opens a layout in the Design kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Design kit editor is not built into public/kits/design-ui')
   test.setTimeout(120_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Flyer.kdesign', await flyerFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Flyer.kdesign', await flyerFixture(), {}, { modes: { 'kit.design': 'menus' } })
   try {
-    await expect(kit.getByTestId('design-status')).toHaveText('1 pages', { timeout: 60_000 })
+    await expect(kit.getByTestId('design-status')).toHaveText('1 page', { timeout: 60_000 })
     await expect(kit.getByTestId('design-menu-Layout')).toHaveText('Layout')
     await expect(kit.getByTestId('design-spread-0')).toBeVisible()
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)

@@ -30,10 +30,13 @@ async function pagesOf(bytes: Buffer) {
   return pages
 }
 
+// The tests click the Classic ribbon, which needs a wide window (Home: about 1030 px beside the sidebar); a narrower one steps down to Single line.
+test.use({ viewport: { width: 1440, height: 900 } })
+
 test('opens a PDF in the PDF kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!engine.built, 'the PDF kit editor is not built into public/kits/pdf-ui')
   test.setTimeout(120_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Guide.pdf', await guideFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Guide.pdf', await guideFixture(), {}, { modes: { 'kit.pdf': 'classic' } })
   try {
     await expect(kit.getByTestId('pdf-status')).toHaveText('Page 1 of 2', { timeout: 60_000 })
     await expect(kit.getByTestId('ribbon-tab-home')).toHaveText('Home')
@@ -71,7 +74,7 @@ test('keeps a PDF’s replica across a save and a reopen, and opens a file chang
   test.skip(!kitPackageHasReplicaInfo('pdf', 'kition_pdf_sdk'), 'the PDF kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh pdf')
   test.setTimeout(180_000)
   const name = 'Replica.pdf'
-  const { host, kit } = await openInKitFrame(page, baseURL!, name, await guideFixture(), {}, { persist: true })
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await guideFixture(), {}, { persist: true, modes: { 'kit.pdf': 'classic' } })
   const reopen = async () => {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)
