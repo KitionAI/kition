@@ -42,6 +42,8 @@ test('opens a Markdown document in the Document kit, edits and comments on it, s
     const editor = kit.getByTestId('document-editor')
     await expect(editor).toBeVisible({ timeout: 60_000 })
     await expect(kit.getByTestId('document-title')).toHaveText(name)
+    // kit-ui's editor frame, in the kit's default display mode (kit.json `ui.display`).
+    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'line')
     await expect(editor.locator('.cm-content')).toContainText('Goals for the quarter.')
     await expect(editor.locator('.cm-content')).toContainText('Ship')
 

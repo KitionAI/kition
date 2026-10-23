@@ -6,13 +6,14 @@ import { MessageSquare } from 'lucide-react'
 import {
   Button,
   CommentsPanel,
-  KitAppShell,
+  EditorFrame,
   KitEditorProvider,
   createKitStrings,
   toast,
   useKitEditorState,
   useKitSession,
   type CommentsPanelProps,
+  type FrameTab,
   type HostConnection,
 } from '@kition/kit-ui'
 import { commentThreads, randomActor, relocateAnchorRange, Replica, type CommentAnchor, type ObjectId } from '@kition/kdm'
@@ -72,6 +73,9 @@ function useDarkClass() {
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
+/** The document has no command tabs yet: the frame shows its title, the comments toggle, and the document actions. */
+const NO_TABS: FrameTab[] = []
+
 export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
   useDarkClass()
   const t = useMemo(() => createKitStrings(CATALOGS, host.init.locale), [host])
@@ -84,13 +88,14 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
 
   return (
     <KitEditorProvider editor={editor}>
-      <KitAppShell
-        menus={
+      <EditorFrame
+        tabs={NO_TABS}
+        title={
           <span className="document-kit-title" data-testid="document-title">
             {name}
           </span>
         }
-        end={
+        actions={
           <Button variant="ghost" aria-pressed={commentsOpen} title={i18n.t('comments.toggle')} data-testid="document-comments-toggle" onClick={() => setCommentsOpen((open) => !open)}>
             <MessageSquare size={16} />
             {openThreads ? <span data-testid="document-comments-count">{openThreads}</span> : null}
@@ -120,7 +125,7 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
             <div className="kui-message kui-muted">{t('opening')}</div>
           )}
         </div>
-      </KitAppShell>
+      </EditorFrame>
     </KitEditorProvider>
   )
 }
