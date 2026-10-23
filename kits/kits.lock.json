@@ -101,13 +101,13 @@
   },
   "table": {
     "repository": "KitionAI/kition-table",
-    "version": "0.2.1",
-    "tag": "package-v0.2.1",
-    "asset": "kition-table-0.2.1.tgz",
-    "size": 17073494,
-    "sha256": "0c89f1499f51bfbcee1f6c5cb59ee39c6ec8d2d4153250c2086ee5efd39c9ee3",
-    "commit": "9b587d833622771ad23e0debdfd55616c70205db",
-    "sdkCommit": "2b9df7498fc880598246c5bce54b59d88ff56189",
+    "version": "0.2.2",
+    "tag": "package-v0.2.2",
+    "asset": "kition-table-0.2.2.tgz",
+    "size": 17183565,
+    "sha256": "2646f125e746b68bb03fca801a1c0d14508f41e7c6fa6ab97b5a552eb7f93919",
+    "commit": "0563248e9e96c43712f6a9d7dfe87fc5945b7a3a",
+    "sdkCommit": "d7909010ebd007779871a38ad879294ba6816083",
     "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   },
   "vector": {
