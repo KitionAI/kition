@@ -75,6 +75,8 @@ test('opens a board in the Board kit, draws on it, saves it, and Kition opens th
     // Kition's own board editor, inside the kit's frame, over the kit's TypeScript engine.
     await expect(kit.getByTestId('whiteboard-editor-pane')).toBeVisible({ timeout: 60_000 })
     await expect(kit.getByTestId('board-title')).toHaveText(name)
+    // kit-ui's editor frame, in the kit's default display mode (kit.json `ui.display`).
+    await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'line')
     await expect(kit.locator('[data-element-id="note-goals"]')).toBeVisible()
     await expect(kit.locator('[data-element-id="note-risks"]')).toBeVisible()
     await expect(kit.locator('[data-element-id]')).toHaveCount(2)

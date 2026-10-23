@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n } from 'i18next'
-import { KitAppShell, KitEditorProvider, createKitStrings, toast, useKitEditorState, useKitSession, type HostConnection } from '@kition/kit-ui'
+import { EditorFrame, KitEditorProvider, createKitStrings, toast, useKitEditorState, useKitSession, type FrameTab, type HostConnection } from '@kition/kit-ui'
 import { randomActor, Replica } from '@kition/kdm'
 import { ConfirmProvider } from '@kition/app-ui/confirm'
 import { BoardHostProvider, type BoardHost, type WhiteboardPoint } from '@kition/board-editor'
@@ -42,6 +42,9 @@ function useDarkClass() {
   }, [])
 }
 
+/** The board has no command tabs yet: the frame shows its title and the document actions. */
+const NO_TABS: FrameTab[] = []
+
 export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
   useDarkClass()
   const t = useMemo(() => createKitStrings(CATALOGS, host.init.locale), [host])
@@ -52,8 +55,9 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
 
   return (
     <KitEditorProvider editor={editor}>
-      <KitAppShell
-        menus={
+      <EditorFrame
+        tabs={NO_TABS}
+        title={
           <span className="board-kit-title" data-testid="board-title">
             {name}
           </span>
@@ -77,7 +81,7 @@ export function App({ host, i18n }: { host: HostConnection; i18n: i18n }) {
             <div className="kui-message kui-muted">{t('opening')}</div>
           )}
         </div>
-      </KitAppShell>
+      </EditorFrame>
     </KitEditorProvider>
   )
 }

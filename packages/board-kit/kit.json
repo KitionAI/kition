@@ -32,6 +32,7 @@
   ],
   "ui": {
     "mode": "embedded",
+    "display": "line",
     "entry": "index.html",
     "menus": ["Edit"],
     "layout": "canvas",
