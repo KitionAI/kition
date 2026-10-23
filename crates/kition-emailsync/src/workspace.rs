@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use kition_core::now_millis;
 use kition_core::time::to_rfc3339;
-use kition_tableclient::{RecordInfo, TableClient, TableInfo};
+use kition_tableclient::{RecordInfo, TableClient, TableInfo, record_events};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
@@ -398,29 +398,42 @@ impl WorkspaceWriter {
             .map_err(|e| format!("list email table records: {e}"))
     }
 
+    /// Creates a record, or updates `previous`, as email sync, and publishes `RecordCreated` or
+    /// `RecordUpdated` for it, as the host's other writes do: the triggers never report a
+    /// `system:` write themselves.
     async fn write_values(
         &self,
         path: &str,
         table: &TableInfo,
-        record: Option<&str>,
+        previous: Option<&RecordInfo>,
         values: Map<String, Value>,
     ) -> Result<(), String> {
         let table_id = json!(table.id.parse::<i64>().unwrap_or_default());
-        let (method, params) = match record {
+        let (method, params) = match previous {
             Some(record) => (
                 "records.update",
-                json!({ "tableId": table_id, "recordId": record.parse::<i64>().unwrap_or_default(), "values": values }),
+                json!({ "tableId": table_id, "recordId": record.id.parse::<i64>().unwrap_or_default(), "values": values }),
             ),
             None => (
                 "records.create",
                 json!({ "tableId": table_id, "values": values }),
             ),
         };
-        self.tables
+        let answer = self
+            .tables
             .request(path, method, params, Some(ORIGIN))
             .await
-            .map(|_| ())
-            .map_err(|e| format!("write email table record: {e}"))
+            .map_err(|e| format!("write email table record: {e}"))?;
+        let record = kition_tableclient::record_info(&answer);
+        if !record.id.is_empty() {
+            self.tables.events().publish(match previous {
+                Some(before) => {
+                    record_events::updated(path, &table.id, &record, Some(before.values.clone()))
+                }
+                None => record_events::created(path, &table.id, &record),
+            });
+        }
+        Ok(())
     }
 
     pub fn write_message(
@@ -479,10 +492,8 @@ impl WorkspaceWriter {
             let records = self.email_records(&path, &table).await?;
             let existing = records
                 .iter()
-                .find(|r| text_value(&r.values, "document").trim() == document_text)
-                .map(|record| record.id.clone());
-            self.write_values(&path, &table, existing.as_deref(), values)
-                .await?;
+                .find(|r| text_value(&r.values, "document").trim() == document_text);
+            self.write_values(&path, &table, existing, values).await?;
             Ok::<bool, String>(existing.is_some())
         })?;
         Ok(WriteResult {
@@ -559,7 +570,7 @@ impl WorkspaceWriter {
             if next_text != current {
                 let mut values = Map::new();
                 values.insert("document".into(), json!(next_text));
-                blocking(self.write_values(&path, &table, Some(&record.id), values))
+                blocking(self.write_values(&path, &table, Some(&record), values))
                     .map_err(|e| format!("update migrated email record: {e}"))?;
                 store
                     .rename_item_documents(&workflow.id, &current, &next_text)

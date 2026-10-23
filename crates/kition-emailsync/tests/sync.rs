@@ -192,6 +192,7 @@ async fn imports_messages_and_skips_on_resync() {
         user_id,
         tables,
     } = setup();
+    let mut events = tables.events().subscribe();
     mailbox
         .messages
         .lock()
@@ -257,6 +258,20 @@ async fn imports_messages_and_skips_on_resync() {
         .await
         .unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(records.len(), 3);
+    // Each imported message is a record event, like the host's other writes, so a workflow on
+    // the email table runs for it.
+    let mut created = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        if let kition_core::events::DomainEvent::RecordCreated(event) = event {
+            assert_eq!(event.document_path, path);
+            assert_eq!(event.table_id, listed_tables[0].id);
+            created.push(event.record_id);
+        }
+    }
+    let mut ids: Vec<String> = records.iter().map(|record| record.id.clone()).collect();
+    created.sort();
+    ids.sort();
+    assert_eq!(created, ids);
     let history = tables
         .request(path, "historyState", serde_json::json!({}), None)
         .await
