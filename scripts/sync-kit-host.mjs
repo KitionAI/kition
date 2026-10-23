@@ -22,17 +22,6 @@ import { execFileSync } from 'node:child_process'
 
 const repo = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: path.dirname(new URL(import.meta.url).pathname) }).toString().trim()
 const sdk = process.env.KITION_SDK || path.join(repo, '..', 'kition-sdk')
-// Kition compiles without strictNullChecks, where `params && … && 'handle' in params` does not
-// narrow the print params in its else branch. Split the null check off; the behavior is the same
-// (a missing params object is refused with the same message). Drop this once kition-sdk splits it.
-const printParamsGuard = "    if (params && typeof params === 'object' && 'handle' in params) {\n"
-const narrowPrintParams = (text) => {
-  if (!text.includes(printParamsGuard)) return text
-  return text.replace(
-    printParamsGuard,
-    "    if (!params || typeof params !== 'object') throw badParams('a print takes PDF bytes or a handle')\n    if ('handle' in params) {\n",
-  )
-}
 const header = (source) => `// Copied from kition-sdk ${source} by scripts/sync-kit-host.mjs; change it there, not here.\n`
 const files = [
   { source: 'packages/kit-protocol/src/index.ts', out: 'src/features/kits/host/protocol.ts', rewrite: (text) => header('packages/kit-protocol/src/index.ts') + text },
@@ -45,7 +34,7 @@ const files = [
   {
     source: 'packages/kit-host/src/files.ts',
     out: 'src/features/kits/host/files.ts',
-    rewrite: (text) => header('packages/kit-host/src/files.ts') + narrowPrintParams(text.replaceAll("from '@kition/kit-protocol'", "from './protocol'")),
+    rewrite: (text) => header('packages/kit-host/src/files.ts') + text.replaceAll("from '@kition/kit-protocol'", "from './protocol'"),
   },
   // JSON has no comments; the schema's $id names its source.
   { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit.schema.json', rewrite: (text) => text },

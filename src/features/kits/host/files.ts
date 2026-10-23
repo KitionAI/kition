@@ -473,13 +473,14 @@ export function openFileSession(options: KitFilesOptions & { readOnly?: boolean;
     if (!manifest.print) throw fileError('not-allowed', 'the kit may not print')
     requireGesture('files/print')
     let bytes: Uint8Array
+    // The null check stands apart so `'handle' in params` narrows both branches without strictNullChecks too.
     if (!params || typeof params !== 'object') throw badParams('a print takes PDF bytes or a handle')
     if ('handle' in params) {
       const grant = granted(params.handle, 'read', 'file')
       if (extensionOf(grant.name) !== 'pdf' && grant.mime !== 'application/pdf') throw fileError('not-allowed', 'only a PDF prints')
       bytes = await readAll(grant.ref)
     } else {
-      if (params?.mime !== 'application/pdf' || !isArrayBuffer(params.bytes)) throw badParams('a print takes PDF bytes or a handle')
+      if (params.mime !== 'application/pdf' || !isArrayBuffer(params.bytes)) throw badParams('a print takes PDF bytes or a handle')
       bytes = new Uint8Array(params.bytes.slice(0))
     }
     const title = typeof params.title === 'string' ? params.title : ''
