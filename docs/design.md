@@ -864,6 +864,31 @@ Where the color shows (the WPS Office model):
   editors (Document, Table, Whiteboard, Design Studio) keep Kition purple.
   Never tint Kition chrome in a kit's color.
 
+## Kit editor frame and display modes
+
+Every kit editor (the kits' own pages, on kit-ui's `EditorFrame`) has the same zones: a 36 px top
+bar (the kit's tabs, then the document actions, the display mode button, and Save in the project
+purple or the kit's brand color inside the kit), the command area of the display mode, the tool
+rail on the left for canvas kits, collapsible panels on the right, the canvas, and the status bar.
+
+| Mode | Command area | Use |
+| --- | --- | --- |
+| Menus | none; tabs open as drop-down menus or a drop-down ribbon panel | drawing, photo, video, CAD |
+| Single line | one 36 px row: each group's primary items, then a chevron to the whole group | documents, sheets, slides, tablets |
+| Classic | the 94 px ribbon | long manual editing |
+| Focus | none; a floating card with Exit focus, Undo, Ask, and the active tool | reading, drawing, presenting |
+
+- Surfaces stay white or light neutral: the top bar and rail on the muted surface, the command row
+  and ribbon on white, hairline borders between them, no shadow except on popovers and the Focus
+  card (the card radius, 12 px).
+- Controls keep the 8 px radius; nothing in the frame is a pill. A group without primary items is
+  one labeled button with a chevron, not an icon alone.
+- When the window is too narrow the frame steps down (Classic, Single line, Menus; Single line needs
+  720 px) and the mode button shows a small dot in the primary color.
+- On a coarse pointer (tablets) hit targets grow to 44 px, the command row and top bar to 48 px,
+  menu rows to 40 px.
+- A view-only document shows only viewing tabs (View, Review) and no tool rail, and opens in Menus.
+
 ## Do's and Don'ts
 
 ### Do

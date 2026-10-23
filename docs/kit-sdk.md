@@ -255,10 +255,20 @@ kition-sdk's `@kition/kit-ui`) holds the ribbon, panels, canvas, and dialogs
 next to the engine, and Kition shows it in an iframe and talks to it over the
 Kit UI protocol (`kition-kit-ui/1`, kition-sdk `docs/platform/reference/ui-protocol.md`). Kition
 keeps the shell: files, the workspace, the agent, the theme, the language, and
-its own shortcuts. All ten kits have one: Slide, Word, Sheet, PDF, and CAD
-(ribbon editors on kit-ui's `KitShell`), and Photo, Vector, Design, Effect,
-and Film (menu-bar editors on `KitAppShell`, with a tool rail of flyout slots
-and side panels).
+its own shortcuts.
+
+All ten kits draw on kit-ui's `EditorFrame`: a top bar with the kit's tabs
+(File, Home, Insert, …, or a ported app's menus) and the document actions,
+then the person's display mode: Menus (tabs open as drop-down menus or a
+drop-down ribbon panel), Single line (one row of the tab's main commands),
+Classic (the full ribbon), or Focus (no chrome but a floating bar, Cmd+\).
+kit-ui keeps the choice per kit, steps down when the window is too narrow, and
+sizes for touch. Photo, Vector, Film, Effect, and CAD default to Menus; Word,
+Sheet, Slide, PDF, and Design to Single line (`kit.json` `ui.display`). Canvas
+kits pass a tool rail of flyout slots; side panels sit right of the body. A
+kit declares its tabs as `{ id, label, view?, ribbon?, menu? }`
+(`catalogTabs` and `commandMenuTabs` build menu tabs) and marks Single line
+items with `primary`.
 
 - `scripts/build-kit-ui.sh <kit>` builds the kit's engine and editor into
   `public/kits/<kit>-ui/` with a `kit-ui.json` marker (`make kit-ui-<kit>`;
