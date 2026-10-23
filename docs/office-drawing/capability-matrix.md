@@ -116,8 +116,13 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   Word's PDF export now paints gradient fills as shadings. Evidence: the
   `shadows_and_glows_…` engine tests, Word's `a_gradient_fill_is_a_shading`
   PDF test, and the Word and Sheet browser runs in Chromium and WebKit.
-  Still open in Phase 2: grouping and effects in Sheet, connectors, and rich
-  text in shapes.
+  Rich text in shapes (DR8): `drawing.text` takes paragraphs with alignment
+  and runs with font, size, bold, italic, underline and colour in all three
+  kits, and `drawing.describe` reports them; Word writes them into the text
+  box story, Sheet into a text body it draws and saves, Slide into its text
+  body (each kit's `shape_text_takes_runs_…` test, save and reopen included).
+  A colour is read as `#RRGGBB` or a theme slot wherever one goes.
+  Still open in Phase 2: grouping and effects in Sheet, and connectors.
 
 ## Charts
 
