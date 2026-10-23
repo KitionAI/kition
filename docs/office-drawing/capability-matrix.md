@@ -101,8 +101,17 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   `web/tests/drawing.mjs`, Chromium and WebKit). Sheet does not offer groups
   yet: its groups are a key on each member and its editor selects one object,
   so the shared buttons stay disabled there.
-  Still open in Phase 2: grouping in Sheet, connectors, gradient and effect
-  formatting, and rich text in shapes.
+  Gradient fills (`KitDrawing 1.4`, DR23): described and set through
+  `drawing.format` in all three kits, from Shape Format's shared gradient
+  presets in Word and Sheet (Slide's own Format pane sets them there). Word
+  shapes now keep gradients at all: read from and written as `a:gradFill`,
+  and painted by the rasteriser (PDF export draws the first colour for now).
+  Evidence: each kit's `gradient_fills_…` engine test, Word's
+  `a_gradient_fill_runs_from_its_first_colour_to_its_last` pixel test, and the
+  Word and Sheet browser runs in Chromium and WebKit.
+  Still open in Phase 2: grouping in Sheet, connectors, effect formatting
+  (shadow, glow) through the shared description, gradients in Word's PDF
+  export, and rich text in shapes.
 
 ## Charts
 
