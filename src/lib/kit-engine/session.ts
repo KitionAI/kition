@@ -5,7 +5,7 @@
  * `kitEngineClass` makes the contract 2 document class from it: the replica, the exchange of
  * changes, undo and redo, the saved state, and the JSON of the contract.
  */
-import { decodeOrigin, person, randomActor, system, Version, type ObjectId, type Origin, type Replica, type Schema, type Tx } from '../kdm'
+import { decodeOrigin, person, randomActor, system, undoScopeOf, Version, type ObjectId, type Origin, type Replica, type Schema, type Tx, type UndoScope } from '../kdm'
 import type { KitDamage, KitEngineClass, KitEngineCommand, KitEngineDiagnostic, KitEngineDocument } from './contract'
 
 /** The person a contract 1 `execute` acts for; hosts that know who it is use `executeAs`. */
@@ -122,15 +122,25 @@ export class KitSession<View> {
     return damage
   }
 
+  /** Undoes the person's last step (KitModel M12a: never an agent's). */
   undo(): { done: boolean; damage: KitDamage } {
-    const done = this.replica.undo()
+    return this.undoIn('person')
+  }
+
+  redo(): { done: boolean; damage: KitDamage } {
+    return this.redoIn('person')
+  }
+
+  /** Undoes the last step of `scope` (an agent's undo takes back only the agent's steps); repairs the result. */
+  undoIn(scope: UndoScope): { done: boolean; damage: KitDamage } {
+    const done = this.replica.undoIn(scope)
     const damage = done ? this.settle() : NO_DAMAGE
     if (done) this.revisionCount += 1n
     return { done, damage }
   }
 
-  redo(): { done: boolean; damage: KitDamage } {
-    const done = this.replica.redo()
+  redoIn(scope: UndoScope): { done: boolean; damage: KitDamage } {
+    const done = this.replica.redoIn(scope)
     const damage = done ? this.settle() : NO_DAMAGE
     if (done) this.revisionCount += 1n
     return { done, damage }
@@ -279,8 +289,8 @@ export function kitEngineClass<View>(model: KitModel<View>, options: KitEngineCl
       const decoded = decodeOrigin(origin)
       if (!decoded) throw new Error(`origin is not [kind, principal, label]: ${origin}`)
       const parsed = parseParams(params)
-      if (command === 'edit.undo' || command === 'undo') return json(this.session.undo())
-      if (command === 'edit.redo' || command === 'redo') return json(this.session.redo())
+      if (command === 'edit.undo' || command === 'undo') return json(this.session.undoIn(historyScope(parsed, decoded)))
+      if (command === 'edit.redo' || command === 'redo') return json(this.session.redoIn(historyScope(parsed, decoded)))
       return json(this.session.execute(command, parsed, decoded))
     }
 
@@ -375,4 +385,16 @@ export function kitEngineClass<View>(model: KitModel<View>, options: KitEngineCl
   }
 
   return Document
+}
+
+/**
+ * The undo scope an `edit.undo` or `edit.redo` works in (KitModel M12a): the one its `scope`
+ * parameter names (`"person"` or `"agent"`), else its origin's (`agent` for an agent's step,
+ * `person` for the person's and for scripts). The Rust twin is `kition_sdk::session::history_scope`.
+ */
+export function historyScope(params: Record<string, unknown>, origin: Origin): UndoScope {
+  const scope = params.scope
+  if (scope === undefined || scope === null) return undoScopeOf(origin.kind) ?? 'person'
+  if (scope === 'person' || scope === 'agent') return scope
+  throw new Error(`invalid-params: scope is "person" or "agent", not ${JSON.stringify(scope)}`)
 }

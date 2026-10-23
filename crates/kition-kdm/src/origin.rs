@@ -33,6 +33,42 @@ impl OriginKind {
     }
 }
 
+/// The undo history a transaction joins (rule M12a): a person's undo and an agent's undo on one
+/// replica each take back only their own steps, and keep the other's like another replica's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum UndoScope {
+    /// The person at the replica, and the scripts and extensions they run.
+    Person,
+    /// The agents working for that person on the replica.
+    Agent,
+}
+
+impl UndoScope {
+    /// The scope of a transaction of `kind`; `None` for `import` and `system`, which are no undo step.
+    pub fn of(kind: OriginKind) -> Option<Self> {
+        match kind {
+            OriginKind::Person | OriginKind::Extension => Some(Self::Person),
+            OriginKind::Agent => Some(Self::Agent),
+            OriginKind::Import | OriginKind::System => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Person => "person",
+            Self::Agent => "agent",
+        }
+    }
+
+    pub fn parse(text: &str) -> Option<Self> {
+        Some(match text {
+            "person" => Self::Person,
+            "agent" => Self::Agent,
+            _ => return None,
+        })
+    }
+}
+
 /// The origin of a transaction: its kind, the principal it acts for, and a label for history.
 /// Authorization never trusts it; a server checks the authenticated principal instead.
 #[derive(Clone, Debug, PartialEq, Eq)]

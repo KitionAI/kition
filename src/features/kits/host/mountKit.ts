@@ -9,6 +9,7 @@ import {
   KitPeer,
   KitRpcError,
   LEASE_HELD_REASON,
+  isGeneratePurpose,
   isReady,
   parsePresence,
   parseSchemaReport,
@@ -43,11 +44,11 @@ import {
 import { FILES_METHODS, openFileSession, type KitFileSession, type KitFilesOptions } from './files'
 
 export { KIT_UI_PROTOCOL, KitRpcError, LEASE_HELD_REASON }
-export { fileErrorReason, hostRequestErrorReason, ACTION_ERROR_REASONS, GENERATE_ERROR_REASONS } from './protocol'
+export { fileErrorReason, hostRequestErrorReason, isGeneratePurpose, ACTION_ERROR_REASONS, GENERATE_ERROR_REASONS, GENERATE_PURPOSES } from './protocol'
 export { extensionOf, fileError, openFileSession, sanitizeFileName, unusedName, FILES_METHODS } from './files'
 export type { FilesMethod, KitFileCommitMode, KitFileEntry, KitFileGrant, KitFileGrantFlow, KitFileRef, KitFileSession, KitFileStaging, KitFilesManifest, KitFilesOptions, KitFilesStorage } from './files'
 export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams } from './protocol'
-export type { KitActionErrorReason, KitActionParams, KitActionResult, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGenerateResult } from './protocol'
+export type { KitActionErrorReason, KitActionParams, KitActionResult, KitDefinedGeneratePurpose, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGeneratePurpose, KitGenerateResult } from './protocol'
 export type { KitView } from './protocol'
 export { parseKitView } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
@@ -109,7 +110,9 @@ export type KitHostHandlers = {
   /**
    * `host/generate`: run a model for the kit with the person's settings (capability `generate`,
    * section 7j). Refuse with a `KitRpcError(-32000, …, { reason })`, `reason` one of
-   * `GENERATE_ERROR_REASONS`. Never give the kit a key or an endpoint (UI-G2).
+   * `GENERATE_ERROR_REASONS`. Never give the kit a key or an endpoint (UI-G2). A purpose that is
+   * neither defined nor the kit's own (`isGeneratePurpose`) is refused as `not-allowed` before
+   * it gets here; the host MAY refuse a kit's own purpose too, and serves every defined one.
    */
   generate?: (params: Params<'host/generate'>) => Result<'host/generate'>
   /**
@@ -250,6 +253,8 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   const attempt = (target: Window, id: string) => {
     const channel = new MessageChannel()
     const peer: HostPeer = new KitPeer(channel.port1, 'h')
+    /** The kit's id, once its `ui/initialize` answer named it. */
+    let kitId: string | null = null
     peer.handle('host/read', (params) => handlers.read(params))
     peer.handle('host/stamp', (params) => handlers.stamp(params))
     peer.handle('host/write', (params) => handlers.write(params))
@@ -281,7 +286,11 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       if (!handlers.leases) unsupported('host/leases')
       return { leases: await handlers.leases.list() }
     })
-    peer.handle('host/generate', (params) => (handlers.generate ? handlers.generate(params) : unsupported('host/generate')))
+    peer.handle('host/generate', (params) => {
+      if (!handlers.generate) unsupported('host/generate')
+      if (!isGeneratePurpose(params?.purpose, kitId)) throw new KitRpcError(-32000, `a kit may not generate for ${JSON.stringify(params?.purpose)}`, { reason: 'not-allowed' })
+      return handlers.generate(params)
+    })
     peer.handle('host/action', (params) => {
       const run = typeof params?.id === 'string' ? actions.find(([id]) => id === params.id)?.[1] : undefined
       if (!run) throw new KitRpcError(-32000, `this host does not serve the action ${String(params?.id)}`, { reason: 'not-allowed' })
@@ -311,6 +320,13 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       'ui/initialize',
       { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities, capabilitySets: options.capabilitySets ?? [], ui: options.ui },
       { transfer: true },
+    )
+    // The kit's own generation purposes are known once it named itself (before that, the defined ones).
+    void initialized.then(
+      (answer) => {
+        kitId = typeof answer?.kit?.id === 'string' ? answer.kit.id : null
+      },
+      () => undefined,
     )
     return { peer, files, initialized }
   }

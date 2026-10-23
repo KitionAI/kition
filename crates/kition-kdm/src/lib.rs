@@ -30,7 +30,7 @@ mod value;
 pub use error::{KdmError, Result};
 pub use ids::{ActorId, DocId, NodeRef, ObjectId};
 pub use marks::TextRun;
-pub use origin::{Origin, OriginKind};
+pub use origin::{Origin, OriginKind, UndoScope};
 pub use replica::{Replica, TreeEntry, Version};
 pub use schema::{Expand, FieldDef, FieldKind, KDM_VERSION, MarkDef, ReadOnlyWhen, Schema, TypeDef};
 pub use tx::Tx;

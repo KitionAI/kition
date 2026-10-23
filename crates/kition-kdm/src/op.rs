@@ -187,7 +187,7 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
         }
         Op::Set { id, field, value } => read::object_map(doc, &id)?.insert(field, to_loro(value)).map_err(engine)?,
         Op::Delete { id } => doc.get_map(OBJECTS).delete(id.as_str()).map_err(engine)?,
-        Op::TextInsert { id, field, index, content } => text(doc, &id, field)?.insert(index, &content).map_err(engine)?,
+        Op::TextInsert { id, field, index, content } => insert_in_pieces(&text(doc, &id, field)?, index, &content)?,
         Op::TextDelete { id, field, index, count } => text(doc, &id, field)?.delete(index, count).map_err(engine)?,
         Op::TextMark { id, field, start, end, key, value } => text(doc, &id, field)?.mark(start..end, key, to_loro(value)).map_err(engine)?,
         Op::TextUnmark { id, field, start, end, key } => text(doc, &id, field)?.unmark(start..end, key).map_err(engine)?,
@@ -221,6 +221,32 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
             meta.insert(SCHEMA_VERSION, i64::from(version)).map_err(engine)?;
             doc.get_map(SCHEMA_RAISES).insert(&version.to_string(), true).map_err(engine)?;
         }
+    }
+    Ok(())
+}
+
+/// The most characters one engine text element is given by an insert.
+///
+/// The engine keeps a text as elements of inserted runs, and editing inside an element that holds
+/// non-ASCII text scans it from its start (loro 1.16.2 `TextChunk::delete_by_entity_index` and
+/// `Sliceable::_slice`), so an edit costs the length of its element, not of the edit. A file
+/// imported in one insert would make every later edit cost the whole file. Inserting longer
+/// content in pieces, last piece first, keeps each piece its own element: a piece placed before
+/// the one inserted just before it is never merged with it, in the replica or in its snapshots.
+/// The text and every replica's result are the same; the history holds one insert per piece.
+pub(crate) const TEXT_PIECE: usize = 1024;
+
+/// Inserts `content` at `index` (Unicode scalar values) in pieces of at most [`TEXT_PIECE`]
+/// characters, last piece first.
+fn insert_in_pieces(text: &LoroText, index: usize, content: &str) -> Result<()> {
+    let mut end = content.len();
+    let starts: Vec<usize> = content.char_indices().step_by(TEXT_PIECE).map(|(at, _)| at).collect();
+    for &start in starts.iter().rev() {
+        text.insert(index, &content[start..end]).map_err(engine)?;
+        end = start;
+    }
+    if starts.is_empty() {
+        text.insert(index, content).map_err(engine)?;
     }
     Ok(())
 }

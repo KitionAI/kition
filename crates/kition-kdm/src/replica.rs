@@ -14,11 +14,22 @@ use sha2::{Digest, Sha256};
 
 use crate::error::{engine, importing};
 use crate::read::{self, META, OBJECTS, SCHEMA_VERSION};
-use crate::{ActorId, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx};
+use crate::{ActorId, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx, UndoScope};
 
 /// The origin given to the partial operations of a transaction the engine refused while applying
 /// it, and to their reversal, so the undo history never records either.
 const ROLLBACK: &str = "kdm-rollback";
+
+/// The engine's origin of its own undo and redo commits (loro 1.16.2). One scope's undo is, for the
+/// other scope's history, a change it did not make.
+const ENGINE_UNDO: &str = "undo";
+
+/// The engine's commit origin for a transaction of `kind`: the name of the undo scope it joins
+/// (M12a), or its kind when it is no undo step. Only the undo histories read it; it is local to the
+/// replica and never exported (the commit message carries the origin).
+fn commit_origin(kind: OriginKind) -> &'static str {
+    UndoScope::of(kind).map_or(kind.as_str(), UndoScope::as_str)
+}
 
 /// A replica's version: the set of changes it contains. Exchanged to ask for what is missing.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,7 +74,7 @@ pub struct Replica {
     doc_id: DocId,
     schema: Arc<Schema>,
     actor: ActorId,
-    undo: UndoManager,
+    undo: Histories,
     /// Set between [`Replica::begin_undo_group`] and [`Replica::end_undo_group`].
     grouping: bool,
     changed: BTreeSet<ObjectId>,
@@ -80,6 +91,10 @@ pub struct Replica {
     /// later write of the same value is not a change an undo must keep (a script's own undo that
     /// puts back this replica's value, for instance).
     own_registers: HashMap<Register, Option<LoroValue>>,
+    /// The undo scope of this replica's last write to each register (`None`: a `system` or
+    /// `import` transaction), with the value written. An undo in one scope keeps the value another
+    /// scope wrote later, as it keeps another replica's (M12a). Pruned at each undo and redo.
+    local_writes: HashMap<Register, (Option<UndoScope>, Option<LoroValue>)>,
 }
 
 /// A register: one key of a map container inside an object (a register field, or one key of a
@@ -118,7 +133,7 @@ impl Replica {
         };
         // The new document is discarded on failure, so nothing needs reverting.
         staged.apply(&doc, &schema, |_| {}).map_err(applying_failed)?;
-        doc.set_next_commit_origin(origin.kind.as_str());
+        doc.set_next_commit_origin(commit_origin(origin.kind));
         doc.set_next_commit_message(&origin.encode_commit(schema.schema_version));
         doc.commit();
         Ok((Self::attach(doc, doc_id, schema, actor)?, value))
@@ -174,7 +189,7 @@ impl Replica {
 
     fn attach(doc: LoroDoc, doc_id: DocId, schema: Arc<Schema>, actor: ActorId) -> Result<Self> {
         doc.set_peer_id(actor.get()).map_err(engine)?;
-        let undo = undo_manager(&doc);
+        let undo = Histories::new(&doc);
         Ok(Self {
             doc,
             doc_id,
@@ -187,6 +202,7 @@ impl Replica {
             imported_registers: HashSet::new(),
             kept_registers: HashMap::new(),
             own_registers: HashMap::new(),
+            local_writes: HashMap::new(),
         })
     }
 
@@ -238,7 +254,7 @@ impl Replica {
         newest
     }
 
-    /// Runs `f` as one transaction: one commit, one undo step, one origin. Operations are staged
+    /// Runs `f` as one transaction: one commit, one undo step (of its origin's scope, M12a), one origin. Operations are staged
     /// while `f` runs and applied only if it succeeds: if `f` fails, the document, its version,
     /// and its exports are unchanged and the error is returned.
     pub fn transact<R>(&mut self, origin: &Origin, f: impl FnOnce(&mut Tx<'_>) -> Result<R>) -> Result<R> {
@@ -279,11 +295,11 @@ impl Replica {
             }
             return Err(applying_failed(error));
         }
-        self.doc.set_next_commit_origin(origin.kind.as_str());
+        self.doc.set_next_commit_origin(commit_origin(origin.kind));
         self.doc.set_next_commit_message(&origin.encode_commit(self.schema.schema_version));
         self.doc.commit();
         self.changed.extend(touched);
-        self.note_own_writes(writes);
+        self.note_own_writes(writes, UndoScope::of(origin.kind));
         Ok(value)
     }
 
@@ -400,12 +416,13 @@ impl Replica {
             if self.doc.is_shallow() { shallow_fork_at(&self.doc, version)? } else { self.doc.fork_at(&self.doc.vv_to_frontiers(version)).map_err(engine)? };
         crate::marks::configure(&doc, &self.schema);
         doc.set_peer_id(self.actor.get()).map_err(engine)?;
-        self.undo = undo_manager(&doc);
+        self.undo = Histories::new(&doc);
         self.doc = doc;
         // No undo history is left to protect registers from.
         self.imported_registers.clear();
         self.kept_registers.clear();
         self.own_registers.clear();
+        self.local_writes.clear();
         self.reopen_undo_group();
         Ok(())
     }
@@ -519,6 +536,7 @@ impl Replica {
         self.imported_registers.clear();
         self.kept_registers.clear();
         self.own_registers.clear();
+        self.local_writes.clear();
         for (peer, end) in base.pending {
             let known = self.pending.entry(peer).or_insert(end);
             *known = (*known).max(end);
@@ -529,45 +547,58 @@ impl Replica {
         Ok(changed)
     }
 
-    /// Undoes this replica's last transaction. Changes from other replicas are kept, including
-    /// later changes to the same object and to the same field: a register another replica wrote
-    /// after the undone transaction keeps that value (M12). The objects it changes are reported by
+    /// Undoes the person's last transaction on this replica (the `person` scope, M12a). Changes from
+    /// other replicas and from other scopes (an agent's) are kept, including later changes to the
+    /// same object and to the same field: a register another replica or scope wrote after the
+    /// undone transaction keeps that value (M12). The objects it changes are reported by
     /// [`Replica::take_changed`].
     pub fn undo(&mut self) -> Result<bool> {
-        self.undo_or_redo(true)
+        self.undo_or_redo(UndoScope::Person, true)
     }
 
-    /// Redoes the last undone transaction, keeping other replicas' later changes and reporting
-    /// what it changes like [`Replica::undo`].
+    /// Redoes the person's last undone transaction, keeping other replicas' and scopes' later
+    /// changes and reporting what it changes like [`Replica::undo`].
     pub fn redo(&mut self) -> Result<bool> {
-        self.undo_or_redo(false)
+        self.undo_or_redo(UndoScope::Person, false)
     }
 
-    fn undo_or_redo(&mut self, undo: bool) -> Result<bool> {
+    /// Undoes the last transaction of `scope` on this replica, like [`Replica::undo`] for the person.
+    pub fn undo_in(&mut self, scope: UndoScope) -> Result<bool> {
+        self.undo_or_redo(scope, true)
+    }
+
+    /// Redoes the last undone transaction of `scope`, like [`Replica::redo`] for the person.
+    pub fn redo_in(&mut self, scope: UndoScope) -> Result<bool> {
+        self.undo_or_redo(scope, false)
+    }
+
+    fn undo_or_redo(&mut self, scope: UndoScope, undo: bool) -> Result<bool> {
         self.end_undo_group();
-        let others = self.others_registers();
-        let manager = &mut self.undo;
+        // Who wrote each register's current value, when an undo must keep it: another replica
+        // (`None`), or another scope of this one.
+        let mut others: Vec<(Register, Option<LoroValue>, Option<Option<UndoScope>>)> =
+            self.others_registers().into_iter().map(|(register, value)| (register, value, None)).collect();
+        others.extend(self.other_scopes_registers(scope).into_iter().map(|(register, value, by)| (register, value, Some(by))));
+        let manager = self.undo.of(scope);
         let (done, changed, registers) = observe_changes(&self.doc, || if undo { manager.undo() } else { manager.redo() }.map_err(engine));
         self.changed.extend(changed);
         let done = done?;
-        // The engine's inverse operation sets a register back even when another replica wrote it
-        // later; put those back to the other replica's value, in a `system` commit (not an undo
-        // step), so the result is as if the undo had skipped them.
         for register in &registers {
             let map = self.doc.get_map(register.0.clone());
-            match map.get(&register.1) {
-                Some(ValueOrContainer::Value(value)) => {
-                    self.own_registers.insert(register.clone(), Some(value));
-                }
-                Some(ValueOrContainer::Container(_)) => {}
-                None => {
-                    self.own_registers.insert(register.clone(), None);
-                }
-            }
+            let value = match map.get(&register.1) {
+                Some(ValueOrContainer::Value(value)) => Some(value),
+                Some(ValueOrContainer::Container(_)) => continue,
+                None => None,
+            };
+            self.own_registers.insert(register.clone(), value.clone());
+            self.local_writes.insert(register.clone(), (Some(scope), value));
         }
+        // The engine's inverse operation sets a register back even when another replica or another
+        // scope wrote it later; put those back to that value, in a `system` commit (not an undo
+        // step), so the result is as if the undo had skipped them.
         let touched: HashSet<&Register> = registers.iter().collect();
         let mut restored = false;
-        for (register, value) in others {
+        for (register, value, by) in others {
             if !touched.contains(&register) {
                 continue;
             }
@@ -584,7 +615,16 @@ impl Replica {
                 Some(value) => map.insert(&register.1, value.clone()).map_err(engine)?,
                 None => map.delete(&register.1).map_err(engine)?,
             }
-            self.kept_registers.insert(register, value);
+            match by {
+                // Still the other scope's write, for its own undo and for this scope's next one.
+                Some(by) => {
+                    self.local_writes.insert(register, (by, value));
+                }
+                None => {
+                    self.local_writes.remove(&register);
+                    self.kept_registers.insert(register, value);
+                }
+            }
             restored = true;
         }
         if restored {
@@ -595,8 +635,33 @@ impl Replica {
         Ok(done)
     }
 
-    /// Records the registers a local transaction wrote, with their values.
-    fn note_own_writes(&mut self, writes: Vec<(ObjectId, Option<String>, String, Option<Value>)>) {
+    /// The registers whose current value this replica wrote in another scope than `scope` (or in
+    /// a `system` or `import` transaction), with that value and its scope. Forgets the writes
+    /// whose value was changed since by anyone.
+    fn other_scopes_registers(&mut self, scope: UndoScope) -> Vec<(Register, Option<LoroValue>, Option<UndoScope>)> {
+        let doc = &self.doc;
+        let me = self.actor.get();
+        let mut out = Vec::new();
+        self.local_writes.retain(|register, (by, value)| {
+            let map = doc.get_map(register.0.clone());
+            let now = match map.get(&register.1) {
+                Some(ValueOrContainer::Value(now)) => Some(now),
+                Some(ValueOrContainer::Container(_)) => return false,
+                None => None,
+            };
+            if &now != value || map.get_last_editor(&register.1) != Some(me) {
+                return false;
+            }
+            if *by != Some(scope) {
+                out.push((register.clone(), now, *by));
+            }
+            true
+        });
+        out
+    }
+
+    /// Records the registers a local transaction of `scope` wrote, with their values.
+    fn note_own_writes(&mut self, writes: Vec<(ObjectId, Option<String>, String, Option<Value>)>, scope: Option<UndoScope>) {
         for (id, field, key, value) in writes {
             let Ok(object) = read::object_map(&self.doc, &id) else { continue };
             let container = match field {
@@ -606,7 +671,9 @@ impl Replica {
                     _ => continue,
                 },
             };
-            self.own_registers.insert((container, key), value.map(crate::value::to_loro));
+            let value = value.map(crate::value::to_loro);
+            self.local_writes.insert((container.clone(), key.clone()), (scope, value.clone()));
+            self.own_registers.insert((container, key), value);
         }
     }
 
@@ -653,26 +720,41 @@ impl Replica {
         out
     }
 
-    /// Whether [`Replica::undo`] has a transaction of this replica to undo.
+    /// Whether [`Replica::undo`] has a transaction of the person to undo.
     pub fn can_undo(&self) -> bool {
-        self.undo.can_undo()
+        self.undo.person.can_undo()
     }
 
-    /// Whether [`Replica::redo`] has an undone transaction to redo.
+    /// Whether [`Replica::redo`] has an undone transaction of the person to redo.
     pub fn can_redo(&self) -> bool {
-        self.undo.can_redo()
+        self.undo.person.can_redo()
+    }
+
+    /// Whether [`Replica::undo_in`] has a transaction of `scope` to undo.
+    pub fn can_undo_in(&self, scope: UndoScope) -> bool {
+        self.undo.get(scope).can_undo()
+    }
+
+    /// Whether [`Replica::redo_in`] has an undone transaction of `scope` to redo.
+    pub fn can_redo_in(&self, scope: UndoScope) -> bool {
+        self.undo.get(scope).can_redo()
     }
 
     /// Starts an undo group: the transactions until [`Replica::end_undo_group`] undo and redo as
     /// one step. Groups do not nest ([`KdmError::InvalidValue`]). An undo or a redo ends the open
     /// group first, so undo while grouping reverts the group as one step. An import that changes
     /// what the group changed splits it in two undo steps: the transactions before the import and
-    /// those after it.
+    /// those after it. A group spans both undo scopes (M12a): the person's transactions in it are
+    /// one person step, and an agent's are one agent step.
     pub fn begin_undo_group(&mut self) -> Result<()> {
         if self.grouping {
             return Err(KdmError::InvalidValue { ty: "$undo".into(), field: "group".into(), reason: "is already open".into() });
         }
-        self.undo.group_start().map_err(engine)?;
+        self.undo.person.group_start().map_err(engine)?;
+        if let Err(error) = self.undo.agent.group_start() {
+            self.undo.person.group_end();
+            return Err(engine(error));
+        }
         self.grouping = true;
         Ok(())
     }
@@ -680,7 +762,8 @@ impl Replica {
     /// Ends the open undo group; does nothing when none is open.
     pub fn end_undo_group(&mut self) {
         if self.grouping {
-            self.undo.group_end();
+            self.undo.person.group_end();
+            self.undo.agent.group_end();
             self.grouping = false;
         }
     }
@@ -693,9 +776,11 @@ impl Replica {
         if !self.grouping {
             return;
         }
-        match self.undo.group_start() {
-            Ok(()) | Err(LoroError::UndoGroupAlreadyStarted) => {}
-            Err(_) => self.grouping = false,
+        let started = |result: std::result::Result<(), LoroError>| matches!(result, Ok(()) | Err(LoroError::UndoGroupAlreadyStarted));
+        if !(started(self.undo.person.group_start()) && started(self.undo.agent.group_start())) {
+            self.undo.person.group_end();
+            self.undo.agent.group_end();
+            self.grouping = false;
         }
     }
 
@@ -736,8 +821,9 @@ impl Replica {
     }
 
     /// Takes another replica's changes (a draft's, made on a [`Replica::fork`]) into this one as
-    /// one transaction of its own, with `origin`: one undo step (unless `origin` is `system` or
-    /// `import`), labelled as `origin` says. The result is the state a CRDT import would give, so
+    /// one transaction of its own, with `origin`: one undo step of the person (unless `origin` is
+    /// `system` or `import`), labelled as `origin` says. A draft's merge is the person's step even
+    /// when an agent made the draft (M12a, KitAgent A14): the person approved it. The result is the state a CRDT import would give, so
     /// edits made here (or imported) since the draft was forked are kept; only the operations
     /// that turn this state into the merged one are written, under this replica's actor. Answers
     /// the objects that changed.
@@ -758,10 +844,11 @@ impl Replica {
         let diff = merged.diff(&from, &to).map_err(engine)?;
         let doc = &self.doc;
         let message = origin.encode_commit(self.schema.schema_version);
+        let scope = UndoScope::of(origin.kind);
         let (applied, changed, registers) = observe_changes(doc, || {
             let applied = doc.apply_diff(diff);
             if applied.is_ok() {
-                doc.set_next_commit_origin(origin.kind.as_str());
+                doc.set_next_commit_origin(scope.map_or(origin.kind.as_str(), |_| UndoScope::Person.as_str()));
                 doc.set_next_commit_message(&message);
                 doc.commit();
             }
@@ -786,6 +873,7 @@ impl Replica {
                 Some(ValueOrContainer::Container(_)) => continue,
                 None => None,
             };
+            self.local_writes.insert(register.clone(), (scope.map(|_| UndoScope::Person), value.clone()));
             self.own_registers.insert(register, value);
         }
         self.changed.extend(changed.iter().cloned());
@@ -846,8 +934,35 @@ fn shallow_fork_at(doc: &LoroDoc, version: &VersionVector) -> Result<LoroDoc> {
     Ok(forked)
 }
 
-/// The undo manager of a replica's document.
-fn undo_manager(doc: &LoroDoc) -> UndoManager {
+/// A replica's undo histories, one per undo scope (M12a). Each treats the other's transactions
+/// as it treats other replicas' changes: they are not its steps, and its undo keeps them.
+struct Histories {
+    person: UndoManager,
+    agent: UndoManager,
+}
+
+impl Histories {
+    fn new(doc: &LoroDoc) -> Self {
+        Self { person: undo_manager(doc, UndoScope::Person), agent: undo_manager(doc, UndoScope::Agent) }
+    }
+
+    fn get(&self, scope: UndoScope) -> &UndoManager {
+        match scope {
+            UndoScope::Person => &self.person,
+            UndoScope::Agent => &self.agent,
+        }
+    }
+
+    fn of(&mut self, scope: UndoScope) -> &mut UndoManager {
+        match scope {
+            UndoScope::Person => &mut self.person,
+            UndoScope::Agent => &mut self.agent,
+        }
+    }
+}
+
+/// The undo history of `scope` on a replica's document.
+fn undo_manager(doc: &LoroDoc, scope: UndoScope) -> UndoManager {
     let mut undo = UndoManager::new(doc);
     undo.set_merge_interval(0);
     undo.add_exclude_origin_prefix(ROLLBACK);
@@ -857,6 +972,13 @@ fn undo_manager(doc: &LoroDoc) -> UndoManager {
     // `import` transactions (changes merged from a file edited elsewhere) are not undo steps
     // either: a person's undo never reverts another tool's edit.
     undo.add_exclude_origin_prefix(OriginKind::Import.as_str());
+    // The other scope's transactions, and its undo and redo, are not this scope's steps.
+    let other = match scope {
+        UndoScope::Person => UndoScope::Agent,
+        UndoScope::Agent => UndoScope::Person,
+    };
+    undo.add_exclude_origin_prefix(other.as_str());
+    undo.add_exclude_origin_prefix(ENGINE_UNDO);
     undo
 }
 

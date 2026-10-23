@@ -14,6 +14,19 @@ export interface Origin {
   label?: string
 }
 
+/**
+ * The undo history a transaction joins (rule M12a): a person's undo and an agent's undo on one
+ * replica each take back only their own steps, and keep the other's like another replica's.
+ */
+export type UndoScope = 'person' | 'agent'
+
+/** The scope of a transaction of `kind`; `null` for `import` and `system`, which are no undo step. */
+export function undoScopeOf(kind: OriginKind): UndoScope | null {
+  if (kind === 'person' || kind === 'extension') return 'person'
+  if (kind === 'agent') return 'agent'
+  return null
+}
+
 export const person = (principal: string, label?: string): Origin => ({ kind: 'person', principal, label })
 export const agent = (principal: string, label?: string): Origin => ({ kind: 'agent', principal, label })
 export const system = (label: string): Origin => ({ kind: 'system', principal: 'kdm', label })

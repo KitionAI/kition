@@ -8,7 +8,7 @@ import { servesCapabilitySet } from '../sync'
 
 /** The capability sets of KHP 2.0. */
 export const CAPABILITY_SETS = {
-  model: 'KitModel 1.0',
+  model: 'KitModel 1.1',
   collab: 'KitCollab 1.0',
   objectModel: 'KitObjectModel 1.0',
   extensions: 'KitExtensions 1.0',

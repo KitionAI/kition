@@ -360,8 +360,8 @@ export function fileErrorReason(error: unknown): KitFileErrorReason | null {
 export type KitGeneratePart = { type: 'text'; text: string } | { type: 'image'; mime: string; bytes: ArrayBuffer } | { type: 'image'; url: string }
 export type KitGenerateMessage = { role: 'system' | 'user'; parts: KitGeneratePart[] }
 export type KitGenerateParams = {
-  /** What the kit generates for; `ai-field` (an AI field's cell) is the one defined value. */
-  purpose: string
+  /** What the kit generates for (section 7j, minor version 2.4): a defined purpose or the kit's own (`isGeneratePurpose`). */
+  purpose: KitGeneratePurpose
   output: 'text' | 'image'
   /** The document's preference, a hint only: the host answers the model it used. */
   model?: string
@@ -370,6 +370,32 @@ export type KitGenerateParams = {
   options?: { maxTokens?: number; temperature?: number; size?: string }
 }
 export type KitGenerateResult = { text?: string; image?: { mime: string; bytes: ArrayBuffer }; model?: string; usage?: { inputTokens?: number; outputTokens?: number } }
+
+/**
+ * The purposes section 7j defines (minor version 2.4), which every host that lists `generate`
+ * serves: `ai-field`, an AI field's cell; `rewrite`, text the person selected rewritten as they
+ * asked (improve, shorten, expand, change the tone, translate), a suggestion the person accepts
+ * or discards before the kit writes it.
+ */
+export const GENERATE_PURPOSES = ['ai-field', 'rewrite'] as const
+export type KitDefinedGeneratePurpose = (typeof GENERATE_PURPOSES)[number]
+/** A defined purpose, or a kit's own: `<kit>.<name>` (`note.outline` for `kit.note`), which a host MAY refuse. */
+export type KitGeneratePurpose = KitDefinedGeneratePurpose | `${string}.${string}`
+
+const NAME = /^[a-z][a-z0-9-]{0,62}$/
+
+/**
+ * Whether a kit may send `purpose` (section 7j): a defined purpose, or one of its own,
+ * `<kit>.<name>`, where `<kit>` is its id without `kit.` (`kitId`; unknown: only defined
+ * purposes) and `<name>` lowercase letters, digits, and hyphens.
+ */
+export function isGeneratePurpose(purpose: unknown, kitId?: string | null): purpose is KitGeneratePurpose {
+  if (typeof purpose !== 'string') return false
+  if ((GENERATE_PURPOSES as readonly string[]).includes(purpose)) return true
+  if (!kitId) return false
+  const kit = kitId.startsWith('kit.') ? kitId.slice('kit.'.length) : kitId
+  return purpose.startsWith(`${kit}.`) && NAME.test(purpose.slice(kit.length + 1))
+}
 
 /** The reasons a `host/generate` is refused (`error.data.reason` of a `-32000`). */
 export const GENERATE_ERROR_REASONS = ['unavailable', 'not-allowed', 'quota', 'refused', 'too-large', 'timeout', 'failed'] as const

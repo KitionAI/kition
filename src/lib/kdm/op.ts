@@ -53,6 +53,38 @@ export function apply(doc: LoroDoc, schema: Schema, ops: Op[], nodes: NodeRef[],
   })
 }
 
+/**
+ * The most UTF-16 code units one engine text element is given by an insert (the Rust crate's
+ * `TEXT_PIECE` counts 1024 Unicode scalar values). The engine keeps a text as elements of
+ * inserted runs and scans an element holding non-ASCII text on every edit inside it, so an edit
+ * costs the length of its element: a file imported in one insert would make every later edit cost
+ * the whole file. Longer content goes in pieces, last piece first, so each piece stays its own
+ * element (a piece placed before the one inserted just before it is never merged with it). The
+ * text and every replica's result are the same; the history holds one insert per piece.
+ */
+export const TEXT_PIECE = 1024
+
+/** Inserts `content` at `index` in pieces of about {@link TEXT_PIECE} code units, last first, never splitting a surrogate pair. */
+function insertInPieces(text: LoroText, index: number, content: string): void {
+  if (content.length <= TEXT_PIECE) {
+    text.insert(index, content)
+    return
+  }
+  const starts: number[] = []
+  for (let at = 0; at < content.length; ) {
+    starts.push(at)
+    let next = at + TEXT_PIECE
+    const unit = content.charCodeAt(next)
+    if (next < content.length && unit >= 0xdc00 && unit <= 0xdfff) next += 1
+    at = next
+  }
+  let end = content.length
+  for (let piece = starts.length - 1; piece >= 0; piece -= 1) {
+    text.insert(index, content.slice(starts[piece], end))
+    end = starts[piece]
+  }
+}
+
 function applyOne(doc: LoroDoc, schema: Schema, op: Op, created: Array<TreeID | undefined>): void {
   switch (op.op) {
     case 'create': {
@@ -74,7 +106,7 @@ function applyOne(doc: LoroDoc, schema: Schema, op: Op, created: Array<TreeID | 
     case 'delete':
       return doc.getMap(read.OBJECTS).delete(op.id)
     case 'textInsert':
-      return engineContainer(doc, op.id, op.field, 'text').insert(op.index, op.content)
+      return insertInPieces(engineContainer(doc, op.id, op.field, 'text'), op.index, op.content)
     case 'textDelete':
       return engineContainer(doc, op.id, op.field, 'text').delete(op.index, op.count)
     case 'textMark':

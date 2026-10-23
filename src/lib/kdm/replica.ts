@@ -6,7 +6,7 @@ import { open, sameBytes, Version, wrap } from './envelope'
 import { errors, KdmError } from './errors'
 import { checkActor, committedNode, uuidFromBytes, uuidToBytes, type NodeRef, type ObjectId, type TreeEntry } from './ids'
 import { configure, type TextRun } from './marks'
-import { checkOrigin, decodeCommit, encodeCommit, system, type Origin } from './origin'
+import { checkOrigin, decodeCommit, encodeCommit, system, undoScopeOf, type Origin, type OriginKind, type UndoScope } from './origin'
 import * as read from './read'
 import { KDM_VERSION, type Schema } from './schema'
 import { Tx } from './tx'
@@ -99,7 +99,7 @@ function checkFunction(f: unknown): void {
 /** One copy of one document; the TypeScript twin of the Rust `Replica`. */
 export class Replica {
   private readonly docIdBytes: Uint8Array
-  private undoManager: UndoManager
+  private undoManagers: Histories
   private changed = new Set<ObjectId>()
   /** Set while a transaction's function runs: nothing else may change the document then. */
   private busy = false
@@ -132,6 +132,12 @@ export class Replica {
    * that puts back this replica's value, for instance).
    */
   private ownRegisters = new Map<Register, unknown>()
+  /**
+   * The undo scope of this replica's last write to each register (`null`: a `system` or `import`
+   * transaction), with the value written. An undo in one scope keeps the value another scope wrote
+   * later, as it keeps another replica's (M12a). Pruned at each undo and redo.
+   */
+  private localWrites = new Map<Register, { by: UndoScope | null; value: unknown }>()
 
   private constructor(
     private doc: LoroDoc,
@@ -141,7 +147,7 @@ export class Replica {
   ) {
     this.docIdBytes = docIdBytes.slice()
     doc.setPeerId(actor)
-    this.undoManager = undoManagerOf(doc)
+    this.undoManagers = histories(doc)
   }
 
   /** A new, empty document. Only one replica creates a document; others `load` it. */
@@ -176,7 +182,7 @@ export class Replica {
     } catch (error) {
       throw applyingFailed(error)
     }
-    doc.commit({ origin: origin.kind, message: encodeCommit(origin, schema.schemaVersion) })
+    doc.commit({ origin: commitOrigin(origin.kind), message: encodeCommit(origin, schema.schemaVersion) })
     return { replica: new Replica(doc, idBytes, schema, actor), result }
   }
 
@@ -310,9 +316,9 @@ export class Replica {
       }
       throw applyingFailed(error)
     }
-    this.doc.commit({ origin: origin.kind, message: encodeCommit(origin, this.schema.schemaVersion) })
+    this.doc.commit({ origin: commitOrigin(origin.kind), message: encodeCommit(origin, this.schema.schemaVersion) })
     for (const id of touched) this.changed.add(id)
-    this.noteOwnWrites(staged.registerWrites)
+    this.noteOwnWrites(staged.registerWrites, undoScopeOf(origin.kind))
     return result
   }
 
@@ -582,12 +588,13 @@ export class Replica {
     for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
       if (canonicalText(before[id] ?? null) !== canonicalText(after[id] ?? null) || (id in before) !== (id in after)) changed.add(id)
     }
-    this.undoManager.free()
+    freeHistories(this.undoManagers)
     this.doc = base.doc
-    this.undoManager = base.undoManager
+    this.undoManagers = base.undoManagers
     this.importedRegisters.clear()
     this.keptRegisters.clear()
     this.ownRegisters.clear()
+    this.localWrites.clear()
     for (const [peer, end] of base.pending) this.pending.set(peer, Math.max(end, this.pending.get(peer) ?? 0))
     this.prunePending()
     this.reopenUndoGroup()
@@ -597,44 +604,72 @@ export class Replica {
 
 
   /**
-   * Undoes this replica's last transaction. Changes from other replicas are kept, including later
-   * changes to the same object and to the same field: a register another replica wrote after the
-   * undone transaction keeps that value (M12). The objects it changes are reported by
-   * `takeChanged`.
+   * Undoes the person's last transaction on this replica (the `person` scope, M12a). Changes from
+   * other replicas and from other scopes (an agent's) are kept, including later changes to the
+   * same object and to the same field: a register another replica or scope wrote after the undone
+   * transaction keeps that value (M12). The objects it changes are reported by `takeChanged`.
    */
   undo(): boolean {
-    return this.history(() => this.undoManager.undo())
+    return this.undoIn('person')
   }
 
-  /** Redoes the last undone transaction, keeping other replicas' later changes and reporting what it changes like `undo`. */
+  /** Redoes the person's last undone transaction, keeping other replicas' and scopes' later changes and reporting what it changes like `undo`. */
   redo(): boolean {
-    return this.history(() => this.undoManager.redo())
+    return this.redoIn('person')
   }
 
-  /** Whether `undo` has a transaction of this replica to undo. */
+  /** Undoes the last transaction of `scope` on this replica, like `undo` for the person. */
+  undoIn(scope: UndoScope): boolean {
+    return this.history(scope, () => this.undoManagers[checkScope(scope)].undo())
+  }
+
+  /** Redoes the last undone transaction of `scope`, like `redo` for the person. */
+  redoIn(scope: UndoScope): boolean {
+    return this.history(scope, () => this.undoManagers[checkScope(scope)].redo())
+  }
+
+  /** Whether `undo` has a transaction of the person to undo. */
   canUndo(): boolean {
-    this.idle()
-    return this.undoManager.canUndo()
+    return this.canUndoIn('person')
   }
 
-  /** Whether `redo` has an undone transaction to redo. */
+  /** Whether `redo` has an undone transaction of the person to redo. */
   canRedo(): boolean {
+    return this.canRedoIn('person')
+  }
+
+  /** Whether `undoIn(scope)` has a transaction to undo. */
+  canUndoIn(scope: UndoScope): boolean {
     this.idle()
-    return this.undoManager.canRedo()
+    return this.undoManagers[checkScope(scope)].canUndo()
+  }
+
+  /** Whether `redoIn(scope)` has an undone transaction to redo. */
+  canRedoIn(scope: UndoScope): boolean {
+    this.idle()
+    return this.undoManagers[checkScope(scope)].canRedo()
   }
 
   /**
    * Starts an undo group: the transactions until `endUndoGroup` undo and redo as one step. Groups
    * do not nest (`invalid-value`). An undo or a redo ends the open group first, so undo while
    * grouping reverts the group as one step. An import that changes what the group changed splits
-   * it in two undo steps: the transactions before the import and those after it.
+   * it in two undo steps: the transactions before the import and those after it. A group spans
+   * both undo scopes (M12a): the person's transactions in it are one person step, and an agent's
+   * are one agent step.
    */
   beginUndoGroup(): void {
     this.idle()
     if (this.grouping) throw errors.invalidValue('$undo', 'group', 'is already open')
     try {
-      this.undoManager.groupStart()
+      this.undoManagers.person.groupStart()
     } catch (error) {
+      throw errors.engine(engineMessage(error))
+    }
+    try {
+      this.undoManagers.agent.groupStart()
+    } catch (error) {
+      this.undoManagers.person.groupEnd()
       throw errors.engine(engineMessage(error))
     }
     this.grouping = true
@@ -646,10 +681,10 @@ export class Replica {
     this.closeUndoGroup()
   }
 
-  /** Drops the redo stack, keeping the undo stack. */
+  /** Drops the person's redo stack, keeping the undo stack. */
   clearRedo(): void {
     this.idle()
-    this.undoManager.clearRedo()
+    this.undoManagers.person.clearRedo()
   }
 
   /** Follows one text field: `listener` gets each change with whether this replica made it. */
@@ -704,7 +739,7 @@ export class Replica {
 
   /**
    * Takes another replica's changes (a draft's, made on a `fork`) into this one as one transaction
-   * of its own, with `origin`: one undo step (unless `origin` is `system` or `import`). The result
+   * of its own, with `origin`: one undo step of the person (unless `origin` is `system` or `import`; M12a). The result
    * is the state a CRDT import would give, so edits made here (or imported) since the draft was
    * forked are kept; only the operations that turn this state into the merged one are written,
    * under this replica's actor. Answers the objects that changed.
@@ -719,6 +754,7 @@ export class Replica {
     this.idle()
     this.checkOpen()
     checkOrigin(origin)
+    const scope = undoScopeOf(origin.kind)
     const merged = this.mergedDoc(changes)
     const from = this.doc.oplogFrontiers()
     const to = merged.oplogFrontiers()
@@ -737,7 +773,8 @@ export class Replica {
         failure = error
         return
       }
-      this.doc.commit({ origin: origin.kind, message: encodeCommit(origin, this.schema.schemaVersion) })
+      // A draft's merge is the person's step even when an agent made the draft (M12a, KitAgent A14).
+      this.doc.commit({ origin: scope === null ? origin.kind : 'person', message: encodeCommit(origin, this.schema.schemaVersion) })
     })
     if (failure !== null) {
       // The engine refused part of a difference it computed itself: put back what it applied,
@@ -751,7 +788,9 @@ export class Replica {
     }
     for (const register of registers) {
       const now = this.registerValue(register)
-      if (!now.container) this.ownRegisters.set(register, now.value)
+      if (now.container) continue
+      this.ownRegisters.set(register, now.value)
+      this.localWrites.set(register, { by: scope === null ? null : 'person', value: now.value })
     }
     for (const id of changed) this.changed.add(id)
     return sorted(changed)
@@ -799,13 +838,14 @@ export class Replica {
     }
     configure(doc, this.schema)
     doc.setPeerId(this.actor)
-    this.undoManager.free()
+    freeHistories(this.undoManagers)
     this.doc = doc
-    this.undoManager = undoManagerOf(doc)
+    this.undoManagers = histories(doc)
     // No undo history is left to protect registers from.
     this.importedRegisters.clear()
     this.keptRegisters.clear()
     this.ownRegisters.clear()
+    this.localWrites.clear()
     this.reopenUndoGroup()
   }
 
@@ -833,7 +873,8 @@ export class Replica {
 
   private closeUndoGroup(): void {
     if (!this.grouping) return
-    this.undoManager.groupEnd()
+    this.undoManagers.person.groupEnd()
+    this.undoManagers.agent.groupEnd()
     this.grouping = false
   }
 
@@ -845,18 +886,29 @@ export class Replica {
    */
   private reopenUndoGroup(): void {
     if (!this.grouping) return
-    try {
-      this.undoManager.groupStart()
-    } catch (error) {
-      if (!engineMessage(error).includes('already an active undo group')) this.grouping = false
+    const start = (manager: UndoManager): boolean => {
+      try {
+        manager.groupStart()
+        return true
+      } catch (error) {
+        return engineMessage(error).includes('already an active undo group')
+      }
+    }
+    if (!(start(this.undoManagers.person) && start(this.undoManagers.agent))) {
+      this.undoManagers.person.groupEnd()
+      this.undoManagers.agent.groupEnd()
+      this.grouping = false
     }
   }
 
-  private history(run: () => boolean): boolean {
+  private history(scope: UndoScope, run: () => boolean): boolean {
     this.idle()
     this.checkOpen()
     this.closeUndoGroup()
-    const others = this.othersRegisters()
+    // Who wrote each register's current value, when an undo must keep it: another replica
+    // (`undefined`), or another scope of this one.
+    const others: Array<[Register, unknown, UndoScope | null | undefined]> = this.othersRegisters().map(([register, value]) => [register, value, undefined])
+    for (const [register, value, by] of this.otherScopesRegisters(scope)) others.push([register, value, by])
     const { value, changed, registers } = observeChanges(this.doc, () => {
       try {
         return run()
@@ -867,26 +919,49 @@ export class Replica {
     for (const id of changed) this.changed.add(id)
     for (const register of registers) {
       const now = this.registerValue(register)
-      if (!now.container) this.ownRegisters.set(register, now.value)
+      if (now.container) continue
+      this.ownRegisters.set(register, now.value)
+      this.localWrites.set(register, { by: scope, value: now.value })
     }
-    // The engine's inverse operation sets a register back even when another replica wrote it
-    // later; put those back to the other replica's value, in a `system` commit (not an undo
-    // step), so the result is as if the undo had skipped them.
+    // The engine's inverse operation sets a register back even when another replica or another
+    // scope wrote it later; put those back to that value, in a `system` commit (not an undo step),
+    // so the result is as if the undo had skipped them.
     const touched = new Set(registers)
     let restored = false
-    for (const [register, value] of others) {
+    for (const [register, kept, by] of others) {
       if (!touched.has(register)) continue
       const now = this.registerValue(register)
-      if (now.container || sameValue(now.value, value)) continue
+      if (now.container || sameValue(now.value, kept)) continue
       const [container, key] = registerParts(register)
       const map = this.doc.getContainerById(container as ContainerID) as unknown as { set(key: string, value: unknown): void; delete(key: string): void }
-      if (value === undefined) map.delete(key)
-      else map.set(key, value)
-      this.keptRegisters.set(register, value)
+      if (kept === undefined) map.delete(key)
+      else map.set(key, kept)
+      // Another scope's write stays that scope's, for its own undo and for this scope's next one.
+      if (by !== undefined) this.localWrites.set(register, { by, value: kept })
+      else {
+        this.localWrites.delete(register)
+        this.keptRegisters.set(register, kept)
+      }
       restored = true
     }
     if (restored) this.doc.commit({ origin: SYSTEM, message: encodeCommit(system('keep-later-changes'), this.schema.schemaVersion) })
     return value
+  }
+
+  /**
+   * The registers whose current value this replica wrote in another scope than `scope` (or in a
+   * `system` or `import` transaction), with that value and its scope. Forgets the writes whose value
+   * was changed since by anyone.
+   */
+  private otherScopesRegisters(scope: UndoScope): Array<[Register, unknown, UndoScope | null]> {
+    const out: Array<[Register, unknown, UndoScope | null]> = []
+    const me = String(this.actor) as PeerID
+    for (const [register, write] of this.localWrites) {
+      const now = this.registerValue(register)
+      if (now.container || !sameValue(now.value, write.value) || now.lastEditor !== me) this.localWrites.delete(register)
+      else if (write.by !== scope) out.push([register, now.value, write.by])
+    }
+    return out
   }
 
   /** A register's value now (`undefined`: absent), and whether it holds a container instead. */
@@ -924,8 +999,8 @@ export class Replica {
     return out
   }
 
-  /** Records the registers a local transaction wrote, with their values. */
-  private noteOwnWrites(writes: ReadonlyArray<{ id: ObjectId; field: string | null; key: string; value: unknown }>): void {
+  /** Records the registers a local transaction of `scope` wrote, with their values. */
+  private noteOwnWrites(writes: ReadonlyArray<{ id: ObjectId; field: string | null; key: string; value: unknown }>, scope: UndoScope | null): void {
     for (const { id, field, key, value } of writes) {
       let container: string
       try {
@@ -940,6 +1015,7 @@ export class Replica {
         continue
       }
       this.ownRegisters.set(registerKey(container, key), value)
+      this.localWrites.set(registerKey(container, key), { by: scope, value })
     }
   }
 }
@@ -949,8 +1025,35 @@ type Frontiers = ReturnType<LoroDoc['frontiers']>
 /** Register values are JSON values: equal when their canonical texts are. */
 const sameValue = (a: unknown, b: unknown): boolean => a === b || (a !== undefined && b !== undefined && canonicalText(a) === canonicalText(b))
 
-/** The undo manager of a replica's document. */
-const undoManagerOf = (doc: LoroDoc): UndoManager => new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT] })
+/** The engine's origin of its own undo and redo commits: for the other scope's history, a change it did not make. */
+const ENGINE_UNDO = 'undo'
+
+/**
+ * The engine's commit origin for a transaction of `kind`: the name of the undo scope it joins
+ * (M12a), or its kind when it is no undo step. Only the undo histories read it; it is local to the
+ * replica and never exported (the commit message carries the origin).
+ */
+const commitOrigin = (kind: OriginKind): string => undoScopeOf(kind) ?? kind
+
+/** A replica's undo histories, one per undo scope (M12a). */
+type Histories = Record<UndoScope, UndoManager>
+
+/** The undo history of `scope`: it skips the other scope's transactions, and its undo and redo, as another replica's. */
+const undoManagerOf = (doc: LoroDoc, scope: UndoScope): UndoManager =>
+  new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT, scope === 'person' ? 'agent' : 'person', ENGINE_UNDO] })
+
+const histories = (doc: LoroDoc): Histories => ({ person: undoManagerOf(doc, 'person'), agent: undoManagerOf(doc, 'agent') })
+
+const freeHistories = (histories: Histories): void => {
+  histories.person.free()
+  histories.agent.free()
+}
+
+/** Checks a scope given at run time. */
+function checkScope(scope: UndoScope): UndoScope {
+  if (scope !== 'person' && scope !== 'agent') throw new KdmError('invalid-value', 'an undo scope is "person" or "agent"')
+  return scope
+}
 
 const sameFrontiers = (a: Frontiers, b: Frontiers): boolean => {
   const key = (frontiers: Frontiers) => frontiers.map((id) => `${id.counter}@${id.peer}`).sort().join(',')
