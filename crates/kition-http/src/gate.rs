@@ -81,7 +81,6 @@ impl ApiGate {
                 "/kit-files/".to_owned(),
                 "/uploads/".to_owned(),
                 format!("{prefix}/kits/bridge"),
-                format!("{prefix}/data-documents/"),
             ],
         }))
     }

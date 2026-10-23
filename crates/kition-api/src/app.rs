@@ -32,10 +32,9 @@ pub struct Deps {
     pub ai: kition_ai::engine::Engine,
     /// Kits for this workspace; they stop when the runtime restarts.
     pub kits: kition_kits::KitManager,
-    /// Every `.kitable` file open anywhere in the runtime (HTTP routes, the Agent, email/form
-    /// sync, workflows); shared so they reuse one `KitableFile` per path. `server.rs` closes it
-    /// on shutdown.
-    pub tables: kition_datadoc::TableDocuments,
+    /// The host table client: how workflows, form and email sync, and the renderer's table
+    /// pickers reach `.ktable` files, all through the Table kit.
+    pub table_client: kition_tableclient::TableClient,
 }
 
 impl Deps {
@@ -100,7 +99,10 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
     );
     let kits = kition_kits::KitManager::from_env(workspace_dir.clone());
     write_token_file(&config, &upload_dir, workspace_dir.as_deref())?;
+    let events = EventBus::default();
+    let table_client = kition_tableclient::TableClient::new(kits.clone(), events.clone());
     Ok(Deps {
+        table_client,
         kits,
         cloud_session,
         portal,
@@ -110,8 +112,7 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
         workspace_id,
         upload_dir,
         workspace_dir,
-        events: EventBus::default(),
-        tables: kition_datadoc::TableDocuments::default(),
+        events,
         connections: kition_connections::Store {
             db: db_for_connections,
             secrets: kition_connections::SecretStore::new(&sqlite_path, &upload_dir_text),
@@ -120,7 +121,7 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
 }
 
 pub fn router(deps: &Deps) -> Router {
-    deps.kits.forward_table_changes(deps.events.clone());
+    kition_tableclient::TriggerWatcher::start(deps.table_client.clone());
     let api = Router::new()
         .merge(crate::system::api_router(deps))
         .merge(kition_ai::models::router(deps.auth()))
@@ -164,22 +165,20 @@ pub fn router(deps: &Deps) -> Router {
             used_by: Some(used_by),
         },
     ));
-    let agent = crate::agent::build(
-        deps,
-        workflows.datadoc.clone(),
-        workflows.state.engine.store.clone(),
-    );
+    let agent = crate::agent::build(deps, workflows.state.engine.store.clone());
     let api = api.merge(kition_agent::router(kition_agent::AgentState {
         auth: deps.auth(),
         agent,
         ai_gate: deps.ai_gate(),
     }));
-    let api = match workflows.datadoc {
-        Some(state) => {
+    let api = match &deps.workspace_dir {
+        Some(root) => {
             let forms = kition_formsync::Service::new(
                 deps.db.clone(),
                 deps.cloud_session.clone(),
-                Arc::new(crate::adapters::DataDocTableWriter(state.clone())),
+                Arc::new(crate::adapters::ClientTableWriter(
+                    deps.table_client.clone(),
+                )),
             );
             kition_formsync::start_scheduler(forms.clone());
             let mail = kition_emailsync::Service::new(
@@ -189,31 +188,55 @@ pub fn router(deps: &Deps) -> Router {
                 },
                 Arc::new(kition_emailsync::imap::ImapFetcher),
                 kition_emailsync::workspace::WorkspaceWriter {
-                    root: state.workspace_dir.clone(),
-                    db: deps.db.clone(),
-                    tables: state.tables.clone(),
+                    root: root.clone(),
+                    tables: deps.table_client.clone(),
                 },
             );
             kition_emailsync::start_scheduler(mail.clone());
+            let renamed = crate::workflows::rename_hook(deps, &workflows.state.engine.store);
+            api.merge(kition_tableclient::routes::router(
+                kition_tableclient::routes::KitTablesState {
+                    auth: deps.auth(),
+                    tables: deps.table_client.clone(),
+                    renamed: Some(renamed),
+                },
+            ))
+            .merge(kition_tableclient::scenario::router(
+                kition_tableclient::scenario::ScenarioState {
+                    auth: deps.auth(),
+                    tables: deps.table_client.clone(),
+                    engine: deps.ai.clone(),
+                    ai_gate: deps.ai_gate(),
+                },
+            ))
+            .merge(kition_emailsync::router(kition_emailsync::EmailSyncState {
+                auth: deps.auth(),
+                service: mail,
+            }))
+            .merge(kition_formsync::router(kition_formsync::FormSyncState {
+                auth: deps.auth(),
+                service: forms,
+            }))
+        }
+        None => api,
+    };
+    // Workspace storage needs a workspace directory; without one its routes are not mounted.
+    let assets = deps
+        .workspace_dir
+        .as_ref()
+        .and_then(|dir| AssetStore::new(dir, Some(&deps.upload_dir)).ok());
+    let api = match assets {
+        Some(assets) => {
             let mirror = kition_workspacestorage::StateMirror {
                 db: deps.db.clone(),
-                assets: state.assets.clone(),
+                assets,
             };
             if let Err(err) = kition_workspacestorage::start_mirroring(mirror.clone()) {
                 tracing::warn!(error = %err, "workspace state mirroring is unavailable");
             }
-            api.merge(kition_datadoc::router(state))
-                .merge(kition_workspacestorage::router(
-                    kition_workspacestorage::WorkspaceStorageState::new(deps.auth(), mirror),
-                ))
-                .merge(kition_emailsync::router(kition_emailsync::EmailSyncState {
-                    auth: deps.auth(),
-                    service: mail,
-                }))
-                .merge(kition_formsync::router(kition_formsync::FormSyncState {
-                    auth: deps.auth(),
-                    service: forms,
-                }))
+            api.merge(kition_workspacestorage::router(
+                kition_workspacestorage::WorkspaceStorageState::new(deps.auth(), mirror),
+            ))
         }
         None => api,
     };
@@ -398,31 +421,6 @@ fn percent_decoded(path: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
-}
-
-/// Data documents need a workspace directory; without one the routes are
-/// not mounted.
-pub(crate) fn datadoc_state(
-    deps: &Deps,
-    workflow_cleaner: Option<Arc<dyn kition_datadoc::WorkflowCleaner>>,
-) -> Option<kition_datadoc::DataDocState> {
-    let workspace_dir = deps.workspace_dir.clone()?;
-    let assets = AssetStore::new(&workspace_dir, Some(&deps.upload_dir)).ok()?;
-    let state = kition_datadoc::DataDocState {
-        auth: deps.auth(),
-        db: deps.db.clone(),
-        workspace_dir,
-        assets,
-        events: deps.events.clone(),
-        workflow_cleaner,
-        ai_gate: deps.ai_gate(),
-        imports: kition_datadoc::ImportStore::default(),
-        ai: Some(deps.ai.clone()),
-        tables: deps.tables.clone(),
-    };
-    // Co-editing relays learn of every local table transaction from `table/replica-changed`.
-    state.publish_replica_changes();
-    Some(state)
 }
 
 fn absolute(path: &str) -> AppResult<PathBuf> {

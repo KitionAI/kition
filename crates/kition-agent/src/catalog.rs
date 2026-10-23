@@ -249,20 +249,12 @@ fn parse_list(raw: &str) -> Vec<String> {
 }
 
 /// The skills that apply to a turn, decided by its context.
-pub fn match_skills(
-    skills: &[SkillDef],
-    prompt: &str,
-    has_table: bool,
-    has_documents: bool,
-) -> Vec<SkillDef> {
+pub fn match_skills(skills: &[SkillDef], prompt: &str, has_documents: bool) -> Vec<SkillDef> {
     let mut names = vec!["agent-chat-orchestrator", "project-design-system"];
     if requests_external_research(prompt) {
         names.push("deep-research");
     }
-    if has_table {
-        names.push("data-table-agent");
-    }
-    if has_table || has_documents {
+    if has_documents {
         names.push("document-report-agent");
     }
     if contains_http_url(prompt) {
@@ -369,19 +361,10 @@ mod tests {
     fn matches_skills_from_context() {
         let all = skills(Path::new("/nonexistent"));
         let names = |list: Vec<SkillDef>| list.into_iter().map(|s| s.name).collect::<Vec<_>>();
-        assert!(names(match_skills(&all, "hello", false, false)).is_empty());
+        assert!(names(match_skills(&all, "hello", false)).is_empty());
         assert_eq!(
-            names(match_skills(
-                &all,
-                "save https://example.com/a",
-                true,
-                false
-            )),
-            [
-                "data-table-agent",
-                "document-report-agent",
-                "web-archive-agent"
-            ]
+            names(match_skills(&all, "save https://example.com/a", true)),
+            ["document-report-agent", "web-archive-agent"]
         );
         assert!(contains_http_url("see http://x.y"));
         assert!(!contains_http_url("http:// nothing"));

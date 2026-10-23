@@ -10,7 +10,6 @@ fn extension(path: &str) -> String {
 
 pub fn infer_format(path: &str) -> &'static str {
     match extension(path).as_str() {
-        ".kitable" => "data",
         ".kidesign" => "design",
         ".kiboard" => "board",
         ".md" | ".markdown" => "markdown",
@@ -51,7 +50,7 @@ fn has_extension(path: &str, allowed: &[&str]) -> bool {
 }
 
 pub fn is_editable(path: &str) -> bool {
-    has_extension(path, &["md", "markdown", "kitable", "kiboard", "kidesign"])
+    has_extension(path, &["md", "markdown", "kiboard", "kidesign"])
 }
 
 pub fn is_text(path: &str) -> bool {
@@ -69,7 +68,6 @@ pub fn is_supported(path: &str) -> bool {
         &[
             "md",
             "markdown",
-            "kitable",
             "kiboard",
             "kidesign",
             "txt",
@@ -117,7 +115,6 @@ mod tests {
     #[test]
     fn classifies_workspace_files() {
         assert_eq!(infer_format("notes/Plan.MD"), "markdown");
-        assert_eq!(infer_format("data/table.kitable"), "data");
         assert_eq!(infer_format("poster.kidesign"), "design");
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
@@ -143,7 +140,7 @@ mod tests {
         assert!(is_editable("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));
         assert!(is_text("a/b.json"));
-        assert!(!is_text("a/b.kitable"));
+        assert!(!is_supported("a/b.kitable"));
         assert!(is_supported("song.m4a"));
         assert!(!is_supported("tool.exe"));
     }

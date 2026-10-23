@@ -243,8 +243,7 @@ pub fn read_document(root: &Path, request: &Request) -> io::Result<DocumentRespo
     ensure_initialized(root)?;
     check_expected_root(root, request)?;
     let resolved = resolve_safe(root, &request.str("path"), false, false)?;
-    if !formats::is_text(&resolved.relative) && formats::infer_format(&resolved.relative) != "data"
-    {
+    if !formats::is_text(&resolved.relative) {
         return Err(invalid("this workspace file is not text-editable"));
     }
     document_response(&resolved.relative, &resolved.absolute)
@@ -321,21 +320,15 @@ fn collapse_whitespace(value: &str) -> String {
     output
 }
 
-pub fn sanitize_document_filename(title: &str, format: &str) -> String {
-    let (extension, fallback) = if format == "data" {
-        (".kitable", "Untitled table")
-    } else {
-        (".md", "Untitled note")
-    };
+/// A Markdown document's file name for `title` (other files are made by their kits).
+pub fn sanitize_document_filename(title: &str) -> String {
+    let fallback = "Untitled note";
     let title = if title.is_empty() { fallback } else { title };
     let base = sanitize_base(title, fallback);
-    let lower = base.to_lowercase();
-    for known in [".md", ".kitable"] {
-        if lower.ends_with(known) {
-            return format!("{}{extension}", &base[..base.len() - known.len()]);
-        }
+    if base.to_lowercase().ends_with(".md") {
+        return format!("{}.md", &base[..base.len() - 3]);
     }
-    format!("{base}{extension}")
+    format!("{base}.md")
 }
 
 /// Node's `path.extname`: the last dot in the final segment, ignoring a
@@ -432,14 +425,9 @@ pub fn create_document(root: &Path, request: &Request) -> io::Result<DocumentRes
     fs::create_dir_all(&folder_resolved.absolute)?;
     assert_safe(root, &folder_resolved.absolute, false)?;
 
-    let format = if request.str("format") == "data" {
-        "data"
-    } else {
-        "markdown"
-    };
     let filename = unique_document_target(
         &folder_resolved.absolute,
-        &sanitize_document_filename(&request.str("title"), format),
+        &sanitize_document_filename(&request.str("title")),
     )?;
     let relative = join_relative_path(&folder, &filename);
     let absolute = folder_resolved.absolute.join(&filename);
@@ -824,22 +812,10 @@ mod tests {
 
     #[test]
     fn sanitizes_names() {
-        assert_eq!(
-            sanitize_document_filename("", "markdown"),
-            "Untitled note.md"
-        );
-        assert_eq!(
-            sanitize_document_filename("a/b: c", "markdown"),
-            "a-b- c.md"
-        );
-        assert_eq!(
-            sanitize_document_filename("Plan.MD", "data"),
-            "Plan.kitable"
-        );
-        assert_eq!(
-            sanitize_document_filename("...hidden", "markdown"),
-            "hidden.md"
-        );
+        assert_eq!(sanitize_document_filename(""), "Untitled note.md");
+        assert_eq!(sanitize_document_filename("a/b: c"), "a-b- c.md");
+        assert_eq!(sanitize_document_filename("Plan.MD"), "Plan.md");
+        assert_eq!(sanitize_document_filename("...hidden"), "hidden.md");
         assert_eq!(sanitize_asset_name("", ".png"), "image.png");
         assert_eq!(sanitize_asset_name("shot", ".jpg"), "shot.jpg");
         assert_eq!(
@@ -865,12 +841,12 @@ mod tests {
         let second = create_document(&root, &request(json!({ "title": "Plan" })))
             .unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(second.path, "Plan 3.md");
-        let table = create_document(
+        let nested = create_document(
             &root,
-            &request(json!({ "title": "Sales", "folder": "data", "format": "data" })),
+            &request(json!({ "title": "Sales", "folder": "data" })),
         )
         .unwrap_or_else(|err| panic!("{err}"));
-        assert_eq!(table.path, "data/Sales.kitable");
+        assert_eq!(nested.path, "data/Sales.md");
 
         let listing = list(&root).unwrap_or_else(|err| panic!("{err}"));
         let items = listing["items"].as_array().cloned().unwrap_or_default();

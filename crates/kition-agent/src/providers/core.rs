@@ -78,7 +78,7 @@ impl Provider for CoreProvider {
         sections.push(attachments::prompt_block(&run.attachments));
         sections.push(self.recent_images.clone());
         sections.push(catalog::skill_prompt(&self.facts.skills));
-        sections.push(prompts::task_mode(&run.task_mode).to_owned());
+        sections.push(prompts::TASK_MODE.to_owned());
         sections.push(prompts::WEB_RESEARCH.to_owned());
         sections.push(prompts::execution_mode(&run.execution_mode).to_owned());
         if let Some(mode) = prompts::kit_edit_mode(&run.kit_edit_mode) {

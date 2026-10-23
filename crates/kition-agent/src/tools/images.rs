@@ -295,12 +295,6 @@ fn validate_target(surface: &str, placement: &str, target: &Map<String, Value>) 
             "cursor_offset",
             "selected_image_path",
         ],
-        "image.target.table" => &[
-            "data_document_id",
-            "table_id",
-            "record_ids",
-            "attachment_field_id",
-        ],
         "image.target.whiteboard" => &[
             "board_path",
             "selected_element_ids",
@@ -349,14 +343,6 @@ fn validate_target(surface: &str, placement: &str, target: &Map<String, Value>) 
         "chat" => kind == "image.target.chat" && placement == "review",
         "document" => {
             kind == "image.target.document" && workspace_path(target_text(target, "document_path"))
-        }
-        "table" => {
-            kind == "image.target.table"
-                && number(target, "data_document_id").is_some_and(|n| n >= 1.0)
-                && number(target, "table_id").is_some_and(|n| n >= 1.0)
-                && unique_ids("record_ids", &|item| {
-                    item.as_i64().is_some_and(|id| id >= 1)
-                })
         }
         "whiteboard" => {
             let replace = target_text(target, "replace_element_id");

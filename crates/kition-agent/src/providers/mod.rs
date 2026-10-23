@@ -10,7 +10,6 @@ mod images;
 mod kits;
 mod mcp;
 mod sources;
-mod tables;
 mod whiteboard;
 mod workflow;
 
@@ -29,7 +28,6 @@ use crate::run::Run;
 pub struct TurnFacts {
     pub prompt_context: String,
     pub active_workflow_id: String,
-    pub table_plan: Option<Value>,
     pub skills: Vec<SkillDef>,
     pub hosted_web_search: bool,
     pub hosted_images: bool,
@@ -74,13 +72,8 @@ pub type ToolFactory = Arc<dyn Fn(&ToolSpec, &ToolShape) -> Option<ToolDef> + Se
 pub fn owned_elsewhere(name: &str) -> bool {
     matches!(
         name,
-        "document_write"
-            | "image_search"
-            | "table_upsert_records"
-            | "whiteboard_propose_patch"
-            | "design_propose_patch"
-    ) || name.starts_with("data_table_")
-        || crate::sources::CORE_TOOLS.contains(&name)
+        "document_write" | "image_search" | "whiteboard_propose_patch" | "design_propose_patch"
+    ) || crate::sources::CORE_TOOLS.contains(&name)
         || crate::sources::GIT_TOOLS.contains(&name)
         || crate::tools::kits::tool_defs()
             .iter()
@@ -88,7 +81,7 @@ pub fn owned_elsewhere(name: &str) -> bool {
 }
 
 /// The providers of one turn, in assembly order. Async because some
-/// providers load their prompt state (recent images, the open table) up
+/// providers load their prompt state (recent images, the open document) up
 /// front: `Provider::prompt` is synchronous.
 pub async fn providers(
     run: &Arc<Run>,
@@ -97,9 +90,8 @@ pub async fn providers(
 ) -> Vec<Arc<dyn Provider>> {
     vec![
         Arc::new(core::CoreProvider::load(run, facts, factory).await),
-        Arc::new(document::DocumentProvider::load(run, factory).await),
+        Arc::new(document::DocumentProvider::new(factory)),
         Arc::new(images::ImagesProvider::new(facts, factory)),
-        Arc::new(tables::TablesProvider::load(run, facts, factory).await),
         Arc::new(workflow::WorkflowProvider::new(run, facts)),
         Arc::new(gallery::GalleryProvider),
         Arc::new(whiteboard::WhiteboardProvider::new(run, factory)),
@@ -213,7 +205,6 @@ pub(crate) mod testing {
             policy_path: Some(dirs[2].path().join("execpolicy.toml")),
             hooks: None,
             smtp: None,
-            tables: None,
             portal_base_url: String::new(),
             mcp_path: None,
             workflow_prompt: None,
@@ -226,10 +217,7 @@ pub(crate) mod testing {
             user_id: 1,
             session_id: 1,
             active_document_path: String::new(),
-            active_data_document_id: 0,
-            active_data_table_id: 0,
             execution_mode: "apply".into(),
-            task_mode: "auto".into(),
             kit_edit_mode: "live".into(),
             pane: pane.into(),
             whiteboard: None,
@@ -289,9 +277,6 @@ mod tests {
         for name in [
             "document_write",
             "image_search",
-            "data_table_add_records",
-            "data_table_create",
-            "table_upsert_records",
             "whiteboard_propose_patch",
             "design_propose_patch",
             "source_read",

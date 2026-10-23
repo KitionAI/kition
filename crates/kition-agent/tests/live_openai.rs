@@ -53,7 +53,6 @@ fn app() -> Live {
         policy_path: Some(config.path().join("execpolicy.toml")),
         hooks: None,
         smtp: None,
-        tables: None,
         portal_base_url: String::new(),
         mcp_path: None,
         workflow_prompt: None,

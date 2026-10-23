@@ -551,3 +551,35 @@ impl Store {
         Ok(flag != 0)
     }
 }
+
+/// Follows a table file renamed or moved from `from` to `to` (a folder moves every file under
+/// it): the email sync targets that write to it write to the new path. Answers how many changed.
+pub fn rename_table_path(conn: &Connection, from: &str, to: &str) -> AppResult<usize> {
+    let (from, to) = (
+        from.trim().trim_end_matches('/'),
+        to.trim().trim_end_matches('/'),
+    );
+    if from.is_empty() || to.is_empty() || from == to {
+        return Ok(0);
+    }
+    let mut changed = 0;
+    for workflow in all_workflows(conn)? {
+        let mut target = workflow.target();
+        let path = if target.table_path == from {
+            to.to_owned()
+        } else if let Some(rest) = target.table_path.strip_prefix(&format!("{from}/")) {
+            format!("{to}/{rest}")
+        } else {
+            continue;
+        };
+        target.table_path = path;
+        let json = serde_json::to_string(&target)
+            .map_err(|e| kition_core::AppError::internal(e.to_string()))?;
+        conn.execute(
+            "UPDATE workflows SET target_json = ?2, updated_at = ?3 WHERE id = ?1",
+            params![workflow.id, json, now_millis()],
+        )?;
+        changed += 1;
+    }
+    Ok(changed)
+}

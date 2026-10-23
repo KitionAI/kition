@@ -15,10 +15,10 @@ pub mod routes;
 pub mod surfaces;
 pub mod tools;
 
-pub use bridge::{Bridge, LiveDocument};
+pub use bridge::{Bridge, LiveChange, LiveDocument};
 pub use document_bridge::{DocumentApplied, DocumentApply};
 pub use manager::{
     Caller, DocumentView, ExecuteView, FileWrite, KITS, KitAgent, KitDefinition, KitError,
-    KitManager,
+    KitManager, SavedFile,
 };
 pub use routes::{KitsState, router};

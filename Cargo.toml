@@ -18,9 +18,6 @@ kition-ai = { path = "crates/kition-ai" }
 kition-workspace = { path = "crates/kition-workspace" }
 kition-kdm = { path = "crates/kition-kdm" }
 kition-license = { path = "crates/kition-license" }
-kition-kitable = { path = "crates/kition-kitable" }
-kition-table-api = { path = "crates/kition-table-api" }
-kition-datadoc = { path = "crates/kition-datadoc" }
 kition-connections = { path = "crates/kition-connections" }
 kition-formsync = { path = "crates/kition-formsync" }
 kition-emailsync = { path = "crates/kition-emailsync" }
@@ -33,6 +30,7 @@ kition-kit-protocol = { path = "crates/kition-kit-protocol" }
 kition-kit-host = { path = "crates/kition-kit-host" }
 kition-kit-conformance = { path = "crates/kition-kit-conformance" }
 kition-kits = { path = "crates/kition-kits" }
+kition-tableclient = { path = "crates/kition-tableclient" }
 kition-harness = { path = "crates/kition-harness" }
 
 anyhow = "1"

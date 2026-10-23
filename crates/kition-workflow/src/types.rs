@@ -138,6 +138,15 @@ pub struct TriggerConfig {
     pub node_id: String,
     #[serde(default, rename = "type", skip_serializing_if = "String::is_empty")]
     pub trigger_type: String,
+    /// The table file's workspace-relative path (`Leads.ktable`).
+    #[serde(
+        default,
+        rename = "documentPath",
+        skip_serializing_if = "String::is_empty"
+    )]
+    pub document_path: String,
+    /// The table file's stable identity (its KDM root object id), which finds it again when the
+    /// path no longer names it.
     #[serde(
         default,
         rename = "documentId",
@@ -181,6 +190,14 @@ pub struct FieldAssignment {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AddRecordConfig {
+    /// The target table file's workspace-relative path; empty for the trigger's file.
+    #[serde(
+        default,
+        rename = "targetDocumentPath",
+        skip_serializing_if = "String::is_empty"
+    )]
+    pub target_document_path: String,
+    /// The target table file's stable identity (its KDM root object id).
     #[serde(
         default,
         rename = "targetDocumentId",
@@ -211,6 +228,14 @@ pub struct WriteBackMapping {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LookupRecordConfig {
+    /// The target table file's workspace-relative path; empty for the trigger's file.
+    #[serde(
+        default,
+        rename = "targetDocumentPath",
+        skip_serializing_if = "String::is_empty"
+    )]
+    pub target_document_path: String,
+    /// The target table file's stable identity (its KDM root object id).
     #[serde(
         default,
         rename = "targetDocumentId",
@@ -573,10 +598,10 @@ pub struct RunRecord {
     pub record_id: String,
     #[serde(
         default,
-        rename = "documentId",
+        rename = "documentPath",
         skip_serializing_if = "String::is_empty"
     )]
-    pub document_id: String,
+    pub document_path: String,
     #[serde(default, rename = "tableId", skip_serializing_if = "String::is_empty")]
     pub table_id: String,
     #[serde(default, rename = "userId", skip_serializing_if = "is_zero")]

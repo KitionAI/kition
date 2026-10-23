@@ -4,8 +4,7 @@
 //! (`i64`): SQLite columns, HTTP JSON, and files Kition writes. Text
 //! timestamps written by older runtimes are read only by [`parse_legacy`].
 //!
-//! This crate has no runtime dependencies, so table documents
-//! (`kition-kitable`) build for `wasm32-unknown-unknown`.
+//! This crate has no runtime dependencies, so it builds for `wasm32-unknown-unknown`.
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 

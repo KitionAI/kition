@@ -1,18 +1,15 @@
 //! Workspace inventory, portability verification, and migration of legacy
 //! `/uploads/...` references into content-addressed workspace assets.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::LazyLock;
 
-use kition_core::{AppError, AppResult};
-use kition_kdm::Origin;
-use kition_kitable::{CellEdit, KitableFile, TableOp};
+use kition_core::AppResult;
 use kition_workspace::assets::Asset;
 use kition_workspace::fsutil::write_atomic;
 use regex::Regex;
 use serde::Serialize;
-use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use crate::state::StateMirror;
@@ -28,7 +25,8 @@ static LEGACY_URL: LazyLock<Regex> = LazyLock::new(|| {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Summary {
     pub documents: i64,
-    pub kitables: i64,
+    /// Table files (`.ktable`); the Table kit owns their contents.
+    pub tables: i64,
     pub assets: i64,
     pub workflows: i64,
     pub agent_sessions: i64,
@@ -117,8 +115,8 @@ pub fn classify_path(path: &str) -> &'static str {
         "workflow"
     } else if lower == "workflow_runs.json" || lower.contains("/runs/") {
         "workflow_run"
-    } else if lower.ends_with(".kitable") {
-        "kitable"
+    } else if lower.ends_with(".ktable") {
+        "table"
     } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
         "document"
     } else if lower == ".kition/workspace.json" || lower == ".kition/metadata.json" {
@@ -166,103 +164,6 @@ fn unique_legacy_urls(text: &str) -> Vec<String> {
         .collect()
 }
 
-fn str_field<'a>(map: &'a serde_json::Map<String, Value>, key: &str) -> &'a str {
-    map.get(key).and_then(Value::as_str).unwrap_or_default()
-}
-
-fn collect_references(
-    value: &Value,
-    source: &str,
-    issues: &mut Vec<Issue>,
-    references: &mut Vec<String>,
-) {
-    match value {
-        Value::Array(items) => items
-            .iter()
-            .for_each(|item| collect_references(item, source, issues, references)),
-        Value::Object(map) => {
-            let url = str_field(map, "url").trim();
-            let workspace_path = str_field(map, "workspacePath").trim().replace('\\', "/");
-            if url.starts_with("/uploads/") {
-                issues.push(Issue::new(
-                    "legacy_upload_url",
-                    "warning",
-                    "Table cell references an asset outside the workspace",
-                    source,
-                    url,
-                ));
-            } else if ["data:", "blob:", "file:", "http://", "https://"]
-                .iter()
-                .any(|p| url.starts_with(p))
-            {
-                issues.push(Issue::new(
-                    "absolute_path",
-                    "error",
-                    "Table cell contains a non-portable asset reference",
-                    source,
-                    url,
-                ));
-            }
-            if !workspace_path.is_empty() {
-                references.push(workspace_path);
-            }
-            map.values()
-                .for_each(|nested| collect_references(nested, source, issues, references));
-        }
-        _ => {}
-    }
-}
-
-fn inspect_kitable(path: &Path, workspace_path: &str) -> AppResult<(Vec<Issue>, Vec<String>)> {
-    let Ok(file) = KitableFile::open(path) else {
-        return Ok((
-            vec![Issue::new(
-                "migration_incomplete",
-                "error",
-                "Data document could not be inspected",
-                workspace_path,
-                "",
-            )],
-            Vec::new(),
-        ));
-    };
-    let mut issues = Vec::new();
-    let mut references = Vec::new();
-    let conn = file.conn();
-    let mut statement =
-        conn.prepare("SELECT values_json FROM kition_records WHERE deleted_at IS NULL")?;
-    for raw in statement.query_map([], |r| r.get::<_, String>(0))? {
-        if let Ok(value) = serde_json::from_str::<Value>(&raw?) {
-            collect_references(&value, workspace_path, &mut issues, &mut references);
-        }
-    }
-    let mut statement =
-        conn.prepare("SELECT path FROM kition_attachments WHERE deleted_at IS NULL")?;
-    for path_value in statement.query_map([], |r| r.get::<_, String>(0))? {
-        let path_value = path_value?;
-        if path_value.starts_with("/uploads/") {
-            issues.push(Issue::new(
-                "legacy_upload_url",
-                "warning",
-                "Table attachment metadata references device-local storage",
-                workspace_path,
-                &path_value,
-            ));
-        } else if path_value.starts_with(".kition/assets/") {
-            references.push(path_value.replace('\\', "/"));
-        } else if Path::new(&path_value).is_absolute() {
-            issues.push(Issue::new(
-                "absolute_path",
-                "error",
-                "Table attachment metadata contains an absolute path",
-                workspace_path,
-                &path_value,
-            ));
-        }
-    }
-    Ok((issues, references))
-}
-
 impl StateMirror {
     pub fn build_inventory(&self, include_items: bool, running: bool) -> AppResult<Inventory> {
         let manifest = self.assets.ensure_manifest()?;
@@ -270,8 +171,6 @@ impl StateMirror {
         let mut items = Vec::new();
         let mut summary = Summary::default();
         let mut issues = Vec::new();
-        let mut asset_references = HashSet::new();
-        let mut asset_paths = BTreeMap::new();
         let skip = |relative: &str| {
             relative == ".git" || relative.starts_with(".git/") || relative == ".kition/assets/.tmp"
         };
@@ -297,15 +196,9 @@ impl StateMirror {
                         ));
                     }
                 }
-                "kitable" => {
-                    summary.kitables += 1;
-                    let (found, references) = inspect_kitable(&path, &relative)?;
-                    issues.extend(found);
-                    asset_references.extend(references);
-                }
+                "table" => summary.tables += 1,
                 "asset" => {
                     summary.assets += 1;
-                    asset_paths.insert(relative.clone(), ());
                     let name = Path::new(&relative)
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
@@ -333,28 +226,6 @@ impl StateMirror {
                     size_bytes: size,
                     sha256: digest,
                 });
-            }
-        }
-        for reference in &asset_references {
-            if !asset_paths.contains_key(reference) {
-                issues.push(Issue::new(
-                    "missing_asset",
-                    "error",
-                    "Attachment references a missing workspace asset",
-                    reference,
-                    "",
-                ));
-            }
-        }
-        for asset in asset_paths.keys() {
-            if !asset_references.contains(asset) {
-                issues.push(Issue::new(
-                    "orphan_asset",
-                    "info",
-                    "Workspace asset is not referenced by a table attachment",
-                    asset,
-                    "",
-                ));
             }
         }
         if self.external_session_count() > 0 && summary.agent_sessions == 0 {
@@ -410,7 +281,6 @@ impl StateMirror {
                 .map(|e| e.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
             match extension.as_str() {
-                "kitable" => migration.migrate_kitable(&path)?,
                 "md" | "markdown" => migration.migrate_markdown(&path)?,
                 _ => {}
             }
@@ -484,129 +354,6 @@ impl Migration<'_> {
         };
         self.assets.insert(raw_url.to_owned(), asset.clone());
         Ok(asset)
-    }
-
-    fn migrate_value(&mut self, value: &mut Value) -> AppResult<bool> {
-        let mut changed = false;
-        match value {
-            Value::Array(items) => {
-                for item in items {
-                    changed |= self.migrate_value(item)?;
-                }
-            }
-            Value::Object(map) => {
-                let url = str_field(map, "url").trim().to_owned();
-                if url.starts_with("/uploads/") {
-                    let asset =
-                        self.migrate_url(&url, str_field(map, "name"), str_field(map, "mimeType"))?;
-                    self.updated_references += 1;
-                    if !self.dry_run {
-                        map.insert("url".into(), asset.url.into());
-                        map.insert("name".into(), asset.name.into());
-                        map.insert("mimeType".into(), asset.mime_type.into());
-                        map.insert("sizeBytes".into(), asset.size_bytes.into());
-                        map.insert("assetId".into(), asset.asset_id.into());
-                        map.insert("sha256".into(), asset.sha256.into());
-                        map.insert("workspacePath".into(), asset.workspace_path.into());
-                    }
-                    changed = true;
-                }
-                for nested in map.values_mut() {
-                    changed |= self.migrate_value(nested)?;
-                }
-            }
-            _ => {}
-        }
-        Ok(changed)
-    }
-
-    fn migrate_kitable(&mut self, path: &Path) -> AppResult<()> {
-        // A one-off sweep over every `.kitable` file in the workspace, not a per-document
-        // writer with a `DataDocState` to reach the shared manager through: its own handle is
-        // safe (a later handle catches up with whatever this writes), so it keeps one, tagged
-        // with this migration's own origin instead of the handle's `system:unknown` default.
-        let mut file = KitableFile::open(path).map_err(AppError::unhandled)?;
-        file.set_origin(Origin::system("storage"));
-        let mut record_updates: Vec<TableOp> = Vec::new();
-        {
-            let conn = file.conn();
-            let mut statement = conn.prepare(
-                "SELECT table_id, row_key, values_json FROM kition_records WHERE deleted_at IS NULL",
-            )?;
-            let rows = statement
-                .query_map([], |r| {
-                    Ok((
-                        r.get::<_, i64>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, String>(2)?,
-                    ))
-                })?
-                .collect::<Result<Vec<_>, _>>()?;
-            for (table_id, row_key, raw) in rows {
-                let Ok(mut value) = serde_json::from_str::<Value>(&raw) else {
-                    continue;
-                };
-                if self.migrate_value(&mut value)?
-                    && !self.dry_run
-                    && let Value::Object(values) = value
-                {
-                    // Cells are written through the table document; derived values are skipped
-                    // and recomputed from the new cells.
-                    record_updates.push(TableOp::CellsSet {
-                        table_id,
-                        records: vec![CellEdit { row_key, values }],
-                    });
-                }
-            }
-        }
-        let mut attachment_updates = Vec::new();
-        {
-            let conn = file.conn();
-            let mut statement = conn.prepare(
-                "SELECT id, path, name, mime_type FROM kition_attachments WHERE deleted_at IS NULL",
-            )?;
-            let rows = statement
-                .query_map([], |r| {
-                    Ok((
-                        r.get::<_, i64>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, String>(2)?,
-                        r.get::<_, String>(3)?,
-                    ))
-                })?
-                .collect::<Result<Vec<_>, _>>()?;
-            for (id, url, name, mime_type) in rows {
-                if !url.starts_with("/uploads/") {
-                    continue;
-                }
-                let asset = self.migrate_url(&url, &name, &mime_type)?;
-                self.updated_references += 1;
-                if !self.dry_run {
-                    attachment_updates.push((
-                        id,
-                        asset.workspace_path.clone(),
-                        serde_json::to_string(&asset)?,
-                    ));
-                }
-            }
-        }
-        if self.dry_run || record_updates.is_empty() && attachment_updates.is_empty() {
-            return Ok(());
-        }
-        if !record_updates.is_empty() {
-            file.transact(&record_updates)
-                .map_err(AppError::unhandled)?;
-        }
-        // Attachments are file bookkeeping outside the table document.
-        let tx = file.conn().unchecked_transaction()?;
-        for (id, path, meta) in attachment_updates {
-            tx.execute(
-                "UPDATE kition_attachments SET path = ?1, meta_json = ?2 WHERE id = ?3",
-                rusqlite::params![path, meta, id],
-            )?;
-        }
-        tx.commit()?;
-        Ok(())
     }
 
     fn migrate_markdown(&mut self, path: &Path) -> AppResult<()> {

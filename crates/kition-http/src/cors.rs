@@ -22,11 +22,8 @@ const DESKTOP_SHELL_ORIGINS: [&str; 3] = [
 ];
 const ALLOW_METHODS: &str = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 // `Range` lets kit workers read workspace media in ranges (lent files in docs/kit-sdk.md).
-// `Kition-Session` tags a data-document request with this window's session so the
-// runtime can skip the origin's own `table/changed` events; `Kition-Origin` marks
-// template seeding requests that run before any window session exists.
 // `Kition-Token` is the per-launch API token (`crate::gate`).
-const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Session,Kition-Origin,Kition-Token";
+const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Token";
 // Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`. A read
 // through a file grant (`/v1/kits/grants/{handle}/content`) names the whole size in
 // `Kition-File-Size`.
@@ -219,12 +216,6 @@ mod tests {
             [EXPOSE_HEADERS]
         );
         assert!(ALLOW_HEADERS.split(',').any(|name| name == "Range"));
-        assert!(
-            ALLOW_HEADERS
-                .split(',')
-                .any(|name| name == "Kition-Session")
-        );
-        assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Origin"));
         assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Token"));
     }
 

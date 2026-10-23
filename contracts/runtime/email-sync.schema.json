@@ -25,7 +25,7 @@
       "additionalProperties": false,
       "required": ["table_path", "content_folder", "attachment_folder"],
       "properties": {
-        "table_path": { "type": "string", "pattern": "^[^/].*\\.kitable$" },
+        "table_path": { "type": "string", "pattern": "^[^/].*\\.ktable$" },
         "table_id": { "type": "integer", "minimum": 1 },
         "content_folder": { "type": "string", "minLength": 1 },
         "attachment_folder": { "type": "string", "minLength": 1 }

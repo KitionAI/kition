@@ -175,7 +175,7 @@ pub async fn artifact_write(run: &Run, input: &Value) -> ToolResult {
             );
         }
         "docx" | "xlsx" => {
-            return Err("DOCX and XLSX generation are not supported by generic Agent tools; use Markdown or a Kition data table".into());
+            return Err("DOCX and XLSX generation are not supported by generic Agent tools; use Markdown, or a `.ktable` file through the Table kit for structured data".into());
         }
         other => {
             return Err(format!(

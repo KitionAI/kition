@@ -1,5 +1,5 @@
 //! Builds the workspace agent and the hooks it needs from other features:
-//! desktop hooks, SMTP connections, data tables, and open workflows.
+//! desktop hooks, SMTP connections, and open workflows.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -281,11 +281,7 @@ async fn configure_smtp(
     Ok((summary, output))
 }
 
-pub fn build(
-    deps: &Deps,
-    tables: Option<kition_datadoc::DataDocState>,
-    workflows: Arc<kition_workflow::store::Store>,
-) -> Agent {
+pub fn build(deps: &Deps, workflows: Arc<kition_workflow::store::Store>) -> Agent {
     let runner = deps.hook_runner();
     let hooks: HookDispatch = Arc::new(move |user_id, name, tool_name, stage, _status| {
         runner.dispatch(
@@ -313,7 +309,6 @@ pub fn build(
         policy_path: kition_agent::execpolicy::default_path(),
         hooks: Some(hooks),
         smtp: Some(smtp),
-        tables,
         portal_base_url: deps.config.portal_base_url.clone(),
         mcp_path: kition_agent::mcp::default_path(),
         workflow_prompt: Some(workflow_prompt),

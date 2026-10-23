@@ -109,312 +109,6 @@
       "permission": "workspace-write"
     },
     {
-      "name": "data_table_add_fields",
-      "description": "Add missing fields to the current Kition data table. Existing fields are skipped.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Data document ID. Uses the current table when omitted"
-          },
-          "table_id": {
-            "type": "integer",
-            "description": "Table ID. Uses the current table when omitted"
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "title": {
-                  "type": "string",
-                  "description": "Field display name"
-                },
-                "name": {
-                  "type": "string",
-                  "description": "Optional internal name"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "text",
-                    "long_text",
-                    "number",
-                    "date",
-                    "datetime",
-                    "single_select",
-                    "multi_select",
-                    "checkbox",
-                    "url",
-                    "rating",
-                    "user",
-                    "button"
-                  ],
-                  "description": "Field type"
-                },
-                "required": {
-                  "type": "boolean"
-                },
-                "primary": {
-                  "type": "boolean"
-                },
-                "options": {
-                  "type": "object",
-                  "description": "Field options, for example choices"
-                }
-              },
-              "required": [
-                "title"
-              ]
-            }
-          }
-        },
-        "required": [
-          "fields"
-        ]
-      },
-      "permission": "workspace-write",
-      "namespace": "data_table"
-    },
-    {
-      "name": "data_table_add_records",
-      "description": "Append records to the current Kition data table or update them by unique fields. Record keys may use field display names or internal names.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Data document ID. Uses the current table when omitted"
-          },
-          "table_id": {
-            "type": "integer",
-            "description": "Table ID. Uses the current table when omitted"
-          },
-          "records": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "description": "Rows to append or update. Keys may be field display names or internal names"
-          },
-          "unique_by": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            ],
-            "description": "Optional display name or internal name for dedupe/upsert, for example Tweet URL"
-          },
-          "update_existing": {
-            "type": "boolean",
-            "description": "Whether to update existing rows when unique_by matches. Defaults to true"
-          }
-        },
-        "required": [
-          "records"
-        ]
-      },
-      "permission": "workspace-write",
-      "namespace": "data_table"
-    },
-    {
-      "name": "data_table_create",
-      "description": "Create a new Kition data table document (.kitable) with an initial table schema, then return document_id and table_id for follow-up writes.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_title": {
-            "type": "string",
-            "description": "Data document title. Defaults to table_title or 'Untitled data table'"
-          },
-          "table_title": {
-            "type": "string",
-            "description": "Initial table title. Defaults to 'Table'"
-          },
-          "path": {
-            "type": "string",
-            "description": "Optional .kitable path inside the workspace"
-          },
-          "folder": {
-            "type": "string",
-            "description": "Optional folder inside the workspace. Used when path is omitted"
-          },
-          "description": {
-            "type": "string",
-            "description": "Optional data document description"
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "title": {
-                  "type": "string",
-                  "description": "Field display name"
-                },
-                "name": {
-                  "type": "string",
-                  "description": "Optional internal name"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "text",
-                    "long_text",
-                    "number",
-                    "date",
-                    "datetime",
-                    "single_select",
-                    "multi_select",
-                    "checkbox",
-                    "url",
-                    "rating",
-                    "user",
-                    "button"
-                  ],
-                  "description": "Field type"
-                },
-                "required": {
-                  "type": "boolean"
-                },
-                "primary": {
-                  "type": "boolean"
-                },
-                "options": {
-                  "type": "object",
-                  "description": "Field options, for example choices"
-                }
-              },
-              "required": [
-                "title"
-              ]
-            }
-          },
-          "views": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "grid",
-                    "form",
-                    "kanban",
-                    "calendar",
-                    "gallery"
-                  ]
-                },
-                "config": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      },
-      "permission": "workspace-write",
-      "namespace": "data_table"
-    },
-    {
-      "name": "data_table_record_draft",
-      "description": "Draft table-ready records by mapping provided source records onto the current Kition table schema, and suggest missing fields plus unique_by.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Data document ID. Uses the current table when omitted"
-          },
-          "table_id": {
-            "type": "integer",
-            "description": "Table ID. Uses the current table when omitted"
-          },
-          "source_records": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "description": "Optional raw source records to map onto the table schema"
-          },
-          "records": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "description": "Alias of source_records for compatibility"
-          },
-          "limit": {
-            "type": "integer",
-            "description": "Maximum source records to process, default 20, max 100"
-          }
-        }
-      },
-      "permission": "read-only",
-      "namespace": "data_table"
-    },
-    {
-      "name": "data_table_records",
-      "description": "Read recent records from the current Kition data table to understand existing rows and avoid duplicates.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Data document ID. Uses the current table when omitted"
-          },
-          "table_id": {
-            "type": "integer",
-            "description": "Table ID. Uses the current table when omitted"
-          },
-          "limit": {
-            "type": "integer",
-            "description": "Maximum rows to return, default 20, max 100"
-          }
-        }
-      },
-      "permission": "read-only",
-      "namespace": "data_table"
-    },
-    {
-      "name": "data_table_schema",
-      "description": "Read the structure of the current Kition data table, including fields, field types, and views.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Data document ID. Uses the current table when omitted"
-          },
-          "table_id": {
-            "type": "integer",
-            "description": "Table ID. Uses the current table when omitted"
-          }
-        }
-      },
-      "permission": "read-only",
-      "namespace": "data_table"
-    },
-    {
       "name": "design_propose_patch",
       "description": "Propose a typed change to the active Kition design artboard. The client validates the patch again and shows it as a preview the user accepts or rejects; this tool never writes the .kidesign file. Use layer ids from the attached design context for edits. Create new text or shape layers with concise unique ids. Keep text short enough for its bounds, keep layers inside the artboard, and prefer brand colors and fonts when the context lists them. Images cannot be created here; use the image generation flow for new pictures.",
       "category": "design",
@@ -1511,55 +1205,6 @@
       "permission": "read-only"
     },
     {
-      "name": "table_upsert_records",
-      "description": "Insert or update records in the current Kition data table. Alias of data_table_add_records; pass unique_by to upsert (update matching rows) instead of appending duplicates.",
-      "category": "data_table",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Data document ID. Uses the current table when omitted"
-          },
-          "table_id": {
-            "type": "integer",
-            "description": "Table ID. Uses the current table when omitted"
-          },
-          "records": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": true
-            },
-            "description": "Rows to append or update. Keys may be field display names or internal names"
-          },
-          "unique_by": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            ],
-            "description": "Optional display name or internal name for dedupe/upsert, for example Tweet URL"
-          },
-          "update_existing": {
-            "type": "boolean",
-            "description": "Whether to update existing rows when unique_by matches. Defaults to true"
-          }
-        },
-        "required": [
-          "records"
-        ]
-      },
-      "permission": "workspace-write",
-      "namespace": "data_table"
-    },
-    {
       "name": "update_plan",
       "description": "Updates the task plan.\nProvide an optional explanation and a list of plan items, each with a step and status.\nAt most one step can be in_progress at a time.",
       "category": "plan",
@@ -2072,43 +1717,15 @@
       "system_prompt": "Enable the document-review skill.\nLead with the main issues, then provide a directly rewritable version or an actionable revision list.\nIf the user asks for direct edits to the current document, read it first and write back with document_write to the same path.\nFeedback should be concrete at the level of headings, paragraphs, structure, factual gaps, and action items."
     },
     {
-      "name": "data-table-agent",
-      "description": "Read and write the current data table for collection, batch cleanup, and structured ingestion.",
-      "triggers": [
-        "table",
-        "data table",
-        "records",
-        "field",
-        "scrape",
-        "collect",
-        "ingest to table",
-        "save in this table",
-        "site"
-      ],
-      "tools": [
-        "data_table_create",
-        "data_table_schema",
-        "data_table_records",
-        "data_table_record_draft",
-        "data_table_add_fields",
-        "data_table_add_records",
-        "table_upsert_records",
-        "web_search",
-        "web_fetch"
-      ],
-      "system_prompt": "Enable the data-table-agent skill.\nIf the task clearly needs a new table and no suitable current table exists, create one first with data_table_create, then continue with schema inspection or writes against the returned document_id and table_id.\nIf the user wants information stored in the current table, call data_table_schema first to understand the fields.\nUse data_table_add_fields to fill missing fields when needed; use data_table_records before writing if you need to inspect existing rows.\nWhen appending data, use the drafted records from data_table_record_draft with data_table_add_records. Prefer display names for record keys. If there is a stable unique field such as URL, ID, or title, pass unique_by to prevent duplicates.\nFor articles, posts, products, news items, or any entity with its own page, keep each record's own original URL when the page exposes it. If the table does not yet have a URL/link field, add a `url` field first instead of reusing one list-page URL for every row or burying the source in notes.\nFor public web, social, or latest-information tasks, gather context with web_search/web_fetch before writing to the table.\nIf the user already gave an explicit page URL, call web_fetch on that URL first before deciding whether more search is needed.\nIf the user explicitly asks to write, save, organize, import, or append into the current table, the task is not complete until data_table_add_records succeeds. Do not stop at search or recommendations.\nOnly skip writing when a required source is missing, field mapping is impossible, or the results are not structured enough. In that case, state the exact blocker and the next step."
-    },
-    {
       "name": "document-report-agent",
-      "description": "Analyze workspace documents, folders, and data tables and emit reports, dashboards, HTML pages, and charts.",
+      "description": "Analyze workspace documents and folders and emit reports, dashboards, HTML pages, and charts.",
       "triggers": [
         "report",
         "dashboard",
         "visualization",
         "chart",
         "summary",
-        "analyze document",
-        "analyze table"
+        "analyze document"
       ],
       "tools": [
         "document_list",
@@ -2122,14 +1739,8 @@
         "source_git_log",
         "source_git_show",
         "source_git_blame",
-        "data_table_schema",
-        "data_table_records",
         "artifact_write",
         "register_artifact",
-        "data_table_create",
-        "data_table_add_fields",
-        "data_table_add_records",
-        "table_upsert_records",
         "apply_patch",
         "file_search",
         "fs_read",
@@ -2137,7 +1748,7 @@
         "fs_stat",
         "exec_command"
       ],
-      "system_prompt": "Enable the document-report-agent skill.\nFollow an AI-first flow: explore the context with tools, extract what the answer needs, synthesize, then emit the matching artifact. Do not dump or guess folder/table contents.\nFor a referenced folder, call document_list first, then document_read only the files that matter. For a data table, call data_table_schema first and data_table_records only when values or dedupe matter.\nChoose the artifact from intent: a readable report, dashboard, or visualization/HTML page uses artifact_write with a `.html` path and a complete standalone HTML document; structured data that will be queried uses data_table_create or data_table_add_records; plain prose uses artifact_write with a `.md` path. When both a readable view and stored data are wanted, do both.\nFor charts, embed ECharts or Chart.js via CDN inside the HTML payload using only data you actually read; never invent numbers.\nThe artifact you produce is this turn's result; do not also restate the whole thing as plain chat. If the user asked for a report or HTML, the task is not complete until artifact_write succeeds or you state a concrete blocker."
+      "system_prompt": "Enable the document-report-agent skill.\nFollow an AI-first flow: explore the context with tools, extract what the answer needs, synthesize, then emit the matching artifact. Do not dump or guess folder contents.\nFor a referenced folder, call document_list first, then document_read only the files that matter.\nChoose the artifact from intent: a readable report, dashboard, or visualization/HTML page uses artifact_write with a `.html` path and a complete standalone HTML document; plain prose uses artifact_write with a `.md` path.\nFor charts, embed ECharts or Chart.js via CDN inside the HTML payload using only data you actually read; never invent numbers.\nThe artifact you produce is this turn's result; do not also restate the whole thing as plain chat. If the user asked for a report or HTML, the task is not complete until artifact_write succeeds or you state a concrete blocker."
     },
     {
       "name": "web-archive-agent",

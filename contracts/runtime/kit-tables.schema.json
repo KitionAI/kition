@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/kit-tables.schema.json",
+  "title": "Kition Table Files for Host Features",
+  "description": "/api/v1/kit-tables: the workspace's .ktable files as Kition's own features see them (the workflow editor's table and field pickers, form and email sync targets, the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.",
+  "$ref": "#/$defs/fileList",
+  "x-endpoints": {
+    "list": "GET /api/v1/kit-tables",
+    "createFile": "POST /api/v1/kit-tables/files",
+    "createTable": "POST /api/v1/kit-tables/tables",
+    "updateTable": "POST /api/v1/kit-tables/tables/update",
+    "fields": "GET /api/v1/kit-tables/fields?path=&tableId=",
+    "records": "GET /api/v1/kit-tables/records?path=&tableId=&limit=&offset=",
+    "writeRecord": "POST /api/v1/kit-tables/records",
+    "putAttachment": "POST /api/v1/kit-tables/attachments",
+    "renamed": "POST /api/v1/kit-tables/renamed"
+  },
+  "$defs": {
+    "tablePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.ktable$"
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "title", "type", "primary"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "The engine's key for the field's values." },
+        "title": { "type": "string", "description": "What people call it: its title, or its name without one." },
+        "type": { "type": "string" },
+        "primary": { "type": "boolean" }
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "title", "meta", "fields"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "meta": { "type": "object", "description": "The table's own metadata; Kition keeps a table's unpublished form drafts in it (form_sync_workflows)." },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "documentId", "tables", "dashboards"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "documentId": { "type": ["string", "null"] },
+        "tables": { "type": "array", "items": { "$ref": "#/$defs/table" } },
+        "dashboards": { "type": "array", "items": { "$ref": "#/$defs/dashboard" } }
+      }
+    },
+    "unreadableFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "error"],
+      "properties": {
+        "path": { "type": "string" },
+        "error": { "type": "string" }
+      }
+    },
+    "fileList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "unreadable"],
+      "properties": {
+        "files": { "type": "array", "items": { "$ref": "#/$defs/file" } },
+        "unreadable": { "type": "array", "items": { "$ref": "#/$defs/unreadableFile" } }
+      }
+    },
+    "createFileRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "title": { "type": "string", "description": "The starter table's title." }
+      }
+    },
+    "createFileResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "tables"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "tables": { "type": "array", "items": { "$ref": "#/$defs/table" } }
+      }
+    },
+    "fieldSeed": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["title", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "primary": { "type": "boolean" },
+        "required": { "type": "boolean" },
+        "readonly": { "type": "boolean" },
+        "options": { "type": "object" }
+      }
+    },
+    "feature": {
+      "type": "string",
+      "pattern": "^[a-z-]{1,32}$",
+      "description": "The host feature writing, recorded as the origin system:<feature>; host when absent."
+    },
+    "createTableRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "title"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "title": { "type": "string", "minLength": 1 },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/fieldSeed" } },
+        "feature": { "$ref": "#/$defs/feature" }
+      }
+    },
+    "updateTableRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "tableId"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "tableId": { "type": "string" },
+        "title": { "type": "string" },
+        "meta": { "type": "object", "description": "Replaces the table's metadata." },
+        "feature": { "$ref": "#/$defs/feature" }
+      }
+    },
+    "fieldsResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "table"],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "object" }, "description": "The fields as the Table kit answers them (id, name, title, type, options, is_primary, ...)." },
+        "table": { "$ref": "#/$defs/table" }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "values"],
+      "properties": {
+        "id": { "type": ["integer", "string"] },
+        "values": { "type": "object", "description": "Values keyed by field name." },
+        "created_at": { "type": "integer" },
+        "updated_at": { "type": "integer" }
+      }
+    },
+    "recordsPage": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["items"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/record" } },
+        "total": { "type": "integer" },
+        "offset": { "type": "integer" },
+        "limit": { "type": "integer" }
+      }
+    },
+    "writeRecordRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "tableId", "values"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "tableId": { "type": "string" },
+        "recordId": { "type": "string", "description": "Absent: a new record." },
+        "values": { "type": "object", "description": "Values keyed by field id, name, or title." },
+        "feature": { "$ref": "#/$defs/feature" }
+      }
+    },
+    "writeRecordResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "values"],
+      "properties": {
+        "id": { "type": "string" },
+        "values": { "type": "object" }
+      }
+    },
+    "attachmentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "tableId", "name", "mime", "data"],
+      "properties": {
+        "path": { "$ref": "#/$defs/tablePath" },
+        "tableId": { "type": "string" },
+        "name": { "type": "string" },
+        "mime": { "type": "string" },
+        "data": { "type": "string", "description": "The file's bytes, base64." },
+        "feature": { "$ref": "#/$defs/feature" }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "The attachment value a file field holds for the stored blob (url kition-blob:<sha256>, name, mimeType, size)."
+    },
+    "renamedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 }
+      }
+    },
+    "renamedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["updated"],
+      "properties": {
+        "updated": { "type": "integer", "minimum": 0, "description": "Workflows, form sync targets, and email sync targets that now name the new path." }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["unavailable", "not-found", "failed"]
+    }
+  }
+}

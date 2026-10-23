@@ -67,13 +67,13 @@ pub fn router(state: WorkflowState) -> Router {
         )
         .route("/workflows/{id}/dry-run", post(dry_run))
         .route("/workflows/{id}/send-test", post(send_test))
+        .route("/workflows/{id}/run-record", post(run_record))
         .route("/workflows/{id}/enabled", patch(set_enabled))
         .route("/workflows/{id}/runs", get(list_runs))
         .route("/workflows/{id}/runs/{run_id}/retry", post(retry_run))
         .route("/workflows/{id}/validate", post(validate_one))
         .route("/workflows/{id}/nodes/{node_id}/test", post(node_test))
         .route("/workflows/{id}/filters/dry-run", post(filter_dry_run))
-        .route("/tables/{table_id}/workflows", get(table_workflows))
         .with_state(state)
 }
 
@@ -144,6 +144,8 @@ async fn get_one(
 struct CreateTrigger {
     #[serde(rename = "type")]
     trigger_type: String,
+    #[serde(rename = "documentPath")]
+    document_path: String,
     #[serde(rename = "documentId")]
     document_id: String,
     #[serde(rename = "tableId")]
@@ -216,6 +218,7 @@ async fn create(State(state): State<WorkflowState>, _user: CurrentUser, body: By
         trigger: TriggerConfig {
             node_id: "trigger_1".into(),
             trigger_type: req.trigger.trigger_type,
+            document_path: req.trigger.document_path,
             document_id: req.trigger.document_id,
             table_id: req.trigger.table_id,
             schedule: req.trigger.schedule,
@@ -254,6 +257,8 @@ struct PatchTrigger {
     node_id: Option<String>,
     #[serde(rename = "type")]
     trigger_type: Option<String>,
+    #[serde(rename = "documentPath")]
+    document_path: Option<String>,
     #[serde(rename = "documentId")]
     document_id: Option<String>,
     #[serde(rename = "tableId")]
@@ -307,6 +312,7 @@ impl From<PatchRequest> for WorkflowPatch {
             trigger: req.trigger.map(|t| TriggerPatch {
                 node_id: t.node_id,
                 trigger_type: t.trigger_type,
+                document_path: t.document_path,
                 document_id: t.document_id,
                 table_id: t.table_id,
                 schedule: t.schedule,
@@ -431,7 +437,7 @@ async fn retry_run(
             &original.trigger_event,
             original.user_id,
             &original.record_id,
-            &original.document_id,
+            &original.document_path,
             &original.table_id,
             original.trigger_fields.clone(),
         )
@@ -558,7 +564,7 @@ async fn preview_values(
 ) -> HashMap<String, String> {
     let schema = state
         .engine
-        .schema(user_id, &def.trigger.document_id, &def.trigger.table_id)
+        .schema(user_id, &def.trigger.document_path, &def.trigger.table_id)
         .await
         .unwrap_or_else(|_| fallback_schema(def));
     match fields.filter(|f| !f.is_empty()) {
@@ -731,6 +737,76 @@ async fn run_send_test(
     }
 }
 
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct RunRecordRequest {
+    #[serde(rename = "documentPath")]
+    document_path: String,
+    #[serde(rename = "tableId")]
+    table_id: String,
+    #[serde(rename = "recordId")]
+    record_id: String,
+}
+
+/// Runs a workflow on one record of its trigger table, as a person asked from the table (a
+/// button field's "run workflow", the Table kit's `host/action` `workflow.run`).
+async fn run_record(
+    State(state): State<WorkflowState>,
+    user: CurrentUser,
+    Path(id): Path<String>,
+    body: Bytes,
+) -> Response {
+    let Some(def) = state.engine.store.get(&id) else {
+        return error(StatusCode::NOT_FOUND, "workflow not found");
+    };
+    let req: RunRecordRequest = bind_lenient(&body);
+    if req.record_id.trim().is_empty() {
+        return error(StatusCode::BAD_REQUEST, "recordId required");
+    }
+    if req.document_path != def.trigger.document_path || req.table_id != def.trigger.table_id {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "the workflow runs on another table",
+        );
+    }
+    let records = match state
+        .engine
+        .records(user.user.id, &req.document_path, &req.table_id)
+        .await
+    {
+        Ok(records) => records,
+        Err(err) => return error(StatusCode::BAD_GATEWAY, &err),
+    };
+    let Some(record) = records
+        .into_iter()
+        .find(|record| record.id == req.record_id.trim())
+    else {
+        return error(StatusCode::NOT_FOUND, "record not found");
+    };
+    let run = state
+        .engine
+        .execute(
+            &def,
+            "manual.run",
+            user.user.id,
+            &record.id,
+            &req.document_path,
+            &req.table_id,
+            Some(record.fields),
+        )
+        .await;
+    if let Err(err) = state.engine.runs.append(run.clone()) {
+        return reply(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"ok": false, "error": err}),
+        );
+    }
+    reply(
+        StatusCode::OK,
+        json!({"ok": run.status == "ok", "error": run.error, "run": run}),
+    )
+}
+
 async fn node_test(
     State(state): State<WorkflowState>,
     user: CurrentUser,
@@ -751,7 +827,7 @@ async fn node_test(
                 .engine
                 .schema(
                     user.user.id,
-                    &def.trigger.document_id,
+                    &def.trigger.document_path,
                     &def.trigger.table_id,
                 )
                 .await
@@ -770,7 +846,7 @@ async fn node_test(
                 "manual.test",
                 user.user.id,
                 &req.record_id,
-                &def.trigger.document_id,
+                &def.trigger.document_path,
                 &def.trigger.table_id,
                 fields,
             )
@@ -895,31 +971,12 @@ async fn schedule_preview(
     reply(StatusCode::OK, json!({"nextRuns": runs, "timezone": tz}))
 }
 
-async fn table_workflows(
-    State(state): State<WorkflowState>,
-    _user: CurrentUser,
-    Path(table_id): Path<String>,
-) -> Response {
-    let table_id = table_id.trim();
-    if table_id.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "tableId required");
-    }
-    let items: Vec<WorkflowDefinition> = state
-        .engine
-        .store
-        .list()
-        .into_iter()
-        .filter(|d| d.trigger.table_id == table_id)
-        .collect();
-    reply(StatusCode::OK, json!({"items": items}))
-}
-
 #[derive(Default, Deserialize)]
 #[serde(default)]
 struct BuildRequest {
     prompt: String,
-    #[serde(rename = "documentId")]
-    document_id: String,
+    #[serde(rename = "documentPath")]
+    document_path: String,
     #[serde(rename = "tableId")]
     table_id: String,
     model: Value,
@@ -991,7 +1048,7 @@ async fn build(
     }
     for (value, message) in [
         (&req.prompt, "prompt required"),
-        (&req.document_id, "documentId required"),
+        (&req.document_path, "documentPath required"),
         (&req.table_id, "tableId required"),
     ] {
         if value.is_empty() {
@@ -1001,7 +1058,7 @@ async fn build(
     let user_id = user.user.id;
     let schema = match state
         .engine
-        .schema(user_id, &req.document_id, &req.table_id)
+        .schema(user_id, &req.document_path, &req.table_id)
         .await
     {
         Ok(schema) => schema,
@@ -1067,7 +1124,7 @@ async fn build(
                     }
                 }
             }
-            def.trigger.document_id = req.document_id.clone();
+            def.trigger.document_path = req.document_path.clone();
             if def.action.connection_id.is_empty() {
                 def.action.connection_id = default_connection;
             }

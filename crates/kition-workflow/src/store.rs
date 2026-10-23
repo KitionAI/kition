@@ -64,6 +64,7 @@ pub struct WorkflowPatch {
 pub struct TriggerPatch {
     pub node_id: Option<String>,
     pub trigger_type: Option<String>,
+    pub document_path: Option<String>,
     pub document_id: Option<String>,
     pub table_id: Option<String>,
     pub schedule: Option<ScheduleConfig>,
@@ -103,6 +104,9 @@ pub fn apply_patch(mut def: WorkflowDefinition, patch: WorkflowPatch) -> Workflo
         }
         if let Some(v) = trigger.trigger_type {
             t.trigger_type = v;
+        }
+        if let Some(v) = trigger.document_path {
+            t.document_path = v;
         }
         if let Some(v) = trigger.document_id {
             t.document_id = v;
@@ -274,9 +278,9 @@ impl Store {
     }
 
     /// Removes workflows that read from or write to a document.
-    pub fn delete_by_document_id(&self, document_id: &str) -> Result<usize, String> {
-        let document_id = document_id.trim();
-        if document_id.is_empty() {
+    pub fn delete_by_document_path(&self, document_path: &str) -> Result<usize, String> {
+        let document_path = document_path.trim();
+        if document_path.is_empty() {
             return Ok(0);
         }
         let (removed, snapshot) = {
@@ -287,9 +291,9 @@ impl Store {
                     .action
                     .add_record
                     .as_ref()
-                    .map(|c| c.target_document_id.trim())
+                    .map(|c| c.target_document_path.trim())
                     .unwrap_or_default();
-                def.trigger.document_id.trim() != document_id && target != document_id
+                def.trigger.document_path.trim() != document_path && target != document_path
             });
             (before - data.len(), data.clone())
         };
@@ -297,6 +301,80 @@ impl Store {
             self.persist(&snapshot)?;
         }
         Ok(removed)
+    }
+
+    /// Follows a table file renamed or moved from `from` to `to` (a folder moves every file
+    /// under it): the triggers and the record actions that name it name the new path.
+    pub fn rename_document_path(&self, from: &str, to: &str) -> Result<usize, String> {
+        let (from, to) = (
+            from.trim().trim_end_matches('/'),
+            to.trim().trim_end_matches('/'),
+        );
+        if from.is_empty() || to.is_empty() || from == to {
+            return Ok(0);
+        }
+        let moved = |path: &mut String| {
+            let renamed = if path == from {
+                Some(to.to_owned())
+            } else {
+                path.strip_prefix(&format!("{from}/"))
+                    .map(|rest| format!("{to}/{rest}"))
+            };
+            match renamed {
+                Some(renamed) => {
+                    *path = renamed;
+                    true
+                }
+                None => false,
+            }
+        };
+        let (changed, snapshot) = {
+            let mut data = self.write();
+            let mut changed = 0;
+            for def in data.values_mut() {
+                let mut touched = moved(&mut def.trigger.document_path);
+                if let Some(config) = def.action.add_record.as_mut() {
+                    touched |= moved(&mut config.target_document_path);
+                }
+                if let Some(config) = def.action.lookup_record.as_mut() {
+                    touched |= moved(&mut config.target_document_path);
+                }
+                for node in def.extra_nodes.iter_mut() {
+                    touched |= rename_in_config(&mut node.config, &moved);
+                }
+                if touched {
+                    changed += 1;
+                }
+            }
+            (changed, data.clone())
+        };
+        if changed > 0 {
+            self.persist(&snapshot)?;
+        }
+        Ok(changed)
+    }
+}
+
+/// Renames every `documentPath` and `targetDocumentPath` in a node's configuration.
+fn rename_in_config(config: &mut Value, moved: &impl Fn(&mut String) -> bool) -> bool {
+    match config {
+        Value::Object(map) => {
+            let mut touched = false;
+            for (key, value) in map.iter_mut() {
+                if key == "documentPath" || key == "targetDocumentPath" {
+                    if let Value::String(path) = value {
+                        touched |= moved(path);
+                    }
+                } else {
+                    touched |= rename_in_config(value, moved);
+                }
+            }
+            touched
+        }
+        Value::Array(items) => items.iter_mut().fold(false, |touched, item| {
+            rename_in_config(item, moved) | touched
+        }),
+        _ => false,
     }
 }
 
@@ -581,6 +659,42 @@ mod tests {
     }
 
     #[test]
+    fn follows_renamed_table_files() {
+        let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let store = Store::new(dir.path().join("workflow.json"));
+        let mut moved = def("w1", "Leads");
+        moved.trigger.document_path = "crm/Leads.ktable".into();
+        moved.action.add_record = Some(AddRecordConfig {
+            target_document_path: "crm/Leads.ktable".into(),
+            target_table_id: "2".into(),
+            ..Default::default()
+        });
+        moved.extra_nodes.push(NodeConfig {
+            node_id: "n1".into(),
+            kind: "lookup_record".into(),
+            config: json!({ "lookupRecord": { "targetDocumentPath": "crm/Leads.ktable", "targetTableId": "1" } }),
+        });
+        let mut other = def("w2", "Other");
+        other.trigger.document_path = "crm-old/Leads.ktable".into();
+        assert!(store.put(moved).is_ok() && store.put(other).is_ok());
+        assert_eq!(store.rename_document_path("crm", "sales").ok(), Some(1));
+        let renamed = store.get("w1").unwrap_or_else(|| panic!("w1"));
+        assert_eq!(renamed.trigger.document_path, "sales/Leads.ktable");
+        assert_eq!(
+            renamed.action.add_record.map(|c| c.target_document_path),
+            Some("sales/Leads.ktable".to_owned())
+        );
+        assert_eq!(
+            renamed.extra_nodes[0].config["lookupRecord"]["targetDocumentPath"],
+            "sales/Leads.ktable"
+        );
+        assert_eq!(
+            store.get("w2").map(|d| d.trigger.document_path),
+            Some("crm-old/Leads.ktable".to_owned())
+        );
+    }
+
+    #[test]
     fn stores_patches_and_migrates() {
         let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
         let path = dir.path().join("workflow.json");
@@ -620,7 +734,7 @@ mod tests {
         );
         let patch = WorkflowPatch {
             trigger: Some(TriggerPatch {
-                document_id: Some("doc".into()),
+                document_path: Some("doc".into()),
                 required_fields: Some(vec!["f".into()]),
                 ..Default::default()
             }),
@@ -631,7 +745,7 @@ mod tests {
             store.update("nope", WorkflowPatch::default()),
             Err(UpdateError::NotFound)
         ));
-        assert_eq!(store.delete_by_document_id("doc").ok(), Some(1));
+        assert_eq!(store.delete_by_document_path("doc").ok(), Some(1));
         assert_eq!(store.delete("w1").ok(), Some(true));
         assert_eq!(store.delete("w1").ok(), Some(false));
     }

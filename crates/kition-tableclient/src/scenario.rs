@@ -1,6 +1,9 @@
-//! `POST /scenarios/build`: turns uploaded files and a request into a new
-//! data document — one table, one record per file, and AI fields filled
-//! from the attachments — streaming progress as server-sent events.
+//! `POST /scenarios/build`: turns uploaded files and a request into a new table file: one
+//! table, one record per file with the file in it, and AI fields filled from the files,
+//! streaming progress as server-sent events. Everything is written through the Table kit
+//! (`system:scenario`); the AI fields are filled as the kit fills them for an editor: the
+//! engine builds each prompt (`ai.prepare`) and writes the answers (`ai.apply`), and the host
+//! runs the model with the person's settings.
 
 use std::collections::HashSet;
 use std::convert::Infallible;
@@ -10,20 +13,36 @@ use axum::body::{Body, Bytes};
 use axum::extract::{Multipart, State};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
-use kition_ai::engine::{Message, RuntimeModel};
+use base64::Engine as _;
+use kition_ai::chat::{AiGate, require_ai};
+use kition_ai::engine::{Engine, ImageRequest, Message, MessagePart, RuntimeModel};
 use kition_core::{AppError, AppResult};
-use kition_http::CurrentUser;
-use kition_kdm::Origin;
-use kition_kitable::{FieldSpec, TableSpec, ViewSpec};
+use kition_http::{AuthConfig, CurrentUser};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use tokio::sync::mpsc;
 
-use crate::DataDocState;
-use crate::ai_field::{MAX_IMAGE_BYTES, parse_config};
-use crate::blob_attachments::inline_blob_images;
-use crate::index::{DataDocument, NewDocument};
-use crate::records::{MAX_ATTACHMENT_BYTES, mime_guess_type, safe_attachment_name};
+use crate::{Step, TableClient, table_info};
+
+/// What the scenario builder writes as.
+const ORIGIN: &str = "system:scenario";
+/// At most this many bytes per uploaded file.
+const MAX_ATTACHMENT_BYTES: usize = 50 << 20;
+const VIEW_TYPES: [&str; 5] = ["grid", "form", "kanban", "calendar", "gallery"];
+
+#[derive(Clone)]
+pub struct ScenarioState {
+    pub auth: AuthConfig,
+    pub tables: TableClient,
+    pub engine: Engine,
+    pub ai_gate: AiGate,
+}
+
+impl axum::extract::FromRef<ScenarioState> for AuthConfig {
+    fn from_ref(state: &ScenarioState) -> Self {
+        state.auth.clone()
+    }
+}
 
 const FILE_NAME_FIELD: &str = "File Name";
 const ATTACHMENT_FIELD: &str = "Receipt Image";
@@ -90,8 +109,10 @@ Each view object has:
 
 Reply with the JSON object and nothing else.";
 
-pub fn routes() -> Router<DataDocState> {
-    Router::new().route("/scenarios/build", post(build))
+pub fn router(state: ScenarioState) -> Router {
+    Router::new()
+        .route("/scenarios/build", post(build))
+        .with_state(state)
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -256,9 +277,9 @@ fn internal_name(title: &str, taken: &mut HashSet<String>) -> String {
     name
 }
 
-/// The table spec; AI fields become long text with an `extract` config
-/// reading their source field.
-fn table_spec(plan: &Plan) -> TableSpec {
+/// The table's field seeds, for `tables.create`; AI fields become long text with an `extract`
+/// config reading their source field.
+fn field_seeds(plan: &Plan) -> Vec<Value> {
     let mut taken = HashSet::new();
     let names: Vec<String> = plan
         .fields
@@ -272,8 +293,7 @@ fn table_spec(plan: &Plan) -> TableSpec {
             .map(|i| names[i].clone())
             .unwrap_or_default()
     };
-    let fields = plan
-        .fields
+    plan.fields
         .iter()
         .zip(&names)
         .map(|(field, name)| {
@@ -287,40 +307,34 @@ fn table_spec(plan: &Plan) -> TableSpec {
                     }),
                 );
             }
-            FieldSpec {
-                name: name.clone(),
-                title: field.name.clone(),
-                field_type: if field.is_ai { "long_text".into() } else { field.kind.clone() },
-                primary: field.is_primary,
-                required: field.is_primary,
-                readonly: field.is_ai,
-                options: Value::Object(options),
-                ai_prompt: field.ai_prompt.clone(),
-                ..FieldSpec::default()
-            }
+            json!({
+                "name": name,
+                "title": field.name,
+                "type": if field.is_ai { "long_text" } else { field.kind.as_str() },
+                "primary": field.is_primary,
+                "required": field.is_primary,
+                "readonly": field.is_ai,
+                "options": Value::Object(options),
+                "ai_prompt": field.ai_prompt,
+            })
         })
-        .collect();
+        .collect()
+}
+
+/// The table's view seeds: a calendar only with a date field.
+fn view_seeds(plan: &Plan) -> Vec<Value> {
     let has_date = plan.fields.iter().any(|f| f.kind == "date");
-    let views = plan
-        .views
+    plan.views
         .iter()
         .filter(|view| view.kind != "calendar" || has_date)
-        .map(|view| ViewSpec {
-            title: view.name.clone(),
-            view_type: if kition_kitable::VIEW_TYPES.contains(&view.kind.as_str()) {
-                view.kind.clone()
-            } else {
-                "grid".into()
-            },
-            config: view.config.clone().map_or(Value::Null, Value::Object),
+        .map(|view| {
+            json!({
+                "title": view.name,
+                "type": if VIEW_TYPES.contains(&view.kind.as_str()) { view.kind.as_str() } else { "grid" },
+                "config": view.config.clone().map_or(Value::Null, Value::Object),
+            })
         })
-        .collect();
-    TableSpec {
-        title: plan.table_name.clone(),
-        fields,
-        views,
-        ..TableSpec::default()
-    }
+        .collect()
 }
 
 struct Upload {
@@ -333,12 +347,35 @@ fn sse(event: &Value) -> Bytes {
     Bytes::from(format!("data: {event}\n\n"))
 }
 
+fn safe_attachment_name(value: &str) -> String {
+    let base = value.rsplit(['/', '\\']).next().unwrap_or_default().trim();
+    let cleaned: String = base.replace('\0', "").chars().take(160).collect();
+    if cleaned.trim().is_empty() || cleaned == "." {
+        "attachment".to_owned()
+    } else {
+        cleaned
+    }
+}
+
+fn mime_guess_type(extension: &str) -> &'static str {
+    match extension {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "pdf" => "application/pdf",
+        "json" => "application/json",
+        _ => "application/octet-stream",
+    }
+}
+
 async fn build(
-    State(state): State<DataDocState>,
-    user: CurrentUser,
+    State(state): State<ScenarioState>,
+    _user: CurrentUser,
     mut multipart: Multipart,
 ) -> AppResult<Response> {
-    state.require_ai()?;
+    require_ai(&state.ai_gate)?;
     let bad = |message: &str| AppError::bad_request(message.to_owned());
     let mut prompt = String::new();
     let mut model: Option<RuntimeModel> = None;
@@ -363,7 +400,7 @@ async fn build(
                         .rsplit_once('.')
                         .map(|(_, e)| e.to_lowercase())
                         .unwrap_or_default();
-                    mime = mime_guess_type(&extension);
+                    mime = mime_guess_type(&extension).to_owned();
                 }
                 let data = field
                     .bytes()
@@ -384,42 +421,37 @@ async fn build(
         return Err(bad("at least one attachment is required"));
     }
     let (tx, rx) = mpsc::unbounded_channel::<Bytes>();
-    let user_id = user.id;
     tokio::spawn(async move {
         let emit = |event: Value| {
             let _ = tx.send(sse(&event));
         };
-        if let Err(message) = run(&state, user_id, &prompt, model, uploads, &emit).await {
+        if let Err(message) = run(&state, &prompt, model, uploads, &emit).await {
             emit(json!({ "kind": "error", "code": "scenario.build_failed", "message": message }));
         }
         emit(json!({ "kind": "done" }));
     });
-    let body = Body::from_stream(futures_stream(rx));
+    let stream = futures::stream::unfold(rx, |mut rx| async move {
+        rx.recv()
+            .await
+            .map(|chunk| (Ok::<_, Infallible>(chunk), rx))
+    });
     Ok((
         [
             (http::header::CONTENT_TYPE, "text/event-stream"),
             (http::header::CACHE_CONTROL, "no-cache"),
         ],
-        body,
+        Body::from_stream(stream),
     )
         .into_response())
 }
 
-fn futures_stream(
-    rx: mpsc::UnboundedReceiver<Bytes>,
-) -> impl futures::Stream<Item = Result<Bytes, Infallible>> {
-    futures::stream::unfold(rx, |mut rx| async move {
-        rx.recv().await.map(|chunk| (Ok(chunk), rx))
-    })
-}
-
 async fn infer(
-    state: &DataDocState,
+    engine: &Engine,
     model: Option<&RuntimeModel>,
     prompt: &str,
     uploads: &[Upload],
 ) -> Result<Plan, String> {
-    let (Some(model), Some(engine)) = (model, state.ai.as_ref()) else {
+    let Some(model) = model else {
         return plan_from(STUB_SCHEMA);
     };
     let mut user = format!("User request:\n{}\n\nUploaded files:\n", prompt.trim());
@@ -447,98 +479,125 @@ async fn infer(
     plan_from(&result.content)
 }
 
+/// An unused `<name>.ktable` in the workspace root.
+fn unused_path(state: &ScenarioState, base: &str) -> String {
+    let base: String = base
+        .trim()
+        .chars()
+        .map(|c| {
+            if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect();
+    let base = if base.trim().is_empty() {
+        DEFAULT_BASE.to_owned()
+    } else {
+        base.trim().to_owned()
+    };
+    let taken = |path: &str| {
+        state
+            .tables
+            .kits()
+            .workspace_dir()
+            .is_some_and(|dir| dir.join(path).exists())
+    };
+    let mut path = format!("{base}.ktable");
+    let mut counter = 2;
+    while taken(&path) {
+        path = format!("{base} {counter}.ktable");
+        counter += 1;
+    }
+    path
+}
+
 async fn run(
-    state: &DataDocState,
-    user_id: i64,
+    state: &ScenarioState,
     prompt: &str,
     model: Option<RuntimeModel>,
     uploads: Vec<Upload>,
     emit: &(dyn Fn(Value) + Sync),
 ) -> Result<(), String> {
-    let plan = match infer(state, model.as_ref(), prompt, &uploads).await {
+    let plan = match infer(&state.engine, model.as_ref(), prompt, &uploads).await {
         Ok(plan) => plan,
         Err(message) => {
             emit(json!({ "kind": "error", "code": "scenario.infer_failed", "message": message }));
             return Ok(());
         }
     };
-    let spec = table_spec(&plan);
-    let base_name = plan.base_name.clone();
-    let (doc, table, records) = state
-        .blocking(move |state| {
-            let mut path = format!(
-                "{}.kitable",
-                crate::source::default_document_path("", &base_name).trim_end_matches(".kitable")
-            );
-            let mut counter = 2;
-            while crate::source::resolve_from_root(&state.workspace_root_string(), &path)
-                .is_ok_and(|p| p.exists())
-            {
-                path = format!("{} {counter}.kitable", base_name.trim());
-                counter += 1;
-            }
-            let (doc, tables) = state.create_kitable_document(
-                NewDocument {
-                    user_id,
-                    workspace_root: String::new(),
-                    path,
-                    title: base_name.clone(),
-                    description: String::new(),
-                    icon: String::new(),
-                    color: String::new(),
-                    meta: Map::new(),
-                },
-                &[spec],
-            )?;
-            let table = tables
-                .into_iter()
-                .next()
-                .ok_or_else(|| AppError::internal("Failed to create table"))?;
-            let primary = table
-                .fields
-                .iter()
-                .find(|f| f.is_primary)
-                .map(|f| f.name.clone());
-            let attachment_fields: Vec<String> = table
-                .fields
-                .iter()
-                .filter(|f| f.field_type == "attachment")
-                .map(|f| f.name.clone())
-                .collect();
-            let mut file = state.open_or_500_as(&doc, Origin::system("scenario"))?;
-            let mut records = Vec::new();
-            for upload in &uploads {
-                // Stored in the file as a blob, like an attachment uploaded to a cell.
-                let blob = file
-                    .put_blob(&upload.data, &upload.mime, &upload.name)
-                    .map_err(|err| AppError::internal(err.to_string()))?;
-                let mut values = Map::new();
-                if let Some(primary) = &primary {
-                    values.insert(primary.clone(), json!(upload.name));
-                }
-                let attachment =
-                    json!([kition_kitable::blobs::attachment_value(&blob, &upload.name)]);
-                for name in &attachment_fields {
-                    values.insert(name.clone(), attachment.clone());
-                }
-                let record = file
-                    .create_record(table.id, &values)
-                    .map_err(|err| AppError::internal(err.to_string()))?;
-                state.publish_record_created(&doc, &record);
-                records.push(record);
-            }
-            Ok((doc, table, records))
-        })
+    let tables = &state.tables;
+    let path = unused_path(state, &plan.base_name);
+    let starter = tables
+        .create_file(&path, None)
         .await
-        .map_err(|err| err.to_string())?;
-    emit(json!({ "kind": "base.created", "baseId": doc.id.to_string(), "baseName": doc.title }));
-    emit(
-        json!({ "kind": "table.created", "tableId": table.id.to_string(), "tableName": table.title }),
-    );
+        .map_err(|e| e.message)?;
+    let created = tables
+        .request(
+            &path,
+            "tables.create",
+            json!({ "title": plan.table_name, "fields": field_seeds(&plan), "views": view_seeds(&plan) }),
+            Some(ORIGIN),
+        )
+        .await
+        .map_err(|e| e.message)?;
+    for table in starter {
+        let _ = tables
+            .request(
+                &path,
+                "tables.delete",
+                json!({ "tableId": table.id.parse::<i64>().unwrap_or_default() }),
+                Some(ORIGIN),
+            )
+            .await;
+    }
+    let table = table_info(&created);
+    let table_id = table.id.parse::<i64>().unwrap_or_default();
+    let primary = table
+        .fields
+        .iter()
+        .find(|f| f.primary)
+        .map(|f| f.name.clone());
+    let attachment_fields: Vec<String> = table
+        .fields
+        .iter()
+        .filter(|f| f.field_type == "attachment")
+        .map(|f| f.name.clone())
+        .collect();
+    let mut records = Vec::new();
+    for upload in &uploads {
+        // Stored in the file as a blob, like an attachment uploaded to a cell.
+        let attachment = tables
+            .put_attachment(
+                &path,
+                &table.id,
+                &upload.name,
+                &upload.mime,
+                &upload.data,
+                ORIGIN,
+            )
+            .await
+            .map_err(|e| e.message)?;
+        let mut values = Map::new();
+        if let Some(primary) = &primary {
+            values.insert(primary.clone(), json!(upload.name));
+        }
+        for name in &attachment_fields {
+            values.insert(name.clone(), json!([attachment.clone()]));
+        }
+        let record = tables
+            .create_record(&path, &table.id, &values, ORIGIN)
+            .await
+            .map_err(|e| e.message)?;
+        records.push(record);
+    }
+    emit(json!({ "kind": "base.created", "path": path, "baseName": plan.base_name }));
+    emit(json!({ "kind": "table.created", "tableId": table.id, "tableName": table.title }));
     let ai_fields: Vec<_> = table
         .fields
         .iter()
-        .filter(|f| f.options.contains_key("ai_config"))
+        .filter(|f| f.raw["options"].get("ai_config").is_some())
         .cloned()
         .collect();
     emit(
@@ -546,89 +605,176 @@ async fn run(
     );
     emit(json!({ "kind": "fields.generated", "stage": "ai-fields", "count": ai_fields.len() }));
     emit(json!({ "kind": "records.generated", "count": records.len() }));
-    for view in &table.views {
+    for view in created["views"].as_array().into_iter().flatten() {
         emit(
-            json!({ "kind": "views.generated", "viewKind": view.view_type, "viewId": view.id.to_string(), "viewName": view.title }),
+            json!({ "kind": "views.generated", "viewKind": view["type"], "viewId": view["id"].to_string(), "viewName": view["title"] }),
         );
     }
     let Some(model) = model else { return Ok(()) };
-    for record in &records {
-        for field in &ai_fields {
-            let Ok(config) = parse_config(&field.options, &field.ai_prompt) else {
+    let record_ids: Vec<i64> = records.iter().filter_map(|r| r.id.parse().ok()).collect();
+    for field in &ai_fields {
+        let field_id = field.id.parse::<i64>().unwrap_or_default();
+        let prepared = match tables
+            .request(
+                &path,
+                "ai.prepare",
+                json!({ "tableId": table_id, "fieldId": field_id, "record_ids": record_ids }),
+                None,
+            )
+            .await
+        {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                tracing::warn!(field = %field.title, error = %error, "scenario AI field could not be prepared");
                 continue;
-            };
-            let source = table
-                .fields
-                .iter()
-                .find(|f| f.name == config.source_field_name);
-            let source_value = source
-                .and_then(|s| record.values.get(&s.name))
-                .cloned()
-                .unwrap_or(Value::Null);
-            let source_value = inline_images(state, &doc, source_value).await;
-            let source_title = source.map(|s| s.title.clone()).unwrap_or_default();
-            match state
-                .generate(
-                    user_id,
-                    &config,
-                    &model,
-                    &field.title,
-                    &source_title,
-                    &source_value,
-                )
-                .await
+            }
+        };
+        let mut results = Vec::new();
+        for request in prepared["requests"].as_array().into_iter().flatten() {
+            let record_id = request["recordId"].clone();
+            match generate(
+                state,
+                &path,
+                &model,
+                prepared["output"].as_str().unwrap_or("text"),
+                request,
+            )
+            .await
             {
-                Ok((value, _)) => {
-                    if save_cell(state, &doc, table.id, record.id, &field.name, value.clone())
-                        .await
-                        .is_ok()
-                    {
-                        emit(
-                            json!({ "kind": "cell.ai.filled", "recordId": record.id, "fieldId": field.id, "value": value }),
-                        );
-                    }
+                Ok(answer) => {
+                    let mut result = answer;
+                    result["recordId"] = record_id;
+                    results.push(result);
                 }
                 Err(error) => {
-                    tracing::warn!(field = %field.title, record = record.id, error = %error, "scenario cell fill failed")
+                    tracing::warn!(field = %field.title, error = %error, "scenario cell fill failed");
+                    results.push(json!({ "recordId": record_id, "error": error }));
                 }
+            }
+        }
+        if results.is_empty() {
+            continue;
+        }
+        if let Err(error) = tables
+            .run(
+                &path,
+                vec![Step::new(
+                    "ai.apply",
+                    json!({ "tableId": table_id, "fieldId": field_id, "results": results }),
+                )],
+                None,
+            )
+            .await
+        {
+            tracing::warn!(field = %field.title, error = %error, "scenario AI answers could not be written");
+            continue;
+        }
+        let filled = tables.records(&path, &table.id).await.unwrap_or_default();
+        for record in filled {
+            if let Some(value) = record
+                .values
+                .get(&field.name)
+                .filter(|value| !value.is_null())
+            {
+                emit(
+                    json!({ "kind": "cell.ai.filled", "recordId": record.id, "fieldId": field.id, "value": value }),
+                );
             }
         }
     }
     Ok(())
 }
 
-/// A source cell with its image blobs as `data:` URLs, which the model reads.
-async fn inline_images(state: &DataDocState, doc: &DataDocument, value: Value) -> Value {
-    let (doc, fallback) = (doc.clone(), value.clone());
-    state
-        .blocking(move |state| {
-            let file = state.open_or_500(&doc)?;
-            Ok(inline_blob_images(&file, &value, MAX_IMAGE_BYTES))
-        })
+/// One prepared AI request run on the person's model: `{ text }` or `{ images }`.
+async fn generate(
+    state: &ScenarioState,
+    path: &str,
+    model: &RuntimeModel,
+    output: &str,
+    request: &Value,
+) -> Result<Value, String> {
+    let mut prompt = String::new();
+    let mut images = Vec::new();
+    for message in request["messages"].as_array().into_iter().flatten() {
+        for part in message["parts"].as_array().into_iter().flatten() {
+            match part["type"].as_str() {
+                Some("text") => {
+                    if !prompt.is_empty() {
+                        prompt.push('\n');
+                    }
+                    prompt.push_str(part["text"].as_str().unwrap_or_default());
+                }
+                Some("image") => {
+                    if let Some(hash) = part["hash"].as_str() {
+                        let blob = state
+                            .tables
+                            .request(path, "attachments.read", json!({ "hash": hash }), None)
+                            .await
+                            .map_err(|e| e.message)?;
+                        let mime = part["mime"]
+                            .as_str()
+                            .filter(|m| !m.is_empty())
+                            .or_else(|| blob["mimeType"].as_str())
+                            .unwrap_or("image/png");
+                        images.push(format!(
+                            "data:{mime};base64,{}",
+                            blob["data"].as_str().unwrap_or_default()
+                        ));
+                    } else if let Some(url) = part["url"].as_str() {
+                        images.push(url.to_owned());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    if output == "image" {
+        let options = &request["options"];
+        let generated = state
+            .engine
+            .generate_images(
+                &ImageRequest {
+                    prompt,
+                    references: images,
+                    count: options["count"].as_i64().unwrap_or(1).clamp(1, 5),
+                    width: options["width"].as_i64().unwrap_or(1024),
+                    height: options["height"].as_i64().unwrap_or(1024),
+                    quality: options["quality"].as_str().unwrap_or_default().to_owned(),
+                },
+                Some(model),
+            )
+            .await
+            .map_err(|err| err.to_string())?;
+        let images: Vec<Value> = generated
+            .iter()
+            .map(|image| json!({
+                "mime": if image.mime_type.is_empty() { "image/png" } else { image.mime_type.as_str() },
+                "content": base64::engine::general_purpose::STANDARD.encode(&image.data),
+            }))
+            .collect();
+        return Ok(json!({ "images": images }));
+    }
+    let mut message = Message::new("user", prompt.clone());
+    if !images.is_empty() {
+        message.parts.push(MessagePart {
+            kind: "text".into(),
+            text: prompt,
+            ..MessagePart::default()
+        });
+        for image in images {
+            message.parts.push(MessagePart {
+                kind: "image_url".into(),
+                image_url: image,
+                ..MessagePart::default()
+            });
+        }
+    }
+    let answer = state
+        .engine
+        .chat_with_tools(&[message], &[], "", model, None)
         .await
-        .unwrap_or(fallback)
-}
-
-async fn save_cell(
-    state: &DataDocState,
-    doc: &DataDocument,
-    table_id: i64,
-    record_id: i64,
-    name: &str,
-    value: Value,
-) -> AppResult<()> {
-    let (doc, name) = (doc.clone(), name.to_owned());
-    state
-        .blocking(move |state| {
-            let mut file = state.open_or_500_as(&doc, Origin::system("scenario"))?;
-            let mut values = Map::new();
-            values.insert(name, value);
-            state.import_path_attachments(&mut file, table_id, &mut values);
-            file.update_record(table_id, record_id, &values, None)
-                .map(|_| ())
-                .map_err(|err| AppError::internal(err.to_string()))
-        })
-        .await
+        .map_err(|err| err.to_string())?;
+    Ok(json!({ "text": answer.content.trim() }))
 }
 
 #[cfg(test)]
@@ -639,19 +785,19 @@ mod tests {
     fn completes_the_stub_plan() {
         let plan = plan_from(STUB_SCHEMA).unwrap_or_default();
         assert_eq!(plan.fields[0].name, FILE_NAME_FIELD);
-        let spec = table_spec(&plan);
-        let summary = spec
-            .fields
+        let seeds = field_seeds(&plan);
+        let summary = seeds
             .iter()
-            .find(|f| f.title == "Summary")
+            .find(|f| f["title"] == "Summary")
             .cloned()
             .unwrap_or_default();
-        assert_eq!(summary.field_type, "long_text");
+        assert_eq!(summary["type"], "long_text");
         assert_eq!(
-            summary.options["ai_config"]["source_field_name"],
+            summary["options"]["ai_config"]["source_field_name"],
             "receipt_image"
         );
-        assert!(parse_config(summary.options.as_object().unwrap_or(&Map::new()), "").is_ok());
+        assert_eq!(summary["options"]["ai_config"]["type"], "extract");
+        assert_eq!(view_seeds(&plan)[0]["type"], "grid");
     }
 
     #[test]

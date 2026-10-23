@@ -1,5 +1,5 @@
 //! Email sync: imports messages from an IMAP mailbox as Markdown documents
-//! indexed by a `.kitable` table.
+//! indexed by a `.ktable` table.
 
 pub mod imap;
 pub mod message;

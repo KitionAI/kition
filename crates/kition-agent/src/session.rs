@@ -9,7 +9,7 @@ use kition_harness::driver::{append_live, next_turn};
 use kition_harness::events::{ApprovalOutcome, EventBody};
 use kition_harness::log::SqliteLog;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::catalog::{self, SkillDef};
 use crate::providers::TurnFacts;
@@ -37,18 +37,14 @@ pub struct StreamRequest {
     pub attachment_paths: Vec<String>,
     pub local_sources: Vec<LocalSourceInput>,
     pub active_document_path: String,
-    pub active_data_document_id: i64,
-    pub active_data_table_id: i64,
     pub active_workflow_id: String,
     pub pane_context: String,
     pub execution_mode: String,
-    pub task_mode: String,
     /// How the agent edits kit documents: `live` (the default) or `draft` (standard 2.0 A12).
     pub kit_edit_mode: String,
     pub image_generation_intent: Option<Value>,
     pub whiteboard_context: Option<Value>,
     pub design_context: Option<Value>,
-    pub table_plan_context: Option<Value>,
     pub shell_approval: Option<ShellApprovalInput>,
     pub model_id: String,
     pub runtime_model: Option<RuntimeModel>,
@@ -58,7 +54,7 @@ pub struct StreamRequest {
 
 fn pane(value: &str) -> String {
     match value.trim().to_lowercase().as_str() {
-        pane @ ("workflow" | "table" | "gallery" | "whiteboard" | "design") => pane.to_owned(),
+        pane @ ("workflow" | "gallery" | "whiteboard" | "design") => pane.to_owned(),
         _ => "document".to_owned(),
     }
 }
@@ -74,13 +70,6 @@ fn kit_edit_mode(value: &str) -> String {
     match value.trim().to_lowercase().as_str() {
         "draft" => "draft".to_owned(),
         _ => "live".to_owned(),
-    }
-}
-
-fn task_mode(value: &str) -> String {
-    match value.trim().to_lowercase().as_str() {
-        "table" => "table".to_owned(),
-        _ => "auto".to_owned(),
     }
 }
 
@@ -116,17 +105,6 @@ pub async fn owned_session(agent: &Agent, id: i64, user_id: i64) -> AppResult<Ag
         .ok_or_else(|| AppError::not_found("Agent session not found"))
 }
 
-fn session_table(session: &AgentSession) -> (i64, i64) {
-    let id = |key: &str| {
-        session
-            .extra_data
-            .get(key)
-            .and_then(Value::as_i64)
-            .unwrap_or(0)
-    };
-    (id("active_data_document_id"), id("active_data_table_id"))
-}
-
 /// Everything a turn needs that can be checked before streaming starts.
 pub struct Prepared {
     request: StreamRequest,
@@ -149,7 +127,7 @@ pub async fn prepare(
     agent: &Agent,
     user_id: i64,
     session_id: i64,
-    mut request: StreamRequest,
+    request: StreamRequest,
 ) -> AppResult<Prepared> {
     let session = owned_session(agent, session_id, user_id).await?;
     if request.shell_approval.is_some() && request.image_generation_intent.is_some() {
@@ -208,13 +186,6 @@ pub async fn prepare(
     };
     let local_sources =
         sources::normalize(&request.local_sources).map_err(AppError::bad_request)?;
-    let (document_id, table_id) = session_table(&session);
-    if request.active_data_document_id == 0 {
-        request.active_data_document_id = document_id;
-    }
-    if request.active_data_table_id == 0 {
-        request.active_data_table_id = table_id;
-    }
     // Last: an `allow_always` decision saves a policy rule, which only an
     // otherwise valid request may do.
     let approval = match &request.shell_approval {
@@ -332,10 +303,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         user_id,
         session_id: session.id,
         active_document_path: active_document.clone(),
-        active_data_document_id: request.active_data_document_id,
-        active_data_table_id: request.active_data_table_id,
         execution_mode: execution_mode(&request.execution_mode),
-        task_mode: task_mode(&request.task_mode),
         kit_edit_mode: kit_edit_mode(&request.kit_edit_mode),
         pane: pane(&request.pane_context),
         whiteboard: request.whiteboard_context.clone(),
@@ -393,33 +361,18 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         }
     }
     session.model_id = request.model_id.trim().to_owned();
-    if run.active_data_document_id != 0 && run.active_data_table_id != 0 {
-        let mut extra = session.extra_data.as_object().cloned().unwrap_or_default();
-        extra.insert(
-            "active_data_document_id".into(),
-            json!(run.active_data_document_id),
-        );
-        extra.insert(
-            "active_data_table_id".into(),
-            json!(run.active_data_table_id),
-        );
-        session.extra_data = Value::Object(extra);
-    }
     let mut saved = session.clone();
     let _ = agent
         .with_db(move |conn| store::save_session(conn, &mut saved))
         .await;
-    let has_table = run.active_data_table_id != 0;
     let has_documents = !active_document.is_empty()
         || !request.prompt_context.trim().is_empty()
         || !run.local_sources.is_empty();
     let all_skills = catalog::skills(agent.workspace().root());
-    let skills: Vec<SkillDef> =
-        catalog::match_skills(&all_skills, &content, has_table, has_documents);
+    let skills: Vec<SkillDef> = catalog::match_skills(&all_skills, &content, has_documents);
     let facts = TurnFacts {
         prompt_context: request.prompt_context,
         active_workflow_id: request.active_workflow_id,
-        table_plan: request.table_plan_context,
         skills,
         hosted_web_search: run.model.supports_hosted_web_search(),
         hosted_images: run.model.supports_hosted_images(),
@@ -442,7 +395,6 @@ mod tests {
         assert_eq!(pane("Whiteboard"), "whiteboard");
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
-        assert_eq!(task_mode("browse"), "auto");
         assert_eq!(kit_edit_mode("Draft"), "draft");
         assert_eq!(kit_edit_mode(""), "live");
         assert_eq!(kit_edit_mode("merge"), "live");

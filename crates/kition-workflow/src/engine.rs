@@ -36,26 +36,26 @@ pub trait Tables: Send + Sync + 'static {
     fn schema(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
     ) -> Result<TableSchema, String>;
     fn records(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
     ) -> Result<Vec<RecordView>, String>;
     fn create_record(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
         values: &Map<String, Value>,
     ) -> Result<String, String>;
     fn update_record(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
         record_id: &str,
         values: &Map<String, Value>,
@@ -136,7 +136,7 @@ pub struct Connections {
 pub struct RunContext {
     pub user_id: i64,
     pub record_id: String,
-    pub document_id: String,
+    pub document_path: String,
     pub table_id: String,
     pub outputs: Map<String, Value>,
 }
@@ -219,11 +219,23 @@ impl Engine {
     pub async fn schema(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
     ) -> Result<TableSchema, String> {
-        let (doc, table) = (document_id.to_owned(), table_id.to_owned());
+        let (doc, table) = (document_path.to_owned(), table_id.to_owned());
         self.blocking(move |t| t.schema(user_id, &doc, &table))
+            .await
+    }
+
+    /// Every record of a table.
+    pub async fn records(
+        &self,
+        user_id: i64,
+        document_path: &str,
+        table_id: &str,
+    ) -> Result<Vec<RecordView>, String> {
+        let (doc, table) = (document_path.to_owned(), table_id.to_owned());
+        self.blocking(move |t| t.records(user_id, &doc, &table))
             .await
     }
 
@@ -235,19 +247,19 @@ impl Engine {
         trigger_event: &str,
         user_id: i64,
         record_id: &str,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
         trigger_fields: Option<Map<String, Value>>,
     ) -> RunRecord {
         let mut rt = RunContext {
             user_id,
             record_id: record_id.into(),
-            document_id: document_id.into(),
+            document_path: document_path.into(),
             table_id: table_id.into(),
             outputs: Map::new(),
         };
-        let schema = if !document_id.is_empty() && !table_id.is_empty() {
-            self.schema(user_id, document_id, table_id)
+        let schema = if !document_path.is_empty() && !table_id.is_empty() {
+            self.schema(user_id, document_path, table_id)
                 .await
                 .unwrap_or_default()
         } else {
@@ -289,7 +301,7 @@ impl Engine {
             workflow_id: def.id.clone(),
             trigger_event: trigger_event.into(),
             record_id: record_id.into(),
-            document_id: document_id.into(),
+            document_path: document_path.into(),
             table_id: table_id.into(),
             user_id,
             trigger_fields,
@@ -434,7 +446,7 @@ impl Engine {
                         &legacy,
                         &DeliveryEvent {
                             user_id: rt.user_id,
-                            document_id: rt.document_id.clone(),
+                            document_path: rt.document_path.clone(),
                             table_id: rt.table_id.clone(),
                             record_id: rt.record_id.clone(),
                             fields,
@@ -490,19 +502,19 @@ impl Engine {
             }
             rendered.insert(field.field_id.clone(), Value::String(text));
         }
-        let document_id = match cfg.target_document_id.trim() {
-            "" => def.trigger.document_id.trim().to_owned(),
+        let document_path = match cfg.target_document_path.trim() {
+            "" => def.trigger.document_path.trim().to_owned(),
             doc => doc.to_owned(),
         };
         let user_id = rt.effective_user();
-        let (doc, table, values) = (document_id.clone(), table_id.clone(), rendered.clone());
+        let (doc, table, values) = (document_path.clone(), table_id.clone(), rendered.clone());
         match self
             .blocking(move |t| t.create_record(user_id, &doc, &table, &values))
             .await
         {
             Err(err) => action_error(err),
             Ok(record_id) => ok_output(
-                json!({"recordId": record_id, "tableId": table_id, "documentId": document_id, "values": rendered}),
+                json!({"recordId": record_id, "tableId": table_id, "documentPath": document_path, "values": rendered}),
             ),
         }
     }
@@ -537,7 +549,7 @@ impl Engine {
         }
         let user_id = rt.effective_user();
         let (doc, table, record, update) = (
-            def.trigger.document_id.clone(),
+            def.trigger.document_path.clone(),
             def.trigger.table_id.clone(),
             rt.record_id.clone(),
             changed.clone(),
@@ -551,7 +563,7 @@ impl Engine {
                 "actionType": action_type,
                 "recordId": rt.record_id,
                 "tableId": def.trigger.table_id,
-                "documentId": def.trigger.document_id,
+                "documentPath": def.trigger.document_path,
                 "changed": true,
                 "values": changed,
                 "record": updated,
@@ -604,8 +616,8 @@ impl Engine {
         if self.tables.is_none() {
             return action_error("lookup_record runner: record operations not configured");
         }
-        let document_id = match cfg.target_document_id.trim() {
-            "" => def.trigger.document_id.clone(),
+        let document_path = match cfg.target_document_path.trim() {
+            "" => def.trigger.document_path.clone(),
             doc => doc.to_owned(),
         };
         let table_id = cfg.target_table_id.trim().to_owned();
@@ -614,7 +626,7 @@ impl Engine {
         }
         let match_value = render(&cfg.match_value, &rt.trigger_values(def)).0;
         let user_id = rt.effective_user();
-        let (doc, table) = (document_id.clone(), table_id.clone());
+        let (doc, table) = (document_path.clone(), table_id.clone());
         let records = match self
             .blocking(move |t| t.records(user_id, &doc, &table))
             .await
@@ -623,7 +635,7 @@ impl Engine {
             Err(err) => return action_error(err),
         };
         let schema = self
-            .schema(user_id, &document_id, &table_id)
+            .schema(user_id, &document_path, &table_id)
             .await
             .unwrap_or_default();
         let wanted = Value::String(match_value.clone());
@@ -688,7 +700,7 @@ impl Engine {
     /// connection or the configured SMTP account.
     pub async fn deliver(&self, def: &WorkflowDefinition, event: &DeliveryEvent) -> RunRecord {
         let schema = self
-            .schema(event.user_id, &event.document_id, &event.table_id)
+            .schema(event.user_id, &event.document_path, &event.table_id)
             .await
             .unwrap_or_default();
         let values = stringify_record_values(&event.fields, &schema.fields);
@@ -823,12 +835,14 @@ impl Engine {
             if def.trigger.table_id != event.table_id {
                 continue;
             }
-            if !def.trigger.document_id.is_empty() && def.trigger.document_id != event.document_id {
+            if !def.trigger.document_path.is_empty()
+                && def.trigger.document_path != event.document_path
+            {
                 continue;
             }
             if has_required {
                 let fields = match self
-                    .schema(event.user_id, &event.document_id, &event.table_id)
+                    .schema(event.user_id, &event.document_path, &event.table_id)
                     .await
                 {
                     Ok(schema) => by_field_id(&event.fields, &schema.fields),
@@ -862,7 +876,7 @@ impl Engine {
                         topic,
                         event.user_id,
                         &event.record_id,
-                        &event.document_id,
+                        &event.document_path,
                         &event.table_id,
                         Some(event.fields.clone()),
                     )
@@ -889,16 +903,11 @@ impl Engine {
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                 };
                 let (topic, delivery) = match event {
-                    // Workflows trigger off record events only; a table/changed event (from a
-                    // transact/undo/redo route, or an external-change merge) is not one.
-                    DomainEvent::TableChanged(_) | DomainEvent::TableReplicaChanged(_) => {
-                        continue;
-                    }
                     DomainEvent::RecordCreated(e) => (
                         RECORD_CREATED_TOPIC,
                         DeliveryEvent {
                             user_id: e.user_id,
-                            document_id: e.document_id,
+                            document_path: e.document_path,
                             table_id: e.table_id,
                             record_id: e.record_id,
                             fields: e.fields,
@@ -908,7 +917,7 @@ impl Engine {
                         RECORD_UPDATED_TOPIC,
                         DeliveryEvent {
                             user_id: e.user_id,
-                            document_id: e.document_id,
+                            document_path: e.document_path,
                             table_id: e.table_id,
                             record_id: e.record_id,
                             fields: e.fields,
@@ -925,7 +934,7 @@ impl Engine {
 #[derive(Debug, Clone, Default)]
 pub struct DeliveryEvent {
     pub user_id: i64,
-    pub document_id: String,
+    pub document_path: String,
     pub table_id: String,
     pub record_id: String,
     pub fields: Map<String, Value>,

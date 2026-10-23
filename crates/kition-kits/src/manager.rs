@@ -513,6 +513,19 @@ pub(crate) struct Inner {
     pub(crate) draft_documents: tokio::sync::Mutex<HashMap<String, String>>,
     /// The file grants kits hold (`grants.rs`, KitFiles 1.0).
     grants: crate::grants::GrantStore,
+    /// Every headless save of a workspace file, for whoever follows file edits (the host table
+    /// client's triggers).
+    saves: tokio::sync::broadcast::Sender<SavedFile>,
+}
+
+/// A headless document saved to its workspace file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SavedFile {
+    pub kit_id: &'static str,
+    /// Workspace-relative, `/`-separated.
+    pub path: String,
+    /// The headless document, still open after the save.
+    pub document_id: String,
 }
 
 /// The kits of one workspace. Cheap to clone.
@@ -553,6 +566,7 @@ impl KitManager {
                 described: Mutex::default(),
                 headless_drafts: AtomicBool::new(false),
                 draft_documents: tokio::sync::Mutex::default(),
+                saves: tokio::sync::broadcast::channel(256).0,
             }),
         }
     }
@@ -623,36 +637,6 @@ impl KitManager {
     /// The Kit AI bridge to the renderer's open kit editors.
     pub fn bridge(&self) -> &Arc<crate::bridge::Bridge> {
         &self.inner.bridge
-    }
-
-    /// Forwards every `DomainEvent::TableChanged` on `events` to the bridge stream as a
-    /// `table/changed` notification, and every `DomainEvent::TableReplicaChanged` as a
-    /// `table/replica-changed` one, for the life of the process (the task ends when `events`
-    /// is dropped and every sender with it). `kition-datadoc` publishes the events; this is how
-    /// they reach the renderer windows that `useTableLiveChanges` (`src/features/table/hooks`)
-    /// and the co-editing relay (`src/features/collab/tableReplica.ts`) subscribe from.
-    pub fn forward_table_changes(&self, events: kition_core::events::EventBus) {
-        let bridge = self.inner.bridge.clone();
-        // Subscribed before spawning, so a `publish` right after this call is never missed
-        // waiting for the task to start.
-        let mut events = events.subscribe();
-        tokio::spawn(async move {
-            loop {
-                match events.recv().await {
-                    Ok(kition_core::events::DomainEvent::TableChanged(payload)) => {
-                        bridge.broadcast("table/changed", payload);
-                    }
-                    Ok(kition_core::events::DomainEvent::TableReplicaChanged(payload)) => {
-                        bridge.broadcast("table/replica-changed", payload);
-                    }
-                    Ok(_) => {}
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                        tracing::warn!(skipped, "table/changed forwarder fell behind");
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
-                }
-            }
-        });
     }
 
     pub fn statuses(&self) -> Vec<KitStatus> {
@@ -1308,7 +1292,20 @@ impl KitManager {
         };
         self.call::<methods::DocumentSave>(kit, target, caller, &params)
             .await?;
-        self.document(caller, kit_id, document_id).await
+        let view = self.document(caller, kit_id, document_id).await?;
+        if let (Target::Headless, Some(path)) = (target, view.path.clone()) {
+            let _ = self.inner.saves.send(SavedFile {
+                kit_id: view.kit_id,
+                path,
+                document_id: document_id.to_owned(),
+            });
+        }
+        Ok(view)
+    }
+
+    /// Hears every headless save of a workspace file from now on.
+    pub fn subscribe_saves(&self) -> tokio::sync::broadcast::Receiver<SavedFile> {
+        self.inner.saves.subscribe()
     }
 
     pub async fn close(
@@ -1509,52 +1506,5 @@ mod tests {
             "s3::art/cover.psd"
         );
         assert_eq!(split_document_id("sx::a"), (Target::Headless, "sx::a"));
-    }
-
-    #[tokio::test]
-    async fn table_changed_events_reach_a_connected_window() {
-        use kition_core::events::{DomainEvent, EventBus};
-
-        let manager = KitManager::new(None, Vec::new());
-        let (_session, mut rx) = manager.bridge().connect();
-        let _ = rx.recv().await; // bridge.ready
-
-        let events = EventBus::default();
-        manager.forward_table_changes(events.clone());
-        events.publish(DomainEvent::TableChanged(
-            serde_json::json!({ "documentId": "1", "documentPath": "a.kitable" }),
-        ));
-
-        let message = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
-            .await
-            .unwrap_or_else(|_| panic!("the forwarder did not deliver in time"))
-            .unwrap_or_else(|| panic!("the bridge stream closed"));
-        assert_eq!(message["method"], "table/changed");
-        assert_eq!(message["params"]["documentId"], "1");
-        assert_eq!(message["params"]["documentPath"], "a.kitable");
-    }
-
-    #[tokio::test]
-    async fn table_replica_changed_events_reach_a_connected_window() {
-        use kition_core::events::{DomainEvent, EventBus};
-
-        let manager = KitManager::new(None, Vec::new());
-        let (_session, mut rx) = manager.bridge().connect();
-        let _ = rx.recv().await; // bridge.ready
-
-        let events = EventBus::default();
-        manager.forward_table_changes(events.clone());
-        events.publish(DomainEvent::TableReplicaChanged(serde_json::json!({
-            "documentPath": "a.kitable",
-            "docId": "00000000-0000-0000-0000-000000000000",
-            "version": "",
-        })));
-
-        let message = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
-            .await
-            .unwrap_or_else(|_| panic!("the forwarder did not deliver in time"))
-            .unwrap_or_else(|| panic!("the bridge stream closed"));
-        assert_eq!(message["method"], "table/replica-changed");
-        assert_eq!(message["params"]["documentPath"], "a.kitable");
     }
 }

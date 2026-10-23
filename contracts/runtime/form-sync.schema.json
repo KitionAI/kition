@@ -46,9 +46,9 @@
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["document_id", "table_id", "field_mappings"],
+      "required": ["document_path", "table_id", "field_mappings"],
       "properties": {
-        "document_id": { "type": "string", "minLength": 1 },
+        "document_path": { "type": "string", "minLength": 1, "description": "The target table file's workspace-relative path." },
         "table_id": { "type": "string", "minLength": 1 },
         "field_mappings": {
           "type": "array",

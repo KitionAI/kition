@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-image-generation.schema.json",
   "title": "Kition Agent Image Generation",
-  "description": "Typed image-generation intents shared by Agent conversations across documents, tables, and Boards, and how the runtime logs them: an image composer request is one session turn (agent-session-events.schema.json) whose variant i is a tool/call named image_generation with variantCall arguments and call id img_<first 24 hex of sha256(request_id)>_<i>, settled by a tool/result whose value is the artifact and whose meta is variantMeta (success, followed by deliverables/presented), or by a tool/result with isError whose content is the message and the error as JSON. A request id names one set of settings and is handled once: a repeat with the same settings changes nothing, even when the earlier attempt failed or was cancelled (retry with a new request id), and other settings are refused with HTTP 409.",
+  "description": "Typed image-generation intents shared by Agent conversations across documents, Boards, designs, and chat, and how the runtime logs them: an image composer request is one session turn (agent-session-events.schema.json) whose variant i is a tool/call named image_generation with variantCall arguments and call id img_<first 24 hex of sha256(request_id)>_<i>, settled by a tool/result whose value is the artifact and whose meta is variantMeta (success, followed by deliverables/presented), or by a tool/result with isError whose content is the message and the error as JSON. A request id names one set of settings and is handled once: a repeat with the same settings changes nothing, even when the earlier attempt failed or was cancelled (retry with a new request id), and other settings are refused with HTTP 409.",
   "$comment": "Generation and editing allow up to 600 seconds per image request, including waiting for the provider response. User cancellation and earlier caller deadlines still apply. Multiple-image jobs may take longer overall; clients must keep consuming progress until completion, failure, or cancellation.",
   "x-runtime-capability": "agent_image_generation_v1",
   "x-chat-runtime-capability": "agent_image_generation_chat_v1",
@@ -51,24 +51,6 @@
         "document_format": { "type": "string", "minLength": 1, "maxLength": 64 },
         "cursor_offset": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
         "selected_image_path": { "$ref": "#/$defs/portablePath" },
-        "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
-      }
-    },
-    "tableTarget": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "data_document_id", "table_id"],
-      "properties": {
-        "type": { "const": "image.target.table" },
-        "data_document_id": { "type": "integer", "minimum": 1 },
-        "table_id": { "type": "integer", "minimum": 1 },
-        "record_ids": {
-          "type": "array",
-          "maxItems": 100,
-          "uniqueItems": true,
-          "items": { "type": "integer", "minimum": 1 }
-        },
-        "attachment_field_id": { "type": "integer", "minimum": 1 },
         "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
       }
     },
@@ -174,12 +156,11 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/portablePath" }
         },
-        "surface": { "type": "string", "enum": ["document", "table", "whiteboard", "design", "chat"] },
+        "surface": { "type": "string", "enum": ["document", "whiteboard", "design", "chat"] },
         "target": {
           "oneOf": [
             { "$ref": "#/$defs/chatTarget" },
             { "$ref": "#/$defs/documentTarget" },
-            { "$ref": "#/$defs/tableTarget" },
             { "$ref": "#/$defs/whiteboardTarget" },
             { "$ref": "#/$defs/designTarget" }
           ]
@@ -202,10 +183,6 @@
         {
           "if": { "properties": { "surface": { "const": "document" } } },
           "then": { "properties": { "target": { "$ref": "#/$defs/documentTarget" } } }
-        },
-        {
-          "if": { "properties": { "surface": { "const": "table" } } },
-          "then": { "properties": { "target": { "$ref": "#/$defs/tableTarget" } } }
         },
         {
           "if": { "properties": { "surface": { "const": "whiteboard" } } },

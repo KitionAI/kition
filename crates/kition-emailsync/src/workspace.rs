@@ -1,19 +1,13 @@
 //! Writing synced messages into the workspace: one Markdown document per
-//! message, attachments beside it, and a row in a `.kitable` index table.
+//! message, attachments beside it, and a row in a `.ktable` index table, written through the
+//! Table kit (`kition-tableclient`).
 
 use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 
 use kition_core::now_millis;
 use kition_core::time::to_rfc3339;
-use kition_datadoc::index::{self, NewDocument, STORAGE_KITABLE_FILE};
-use kition_datadoc::{TableDocuments, TableHandle};
-use kition_kdm::Origin;
-use kition_kitable::{
-    CreateOptions, FieldSpec, KitableError, KitableFile, Table, TablePatch, TableSpec, ViewPatch,
-    ViewSpec,
-};
-use kition_store::Db;
+use kition_tableclient::{RecordInfo, TableClient, TableInfo};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
@@ -24,11 +18,12 @@ use crate::types::{TargetConfig, Workflow};
 
 const EMAIL_TABLE_NAME: &str = "email_messages";
 
-/// This service's origin on every write to a `.kitable` file: a non-undo system write, like
-/// every other background sync.
-fn origin() -> Origin {
-    Origin::system("emailsync")
-}
+/// This service's origin on every write to a table file: a non-undo system write, like every
+/// other background sync.
+const ORIGIN: &str = "system:emailsync";
+
+/// The table file extension email sync writes to.
+pub const TABLE_EXTENSION: &str = ".ktable";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WriteResult {
@@ -39,11 +34,14 @@ pub struct WriteResult {
 #[derive(Clone)]
 pub struct WorkspaceWriter {
     pub root: PathBuf,
-    pub db: Db,
-    /// Every `.kitable` file the runtime has open, shared with the HTTP routes, the Agent, and
-    /// form sync: writing through it (rather than opening the file on its own) keeps an open
-    /// window's handle current instead of racing it at the SQLite level.
-    pub tables: TableDocuments,
+    /// The Table kit: an open editor's document when one has the file, the headless kit
+    /// otherwise, so a sync never races a person's unsaved edits.
+    pub tables: TableClient,
+}
+
+/// Runs the table client's future from the blocking thread a sync writes on.
+fn blocking<T>(work: impl std::future::Future<Output = T>) -> T {
+    tokio::runtime::Handle::current().block_on(work)
 }
 
 fn unsafe_name_pattern() -> &'static Regex {
@@ -191,82 +189,28 @@ fn rfc3339_seconds(millis: i64) -> String {
     text.replace(".000Z", "Z")
 }
 
-fn email_field_specs() -> Vec<FieldSpec> {
-    let field = |name: &str, title: &str, field_type: &str| FieldSpec {
-        name: name.into(),
-        title: title.into(),
-        field_type: field_type.into(),
-        ..FieldSpec::default()
-    };
+/// The email table's fields, as the request layer's field seeds.
+fn email_field_seeds() -> Vec<Value> {
+    let field = |name: &str, title: &str, field_type: &str| json!({ "name": name, "title": title, "type": field_type });
+    let mut subject = field("subject", "Subject", "text");
+    subject["primary"] = json!(true);
+    subject["required"] = json!(true);
+    let mut status = field("status", "Status", "single_select");
+    status["options"] = json!({ "choices": ["Imported"] });
+    let mut document = field("document", "Document", "document_link");
+    document["readonly"] = json!(true);
     vec![
-        FieldSpec {
-            primary: true,
-            required: true,
-            ..field("subject", "Subject", "text")
-        },
+        subject,
         field("from", "From", "text"),
         field("to", "To", "text"),
         field("received_at", "Received At", "datetime"),
         field("mailbox", "Mailbox", "text"),
         field("preview", "Preview", "long_text"),
         field("has_attachments", "Has Attachments", "checkbox"),
-        FieldSpec {
-            options: json!({"choices": ["Imported"]}),
-            ..field("status", "Status", "single_select")
-        },
+        status,
         field("message_id", "Message ID", "text"),
-        FieldSpec {
-            readonly: true,
-            ..field("document", "Document", "document_link")
-        },
+        document,
     ]
-}
-
-fn email_table_spec() -> TableSpec {
-    TableSpec {
-        name: EMAIL_TABLE_NAME.into(),
-        title: "Data table".into(),
-        description: "Email metadata with links to the full Markdown message.".into(),
-        fields: email_field_specs(),
-        views: vec![ViewSpec {
-            title: "Grid view".into(),
-            view_type: "grid".into(),
-            config: Value::Null,
-        }],
-        meta: Value::Null,
-    }
-}
-
-/// Renames legacy titles and adds any missing email fields.
-fn ensure_email_fields(file: &mut KitableFile, table: &mut Table) -> Result<(), KitableError> {
-    if table.name == EMAIL_TABLE_NAME && table.title.trim().eq_ignore_ascii_case("Email Messages") {
-        *table = file.update_table(
-            table.id,
-            &TablePatch {
-                title: Some("Data table".into()),
-                ..TablePatch::default()
-            },
-        )?;
-    }
-    for view in table.views.clone() {
-        if view.view_type == "grid" && view.title.trim().eq_ignore_ascii_case("All messages") {
-            file.update_view(
-                table.id,
-                view.id,
-                &ViewPatch {
-                    title: Some("Grid view".into()),
-                    ..ViewPatch::default()
-                },
-            )?;
-        }
-    }
-    for spec in email_field_specs() {
-        if !table.fields.iter().any(|f| f.name == spec.name) {
-            file.create_field(table.id, &spec)?;
-        }
-    }
-    *table = file.get_table(table.id)?;
-    Ok(())
 }
 
 fn text_value(values: &Map<String, Value>, key: &str) -> String {
@@ -351,130 +295,132 @@ impl WorkspaceWriter {
         Ok(links)
     }
 
-    /// Opens (creating when needed) the destination table, through the shared manager, and
-    /// makes sure the file is indexed as a data document.
-    fn open_email_table(
-        &self,
-        user_id: i64,
-        target: &TargetConfig,
-    ) -> Result<(TableHandle, Table), String> {
-        let relative = normalize_relative_path(&target.table_path, ".kitable")?;
-        let absolute = self.root.join(&relative);
-        let created = std::fs::metadata(&absolute).is_err();
-        if created {
-            let stem = relative
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            // A brand-new file: created directly, then handed to the manager below so every
-            // write after this one goes through the one shared connection.
-            KitableFile::create(
-                &absolute,
-                &CreateOptions {
-                    title: stem,
-                    document_id: format!("email-sync-{}", uuid::Uuid::new_v4().simple()),
-                    meta_json: r#"{"source":"email_sync"}"#.into(),
-                    ..CreateOptions::default()
-                },
-            )
-            .map_err(|e| format!("open email table: {e}"))?
-            .close();
+    /// The destination table: the one the target names, else the file's email table, else its
+    /// first; a new file gets an email table of its own. Missing email fields are added.
+    async fn open_email_table(&self, target: &TargetConfig) -> Result<(String, TableInfo), String> {
+        let path = slash(&normalize_relative_path(
+            &target.table_path,
+            TABLE_EXTENSION,
+        )?);
+        fn fail(what: &'static str) -> impl Fn(kition_tableclient::TableError) -> String {
+            move |error| format!("{what}: {error}")
         }
-        let (mut file, _merge) = self
-            .tables
-            .open(&absolute, origin())
-            .map_err(|e| format!("open email table: {e}"))?;
-        if let Err(err) = self.ensure_document_index(user_id, &slash(&relative), &file) {
-            drop(file);
-            if created {
-                let _ = std::fs::remove_file(&absolute);
+        if !self.root.join(&path).exists() {
+            let starter = self
+                .tables
+                .create_file(&path, None)
+                .await
+                .map_err(fail("create email table"))?;
+            let table = self
+                .tables
+                .request(
+                    &path,
+                    "tables.create",
+                    json!({
+                        "name": EMAIL_TABLE_NAME,
+                        "title": "Data table",
+                        "description": "Email metadata with links to the full Markdown message.",
+                        "fields": email_field_seeds(),
+                        "views": [{ "title": "Grid view", "type": "grid" }],
+                    }),
+                    Some(ORIGIN),
+                )
+                .await
+                .map_err(fail("create email table"))?;
+            for table in starter {
+                let _ = self
+                    .tables
+                    .request(
+                        &path,
+                        "tables.delete",
+                        json!({ "tableId": table.id.parse::<i64>().unwrap_or_default() }),
+                        Some(ORIGIN),
+                    )
+                    .await;
             }
-            return Err(err);
+            return Ok((path, kition_tableclient::table_info(&table)));
         }
-        let tables = file
-            .list_tables()
-            .map_err(|e| format!("list email tables: {e}"))?;
-        let mut table = if target.table_id > 0 {
+        let tables = self
+            .tables
+            .tables(&path)
+            .await
+            .map_err(fail("list email tables"))?;
+        let table = if target.table_id > 0 {
             tables
                 .into_iter()
-                .find(|t| t.id == target.table_id)
+                .find(|table| table.id == target.table_id.to_string())
                 .ok_or_else(|| {
                     format!(
                         "email sync destination table {} was not found",
                         target.table_id
                     )
                 })?
-        } else if let Some(found) = tables
-            .iter()
-            .find(|t| t.name == EMAIL_TABLE_NAME)
-            .or_else(|| tables.first())
-        {
-            found.clone()
         } else {
-            let table = file
-                .create_table(&email_table_spec())
-                .map_err(|e| format!("create email table: {e}"))?;
-            return Ok((file, table));
+            tables
+                .iter()
+                .find(|table| table.name == EMAIL_TABLE_NAME)
+                .or_else(|| tables.first())
+                .cloned()
+                .ok_or("the email table file has no table")?
         };
-        ensure_email_fields(&mut file, &mut table).map_err(|e| e.to_string())?;
-        Ok((file, table))
+        let mut added = false;
+        for seed in email_field_seeds() {
+            let name = seed["name"].as_str().unwrap_or_default();
+            if !table.fields.iter().any(|field| field.name == name) {
+                let mut params = seed.clone();
+                params["tableId"] = json!(table.id.parse::<i64>().unwrap_or_default());
+                self.tables
+                    .request(&path, "fields.create", params, Some(ORIGIN))
+                    .await
+                    .map_err(fail("add an email field"))?;
+                added = true;
+            }
+        }
+        let table = if added {
+            self.tables
+                .table(&path, &table.id)
+                .await
+                .map_err(fail("read the email table"))?
+        } else {
+            table
+        };
+        Ok((path, table))
     }
 
-    fn ensure_document_index(
+    async fn email_records(
         &self,
-        user_id: i64,
         path: &str,
-        file: &TableHandle,
+        table: &TableInfo,
+    ) -> Result<Vec<RecordInfo>, String> {
+        self.tables
+            .records(path, &table.id)
+            .await
+            .map_err(|e| format!("list email table records: {e}"))
+    }
+
+    async fn write_values(
+        &self,
+        path: &str,
+        table: &TableInfo,
+        record: Option<&str>,
+        values: Map<String, Value>,
     ) -> Result<(), String> {
-        let conn = self.db.conn().map_err(|e| e.to_string())?;
-        let root = self.root.to_string_lossy().into_owned();
-        let existing: Option<(i64, String)> = conn
-            .query_row(
-                "SELECT id, COALESCE(workspace_root, '') FROM data_documents WHERE user_id = ?1 AND path = ?2 AND deleted_at IS NULL LIMIT 1",
-                rusqlite::params![user_id, path],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )
-            .ok();
-        if let Some((id, workspace_root)) = existing {
-            if workspace_root.trim() != root {
-                index::set_workspace_root(&conn, id, &root).map_err(|e| e.to_string())?;
-            }
-            return Ok(());
-        }
-        let info = file
-            .info()
-            .map_err(|e| format!("read email table metadata: {e}"))?;
-        let title = match info.title.trim() {
-            "" => Path::new(path)
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_default(),
-            title => title.to_owned(),
+        let table_id = json!(table.id.parse::<i64>().unwrap_or_default());
+        let (method, params) = match record {
+            Some(record) => (
+                "records.update",
+                json!({ "tableId": table_id, "recordId": record.parse::<i64>().unwrap_or_default(), "values": values }),
+            ),
+            None => (
+                "records.create",
+                json!({ "tableId": table_id, "values": values }),
+            ),
         };
-        let meta = json!({
-            "storage": STORAGE_KITABLE_FILE,
-            "file_format": kition_kitable::FORMAT,
-            "file_document_id": info.document_id,
-            "file_format_version": info.format_version,
-            "file_schema_version": info.schema_version,
-            "indexed_from_kitable": true,
-            "source": "email_sync",
-        });
-        index::insert(
-            &conn,
-            NewDocument {
-                user_id,
-                workspace_root: root,
-                path: path.to_owned(),
-                title,
-                description: "Email messages synchronized from an IMAP mailbox.".into(),
-                icon: String::new(),
-                color: String::new(),
-                meta: meta.as_object().cloned().unwrap_or_default(),
-            },
-        )
-        .map(|_| ())
-        .map_err(|e| format!("create email table index: {e}"))
+        self.tables
+            .request(path, method, params, Some(ORIGIN))
+            .await
+            .map(|_| ())
+            .map_err(|e| format!("write email table record: {e}"))
     }
 
     pub fn write_message(
@@ -511,7 +457,6 @@ impl WorkspaceWriter {
         )
         .map_err(|e| format!("write email Markdown: {e}"))?;
 
-        let (mut file, table) = self.open_email_table(workflow.user_id, &target)?;
         let mut values = Map::new();
         values.insert("subject".into(), json!(message.subject));
         values.insert("from".into(), json!(message.from));
@@ -529,25 +474,20 @@ impl WorkspaceWriter {
         values.insert("status".into(), json!("Imported"));
         values.insert("message_id".into(), json!(message.message_id));
         values.insert("document".into(), json!(document_text));
-        let records = file
-            .list_records(table.id)
-            .map_err(|e| format!("list email table records: {e}"))?;
-        if let Some(record) = records
-            .iter()
-            .find(|r| text_value(&r.values, "document").trim() == document_text)
-        {
-            file.update_record(table.id, record.id, &values, None)
-                .map_err(|e| format!("update email table record: {e}"))?;
-            return Ok(WriteResult {
-                document_path: document_text,
-                updated: true,
-            });
-        }
-        file.create_record(table.id, &values)
-            .map_err(|e| format!("create email table record: {e}"))?;
+        let updated = blocking(async {
+            let (path, table) = self.open_email_table(&target).await?;
+            let records = self.email_records(&path, &table).await?;
+            let existing = records
+                .iter()
+                .find(|r| text_value(&r.values, "document").trim() == document_text)
+                .map(|record| record.id.clone());
+            self.write_values(&path, &table, existing.as_deref(), values)
+                .await?;
+            Ok::<bool, String>(existing.is_some())
+        })?;
         Ok(WriteResult {
             document_path: document_text,
-            updated: false,
+            updated,
         })
     }
 
@@ -559,10 +499,11 @@ impl WorkspaceWriter {
         store: &Store,
     ) -> Result<(), String> {
         let target = workflow.target();
-        let (mut file, table) = self.open_email_table(workflow.user_id, &target)?;
-        let records = file
-            .list_records(table.id)
-            .map_err(|e| format!("list email records for document migration: {e}"))?;
+        let (path, table, records) = blocking(async {
+            let (path, table) = self.open_email_table(&target).await?;
+            let records = self.email_records(&path, &table).await?;
+            Ok::<_, String>((path, table, records))
+        })?;
         for record in records {
             let current = text_value(&record.values, "document")
                 .trim()
@@ -616,9 +557,9 @@ impl WorkspaceWriter {
                 }
             }
             if next_text != current {
-                let mut values = record.values.clone();
+                let mut values = Map::new();
                 values.insert("document".into(), json!(next_text));
-                file.update_record(table.id, record.id, &values, None)
+                blocking(self.write_values(&path, &table, Some(&record.id), values))
                     .map_err(|e| format!("update migrated email record: {e}"))?;
                 store
                     .rename_item_documents(&workflow.id, &current, &next_text)
@@ -707,16 +648,16 @@ mod tests {
 
     #[test]
     fn paths_and_titles() {
-        assert!(normalize_relative_path("../x.kitable", ".kitable").is_err());
-        assert!(normalize_relative_path("x.md", ".kitable").is_err());
+        assert!(normalize_relative_path("../x.ktable", ".ktable").is_err());
+        assert!(normalize_relative_path("x.md", ".ktable").is_err());
         if cfg!(windows) {
-            assert!(normalize_relative_path("\\etc\\x.kitable", ".kitable").is_err());
-            assert!(normalize_relative_path("C:x.kitable", ".kitable").is_err());
+            assert!(normalize_relative_path("\\etc\\x.ktable", ".ktable").is_err());
+            assert!(normalize_relative_path("C:x.ktable", ".ktable").is_err());
             assert!(normalize_relative_folder("C:\\inbox").is_err());
         }
         assert_eq!(
-            normalize_relative_path("a/./b.KITABLE", ".kitable").ok(),
-            Some(PathBuf::from("a/b.KITABLE"))
+            normalize_relative_path("a/./b.KTABLE", ".ktable").ok(),
+            Some(PathBuf::from("a/b.KTABLE"))
         );
         assert_eq!(
             sanitize_document_title(" Re: <Plan> / Q3? "),

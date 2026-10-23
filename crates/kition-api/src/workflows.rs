@@ -4,11 +4,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use kition_datadoc::DataDocState;
-use kition_kdm::Origin;
 use kition_workflow::store::{Dedup, RunHistory, Store};
-use kition_workflow::types::{FieldSchema, TableSchema};
-use kition_workflow::{Connections, Engine, LegacySmtp, RecordView, Tables, WorkflowState};
+use kition_workflow::{Connections, Engine, LegacySmtp, Tables, WorkflowState};
 use serde_json::{Map, Value};
 
 use crate::app::Deps;
@@ -61,108 +58,23 @@ impl kition_workflow::WorkflowAi for EngineWorkflowAi {
     }
 }
 
-/// Workflows read and write tables through the data document API.
-struct DataDocTables(DataDocState);
-
-impl Tables for DataDocTables {
-    fn schema(
-        &self,
-        user_id: i64,
-        document_id: &str,
-        table_id: &str,
-    ) -> Result<TableSchema, String> {
-        let (name, fields) = self
-            .0
-            .fetch_table_schema(user_id, document_id, table_id, Origin::system("workflow"))
-            .map_err(|e| e.message.clone())?;
-        Ok(TableSchema {
-            id: table_id.to_owned(),
-            name,
-            fields: fields
-                .into_iter()
-                .map(|f| FieldSchema {
-                    id: f.id,
-                    name: f.name,
-                    field_type: f.field_type,
-                })
-                .collect(),
-        })
-    }
-
-    fn records(
-        &self,
-        user_id: i64,
-        document_id: &str,
-        table_id: &str,
-    ) -> Result<Vec<RecordView>, String> {
-        let records = self
-            .0
-            .fetch_table_records(user_id, document_id, table_id, Origin::system("workflow"))
-            .map_err(|e| e.message.clone())?;
-        Ok(records
-            .into_iter()
-            .map(|r| RecordView {
-                id: r.id,
-                fields: r.fields,
-                created_at: r.created_at,
-            })
-            .collect())
-    }
-
-    fn create_record(
-        &self,
-        user_id: i64,
-        document_id: &str,
-        table_id: &str,
-        values: &Map<String, Value>,
-    ) -> Result<String, String> {
-        self.0
-            .create_record_for_workflow(
-                user_id,
-                document_id,
-                table_id,
-                values,
-                Origin::system("workflow"),
-            )
-            .map_err(|e| e.message.clone())
-    }
-
-    fn update_record(
-        &self,
-        user_id: i64,
-        document_id: &str,
-        table_id: &str,
-        record_id: &str,
-        values: &Map<String, Value>,
-    ) -> Result<Map<String, Value>, String> {
-        self.0
-            .update_record_for_workflow(
-                user_id,
-                document_id,
-                table_id,
-                record_id,
-                values,
-                Origin::system("workflow"),
-            )
-            .map_err(|e| e.message.clone())
-    }
-}
-
-/// Deleting a data document removes the workflows bound to it.
-struct Cleaner(Arc<Store>);
-
-impl kition_datadoc::WorkflowCleaner for Cleaner {
-    fn delete_by_document_id(&self, document_id: &str) -> kition_core::AppResult<usize> {
-        self.0
-            .delete_by_document_id(document_id)
-            .map_err(kition_core::AppError::internal)
-    }
+/// Follows a renamed table file in every host feature that names it by path: workflows,
+/// form sync targets, and email sync targets.
+pub fn rename_hook(deps: &Deps, store: &Arc<Store>) -> kition_tableclient::routes::RenameHook {
+    let (store, db) = (store.clone(), deps.db.clone());
+    Arc::new(move |from: &str, to: &str| {
+        let mut updated = store.rename_document_path(from, to)?;
+        let conn = db.conn().map_err(|e| e.to_string())?;
+        updated += kition_formsync::store::rename_document_path(&conn, from, to)
+            .map_err(|e| e.to_string())?;
+        updated += kition_emailsync::store::rename_table_path(&conn, from, to)
+            .map_err(|e| e.to_string())?;
+        Ok(updated)
+    })
 }
 
 pub struct Workflows {
     pub state: WorkflowState,
-    /// Data documents, when a workspace is configured.
-    pub datadoc: Option<DataDocState>,
 }
 
 fn workspace_file(deps: &Deps, name: &str) -> PathBuf {
@@ -275,13 +187,12 @@ pub fn start(deps: &Deps) -> Workflows {
     if let Err(err) = time_dedup.load() {
         tracing::warn!(error = %err, "workflow dedup could not be loaded");
     }
-    let datadoc = crate::app::datadoc_state(deps, Some(Arc::new(Cleaner(store.clone()))));
     let engine = Arc::new(Engine {
         store,
         runs,
-        tables: datadoc
-            .clone()
-            .map(|s| Arc::new(DataDocTables(s)) as Arc<dyn Tables>),
+        tables: deps.workspace_dir.as_ref().map(|_| {
+            Arc::new(crate::adapters::ClientTables(deps.table_client.clone())) as Arc<dyn Tables>
+        }),
         connections: Some(Connections {
             db: deps.db.clone(),
             store: deps.connections.clone(),
@@ -300,6 +211,5 @@ pub fn start(deps: &Deps) -> Workflows {
             ai_gate: Arc::new(move || portal.signed_in()),
             ai: Some(Arc::new(EngineWorkflowAi(deps.ai.clone()))),
         },
-        datadoc,
     }
 }

@@ -9,8 +9,9 @@ use kition_emailsync::service::{Service, ServiceError};
 use kition_emailsync::store::Store;
 use kition_emailsync::types::{ConnectionConfig, SaveWorkflowInput, ScheduleConfig, TargetConfig};
 use kition_emailsync::workspace::WorkspaceWriter;
-use kition_kitable::KitableFile;
+use kition_kits::{KITS, KitManager};
 use kition_store::Db;
+use kition_tableclient::TableClient;
 
 #[derive(Default)]
 struct FakeMailbox {
@@ -92,6 +93,21 @@ struct Setup {
     mailbox: Arc<FakeMailbox>,
     dir: tempfile::TempDir,
     user_id: i64,
+    tables: TableClient,
+}
+
+/// The headless Table kit: `KITION_KIT_TABLE_BINARY`, or a debug build in the sibling
+/// checkout. Tests that write messages are skipped without it.
+fn table_kit() -> Option<std::path::PathBuf> {
+    if let Some(path) =
+        std::env::var_os("KITION_KIT_TABLE_BINARY").filter(|value| !value.is_empty())
+    {
+        return Some(path.into());
+    }
+    let sibling = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../kition-table/target/debug/kit-table")
+        .with_extension(std::env::consts::EXE_EXTENSION);
+    sibling.is_file().then_some(sibling)
 }
 
 fn setup() -> Setup {
@@ -109,6 +125,12 @@ fn setup() -> Setup {
     };
     let workspace = dir.path().join("workspace");
     std::fs::create_dir_all(&workspace).unwrap_or_else(|err| panic!("{err}"));
+    let kit = KITS
+        .iter()
+        .find(|kit| kit.id == "kit.table")
+        .unwrap_or_else(|| panic!("no table kit"));
+    let kits = KitManager::new(Some(workspace.clone()), vec![(kit, table_kit())]);
+    let tables = TableClient::new(kits, kition_core::events::EventBus::default());
     let mailbox = Arc::new(FakeMailbox::default());
     let store = Store {
         db: db.clone(),
@@ -119,8 +141,7 @@ fn setup() -> Setup {
         mailbox.clone(),
         WorkspaceWriter {
             root: workspace,
-            db,
-            tables: kition_datadoc::TableDocuments::default(),
+            tables: tables.clone(),
         },
     );
     Setup {
@@ -128,6 +149,7 @@ fn setup() -> Setup {
         mailbox,
         dir,
         user_id,
+        tables,
     }
 }
 
@@ -142,7 +164,7 @@ fn input(include_attachments: bool) -> SaveWorkflowInput {
         }),
         password: Some("p".into()),
         target: Some(TargetConfig {
-            table_path: "Mail/messages.kitable".into(),
+            table_path: "Mail/messages.ktable".into(),
             content_folder: "Mail".into(),
             attachment_folder: "Mail/Attachments".into(),
             table_id: 0,
@@ -155,13 +177,20 @@ fn input(include_attachments: bool) -> SaveWorkflowInput {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn imports_messages_and_skips_on_resync() {
+    if table_kit().is_none() {
+        eprintln!(
+            "skipped: build kit-table (cargo build -p kit-table in ../kition-table) or set KITION_KIT_TABLE_BINARY"
+        );
+        return;
+    }
     let Setup {
         service,
         mailbox,
         dir,
         user_id,
+        tables,
     } = setup();
     mailbox
         .messages
@@ -212,14 +241,29 @@ async fn imports_messages_and_skips_on_resync() {
         "a second message with the same subject gets a keyed file name"
     );
 
-    let file = KitableFile::open(&root.join("Mail/messages.kitable"))
+    let path = "Mail/messages.ktable";
+    let listed_tables = tables
+        .tables(path)
+        .await
         .unwrap_or_else(|err| panic!("{err}"));
-    let tables = file.list_tables().unwrap_or_default();
-    assert_eq!(tables[0].name, "email_messages");
-    assert_eq!(file.count_records(tables[0].id).unwrap_or_default(), 3);
-    assert!(
-        !file.can_undo(),
-        "email sync writes are system:emailsync, not undo steps"
+    assert_eq!(
+        listed_tables.len(),
+        1,
+        "the starter table makes way for the email table"
+    );
+    assert_eq!(listed_tables[0].name, "email_messages");
+    let records = tables
+        .records(path, &listed_tables[0].id)
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(records.len(), 3);
+    let history = tables
+        .request(path, "historyState", serde_json::json!({}), None)
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert_ne!(
+        history["canUndo"], true,
+        "email sync writes are system:emailsync, not undo steps: {history}"
     );
 
     let listed = service.list(user_id).await.unwrap_or_default();
@@ -237,13 +281,18 @@ async fn imports_messages_and_skips_on_resync() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn runs_complete_and_conflict() {
+    if table_kit().is_none() {
+        eprintln!("skipped: build kit-table or set KITION_KIT_TABLE_BINARY");
+        return;
+    }
     let Setup {
         service,
         mailbox,
         user_id,
         dir: _dir,
+        ..
     } = setup();
     mailbox
         .messages
@@ -290,6 +339,7 @@ async fn create_reports_mailbox_errors() {
         mailbox,
         user_id,
         dir: _dir,
+        ..
     } = setup();
     *mailbox
         .fail_test

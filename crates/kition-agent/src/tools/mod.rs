@@ -9,7 +9,6 @@ pub mod files;
 pub mod images;
 pub mod kits;
 pub mod live_documents;
-pub mod tables;
 pub mod web;
 
 use std::sync::Arc;
@@ -48,17 +47,8 @@ fn rank(permission: &str) -> u8 {
 
 pub fn stage(name: &str) -> &'static str {
     match name {
-        "document_read"
-        | "document_search"
-        | "document_list"
-        | "data_table_schema"
-        | "data_table_records"
-        | "data_table_record_draft"
-        | "fs_read"
-        | "fs_stat"
-        | "fs_list"
-        | "file_search"
-        | "view_image" => "context",
+        "document_read" | "document_search" | "document_list" | "fs_read" | "fs_stat"
+        | "fs_list" | "file_search" | "view_image" => "context",
         _ if matches!(
             kits::parse(name),
             Some((
@@ -83,7 +73,7 @@ pub fn stage(name: &str) -> &'static str {
     }
 }
 
-/// Runs blocking file or table work off the async executor.
+/// Runs blocking file work off the async executor.
 async fn blocking(
     run: &Arc<Run>,
     input: &Value,
@@ -91,27 +81,6 @@ async fn blocking(
 ) -> ToolResult {
     let (run, input) = (run.clone(), input.clone());
     tokio::task::spawn_blocking(move || work(&run, &input))
-        .await
-        .unwrap_or_else(|_| Err("tool failed unexpectedly".into()))
-}
-
-async fn table_tool(
-    run: &Arc<Run>,
-    input: &Value,
-    work: fn(&kition_datadoc::DataDocState, &tables::TableContext, &Value) -> ToolResult,
-) -> ToolResult {
-    let Some(state) = run.agent.tables().cloned() else {
-        return Err("data-table tools are unavailable".into());
-    };
-    let context = tables::TableContext {
-        user_id: run.user_id,
-        active_document_path: run.active_document_path.clone(),
-        document_id: run.active_data_document_id,
-        table_id: run.active_data_table_id,
-        origin: tables::run_origin(run.session_id),
-    };
-    let input = input.clone();
-    tokio::task::spawn_blocking(move || work(&state, &context, &input))
         .await
         .unwrap_or_else(|_| Err("tool failed unexpectedly".into()))
 }
@@ -162,12 +131,6 @@ async fn dispatch(run: &Arc<Run>, name: &str, input: &Value) -> ToolResult {
         "image_search" => images::image_search(run, input).await,
         "save_image_asset" => images::save_image_asset(run, input).await,
         "exec_command" => exec::exec_command(run, input).await,
-        "data_table_create" => table_tool(run, input, tables::create).await,
-        "data_table_schema" => table_tool(run, input, tables::schema).await,
-        "data_table_records" => table_tool(run, input, tables::records).await,
-        "data_table_record_draft" => table_tool(run, input, tables::record_draft).await,
-        "data_table_add_fields" => table_tool(run, input, tables::add_fields).await,
-        "data_table_add_records" | "table_upsert_records" => table_tool(run, input, tables::add_records).await,
         "whiteboard_propose_patch" => canvas::propose_whiteboard_patch(run, input).await,
         "design_propose_patch" => canvas::propose_design_patch(run, input).await,
         "configure_smtp_connection" => configure_smtp(run, input).await,

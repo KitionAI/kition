@@ -209,7 +209,7 @@ struct PortableFormWorkflow {
     #[serde(default)]
     published: bool,
     #[serde(default)]
-    document_id: String,
+    document_path: String,
     #[serde(default)]
     table_id: String,
     #[serde(default)]
@@ -514,7 +514,7 @@ impl StateMirror {
                             remote_source_id: w.remote_source_id,
                             public_url: w.public_url,
                             published: w.published,
-                            document_id: w.document_id,
+                            document_path: w.document_path,
                             table_id: w.table_id,
                             fields_json: w.fields.to_string(),
                             target_json: w.target.to_string(),
@@ -650,7 +650,7 @@ impl StateMirror {
                 remote_source_id: w.remote_source_id,
                 public_url: w.public_url,
                 published: w.published,
-                document_id: w.document_id,
+                document_path: w.document_path,
                 table_id: w.table_id,
                 fields: raw_json(&w.fields_json),
                 target: raw_json(&w.target_json),

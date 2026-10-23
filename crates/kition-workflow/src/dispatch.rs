@@ -135,12 +135,12 @@ impl TimeDispatcher {
             if now < fire_at {
                 continue;
             }
-            let (document_id, table) = (def.trigger.document_id.clone(), table_id.clone());
+            let (document_path, table) = (def.trigger.document_path.clone(), table_id.clone());
             let records = match self.engine.tables.clone() {
                 None => continue,
                 Some(tables) => {
                     tokio::task::spawn_blocking(move || {
-                        tables.records(DEFAULT_USER_ID, &document_id, &table)
+                        tables.records(DEFAULT_USER_ID, &document_path, &table)
                     })
                     .await
                 }
@@ -177,7 +177,7 @@ impl TimeDispatcher {
                 }
                 let event = DeliveryEvent {
                     user_id: DEFAULT_USER_ID,
-                    document_id: def.trigger.document_id.clone(),
+                    document_path: def.trigger.document_path.clone(),
                     table_id: table_id.clone(),
                     record_id: record.id.clone(),
                     fields: record.fields.clone(),
@@ -278,7 +278,7 @@ impl ScheduledDispatcher {
                     "scheduled_time",
                     DEFAULT_USER_ID,
                     "",
-                    &def.trigger.document_id,
+                    &def.trigger.document_path,
                     &def.trigger.table_id,
                     None,
                 )

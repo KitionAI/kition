@@ -81,14 +81,37 @@ struct Session {
     documents: Mutex<BTreeSet<String>>,
 }
 
+/// A live document's edit, as `kit.changed` reported it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LiveChange {
+    /// Workspace-relative, `/`-separated.
+    pub path: String,
+    pub revision: u64,
+    /// `person` or `agent`.
+    pub by: String,
+}
+
 /// The runtime's end of the bridge: the connected renderer windows and their pending requests.
-#[derive(Default)]
 pub struct Bridge {
     sessions: Mutex<HashMap<u64, Arc<Session>>>,
     next_session: AtomicU64,
     next_request: AtomicU64,
     /// The last revision each live document reported through `kit.changed`, by path.
     revisions: Mutex<HashMap<String, (u64, String)>>,
+    /// Every `kit.changed`, for whoever follows live edits (the host table client's triggers).
+    changes: tokio::sync::broadcast::Sender<LiveChange>,
+}
+
+impl Default for Bridge {
+    fn default() -> Self {
+        Self {
+            sessions: Mutex::default(),
+            next_session: AtomicU64::default(),
+            next_request: AtomicU64::default(),
+            revisions: Mutex::default(),
+            changes: tokio::sync::broadcast::channel(256).0,
+        }
+    }
 }
 
 /// Paths as both sides name them: workspace-relative, no leading `./` or `/`.
@@ -138,6 +161,11 @@ impl Bridge {
                 let _ = waiting.send(Err("the editor window closed".into()));
             }
         }
+    }
+
+    /// Hears every live document's `kit.changed` from now on.
+    pub fn subscribe_changes(&self) -> tokio::sync::broadcast::Receiver<LiveChange> {
+        self.changes.subscribe()
     }
 
     pub fn connected(&self) -> bool {
@@ -222,7 +250,8 @@ impl Bridge {
             self.revisions
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
-                .insert(path, (revision, by));
+                .insert(path.clone(), (revision, by.clone()));
+            let _ = self.changes.send(LiveChange { path, revision, by });
             return Ok(());
         }
         let id = message

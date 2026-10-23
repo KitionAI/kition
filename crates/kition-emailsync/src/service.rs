@@ -89,7 +89,7 @@ fn validate_values(
         return Err("workflow name is required".into());
     }
     validate_connection(connection, password)?;
-    normalize_relative_path(&target.table_path, ".kitable")?;
+    normalize_relative_path(&target.table_path, crate::workspace::TABLE_EXTENSION)?;
     if target.table_id < 0 {
         return Err("destination table ID must be positive".into());
     }

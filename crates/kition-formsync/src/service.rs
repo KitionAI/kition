@@ -35,20 +35,20 @@ pub trait TableWriter: Send + Sync {
     fn fields(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
     ) -> Result<Vec<TableField>, String>;
     fn records(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
     ) -> Result<Vec<TableRecord>, String>;
     /// Creates a record from values keyed by field ID; returns the record ID.
     fn create(
         &self,
         user_id: i64,
-        document_id: &str,
+        document_path: &str,
         table_id: &str,
         values: &Map<String, Value>,
     ) -> Result<String, String>;
@@ -89,9 +89,9 @@ fn normalize_title(value: &str) -> String {
     value.trim().to_lowercase()
 }
 
-pub fn binding_id(user_id: i64, template_id: &str, document_id: &str, table_id: &str) -> String {
+pub fn binding_id(user_id: i64, template_id: &str, document_path: &str, table_id: &str) -> String {
     let digest =
-        Sha256::digest(format!("{user_id}:{template_id}:{document_id}:{table_id}").as_bytes());
+        Sha256::digest(format!("{user_id}:{template_id}:{document_path}:{table_id}").as_bytes());
     format!("desktop_{}", hex::encode(&digest[..16]))
 }
 
@@ -103,7 +103,7 @@ fn validate(mut input: SaveWorkflowInput) -> Result<SaveWorkflowInput, String> {
     if input.name.is_empty()
         || !template_pattern().is_match(&input.template_id)
         || input.fields.is_empty()
-        || input.target.document_id.is_empty()
+        || input.target.document_path.is_empty()
         || input.target.table_id.is_empty()
         || input.target.mappings().is_empty()
     {
@@ -179,7 +179,7 @@ impl Service {
     ) -> Result<HashMap<String, crate::service::TableField>, String> {
         let fields = self
             .writer
-            .fields(user_id, &target.document_id, &target.table_id)?;
+            .fields(user_id, &target.document_path, &target.table_id)?;
         let by_title: HashMap<String, TableField> = fields
             .into_iter()
             .map(|f| (normalize_title(&f.name), f))
@@ -219,7 +219,7 @@ impl Service {
                         c,
                         user_id,
                         &lookup.template_id,
-                        &lookup.target.document_id,
+                        &lookup.target.document_path,
                         &lookup.target.table_id,
                     )
                 })?;
@@ -235,7 +235,7 @@ impl Service {
         let binding = binding_id(
             user_id,
             &normalized.template_id,
-            &normalized.target.document_id,
+            &normalized.target.document_path,
             &normalized.target.table_id,
         );
         let (mut remote_source_id, mut public_url) = (String::new(), String::new());
@@ -257,7 +257,7 @@ impl Service {
             remote_source_id,
             public_url,
             published: normalized.is_published(),
-            document_id: normalized.target.document_id.clone(),
+            document_path: normalized.target.document_path.clone(),
             table_id: normalized.target.table_id.clone(),
             fields_json: serde_json::to_string(&normalized.fields).map_err(|e| e.to_string())?,
             target_json: serde_json::to_string(&normalized.target).map_err(|e| e.to_string())?,
@@ -304,7 +304,7 @@ impl Service {
             published: Some(input.published.unwrap_or(workflow.published)),
         };
         let normalized = validate(merged)?;
-        if normalized.target.document_id != current.document_id
+        if normalized.target.document_path != current.document_path
             || normalized.target.table_id != current.table_id
         {
             return Err("form sync target table cannot be changed".into());
@@ -509,7 +509,7 @@ impl Service {
         if !target.submission_id_field_title.is_empty() {
             let records =
                 self.writer
-                    .records(workflow.user_id, &target.document_id, &target.table_id)?;
+                    .records(workflow.user_id, &target.document_path, &target.table_id)?;
             for record in records {
                 if record
                     .fields
@@ -552,7 +552,7 @@ impl Service {
         }
         let record_id = self.writer.create(
             workflow.user_id,
-            &target.document_id,
+            &target.document_path,
             &target.table_id,
             &values,
         )?;
@@ -602,7 +602,7 @@ mod tests {
                 ..Field::default()
             }],
             target: Target {
-                document_id: " 1 ".into(),
+                document_path: " 1 ".into(),
                 table_id: "2".into(),
                 field_mappings: Some(vec![FieldMapping {
                     source_key: "email".into(),
@@ -618,7 +618,7 @@ mod tests {
     fn validates_input() {
         let ok = validate(input()).unwrap_or_default();
         assert_eq!(ok.name, "Leads");
-        assert_eq!(ok.target.document_id, "1");
+        assert_eq!(ok.target.document_path, "1");
         assert_eq!(ok.schedule.interval_minutes, 5);
         let mut bad = input();
         bad.template_id = "Lead_Form".into();

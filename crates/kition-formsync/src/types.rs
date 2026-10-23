@@ -46,7 +46,7 @@ pub struct DefaultValue {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Target {
     #[serde(default, deserialize_with = "nullable")]
-    pub document_id: String,
+    pub document_path: String,
     #[serde(default, deserialize_with = "nullable")]
     pub table_id: String,
     #[serde(default)]
@@ -77,7 +77,7 @@ impl Target {
     }
 
     pub fn normalized(mut self) -> Self {
-        self.document_id = self.document_id.trim().to_owned();
+        self.document_path = self.document_path.trim().to_owned();
         self.table_id = self.table_id.trim().to_owned();
         self.submission_id_field_title = self.submission_id_field_title.trim().to_owned();
         self.submitted_at_field_title = self.submitted_at_field_title.trim().to_owned();
@@ -150,7 +150,7 @@ pub struct Workflow {
     pub remote_source_id: String,
     pub public_url: String,
     pub published: bool,
-    pub document_id: String,
+    pub document_path: String,
     pub table_id: String,
     pub fields_json: String,
     pub target_json: String,

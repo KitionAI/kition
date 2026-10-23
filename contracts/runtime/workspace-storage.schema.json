@@ -51,7 +51,7 @@
       "additionalProperties": false,
       "required": [
         "documents",
-        "kitables",
+        "tables",
         "assets",
         "workflows",
         "agent_sessions",
@@ -60,7 +60,7 @@
       ],
       "properties": {
         "documents": { "type": "integer", "minimum": 0 },
-        "kitables": { "type": "integer", "minimum": 0 },
+        "tables": { "type": "integer", "minimum": 0, "description": "Table files (.ktable); the Table kit owns their contents." },
         "assets": { "type": "integer", "minimum": 0 },
         "workflows": { "type": "integer", "minimum": 0 },
         "agent_sessions": { "type": "integer", "minimum": 0 },
@@ -148,7 +148,7 @@
           "type": "string",
           "enum": [
             "document",
-            "kitable",
+            "table",
             "asset",
             "workflow",
             "workflow_run",
@@ -224,7 +224,7 @@
   "x-storage-boundary": {
     "portable": [
       "documents",
-      "kitables",
+      "tables",
       "assets",
       "workflow definitions and runs",
       "agent sessions and events",

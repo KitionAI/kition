@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn parses_tables_columns_and_indexes() {
         let schema = parse(MAIN_SQL);
-        assert_eq!(schema.tables.len(), 34);
+        assert_eq!(schema.tables.len(), 20);
         let users = schema.tables.iter().find(|table| table.name == "users");
         let users = users.unwrap_or_else(|| panic!("users table"));
         assert!(
@@ -138,11 +138,6 @@ mod tests {
                     .create_sql
                     .starts_with("CREATE UNIQUE INDEX IF NOT EXISTS")
         }));
-        let records = schema
-            .tables
-            .iter()
-            .find(|table| table.name == "kitable_records");
-        assert_eq!(records.map(|t| t.columns.len()), Some(7));
     }
 
     #[test]

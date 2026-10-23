@@ -25,7 +25,7 @@ fn from_row(row: &Row<'_>) -> rusqlite::Result<Workflow> {
         remote_source_id: text(5)?,
         public_url: text(6)?,
         published: int(7)? != 0,
-        document_id: text(8)?,
+        document_path: text(8)?,
         table_id: text(9)?,
         fields_json: text(10)?,
         target_json: text(11)?,
@@ -86,7 +86,7 @@ pub fn get_by_target(
     conn: &Connection,
     user_id: i64,
     template_id: &str,
-    document_id: &str,
+    document_path: &str,
     table_id: &str,
 ) -> AppResult<Option<Workflow>> {
     Ok(conn
@@ -95,7 +95,7 @@ pub fn get_by_target(
                 "SELECT {COLUMNS} FROM form_sync_workflows WHERE user_id = ?1 AND template_id = ?2 \
                  AND document_id = ?3 AND table_id = ?4 LIMIT 1"
             ),
-            params![user_id, template_id, document_id, table_id],
+            params![user_id, template_id, document_path, table_id],
             from_row,
         )
         .optional()?)
@@ -139,7 +139,7 @@ fn write(conn: &Connection, w: &Workflow, insert: bool) -> AppResult<()> {
             w.remote_source_id,
             w.public_url,
             w.published,
-            w.document_id,
+            w.document_path,
             w.table_id,
             w.fields_json,
             w.target_json,
@@ -182,4 +182,39 @@ pub fn save_item(
         params![workflow_id, submission_id, record_id, completed_at, now],
     )?;
     Ok(())
+}
+
+/// `path` after the table file (or folder) `from` moved to `to`; `None` when it is not under it.
+fn moved_path(path: &str, from: &str, to: &str) -> Option<String> {
+    if path == from {
+        Some(to.to_owned())
+    } else {
+        path.strip_prefix(&format!("{from}/"))
+            .map(|rest| format!("{to}/{rest}"))
+    }
+}
+
+/// Follows a table file renamed or moved from `from` to `to` (a folder moves every file under
+/// it): the form sync targets that name it name the new path. Answers how many changed.
+pub fn rename_document_path(conn: &Connection, from: &str, to: &str) -> AppResult<usize> {
+    let (from, to) = (
+        from.trim().trim_end_matches('/'),
+        to.trim().trim_end_matches('/'),
+    );
+    if from.is_empty() || to.is_empty() || from == to {
+        return Ok(0);
+    }
+    let mut changed = 0;
+    for mut workflow in list_all(conn)? {
+        let Some(path) = moved_path(&workflow.document_path, from, to) else {
+            continue;
+        };
+        let mut target = workflow.target();
+        target.document_path = path.clone();
+        workflow.document_path = path;
+        workflow.target_json = serde_json::to_string(&target).unwrap_or_default();
+        save(conn, &mut workflow)?;
+        changed += 1;
+    }
+    Ok(changed)
 }

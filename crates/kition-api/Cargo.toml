@@ -22,7 +22,7 @@ kition-ai = { workspace = true }
 kition-connections = { workspace = true }
 kition-kits = { workspace = true }
 kition-core = { workspace = true }
-kition-datadoc = { workspace = true }
+kition-tableclient = { workspace = true }
 kition-desktop = { workspace = true }
 kition-emailsync = { workspace = true }
 kition-formsync = { workspace = true }

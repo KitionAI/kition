@@ -254,7 +254,6 @@ fn app() -> Fixture {
         policy_path: Some(config.path().join("execpolicy.toml")),
         hooks: None,
         smtp: None,
-        tables: None,
         portal_base_url: String::new(),
         mcp_path: None,
         workflow_prompt: None,
@@ -1697,7 +1696,7 @@ fn golden_path() -> std::path::PathBuf {
 #[tokio::test(flavor = "multi_thread")]
 async fn panes_offer_the_expected_tools_and_prompt() {
     let mut scenarios: Vec<Scenario<'_>> = Vec::new();
-    for pane in ["document", "table", "workflow", "gallery"] {
+    for pane in ["document", "workflow", "gallery"] {
         scenarios.push(scenario(pane, "responses", json!({ "pane_context": pane })));
     }
     scenarios.push(scenario(
@@ -1711,17 +1710,16 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         json!({ "pane_context": "document", "active_document_path": "art/Cover.psd" }),
     ));
     scenarios.push(scenario(
-        "document-preview-table-task",
+        "document-preview",
         "responses",
-        json!({ "pane_context": "document", "execution_mode": "preview", "task_mode": "table" }),
+        json!({ "pane_context": "document", "execution_mode": "preview" }),
     ));
     scenarios.push(scenario(
-        "table-plan-and-prompt-context",
+        "prompt-context",
         "responses",
         json!({
-            "pane_context": "table",
+            "pane_context": "document",
             "prompt_context": "Extra context from the client.",
-            "table_plan_context": { "summary": "Import", "final_unique_by": ["url"], "estimated_create": 2 },
         }),
     ));
     scenarios.push(scenario(
@@ -1730,14 +1728,9 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         json!({ "pane_context": "workflow", "active_workflow_id": "wf-1" }),
     ));
     scenarios.push(scenario(
-        "table-active-research",
+        "document-research",
         "responses",
-        json!({ "pane_context": "table", "active_data_document_id": 1, "active_data_table_id": 2, "execution_mode": "research" }),
-    ));
-    scenarios.push(scenario(
-        "document-active-data-document",
-        "responses",
-        json!({ "pane_context": "document", "active_data_document_id": 1 }),
+        json!({ "pane_context": "document", "execution_mode": "research" }),
     ));
     scenarios.push(scenario(
         "whiteboard-context",
@@ -1793,9 +1786,9 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         json!({ "local_sources": [source("notes", &plain)] }),
     ));
     scenarios.push(scenario(
-        "table-local-sources-with-git",
+        "local-sources-with-git",
         "responses",
-        json!({ "pane_context": "table", "local_sources": [source("notes", &plain), source("repo", &git)] }),
+        json!({ "pane_context": "document", "local_sources": [source("notes", &plain), source("repo", &git)] }),
     ));
     // Attachments: a file the runtime cannot extract and an image, so the
     // attachment block and the image parts of the user message both show.

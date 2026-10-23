@@ -41,7 +41,6 @@ pub struct AgentConfig {
     pub policy_path: Option<PathBuf>,
     pub hooks: Option<HookDispatch>,
     pub smtp: Option<SmtpConfigurator>,
-    pub tables: Option<kition_datadoc::DataDocState>,
     pub portal_base_url: String,
     pub mcp_path: Option<PathBuf>,
     pub workflow_prompt: Option<WorkflowPrompt>,
@@ -57,7 +56,6 @@ struct Inner {
     policy: RwLock<Policy>,
     hooks: Option<HookDispatch>,
     smtp: Option<SmtpConfigurator>,
-    tables: Option<kition_datadoc::DataDocState>,
     portal_base_url: String,
     mcp: crate::mcp::Manager,
     workflow_prompt: Option<WorkflowPrompt>,
@@ -90,7 +88,6 @@ impl Agent {
                 policy: RwLock::new(Policy::load(config.policy_path)),
                 hooks: config.hooks,
                 smtp: config.smtp,
-                tables: config.tables,
                 portal_base_url: config.portal_base_url,
                 mcp: crate::mcp::Manager::new(config.mcp_path),
                 workflow_prompt: config.workflow_prompt,
@@ -130,10 +127,6 @@ impl Agent {
 
     pub fn smtp(&self) -> Option<&SmtpConfigurator> {
         self.inner.smtp.as_ref()
-    }
-
-    pub fn tables(&self) -> Option<&kition_datadoc::DataDocState> {
-        self.inner.tables.as_ref()
     }
 
     pub fn kits(&self) -> Option<&kition_kits::KitManager> {
@@ -272,10 +265,7 @@ pub struct Run {
     pub user_id: i64,
     pub session_id: i64,
     pub active_document_path: String,
-    pub active_data_document_id: i64,
-    pub active_data_table_id: i64,
     pub execution_mode: String,
-    pub task_mode: String,
     /// `live` or `draft`: whether kit tools edit the open document or a draft of it by default.
     pub kit_edit_mode: String,
     pub pane: String,
@@ -478,7 +468,6 @@ mod tests {
             policy_path: None,
             hooks: None,
             smtp: None,
-            tables: None,
             portal_base_url: String::new(),
             mcp_path: None,
             workflow_prompt: None,
