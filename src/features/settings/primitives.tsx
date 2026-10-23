@@ -76,6 +76,7 @@ export function SettingsSidebarHeader({ search, onSearchChange }: SettingsSideba
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={t('sidebar.searchPlaceholder')}
           aria-label={t('sidebar.searchPlaceholder')}
+          data-dialog-initial-focus
         />
       </div>
     </div>

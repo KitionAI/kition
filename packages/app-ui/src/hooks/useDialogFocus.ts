@@ -20,13 +20,14 @@ function focusableElements(container: HTMLElement): HTMLElement[] {
 }
 
 /**
- * Focus management for a dialog that mounts while open. On mount, focus
- * moves to the first tabbable descendant (or the container, which must
- * have `tabIndex={-1}`); Tab and Shift+Tab move through the dialog's own
- * tabbable elements and wrap inside; on unmount focus returns to the element
- * that had it before the dialog opened. Every Tab is handled here rather than
- * by the browser: WebKit (the desktop app's WKWebView, like Safari) tabs only
- * between text fields by default, skipping buttons, and would leave the dialog.
+ * Focus management for a dialog that mounts while open. On mount, focus moves to the descendant
+ * marked `data-dialog-initial-focus` (a search field, say, rather than a close button that would
+ * otherwise be first in tab order and show a focus ring the instant the dialog opens), or else
+ * the first tabbable descendant, or the container itself (which must have `tabIndex={-1}`); Tab
+ * and Shift+Tab move through the dialog's own tabbable elements and wrap inside; on unmount focus
+ * returns to the element that had it before the dialog opened. Every Tab is handled here rather
+ * than by the browser: WebKit (the desktop app's WKWebView, like Safari) tabs only between text
+ * fields by default, skipping buttons, and would leave the dialog.
  */
 export function useDialogFocus<T extends HTMLElement>() {
   const ref = useRef<T | null>(null)
@@ -36,7 +37,9 @@ export function useDialogFocus<T extends HTMLElement>() {
     if (!container) return
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (!container.contains(document.activeElement)) {
-      const initial = focusableElements(container)[0] ?? container
+      const candidates = focusableElements(container)
+      const preferred = container.querySelector<HTMLElement>('[data-dialog-initial-focus]')
+      const initial = (preferred && candidates.includes(preferred) ? preferred : candidates[0]) ?? container
       initial.focus()
     }
 

@@ -15,6 +15,16 @@ function Dialog({ withControls = true }: { withControls?: boolean }) {
   )
 }
 
+function DialogWithPreferredFocus() {
+  const ref = useDialogFocus<HTMLDivElement>()
+  return createElement(
+    'div',
+    { ref, role: 'dialog', tabIndex: -1, 'data-testid': 'dialog' },
+    createElement('button', { 'data-testid': 'close' }, 'Close'),
+    createElement('input', { 'data-testid': 'search', 'data-dialog-initial-focus': true }),
+  )
+}
+
 let container: HTMLDivElement
 let trigger: HTMLButtonElement
 let root: Root | null = null
@@ -74,6 +84,12 @@ describe('useDialogFocus', () => {
     middle.addEventListener('keydown', (event) => event.preventDefault())
     tab(middle)
     expect(document.activeElement).toBe(middle)
+  })
+
+  it('focuses the element marked data-dialog-initial-focus instead of the first tabbable one', async () => {
+    await act(async () => root!.render(createElement(DialogWithPreferredFocus)))
+    const search = container.querySelector('[data-testid="search"]') as HTMLElement
+    expect(document.activeElement).toBe(search)
   })
 
   it('focuses the container itself when it has no controls', async () => {
