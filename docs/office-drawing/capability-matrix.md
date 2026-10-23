@@ -91,8 +91,18 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   `shapes_and_charts_move_in_their_stacks…`,
   `objects_move_in_the_slides_stack…`, `a_shapes_adjust_handle_reshapes_it…`)
   and the Word and Sheet `web/tests/drawing.mjs` runs in Chromium and WebKit.
-  Still open in Phase 2: grouping through the shared commands, connectors,
-  gradient and effect formatting, and rich text in shapes.
+  Groups (`KitDrawing 1.4`, DR22): `drawing.group` and `drawing.ungroup` in
+  Slide and Word, with a group described as kind `group` and its `members`
+  (their ids kept through grouping and, in Word, through saving); a group
+  moves, resizes and turns with its members, and a member is described where
+  the group shows it but is changed through its group (`unsupported`
+  otherwise). Word's editor adds objects to the selection with Shift, and
+  Shape Format's shared Group and Ungroup run the commands (Word
+  `web/tests/drawing.mjs`, Chromium and WebKit). Sheet does not offer groups
+  yet: its groups are a key on each member and its editor selects one object,
+  so the shared buttons stay disabled there.
+  Still open in Phase 2: grouping in Sheet, connectors, gradient and effect
+  formatting, and rich text in shapes.
 
 ## Charts
 
