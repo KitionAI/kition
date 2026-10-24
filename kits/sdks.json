@@ -224,6 +224,18 @@
       }
     }
   },
+  "note": {
+    "repository": "KitionAI/kition-note",
+    "crate": "kition-note-sdk",
+    "module": "kition_note_sdk",
+    "class": "NoteDocument",
+    "name": "Notes.md",
+    "text": true,
+    "edit": {
+      "command": "text.insert",
+      "params": { "at": 0, "text": "# Notes\n" }
+    }
+  },
   "document": {
     "repository": "KitionAI/kition",
     "path": "packages/document-kit",

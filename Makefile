@@ -1,6 +1,6 @@
 # Kit (Photo, Film, Vector, Effect, Design, CAD, Slide, Word, Sheet, PDF, Table, Board) shortcuts for building, trying, and testing the kits.
 # See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kition-photo,
-# ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-word, ../kition-sheet, ../kition-pdf, ../kition-table, ../kition-board); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-word, ../kition-sheet, ../kition-pdf, ../kition-table, ../kition-board, ../kition-note); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
 #   make kit-dev      build what is missing, then run Kition with the kits
@@ -21,8 +21,9 @@ KIT_SHEET_REPO ?= $(REPO_ROOT)/../kition-sheet
 KIT_PDF_REPO ?= $(REPO_ROOT)/../kition-pdf
 KIT_TABLE_REPO ?= $(REPO_ROOT)/../kition-table
 KIT_BOARD_REPO ?= $(REPO_ROOT)/../kition-board
+KIT_NOTE_REPO ?= $(REPO_ROOT)/../kition-note
 # Each kit's package (its own editor and its engine, Kit UI protocol), built into public/kits/<kit>-ui.
-KIT_UIS := photo film vector effect design cad slide word sheet pdf table board
+KIT_UIS := photo film vector effect design cad slide word sheet pdf table board note
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -33,7 +34,7 @@ E2E_PORT ?= 3123
 KIT_E2E := e2e/slide-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kdm-smoke.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
-SDK_KITS := film vector effect design cad slide word sheet pdf table board
+SDK_KITS := film vector effect design cad slide word sheet pdf table board note
 kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kit-$(1)
 SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).

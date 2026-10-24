@@ -82,15 +82,24 @@ check('contract version is supported', () => {
   assert(version <= SUPPORTED_CONTRACT, `the SDK needs contract ${version}; this checker knows ${SUPPORTED_CONTRACT}`)
   return `contract ${version}`
 })
-check('bad bytes are an error, not a crash', () => {
-  let failed = false
-  try {
+// A text format (`text: true` in kits/sdks.json, the note's Markdown) has no bad bytes: every byte
+// sequence is a file of it, which the kit opens (invalid UTF-8 read-only). It must not crash.
+if (entry?.text) {
+  check('any bytes open, without a crash', () => {
     Document.open(name, new Uint8Array([1, 2, 3])).free()
-  } catch {
-    failed = true
-  }
-  assert(failed, 'open accepted three random bytes')
-})
+    Document.open(name, new Uint8Array([0x23, 0x20, 0xff, 0x0a])).free()
+  })
+} else {
+  check('bad bytes are an error, not a crash', () => {
+    let failed = false
+    try {
+      Document.open(name, new Uint8Array([1, 2, 3])).free()
+    } catch {
+      failed = true
+    }
+    assert(failed, 'open accepted three random bytes')
+  })
+}
 
 let fixture
 if (fixturePath) fixture = new Uint8Array(fs.readFileSync(fixturePath))

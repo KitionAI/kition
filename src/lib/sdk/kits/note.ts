@@ -155,10 +155,10 @@ export interface NoteCommands extends CommandMap {
   "comment.delete": { /** The comment's id. */ comment: string; /** The thread's id. */ thread: string }
   /** Set the line endings. Params: { eol: "lf" | "crlf", bom?: boolean }. Changes the document. */
   "file.setLineEndings": { /** Write a UTF-8 byte order mark; unchanged by default. */ bom?: boolean; /** LF or CRLF for every line. */ eol: "lf" | "crlf" }
-  /** Undo. Params: {}. Changes the document. */
-  "edit.undo": Record<string, never>
-  /** Redo. Params: {}. Changes the document. */
-  "edit.redo": Record<string, never>
+  /** Undo. Params: { scope?: "person" | "agent" }. Changes the document. */
+  "edit.undo": { /** Whose last step to undo: the person's or the agent's. By default the scope of whoever runs it (an agent undoes only its own steps). */ scope?: "person" | "agent" }
+  /** Redo. Params: { scope?: "person" | "agent" }. Changes the document. */
+  "edit.redo": { /** Whose last undone step to redo: the person's or the agent's. By default the scope of whoever runs it. */ scope?: "person" | "agent" }
 }
 
 /** A Note file opened with `openDocument<Note, NoteCommands>`. */

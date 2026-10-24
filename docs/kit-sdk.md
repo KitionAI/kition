@@ -232,7 +232,9 @@ Prove the contract twice: `check_contract` in the kit's Rust tests, and the
 built WebAssembly with `node scripts/check-kit-sdk.mjs --kit <kit>` after an
 entry in `kits/sdks.json`. `pnpm check:kit-sdks` checks every built kit. A
 third party checks any SDK with `--dir`, `--module`, `--class`, `--name`, and
-`--edit`.
+`--edit`. A text format (`"text": true`, the Note kit's Markdown) has no bad
+bytes: every byte sequence is a file of it, so the check opens any bytes
+without a crash instead of expecting random bytes to be refused.
 
 The kit package's build (`scripts/build-kit-ui.sh <kit>`, through the kit's
 `web/scripts/build-engine.sh`) builds the engine into `engine/`. It needs
