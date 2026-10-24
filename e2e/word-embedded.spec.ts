@@ -74,8 +74,8 @@ test('opens a Word document in the Word kit’s own editor, edits it there, and 
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Letter' }).first().click()
 
-    await expect(page.getByTestId('kit-frame')).toBeVisible()
-    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     await expect(kit.getByTestId('ribbon-tab-home')).toHaveText('Home')
     await expect(kit.getByTestId('word-style-Title')).toHaveAttribute('aria-pressed', 'true')

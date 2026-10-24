@@ -31,7 +31,7 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-KIT_E2E := e2e/slide-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/note-embedded.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kdm-smoke.spec.ts
+KIT_E2E := e2e/slide-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/note-embedded.spec.ts e2e/note-history.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kdm-smoke.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
 SDK_KITS := film vector effect design cad slide word sheet pdf table board note

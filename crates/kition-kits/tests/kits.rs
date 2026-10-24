@@ -289,12 +289,45 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
         std::fs::read_to_string(f.dir.path().join("art/note.mocktext")).unwrap_or_default(),
         "saved"
     );
-    for path in ["art/note.txt", "../x.mocktext", "missing/x.mocktext"] {
+    for path in [
+        "art/note.txt",
+        "../x.mocktext",
+        "attachments/.hidden/x.mockout",
+    ] {
         assert_eq!(
             put(&format!("/kits/files?path={path}")).await,
             StatusCode::BAD_REQUEST,
             "{path}"
         );
+    }
+    // A new file may start its own folders (an image pasted into a note goes to the note's
+    // attachments folder); a save never does: it writes over its document where it is.
+    assert_eq!(
+        put("/kits/files?path=attachments/art/note.mocktext/x.mockout").await,
+        StatusCode::OK
+    );
+    assert!(
+        f.dir
+            .path()
+            .join("attachments/art/note.mocktext/x.mockout")
+            .is_file()
+    );
+    assert_eq!(
+        put("/kits/files?path=missing/x.mocktext&document=missing/x.mocktext").await,
+        StatusCode::BAD_REQUEST
+    );
+    assert!(!f.dir.path().join("missing").exists());
+    // Never through a link out of the workspace.
+    #[cfg(unix)]
+    {
+        let outside = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        std::os::unix::fs::symlink(outside.path(), f.dir.path().join("out"))
+            .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(
+            put("/kits/files?path=out/new/x.mockout").await,
+            StatusCode::BAD_REQUEST
+        );
+        assert!(!outside.path().join("new").exists());
     }
 }
 

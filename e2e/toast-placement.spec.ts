@@ -1,24 +1,17 @@
 import { expect, test } from '@playwright/test'
 
-import { DEFAULT_DOC_PATH, failMarkdownFileWrites, mockDesktopBridge, readDocumentIdOf } from './helpers/markdownDocument'
-import { mockLocalWorkspaceApi } from './helpers/mockApi'
+import { openNote } from './helpers/noteKit'
 
-// Toasts must never cover the tab chrome: a persistent one (a save that keeps failing) would
-// otherwise hide the close button of the tab it is about.
+// Toasts must never cover the tab chrome: one about the workspace (here, a file no application
+// could open) would otherwise hide the close button of the tab beside it.
 
-test('a persistent save-failure toast leaves the tab strip clickable', async ({ page }) => {
+test('a workspace error toast leaves the tab strip clickable', async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 1280, height: 720 })
-  await mockLocalWorkspaceApi(page)
-  await mockDesktopBridge(page, '# Offline\n\nKeep this.\n')
-  await page.goto('/')
-  const content = page.getByTestId('document-editor').locator('.cm-content').first()
-  await expect(content).toBeVisible({ timeout: 15_000 })
-  await expect.poll(() => readDocumentIdOf(page, DEFAULT_DOC_PATH)).toBeTruthy()
-  await failMarkdownFileWrites(page, 'The folder is gone')
-
-  await content.locator('.cm-line', { hasText: 'Keep this.' }).first().click()
-  await page.keyboard.press('End')
-  await page.keyboard.type(' Unsaved.')
+  await openNote(page, baseURL!, 'Offline.md', '# Offline\n\nKeep this.\n', { 'data.json': Buffer.from('{}') }, {
+    desktop: { overrides: { open_workspace_file: () => 'No application can open data.json' } },
+  })
+  // A JSON file opens in the system's application, which fails here.
+  await page.locator('.document-tree-row', { hasText: 'data.json' }).first().click()
   const toast = page.locator('[data-sonner-toast]').first()
   await expect(toast).toBeVisible({ timeout: 10_000 })
 
@@ -28,6 +21,8 @@ test('a persistent save-failure toast leaves the tab strip clickable', async ({ 
   await expect.poll(async () => (await toast.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(tabBox!.y + tabBox!.height)
 
   // The close button takes the click (the toast does not intercept it).
+  const tabs = page.locator('.document-tab-list .document-tab')
+  const open = await tabs.count()
   await page.locator('.document-tab-list .document-tab-close').first().click({ timeout: 2_000 })
-  await expect(page.getByTestId('document-close-unsaved-confirm')).toBeVisible()
+  await expect(tabs).toHaveCount(open - 1)
 })

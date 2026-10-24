@@ -78,7 +78,7 @@ test("the agent's edit on a shared drawing shows the agent in every viewer's pre
     await useSyncServer(pageB, server.url)
     await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('vector-status')).toContainText('1 objects', { timeout: 60_000 })
     await expect(peers(pageB).first()).toHaveAttribute('data-peer', 'Alice', { timeout: 15_000 })
     await expect(peers(pageB).and(pageB.locator('[data-agent="true"]'))).toHaveCount(0)

@@ -1,11 +1,10 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
-import { KitIcon, kitIconComponent } from '@/components/KitIcon'
+import { KitIcon } from '@/components/KitIcon'
 import { FileInput, FolderPlus, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { documentCreateFormatOptions, type DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 
 type WorkspaceCreateMenuVariant = 'workspace' | 'tableFile'
 type WorkspaceCreateMenuPlacement = 'top' | 'bottom'
@@ -22,7 +21,7 @@ const ESTIMATED_GROUPED_MENU_HEIGHT = 440
 const CREATE_GROUPS: readonly KitCreateGroup[] = ['documents', 'data', 'visual', 'media']
 /** Item order within the groups. Kition's own file types and the kits mix
  *  freely; a kit not listed here goes last in its group. */
-const CREATE_ORDER: readonly string[] = ['markdown', 'word', 'pdf', 'layout', 'table', 'sheet', 'slide', 'board', 'design', 'vector', 'photo', 'cad', 'video', 'effect']
+const CREATE_ORDER: readonly string[] = ['note', 'word', 'pdf', 'layout', 'table', 'sheet', 'slide', 'board', 'design', 'vector', 'photo', 'cad', 'video', 'effect']
 
 type CreateItem = {
   id: string
@@ -41,7 +40,6 @@ export function WorkspaceCreateMenu({
   placement = 'bottom',
   anchorEl,
   onCreateFolder,
-  onCreateDocument,
   onCreateDesign,
   kitCreations,
   onCreateForm,
@@ -56,7 +54,6 @@ export function WorkspaceCreateMenu({
    *  legacy callers keep working unchanged. */
   anchorEl?: HTMLElement | null
   onCreateFolder: () => void
-  onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
@@ -73,17 +70,6 @@ export function WorkspaceCreateMenu({
   }
 
   const createItems: CreateItem[] = [
-    ...documentCreateFormatOptions.map<CreateItem>((item) => {
-      const FormatIcon = resolveWorkspaceCreateIcon()
-      return {
-        id: item.value,
-        group: 'documents' as const,
-        label: t('createMenu.format.' + item.value),
-        icon: <FormatIcon className="size-4" />,
-        extension: item.value === 'markdown' ? 'md' : undefined,
-        onClick: () => onCreateDocument(item.value),
-      }
-    }),
     ...(onCreateDesign ? [{ id: 'design', group: 'visual', label: t('design:suite'), icon: <KitIcon kit="design" small className="size-4" />, testId: 'workspace-create-design', onClick: onCreateDesign } satisfies CreateItem] : []),
     ...(kitCreations ?? []).map<CreateItem>((kit) => ({
       id: kit.id,
@@ -207,10 +193,6 @@ const PORTABLE_EXTENSIONS = new Set(['md', 'docx', 'xlsx', 'pptx', 'pdf', 'psd',
 
 function portableExtension(extension: string) {
   return PORTABLE_EXTENSIONS.has(extension) ? extension : undefined
-}
-
-function resolveWorkspaceCreateIcon() {
-  return kitIconComponent('document', { small: true })
 }
 
 // Anchored menu placement: pin the top-left of the menu near the

@@ -71,8 +71,8 @@ test('opens slides in the Slide kit’s own editor, edits it there, and saves it
     await page.locator('.document-tree-row', { hasText: 'Launch' }).first().click()
 
     // Kition shows the kit's editor in a frame, and the kit draws everything in it.
-    await expect(page.getByTestId('kit-frame')).toBeVisible()
-    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(kit.getByTestId('ribbon-tab-home')).toHaveText('Home')
     await expect(kit.getByTestId('slides-slide-1')).toBeVisible()

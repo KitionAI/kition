@@ -15,14 +15,6 @@ export function requireNoteKit() {
 }
 
 /**
- * Until the Note kit replaces Kition's native Markdown editor, a development build opens `.md`
- * files in it with this flag (`noteKitForDevelopment` in kitEditors.ts).
- */
-async function openMarkdownInNoteKit(page: Page) {
-  await page.addInitScript(() => window.localStorage.setItem('kition.dev.noteKit', '1'))
-}
-
-/**
  * Notes save themselves a second after a change; specs that check unsaved edits and Save turn
  * that off (the kit's storage key `kit.note.autosave`), unless `autosave` is set.
  */
@@ -38,17 +30,20 @@ async function noteAutosave(page: Page, on: boolean) {
  */
 export async function openNote(page: Page, baseURL: string, name: string, text: string, others: Record<string, Buffer> = {}, options: Parameters<typeof openKitWorkspace>[3] & { autosave?: boolean } = {}) {
   requireNoteKit()
-  await openMarkdownInNoteKit(page)
   await noteAutosave(page, options.autosave === true)
   const opened = await openInKitFrame(page, baseURL, name, Buffer.from(text), others, options)
   await expect(opened.kit.getByTestId('note-editor')).toBeVisible({ timeout: 60_000 })
   return opened
 }
 
-/** The Note kit's page in the frame of `name` (for `evaluate`). */
+/** The Note kit's page in the active kit tab (for `evaluate`). */
 export async function noteFrame(page: Page): Promise<Frame> {
-  let found: Frame | undefined
-  await expect.poll(() => (found = page.frames().find((frame) => frame.url().includes('/kits/note-ui/'))) !== undefined).toBe(true)
+  let found: Frame | null = null
+  await expect.poll(async () => {
+    const element = await page.locator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]').elementHandle({ timeout: 1_000 }).catch(() => null)
+    found = (await element?.contentFrame()) ?? null
+    return found?.url().includes('/kits/note-ui/') ?? false
+  }).toBe(true)
   return found!
 }
 

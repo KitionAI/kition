@@ -455,7 +455,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
   }, [active, connection, path, preview])
 
   return (
-    <div className="kit-frame relative flex h-full min-h-0 flex-col" data-active={active ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
+    <div className="kit-frame relative flex h-full min-h-0 flex-col" data-active={active ? 'true' : undefined} data-ready={connection ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
       {preview ? null : <DocumentSchemaBanner path={path} kitName={kitName} kitVersion={kitVersion} />}
       <KitDraftControls connection={connection} kitId={kit.kitId} path={path} active={active} />
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}

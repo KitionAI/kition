@@ -93,7 +93,7 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
     // Open here: the slide file is made in the workspace as the same document and opens.
     await row.getByTestId('collab-synced-open').click()
     await expect(pageB.getByTestId('collab-synced-dialog')).toHaveCount(0, { timeout: 30_000 })
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Keynote.kitionslide'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

@@ -19,8 +19,8 @@ test('makes a new image with the engine in the Photo kit’s package and opens i
     await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled photo.psd'])
     expect(saves[0]!.bytes.subarray(0, 4).toString()).toBe('8BPS')
     // …then opened it in the kit's own editor, at the size the create menu asks for.
-    await expect(page.getByTestId('kit-frame')).toBeVisible()
-    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kit.getByTestId('photo-status')).toContainText('1920', { timeout: 60_000 })
   } finally {
     await host.dispose()

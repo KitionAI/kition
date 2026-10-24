@@ -66,8 +66,8 @@ test('makes a new board with the Board kit’s engine from the create menu and o
     await page.getByRole('group', { name: 'Visual' }).getByTestId('workspace-create-board').click()
     await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled board.kboard'])
     expect(await elementsOf(saves[0]!.bytes)).toBe(0)
-    await expect(page.getByTestId('kit-frame')).toBeVisible()
-    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kit.getByTestId('board-status')).toContainText('0 elements', { timeout: 60_000 })
   } finally {
     await host.dispose()

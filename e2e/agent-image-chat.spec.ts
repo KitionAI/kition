@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mockAgentTurn, type AgentTurnScript } from './helpers/agentStream'
-import { AGENT_WORKSPACE_DOC_PATH, openAgentWorkspace } from './helpers/markdownDocument'
+import { AGENT_WORKSPACE_DOC_PATH, openAgentWorkspace, openAgentPane } from './helpers/markdownDocument'
 
 const template = {
   id: 'launch', version: '2', title: 'Launch poster', description: 'A calm product poster.', operation: 'generate', category: 'poster',
@@ -20,7 +20,7 @@ async function openImageChat(page: Page, chatTarget = false) {
   await openAgentWorkspace(page, {
     capabilities: ['agent_image_generation_v1', ...(chatTarget ? ['agent_image_generation_chat_v1'] : [])],
   })
-  await page.getByRole('button', { name: 'Open AI Chat', exact: true }).click()
+  await openAgentPane(page)
   const newChat = page.getByRole('button', { name: 'New chat' })
   if (await newChat.isVisible().catch(() => false)) await newChat.click()
   await expect(page.getByTestId('agent-image-mode')).toBeVisible()

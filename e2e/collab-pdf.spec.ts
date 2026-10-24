@@ -94,7 +94,7 @@ test('co-edits a PDF between two windows: a comment and a form fill live, and me
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('pdf-status')).toHaveText('Page 1 of 2', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Form.pdf'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

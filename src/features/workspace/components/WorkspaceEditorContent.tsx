@@ -20,7 +20,6 @@ import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEm
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@kition/app-ui/utils'
-import { noteKitForDevelopment } from './kits/kitEditors'
 import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
@@ -48,7 +47,6 @@ const DocumentRevisionReview = lazy(() =>
 const MarkdownSourceEditor = lazy(() =>
   import('@/features/document/components/MarkdownSourceEditor').then((module) => ({ default: module.MarkdownSourceEditor })),
 )
-const KitFilePane = lazy(() => import('./kits/KitFilePane').then((module) => ({ default: module.KitFilePane })))
 const WorkspaceMediaPanel = lazy(() =>
   import('@/features/workspace/components/WorkspaceMediaPanel').then((module) => ({ default: module.WorkspaceMediaPanel })),
 )
@@ -333,7 +331,7 @@ export function WorkspaceEditorContent({
               activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'file-viewer' && 'is-active',
             )}
           >
-            <EditorPaneBoundary>
+            <EditorPaneBoundary paneId="file">
               <WorkspaceFileViewerPane
                 path={tab.path}
                 format={tab.format}
@@ -386,8 +384,8 @@ export function WorkspaceEditorContent({
               />
             </Suspense>
           ) : null}
-          {/* A Markdown document a newer kit edited (Kit Standard 2.0 rules M5a and M20) says so; the Note kit's own frame does for it. */}
-          {activeDocumentSession && !noteKitForDevelopment(activeDocumentSession.path) ? (
+          {/* A Markdown document a newer kit edited (Kit Standard 2.0 rules M5a and M20) says so. */}
+          {activeDocumentSession ? (
             <DocumentSchemaBanner path={activeDocumentSession.path} kitName={t('documentSchema.kits.document')} />
           ) : null}
           {editorMode === 'source' || editorMode === 'split' ? (
@@ -419,8 +417,7 @@ export function WorkspaceEditorContent({
             </>
           ) : null}
           <div className="workspace-document-shell__body">
-            {/* A document open in the Note kit (development only) has the kit's own comments. */}
-            {activeDocumentSession && hasActiveDocument && !noteKitForDevelopment(activeDocumentSession.path) ? (
+            {activeDocumentSession && hasActiveDocument ? (
               <Suspense fallback={null}>
                 <DocumentComments key={activeDocumentSession.path} session={activeDocumentSession} path={activeDocumentSession.path} readOnly={editorLocked} />
               </Suspense>
@@ -500,15 +497,13 @@ export function WorkspaceEditorContent({
                       onAgentInsertionContextChange={onAgentInsertionContextChange}
                     />
                   )
-                  // Development only: the Note kit, before it replaces this editor (`NOTE_KIT_DEV_FLAG`).
-                  const noteKit = noteKitForDevelopment(entry.document.path)
                   return (
                     <div
                       key={tab.uid || tab.path}
                       className="document-rich-editor-stack__pane is-active"
                     >
                       <EditorPaneBoundary paneId="document">
-                        {noteKit ? <KitFilePane kit={noteKit} path={entry.document.path} active preview={nativeEditor} /> : nativeEditor}
+                        {nativeEditor}
                       </EditorPaneBoundary>
                     </div>
                   )

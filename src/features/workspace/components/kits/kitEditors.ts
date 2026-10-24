@@ -81,27 +81,9 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   // Kition's host features (workflows, form and email sync) reach a table's records through the kit too.
   kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
   kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
+  // Markdown notes (`.md`, `.markdown`); US Letter, in points, for its pages.
+  kit('note', 'NoteDocument', { format: 'markdown', icon: 'document', create: { id: 'note', extension: KIT_CREATE_EXTENSION.note, baseName: 'Untitled note', size: { width: 612, height: 792 }, label: 'createMenu.format.note', group: 'documents' } }),
 ]
-
-/**
- * The Note kit (`kit.note`, KitionAI/kition-note) for Markdown files, before it replaces Kition's
- * native document editor: a development build opens `.md` and `.markdown` files in it when
- * `localStorage['kition.dev.noteKit']` is `'1'`, as the note e2e specs do. Without the kit's
- * package the native editor shows (`preview`).
- */
-const NOTE_KIT: KitEditorEntry = kit('note', 'NoteDocument', { format: 'markdown', icon: 'document', preview: true })
-
-const NOTE_KIT_DEV_FLAG = 'kition.dev.noteKit'
-
-/** The Note kit, when this development build opens `path` in it (`NOTE_KIT_DEV_FLAG`). */
-export function noteKitForDevelopment(path: string): KitEditorEntry | null {
-  if (!import.meta.env.DEV || !/\.(md|markdown)$/i.test(path)) return null
-  try {
-    return window.localStorage.getItem(NOTE_KIT_DEV_FLAG) === '1' ? NOTE_KIT : null
-  } catch {
-    return null
-  }
-}
 
 const availability = new Map<string, Promise<boolean>>()
 

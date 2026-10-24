@@ -353,6 +353,10 @@
     "unavailableTitle": "La modification des tableaux blancs n’est pas disponible dans cette version",
     "unavailableBody": "Les tableaux blancs s’ouvrent dans Kition lorsque le moteur Board est inclus."
   },
+  "noteKit": {
+    "unavailableTitle": "La modification des notes n’est pas disponible dans cette version",
+    "unavailableBody": "Les notes s’ouvrent dans Kition lorsque le moteur de notes est inclus."
+  },
   "collab": {
     "share": "Partager pour coédition",
     "sharing": "Partage…",

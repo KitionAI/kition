@@ -47,6 +47,13 @@ test('edits, comments on, and saves a note: the file keeps its line endings and 
   if (canReadBlobBodies(browserName)) {
     expect(saves[0].bytes.toString('utf8')).toBe('# Plan\r\n\r\nGoals for the quarter. Then grow.\r\n\r\n- Hire\r\n- Ship\r\n')
   }
+
+  // Opened again, the note has its comment back: Kition kept the replica beside the file.
+  await page.reload()
+  const again = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
+  await expect(again.getByTestId('note-editor')).toBeVisible({ timeout: 60_000 })
+  await expect(again.locator('.cm-content')).toContainText('Then grow.')
+  await expect(again.getByTestId('note-comments-count')).toHaveText('1', { timeout: 30_000 })
 })
 
 test('a note follows its file changed on disk: in place without unsaved edits, by the person’s choice with them', async ({ page, baseURL }) => {
@@ -89,4 +96,40 @@ test('a note saves itself a moment after the last change', async ({ page, baseUR
   await expect(kit.getByTestId('note-unsaved')).toHaveCount(0)
   expect(saves.every((save) => save.path === name)).toBe(true)
   if (canReadBlobBodies(browserName)) expect(saves.at(-1)!.bytes.toString('utf8')).toBe('# Plan\n\nGoals for the quarter. Saved by itself.\n')
+})
+
+test('keeps a CRLF note with a byte order mark byte for byte, unedited and edited', async ({ page, baseURL, browserName }) => {
+  test.skip(!canReadBlobBodies(browserName), 'the saved bytes are read from the request body')
+  const name = 'Bom.md'
+  const original = '\ufeff# Bom\r\n\r\nFirst line.\r\n'
+  const { kit, saves } = await openNote(page, baseURL!, name, original, {}, { persist: true })
+  await expect(kit.locator('.cm-content')).toContainText('First line.')
+  await kit.locator('.cm-line', { hasText: 'First line.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' Edited.')
+  await kit.getByTestId('note-save').click()
+  await expect.poll(() => saves.length).toBeGreaterThan(0)
+  const saved = saves.at(-1)!.bytes
+  expect([...saved.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+  expect(saved.toString('utf8')).toBe('\ufeff# Bom\r\n\r\nFirst line. Edited.\r\n')
+})
+
+test('an image pasted into a note is kept in the workspace, beside the note in its attachments', async ({ page, baseURL, browserName }) => {
+  const name = 'Notes/Pictures.md'
+  const { kit, saves } = await openNote(page, baseURL!, name, '# Pictures\n\nThe end.\n', {}, { persist: true })
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGMIc70CRAwQCgAmOgW99kNaOgAAAABJRU5ErkJggg==', 'base64')
+  await kit.locator('.cm-line', { hasText: 'The end.' }).click()
+  await kit.locator('.cm-content').evaluate((content, bytes) => {
+    const view = (content as HTMLElement & { cmTile: { root: { view: { focus(): void; contentDOM: HTMLElement } } } }).cmTile.root.view
+    view.focus()
+    const data = new DataTransfer()
+    data.items.add(new File([new Uint8Array(bytes)], 'dot.png', { type: 'image/png' }))
+    view.contentDOM.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  }, [...png])
+  // Kition writes it as a new file (never replacing one) in the note's attachments folder.
+  await expect.poll(() => saves.map((save) => save.path ?? '').find((path) => path.startsWith('attachments/Notes/Pictures.md/pasted-')), { timeout: 15_000 }).toBeTruthy()
+  if (canReadBlobBodies(browserName)) expect(saves.find((save) => save.path?.startsWith('attachments/'))!.bytes.equals(png)).toBe(true)
+  // The note links it relative to its folder, and shows it.
+  await expect.poll(() => noteText(page)).toContain('](../attachments/Notes/Pictures.md/pasted-')
+  await expect.poll(() => kit.locator('.cm-content img').evaluateAll((images) => images.some((image) => (image as HTMLImageElement).naturalWidth === 2)), { timeout: 15_000 }).toBe(true)
 })

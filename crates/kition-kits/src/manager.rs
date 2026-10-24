@@ -48,8 +48,9 @@ pub struct KitDefinition {
     pub base_name: &'static str,
     /// Whether the kit's own editor can be embedded in a desktop tab.
     pub embeds: bool,
-    /// Extensions the kit's in-page editor exports to, for example `mp4` from a video project.
-    /// Exports are only ever new files: `write_file` never replaces an existing one with them.
+    /// Extensions the kit's in-page editor writes as new files: its exports (`mp4` from a video
+    /// project) and the files it keeps beside its documents (images pasted into a note). They are
+    /// only ever new files: `write_file` never replaces an existing one with them.
     pub exports: &'static [&'static str],
     /// How the agent's tools for this kit read (`kit.json` `agent`).
     pub agent: KitAgent,
@@ -325,7 +326,7 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[("md", "markdown")],
         base_name: "Untitled note",
         embeds: false,
-        exports: &["html", "pdf"],
+        exports: &["html", "pdf", "png", "jpg", "gif", "webp", "svg", "avif"],
         agent: KitAgent {
             prefix: "note",
             noun: "note",
@@ -1409,12 +1410,16 @@ impl KitManager {
                 }
             }
         }
-        let parent = target
-            .parent()
-            .filter(|parent| parent.is_dir())
-            .ok_or_else(|| {
-                KitError::InvalidPath(format!("the folder of `{path}` does not exist"))
-            })?;
+        let missing = || KitError::InvalidPath(format!("the folder of `{path}` does not exist"));
+        let parent = target.parent().ok_or_else(missing)?;
+        if !parent.is_dir() {
+            // A new file may start a folder of its own (an image pasted into a note goes to the
+            // note's attachments folder); a save writes over its document where it is.
+            match write {
+                FileWrite::New => self.make_folders(path, parent)?,
+                FileWrite::Save { .. } => return Err(missing()),
+            }
+        }
         let name = target
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
@@ -1430,6 +1435,32 @@ impl KitManager {
             });
         }
         Ok(())
+    }
+
+    /// Makes the missing folders of a new file at `path` (`folder`, inside the workspace): never
+    /// through a link out of the workspace, and never a hidden folder.
+    fn make_folders(&self, path: &str, folder: &Path) -> Result<(), KitError> {
+        let workspace = self.workspace()?;
+        let invalid = || KitError::InvalidPath(format!("`{path}` is not a workspace path"));
+        let mut existing = folder;
+        while !existing.exists() {
+            existing = existing.parent().ok_or_else(invalid)?;
+        }
+        let real = std::fs::canonicalize(existing).map_err(|_| invalid())?;
+        if !real.starts_with(workspace) || !real.is_dir() {
+            return Err(invalid());
+        }
+        let made = folder.strip_prefix(existing).map_err(|_| invalid())?;
+        if made
+            .components()
+            .any(|part| part.as_os_str().to_string_lossy().starts_with('.'))
+        {
+            return Err(invalid());
+        }
+        std::fs::create_dir_all(real.join(made)).map_err(|error| KitError::Kit {
+            reason: Some(ErrorReason::IoError),
+            message: format!("could not make the folder of `{path}`: {}", error.kind()),
+        })
     }
 
     /// Asks every running kit, headless and embedded, to exit.

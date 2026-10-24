@@ -15,9 +15,19 @@ import { stampFromHeaders, type KitHost } from '../sdk/kitHost'
 import type { StoredReplica } from '../host/mountKit'
 import { runtimeFetch } from '@/services/runtimeAuth'
 
+/**
+ * Whether the app's own page answered instead of the runtime's file service: the web preview runs
+ * no runtime, and its server answers any path with the app.
+ */
+function answeredWithTheApp(response: Response, url: string, path: string) {
+  const sameOrigin = typeof window !== 'undefined' && new URL(response.url || url, window.location.href).origin === window.location.origin
+  return sameOrigin && /text\/html/i.test(response.headers.get('content-type') ?? '') && !/\.html?$/i.test(path)
+}
+
 async function readFile(url: string, path: string) {
   const response = await runtimeFetch(url, { cache: 'no-store' })
   if (!response.ok) throw new Error(`could not read ${path} (${response.status})`)
+  if (answeredWithTheApp(response, url, path)) throw new Error("Kits read files through Kition's runtime, which the web preview does not run.")
   return { bytes: await response.arrayBuffer(), stamp: stampFromHeaders(response.headers) }
 }
 

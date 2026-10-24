@@ -477,7 +477,6 @@ export function WorkspaceTree({
                             variant={createMenuVariant ?? 'workspace'}
                             anchorEl={createMenuAnchorEl}
                             onCreateFolder={onCreateFolder ?? (() => undefined)}
-                            onCreateDocument={onCreateDocument ?? (() => undefined)}
                             onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}

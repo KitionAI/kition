@@ -58,7 +58,7 @@ test('Bob sees the shape Alice selected on a shared slide, outlined with her nam
     await useSyncServer(pageB, server.url)
     await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 1', { timeout: 60_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
     await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 15_000 }).toBe('same')

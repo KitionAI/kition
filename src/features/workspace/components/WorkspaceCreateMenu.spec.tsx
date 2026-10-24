@@ -16,9 +16,9 @@ describe('WorkspaceCreateMenu', () => {
       root = createRoot(container)
       root.render(createElement(WorkspaceCreateMenu, {
         open: true,
-        onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
         kitCreations: [
+          { id: 'note', label: 'createMenu.format.note', kit: 'document', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: onCreateBoard },
           { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
           { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kitionslide', onCreate: vi.fn() },
@@ -34,9 +34,9 @@ describe('WorkspaceCreateMenu', () => {
       label: group.getAttribute('aria-label'),
       items: Array.from(group.querySelectorAll('button')).map((button) => button.textContent?.trim()),
     }))
-    // Kition's own types and the kits mix; portable formats show their extension.
+    // Every type is a kit's or Kition's own; portable formats show their extension.
     expect(groups).toEqual([
-      { label: 'Documents', items: ['Document.md', 'Word.docx'] },
+      { label: 'Documents', items: ['Note.md', 'Word.docx'] },
       { label: 'Data', items: ['Table', 'Sheet.xlsx'] },
       { label: 'Visual', items: ['Slide', 'Board', 'Photo.psd'] },
       { label: 'Media', items: ['Film'] },
@@ -61,12 +61,11 @@ describe('WorkspaceCreateMenu', () => {
       root = createRoot(container)
       root.render(createElement(WorkspaceCreateMenu, {
         open: true,
-        onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
       }))
     })
 
-    expect(Array.from(container.querySelectorAll('[role="group"]')).map((group) => group.getAttribute('aria-label'))).toEqual(['Documents'])
+    expect(Array.from(container.querySelectorAll('[role="group"]')).map((group) => group.getAttribute('aria-label'))).toEqual([])
 
     await act(async () => root?.unmount())
     container.remove()
@@ -82,10 +81,10 @@ describe('WorkspaceCreateMenu', () => {
       root = createRoot(container)
       root.render(createElement(WorkspaceCreateMenu, {
         open: true,
-        onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
         onCreateDesign: vi.fn(),
         kitCreations: [
+          { id: 'note', label: 'createMenu.format.note', kit: 'document', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
           { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: vi.fn() },
           { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },

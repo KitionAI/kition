@@ -105,8 +105,8 @@ test('creates a table file from the New menu and opens it in the Table kit’s e
     // The page made the file with the kit's engine and wrote it to the workspace…
     await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled table.ktable'])
     // …then opened it in the kit's editor, with the kit's starter table.
-    await expect(page.getByTestId('kit-frame')).toBeVisible({ timeout: 60_000 })
-    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible({ timeout: 60_000 })
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kit.getByTestId('ktable-editor')).toBeVisible({ timeout: 60_000 })
     await expect(kit.getByTestId('table-title')).toHaveText('Untitled table.ktable')
     await expect(page.locator('.document-tree-row', { hasText: 'Untitled table' })).toBeVisible()
@@ -365,8 +365,8 @@ test('the tree lists a table file’s tables and dashboards, and opens the file 
 
     // The dashboard opens the file in the kit, showing that dashboard.
     await child('Overview').click()
-    await expect(page.getByTestId('kit-frame')).toBeVisible({ timeout: 60_000 })
-    const kit = page.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible({ timeout: 60_000 })
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kit.getByTestId(`dashboard-tab-${dashboard}`)).toHaveAttribute('aria-current', 'page', { timeout: 60_000 })
     await expect(kit.getByTestId('dashboard-editor-pane')).toBeVisible()
 
@@ -374,7 +374,7 @@ test('the tree lists a table file’s tables and dashboards, and opens the file 
     await child('People').click()
     await expect(kit.getByTestId(`table-tab-${people}`)).toHaveAttribute('aria-current', 'page')
     await expect(kit.getByTestId('ktable-editor')).toBeVisible()
-    await expect(page.getByTestId('kit-frame')).toHaveCount(1)
+    await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toHaveCount(1)
   } finally {
     await host.dispose()
   }

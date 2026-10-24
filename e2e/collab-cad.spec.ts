@@ -74,7 +74,7 @@ test('co-edits a CAD drawing between two windows: live, and merging edits made o
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(objects(kitB)).toHaveText('2 objects', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Floor Plan.dxf'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

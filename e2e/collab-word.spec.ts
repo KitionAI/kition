@@ -85,7 +85,7 @@ test('co-edits a Word document between two windows: live, and merging edits made
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Field Notes.docx'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
@@ -220,7 +220,7 @@ test('two windows typing and formatting one paragraph at once keep both texts an
     await useSyncServer(pageB, server.url)
     await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     const converged = async () =>

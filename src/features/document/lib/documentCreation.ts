@@ -17,14 +17,6 @@ const documentPlatformOptions: Array<{ value: DocumentPlatform; label: string; f
   { value: 'note', label: 'Note', folder: 'Notes' },
 ]
 
-export const documentCreateFormatOptions: Array<{
-  value: DocumentCreateFormat
-  label: string
-  description: string
-}> = [
-  { value: 'markdown', label: 'Document', description: 'Save as .md and edit in a single pane' },
-]
-
 export function getDocumentParentPath(path: string) {
   const index = path.lastIndexOf('/')
   return index > 0 ? path.slice(0, index) : ''

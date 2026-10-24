@@ -79,7 +79,11 @@ export async function openKitWorkspace(
     const target = new URL(route.request().url()).searchParams.get('path')
     const body = route.request().postDataBuffer() ?? Buffer.alloc(0)
     saves.push({ path: target, bytes: body })
-    if (persist && target) await fs.writeFile(path.join(host.root, target), body)
+    if (persist && target) {
+      // As the runtime does: a new file may start its own folder (a note's attachments).
+      await fs.mkdir(path.dirname(path.join(host.root, target)), { recursive: true })
+      await fs.writeFile(path.join(host.root, target), body)
+    }
     await fulfillJson(route, { code: 200, message: 'success', data: { path: target, bytes: body.length } })
   })
   // A spec's own answers, over the mocks above.
@@ -95,8 +99,8 @@ export async function openTreeFile(page: Page, name: string) {
   // A document in a folder: open the folder in the tree first.
   for (const folder of name.split('/').slice(0, -1)) await page.locator('.document-tree-row', { hasText: folder }).first().click()
   await page.locator('.document-tree-row', { hasText: (name.split('/').pop() ?? name).replace(/\.[^.]+$/, '') }).first().click()
-  await expect(page.getByTestId('kit-frame')).toBeVisible()
-  return page.frameLocator('[data-testid="kit-frame-window"]')
+  await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
+  return page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
 }
 
 /**

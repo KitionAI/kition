@@ -353,6 +353,10 @@
     "unavailableTitle": "此版本不支持编辑白板",
     "unavailableBody": "包含白板引擎时，白板文件会在 Kition 中打开。"
   },
+  "noteKit": {
+    "unavailableTitle": "此版本不支持编辑笔记",
+    "unavailableBody": "包含笔记引擎时，笔记会在 Kition 中打开。"
+  },
   "collab": {
     "share": "共享以协同编辑",
     "sharing": "正在共享…",

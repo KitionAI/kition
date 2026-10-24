@@ -115,7 +115,7 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('sheet-status')).toHaveText(/^Sheet1 · /, { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Budget.xlsx'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

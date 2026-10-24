@@ -58,8 +58,11 @@ The exit code of both must be 0. Fix failures before reporting completion.
   `export KITION_SKIP_E2E_HOOK=1`.
 - Codex has no blocking Stop hook and must run both commands manually.
 
-The first gate is `scripts/inspect-table-widget.sh`. It covers the three GFM
-table widget row and column button regressions.
+The first gate is `scripts/inspect-table-widget.sh`. It runs
+`e2e/note-table-widget.spec.ts`: the note kit's GFM table widget in `KitFrame`
+(row and column buttons, the column menu, keyboard navigation, undo of
+structural actions, and that each action changes only the lines it is about).
+It fails, and never skips, when the note kit package is not built.
 
 The second gate is `scripts/inspect-ktable.sh`, which runs
 `e2e/table-kit.spec.ts`: the Table kit's pinned package in `KitFrame` (create,

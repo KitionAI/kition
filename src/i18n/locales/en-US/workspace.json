@@ -353,6 +353,10 @@
     "unavailableTitle": "Board editing is not available in this build",
     "unavailableBody": "Boards open in Kition when the Board engine is included."
   },
+  "noteKit": {
+    "unavailableTitle": "Note editing is not available in this build",
+    "unavailableBody": "Notes open in Kition when the Note engine is included."
+  },
   "collab": {
     "share": "Share for co-editing",
     "sharing": "Sharing…",

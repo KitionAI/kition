@@ -71,7 +71,7 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Logo' }).first().click()
     // The editor offers the open drawing to the bridge as soon as it has opened it.
-    const view = page.frameLocator('[data-testid="kit-frame-window"]')
+    const view = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     const marks = { unsaved: 'vector-unsaved', agent: 'vector-agent-edited' }
     await expect(view.getByTestId('vector-status')).toContainText('objects', { timeout: 30_000 })
 

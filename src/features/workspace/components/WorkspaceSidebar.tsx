@@ -236,7 +236,6 @@ export function WorkspaceSidebar({
                   onCreateFolder={onCreateFolder}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
-                  onCreateDocument={onCreateDocument}
                 />
               </span>
               {onOpenWorkflows ? (

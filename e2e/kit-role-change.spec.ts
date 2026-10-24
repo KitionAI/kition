@@ -135,7 +135,7 @@ for (const saved of [true, false]) {
       for (const readOnly of [true, false, true, false]) {
         await setReadOnly(page, kit, readOnly)
         await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
-        await expect(page.getByTestId('kit-frame').getByRole('alert')).toHaveCount(0)
+        await expect(page.locator('[data-testid="kit-frame"][data-active="true"]').getByRole('alert')).toHaveCount(0)
         // Scripts run on editable documents only.
         if (!readOnly) expect(await titles(page)).toEqual(before)
       }

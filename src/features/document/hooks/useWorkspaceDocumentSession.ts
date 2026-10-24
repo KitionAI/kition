@@ -24,8 +24,8 @@ import {
 import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/lib/docstore/documentIndex'
 import {
   inferWorkspaceItemFormat,
-  isEditableWorkspaceFormat,
   isPreviewableWorkspaceFormat,
+  opensInDocumentTab,
   remapWorkspaceBranchPath,
 } from '@/features/workspace/lib/workspace'
 import { updateWorkspaceTreeDocumentItem } from '@/features/workspace/lib/workspaceTree'
@@ -342,6 +342,13 @@ export function useWorkspaceDocumentSession({
 
   function applyWorkspaceDocument(document: WorkspaceDocument) {
     const draft = readWorkspaceDocumentDraft(document)
+    // A note (or any file of a kit) opens in its file tab, wherever it was asked for from.
+    if (!opensInDocumentTab(draft.format)) {
+      writeLastActiveDocumentPath(document.path)
+      setActiveResourcePath(document.path)
+      onOpenFileViewerTab(document.path, draft.format)
+      return Promise.resolve()
+    }
     const existing = openedEntriesRef.current[document.path]
     // A known document keeps the entry (and session) it has; a fresh read only refreshes the file text.
     const entry: OpenedDocumentEntry = { document: existing?.format === draft.format ? { ...existing.document, ...document } : document, format: draft.format }
@@ -766,7 +773,7 @@ export function useWorkspaceDocumentSession({
     try {
       const treeFile = files.find((item) => item.path === path)
       const format = treeFile?.format || inferWorkspaceItemFormat(path)
-      if (!isEditableWorkspaceFormat(format)) {
+      if (!opensInDocumentTab(format)) {
         if (isPreviewableWorkspaceFormat(format)) {
           setActiveResourcePath(path)
           onOpenFileViewerTab(path, format)

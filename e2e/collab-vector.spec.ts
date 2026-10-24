@@ -97,7 +97,7 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('vector-status')).toContainText('2 objects', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Poster.kvector'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

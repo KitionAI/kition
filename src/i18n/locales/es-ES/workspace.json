@@ -353,6 +353,10 @@
     "unavailableTitle": "La edición de pizarras no está disponible en esta versión",
     "unavailableBody": "Las pizarras se abren en Kition cuando se incluye el motor de Board."
   },
+  "noteKit": {
+    "unavailableTitle": "La edición de notas no está disponible en esta versión",
+    "unavailableBody": "Las notas se abren en Kition cuando se incluye el motor de notas."
+  },
   "collab": {
     "share": "Compartir para coedición",
     "sharing": "Compartiendo…",

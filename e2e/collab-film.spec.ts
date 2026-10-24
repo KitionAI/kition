@@ -68,7 +68,7 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, { 'Shared/bars.mp4': clip }, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(clips(kitB)).toHaveCount(1, { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Trailer.kitionfilm'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })

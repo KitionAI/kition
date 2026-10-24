@@ -353,6 +353,10 @@
     "unavailableTitle": "A edição de quadros não está disponível nesta versão",
     "unavailableBody": "Os quadros abrem no Kition quando o mecanismo Board está incluído."
   },
+  "noteKit": {
+    "unavailableTitle": "A edição de notas não está disponível nesta versão",
+    "unavailableBody": "As notas abrem no Kition quando o mecanismo de notas está incluído."
+  },
   "collab": {
     "share": "Compartilhar para coedição",
     "sharing": "Compartilhando…",

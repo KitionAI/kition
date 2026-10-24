@@ -485,12 +485,11 @@ undoes in runs), and exchanges changes with the engine's replica
 (`WorkerRelay`); comments are the engine's commands, so a commenter's read-only
 session writes them under kit-ui's comment backstop. `model/schema.json` is
 kept equal to `documentSchema` by a test. `scripts/build-kit-ui.sh document`
-builds the package. Kition no longer opens `.md` files in it: the Note kit
-(`kit.note`, KitionAI/kition-note) replaces both it and the native editor. Until
-that cut-over, a development build opens `.md` files in the Note kit when
-`localStorage['kition.dev.noteKit']` is `'1'`; `e2e/note-embedded.spec.ts` and
-`e2e/note-table-widget.spec.ts` (run by the table gate beside
-`e2e/table-widget.spec.ts`) use it.
+builds the package. Kition no longer opens `.md` files in it: they open in the
+Note kit (`kit.note`, KitionAI/kition-note), registered in `KIT_EDITORS` like
+every kit. `e2e/note-embedded.spec.ts`, `e2e/note-history.spec.ts`,
+`e2e/collab-note.spec.ts`, and `e2e/note-table-widget.spec.ts` (the table gate)
+cover it in Kition.
 
 `packages/document-kit/src/engine/documentConvergence.spec.ts` runs the
 convergence suite on `MarkdownDocument`: random

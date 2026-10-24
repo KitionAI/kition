@@ -11,7 +11,8 @@
  * disk, raise the external-change event the app listens to, count the app's
  * writes, and make them fail (`window.__KITION_MARKDOWN_E2E_FILES__`).
  */
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { openKitWorkspace, openTreeFile } from './embeddedKit'
 
 import { installDocumentStoreBridge, readDocumentStoreState } from './documentStore'
 import { mockLocalWorkspaceApi } from './mockApi'
@@ -319,35 +320,41 @@ const AGENT_SETTINGS = JSON.stringify({
 })
 
 /**
- * A workspace whose Agent can send a turn, with one Markdown document open
+ * A workspace whose Agent can send a turn, with one note open in the Note kit
  * (`AGENT_WORKSPACE_DOC_PATH`): a model is set up, and the runtime reports `capabilities`.
+ * The workspace is the desktop host's, whose files kits read through Kition's file services.
  */
 export async function openAgentWorkspace(page: Page, options: { capabilities?: string[] } = {}) {
-  await mockLocalWorkspaceApi(page)
-  await mockDesktopBridge(page, '# Launch notes\n\nThree ideas for the launch.\n', {}, AGENT_WORKSPACE_DOC_PATH, {
-    secureValues: { 'kition.desktop.settings.v1': AGENT_SETTINGS },
+  const baseURL = test.info().project.use.baseURL!
+  const capabilities = options.capabilities ?? []
+  const { host } = await openKitWorkspace(page, baseURL, { [AGENT_WORKSPACE_DOC_PATH]: Buffer.from('# Launch notes\n\nThree ideas for the launch.\n') }, {
+    desktop: {
+      secureValues: { 'kition.desktop.settings.v1': AGENT_SETTINGS },
+      overrides: {
+        backend_status: () => ({
+          base_url: 'http://127.0.0.1:18101/api', health_url: 'http://127.0.0.1:18101/health', running: true, last_error: '', logs: '',
+          log_file: '', launch_mode: 'managed', binary_path: '', config_path: '', working_dir: '', command: '', capabilities,
+        }),
+      },
+    },
   })
-  await page.addInitScript((capabilities) => {
-    const bridge = (window as unknown as { kitionDesktop: Record<string, unknown> }).kitionDesktop
-    bridge.BackendStatus = async () => ({
-      base_url: 'http://127.0.0.1:18101/api',
-      health_url: 'http://127.0.0.1:18101/health',
-      running: true,
-      last_error: '',
-      logs: '',
-      log_file: '',
-      launch_mode: 'managed',
-      binary_path: '',
-      config_path: '',
-      working_dir: '',
-      command: '',
-      capabilities,
-    })
-    // A file dropped on the composer is imported into the workspace first.
-    bridge.ImportWorkspaceFile = async (request: { folder?: string; filename: string }) => ({
-      imported_path: `${String(request.folder || '').replace(/^\/+|\/+$/g, '')}/${request.filename}`.replace(/^\//, ''),
-    })
-  }, options.capabilities ?? [])
-  await page.goto('/')
-  await expect(page.locator('.cm-content')).toContainText('Three ideas for the launch.', { timeout: 20_000 })
+  // The note opens in the Note kit's editor, in Kition's kit frame.
+  await openTreeFile(page, AGENT_WORKSPACE_DOC_PATH)
+  const note = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
+  await expect(note.locator('.cm-content')).toContainText('Three ideas for the launch.', { timeout: 60_000 })
+  return host
+}
+
+/**
+ * Opens the Agent's pane as a person does: the floating launcher, or, while a kit's editor is the
+ * active tab (which hides the launcher), the kit's own Ask Agent.
+ */
+export async function openAgentPane(page: Page) {
+  const launcher = page.getByRole('button', { name: 'Open AI Chat', exact: true })
+  if (await launcher.isVisible().catch(() => false)) {
+    await launcher.click()
+    return
+  }
+  const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
+  await kit.locator('[data-kit-ui-id="action:agent"]').click()
 }

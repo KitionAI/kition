@@ -4212,8 +4212,9 @@
 
   /* A kit's editor reaches to the right edge with its own panels (a layer list and its buttons)
      and draws its own "Ask agent" in its menu bar, and the topbar keeps the Agent toggle; the
-     launcher would only cover the kit's controls, so it steps aside while a kit is in front. */
-  body:has(.kit-frame[data-active='true']) .agent-floating-launcher {
+     launcher would only cover the kit's controls, so it steps aside while a kit's editor is in
+     front (not while it is opening or could not open, when there is no Ask agent to use). */
+  body:has(.kit-frame[data-active='true'][data-ready='true']) .agent-floating-launcher {
     display: none;
   }
 

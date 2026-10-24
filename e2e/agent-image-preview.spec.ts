@@ -1,16 +1,17 @@
 import { expect, test } from '@playwright/test'
 import { mockAgentTurn } from './helpers/agentStream'
-import { openAgentWorkspace } from './helpers/markdownDocument'
+import { openAgentWorkspace, openAgentPane } from './helpers/markdownDocument'
 
 const imagePath = 'Agent/images/46/Edited poster.png'
 const imageURL = 'http://127.0.0.1:18101/workspace-files/Agent/images/46/Edited%20poster.png'
 
 for (const source of ['workspace path', 'runtime URL'] as const) {
   test(`opens the generated tool image from a ${source} inside the workspace`, async ({ page }, testInfo) => {
+    await openAgentWorkspace(page)
+    // After the workspace's own file service, so that this image wins over it.
     await page.route('**/workspace-files/Agent/images/46/Edited%20poster.png', (route) => route.fulfill({
       contentType: 'image/png', path: 'public/logo-mark.png',
     }))
-    await openAgentWorkspace(page)
     await page.evaluate((imagePath) => {
       const bridge = window.kitionDesktop!
       const read = bridge.ReadWorkspaceDocument!
@@ -19,7 +20,7 @@ for (const source of ['workspace path', 'runtime URL'] as const) {
         updated_at: '2026-09-09T00:00:00.000Z', size: 100,
       } : read(request)
     }, imagePath)
-    await page.getByRole('button', { name: 'Open AI Chat', exact: true }).click()
+    await openAgentPane(page)
     const newChat = page.getByRole('button', { name: 'New chat', exact: true })
     if (await newChat.isVisible().catch(() => false)) await newChat.click()
 

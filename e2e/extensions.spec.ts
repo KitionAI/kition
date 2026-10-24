@@ -232,7 +232,7 @@ export default async function (ctx) {
     await expect(frame).toHaveAttribute('sandbox', 'allow-scripts')
     const panel = page.frameLocator(`iframe[data-kition-panel="${EXTENSION}:${PANEL}"]`)
     await expect(panel.locator('.item')).toHaveText(['2quarterly business review'], { timeout: 30_000 })
-    const editor = await page.getByTestId('kit-frame').boundingBox()
+    const editor = await page.locator('[data-testid="kit-frame"][data-active="true"]').boundingBox()
     const side = await aside.boundingBox()
     expect(side!.x).toBeGreaterThanOrEqual(editor!.x + editor!.width - 1)
     await page.screenshot({ path: testInfo.outputPath('extension-panel.png') })
