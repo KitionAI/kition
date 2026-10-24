@@ -237,7 +237,7 @@ and checks read-only refusal.)*
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | Y | Y | Y | Y | Y | P | Y | Y |
+| Slide | P | Y | Y | Y | Y | Y | Y | Y | Y |
 | Word | P | P | Y | Y | Y | Y | Y | Y | Y |
 | Sheet | P | P | Y | Y | Y | Y | Y | Y | Y |
 
@@ -254,9 +254,13 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
   was a point test that pushed an undo step per pointer event; it is now the
   shared swept-path gesture, one step per drag. Saved ink (a group of `Ink N`
   freeforms) now reads back as ink instead of a group of shapes; pressure is
-  not kept in the file (read back as 0.5). The ink layer is one KDM properties
-  value: two people drawing on one slide at once keep one side's strokes
-  (open).
+  not kept in the file (read back as 0.5). In the replica (schema version 6,
+  2026-10-24) each stroke of the ink layer is its own entry, so strokes two
+  people draw on one slide at once all stay, and strokes they erase at once
+  are all gone (before, the layer was one value and one side's strokes were
+  lost). Evidence: `kdm-model` `tests/replicas.rs`
+  `strokes_two_people_draw_and_erase_on_one_slide_at_once_all_count` and the
+  schema 5 migration test.
 - **Word:** a stroke is a floating freeform (the existing `draw.stroke`); the
   editor now draws and erases with the pointer, which it could not before.
   Each stroke is its own inline object, so concurrent strokes merge.
