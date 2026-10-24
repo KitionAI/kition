@@ -1,15 +1,11 @@
 /**
- * Every open document co-editing can follow, whatever edits it: kit documents (a kit editor that
- * serves the `replica` capability, the Table kit among them) and Markdown documents. Each is offered as a
+ * Every open document co-editing can follow: the documents of kit editors that serve the `replica`
+ * capability (the Note and Table kits among them). Each is offered as a
  * `CollabDocument` whose relay side (`CollabReplica`) is only made when co-editing needs it
  * (`connect`), so a window that does not co-edit never touches a replica.
  */
-import { findOpenMarkdownDocument, followOpenMarkdownDocuments, type OpenMarkdownDocument } from '@/features/document/public'
 import { followKitConnections, mountedKitDocument, type MountedKitDocument } from '@/features/kits/public'
 import type { RelayReplica } from '@/lib/sync'
-
-/** The kit ids of the documents Kition edits itself (their KDM schemas' `kit`). */
-export const HOST_KITS = { document: 'kit.document' } as const
 
 /** A document's relay side, and what sharing it needs. */
 export type CollabReplica = RelayReplica & {
@@ -54,45 +50,19 @@ function kitDocument(document: MountedKitDocument): CollabDocument | null {
   }
 }
 
-/** A Markdown document: its replica lives in this page. */
-function pageDocument(open: OpenMarkdownDocument, kit: string): CollabDocument {
-  return {
-    path: open.path,
-    kit,
-    connect: async () => {
-      const { kdmRelayReplica } = await import('./kdmRelayReplica')
-      return {
-        ...kdmRelayReplica(open),
-        docId: async () => open.replica().docId,
-        save: open.save,
-        dispose: () => undefined,
-        schema: () => ({ reads: open.replica().schema.schemaVersion, newestAuthor: open.replica().authorSchemaVersion() }),
-      }
-    },
-  }
-}
-
 /**
  * Hears every co-editable document open now and every one opened later; the listener may answer
  * a cleanup for when that document closes (or when this subscription ends). Answers an unsubscribe.
  */
 export function followCollabDocuments(listener: Listener) {
-  const unfollows = [
-    followKitConnections((document) => {
-      const followed = kitDocument(document)
-      return followed ? listener(followed) : undefined
-    }),
-    followOpenMarkdownDocuments((document) => listener(pageDocument(document, HOST_KITS.document))),
-  ]
-  return () => {
-    for (const unfollow of unfollows) unfollow()
-  }
+  return followKitConnections((document) => {
+    const followed = kitDocument(document)
+    return followed ? listener(followed) : undefined
+  })
 }
 
 /** The co-editable document open at `path`, if any. */
 export function findCollabDocument(path: string): CollabDocument | null {
   const kit = mountedKitDocument(path)
-  if (kit) return kitDocument(kit)
-  const document = findOpenMarkdownDocument(path)
-  return document ? pageDocument(document, HOST_KITS.document) : null
+  return kit ? kitDocument(kit) : null
 }

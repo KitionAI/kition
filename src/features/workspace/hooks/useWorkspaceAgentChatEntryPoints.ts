@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 
 import type { useWorkspaceAgent } from '@/features/agent/public'
-import type { DocumentAskAgentRequest } from '@/features/document/public'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 
 type WorkspaceAgent = ReturnType<typeof useWorkspaceAgent>
@@ -11,7 +10,6 @@ type UseWorkspaceAgentChatEntryPointsOptions = {
   activeSessionId: number | null
   setActiveSessionId: (sessionId: number | null) => void
   createNewAgentChat: WorkspaceAgent['createNewAgentChat']
-  agentBusySessions: WorkspaceAgent['agentBusySessions']
   agentDrafts: WorkspaceAgent['agentDrafts']
   setAgentDraft: WorkspaceAgent['setAgentDraft']
   addAgentDocumentContext: WorkspaceAgent['addAgentDocumentContext']
@@ -26,8 +24,7 @@ function focusComposer(deferred = false) {
 }
 
 /**
- * Every way a chat gets started from somewhere else in the workspace: a
- * document's "ask the Agent" action, an onboarding guide, a tree node added
+ * Every way a chat gets started from somewhere else in the workspace: an onboarding guide, a tree node added
  * as context, a workflow node's "ask AI" pill, and the AI workflow builder.
  * They share one rule: open the panel, reuse the active session unless it
  * is busy, drafted, or a fresh chat was asked for, then seed the composer.
@@ -37,7 +34,6 @@ export function useWorkspaceAgentChatEntryPoints({
   activeSessionId,
   setActiveSessionId,
   createNewAgentChat,
-  agentBusySessions,
   agentDrafts,
   setAgentDraft,
   addAgentDocumentContext,
@@ -59,23 +55,6 @@ export function useWorkspaceAgentChatEntryPoints({
     }
     return sessionId
   }, [createNewAgentChat, openPanel, setActiveSessionId])
-
-  const handleDocumentAskAgent = useCallback(async (request: DocumentAskAgentRequest) => {
-    const current = latestRef.current.activeSessionId
-    const reuse = Boolean(current)
-      && !agentBusySessions.has(current as number)
-      && !latestRef.current.agentDrafts[current as number]?.trim()
-    const sessionId = await ensureSession({
-      forceNew: !reuse,
-      documentPaths: request.documentPath ? [request.documentPath] : [],
-    })
-    if (!sessionId) return
-    if (reuse && request.documentPath) {
-      addAgentDocumentContext(sessionId, request.documentPath, activeWorkspaceDocumentPath)
-    }
-    setAgentDraft(sessionId, request.prompt)
-    focusComposer(true)
-  }, [activeWorkspaceDocumentPath, addAgentDocumentContext, agentBusySessions, ensureSession, setAgentDraft])
 
   const attachNodeMention = useCallback(async (node: WorkspaceTreeNode, { forceNew }: { forceNew: boolean }) => {
     const sessionId = await ensureSession({ forceNew, documentPaths: [node.path] })
@@ -152,5 +131,5 @@ export function useWorkspaceAgentChatEntryPoints({
     return () => window.removeEventListener('kition:workflow-ai-build:open', handler as EventListener)
   }, [ensureSession, setAgentDraft])
 
-  return { handleDocumentAskAgent, addNodeToChat, addNodeToNewChat }
+  return { addNodeToChat, addNodeToNewChat }
 }

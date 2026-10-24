@@ -31,11 +31,7 @@ export function upsertTab(state: TabsState, tab: WorkspaceTab, options: UpsertTa
   const existingIndex = state.tabs.findIndex((item) => item.id === tab.id)
   let tabs: WorkspaceTab[]
   if (existingIndex >= 0) {
-    const existing = state.tabs[existingIndex]
-    const merged = existing.type === 'document' && tab.type === 'document'
-      ? { ...tab, uid: tab.uid || existing.uid }
-      : tab
-    tabs = state.tabs.map((item, index) => (index === existingIndex ? merged : item))
+    tabs = state.tabs.map((item, index) => (index === existingIndex ? tab : item))
   } else if (options.insertAfterActive && state.activeTabId) {
     const activeIndex = state.tabs.findIndex((item) => item.id === state.activeTabId)
     tabs = activeIndex >= 0
@@ -76,22 +72,17 @@ export function filterTabs(state: TabsState, predicate: (tab: WorkspaceTab) => b
   return { tabs, activeTabId }
 }
 
-/** After a move or folder rename, point document and design tabs at the new path. */
+/** After a move or folder rename, point file and design tabs at the new path. */
 export function remapTabPaths(state: TabsState, sourcePath: string, targetPath: string): TabsState {
   if (!sourcePath || !targetPath || sourcePath === targetPath) return state
   let changed = false
   const tabs = state.tabs.map((tab) => {
-    if (tab.type === 'document' || tab.type === 'design') {
+    if (tab.type === 'file-viewer' || tab.type === 'design') {
       const nextPath = remapWorkspaceBranchPath(tab.path, sourcePath, targetPath)
       if (nextPath === tab.path) return tab
       changed = true
       const filename = nextPath.split('/').pop() || nextPath
-      return {
-        ...tab,
-        id: `${tab.type}:${nextPath}`,
-        path: nextPath,
-        ...(tab.type !== 'document' ? { title: getWorkspaceItemTitle(filename) } : {}),
-      }
+      return { ...tab, id: `${tab.type}:${nextPath}`, path: nextPath, title: getWorkspaceItemTitle(filename) }
     }
     return tab
   })
@@ -100,14 +91,14 @@ export function remapTabPaths(state: TabsState, sourcePath: string, targetPath: 
 }
 
 function remapPathTabId(tabId: string, sourcePath: string, targetPath: string) {
-  const prefix = (['design:', 'document:'] as const).find((candidate) => tabId.startsWith(candidate))
+  const prefix = (['design:', 'file-viewer:'] as const).find((candidate) => tabId.startsWith(candidate))
   if (!prefix) return tabId
   const path = tabId.slice(prefix.length)
   const nextPath = remapWorkspaceBranchPath(path, sourcePath, targetPath)
   return nextPath === path ? tabId : `${prefix}${nextPath}`
 }
 
-/** After a table file rename, its workflow tab and its document tab follow the file. */
+/** After a table file rename, its workflow tab and its file tab follow the file. */
 export function renameTabPath(state: TabsState, fromPath: string, toPath: string): TabsState {
   if (!fromPath || !toPath || fromPath === toPath) return state
   let changed = false
@@ -116,9 +107,9 @@ export function renameTabPath(state: TabsState, fromPath: string, toPath: string
       changed = true
       return { ...tab, tablePath: toPath, id: `workflow:${toPath}` }
     }
-    if (tab.type === 'document' && tab.path === fromPath) {
+    if (tab.type === 'file-viewer' && tab.path === fromPath) {
       changed = true
-      return { ...tab, path: toPath, id: `document:${toPath}` }
+      return { ...tab, path: toPath, id: `file-viewer:${toPath}` }
     }
     return tab
   })
@@ -134,7 +125,7 @@ export function renameTabPath(state: TabsState, fromPath: string, toPath: string
 
 function renameActiveTabId(activeId: string, fromPath: string, toPath: string) {
   if (activeId === `workflow:${fromPath}`) return `workflow:${toPath}`
-  if (activeId === `document:${fromPath}`) return `document:${toPath}`
+  if (activeId === `file-viewer:${fromPath}`) return `file-viewer:${toPath}`
   return activeId
 }
 

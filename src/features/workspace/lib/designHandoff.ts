@@ -1,7 +1,6 @@
 /**
  * Hand-off from a design to the rest of the workspace: the exported image
- * becomes a Markdown link in a document or an attachment on the table record
- * the design came from. API access is injected so the flows stay testable.
+ * becomes an attachment on the table record the design came from. API access is injected so the flows stay testable.
  */
 import type { DesignRecordRef } from '@/types/designStart'
 
@@ -12,12 +11,6 @@ export type DesignHandoffApi = {
   uploadAttachment: (ref: DesignRecordRef, file: File) => Promise<Attachment>
   readRecordValue: (ref: DesignRecordRef) => Promise<unknown>
   updateRecord: (ref: DesignRecordRef, values: Record<string, unknown>) => Promise<unknown>
-}
-
-/** The Markdown that embeds an exported design in a document. */
-export function designMarkdownLink(title: string, relativePath: string) {
-  const alt = title.replace(/[[\]\\]/g, '\\$&')
-  return `![${alt}](<${relativePath}>)`
 }
 
 /** Uploads the image and appends it to the record's attachment field. */

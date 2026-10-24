@@ -1,7 +1,6 @@
 import type { AgentPaneContext, AgentTaskMode } from '@/api/agent'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import type { AgentDesignContext } from '@/types/designAgent'
-import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } from '@/features/document/public'
 
 export type AgentTurnContext = {
   activeDocumentPath: string
@@ -17,28 +16,6 @@ export type AgentTurnContext = {
   designContext?: AgentDesignContext
   /** Workspace path of the active design, for image placement targets. */
   activeDesignPath?: string
-  markdownImageInsertionContext?: MarkdownImageInsertionContext
-}
-
-/**
- * Attaches the image insertion anchor to the base context when the editor's
- * snapshot is for the active document. The resolver is injected: it needs
- * the Markdown parser, which the caller loads with the editor so the parser
- * stays out of the startup bundle.
- */
-export function finalizeAgentTurnContext(input: {
-  baseContext: AgentTurnContext
-  markdownImageInsertionSnapshot?: MarkdownImageInsertionSnapshot | null
-  resolveMarkdownImageInsertionContext: (snapshot: MarkdownImageInsertionSnapshot) => MarkdownImageInsertionContext
-}): AgentTurnContext {
-  const snapshot = input.markdownImageInsertionSnapshot
-  const markdownImageInsertionContext = snapshot?.documentPath === input.baseContext.activeDocumentPath
-    ? input.resolveMarkdownImageInsertionContext(snapshot)
-    : undefined
-  return {
-    ...input.baseContext,
-    markdownImageInsertionContext,
-  }
 }
 
 export function buildAgentTurnContext(input: {
@@ -49,12 +26,8 @@ export function buildAgentTurnContext(input: {
   /** Artboard and layer context for Design turns. */
   designContext?: AgentDesignContext
   activeDesignPath?: string
-  markdownImageInsertionContext?: MarkdownImageInsertionContext | null
 }): AgentTurnContext {
   const activeDocumentPath = String(input.activeDocumentPath || '').trim()
-  const markdownImageInsertionContext = input.markdownImageInsertionContext?.documentPath === activeDocumentPath
-    ? input.markdownImageInsertionContext
-    : undefined
   return {
     activeDocumentPath,
     activeDocumentFormat: input.activeDocumentFormat,
@@ -62,7 +35,6 @@ export function buildAgentTurnContext(input: {
     activeWorkflowId: input.activeWorkflowId,
     designContext: input.designContext,
     activeDesignPath: input.activeDesignPath,
-    markdownImageInsertionContext,
     taskMode: 'auto',
   }
 }

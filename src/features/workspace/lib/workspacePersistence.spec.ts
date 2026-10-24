@@ -37,21 +37,20 @@ describe('workspacePersistence tabs', () => {
     writeWorkspaceTabs(ROOT_A, [designTab])
     writeWorkspaceTabs(ROOT_B, [
       {
-        id: 'document:notes.md',
-        type: 'document',
+        id: 'design:notes.kidesign',
+        type: 'design',
         title: 'notes',
-        path: 'notes.md',
+        path: 'notes.kidesign',
       },
     ])
 
     expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
     expect(readWorkspaceTabs(ROOT_B)).toEqual([
       {
-        id: 'document:notes.md',
-        type: 'document',
+        id: 'design:notes.kidesign',
+        type: 'design',
         title: 'notes',
-        path: 'notes.md',
-        format: undefined,
+        path: 'notes.kidesign',
       },
     ])
   })
@@ -63,10 +62,11 @@ describe('workspacePersistence tabs', () => {
 
     writeWorkspaceTabs('', [
       {
-        id: 'document:other.md',
-        type: 'document',
+        id: 'file-viewer:other.md',
+        type: 'file-viewer',
         title: 'other',
         path: 'other.md',
+        format: 'markdown',
       },
     ])
 

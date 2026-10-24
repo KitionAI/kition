@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 type DataAttachment = { name: string; url: string; mimeType?: string }
-import { designMarkdownLink, sendDesignToTable, type DesignHandoffApi } from './designHandoff'
+import { sendDesignToTable, type DesignHandoffApi } from './designHandoff'
 
 const ref = { path: 'Shop.ktable', tableId: '9', recordId: '41', field: 'Designs' }
 const uploaded: DataAttachment = { name: 'Poster.png', url: 'attachments/poster.png', mimeType: 'image/png' }
@@ -14,10 +14,6 @@ function api(current: unknown): DesignHandoffApi & { updateRecord: ReturnType<ty
 }
 
 describe('design hand-off', () => {
-  it('builds a Markdown image link that survives brackets in the title', () => {
-    expect(designMarkdownLink('Launch [v2]', '../attachments/design/a.png')).toBe('![Launch \\[v2\\]](<../attachments/design/a.png>)')
-  })
-
   it('uploads the image and appends it to the existing attachments', async () => {
     const existing: DataAttachment = { name: 'old.png', url: 'attachments/old.png' }
     const client = api([existing, 'stray'])

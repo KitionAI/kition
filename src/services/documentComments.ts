@@ -4,8 +4,6 @@
  * not co-edited now, so comment threads others wrote are read-only history, and this person
  * comments as the identity they last co-edited with (or as the local person).
  */
-import { useMemo, useSyncExternalStore } from 'react'
-
 /** The principal of edits and comments made in this window without a co-editing identity. */
 export const LOCAL_COMMENT_AUTHOR = 'user:local'
 
@@ -47,18 +45,12 @@ function readIdentity(): CommentIdentity | null {
 
 let identity: CommentIdentity | null = readIdentity()
 const shared = new Map<string, SharedCommentAccess>()
-const listeners = new Set<() => void>()
-
-function emit() {
-  for (const listener of [...listeners]) listener()
-}
 
 /** Remembers the identity this person co-edits with (a sync server's `sync/hello` principal). */
 export function setCommentIdentity(next: CommentIdentity) {
   if (identity?.id === next.id && identity.name === next.name) return
   identity = next
   storage()?.setItem(IDENTITY_KEY, JSON.stringify(next))
-  emit()
 }
 
 /** Marks the document at `path` co-edited with `access` (or no longer, with `null`). */
@@ -67,7 +59,6 @@ export function setSharedCommentAccess(path: string, access: SharedCommentAccess
   if (!access ? !current : current && current.role === access.role && current.principal.id === access.principal.id) return
   if (access) shared.set(path, access)
   else shared.delete(path)
-  emit()
 }
 
 /** The comment access of the document at `path`; `readOnly` documents take no comments unless co-editing allows them. */
@@ -79,23 +70,3 @@ export function documentCommentAccess(path: string, readOnly: boolean): Document
   return { me: identity?.id ?? LOCAL_COMMENT_AUTHOR, ...(identity?.name ? { name: identity.name } : {}), canComment: !readOnly, othersReadOnly: true, mine }
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
-
-/** A key that changes whenever `documentCommentAccess(path, …)` may answer differently. */
-function snapshot(path: string) {
-  const room = shared.get(path)
-  return `${identity?.id ?? ''}|${identity?.name ?? ''}|${room ? `${room.principal.id}:${room.role}` : ''}`
-}
-
-/** `documentCommentAccess`, following co-editing as it starts, changes role, and stops. */
-export function useDocumentCommentAccess(path: string, readOnly: boolean): DocumentCommentAccess {
-  const key = useSyncExternalStore(subscribe, () => snapshot(path), () => '')
-  // `key` tells React when to read again.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => documentCommentAccess(path, readOnly), [key, path, readOnly])
-}

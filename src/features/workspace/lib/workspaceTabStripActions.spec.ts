@@ -5,9 +5,9 @@ import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { buildWorkspaceTabStripProps, workspaceTabReference, type WorkspaceTabStripActionsInput } from './workspaceTabStripActions'
 
 const tabs: WorkspaceTab[] = [
-  { id: 'doc-a', type: 'document', title: 'A', path: 'a.md' },
-  { id: 'doc-b', type: 'document', title: 'B', path: 'b.md' },
-  { id: 'viewer', type: 'file-viewer', title: 'Photo', path: 'photo.png', format: 'markdown' },
+  { id: 'doc-a', type: 'file-viewer', title: 'A', path: 'a.md', format: 'markdown' },
+  { id: 'doc-b', type: 'design', title: 'B', path: 'b.kidesign' },
+  { id: 'viewer', type: 'file-viewer', title: 'Photo', path: 'photo.png', format: 'image' },
   { id: 'flow', type: 'workflow', title: 'Flows' },
   { id: 'sites', type: 'gallery', title: 'Images', kind: 'images' },
 ]
@@ -19,9 +19,6 @@ function build(overrides: Partial<WorkspaceTabStripActionsInput> = {}) {
   const props = buildWorkspaceTabStripProps({
     tabs,
     activeTabId: 'doc-a',
-    activeDocumentPath: 'a.md',
-    hasUnsavedChanges: false,
-    isOpenedDocumentModified: (path) => path === 'b.md',
     workflowOpen: false,
     closeTab,
     activateTab,
@@ -46,24 +43,13 @@ describe('buildWorkspaceTabStripProps', () => {
 
     run = build()
     run.props.onCloseReadOnly!()
-    expect(run.closed()).toEqual(['viewer', 'sites'])
+    expect(run.closed()).toEqual(['doc-a', 'viewer', 'sites'])
   })
 
-  it('tells which document tabs the agent changed', () => {
-    const run = build({ isOpenedDocumentChangedByAgent: (path) => path === 'b.md' })
-    expect(run.props.isTabChangedByAgent!(tabs[1])).toBe(true)
-    expect(run.props.isTabChangedByAgent!(tabs[0])).toBe(false)
-    expect(run.props.isTabChangedByAgent!(tabs[2])).toBe(false)
-    expect(build().props.isTabChangedByAgent!(tabs[1])).toBe(false)
-  })
-
-  it('keeps modified documents on close unmodified', () => {
-    const run = build({ hasUnsavedChanges: true })
+  it('closes every tab on close unmodified: a kit asks before it closes with unsaved edits', () => {
+    const run = build()
     run.props.onCloseUnmodified!()
-    expect(run.closed()).toEqual(['viewer', 'flow', 'sites'])
-    expect(run.props.isTabModified!(tabs[0])).toBe(true)
-    expect(run.props.isTabModified!(tabs[1])).toBe(true)
-    expect(run.props.isTabModified!(tabs[2])).toBe(false)
+    expect(run.closed()).toEqual(['doc-a', 'doc-b', 'viewer', 'flow', 'sites'])
   })
 
   it('leaves the workflow route when the remaining tab is not a workflow', () => {

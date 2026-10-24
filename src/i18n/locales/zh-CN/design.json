@@ -154,11 +154,8 @@
     "transparent": "透明",
     "white": "白色"
   },
-  "insertIntoDocument": "插入到文档",
   "sendToTable": "发送到表格",
-  "insertedIntoDocument": "已插入到 {{title}}",
   "sentToTable": "已附加到表格记录",
-  "noDocumentTarget": "请先打开一个文档，再插入设计。",
   "errors": {
     "create": "无法创建设计",
     "open": "无法打开此设计。",

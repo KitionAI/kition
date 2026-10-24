@@ -75,7 +75,6 @@ import { isWebPreviewMode } from '@/lib/runtimeMode'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
 import { retryWhileSessionBusy } from '@/features/agent/lib/agentSendRetry'
 import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
-import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
@@ -91,7 +90,6 @@ type WorkspaceAgentTurnContext = {
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
   designContext?: AgentDesignContext
-  markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
 
 type UseWorkspaceAgentOptions = {
@@ -732,7 +730,6 @@ export function useWorkspaceAgent({
         buildAgentDocumentEditingPromptContext({
           activeDocumentPath,
           activeDocumentFormat,
-          markdownImageInsertionContext: turnContext?.markdownImageInsertionContext,
         }),
       ].filter(Boolean).join('\n\n')
       const attachmentPaths = Array.from(new Set([

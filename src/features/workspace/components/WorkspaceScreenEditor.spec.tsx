@@ -10,34 +10,14 @@ import { buildWorkspaceEditorContentProps, type WorkspaceScreenEditorInput } fro
 const session = { id: 5, title: 'Chat' } as AgentSession
 
 function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
-  const documentSession = {
-    activeDocument: { path: 'notes/plan.md', name: 'plan.md', content: '' },
-    activeDocumentFormat: 'markdown' as const,
-    activeDocumentRevision: { path: 'notes/plan.md' } as never,
-    activeDocumentSession: null,
-    draftContent: 'draft',
-    documentRevisionSaving: false,
-    getOpenedDocument: () => null,
-    activeAgentReview: null,
-    acceptAgentReview: vi.fn(),
-    rejectAgentReview: vi.fn(async () => undefined),
-    showAgentReviewChanges: vi.fn(),
-    closeAgentReviewChanges: vi.fn(),
-    decideDocumentRevisionChange: vi.fn(),
-    resolveAllDocumentRevisionChanges: vi.fn(),
-    openDocument: vi.fn(),
-  }
   const agentPanel = { open: false, setOpen: vi.fn(), setHistoryOpen: vi.fn() }
-  const templateDialogs = { documentEditorFocusRequest: 3, openDocumentTemplateDialog: vi.fn() }
+  const templateDialogs = { openDocumentTemplateDialog: vi.fn() }
   const onCreateTable = vi.fn()
   const input: WorkspaceScreenEditorInput = {
     rootPath: '/vault',
     workspaceTabs: [],
     activeWorkspaceTab: undefined,
     activeWorkspaceTabId: '',
-    documentSession,
-    editorView: { locked: false, editorMode: 'rich' },
-    editorPreviewHtml: '',
     galleryPanelProps: null,
     agentPanel,
     activeAgentSession: session,
@@ -46,56 +26,21 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     templateDialogs,
     workflows: { openTableFileWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
     onCreateTable,
-    onAskDocumentAgent: vi.fn(),
-    documentTranslation: undefined,
-    onAgentInsertionContextChange: vi.fn(),
-    onSaveDocumentTitle: vi.fn(),
-    onToolbarMount: vi.fn(),
-    onSetEditorMode: vi.fn(),
     ...overrides,
   }
-  return { input, documentSession, agentPanel, templateDialogs, onCreateTable }
+  return { input, agentPanel, templateDialogs, onCreateTable }
 }
 
 describe('buildWorkspaceEditorContentProps', () => {
-  it('derives the title, presence, and the agent stop from the bundles', () => {
+  it('stops the agent’s design work in the active session, and offers no stop without one', () => {
     const { input } = buildInput()
     const props = buildWorkspaceEditorContentProps(input)
-    expect(props.documentTitle).toBe('plan')
-    expect(props.hasActiveDocument).toBe(true)
-    expect(props.documentEditorFocusRequest).toBe(3)
     expect(props.onCancelDesignAgent).toBeDefined()
     props.onCancelDesignAgent!()
     expect(input.stopAgentMessage).toHaveBeenCalledWith(5)
 
     const idle = buildWorkspaceEditorContentProps(buildInput({ activeAgentSession: null }).input)
     expect(idle.onCancelDesignAgent).toBeUndefined()
-  })
-
-  it('routes revision decisions to the pending revision path and ignores them without one', () => {
-    const { input, documentSession } = buildInput()
-    const props = buildWorkspaceEditorContentProps(input)
-    props.onDecideDocumentRevisionChange('c1', 'accept' as never)
-    props.onResolveAllDocumentRevisionChanges('reject' as never)
-    expect(documentSession.decideDocumentRevisionChange).toHaveBeenCalledWith('notes/plan.md', 'c1', 'accept')
-    expect(documentSession.resolveAllDocumentRevisionChanges).toHaveBeenCalledWith('notes/plan.md', 'reject')
-
-    const none = buildInput({ documentSession: { ...documentSession, activeDocumentRevision: null } })
-    buildWorkspaceEditorContentProps(none.input).onDecideDocumentRevisionChange('c1', 'accept' as never)
-    expect(none.documentSession.decideDocumentRevisionChange).not.toHaveBeenCalled()
-  })
-
-  it('routes the decisions on the agent’s live edit to the document session', () => {
-    const { input, documentSession } = buildInput()
-    const props = buildWorkspaceEditorContentProps(input)
-    props.onAcceptAgentReview!()
-    props.onRejectAgentReview!()
-    props.onShowAgentReviewChanges!()
-    props.onCloseAgentReviewChanges!()
-    expect(documentSession.acceptAgentReview).toHaveBeenCalledTimes(1)
-    expect(documentSession.rejectAgentReview).toHaveBeenCalledTimes(1)
-    expect(documentSession.showAgentReviewChanges).toHaveBeenCalledTimes(1)
-    expect(documentSession.closeAgentReviewChanges).toHaveBeenCalledTimes(1)
   })
 
   it('opens the Agent panel and focuses the composer', () => {
@@ -110,7 +55,7 @@ describe('buildWorkspaceEditorContentProps', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
-  it('opens the document templates at the workspace root, and a new table file, from the empty state', () => {
+  it('opens the note templates at the workspace root, and a new table file, from the empty state', () => {
     const { input, templateDialogs, onCreateTable } = buildInput()
     const props = buildWorkspaceEditorContentProps(input)
     props.onCreateDocument()

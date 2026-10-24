@@ -1,4 +1,3 @@
-import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
 import { getCurrentLocale } from '@/i18n'
 import {
   getWorkspaceItemTitle,
@@ -8,6 +7,12 @@ import {
 } from '@/features/workspace/lib/workspace'
 import type { WorkspaceTreeMetadata } from '@/features/workspace/lib/workspacePersistence'
 import type { WorkspaceDocument, WorkspaceDocumentTreeItem } from '@/services/desktop'
+
+/** The folder holding `path` (empty at the workspace root). */
+export function getDocumentParentPath(path: string) {
+  const index = path.lastIndexOf('/')
+  return index > 0 ? path.slice(0, index) : ''
+}
 
 export function flattenWorkspaceDocumentItems(items: WorkspaceDocumentTreeItem[]) {
   const files: WorkspaceDocumentTreeItem[] = []
@@ -166,32 +171,6 @@ export function buildPrivateSectionTreeNodes(
   // (`workflows://`) is unchanged — the icon dispatches it through the same
   // WorkspaceScreen.onOpen handler.
   return buildWorkspaceTreeNodes(items, metadata, '')
-}
-
-export function updateWorkspaceTreeDocumentItem(
-  items: WorkspaceDocumentTreeItem[],
-  document: WorkspaceDocument,
-): WorkspaceDocumentTreeItem[] {
-  return items.map((item) => {
-    if (item.type === 'file' && item.path === document.path) {
-      return {
-        ...item,
-        name: document.name,
-        format: resolveWorkspaceTreeFormat(document.path, document.format, document.content),
-        size: document.size ?? document.content.length,
-        updated_at: document.updated_at,
-      }
-    }
-
-    if (item.children?.length) {
-      return {
-        ...item,
-        children: updateWorkspaceTreeDocumentItem(item.children, document),
-      }
-    }
-
-    return item
-  })
 }
 
 export function replaceWorkspaceTreeDocumentItem(

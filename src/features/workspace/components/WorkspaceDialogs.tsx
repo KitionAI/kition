@@ -1,15 +1,11 @@
 import { lazy, Suspense } from 'react'
 
-import type { useDocumentExport } from '@/features/document/public'
 import type { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import type { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 
 // Each dialog stays its own lazy chunk: none of them is needed until opened.
-const DocumentExportDialog = lazy(() =>
-  import('@/features/document/components/DocumentExportDialog').then((module) => ({ default: module.DocumentExportDialog })),
-)
 const DocumentTemplateLibraryDialog = lazy(() =>
-  import('@/features/document/components/DocumentTemplateLibraryDialog').then((module) => ({ default: module.DocumentTemplateLibraryDialog })),
+  import('@/features/workspace/templates/DocumentTemplateLibraryDialog').then((module) => ({ default: module.DocumentTemplateLibraryDialog })),
 )
 const WorkspaceFolderCreateDialog = lazy(() =>
   import('@/features/workspace/components/WorkspaceFolderCreateDialog').then((module) => ({ default: module.WorkspaceFolderCreateDialog })),
@@ -21,7 +17,6 @@ const FormSyncCreateDialog = lazy(() =>
 export type WorkspaceDialogsProps = {
   /** A workspace write is in flight; dialogs show their busy state. */
   saving: boolean
-  documentExport: ReturnType<typeof useDocumentExport>
   createFlows: ReturnType<typeof useWorkspaceCreateFlows>
   templateDialogs: ReturnType<typeof useWorkspaceTemplateDialogs>
 }
@@ -33,36 +28,11 @@ export type WorkspaceDialogsProps = {
  */
 export function WorkspaceDialogs({
   saving,
-  documentExport,
   createFlows,
   templateDialogs,
 }: WorkspaceDialogsProps) {
   return (
     <>
-      {documentExport.exportDialogOpen ? (
-        <Suspense fallback={null}>
-          <DocumentExportDialog
-            open
-            exporting={documentExport.exporting}
-            exportFormat={documentExport.exportFormat}
-            exportIncludeMedia={documentExport.exportIncludeMedia}
-            exportPageFormat={documentExport.exportPageFormat}
-            exportScale={documentExport.exportScale}
-            pdfIncludeName={documentExport.pdfIncludeName}
-            pdfLandscape={documentExport.pdfLandscape}
-            pdfMarginsType={documentExport.pdfMarginsType}
-            onClose={() => documentExport.setExportDialogOpen(false)}
-            onExportFormatChange={documentExport.setExportFormat}
-            onIncludeMediaChange={documentExport.setExportIncludeMedia}
-            onPageFormatChange={documentExport.setExportPageFormat}
-            onScaleChange={documentExport.setExportScale}
-            onPdfIncludeNameChange={documentExport.setPdfIncludeName}
-            onPdfLandscapeChange={documentExport.setPdfLandscape}
-            onPdfMarginsTypeChange={documentExport.setPdfMarginsType}
-            onExport={() => void documentExport.exportCurrentDocument()}
-          />
-        </Suspense>
-      ) : null}
       {createFlows.folderDialogOpen ? (
         <Suspense fallback={null}>
           <WorkspaceFolderCreateDialog

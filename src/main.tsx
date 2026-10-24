@@ -4,7 +4,6 @@ import './services/desktopClient/tauriBridge'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from './app/App'
-import { installKitionDocumentHost } from './features/document/host/kitionDocumentHost'
 import { QueryProvider } from './app/QueryProvider'
 import { i18nReady } from './i18n'
 import { installFileDropGuard } from './lib/fileDropGuard'
@@ -12,7 +11,6 @@ import './app/styles.css'
 import './styles/desktop-display.css'
 
 installFileDropGuard()
-installKitionDocumentHost()
 
 window.addEventListener('error', (event) => {
   if (event.message === 'ResizeObserver loop completed with undelivered notifications.') {

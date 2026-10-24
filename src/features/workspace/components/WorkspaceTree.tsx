@@ -4,7 +4,6 @@ import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 import { HeadlessDraftBadge } from '@/features/kits/public'
 import { WorkspaceCreateMenu, useAnchoredMenuCoords } from '@/features/workspace/components/WorkspaceCreateMenu'
 import {
@@ -20,7 +19,6 @@ import {
   type WorkspaceTreeDropPosition,
   type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
-import { useDraftTitleForPath } from '@/features/workspace/lib/draftTitleStore'
 import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
 import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
 import { cn } from '@kition/app-ui/utils'
@@ -61,7 +59,6 @@ export function WorkspaceTree({
   createMenuVariant,
   onCloseCreateMenu,
   onCreateFolder,
-  onCreateDocument,
   onCreateFormForTable,
   onCreateDesign,
   kitCreations,
@@ -100,7 +97,6 @@ export function WorkspaceTree({
   createMenuVariant?: 'workspace' | 'tableFile'
   onCloseCreateMenu?: () => void
   onCreateFolder?: () => void
-  onCreateDocument?: (format: DocumentCreateFormat) => void
   /** A form for one of a table file's tables (the table file's create menu). */
   onCreateFormForTable?: (node: WorkspaceTreeNode) => void
   onCreateDesign?: () => void
@@ -270,7 +266,6 @@ export function WorkspaceTree({
         const iconPickerOpen = iconPickerPath === node.path
         const isRenaming = renamingPath === node.path
 
-        const isLiveLabelTarget = isActive && !node.virtual && node.type === 'file'
         const fallbackIcon = node.type === 'folder'
           ? <FolderOpen className={cn('size-4', workspaceFolderIconColorClass)} />
           : <FormatIcon className={cn('size-4', formatIconColorClass)} />
@@ -439,9 +434,7 @@ export function WorkspaceTree({
                   />
                 ) : (
                   <span className="min-w-0 flex-1 truncate text-left">
-                    {isLiveLabelTarget
-                      ? <LiveActiveLabel path={node.path} title={node.title} fallback={node.name} />
-                      : node.name}
+                    {node.name}
                   </span>
                 )}
                 {node.type === 'file' && !node.virtual && !isRenaming ? <HeadlessDraftBadge path={node.path} /> : null}
@@ -708,7 +701,6 @@ export function WorkspaceTree({
                 createMenuVariant={createMenuVariant}
                 onCloseCreateMenu={onCloseCreateMenu}
                 onCreateFolder={onCreateFolder}
-                onCreateDocument={onCreateDocument}
                 onCreateFormForTable={onCreateFormForTable}
                             onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
@@ -757,22 +749,4 @@ function WorkspaceRowIconPicker({
       </button>
     </span>
   )
-}
-
-function LiveActiveLabel({
-  path,
-  title,
-  fallback,
-}: {
-  path: string
-  title: string
-  fallback: string
-}) {
-  const { t } = useTranslation('workspace')
-  const draft = useDraftTitleForPath(path)
-  if (draft === null) return <>{fallback}</>
-
-  const extension = fallback.slice(title.length)
-  const display = `${draft.trim() || t('tree.untitled')}${extension}`
-  return <>{display}</>
 }

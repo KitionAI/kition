@@ -11,39 +11,10 @@ import {
 import type { WorkspaceMediaKind } from '@/features/workspace/lib/workspace'
 
 type WorkspaceSidebarSection = 'private' | WorkspaceMediaKind
-export type EditorTextStyle = 'default' | 'serif' | 'mono'
-export type EditorMode = 'rich' | 'split' | 'source' | 'preview'
-
-export type EditorViewPreferences = {
-  editorMode: EditorMode
-  textStyle: EditorTextStyle
-  smallText: boolean
-  fullWidth: boolean
-  toc: boolean
-  locked: boolean
-}
-
-const editorDefaultViewPreferences: EditorViewPreferences = {
-  editorMode: 'rich',
-  textStyle: 'default',
-  smallText: false,
-  fullWidth: false,
-  toc: false,
-  locked: false,
-}
-
-export const editorTextStyleOptions: Array<{ value: EditorTextStyle; label: string; sample: string }> = [
-  { value: 'default', label: 'Default', sample: 'Ag' },
-  { value: 'serif', label: 'Serif', sample: 'Ag' },
-  { value: 'mono', label: 'Mono', sample: 'Ag' },
-]
-
 export function useWorkspaceChrome() {
   const [workspaceSidebarWidth, setWorkspaceSidebarWidth] = useState(() => readWorkspaceSidebarWidth())
   const [agentSidebarWidth, setAgentSidebarWidth] = useState(() => readAgentSidebarWidth())
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [editorView, setEditorView] = useState<EditorViewPreferences>(editorDefaultViewPreferences)
-  const [itemMenuOpen, setItemMenuOpen] = useState(false)
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false)
   const [sidebarSectionsExpanded, setSidebarSectionsExpanded] = useState<Record<WorkspaceSidebarSection, boolean>>({
     private: true,
@@ -71,13 +42,6 @@ export function useWorkspaceChrome() {
     setSidebarSectionsExpanded((current) => ({
       ...current,
       [section]: !current[section],
-    }))
-  }, [])
-
-  const toggleEditorPreference = useCallback((key: keyof Omit<EditorViewPreferences, 'textStyle'>) => {
-    setEditorView((current) => ({
-      ...current,
-      [key]: !current[key],
     }))
   }, [])
 
@@ -142,18 +106,13 @@ export function useWorkspaceChrome() {
 
   return {
     agentSidebarWidth,
-    editorView,
     effectiveSidebarWidth,
     handleAgentSidebarResize,
     handleWorkspaceSidebarResize,
-    itemMenuOpen,
-    setEditorView,
-    setItemMenuOpen,
     setSidebarSectionsExpanded,
     setWorkspaceMenuOpen,
     sidebarCollapsed,
     sidebarSectionsExpanded,
-    toggleEditorPreference,
     toggleSidebarCollapsed,
     toggleSidebarSection,
     workspaceMenuOpen,

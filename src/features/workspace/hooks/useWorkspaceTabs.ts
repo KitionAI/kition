@@ -16,10 +16,7 @@ import {
 
 type UseWorkspaceTabsOptions = {
   rootPath: string
-  activeDocumentPath: string
-  onOpenDocument: (path: string) => Promise<void>
   onActivateGallery: (kind: WorkspaceMediaKind) => void
-  onCloseDocumentTab?: (tab: Extract<WorkspaceTab, { type: 'document' }>) => void
 }
 
 /**
@@ -29,10 +26,7 @@ type UseWorkspaceTabsOptions = {
  */
 export function useWorkspaceTabs({
   rootPath,
-  activeDocumentPath,
-  onOpenDocument,
   onActivateGallery,
-  onCloseDocumentTab,
 }: UseWorkspaceTabsOptions) {
   const [state, setState] = useState<TabsState>(() => {
     const stored = readWorkspaceTabs(rootPath)
@@ -86,15 +80,9 @@ export function useWorkspaceTabs({
     setState((current) => updateTab(current, tabId, updater))
   }, [])
 
-  // Side effects for a closed document tab run after the update is applied,
-  // never inside the updater (StrictMode invokes updaters twice).
   const closeWorkspaceTab = useCallback((tabId: string) => {
-    const closing = lastCommittedRef.current.tabs.find((item) => item.id === tabId)
     setState((current) => closeTab(current, tabId).state)
-    if (closing?.type === 'document') {
-      onCloseDocumentTab?.(closing)
-    }
-  }, [onCloseDocumentTab])
+  }, [])
 
   const filterWorkspaceTabs = useCallback((predicate: (tab: WorkspaceTab) => boolean) => {
     setState((current) => filterTabs(current, predicate))
@@ -113,16 +101,10 @@ export function useWorkspaceTabs({
 
   const activateWorkspaceTab = useCallback(async (tab: WorkspaceTab) => {
     setActiveWorkspaceTabId(tab.id)
-
-    if (tab.type === 'document' && activeDocumentPath !== tab.path) {
-      await onOpenDocument(tab.path)
-      return
-    }
-
     if (tab.type === 'gallery') {
       onActivateGallery(tab.kind)
     }
-  }, [activeDocumentPath, onActivateGallery, onOpenDocument, setActiveWorkspaceTabId])
+  }, [onActivateGallery, setActiveWorkspaceTabId])
 
   useEffect(() => {
     if (!rootPath || tabsRoot !== rootPath) {

@@ -11,7 +11,7 @@ import { Button } from '@kition/app-ui'
 import { cn } from '@kition/app-ui/utils'
 
 /** A neutral placeholder block; size it with width and height classes. */
-export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div aria-hidden="true" className={cn('animate-pulse rounded-md bg-muted motion-reduce:animate-none', className)} {...props} />
 }
 

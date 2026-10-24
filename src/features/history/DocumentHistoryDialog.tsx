@@ -72,20 +72,13 @@ function HistorySection({ label, entries, selected, onSelect }: { label: string;
 function PreviewPane({ document, preview, kit }: { document: HistoryDocument; preview: HistoryPreview; kit: EmbeddedKit | null }) {
   const { t } = useTranslation('history')
   const kitPreview = useMemo(() => ({ snapshot: preview.snapshot.slice().buffer as ArrayBuffer, blobs: preview.blobs.slice().buffer as ArrayBuffer }), [preview])
-  if (preview.text !== undefined) {
-    return (
-      <pre className="h-full overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-[13px] leading-relaxed text-foreground" data-testid="history-preview-text">
-        {preview.text || t('previewEmpty')}
-      </pre>
-    )
-  }
   if (!kit) return <p className="p-5 text-[13px] text-muted-foreground">{t('previewFailed')}</p>
   return <KitFrame kit={kit} path={document.path} active preview={kitPreview} />
 }
 
 /**
  * The version history of the document open at `path`: this device's checkpoints, and the server's for a co-edited
- * document; a chosen version is shown read-only (the document's own editor or kit draws it), and restored as one new
+ * document; a chosen version is shown read-only (the document's kit draws it), and restored as one new
  * change.
  */
 export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string; onClose: () => void; kitFor: (kitId: string) => EmbeddedKit | null }) {
@@ -152,7 +145,7 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
 
   const name = path.split('/').pop() ?? path
   const empty = lists && !lists.device.length && !lists.server?.length
-  const kit = document?.kind === 'kit' ? kitFor(document.kitId) : null
+  const kit = document ? kitFor(document.kitId) : null
 
   return (
     <Dialog open onOpenChange={(open) => !open && !restoring && onClose()}>

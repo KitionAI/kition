@@ -20,7 +20,6 @@ function defaultProps(overrides: Partial<Parameters<typeof WorkspaceSidebar>[0]>
     onOpenCreateMenu: vi.fn(),
     onCloseCreateMenu: vi.fn(),
     onCreateFolder: vi.fn(),
-    onCreateDocument: vi.fn(),
     ...overrides,
   }
 }

@@ -20,16 +20,6 @@ describe('deriveAgentPaneContext', () => {
     expect(deriveAgentPaneContext(undefined)).toBe('document')
   })
 
-  it('document tab → document', () => {
-    const tab: WorkspaceTab = {
-      id: 'd1',
-      type: 'document',
-      title: 'Notes',
-      path: 'notes.kidoc',
-    }
-    expect(deriveAgentPaneContext(tab)).toBe('document')
-  })
-
   it('file-viewer tab → document (file preview is still a doc-like read surface)', () => {
     const tab: WorkspaceTab = {
       id: 'fv1',
@@ -93,10 +83,10 @@ describe('deriveAgentPaneContext', () => {
 })
 
 describe('resolveAgentActiveDocument', () => {
-  it('returns the path and format for document and file viewer tabs', () => {
+  it('returns the path and format for file tabs', () => {
     expect(resolveAgentActiveDocument({
-      id: 'document:Docs/Plan.md',
-      type: 'document',
+      id: 'file-viewer:Docs/Plan.md',
+      type: 'file-viewer',
       title: 'Plan',
       path: 'Docs/Plan.md',
       format: 'markdown',

@@ -154,11 +154,8 @@
     "transparent": "Прозрачный",
     "white": "Белый"
   },
-  "insertIntoDocument": "Вставить в документ",
   "sendToTable": "Отправить в таблицу",
-  "insertedIntoDocument": "Вставлено в {{title}}",
   "sentToTable": "Прикреплено к записи таблицы",
-  "noDocumentTarget": "Сначала откройте документ, затем вставьте дизайн.",
   "errors": {
     "create": "Не удалось создать дизайн",
     "open": "Не удалось открыть дизайн.",

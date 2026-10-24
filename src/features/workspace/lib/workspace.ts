@@ -15,15 +15,6 @@ export type WorkspaceMediaKind = 'images' | 'videos'
 export type WorkspaceTab =
   | {
       id: string
-      type: 'document'
-      title: string
-      path: string
-      format?: WorkspaceDocumentFormat
-
-      uid?: string
-    }
-  | {
-      id: string
       type: 'file-viewer'
       title: string
       path: string
@@ -282,8 +273,6 @@ export function getWorkspaceTabKit(tab: WorkspaceTab): KitIconId | null {
       return tab.tablePath ? 'table' : null
     case 'design':
       return tab.type
-    default:
-      return 'document'
   }
 }
 
@@ -416,11 +405,6 @@ export function filterWorkspaceTreeItems(
 
 export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
   return format === 'markdown' || format === 'html'
-}
-
-/** Formats Kition's native document tab opens (HTML's preview); every other format opens in a file tab, a kit's or a preview. */
-export function opensInDocumentTab(format?: WorkspaceDocumentFormat): boolean {
-  return format === 'html'
 }
 
 export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {

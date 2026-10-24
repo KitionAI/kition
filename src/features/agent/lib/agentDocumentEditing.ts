@@ -1,5 +1,4 @@
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 import { isBinaryAttachmentMention } from './documentMentions'
 
 const structuredDocumentFormats = new Set<WorkspaceDocumentFormat>(['table'])
@@ -7,7 +6,6 @@ const structuredDocumentFormats = new Set<WorkspaceDocumentFormat>(['table'])
 export function buildAgentDocumentEditingPromptContext(input: {
   activeDocumentPath?: string
   activeDocumentFormat?: WorkspaceDocumentFormat
-  markdownImageInsertionContext?: MarkdownImageInsertionContext
 }) {
   const path = String(input.activeDocumentPath || '').trim()
   if (
@@ -19,24 +17,12 @@ export function buildAgentDocumentEditingPromptContext(input: {
     return ''
   }
 
-  const imageInsertionContext = input.markdownImageInsertionContext?.documentPath === path
-    ? input.markdownImageInsertionContext
-    : undefined
   const imagePlacementRequirements = [
     'Markdown image placement requirements:',
     '- Insert each generated Markdown image as a standalone block at a top-level block boundary with blank-line separation.',
     '- Never insert a Markdown image inside fenced or inline code, blockquotes, lists, tables, frontmatter, HTML blocks, or other nested Markdown structures.',
-    '- Re-read the latest document before insertion. Treat the preferred offset and nearby text as relocation hints, not as authority over newer content.',
-    imageInsertionContext
-      ? `- Preferred safe image insertion: line ${imageInsertionContext.preferredLine}, offset ${imageInsertionContext.preferredOffset} (strategy: ${imageInsertionContext.strategy}; editor cursor offset: ${imageInsertionContext.cursorOffset ?? 'unavailable'}).`
-      : '- No current editor cursor anchor is available; start with the fallback sequence below.',
-    ...(imageInsertionContext
-      ? [
-        `- Text immediately before the preferred boundary: ${JSON.stringify(imageInsertionContext.anchorBefore)}.`,
-        `- Text immediately after the preferred boundary: ${JSON.stringify(imageInsertionContext.anchorAfter)}.`,
-      ]
-      : []),
-    '- If the preferred boundary is stale or unsafe, use the nearest top-level blank line to the requested line, preferring the following line when distances are equal.',
+    '- Re-read the latest document before insertion.',
+    '- Use the nearest top-level blank line to the requested line, preferring the following line when distances are equal.',
     '- If no top-level blank line is available, insert after the containing top-level block and add blank-line separation; if that cannot be located, fall back to the document end.',
   ]
 

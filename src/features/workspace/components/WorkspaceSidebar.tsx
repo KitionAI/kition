@@ -3,7 +3,6 @@ import { ChevronDown, ChevronRight, Folder, LoaderCircle, PanelLeftClose, Plus, 
 import { type ClipboardEvent as ReactClipboardEvent, type DragEvent as ReactDragEvent, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
-import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
 import { carriesFiles } from '@/lib/fileDropGuard'
@@ -23,7 +22,6 @@ export function WorkspaceSidebar({
   onOpenCreateMenu,
   onCloseCreateMenu,
   onCreateFolder,
-  onCreateDocument,
   onPasteFiles,
   onRefresh,
   onOpenWorkflows,
@@ -45,7 +43,6 @@ export function WorkspaceSidebar({
   onOpenCreateMenu: () => void
   onCloseCreateMenu: () => void
   onCreateFolder: () => void
-  onCreateDocument: (format: DocumentCreateFormat) => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   onRefresh?: () => void
   /** Opens the workspace-global Workflows tab. Replaces the old root-level

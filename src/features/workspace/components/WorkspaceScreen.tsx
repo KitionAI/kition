@@ -18,8 +18,6 @@ import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { getKitionAccountLinks, isKitionAccountSessionUsable, useKitionAccount } from '@/features/account/public'
 import { useWorkspaceAgent } from '@/features/agent/public'
-import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
-import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { WorkspaceEditorFrame } from '@/features/workspace/components/WorkspaceEditorFrame'
@@ -32,8 +30,7 @@ import { WorkspaceLayout } from '@/features/workspace/components/WorkspaceLayout
 import { WorkspaceScreenTopbar } from '@/features/workspace/components/WorkspaceScreenTopbar'
 import { useWorkspaceChrome } from '@/features/workspace/hooks/useWorkspaceChrome'
 import { useWorkspaceEditorPanels } from '@/features/workspace/hooks/useWorkspaceEditorPanels'
-import { useWorkspaceDerivedState } from '@/features/workspace/hooks/useWorkspaceDerivedState'
-import { useWorkspaceTopbarActions } from '@/features/workspace/hooks/useWorkspaceTopbarActions'
+import { useWorkspaceFileOpener } from '@/features/workspace/hooks/useWorkspaceFileOpener'
 import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspaceTreeActions'
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
@@ -52,19 +49,15 @@ import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWor
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
 import { useKitCreations } from '@/features/workspace/hooks/useKitCreations'
 import { onShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
-import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
-import { useWorkspaceDocumentTranslation } from '@/features/workspace/hooks/useWorkspaceDocumentTranslation'
 import { useAgentImageGeneration } from '@/features/workspace/hooks/useAgentImageGeneration'
 import { buildDesignImageAgentInstruction } from '@/features/design/public'
-import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
-import { isEditableWorkspaceFormat } from '@/features/workspace/lib/workspace'
+import { inferWorkspaceItemFormat, isEditableWorkspaceFormat, isImageWorkspaceFormat, isVideoWorkspaceFormat } from '@/features/workspace/lib/workspace'
 import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
 import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTurnUpdate'
 import { notify } from '@/lib/notify'
-import { cn } from '@kition/app-ui/utils'
-import { isDesktopRuntime, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
+import { isDesktopRuntime, type WorkspaceDocumentFormat } from '@/services/desktop'
 
 const WorkflowRoute = lazy(() =>
   import('@/features/workflow/pages/WorkflowRoute').then((module) => ({ default: module.WorkflowRoute })),
@@ -134,39 +127,23 @@ export function WorkspaceScreen({
     () => withTableFileChildren(fileTreeNodes, tableFileChildren),
     [fileTreeNodes, tableFileChildren],
   )
-  // Pinned tabs storage is workspace-scoped; keep the module-level current root
-  // in sync with rootPath so pin/unpin/list operations hit the right bucket.
   useEffect(() => {
-    setPinnedTabsWorkspace(rootPath)
     setInvalidationWorkspaceRoot(rootPath)
   }, [rootPath])
   const [error, setError] = useState('')
   const [, setFeedback] = useState('')
-  const [documentToolbarPortal, setDocumentToolbarPortal] =
-    useState<HTMLElement | null>(null)
-  const handleDocumentToolbarMount = useCallback(
-    (node: HTMLElement | null) => setDocumentToolbarPortal(node),
-    [],
-  )
+  const [saving, setSaving] = useState(false)
   const chrome = useWorkspaceChrome()
   const {
     agentSidebarWidth,
-    editorView,
     effectiveSidebarWidth,
     handleAgentSidebarResize,
     handleWorkspaceSidebarResize,
-    itemMenuOpen,
-    setEditorView,
-    setItemMenuOpen,
     setSidebarSectionsExpanded,
     sidebarSectionsExpanded,
     toggleSidebarCollapsed,
     toggleSidebarSection,
   } = chrome
-  const importInputRef = useRef<HTMLInputElement | null>(null)
-  const openDocumentTabRef = useRef<(document: WorkspaceDocument) => void>(
-    () => {},
-  )
   const openFileViewerTabRef = useRef<
     (path: string, format: WorkspaceDocumentFormat) => void
   >(() => {})
@@ -183,63 +160,21 @@ export function WorkspaceScreen({
     buildDesignContext: designBridge.buildActiveContext,
   })
   const agentTurnContextRef = agentTurn.turnContextRef
-  const handleAgentInsertionContextChange = agentTurn.handleInsertionContextChange
   const getAgentTurnContext = agentTurn.getTurnContext
-  const documentSession = useWorkspaceDocumentSession({
-    editorLocked: editorView.locked,
-    editorMode: editorView.editorMode,
+  const {
+    activeResourcePath,
+    setActiveResourcePath,
+    applyWorkspaceDocument,
+    openDocument,
+  } = useWorkspaceFileOpener({
     files,
     rootPath,
-    isModifiedDocumentPath: (path) =>
-      agentDocumentStateRef.current.modifiedPaths.has(path),
-    onClearModifiedDocumentPath: (path) =>
-      agentDocumentStateRef.current.clearModifiedPath(path),
     onError: setError,
     onFeedback: setFeedback,
-    onOpenDocumentTab: (document) => openDocumentTabRef.current(document),
-    onOpenFileViewerTab: (path, format) =>
-      openFileViewerTabRef.current(path, format),
-    onRequireMarkdownMode: () =>
-      setEditorView((current) => ({ ...current, editorMode: 'rich' })),
+    onOpenFileViewerTab: (path, format) => openFileViewerTabRef.current(path, format),
     setTreeItems: workspaceTree.setTreeItems,
   })
-  const {
-    activeDocument,
-    activeDocumentFormat,
-    activeDocumentSession,
-    activeResourcePath,
-    applyWorkspaceDocument,
-    clearActiveDocumentSession,
-    closeOpenedDocument,
-    draftContent,
-    ensureActiveDocumentSaved,
-    forgetOpenedDocuments,
-    hasUnsavedChanges,
-    openModifiedDocumentReview,
-    openDocument,
-    persistActiveDocument,
-    remapOpenedDocuments,
-    replaceActiveDocumentText,
-    restoreSavedVersion,
-    saving,
-    selectedPlatform,
-    setActiveResourcePath,
-    setSaving,
-    setSelectedPlatform,
-    reviewModifiedDocuments,
-  } = documentSession
 
-  const documentExport = useDocumentExport({
-    activeDocument,
-    activeDocumentFormat,
-    draftContent,
-    readContent: activeDocumentSession?.isReady() ? () => activeDocumentSession.read() : undefined,
-    onError: setError,
-    onFeedback: setFeedback,
-  })
-  const {
-    openExportDialog,
-  } = documentExport
   const workspaceAgent = useWorkspaceAgent({
     settings,
     rootPath,
@@ -251,15 +186,11 @@ export function WorkspaceScreen({
     onWorkspaceArtifactsSaved: async () => {
       await refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true })
     },
-    onWorkspaceDocumentsModified: async (paths) => {
-      await Promise.all([
-        reviewModifiedDocuments(paths),
-        refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true }),
-      ])
+    onWorkspaceDocumentsModified: async () => {
+      await refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true })
     },
     onDesignPatch: designBridge.receivePatch,
     onDesignPatchCancelled: designBridge.cancelPreview,
-    prepareActiveDocument: ensureActiveDocumentSaved,
     getTurnContext: getAgentTurnContext,
   })
   const {
@@ -303,15 +234,10 @@ export function WorkspaceScreen({
     workspaceTabs,
   } = useWorkspaceTabs({
     rootPath,
-    activeDocumentPath: activeDocument?.path || '',
-    onOpenDocument: async (path) => openDocument(path),
     onActivateGallery: (kind) => {
       setActiveResourcePath('')
       setSidebarSectionsExpanded((current) => ({ ...current, [kind]: true }))
     },
-    // The tab controllers wrote (or, with the user's consent, discarded) the pending save first;
-    // the session stops here, and a final write that still fails keeps retrying.
-    onCloseDocumentTab: (tab) => closeOpenedDocument(tab.path),
   })
   setActiveWorkspaceTabIdRef.current = setActiveWorkspaceTabId
 
@@ -344,7 +270,7 @@ export function WorkspaceScreen({
     },
   })
 
-  const { handleCloseWorkspaceTabById, openDocumentTab, openFileViewerTab } = useWorkspaceTabControllers({
+  const { handleCloseWorkspaceTabById, openFileViewerTab } = useWorkspaceTabControllers({
     workspaceTabs,
     activeWorkspaceTab,
     activeWorkspaceTabId,
@@ -400,31 +326,18 @@ export function WorkspaceScreen({
     )
     : []
 
-  // Files renamed or moved on disk: their tabs and their open document sessions follow.
-  const remapOpenedPaths = useCallback((sourcePath: string, targetPath: string) => {
-    remapWorkspaceTabPaths(sourcePath, targetPath)
-    remapOpenedDocuments(sourcePath, targetPath)
-  }, [remapOpenedDocuments, remapWorkspaceTabPaths])
   const treeActions = useWorkspaceTreeActions({
-    activeDocument,
     activeResourcePath,
     applyWorkspaceDocument,
-    clearActiveDocumentSession,
     filterWorkspaceTabs,
-    forgetOpenedDocuments,
-    hasUnsavedChanges,
-    persistActiveDocument,
-    remapWorkspaceTabPaths: remapOpenedPaths,
+    remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,
     setAgentModifiedDocumentPaths,
-    setEditorMode: (mode) =>
-      setEditorView((current) => ({ ...current, editorMode: mode })),
     setError,
     setFeedback,
     setSaving,
-    setSelectedPlatform,
     treeState: workspaceTree,
   })
   const {
@@ -440,10 +353,7 @@ export function WorkspaceScreen({
 
   refreshWorkspaceDocumentsRef.current = refreshWorkspaceDocuments
 
-  const templateDialogs = useWorkspaceTemplateDialogs({
-    createDocument,
-    selectedPlatform,
-  })
+  const templateDialogs = useWorkspaceTemplateDialogs({ createDocument })
   const { openDocumentTemplateDialog } = templateDialogs
 
   const rowActions = useWorkspaceTreeRowActions({
@@ -464,23 +374,15 @@ export function WorkspaceScreen({
     [workspaceTree.flatTreeNodes],
   )
 
-  const derivedState = useWorkspaceDerivedState({
-    activeDocument,
-    activeDocumentFormat,
-    draftContent,
-    editorLocked: editorView.locked,
-    editorMode: editorView.editorMode,
-    files,
-    itemMenuOpen,
-  })
-  const {
-    editorPreviewHtml,
-    imageFiles,
-    videoFiles,
-  } = derivedState
+  const imageFiles = useMemo(
+    () => files.filter((item) => isImageWorkspaceFormat(item.format || inferWorkspaceItemFormat(item.path))),
+    [files],
+  )
+  const videoFiles = useMemo(
+    () => files.filter((item) => isVideoWorkspaceFormat(item.format || inferWorkspaceItemFormat(item.path))),
+    [files],
+  )
 
-
-  openDocumentTabRef.current = openDocumentTab
   openFileViewerTabRef.current = openFileViewerTab
 
   const workflowWorkbench = workflowOpen && workflowSchemaLookup ? (
@@ -507,32 +409,13 @@ export function WorkspaceScreen({
     activeSessionId: activeWorkspaceAgentSessionId,
     setActiveSessionId: setActiveWorkspaceAgentSessionId,
     createNewAgentChat,
-    agentBusySessions,
     agentDrafts,
     setAgentDraft,
     addAgentDocumentContext,
     activeWorkspaceDocumentPath,
     openDocument,
   })
-  const { handleDocumentAskAgent } = chatEntryPoints
 
-  const topbarActions = useWorkspaceTopbarActions({
-    ensureActiveDocumentSaved,
-    hasPendingRevision: Boolean(documentSession.activeDocumentRevision),
-    activeDocument,
-    activeDocumentFormat,
-    restoreSavedVersion,
-    replaceActiveDocumentText,
-    editorLocked: editorView.locked,
-    importInputRef,
-    setEditorView,
-    setError,
-    setFeedback,
-    setItemMenuOpen,
-  })
-  const {
-    setEditorMode,
-  } = topbarActions
   const { agentNeedsModelConfig, galleryPanelProps } =
     useWorkspaceEditorPanels({
       activeWorkspaceTab,
@@ -548,22 +431,6 @@ export function WorkspaceScreen({
   )
   useWorkspaceErrorNotice({ error, agentNeedsModelConfig, onOpenModelSettings: openModelSettings })
 
-
-  const { saveDocumentTitle } = useWorkspaceDocumentTitleRename({
-    rootPath,
-    activeDocument,
-    activeDocumentFormat,
-    activeResourcePath,
-    treeState: workspaceTree,
-    ensureActiveDocumentSaved,
-    setAgentModifiedDocumentPaths,
-    remapWorkspaceTabPaths,
-    remapOpenedDocuments,
-    setActiveResourcePath,
-    setSaving,
-    setError,
-    setFeedback,
-  })
 
   const agentComposer = useWorkspaceAgentComposer({
     activeSession: activeWorkspaceAgentSession,
@@ -590,7 +457,7 @@ export function WorkspaceScreen({
       onAddLocalSource={() => void agentComposer.addLocalAnalysisSource()}
       onSend={(sessionId, intent) => void agentComposer.sendMessage(sessionId, intent)}
       onOpenDocument={(path) => void openDocument(path)}
-      onReviewModifiedArtifact={(path) => void openModifiedDocumentReview(path)}
+      onReviewModifiedArtifact={(path) => void openDocument(path)}
       onImportFiles={(files, target) => importBrowserFiles(files, target)}
     />
   ) : null
@@ -632,14 +499,6 @@ export function WorkspaceScreen({
     onCloseProfile,
   })
 
-  const documentTranslation = useWorkspaceDocumentTranslation({
-    model: selectedAgentModel,
-    ensureHostedAccountReady,
-    settings,
-    setSettings,
-    onOpenModelSettings: openModelSettings,
-  })
-
   // The empty state's "New table": a table file from the Table kit, at the workspace root.
   const createTableFile = useCallback(() => {
     void kitCreations.find((kit) => kit.id === 'table')?.create('')
@@ -649,23 +508,15 @@ export function WorkspaceScreen({
     <>
       <WorkspaceScreenTopbar
         tabsPortal={topbarLeadingPortal}
-        documentToolbarPortal={documentToolbarPortal}
-        importInputRef={importInputRef}
         chrome={chrome}
-        actions={topbarActions}
-        derived={derivedState}
-        documentSession={documentSession}
         tabs={{ workspaceTabs, activeWorkspaceTab, activeWorkspaceTabId, activateWorkspaceTab, closeTab: handleCloseWorkspaceTabById }}
         workflowOpen={workflowOpen}
         onCloseWorkflow={onCloseWorkflow}
         onCloseProfile={onCloseProfile}
-        openExportDialog={openExportDialog}
-        openWorkspaceFolder={openWorkspaceFolder}
       />
       <WorkspaceAgentChrome portal={topbarActionsPortal} panel={agentPanel} sessions={agentSessions} />
       <WorkspaceDialogs
         saving={saving}
-        documentExport={documentExport}
         createFlows={createFlows}
         templateDialogs={templateDialogs}
       />
@@ -675,18 +526,12 @@ export function WorkspaceScreen({
         rightPaneWidth={workspaceRightPane ? agentSidebarWidth : undefined}
         onResizeSidebar={handleWorkspaceSidebarResize}
         onResizeRightPane={handleAgentSidebarResize}
-        editorClassName={cn(
-          editorView.smallText && 'is-small-text',
-          editorView.fullWidth && 'is-full-width',
-          editorView.textStyle === 'serif' && 'is-serif',
-          editorView.textStyle === 'mono' && 'is-mono',
-        )}
         sidebar={
           <WorkspaceScreenSidebar
             tree={workspaceTree}
             treeNodes={workspaceTreeNodes}
             moveTargets={workspaceMoveTargets}
-            activePath={activeResourcePath || activeDocument?.path || ''}
+            activePath={activeResourcePath}
             modifiedPaths={agentModifiedDocumentPaths}
             createMenuActions={createMenuActions}
             treeActions={treeActions}
@@ -721,9 +566,6 @@ export function WorkspaceScreen({
               workspaceTabs,
               activeWorkspaceTab,
               activeWorkspaceTabId,
-              documentSession,
-              editorView,
-              editorPreviewHtml,
               galleryPanelProps,
               agentPanel,
               activeAgentSession: activeWorkspaceAgentSession,
@@ -739,12 +581,6 @@ export function WorkspaceScreen({
                 openWorkspaceWorkflow,
               },
               onCreateTable: createTableFile,
-              onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
-              documentTranslation,
-              onAgentInsertionContextChange: handleAgentInsertionContextChange,
-              onSaveDocumentTitle: saveDocumentTitle,
-              onToolbarMount: handleDocumentToolbarMount,
-              onSetEditorMode: setEditorMode,
             }}
           />
         )}

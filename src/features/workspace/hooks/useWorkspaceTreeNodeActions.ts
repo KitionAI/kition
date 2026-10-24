@@ -4,7 +4,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
 import { useConfirm } from '@kition/app-ui/confirm'
-import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
 import {
   syncDocumentFileDeleted,
   syncDocumentFileDuplicated,
@@ -29,6 +28,7 @@ import {
 import type { WorkspaceTreeMetadata } from '@/features/workspace/lib/workspacePersistence'
 import {
   getChildFolderPathForNode,
+  getDocumentParentPath,
   moveWorkspaceTreeBranchMetadata,
   renameWorkspaceTreeBranchMetadata,
   removeWorkspaceTreeBranchMetadata,
@@ -52,9 +52,6 @@ type UseWorkspaceTreeNodeActionsOptions = {
     preferredPath?: string,
   ) => Promise<void>
   filterWorkspaceTabs: (predicate: (tab: WorkspaceTab) => boolean) => void
-  hasUnsavedChanges: boolean
-  persistActiveDocument: (reason?: 'auto' | 'shortcut') => Promise<boolean>
-  forgetOpenedDocuments: (predicate: (path: string) => boolean) => void
   refreshWorkspaceDocuments: (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
   renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
@@ -115,9 +112,6 @@ export function useWorkspaceTreeNodeActions({
   activeResourcePath,
   applyWorkspaceDocumentList,
   filterWorkspaceTabs,
-  hasUnsavedChanges,
-  persistActiveDocument,
-  forgetOpenedDocuments,
   refreshWorkspaceDocuments,
   remapWorkspaceTabPaths,
   renameWorkspaceTabPath,
@@ -146,13 +140,6 @@ export function useWorkspaceTreeNodeActions({
     const childFolderPath = getChildFolderPathForNode(node)
     const childPrefix = `${childFolderPath}/`
     const isFolder = node.type === 'folder'
-    const activeUnderNode = activeDocumentPath === node.path || activeDocumentPath.startsWith(childPrefix)
-    if (activeUnderNode && hasUnsavedChanges) {
-      const saved = await persistActiveDocument('auto')
-      if (!saved) {
-        return
-      }
-    }
 
     const childCount = flatTreeNodes
       .filter((item) => item.path.startsWith(childPrefix) && item.type === 'file')
@@ -182,11 +169,10 @@ export function useWorkspaceTreeNodeActions({
       )
       filterWorkspaceTabs(
         (tab) => (
-          (tab.type !== 'document' && tab.type !== 'design')
+          (tab.type !== 'file-viewer' && tab.type !== 'design')
           || (tab.path !== node.path && !tab.path.startsWith(childPrefix))
         ),
       )
-      forgetOpenedDocuments((path) => path === node.path || path.startsWith(childPrefix))
 
       if (activeResourcePath === node.path || activeResourcePath.startsWith(childPrefix)) {
         setActiveResourcePath('')
@@ -214,9 +200,6 @@ export function useWorkspaceTreeNodeActions({
     confirm,
     filterWorkspaceTabs,
     flatTreeNodes,
-    hasUnsavedChanges,
-    persistActiveDocument,
-    forgetOpenedDocuments,
     rootPath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,
@@ -333,13 +316,6 @@ export function useWorkspaceTreeNodeActions({
       return
     }
 
-    if (activeDocumentPath === draggedNode.path && hasUnsavedChanges) {
-      const saved = await persistActiveDocument('auto')
-      if (!saved) {
-        return
-      }
-    }
-
     const draggedChildFolder = getChildFolderPathForNode(draggedNode)
     if (destinationFolder === draggedChildFolder || destinationFolder.startsWith(`${draggedChildFolder}/`)) {
       setError('A page cannot be moved into its own child page.')
@@ -375,8 +351,6 @@ export function useWorkspaceTreeNodeActions({
     applyWorkspaceDocumentList,
     expandFolders,
     flatTreeNodes,
-    hasUnsavedChanges,
-    persistActiveDocument,
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
     rootPath,
@@ -476,13 +450,6 @@ export function useWorkspaceTreeNodeActions({
         return
       }
 
-      if (activeDocumentPath === node.path && hasUnsavedChanges) {
-        const saved = await persistActiveDocument('auto')
-        if (!saved) {
-          return
-        }
-      }
-
       const targetName = renameWorkspaceDocumentPath(node.path, trimmed).split('/').pop() || ''
       const moved = await moveWorkspaceDocument({ path: node.path, target_name: targetName })
       followMovedTableFiles(node.path, moved.path)
@@ -505,8 +472,6 @@ export function useWorkspaceTreeNodeActions({
   }, [
     activeDocumentPath,
     applyWorkspaceDocumentList,
-    hasUnsavedChanges,
-    persistActiveDocument,
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
@@ -579,13 +544,6 @@ export function useWorkspaceTreeNodeActions({
       return
     }
 
-    if (activeDocumentPath === node.path && hasUnsavedChanges) {
-      const saved = await persistActiveDocument('auto')
-      if (!saved) {
-        return
-      }
-    }
-
     setSaving(true)
     setError('')
     setFeedback('')
@@ -612,8 +570,6 @@ export function useWorkspaceTreeNodeActions({
     activeDocumentPath,
     applyWorkspaceDocumentList,
     expandFolders,
-    hasUnsavedChanges,
-    persistActiveDocument,
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
     rootPath,

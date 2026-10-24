@@ -431,7 +431,7 @@ function DesignEditor({
         onPresetsChange={exportPresets.update}
         pdfAvailable={isDesktopRuntime()}
         canSendToTable={Boolean(state.document.provenance?.recordRef)}
-        onHandoff={(kind) => void handoff(kind)}
+        onHandoff={() => void handoff()}
       />
       {['conflict', 'error', 'recovered'].includes(status) ? (
         <div className="design-alert" role="alert">

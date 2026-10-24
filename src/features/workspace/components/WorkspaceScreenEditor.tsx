@@ -5,11 +5,8 @@ import type { WorkspaceAgentPanelState } from '@/features/workspace/components/W
 import { WorkspaceEditorContent } from '@/features/workspace/components/WorkspaceEditorContent'
 import { WorkspaceEditorPane } from '@/features/workspace/components/WorkspaceEditorPane'
 import type { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
-import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
 
 export type WorkspaceEditorContentProps = ComponentProps<typeof WorkspaceEditorContent>
-
-type RevisionDecision = Parameters<WorkspaceEditorContentProps['onResolveAllDocumentRevisionChanges']>[0]
 
 /** What the editor column needs, as the bundles the workspace hooks already return. */
 export type WorkspaceScreenEditorInput = {
@@ -17,21 +14,6 @@ export type WorkspaceScreenEditorInput = {
   workspaceTabs: WorkspaceEditorContentProps['workspaceTabs']
   activeWorkspaceTab: WorkspaceEditorContentProps['activeWorkspaceTab']
   activeWorkspaceTabId: string
-  documentSession: Pick<
-    WorkspaceEditorContentProps,
-    'activeDocument' | 'activeDocumentFormat' | 'activeDocumentRevision' | 'activeDocumentSession' | 'draftContent'
-    | 'documentRevisionSaving' | 'getOpenedDocument' | 'activeAgentReview'
-  > & {
-    acceptAgentReview: () => void
-    rejectAgentReview: () => unknown
-    showAgentReviewChanges: () => void
-    closeAgentReviewChanges: () => void
-    decideDocumentRevisionChange: (path: string, changeId: string, decision: RevisionDecision) => void
-    resolveAllDocumentRevisionChanges: (path: string, decision: RevisionDecision) => void
-    openDocument: (path: string) => unknown
-  }
-  editorView: { locked: boolean; editorMode: WorkspaceEditorContentProps['editorMode'] }
-  editorPreviewHtml: string
   galleryPanelProps: WorkspaceEditorContentProps['galleryPanelProps']
   agentPanel: Pick<WorkspaceAgentPanelState, 'open' | 'setOpen' | 'setHistoryOpen'>
   activeAgentSession: AgentSession | null
@@ -41,10 +23,7 @@ export type WorkspaceScreenEditorInput = {
     onBridgeChange: WorkspaceEditorContentProps['onDesignAgentBridgeChange']
     onGenerateImage: WorkspaceEditorContentProps['onGenerateDesignImage']
   }
-  templateDialogs: Pick<
-    ReturnType<typeof useWorkspaceTemplateDialogs>,
-    'documentEditorFocusRequest' | 'openDocumentTemplateDialog'
-  >
+  templateDialogs: Pick<ReturnType<typeof useWorkspaceTemplateDialogs>, 'openDocumentTemplateDialog'>
   workflows: {
     /** The workflows of one table file. */
     openTableFileWorkflow: (tablePath: string, workflowId?: string) => void
@@ -52,44 +31,19 @@ export type WorkspaceScreenEditorInput = {
   }
   /** A new table file, from the Table kit. */
   onCreateTable: () => void
-  onAskDocumentAgent: WorkspaceEditorContentProps['onAskDocumentAgent']
-  documentTranslation: WorkspaceEditorContentProps['documentTranslation']
-  onAgentInsertionContextChange: WorkspaceEditorContentProps['onAgentInsertionContextChange']
-  onSaveDocumentTitle: (nextTitle: string) => unknown
-  onToolbarMount: WorkspaceEditorContentProps['onToolbarMount']
-  onSetEditorMode: WorkspaceEditorContentProps['onSetEditorMode']
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { documentSession, agentPanel, activeAgentSession, design, templateDialogs, workflows } = input
-  const revision = documentSession.activeDocumentRevision
+  const { agentPanel, activeAgentSession, design, templateDialogs, workflows } = input
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
     agentPanel.setHistoryOpen(false)
   }
   return {
     designRoot: input.rootPath,
-    activeDocument: documentSession.activeDocument,
-    activeDocumentFormat: documentSession.activeDocumentFormat,
-    activeDocumentRevision: revision,
-    activeAgentReview: documentSession.activeAgentReview,
-    onAcceptAgentReview: documentSession.acceptAgentReview,
-    onRejectAgentReview: () => void documentSession.rejectAgentReview(),
-    onShowAgentReviewChanges: documentSession.showAgentReviewChanges,
-    onCloseAgentReviewChanges: documentSession.closeAgentReviewChanges,
-    activeDocumentSession: documentSession.activeDocumentSession,
     activeWorkspaceTab: input.activeWorkspaceTab,
     activeWorkspaceTabId: input.activeWorkspaceTabId,
-    documentTitle: documentSession.activeDocument ? getWorkspaceItemTitle(documentSession.activeDocument.name) : '',
-    draftContent: documentSession.draftContent,
-    hasActiveDocument: Boolean(documentSession.activeDocument),
-    editorLocked: input.editorView.locked,
-    editorMode: input.editorView.editorMode,
-    editorPreviewHtml: input.editorPreviewHtml,
-    documentRevisionSaving: documentSession.documentRevisionSaving,
-    documentEditorFocusRequest: templateDialogs.documentEditorFocusRequest,
     galleryPanelProps: input.galleryPanelProps,
-    getOpenedDocument: documentSession.getOpenedDocument,
     designAgentAvailable: design.available,
     onDesignAgentBridgeChange: design.onBridgeChange,
     onGenerateDesignImage: design.available ? design.onGenerateImage : undefined,
@@ -103,24 +57,10 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
       openAgentPanel()
       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
     },
-    onAskDocumentAgent: input.onAskDocumentAgent,
-    documentTranslation: input.documentTranslation,
-    onAgentInsertionContextChange: input.onAgentInsertionContextChange,
-    onSaveDocumentTitle: (nextTitle) => void input.onSaveDocumentTitle(nextTitle),
-    onDecideDocumentRevisionChange: (changeId, decision) => {
-      if (revision) documentSession.decideDocumentRevisionChange(revision.path, changeId, decision)
-    },
-    onResolveAllDocumentRevisionChanges: (decision) => {
-      if (revision) documentSession.resolveAllDocumentRevisionChanges(revision.path, decision)
-    },
-    onOpenDocument: (path) => void documentSession.openDocument(path),
-    onToolbarMount: input.onToolbarMount,
-    onSetEditorMode: input.onSetEditorMode,
     workspaceTabs: input.workspaceTabs,
     rootPath: input.rootPath,
   }
 }
-
 /** The active pane inside the editor column. */
 export function WorkspaceScreenEditor(input: WorkspaceScreenEditorInput) {
   return (

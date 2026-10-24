@@ -2,7 +2,6 @@ import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations
 import { HeadlessDraftReviewHost } from '@/features/kits/public'
 import { WorkspaceSidebar } from '@/features/workspace/components/WorkspaceSidebar'
 import { WorkspaceTree } from '@/features/workspace/components/WorkspaceTree'
-import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
 import type { WorkspaceTreeDropPosition, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 
@@ -15,7 +14,6 @@ type WorkspaceSidebarPanelProps = {
   modifiedPaths: Set<string>
   moveTargets: WorkspaceTreeNode[]
   onCreateFolder: () => void
-  onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateInside: (node: WorkspaceTreeNode) => void
   /** A form for one of a table file's tables. */
   onCreateFormForTable?: (node: WorkspaceTreeNode) => void
@@ -65,7 +63,6 @@ export function WorkspaceSidebarPanel({
   modifiedPaths,
   moveTargets,
   onCreateFolder,
-  onCreateDocument,
   onCreateInside,
   onCreateFormForTable,
   onDelete,
@@ -112,7 +109,6 @@ export function WorkspaceSidebarPanel({
       onOpenCreateMenu={onOpenCreateMenu}
       onCloseCreateMenu={onCloseCreateMenu}
       onCreateFolder={onCreateFolder}
-      onCreateDocument={onCreateDocument}
       onPasteFiles={onPasteFiles}
       onRefresh={onRefresh}
       onOpenWorkflows={onOpenWorkflows}
@@ -147,7 +143,6 @@ export function WorkspaceSidebarPanel({
             createMenuVariant={createMenuVariant}
             onCloseCreateMenu={onCloseCreateMenu}
             onCreateFolder={onCreateFolder}
-            onCreateDocument={onCreateDocument}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
           />

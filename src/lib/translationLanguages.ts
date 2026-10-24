@@ -43,8 +43,3 @@ function displayName(language: TranslationLanguage, inLanguage: string) {
 export function translationLanguageEndonym(language: TranslationLanguage) {
   return displayName(language, language)
 }
-
-/** The language's English name, used in model prompts. */
-export function translationLanguageEnglishName(language: TranslationLanguage) {
-  return displayName(language, 'en')
-}

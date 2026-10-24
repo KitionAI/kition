@@ -4,7 +4,6 @@
  * document as of it is read from the open replica's own history (`stateAt`) and restored as one new change
  * (`revertTo`), never by replacing the document, so concurrent edits of others are kept.
  */
-import { loadDocumentPreview } from '@/features/document/public'
 import { readRoom, syncClient } from '@/features/collab/public'
 import type { Checkpoint as ServerCheckpoint } from '@/lib/sync'
 import { readDocumentCheckpoint, readDocumentHistory, readDocumentIndex, recordDocumentCheckpoint, type DocumentCheckpoint } from '@/services/desktop'
@@ -22,8 +21,8 @@ export type ServerEntry = ServerCheckpoint & { source: 'server'; id: string }
 
 export type HistoryEntry = DeviceEntry | ServerEntry
 
-/** The document as of a checkpoint: the bytes a kit opens, or the text Kition shows. */
-export type HistoryPreview = { snapshot: Uint8Array; blobs: Uint8Array; text?: string }
+/** The document as of a checkpoint: the bytes its kit opens. */
+export type HistoryPreview = { snapshot: Uint8Array; blobs: Uint8Array }
 
 /** The document's id in the store (its history's), or `null` when the store has none for its path. */
 async function storeIdFor(path: string): Promise<string | null> {
@@ -52,14 +51,9 @@ export async function loadServerHistory(document: HistoryDocument): Promise<Serv
   return checkpoints.map((checkpoint) => ({ ...checkpoint, source: 'server' as const, id: `server-${checkpoint.seq}` }))
 }
 
-async function render(document: HistoryDocument, snapshot: Uint8Array, blobs: Uint8Array): Promise<HistoryPreview> {
-  if (document.kind === 'document') return { snapshot, blobs, text: (await loadDocumentPreview()).documentPreviewText(snapshot) }
-  return { snapshot, blobs }
-}
-
 /** The blobs a kit needs to show the device checkpoint `entry`: those the store kept with it, else today's. */
 async function blobsAt(document: HistoryDocument, entry: DeviceEntry, current: Uint8Array): Promise<Uint8Array> {
-  if (document.kind !== 'kit' || !entry.hasBlobs) return current
+  if (!entry.hasBlobs) return current
   const storeId = await storeIdFor(document.path)
   const kept = storeId ? await readDocumentCheckpoint(storeId, entry.id) : null
   return kept?.blobs ?? current
@@ -73,11 +67,11 @@ export async function previewOf(document: HistoryDocument, entry: HistoryEntry):
     const client = await syncClient()
     if (!docId || !client) throw new Error('the sync server cannot be reached')
     const { snapshot } = await client.historyAt(docId, entry.seq)
-    return render(document, snapshot, full.blobs)
+    return { snapshot, blobs: full.blobs }
   }
   const bytes = await loadBytes()
   const snapshot = bytes.stateAt([full.changes], bytes.fromHex(entry.version ?? ''))
-  return render(document, snapshot, await blobsAt(document, entry, full.blobs))
+  return { snapshot, blobs: await blobsAt(document, entry, full.blobs) }
 }
 
 /** Brings `document` back to the version `target` holds as one new change; answers whether it changed. */
@@ -91,8 +85,7 @@ async function revertDocument(document: HistoryDocument, target: Uint8Array, blo
 
 /**
  * Restores `entry` as one new change. A server checkpoint is restored by the server (every member, this one too,
- * receives the change). A device checkpoint of a Markdown document is one undo step; of a kit document it
- * answers `undo`, which brings the document back to how it was before. Records where the document was before, and the
+ * receives the change). A device checkpoint answers `undo`, which brings the document back to how it was before. Records where the document was before, and the
  * restore, in its history.
  */
 export async function restoreEntry(document: HistoryDocument, entry: HistoryEntry, label: string): Promise<{ changed: boolean; undo?: () => Promise<void> }> {
@@ -102,10 +95,6 @@ export async function restoreEntry(document: HistoryDocument, entry: HistoryEntr
     if (!docId || !client) throw new Error('the sync server cannot be reached')
     const restored = await client.restore(docId, entry.seq)
     return { changed: restored.seq !== null }
-  }
-  if (document.restoreText) {
-    const preview = await previewOf(document, entry)
-    return { changed: document.restoreText(preview.text ?? '', label) }
   }
   const bytes = await loadBytes()
   const storeId = await storeIdFor(document.path)

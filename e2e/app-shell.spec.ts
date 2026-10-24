@@ -1144,6 +1144,8 @@ test.describe('app shell navigation', () => {
   test('opens the welcome guide directly from local first-run onboarding', async ({ page }) => {
     const onboardingKey = getWorkspaceStorageKey('browser-local-workspace', 'onboarding.v1')
     await page.addInitScript(({ key }) => {
+      // The welcome note opens in the Note kit's frame, which shares this page's storage.
+      if (window !== window.top) return
       localStorage.setItem(key, JSON.stringify({
         version: 1,
         status: 'pending',

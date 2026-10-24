@@ -1,52 +1,15 @@
-import type { DocumentAgentReview, DocumentSession, DocumentTranslationSupport, OpenedDocumentEntry } from '@/features/document/public'
-import { loadDocumentAgentReviewBar, loadDocumentComments } from '@/features/document/public'
 import type { ComponentProps } from 'react'
-import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
-import { BookOpen } from 'lucide-react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui/button'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
-import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
-import type {
-  DocumentRevisionDecision,
-  PendingDocumentRevision,
-} from '@/features/document/lib/documentRevision'
-import type { DocumentAskAgentRequest } from '@kition/document-editor'
-import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
-import type { MarkdownCursorSnapshot } from '@/features/document/components/MarkdownSourceEditor'
-import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@kition/app-ui/utils'
-import type {
-  WorkspaceDocument,
-  WorkspaceDocumentFormat,
-} from '@/services/desktop'
 import type { DesignAgentBridge } from '@/features/design/public'
-import { useDocumentReadOnly } from '@/services/documentAccess'
 import type { ImageStudioRequest, ImageStudioStartResult } from '@/features/media-generation/public'
 
-const DocumentHtmlPreviewPane = lazy(() =>
-  import('@/features/document/components/DocumentHtmlPreviewPane').then((module) => ({ default: module.DocumentHtmlPreviewPane })),
-)
-const DocumentMarkdownEditorPane = lazy(() =>
-  import('@/features/document/components/DocumentMarkdownEditorPane').then((module) => ({ default: module.DocumentMarkdownEditorPane })),
-)
-const DocumentSplitEditorPane = lazy(() =>
-  import('@/features/document/components/DocumentSplitEditorPane').then((module) => ({ default: module.DocumentSplitEditorPane })),
-)
-const DocumentAgentReviewBar = lazy(() =>
-  loadDocumentAgentReviewBar().then((module) => ({ default: module.DocumentAgentReviewBar })),
-)
-const DocumentComments = lazy(() => loadDocumentComments().then((module) => ({ default: module.DocumentComments })))
-const DocumentRevisionReview = lazy(() =>
-  import('@/features/document/components/DocumentRevisionReview').then((module) => ({ default: module.DocumentRevisionReview })),
-)
-const MarkdownSourceEditor = lazy(() =>
-  import('@/features/document/components/MarkdownSourceEditor').then((module) => ({ default: module.MarkdownSourceEditor })),
-)
 const WorkspaceMediaPanel = lazy(() =>
   import('@/features/workspace/components/WorkspaceMediaPanel').then((module) => ({ default: module.WorkspaceMediaPanel })),
 )
@@ -109,29 +72,9 @@ function EditorPaneBoundary({
 }
 
 type WorkspaceEditorContentProps = {
-  activeDocument: WorkspaceDocument | null
-  activeDocumentFormat: WorkspaceDocumentFormat
-  activeDocumentRevision: PendingDocumentRevision | null
-  /** The agent's edit of the active document under review (already in the text, marked). */
-  activeAgentReview?: DocumentAgentReview | null
-  onAcceptAgentReview?: () => void
-  onRejectAgentReview?: () => void
-  onShowAgentReviewChanges?: () => void
-  onCloseAgentReviewChanges?: () => void
-  /** The active Markdown document's session, once its replica is open (editors bind to it). */
-  activeDocumentSession: DocumentSession | null
   activeWorkspaceTab: WorkspaceTab | undefined
   activeWorkspaceTabId: string
-  documentTitle: string
-  draftContent: string
-  hasActiveDocument: boolean
-  editorLocked: boolean
-  editorMode: 'rich' | 'split' | 'source' | 'preview'
-  editorPreviewHtml: string
-  documentRevisionSaving: boolean
-  documentEditorFocusRequest?: number
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
-  getOpenedDocument: (path: string) => OpenedDocumentEntry | null
   designAgentAvailable?: boolean
   onDesignAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
   onCancelDesignAgent?: () => void
@@ -142,21 +85,6 @@ type WorkspaceEditorContentProps = {
   onCreateDocument: () => void
   onCreateTable: () => void
   onOpenAgent: () => void
-  onAskDocumentAgent?: (request: DocumentAskAgentRequest) => void
-  documentTranslation?: DocumentTranslationSupport
-  onAgentInsertionContextChange?: (
-    documentPath: string,
-    context: MarkdownImageInsertionSnapshot | null,
-  ) => void
-  onSaveDocumentTitle: (nextTitle: string) => void
-  onDecideDocumentRevisionChange: (changeId: string, decision: DocumentRevisionDecision) => void
-  onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
-
-  onOpenDocument?: (path: string, opts?: { line?: number; section?: string }) => void
-
-  onToolbarMount?: (node: HTMLElement | null) => void
-
-  onSetEditorMode: (mode: 'rich' | 'split' | 'source' | 'preview') => void
   designRoot?: string
   workspaceTabs: WorkspaceTab[]
   /** Active workspace root. Forwarded to mounted workbench panes that
@@ -167,27 +95,9 @@ type WorkspaceEditorContentProps = {
 }
 
 export function WorkspaceEditorContent({
-  activeDocument,
-  activeDocumentFormat,
-  activeDocumentRevision,
-  activeAgentReview = null,
-  onAcceptAgentReview,
-  onRejectAgentReview,
-  onShowAgentReviewChanges,
-  onCloseAgentReviewChanges,
-  activeDocumentSession,
   activeWorkspaceTab,
   activeWorkspaceTabId,
-  documentTitle,
-  draftContent,
-  hasActiveDocument,
-  editorLocked: editorLockedByWorkspace,
-  editorMode,
-  editorPreviewHtml,
-  documentRevisionSaving,
-  documentEditorFocusRequest = 0,
   galleryPanelProps,
-  getOpenedDocument,
   designAgentAvailable = false,
   onDesignAgentBridgeChange,
   onCancelDesignAgent,
@@ -198,58 +108,11 @@ export function WorkspaceEditorContent({
   onCreateDocument,
   onCreateTable,
   onOpenAgent,
-  onAskDocumentAgent,
-  documentTranslation,
-  onAgentInsertionContextChange,
-  onSaveDocumentTitle,
-  onDecideDocumentRevisionChange,
-  onResolveAllDocumentRevisionChanges,
-  onOpenDocument,
-  onToolbarMount,
-  onSetEditorMode,
   designRoot,
   workspaceTabs,
   rootPath,
 }: WorkspaceEditorContentProps) {
-  const { t } = useTranslation('workspace')
-  // A co-edited document this person may only view opens read-only, like a locked editor.
-  const viewOnly = useDocumentReadOnly(activeDocument?.path)
-  const editorLocked = editorLockedByWorkspace || viewOnly
-  const { t: td } = useTranslation('document')
   const openGlobalWorkflow = onOpenGlobalWorkflow ?? openWorkflowDetail
-  const handleMarkdownCursorChange = useCallback((snapshot: MarkdownCursorSnapshot) => {
-    const documentPath = activeDocument?.path || ''
-    if (!documentPath || !onAgentInsertionContextChange) return
-    onAgentInsertionContextChange(documentPath, {
-      documentPath,
-      markdown: snapshot.markdown,
-      cursorOffset: snapshot.cursorOffset,
-    })
-  }, [activeDocument?.path, onAgentInsertionContextChange])
-  const sourceCursorSurfaceActive = Boolean(
-    activeWorkspaceTab?.type === 'document'
-    && !activeDocumentRevision
-    && (editorMode === 'source' || editorMode === 'split'),
-  )
-  useEffect(() => {
-    const documentPath = activeDocument?.path || ''
-    if (!sourceCursorSurfaceActive || !documentPath || !onAgentInsertionContextChange) return
-    return () => onAgentInsertionContextChange(documentPath, null)
-  }, [activeDocument?.path, onAgentInsertionContextChange, sourceCursorSurfaceActive])
-
-  const inlineTitleElement = useMemo(
-    () => (
-      <WorkspaceDocumentInlineTitle
-        documentPath={activeDocument?.path ?? ''}
-        value={documentTitle}
-        onCommit={onSaveDocumentTitle}
-        onFocusEditor={() => window.dispatchEvent(new CustomEvent('kition:document:focus-editor'))}
-        disabled={!hasActiveDocument || editorLocked}
-      />
-    ),
-    [activeDocument?.path, documentTitle, onSaveDocumentTitle, hasActiveDocument, editorLocked],
-  )
-
 
   return (
     <>
@@ -348,170 +211,6 @@ export function WorkspaceEditorContent({
           </EditorPaneBoundary>
         </div>
       ))}
-      {activeWorkspaceTab?.type === 'document'
-      && activeDocumentFormat === 'html'
-      && !activeDocumentRevision ? (
-        <EditorPaneBoundary>
-          <DocumentHtmlPreviewPane html={draftContent} title={documentTitle} />
-        </EditorPaneBoundary>
-      ) : null}
-      {activeWorkspaceTab?.type === 'document' && activeDocumentRevision ? (
-        <div className="workspace-document-shell">
-          <EditorPaneBoundary>
-            <DocumentRevisionReview
-              revision={activeDocumentRevision}
-              saving={documentRevisionSaving}
-              titleSlot={inlineTitleElement}
-              summary={activeDocumentRevision.live ? td('agentReview.summary', { count: activeDocumentRevision.comparison.changes.length }) : undefined}
-              onClose={activeDocumentRevision.live ? onCloseAgentReviewChanges : undefined}
-              onDecideChange={onDecideDocumentRevisionChange}
-              onResolveAll={onResolveAllDocumentRevisionChanges}
-            />
-          </EditorPaneBoundary>
-        </div>
-      ) : null}
-      {activeWorkspaceTab?.type === 'document'
-      && !activeDocumentRevision
-      && activeDocumentFormat !== 'html' ? (
-        <div className="workspace-document-shell">
-          {activeAgentReview && activeDocumentSession ? (
-            <Suspense fallback={null}>
-              <DocumentAgentReviewBar
-                review={activeAgentReview}
-                onAccept={() => onAcceptAgentReview?.()}
-                onReject={() => onRejectAgentReview?.()}
-                onShowChanges={() => onShowAgentReviewChanges?.()}
-              />
-            </Suspense>
-          ) : null}
-          {/* A Markdown document a newer kit edited (Kit Standard 2.0 rules M5a and M20) says so. */}
-          {activeDocumentSession ? (
-            <DocumentSchemaBanner path={activeDocumentSession.path} kitName={t('documentSchema.kits.document')} />
-          ) : null}
-          {editorMode === 'source' || editorMode === 'split' ? (
-            <>
-              <div className="document-top-actions-bar">
-                <div className="ml-auto flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    title={td('editor.toolbar.previewMode')}
-                    aria-label={td('editor.toolbar.previewMode')}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => onSetEditorMode('preview')}
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground [&_svg]:size-4"
-                  >
-                    <BookOpen />
-                  </Button>
-                  <span
-                    className="document-toolbar-actions-slot flex items-center gap-1"
-                    ref={onToolbarMount}
-                    data-window-drag-exclude="true"
-                  />
-                </div>
-              </div>
-              <div className="document-title-row">
-                <div className="document-title-row__title">{inlineTitleElement}</div>
-              </div>
-            </>
-          ) : null}
-          <div className="workspace-document-shell__body">
-            {activeDocumentSession && hasActiveDocument ? (
-              <Suspense fallback={null}>
-                <DocumentComments key={activeDocumentSession.path} session={activeDocumentSession} path={activeDocumentSession.path} readOnly={editorLocked} />
-              </Suspense>
-            ) : null}
-            {editorMode === 'split' && !activeDocumentSession ? <EditorPaneFallback /> : null}
-            {editorMode === 'split' && activeDocumentSession ? (
-              <EditorPaneBoundary>
-                <DocumentSplitEditorPane
-                  key={activeDocumentSession.path}
-                  source={activeDocumentSession}
-                  previewHtml={editorPreviewHtml}
-                  readOnly={!hasActiveDocument || editorLocked}
-                  onCursorChange={handleMarkdownCursorChange}
-                  documentPath={activeDocument?.path ?? ''}
-                />
-              </EditorPaneBoundary>
-            ) : null}
-            {editorMode === 'source' && !activeDocumentSession ? <EditorPaneFallback /> : null}
-            {editorMode === 'source' && activeDocumentSession ? (
-              <div className="document-editor-view is-active">
-                <div className="document-markdown-split document-markdown-split--single">
-                  <div className="document-markdown-pane">
-                    <EditorPaneBoundary>
-                      <MarkdownSourceEditor
-                        key={activeDocumentSession.path}
-                        source={activeDocumentSession}
-                        readOnly={!hasActiveDocument || editorLocked}
-                        placeholder={t('editor.sourcePlaceholder')}
-                        onCursorChange={handleMarkdownCursorChange}
-                        documentPath={activeDocument?.path ?? ''}
-                      />
-                    </EditorPaneBoundary>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            <div
-              className={cn(
-                'document-keepalive-view document-rich-editor-stack',
-                (editorMode === 'rich' || editorMode === 'preview') && 'is-active',
-              )}
-            >
-              {workspaceTabs
-                .filter((tab): tab is Extract<WorkspaceTab, { type: 'document' }> => tab.type === 'document')
-                .map((tab) => {
-                  const entry = getOpenedDocument(tab.path)
-                  if (!entry || entry.format === 'html') {
-                    return null
-                  }
-
-                  const isActiveDocumentTab = activeWorkspaceTabId === tab.id
-                    && activeWorkspaceTab?.type === 'document'
-                    && (editorMode === 'rich' || editorMode === 'preview')
-
-                  if (!isActiveDocumentTab) {
-                    return null
-                  }
-                  // The editor binds to the session once the document's replica is open.
-                  if (activeDocumentSession?.path !== entry.document.path) {
-                    return <EditorPaneFallback key={`${tab.uid || tab.path}:opening`} />
-                  }
-
-                  const nativeEditor = (
-                    <DocumentMarkdownEditorPane
-                      documentPath={entry.document.path}
-                      source={activeDocumentSession}
-                      value={draftContent}
-                      readOnly={editorLocked}
-                      onNavigate={onOpenDocument}
-                      inlineTitleSlot={inlineTitleElement}
-                      onToolbarMount={onToolbarMount}
-                      focusRequest={documentEditorFocusRequest}
-                      readingView={editorMode === 'preview'}
-                      onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
-                      onAskAgent={onAskDocumentAgent}
-                      translation={documentTranslation}
-                      onAgentInsertionContextChange={onAgentInsertionContextChange}
-                    />
-                  )
-                  return (
-                    <div
-                      key={tab.uid || tab.path}
-                      className="document-rich-editor-stack__pane is-active"
-                    >
-                      <EditorPaneBoundary paneId="document">
-                        {nativeEditor}
-                      </EditorPaneBoundary>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </>
   )
 }

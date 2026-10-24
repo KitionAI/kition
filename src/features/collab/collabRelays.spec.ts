@@ -70,7 +70,7 @@ describe('startCollab', () => {
   })
 })
 
-describe('startCollab for documents Kition edits itself', () => {
+describe('startCollab for notes', () => {
   function fakeClient() {
     const access: Array<(role: 'owner' | 'editor' | 'commenter' | 'viewer' | null) => void> = []
     const joins: Array<{ docId: string; since: number | null | undefined }> = []
@@ -96,23 +96,29 @@ describe('startCollab for documents Kition edits itself', () => {
     return { client, joins, access }
   }
 
-  /** An open Markdown document as its session announces it: a replica in this page. */
+  /** An open note as its kit announces it: a kit connection over a KDM replica in this page. */
   async function openDocument(path: string) {
-    const [{ createDocumentReplica }, { randomActor }, { registerOpenMarkdownDocument }] = await Promise.all([
-      import('@kition/document-editor/model'),
-      import('@/lib/kdm'),
-      import('@/features/document/kdm/openDocumentSessions'),
-    ])
-    const { replica } = createDocumentReplica('# Plan\n', randomActor())
-    const withdraw = registerOpenMarkdownDocument({
-      path,
-      replica: () => replica,
-      importChanges: (changes) => void replica.importChanges(changes),
-      subscribe: () => () => undefined,
-      save: async () => undefined,
-      storeId: () => null,
-      restoreText: () => false,
-    })
+    const { newDocId, parseSchema, randomActor, Replica, Version } = await import('@/lib/kdm')
+    const schema = parseSchema({ kdm: 1, kit: 'kit.note', schemaVersion: 1, root: 'Note', types: { Note: { fields: { body: { kind: 'text' } } } } })
+    const replica = Replica.create(schema, newDocId(), randomActor())
+    const buffer = (bytes: Uint8Array) => bytes.slice().buffer as ArrayBuffer
+    const connection = {
+      capabilities: ['replica'],
+      replica: {
+        info: async () => replica.docId,
+        version: async () => buffer(replica.version().encode()),
+        exportChanges: async (since: ArrayBuffer) => ({
+          changes: buffer(replica.exportChanges(since.byteLength ? Version.decode(new Uint8Array(since)) : Version.empty())),
+          blobs: new ArrayBuffer(0),
+        }),
+        importChanges: async (changes: ArrayBuffer) => {
+          replica.importChanges(new Uint8Array(changes))
+          return { damage: null }
+        },
+        onChanged: () => () => undefined,
+      },
+    } as unknown as KitConnection
+    const withdraw = registerKitConnection({ path, kitId: 'kit.note', connection })
     return { store: { getReplica: () => replica }, withdraw }
   }
 
@@ -123,7 +129,7 @@ describe('startCollab for documents Kition edits itself', () => {
     const { store, withdraw } = await openDocument('Plan.md')
     const docId = store.getReplica().docId
     const version = toHex(store.getReplica().version().encode())
-    writeRoom({ docId, shareLink: 'https://example.test/s/2', name: 'Plan.md', kit: 'kit.document', role: 'editor', seen: { seq: 3, version } })
+    writeRoom({ docId, shareLink: 'https://example.test/s/2', name: 'Plan.md', kit: 'kit.note', role: 'editor', seen: { seq: 3, version } })
     cleanups.push(startCollab(deps), withdraw)
     await vi.waitFor(() => expect(joins).toEqual([{ docId, since: 3 }]))
     // The join's seq is kept for next time.
@@ -140,21 +146,21 @@ describe('startCollab for documents Kition edits itself', () => {
     const elsewhere = await openDocument('Elsewhere.md')
     cleanups.push(elsewhere.withdraw)
     const ahead = elsewhere.store.getReplica().version().encode()
-    writeRoom({ docId, shareLink: 'https://example.test/s/2', name: 'Plan.md', kit: 'kit.document', role: 'editor', seen: { seq: 3, version: toHex(ahead) } })
+    writeRoom({ docId, shareLink: 'https://example.test/s/2', name: 'Plan.md', kit: 'kit.note', role: 'editor', seen: { seq: 3, version: toHex(ahead) } })
     cleanups.push(startCollab(deps), withdraw)
     await vi.waitFor(() => expect(joins).toEqual([{ docId, since: null }]))
   })
 
   it('makes the documents of viewer rooms read-only, and follows a role the room answers', async () => {
-    writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.document', role: 'viewer', path: 'Shared/Notes.md' })
+    writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.note', role: 'viewer', path: 'Shared/Notes.md' })
     cleanups.push(startCollab({ configured: async () => false, client: async () => null, versions: vi.fn() }))
     expect(isDocumentReadOnly('Shared/Notes.md')).toBe(true)
-    writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.document', role: 'editor', path: 'Shared/Notes.md' })
+    writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.note', role: 'editor', path: 'Shared/Notes.md' })
     expect(isDocumentReadOnly('Shared/Notes.md')).toBe(false)
   })
 
   it('keeps a commenter’s document read-only, yet lets them comment', async () => {
-    writeRoom({ docId: 'doc-c', shareLink: 'https://example.test/s/c', name: 'Notes.md', kit: 'kit.document', role: 'commenter', path: 'Shared/Notes.md' })
+    writeRoom({ docId: 'doc-c', shareLink: 'https://example.test/s/c', name: 'Notes.md', kit: 'kit.note', role: 'commenter', path: 'Shared/Notes.md' })
     cleanups.push(startCollab({ configured: async () => false, client: async () => null, versions: vi.fn() }))
     expect(isDocumentReadOnly('Shared/Notes.md')).toBe(true)
   })
@@ -165,7 +171,7 @@ describe('startCollab for documents Kition edits itself', () => {
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openDocument('Shared/Plan.md')
     const docId = store.getReplica().docId
-    writeRoom({ docId, shareLink: 'https://example.test/s/3', name: 'Plan.md', kit: 'kit.document', role: 'editor', path: 'Shared/Plan.md' })
+    writeRoom({ docId, shareLink: 'https://example.test/s/3', name: 'Plan.md', kit: 'kit.note', role: 'editor', path: 'Shared/Plan.md' })
     cleanups.push(startCollab(deps), withdraw)
     await vi.waitFor(() => expect(joins).toHaveLength(1))
     // Joined as an editor: comments are written as the room's principal, and others' are not history.
@@ -191,7 +197,7 @@ describe('startCollab for documents Kition edits itself', () => {
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openDocument('Shared/Agent.md')
     const docId = store.getReplica().docId
-    writeRoom({ docId, shareLink: 'https://example.test/s/4', name: 'Agent.md', kit: 'kit.document', role: 'editor', path: 'Shared/Agent.md' })
+    writeRoom({ docId, shareLink: 'https://example.test/s/4', name: 'Agent.md', kit: 'kit.note', role: 'editor', path: 'Shared/Agent.md' })
     cleanups.push(startCollab(deps), withdraw)
     await vi.waitFor(() => expect(joins).toHaveLength(1))
     await vi.waitFor(() => expect(client.setPresence).toHaveBeenCalledTimes(1))
@@ -218,19 +224,19 @@ describe('startCollab for documents Kition edits itself', () => {
     const path = 'Shared/Selection.md'
     const { store, withdraw } = await openDocument(path)
     const docId = store.getReplica().docId
-    writeRoom({ docId, shareLink: 'https://example.test/s/5', name: 'Selection.md', kit: 'kit.document', role: 'viewer', path })
+    writeRoom({ docId, shareLink: 'https://example.test/s/5', name: 'Selection.md', kit: 'kit.note', role: 'viewer', path })
     cleanups.push(startCollab(deps), withdraw)
     await vi.waitFor(() => expect(joins).toHaveLength(1))
     await vi.waitFor(() => expect(client.setPresence).toHaveBeenCalledTimes(1))
-    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.document' })
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.note' })
 
     // A viewer shares what it selected too: where it looks, never an edit.
     setLocalPresence(path, { selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
-    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.document', selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.note', selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
 
     heard[0]([
-      { principalId: 'u:me', name: 'Me', color: '#111111', state: { kit: 'kit.document', selection: ['shape-1'] } },
-      { principalId: 'u:alice', name: 'Alice', color: '#e5484d', state: { kit: 'kit.document', selection: ['shape-2', 7], caret: { object: 'x', field: 'text', offset: -1 } } },
+      { principalId: 'u:me', name: 'Me', color: '#111111', state: { kit: 'kit.note', selection: ['shape-1'] } },
+      { principalId: 'u:alice', name: 'Alice', color: '#e5484d', state: { kit: 'kit.note', selection: ['shape-2', 7], caret: { object: 'x', field: 'text', offset: -1 } } },
       { principalId: 'u:bob', name: 'Bob', color: '#3e63dd', state: null },
     ])
     expect(presencePeers(path)).toEqual([

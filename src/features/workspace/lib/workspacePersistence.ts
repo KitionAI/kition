@@ -1,4 +1,3 @@
-import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 
 export type WorkspaceTreeMetadata = {
@@ -21,16 +20,12 @@ const workspaceAgentActiveSessionStorageKey =
   'kition.workspace.agent.active-session.v2'
 const legacyWorkspaceAgentActiveSessionStorageKey =
   'kition.workspace.agent.active-session.v1'
-const splitEditorRatioStorageKey = 'kition.document.split.ratio.v1'
 const workspaceSidebarDefaultWidth = 276
 const workspaceSidebarMinWidth = 220
 const workspaceSidebarMaxWidth = 480
 const agentSidebarDefaultWidth = 408
 const agentSidebarMinWidth = 340
 const agentSidebarMaxWidth = 720
-const splitEditorDefaultRatio = 0.5
-const splitEditorMinRatio = 0.15
-const splitEditorMaxRatio = 0.85
 
 export function getDefaultWorkspaceTreeMetadata(): WorkspaceTreeMetadata {
   return { icons: {}, order: {}, collapsed: [], expandedFolders: [] }
@@ -111,35 +106,6 @@ export function writeWorkspaceSidebarWidth(width: number) {
   }
 
   window.localStorage.setItem(workspaceSidebarWidthStorageKey, String(clampWorkspaceSidebarWidth(width)))
-}
-
-export function clampSplitEditorRatio(ratio: number) {
-  if (!Number.isFinite(ratio)) {
-    return splitEditorDefaultRatio
-  }
-  return Math.min(splitEditorMaxRatio, Math.max(splitEditorMinRatio, ratio))
-}
-
-export function readSplitEditorRatio() {
-  if (typeof window === 'undefined') {
-    return splitEditorDefaultRatio
-  }
-
-  const rawValue = window.localStorage.getItem(splitEditorRatioStorageKey)
-  if (!rawValue) {
-    return splitEditorDefaultRatio
-  }
-
-  const value = Number(rawValue)
-  return Number.isFinite(value) ? clampSplitEditorRatio(value) : splitEditorDefaultRatio
-}
-
-export function writeSplitEditorRatio(ratio: number) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  window.localStorage.setItem(splitEditorRatioStorageKey, String(clampSplitEditorRatio(ratio)))
 }
 
 export function clampAgentSidebarWidth(width: number) {
@@ -349,15 +315,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
       return []
     }
     const item = raw as Record<string, unknown>
-    if (item.type === 'document' && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.path === 'string') {
-      return [{
-        id: item.id,
-        type: 'document',
-        title: item.title,
-        path: item.path,
-        format: typeof item.format === 'string' ? item.format as WorkspaceDocumentFormat : undefined,
-      }]
-    }
     if (item.type === 'gallery' && typeof item.id === 'string' && typeof item.title === 'string' && item.kind === 'videos') {
       return [{
         id: item.id,

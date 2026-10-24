@@ -1,6 +1,6 @@
 /**
- * Sharing a document for co-editing, and opening a document someone shared: kit documents and
- * Markdown documents alike (`collabDocuments.ts`).
+ * Sharing a document for co-editing, and opening a document someone shared: the documents of
+ * kits (`collabDocuments.ts`).
  *
  * **Share.** The document is saved first, so its file and the replica stored with it carry the
  * document's KDM identity (`docId`), then its whole history (an export from nothing) is the
@@ -12,14 +12,12 @@
  * come from the server, and Kition makes the file `Shared/<name>` from them: a kit document with
  * the kit's engine in a worker (`writeKitFileFromReplica`: the replica opens with no file bytes,
  * is saved as the file's format, and the replica it saved with is stored under the new file's
- * stamp), a Markdown document by its own editor's means, each as that same replica,
- * so its editor opens the file as it and the relay joins its room.
+ * stamp), as that same replica, so its editor opens the file as it and the relay joins its room.
  */
-import { loadDocumentStore } from '@/features/document/public'
 import { KITION_KIT_HOST, writeKitFileFromReplica, type KitSdkManifest } from '@/features/kits/public'
 import { blobHashCandidates, decodeBlobSection, encodeBlobSection, SyncRpcError, type BlobEntry, type Role, type RoomListing, type RoomMembersResult, type SyncClient } from '@/lib/sync'
 import { createWorkspaceFolder, listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
-import { findCollabDocument, HOST_KITS, type CollabReplica } from './collabDocuments'
+import { findCollabDocument, type CollabReplica } from './collabDocuments'
 import { readRoom, toHex, writeRoom } from './rooms'
 import { onlineSyncClient } from './syncConnection'
 
@@ -158,19 +156,6 @@ async function snapshotBlobs(client: SyncClient, docId: string, snapshot: Uint8A
 }
 
 /**
- * Writes a shared document Kition edits itself (a Markdown document) as a new
- * file in `folder`: answers its path and the replica version it holds, or `null` for another kit.
- */
-async function writeHostFile(client: SyncClient, docId: string, kit: string, name: string, snapshot: Uint8Array, folder: string) {
-  if (kit === HOST_KITS.document) {
-    const { path, root } = await freePath(folder, name, 'md')
-    const { createDocumentFromReplica } = await loadDocumentStore()
-    return { path, version: await createDocumentFromReplica(path, snapshot, { expectedRoot: root }) }
-  }
-  return null
-}
-
-/**
  * Opens a share link: answers the workspace file the shared document is in here, made the first
  * time (in `Shared/`), or the one an earlier open made. `kitFor` names what Kition knows of the
  * room's kit, or `null` for a kit this build does not have.
@@ -190,7 +175,7 @@ export async function openSharedDocument(link: string, kitFor: (kitId: string) =
 
 /** Whether this build can open documents of the kit `kitId` (`kitFor` as for `openSharedDocument`). */
 export function canOpenKit(kitId: string, kitFor: (kitId: string) => SharedKit | null) {
-  return Boolean(kitFor(kitId)) || Object.values<string>(HOST_KITS).includes(kitId)
+  return Boolean(kitFor(kitId))
 }
 
 /**
@@ -202,17 +187,13 @@ async function writeRoomHere(client: SyncClient, room: { docId: string; name: st
   const kit = kitFor(room.kit)
   if (!canOpenKit(room.kit, kitFor)) throw new Error(`this build cannot open ${room.kit} documents`)
   const { snapshot, seq } = await client.snapshot(room.docId)
-  let written = await writeHostFile(client, room.docId, room.kit, room.name, snapshot, folder)
-  if (!written && kit) {
-    const blobs = await snapshotBlobs(client, room.docId, snapshot)
-    const { path } = await freePath(folder, room.name, kit.extension)
-    const { version } = await writeKitFileFromReplica(kit.engine, path, { snapshot, blobs })
-    written = { path, version }
-  }
-  if (!written) throw new Error(`this build cannot open ${room.kit} documents`)
+  if (!kit) throw new Error(`this build cannot open ${room.kit} documents`)
+  const blobs = await snapshotBlobs(client, room.docId, snapshot)
+  const { path } = await freePath(folder, room.name, kit.extension)
+  const written = await writeKitFileFromReplica(kit.engine, path, { snapshot, blobs })
   const version = toHex(written.version)
-  writeRoom({ docId: room.docId, shareLink: room.shareLink, name: room.name, kit: room.kit, role: room.role, lastSent: version, seen: { seq, version }, path: written.path })
-  return written.path
+  writeRoom({ docId: room.docId, shareLink: room.shareLink, name: room.name, kit: room.kit, role: room.role, lastSent: version, seen: { seq, version }, path })
+  return path
 }
 
 /** Whether the document `docId` is in this workspace: it has a room record here whose file (if it names one) exists. */

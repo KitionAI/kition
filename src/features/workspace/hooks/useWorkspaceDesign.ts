@@ -4,16 +4,13 @@ import { loadDesignLib } from '@/features/design/public'
 import {
   DESIGN_FROM_RECORD_ACTION,
   DESIGN_IMAGE_ACTION,
-  DESIGN_INSERT_DOCUMENT_ACTION,
   DESIGN_SEND_TABLE_ACTION,
-  type DesignDocumentInsertRequest,
   type DesignImageRequest,
   type DesignRecordRequest,
   type DesignTableSendRequest,
 } from '@/services/workspaceDesignActions'
-import { relativeMarkdownPath } from '@/features/document/public'
 import { listTableRecords, putTableAttachment, writeTableRecord } from '@/api/kitTables'
-import { designMarkdownLink, sendDesignToTable } from '../lib/designHandoff'
+import { sendDesignToTable } from '../lib/designHandoff'
 import type { DesignDocument } from '@/features/design/public'
 import { notify } from '@/lib/notify'
 import { getWorkspaceItemTitle, type WorkspaceTab } from '../lib/workspace'
@@ -120,27 +117,7 @@ export function useWorkspaceDesign(options: {
       window.removeEventListener(DESIGN_FROM_RECORD_ACTION, fromRecord)
     }
   }, [createFrom])
-  // The document the user was on last, for "Insert into document".
-  const lastDocumentTab = useRef<Extract<WorkspaceTab, { type: 'document' }> | null>(null)
-  if (options.activeTab?.type === 'document' && (options.activeTab.format ?? 'markdown') === 'markdown')
-    lastDocumentTab.current = options.activeTab
   useEffect(() => {
-    const insert = (event: Event) => {
-      const { assetPath, title } = (event as CustomEvent<DesignDocumentInsertRequest>).detail
-      const tab = lastDocumentTab.current
-      if (!tab) {
-        notify.error(t('noDocumentTarget'))
-        return
-      }
-      current.current.upsert(tab)
-      const markdown = designMarkdownLink(title, relativeMarkdownPath(tab.path, assetPath))
-      window.setTimeout(() => {
-        window.dispatchEvent(
-          new CustomEvent('kition:document:insert-markdown', { detail: { path: tab.path, markdown } }),
-        )
-        notify.success(t('insertedIntoDocument', { title: tab.title }))
-      }, 50)
-    }
     const send = (event: Event) => {
       const { file, ref } = (event as CustomEvent<DesignTableSendRequest>).detail
       void sendDesignToTable(
@@ -158,10 +135,8 @@ export function useWorkspaceDesign(options: {
         .then(() => notify.success(t('sentToTable')))
         .catch((error) => notify.error(t('errors.sendToTable'), { description: String(error) }))
     }
-    window.addEventListener(DESIGN_INSERT_DOCUMENT_ACTION, insert)
     window.addEventListener(DESIGN_SEND_TABLE_ACTION, send)
     return () => {
-      window.removeEventListener(DESIGN_INSERT_DOCUMENT_ACTION, insert)
       window.removeEventListener(DESIGN_SEND_TABLE_ACTION, send)
     }
   }, [t])

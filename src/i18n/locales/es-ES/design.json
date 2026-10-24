@@ -154,11 +154,8 @@
     "transparent": "Transparente",
     "white": "Blanco"
   },
-  "insertIntoDocument": "Insertar en el documento",
   "sendToTable": "Enviar a la tabla",
-  "insertedIntoDocument": "Insertado en {{title}}",
   "sentToTable": "Adjuntado al registro de la tabla",
-  "noDocumentTarget": "Abre primero un documento y luego inserta el diseño.",
   "errors": {
     "create": "No se pudo crear el diseño",
     "open": "No se pudo abrir este diseño.",

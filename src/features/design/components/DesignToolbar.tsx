@@ -2,7 +2,6 @@ import {
   ChevronDown,
   Copy,
   Download,
-  FileText,
   Redo2,
   Table2,
   Undo2,
@@ -50,7 +49,7 @@ export function DesignToolbar({
   pdfAvailable: boolean
   /** True when the design came from a table record and can go back as an attachment. */
   canSendToTable: boolean
-  onHandoff: (kind: 'document' | 'table') => void
+  onHandoff: () => void
   /** Opens the image studio; hidden when the runtime cannot generate. */
   onGenerateImage?: () => void
   /** The Brand menu, when the workspace has a brand kit. */
@@ -174,18 +173,6 @@ export function DesignToolbar({
               {t(`exportFormats.${format}`)}
             </Button>
           ))}
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={(event) => {
-              event.currentTarget.closest('details')?.removeAttribute('open')
-              onHandoff('document')
-            }}
-          >
-            <FileText className="size-4" />
-            {t('insertIntoDocument')}
-          </Button>
           {canSendToTable ? (
             <Button
               size="sm"
@@ -193,7 +180,7 @@ export function DesignToolbar({
               disabled={busy}
               onClick={(event) => {
                 event.currentTarget.closest('details')?.removeAttribute('open')
-                onHandoff('table')
+                onHandoff()
               }}
             >
               <Table2 className="size-4" />

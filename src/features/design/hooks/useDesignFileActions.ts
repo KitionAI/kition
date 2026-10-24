@@ -11,7 +11,7 @@ import {
   saveDesignImage,
 } from '../lib/designExport'
 import { exportBackground, type DesignExportPresets } from '../lib/designExportPresets'
-import { requestInsertDesignIntoDocument, requestSendDesignToTable } from '@/services/workspaceDesignActions'
+import { requestSendDesignToTable } from '@/services/workspaceDesignActions'
 import type { DesignSession } from '../lib/designSession'
 import type { DesignStore } from '../lib/designStore'
 import type { DesignAsset } from '../lib/designTypes'
@@ -108,21 +108,16 @@ export function useDesignFileActions({
       setBusy(false)
     }
   }
-  /** Exports a PNG into the workspace and hands it to a document or the source record. */
-  async function handoff(kind: 'document' | 'table') {
+  /** Exports a PNG and attaches it to the table record the design came from. */
+  async function handoff() {
     setBusy(true)
     try {
       const snapshot = store.getSnapshot()
       const frozen = structuredClone(snapshot.view)
       const blob = await renderDesignImage(frozen, session.root, 'png', presets.scale, exportBackground(presets))
-      if (kind === 'table') {
-        const ref = snapshot.document.provenance?.recordRef
-        if (!ref) throw new Error('This design was not created from a table record')
-        requestSendDesignToTable({ file: new File([blob], `${title}.png`, { type: 'image/png' }), ref })
-        return
-      }
-      const asset = await importDesignImage(session.root, blob)
-      requestInsertDesignIntoDocument({ assetPath: asset.path, title })
+      const ref = snapshot.document.provenance?.recordRef
+      if (!ref) throw new Error('This design was not created from a table record')
+      requestSendDesignToTable({ file: new File([blob], `${title}.png`, { type: 'image/png' }), ref })
     } catch (error) {
       notify.error(t('errors.export'), {
         description: error instanceof DesignExportError ? t(`errors.${error.code}`) : String(error),

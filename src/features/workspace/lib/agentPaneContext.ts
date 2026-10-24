@@ -12,7 +12,6 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 // covers every WorkspaceTab variant.
 //
 // Mapping rationale:
-//   document        → 'document'  (the prose editor pane)
 //   file-viewer     → 'document' for prose/code formats (pdf, markdown,
 //                                  docx, csv, json, text, html, …);
 //                    → 'gallery'  for media formats (image, video, audio) —
@@ -29,8 +28,6 @@ export function deriveAgentPaneContext(
     return 'document'
   }
   switch (tab.type) {
-    case 'document':
-      return 'document'
     case 'file-viewer':
       // Media files in a single-file preview behave more like the
       // gallery pane than a document — the user wants "describe this
@@ -70,7 +67,6 @@ export function resolveAgentActiveDocument(
     return { path: '' }
   }
   switch (tab.type) {
-    case 'document':
     case 'file-viewer':
       return { path: tab.path, format: tab.format }
     case 'workflow':

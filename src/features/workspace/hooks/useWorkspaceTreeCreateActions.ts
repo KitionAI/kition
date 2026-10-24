@@ -1,10 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  createDocumentWorkspaceEntry,
-  type DocumentCreationPreset,
-  type DocumentPlatform,
-} from '@/features/document/lib/documentCreation'
+import { createDocumentWorkspaceEntry, type DocumentCreationPreset } from '@/features/workspace/templates/documentCreation'
 import type { ApplyWorkspaceDocument } from '@/features/workspace/hooks/workspaceTreeActionShared'
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { getChildFolderPathForNode, insertWorkspaceTreeDocumentItem } from '@/features/workspace/lib/workspaceTree'
@@ -16,11 +12,9 @@ type UseWorkspaceTreeCreateActionsOptions = {
   applyWorkspaceDocument: ApplyWorkspaceDocument
   refreshWorkspaceDocuments: (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   rootPath: string
-  setEditorMode: (mode: 'rich' | 'split') => void
   setError: (message: string) => void
   setFeedback: (message: string) => void
   setSaving: (value: boolean) => void
-  setSelectedPlatform: (platform: DocumentPlatform) => void
   treeState: Pick<
     UseWorkspaceTreeStateResult,
     'expandFolders' | 'openCreateFormatMenu' | 'setCreateMenuOpen' | 'setTreeItems'
@@ -32,37 +26,25 @@ export function useWorkspaceTreeCreateActions({
   applyWorkspaceDocument,
   refreshWorkspaceDocuments,
   rootPath,
-  setEditorMode,
   setError,
   setFeedback,
   setSaving,
-  setSelectedPlatform,
   treeState,
 }: UseWorkspaceTreeCreateActionsOptions) {
   const { t } = useTranslation('workspace')
   const { expandFolders, openCreateFormatMenu, setCreateMenuOpen, setTreeItems } = treeState
 
-  const createDocument = useCallback(async (
-    platform: DocumentPlatform,
-    folderOverride?: string,
-    preset?: DocumentCreationPreset,
-  ): Promise<boolean> => {
+  /** Makes a note in `folder` (the workspace root when empty), blank or from a template, and opens it. */
+  const createDocument = useCallback(async (folder?: string, preset?: DocumentCreationPreset): Promise<boolean> => {
     setSaving(true)
     setError('')
     setFeedback('')
     setCreateMenuOpen(false)
 
     try {
-      const { document } = await createDocumentWorkspaceEntry({
-        activeDocumentPath,
-        folderOverride,
-        platform,
-        preset,
-      })
-      setSelectedPlatform(platform)
+      const document = await createDocumentWorkspaceEntry({ folder, preset })
       void applyWorkspaceDocument(document)
       expandFolders(getAncestorFolderPaths(document.path))
-      setEditorMode('rich')
       setFeedback(t('workspace:feedback.documentCreated'))
 
       setTreeItems((current) => insertWorkspaceTreeDocumentItem(current, document))
@@ -74,15 +56,12 @@ export function useWorkspaceTreeCreateActions({
       setSaving(false)
     }
   }, [
-    activeDocumentPath,
     applyWorkspaceDocument,
     expandFolders,
     setCreateMenuOpen,
-    setEditorMode,
     setError,
     setFeedback,
     setSaving,
-    setSelectedPlatform,
     setTreeItems,
     t,
   ])
