@@ -12,13 +12,13 @@ use crate::tool::{ToolDef, ToolRegistry};
 /// What the person has in front of them when the turn starts.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TurnScene {
-    /// The pane id, such as `document`, `table`, `whiteboard`, or a kit id.
+    /// The pane id, such as `document`, `table`, `design`, or a kit id.
     pub pane: String,
     /// The workspace-relative path of the open file, if any.
     pub active_path: String,
     /// The person's language, BCP 47.
     pub language: String,
-    /// Pane-specific context, such as a whiteboard description.
+    /// Pane-specific context, such as a design description.
     pub extra: Value,
 }
 

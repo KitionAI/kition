@@ -10,7 +10,6 @@ mod images;
 mod kits;
 mod mcp;
 mod sources;
-mod whiteboard;
 mod workflow;
 
 use std::sync::Arc;
@@ -72,7 +71,7 @@ pub type ToolFactory = Arc<dyn Fn(&ToolSpec, &ToolShape) -> Option<ToolDef> + Se
 pub fn owned_elsewhere(name: &str) -> bool {
     matches!(
         name,
-        "document_write" | "image_search" | "whiteboard_propose_patch" | "design_propose_patch"
+        "document_write" | "image_search" | "design_propose_patch"
     ) || crate::sources::CORE_TOOLS.contains(&name)
         || crate::sources::GIT_TOOLS.contains(&name)
         || crate::tools::kits::tool_defs()
@@ -94,7 +93,6 @@ pub async fn providers(
         Arc::new(images::ImagesProvider::new(facts, factory)),
         Arc::new(workflow::WorkflowProvider::new(run, facts)),
         Arc::new(gallery::GalleryProvider),
-        Arc::new(whiteboard::WhiteboardProvider::new(run, factory)),
         Arc::new(design::DesignProvider::new(run, factory)),
         Arc::new(sources::LocalSourcesProvider::new(run, factory)),
         Arc::new(kits::KitsProvider::new(run, factory)),
@@ -132,7 +130,7 @@ fn offer_shaped<'a>(
         .collect()
 }
 
-/// The shape of a canvas patch tool (`whiteboard.patch`, `design.patch`):
+/// The shape of a canvas patch tool (`design.patch`):
 /// the log keeps only the envelope and counts (the patch text can be long
 /// and holds user content), and the result carries the proposed patch for
 /// display. A successful call means the runtime accepted the patch as
@@ -220,7 +218,6 @@ pub(crate) mod testing {
             execution_mode: "apply".into(),
             kit_edit_mode: "live".into(),
             pane: pane.into(),
-            whiteboard: None,
             design: None,
             model: RuntimeModel::default(),
             provider_route: String::new(),
@@ -277,7 +274,6 @@ mod tests {
         for name in [
             "document_write",
             "image_search",
-            "whiteboard_propose_patch",
             "design_propose_patch",
             "source_read",
             "source_git_log",

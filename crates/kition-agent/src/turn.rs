@@ -400,7 +400,6 @@ mod tests {
             "\"table\"",
             "\"workflow\"",
             "\"gallery\"",
-            "\"whiteboard\"",
             "\"design\"",
             "photo_",
             "kit.",

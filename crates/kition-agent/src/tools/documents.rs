@@ -170,9 +170,7 @@ pub async fn artifact_write(run: &Run, input: &Value) -> ToolResult {
     match ext.as_str() {
         "md" | "markdown" | "txt" | "html" | "htm" => {}
         "pptx" => {
-            return Err(
-                "PPTX creation is only available through the whiteboard slides workflow".into(),
-            );
+            return Err("PPTX files are made and edited through the Slide kit".into());
         }
         "docx" | "xlsx" => {
             return Err("DOCX and XLSX generation are not supported by generic Agent tools; use Markdown, or a `.ktable` file through the Table kit for structured data".into());

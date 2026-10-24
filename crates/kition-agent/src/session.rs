@@ -43,7 +43,6 @@ pub struct StreamRequest {
     /// How the agent edits kit documents: `live` (the default) or `draft` (standard 2.0 A12).
     pub kit_edit_mode: String,
     pub image_generation_intent: Option<Value>,
-    pub whiteboard_context: Option<Value>,
     pub design_context: Option<Value>,
     pub shell_approval: Option<ShellApprovalInput>,
     pub model_id: String,
@@ -54,7 +53,7 @@ pub struct StreamRequest {
 
 fn pane(value: &str) -> String {
     match value.trim().to_lowercase().as_str() {
-        pane @ ("workflow" | "gallery" | "whiteboard" | "design") => pane.to_owned(),
+        pane @ ("workflow" | "gallery" | "design") => pane.to_owned(),
         _ => "document".to_owned(),
     }
 }
@@ -152,14 +151,6 @@ pub async fn prepare(
         None => None,
     };
     let pane_name = pane(&request.pane_context);
-    if let Some(context) = &request.whiteboard_context {
-        if pane_name != "whiteboard" {
-            return Err(AppError::bad_request(
-                "Whiteboard context requires pane_context=whiteboard",
-            ));
-        }
-        canvas::validate_whiteboard_context(context).map_err(AppError::bad_request)?;
-    }
     if let Some(context) = &request.design_context {
         if pane_name != "design" {
             return Err(AppError::bad_request(
@@ -306,7 +297,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         execution_mode: execution_mode(&request.execution_mode),
         kit_edit_mode: kit_edit_mode(&request.kit_edit_mode),
         pane: pane(&request.pane_context),
-        whiteboard: request.whiteboard_context.clone(),
         design: request.design_context.clone(),
         model: request.runtime_model.clone().unwrap_or_default(),
         provider_route: request
@@ -392,7 +382,8 @@ mod tests {
 
     #[test]
     fn normalizes_modes() {
-        assert_eq!(pane("Whiteboard"), "whiteboard");
+        assert_eq!(pane("Design"), "design");
+        assert_eq!(pane("whiteboard"), "document");
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(kit_edit_mode("Draft"), "draft");

@@ -7,9 +7,9 @@
     "Decide the right next tool path from the user's latest request and the active document context.",
     "Do NOT invent URLs from memory and then web_fetch them; do NOT web_fetch each search result to \"verify\" or \"enrich\" it. web_fetch is reserved for URLs the user explicitly provides.",
     "Do not assume table writes or document creation unless the user request and current context support that action.",
-    "Do not create or register `.docx`, `.xlsx`, or `.pptx` files with artifact_write, exec_command, or register_artifact. Slide creation and editing must use the whiteboard slides workflow; if that workflow is not available in the current pane, direct the user to open or create a whiteboard.",
+    "Do not create or register `.docx`, `.xlsx`, or `.pptx` files with artifact_write, exec_command, or register_artifact. Slides are made and edited through the Slide kit's tools.",
     "For research or investigation questions (e.g. \"research\", \"investigate\", \"look up\", \"find recent info on\"), the FIRST action MUST be a single web_search call with the user's question as the query when web_search is available.",
-    "If the current model supports tool calling, prefer document_write for iterative updates to an existing document. Use artifact_write only for Markdown, plain text, or standalone HTML create/save-as flows. Do not create DOCX or XLSX files. PPTX creation and editing belong to the whiteboard slides workflow.",
+    "If the current model supports tool calling, prefer document_write for iterative updates to an existing document. Use artifact_write only for Markdown, plain text, or standalone HTML create/save-as flows. Do not create DOCX or XLSX files. PPTX files are made and edited through the Slide kit.",
     "If the user already provided concrete URLs, call web_fetch on those URLs directly before re-searching with web_search.",
     "If the user asks for Excel output, prefer a Markdown table. If there is no explicit table, organize the content into headings, key points, and action items that can be converted into a table.",
     "If the user asks to place \"these images / previous images / existing images / generated images\" into a document, reuse the recent image artifacts already saved by the system (Markdown image links) instead of calling image_search again.",
@@ -39,7 +39,7 @@
   ],
   "tools": {
     "apply_patch": "425f2134093d13d1",
-    "artifact_write": "8a3f7cb5757c96bf",
+    "artifact_write": "4773f957cfc760ec",
     "configure_smtp_connection": "d78f3dc843d93687",
     "design_propose_patch": "7e249f980703de6e",
     "document_list": "3bdf73906b1f7d42",
@@ -70,8 +70,7 @@
     "view_image": "6e658be84ee820a1",
     "web_article_save": "99abd4116c4a75ff",
     "web_fetch": "78a88c0710b2ba9f",
-    "web_search": "6f71bb56d97cea17",
-    "whiteboard_propose_patch": "6c528770fba866e1"
+    "web_search": "6f71bb56d97cea17"
   },
   "scenarios": {
     "document": {
@@ -453,94 +452,6 @@
         "If the user ultimately wants writes, produce the research findings and a recommended write plan first, but do not execute the write.",
         "The user is on the Kition document pane to your left. If a document is open (the skill context will carry an 'Active document the user is reading' block with title / path / description), call document_read on the path before summarising or quoting it — do not invent the document's contents from the title alone. If no document is open yet, ask the user which document they want to work with (or offer document_list / document_search to discover candidates).",
         "This turn only allows research, analysis, context reading, and reading public sources. Do not edit documents, write table records, or save files."
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
-    "whiteboard-context": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_generation",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch",
-        "web_search",
-        "whiteboard_propose_patch"
-      ],
-      "prompt": [
-        "Active Kition Whiteboard context (pane = whiteboard):",
-        "After whiteboard_propose_patch succeeds, briefly tell the user that the proposed changes are ready for review. Do not call document_write for Whiteboard edits.",
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Current execution mode: apply.",
-        "For questions about the board, answer from the attached Whiteboard context. Do not claim to see elements or text that are not present in that context.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "Prefer stable existing element ids for updates and deletes. For new elements, create concise unique ids. Keep generated layouts inside or near the current viewport unless the user explicitly asks to reorganize the whole board.",
-        "The user is on the Kition Whiteboard pane to your left. The skill context contains a bounded semantic description of the active board, including its scope, viewport, selected element ids, visible elements, off-screen clusters, and recent user operations.",
-        "Treat element ids and coordinates as authoritative. Selected ids identify the user's current focus. Off-screen clusters are summaries only; do not invent their contents.",
-        "When the user asks to create, organize, move, rename, or delete Whiteboard content, call whiteboard_propose_patch. The tool proposes a validated preview; it does not directly mutate the board. The user will accept or reject the preview in the Whiteboard UI.",
-        "{\"type\":\"whiteboard.context\",\"schema_version\":1,\"board\":{\"id\":\"b1\",\"path\":\"Boards/a.kiboard\",\"title\":\"A\"},\"scope\":\"viewport\",\"viewport\":{},\"selected_element_ids\":[],\"elements\":[{\"id\":\"n1\",\"kind\":\"mind_node\"}],\"clusters\":[],\"recent_operations\":[]}"
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
-    "whiteboard": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_generation",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch",
-        "web_search"
-      ],
-      "prompt": [
-        "After whiteboard_propose_patch succeeds, briefly tell the user that the proposed changes are ready for review. Do not call document_write for Whiteboard edits.",
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Current execution mode: apply.",
-        "For questions about the board, answer from the attached Whiteboard context. Do not claim to see elements or text that are not present in that context.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "Prefer stable existing element ids for updates and deletes. For new elements, create concise unique ids. Keep generated layouts inside or near the current viewport unless the user explicitly asks to reorganize the whole board.",
-        "The user is on the Kition Whiteboard pane to your left. The skill context contains a bounded semantic description of the active board, including its scope, viewport, selected element ids, visible elements, off-screen clusters, and recent user operations.",
-        "When the user asks to create, organize, move, rename, or delete Whiteboard content, call whiteboard_propose_patch. The tool proposes a validated preview; it does not directly mutate the board. The user will accept or reject the preview in the Whiteboard UI."
       ],
       "conversation": [
         {
@@ -931,47 +842,6 @@
         "Current execution mode: apply.",
         "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
         "The user is on the Kition media gallery pane to your left. Unlike the workflow / document panes, the skill context carries no manifest of which assets exist — call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen."
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
-    "whiteboard-chat-completions": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_search",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch"
-      ],
-      "prompt": [
-        "After whiteboard_propose_patch succeeds, briefly tell the user that the proposed changes are ready for review. Do not call document_write for Whiteboard edits.",
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Current execution mode: apply.",
-        "For questions about the board, answer from the attached Whiteboard context. Do not claim to see elements or text that are not present in that context.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "Prefer stable existing element ids for updates and deletes. For new elements, create concise unique ids. Keep generated layouts inside or near the current viewport unless the user explicitly asks to reorganize the whole board.",
-        "The user is on the Kition Whiteboard pane to your left. The skill context contains a bounded semantic description of the active board, including its scope, viewport, selected element ids, visible elements, off-screen clusters, and recent user operations.",
-        "When the user asks to create, organize, move, rename, or delete Whiteboard content, call whiteboard_propose_patch. The tool proposes a validated preview; it does not directly mutate the board. The user will accept or reject the preview in the Whiteboard UI."
       ],
       "conversation": [
         {

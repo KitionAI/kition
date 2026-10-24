@@ -52,10 +52,10 @@ mod tests {
         assert!(provider.applies(&scene));
         assert_eq!(names(&provider, &scene).await, ["document_write"]);
         assert!(provider.prompt(&scene)[0].contains("Kition document pane"));
-        let whiteboard = TurnScene {
-            pane: "whiteboard".into(),
+        let design = TurnScene {
+            pane: "design".into(),
             ..scene
         };
-        assert!(!provider.applies(&whiteboard));
+        assert!(!provider.applies(&design));
     }
 }

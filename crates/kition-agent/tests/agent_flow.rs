@@ -1733,24 +1733,6 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         json!({ "pane_context": "document", "execution_mode": "research" }),
     ));
     scenarios.push(scenario(
-        "whiteboard-context",
-        "responses",
-        json!({
-            "pane_context": "whiteboard",
-            "whiteboard_context": {
-                "type": "whiteboard.context", "schema_version": 1,
-                "board": { "id": "b1", "path": "Boards/a.kiboard", "title": "A" },
-                "scope": "viewport", "viewport": {}, "selected_element_ids": [],
-                "elements": [{ "id": "n1", "kind": "mind_node" }], "clusters": [], "recent_operations": [],
-            },
-        }),
-    ));
-    scenarios.push(scenario(
-        "whiteboard",
-        "responses",
-        json!({ "pane_context": "whiteboard" }),
-    ));
-    scenarios.push(scenario(
         "design-context",
         "responses",
         json!({
@@ -1810,7 +1792,7 @@ async fn panes_offer_the_expected_tools_and_prompt() {
     }
     // Chat Completions has no hosted search or images, so `image_search`
     // is offered outside the gallery and `web_search` is not.
-    for pane in ["document", "gallery", "whiteboard"] {
+    for pane in ["document", "gallery"] {
         scenarios.push(scenario(
             &format!("{pane}-chat-completions"),
             "chat_completions",
