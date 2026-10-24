@@ -168,7 +168,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         KitToolSpec {
             name: tool_name(kit, Action::Inspect),
             description: format!(
-                "Open a {noun} ({}) in {name} and report {}. By default it also attaches a rendered preview to the next turn so you can see it. Use it before and after editing.",
+                "Open a {noun} ({}) in {name} and report {}. By default it also attaches a rendered preview to the next turn so you can see it. With `target` (for example {{\"slide\": 3}}) it previews only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
                 agent.formats, agent.reports
             ),
             input_schema: json!({
@@ -447,6 +447,24 @@ async fn part_preview(
         ),
         png,
     }])
+}
+
+/// The objects of one slide or page, through the kit's `slide.inspect` or `page.inspect` query
+/// (`{index}` counted from 0) when it has one: what an agent needs to find the object to edit.
+async fn part_objects(kits: &KitManager, view: &DocumentView, part: u64) -> Option<Value> {
+    for command in ["slide.inspect", "page.inspect"] {
+        let mut params = Map::new();
+        params.insert("index".into(), json!(part - 1));
+        if let Ok(executed) = kits
+            .execute(Caller::Agent, view.kit_id, &view.document_id, command, params)
+            .await
+        {
+            if let Some(result) = executed.result {
+                return Some(result);
+            }
+        }
+    }
+    None
 }
 
 async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) -> Vec<Preview> {
@@ -923,11 +941,17 @@ async fn inspect(
     } else {
         preview(kits, kit, &view).await
     };
+    let mut answer = document_json(&view);
+    if let Some(part) = target_part(input) {
+        if let Some(objects) = part_objects(kits, &view, part).await {
+            answer["part"] = objects;
+        }
+    }
     Ok(KitToolOutput {
         previews,
         ..KitToolOutput::new(
             format!("Opened `{path}`: {}", view.summary),
-            document_json(&view),
+            answer,
         )
     })
 }
