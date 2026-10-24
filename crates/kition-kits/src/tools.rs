@@ -176,6 +176,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
                 "properties": {
                     "path": path_property(kit),
                     "preview": { "type": "boolean", "description": "Attach a rendered preview image. Defaults to true." },
+                    "target": { "type": "object", "description": "Preview only this part of the document, for example {\"slide\": 3} (counted from 1). Kits that cannot render a part fall back to the whole document.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 } } },
                     "draft": draft_property()
                 },
                 "required": ["path"]
@@ -201,7 +202,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         KitToolSpec {
             name: run.clone(),
             description: format!(
-                "Edit a {noun} in {name} by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by {commands}. Stops at the first failing step. Attaches a rendered preview of the result. With `draft`, the steps edit your draft of the file instead (never saved); call {ready} when it is done."
+                "Edit a {noun} in {name} by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by {commands}. Stops at the first failing step. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call {ready} when it is done."
             ),
             input_schema: json!({
                 "type": "object",
@@ -221,6 +222,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
                         }
                     },
                     "save": { "type": "boolean", "description": "Save the file after the steps. Defaults to true; a draft is never saved." },
+                    "preview": { "type": "boolean", "description": "Attach a rendered preview of the whole document. Defaults to false; use the inspect tool with a target to look at one part." },
                     "draft": draft_property()
                 },
                 "required": ["path", "steps"]
@@ -392,6 +394,59 @@ fn document_json(view: &DocumentView) -> Value {
         "canRedo": view.can_redo,
         "details": view.details,
     })
+}
+
+/// A document answer without its structure (`details`): what `<prefix>_run` reports after
+/// edits, so a long document's outline is not repeated on every call. `<prefix>_inspect` still
+/// answers the whole of it.
+fn document_summary_json(view: &DocumentView) -> Value {
+    json!({
+        "path": view.path,
+        "summary": view.summary,
+        "dirty": view.dirty,
+        "canUndo": view.can_undo,
+        "canRedo": view.can_redo,
+    })
+}
+
+/// `target.slide` or `target.page` of a `<prefix>_inspect` call, counted from 1.
+fn target_part(input: &Value) -> Option<u64> {
+    let target = input.get("target")?;
+    target
+        .get("slide")
+        .or_else(|| target.get("page"))
+        .and_then(Value::as_u64)
+        .filter(|n| *n >= 1)
+}
+
+/// A preview of one slide or page, through the kit's `file.render` query when it has one
+/// (`{slide, scale}` → `{png}`). None when the kit has no such command or it fails, so the caller
+/// falls back to the whole document. A region parameter on `view.screenshot` would make this
+/// work for every kit; until the Kit Host Protocol has one, this covers kits that can render a part.
+async fn part_preview(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    view: &DocumentView,
+    part: u64,
+) -> Option<Vec<Preview>> {
+    use base64::Engine as _;
+    let mut params = Map::new();
+    params.insert("slide".into(), json!(part - 1));
+    params.insert("scale".into(), json!(1));
+    let executed = kits
+        .execute(Caller::Agent, view.kit_id, &view.document_id, "file.render", params)
+        .await
+        .ok()?;
+    let data = executed.result?.get("png")?.as_str()?.to_owned();
+    let png = base64::engine::general_purpose::STANDARD.decode(data).ok()?;
+    Some(vec![Preview {
+        caption: format!(
+            "Preview of part {part} of `{}` from {}.",
+            view.path.as_deref().unwrap_or(&view.title),
+            kit.name
+        ),
+        png,
+    }])
 }
 
 async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) -> Vec<Preview> {
@@ -858,10 +913,15 @@ async fn inspect(
         });
     }
     let view = kits.open(Caller::Agent, &path).await?;
-    let previews = if wants_preview {
-        preview(kits, kit, &view).await
-    } else {
+    let previews = if !wants_preview {
         Vec::new()
+    } else if let Some(part) = target_part(input) {
+        match part_preview(kits, kit, &view, part).await {
+            Some(previews) => previews,
+            None => preview(kits, kit, &view).await,
+        }
+    } else {
+        preview(kits, kit, &view).await
     };
     Ok(KitToolOutput {
         previews,
@@ -987,6 +1047,7 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
                 "id": command.id,
                 "title": command.title,
                 "description": command.description,
+                "params": command.params,
                 "enabled": command.enabled,
                 "mutates": command.mutates,
             })
@@ -1089,7 +1150,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
                 return Err(failure
                     .context(&format!("step {index} (`{command}`) failed: "))
                     .at(Some(index))
-                    .with_output(json!({ "completed": done, "document": document_json(&view) })));
+                    .with_output(json!({ "completed": done, "document": document_summary_json(&view) })));
             }
         }
     }
@@ -1101,7 +1162,11 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
                 KitToolError::from(error).context("the edits were applied but saving failed: ")
             })?;
     }
-    let previews = preview(kits, kit, &view).await;
+    let previews = if input.get("preview").and_then(Value::as_bool) == Some(true) {
+        preview(kits, kit, &view).await
+    } else {
+        Vec::new()
+    };
     let saved = if save { "saved" } else { "not saved" };
     Ok(KitToolOutput {
         previews,
@@ -1111,7 +1176,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
                 done.len(),
                 view.summary
             ),
-            json!({ "completed": done, "saved": save, "document": document_json(&view) }),
+            json!({ "completed": done, "saved": save, "document": document_summary_json(&view) }),
         )
     })
 }

@@ -451,6 +451,8 @@ pub struct CommandView {
     pub title: String,
     pub description: Option<String>,
     pub group: String,
+    /// JSON Schema for the command's params, as the kit's `commands.list` gives it.
+    pub params: Value,
     pub mutates: bool,
     pub enabled: bool,
     pub menu: Vec<String>,
@@ -1144,6 +1146,7 @@ impl KitManager {
                 title: command.title,
                 description: command.description,
                 group: command.group,
+                params: command.params,
                 mutates: command.mutates,
                 enabled: command.enabled,
                 menu: command.menu,
