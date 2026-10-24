@@ -134,13 +134,13 @@
   },
   "word": {
     "repository": "KitionAI/kition-word",
-    "version": "0.5.16",
-    "tag": "package-v0.5.16",
-    "asset": "kition-word-0.5.16.tgz",
-    "size": 16365203,
-    "sha256": "ebba1d1f3d0aa7db4cbfe5a6938f95d2512516d64583fa1780c005aab7abde90",
-    "commit": "038a64c162d369de2263acacf52763f3d2e8bede",
-    "sdkCommit": "4403f0f6b337f6e72815f13b7fa7e86bb690d329",
+    "version": "0.5.17",
+    "tag": "package-v0.5.17",
+    "asset": "kition-word-0.5.17.tgz",
+    "size": 16385753,
+    "sha256": "037a55d419dfebda4668ac7755d624483fca8aabac55db6badd28d1a2b520661",
+    "commit": "e79aa5ce5a8210e8c0979cb1887f72c6978f0b17",
+    "sdkCommit": "5f96af3d7662fc48bf65b933182b625a33ac6271",
     "fontsCommit": "02e11c1cffac9b15faf41382d32b789cd4f0dc6f"
   }
 }
