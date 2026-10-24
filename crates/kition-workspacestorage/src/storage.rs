@@ -1,13 +1,11 @@
-//! Workspace inventory, portability verification, and migration of legacy
-//! `/uploads/...` references into content-addressed workspace assets.
+//! Workspace inventory, portability verification, and the export of workspace
+//! state into the workspace.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::LazyLock;
 
 use kition_core::AppResult;
-use kition_workspace::assets::Asset;
-use kition_workspace::fsutil::write_atomic;
 use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -93,8 +91,6 @@ pub struct Inventory {
 #[derive(Debug, Clone, Serialize)]
 pub struct MigrationResult {
     pub dry_run: bool,
-    pub migrated_assets: usize,
-    pub updated_references: usize,
     pub migrated_state_records: usize,
     pub status: Status,
 }
@@ -267,24 +263,6 @@ impl StateMirror {
     }
 
     pub fn run_migration(&self, dry_run: bool, include_state: bool) -> AppResult<MigrationResult> {
-        let root = self.assets.workspace_dir().to_path_buf();
-        let mut migration = Migration {
-            mirror: self,
-            dry_run,
-            assets: HashMap::new(),
-            updated_references: 0,
-        };
-        let skip = |relative: &str| relative == ".git" || relative == ".kition/assets";
-        for (path, _) in walk(&root, &skip)? {
-            let extension = path
-                .extension()
-                .map(|e| e.to_string_lossy().to_lowercase())
-                .unwrap_or_default();
-            match extension.as_str() {
-                "md" | "markdown" => migration.migrate_markdown(&path)?,
-                _ => {}
-            }
-        }
         let mut migrated_state_records = 0;
         if include_state && !dry_run {
             self.export()?;
@@ -293,89 +271,8 @@ impl StateMirror {
         let inventory = self.build_inventory(false, false)?;
         Ok(MigrationResult {
             dry_run,
-            migrated_assets: migration.assets.len(),
-            updated_references: migration.updated_references,
             migrated_state_records,
             status: inventory.status,
         })
-    }
-}
-
-struct Migration<'a> {
-    mirror: &'a StateMirror,
-    dry_run: bool,
-    assets: HashMap<String, Asset>,
-    updated_references: usize,
-}
-
-fn mime_for(name: &str) -> String {
-    mime_guess::from_path(name)
-        .first()
-        .map(|m| m.essence_str().to_owned())
-        .unwrap_or_default()
-}
-
-impl Migration<'_> {
-    fn migrate_url(&mut self, raw_url: &str, name: &str, mime_type: &str) -> AppResult<Asset> {
-        if let Some(existing) = self.assets.get(raw_url) {
-            return Ok(existing.clone());
-        }
-        let absolute = self.mirror.assets.resolve_url(raw_url)?;
-        let data = std::fs::read(&absolute)?;
-        let name = if name.trim().is_empty() {
-            absolute
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default()
-        } else {
-            name.to_owned()
-        };
-        let mut mime_type = if mime_type.trim().is_empty() {
-            mime_for(&name)
-        } else {
-            mime_type.to_owned()
-        };
-        if mime_type.is_empty() {
-            mime_type = "application/octet-stream".into();
-        }
-        let asset = if self.dry_run {
-            let digest = sha256_hex(&data);
-            Asset {
-                url: String::new(),
-                name,
-                mime_type,
-                size_bytes: i64::try_from(data.len()).unwrap_or(i64::MAX),
-                asset_id: digest.clone(),
-                sha256: digest,
-                workspace_path: String::new(),
-            }
-        } else {
-            self.mirror.assets.save_bytes(&data, &name, &mime_type)?
-        };
-        self.assets.insert(raw_url.to_owned(), asset.clone());
-        Ok(asset)
-    }
-
-    fn migrate_markdown(&mut self, path: &Path) -> AppResult<()> {
-        let original = std::fs::read_to_string(path)?;
-        let mut updated = String::with_capacity(original.len());
-        let mut last = 0;
-        for found in LEGACY_URL.find_iter(&original) {
-            let url = found.as_str();
-            let name = Path::new(url)
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let asset = self.migrate_url(url, &name, &mime_for(url))?;
-            self.updated_references += 1;
-            updated.push_str(&original[last..found.start()]);
-            updated.push_str(if self.dry_run { url } else { &asset.url });
-            last = found.end();
-        }
-        updated.push_str(&original[last..]);
-        if self.dry_run || updated == original {
-            return Ok(());
-        }
-        write_atomic(path, updated.as_bytes())
     }
 }

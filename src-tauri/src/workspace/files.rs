@@ -65,60 +65,9 @@ pub fn check_expected_root(root: &Path, request: &Request) -> io::Result<()> {
     }
 }
 
-fn from_code_points(points: &[u32]) -> String {
-    points
-        .iter()
-        .filter_map(|point| char::from_u32(*point))
-        .collect()
-}
-
-/// Moves documents out of the folder layout used by the first releases.
+/// Makes the workspace folder if it is missing.
 pub fn ensure_initialized(root: &Path) -> io::Result<()> {
-    fs::create_dir_all(root)?;
-    let legacy_knowledge_directory = from_code_points(&[0x77e5, 0x8bc6, 0x5e93]);
-    let legacy_knowledge_file = from_code_points(&[
-        0x590d, 0x6742, 0x6587, 0x6863, 0x6a21, 0x677f, 0x2e, 0x6d, 0x64,
-    ]);
-    let legacy_ideas_directory = from_code_points(&[0x7075, 0x611f, 0x7b14, 0x8bb0]);
-    let legacy_inbox_file = from_code_points(&[0x6536, 0x4ef6, 0x7bb1, 0x2e, 0x6d, 0x64]);
-    let legacy_assets_directory = from_code_points(&[0x7d20, 0x6750]);
-    let legacy_archive_directory = from_code_points(&[0x5f52, 0x6863]);
-
-    move_if_present(
-        &root
-            .join(&legacy_knowledge_directory)
-            .join(&legacy_knowledge_file),
-        &root.join(&legacy_knowledge_file),
-    )?;
-    move_if_present(
-        &root.join(&legacy_ideas_directory).join(&legacy_inbox_file),
-        &root.join(&legacy_inbox_file),
-    )?;
-    for directory in [
-        legacy_knowledge_directory,
-        legacy_ideas_directory,
-        legacy_assets_directory,
-        legacy_archive_directory,
-    ] {
-        match fs::remove_dir(root.join(directory)) {
-            Ok(()) => {}
-            Err(error)
-                if error.kind() == io::ErrorKind::NotFound
-                    || error.kind() == io::ErrorKind::DirectoryNotEmpty => {}
-            Err(error) => return Err(error),
-        }
-    }
-    Ok(())
-}
-
-fn move_if_present(source: &Path, target: &Path) -> io::Result<()> {
-    if !source.exists() || target.exists() {
-        return Ok(());
-    }
-    if let Some(parent) = target.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::rename(source, target)
+    fs::create_dir_all(root)
 }
 
 pub fn iso_time(time: SystemTime) -> String {

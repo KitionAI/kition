@@ -79,8 +79,6 @@ export type WorkspaceStorageMigrationInput = {
 
 export type WorkspaceStorageMigrationResult = {
   dry_run: boolean
-  migrated_assets: number
-  updated_references: number
   migrated_state_records: number
   status: WorkspaceStorageStatus
 }

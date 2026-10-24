@@ -67,8 +67,6 @@ describe('workspace storage API', () => {
   it('supports a dry-run migration before runtime state changes', async () => {
     const result = {
       dry_run: true,
-      migrated_assets: 2,
-      updated_references: 3,
       migrated_state_records: 4,
       status,
     }

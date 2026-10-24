@@ -201,15 +201,11 @@
       "additionalProperties": false,
       "required": [
         "dry_run",
-        "migrated_assets",
-        "updated_references",
         "migrated_state_records",
         "status"
       ],
       "properties": {
         "dry_run": { "type": "boolean" },
-        "migrated_assets": { "type": "integer", "minimum": 0 },
-        "updated_references": { "type": "integer", "minimum": 0 },
         "migrated_state_records": { "type": "integer", "minimum": 0 },
         "status": { "$ref": "#/$defs/status" }
       }
