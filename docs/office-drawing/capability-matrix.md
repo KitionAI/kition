@@ -294,8 +294,8 @@ use the flat text in every kit.
   still inserts formatted body text, not a drawing object.
 - **Collaboration:** a warp set by one person and a move of the same shape
   by another both stay (Word's `drawing_frames` and Sheet's `drawing_shapes`
-  replica tests). Since Word's replica schema 6 and Sheet's schema 5 a
-  shape's other members are entries of its own `look` map, so two people
+  replica tests). Since Word's replica schema 6, Sheet's schema 5 and
+  Slide's schema 5 a shape's other members are entries of its own `look` map, so two people
   changing two different ones at once (say a warp and a fill, or a glued end
   and a line colour) both keep theirs.
 - **Sheet:** the warp lives in the shape's kept text body, with its adjust
