@@ -1,16 +1,16 @@
 /**
- * Keeps Markdown documents' identities (the replica store's path index under `.kition/docs/`) in step with file
+ * Keeps documents' identities (the replica store's path index under `.kition/docs/`) in step with file
  * operations in the tree. Each call runs after the file operation succeeded and is best effort: a store failure
- * is logged and never fails or undoes the user's operation. A document that loses its entry is imported again
- * (or recognised by its hash) when next opened.
+ * is logged and never fails or undoes the user's operation. A document that loses its entry gets a new identity
+ * (or is recognised by its hash) when next opened.
  */
-import { loadDocumentStore } from '@/features/document/public'
+const loadDocumentIndex = () => import('@/lib/docstore/documentIndex')
 
-type DocumentStore = Awaited<ReturnType<typeof loadDocumentStore>>
+type DocumentIndex = Awaited<ReturnType<typeof loadDocumentIndex>>
 
-async function sync(rootPath: string, update: (store: DocumentStore, options: { expectedRoot?: string }) => Promise<void>) {
+async function sync(rootPath: string, update: (store: DocumentIndex, options: { expectedRoot?: string }) => Promise<void>) {
   try {
-    await update(await loadDocumentStore(), rootPath ? { expectedRoot: rootPath } : {})
+    await update(await loadDocumentIndex(), rootPath ? { expectedRoot: rootPath } : {})
   } catch (error) {
     console.warn('[workspace] failed to update the document store index', error)
   }

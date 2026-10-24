@@ -8,9 +8,7 @@ const store = {
   duplicateDocumentIdentity: vi.fn(async (..._args: unknown[]) => {}),
 }
 
-vi.mock('@/features/document/public', () => ({
-  loadDocumentStore: async () => store,
-}))
+vi.mock('@/lib/docstore/documentIndex', () => store)
 
 import {
   syncDocumentFileDeleted,

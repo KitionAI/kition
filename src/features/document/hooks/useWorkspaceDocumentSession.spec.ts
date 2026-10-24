@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { getDocumentSession, listDocumentSessions, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
-import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/features/document/kdm/documentStore'
+import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/lib/docstore/documentIndex'
 import enDocument from '@/i18n/locales/en-US/document.json'
 import { notify } from '@/lib/notify'
 import { useWorkspaceDocumentSession } from './useWorkspaceDocumentSession'
@@ -82,10 +82,12 @@ vi.mock('@/features/document/kdm/documentStore', async () => {
       { kind: 'import', principal: 'file' },
       (tx: any) => mergeExternalText(tx, opened.rootId, analyzeText(baseText).text, analyzeText(fileText).text, tx.text(opened.rootId, 'body')),
     )),
-    pruneDocumentStoreOnOpen: vi.fn(async () => undefined),
-    noteWorkspaceFiles: vi.fn(),
   }
 })
+vi.mock('@/lib/docstore/documentIndex', () => ({
+  pruneDocumentStoreOnOpen: vi.fn(async () => undefined),
+  noteWorkspaceFiles: vi.fn(),
+}))
 
 const PATH = 'notes/today.md'
 let container: HTMLDivElement

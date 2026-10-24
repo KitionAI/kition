@@ -5,18 +5,20 @@ import { DOCUMENT_BODY } from '@kition/document-editor/model'
 import { documentBody } from '@kition/document-editor/model'
 import {
   childFolderPath,
-  compactStoredDocument,
   duplicateDocumentIdentity,
   forgetDocument,
   forgetDocumentFolder,
-  hashFileText,
-  mergeFileIntoReplica,
   noteWorkspaceFiles,
-  openDocument,
   pruneDocumentStore,
   pruneDocumentStoreOnOpen,
   renameDocument,
   renameDocumentFolder,
+} from '@/lib/docstore/documentIndex'
+import {
+  compactStoredDocument,
+  hashFileText,
+  mergeFileIntoReplica,
+  openDocument,
   saveDocument,
   versionHex,
   type OpenedDocument,

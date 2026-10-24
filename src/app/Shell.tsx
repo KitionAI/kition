@@ -23,6 +23,7 @@ import {
   getDesktopBackendStatus,
   getDesktopInfo,
   openWorkspaceWindow,
+  readWorkspaceDocument,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
 import { CollabDialogs, requestOpenSharedDocument, requestSyncedDocuments, startCollab, useCollabAvailable } from '@/features/collab/public'
@@ -32,8 +33,7 @@ import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFile
 import { SearchService } from '@/features/search/service/searchService'
 import { attachEventBridges } from '@/features/search/service/events'
 import { scheduleSearchBoot } from '@/features/search/service/searchBootScheduler'
-import { loadVaultMarkdownFiles } from '@/features/document/editor/vault/vault-files'
-import { vaultClient } from '@/features/document/editor/vault/vault-client'
+import { loadWorkspaceNotes } from '@/features/search/sources/workspaceNotes'
 import { extractNoteDocs } from '@/features/search/sources/noteSource'
 import { loadTableSearchFile, syncTableSearchDocs } from '@/features/search/sources/tableSource'
 import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
@@ -93,7 +93,7 @@ const navigateAdapters: NavigateAdapters = {
 const NOTE_READ_CONCURRENCY = 8
 
 async function loadSearchNoteDocs(cancelled: () => boolean) {
-  const mdFiles = await loadVaultMarkdownFiles()
+  const mdFiles = await loadWorkspaceNotes()
   const noteDocs: ReturnType<typeof extractNoteDocs> = []
   let readFailures = 0
 
@@ -102,7 +102,7 @@ async function loadSearchNoteDocs(cancelled: () => boolean) {
     const batch = mdFiles.slice(index, index + NOTE_READ_CONCURRENCY)
     const results = await Promise.allSettled(
       batch.map(async (file) => {
-        const document = await vaultClient.read(file.path)
+        const document = await readWorkspaceDocument(file.path)
         return extractNoteDocs({ vaultPath: file.path, content: document.content })
       }),
     )
@@ -148,7 +148,7 @@ function useSearchBoot(rootPath: string) {
           if (initOut.restoredFromDisk) setReady(true)
           unsub = attachEventBridges(searchService, {
             readMarkdown: async (vaultPath) => {
-              const document = await vaultClient.read(vaultPath)
+              const document = await readWorkspaceDocument(vaultPath)
               return document.content
             },
             loadTableFile: (vaultPath) => loadTableSearchFile(vaultPath),

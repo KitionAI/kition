@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { renameDocument } from '@/features/document/kdm/documentStore'
+import { renameDocument } from '@/lib/docstore/documentIndex'
 import { readDocumentIndex } from '@/services/desktop'
 import { setRuntimeTokenForTests } from '@/services/runtimeAuth'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'

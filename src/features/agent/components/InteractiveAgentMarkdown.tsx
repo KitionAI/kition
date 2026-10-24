@@ -1,10 +1,7 @@
 import { useEffect, useRef, type MouseEvent } from 'react'
 
-import {
-  markdownToHtml,
-  markdownToInteractiveHtml,
-} from '@kition/document-editor/markdown'
-import { hydrateMermaidBlocks } from '@kition/document-editor/mermaid'
+import { markdownToHtml, markdownToInteractiveHtml } from '@/lib/markdown/markdownRenderer'
+import { hydrateMermaidBlocks } from '@/lib/markdown/mermaid'
 
 export function InteractiveAgentMarkdown({
   content,

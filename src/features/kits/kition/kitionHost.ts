@@ -1,5 +1,5 @@
 import { writeKitFile } from '@/api/kits'
-import { loadDocumentStore } from '@/features/document/public'
+import { bindDocumentId } from '@/lib/docstore/documentIndex'
 import {
   appendDocumentStore,
   isDocumentStoreConflict,
@@ -96,8 +96,7 @@ export async function readKitReplica(path: string, kitId: string): Promise<Store
  * elsewhere) replaces it and starts its version history over. `checkpoint` records the save in that history.
  */
 export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<void> {
-  const store = await loadDocumentStore()
-  const docId = await store.bindDocumentId(path, () => crypto.randomUUID())
+  const docId = await bindDocumentId(path, () => crypto.randomUUID())
   const snapshot = new Uint8Array(replica.snapshot)
   const blobs = new Uint8Array(replica.blobs)
   let replicaId: string | undefined

@@ -21,7 +21,7 @@ import {
   remapDocumentSessions,
   unregisterDocumentSession,
 } from '@/features/document/kdm/documentSessions'
-import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/features/document/kdm/documentStore'
+import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/lib/docstore/documentIndex'
 import {
   inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,

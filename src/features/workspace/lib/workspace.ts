@@ -191,7 +191,11 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.(mp3|wav|m4a)$/i.test(path)) {
     return 'audio'
   }
-  return 'markdown'
+  if (/\.(md|markdown)$/i.test(path)) {
+    return 'markdown'
+  }
+  // Like the desktop shell (src-tauri/src/workspace/formats.rs): a file of no known kind is no note.
+  return 'binary'
 }
 
 export function getWorkspaceItemTitle(name: string) {
