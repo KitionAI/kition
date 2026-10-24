@@ -79,13 +79,13 @@
   },
   "sheet": {
     "repository": "KitionAI/kition-sheet",
-    "version": "0.4.22",
-    "tag": "package-v0.4.22",
-    "asset": "kition-sheet-0.4.22.tgz",
-    "size": 8429643,
-    "sha256": "3bbc8593e4333456d4a66dc12d39dd28cd678a34f82fd0270210e882be34a96a",
-    "commit": "b22956662c31f4ea47e48fbc7b83056ffaeaa75e",
-    "sdkCommit": "14488548674031be571c4cb2956d7614279e5fa0",
+    "version": "0.4.23",
+    "tag": "package-v0.4.23",
+    "asset": "kition-sheet-0.4.23.tgz",
+    "size": 8434837,
+    "sha256": "cb6bebe709ffdf7a337c20ce426f3cd447c4f9d69b9c6beda0945d196792bc4b",
+    "commit": "c09d817f5a87631e2caf0577e6662423e7857778",
+    "sdkCommit": "9684cb44d0b52a6e3c16e0b1cf548df29eb50dea",
     "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   },
   "slide": {
@@ -123,13 +123,13 @@
   },
   "word": {
     "repository": "KitionAI/kition-word",
-    "version": "0.5.10",
-    "tag": "package-v0.5.10",
-    "asset": "kition-word-0.5.10.tgz",
-    "size": 13308001,
-    "sha256": "e0bc7890852eb417a5e9ca1d5b527f9e89cad2b4a3211e05e926f142a1c92723",
-    "commit": "8a35694d8689abf60ba18380dcad8faae52c330c",
-    "sdkCommit": "14488548674031be571c4cb2956d7614279e5fa0",
+    "version": "0.5.11",
+    "tag": "package-v0.5.11",
+    "asset": "kition-word-0.5.11.tgz",
+    "size": 13300446,
+    "sha256": "41ef22625d037a0eab75fb7b5b4eadf75279554a0ae3669d3fd14b926d351101",
+    "commit": "f8079dcf63c73802124461e220e20dac7c1a7dcd",
+    "sdkCommit": "9684cb44d0b52a6e3c16e0b1cf548df29eb50dea",
     "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   }
 }

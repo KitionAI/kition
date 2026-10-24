@@ -125,8 +125,18 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   box story, Sheet into a text body it draws and saves, Slide into its text
   body (each kit's `shape_text_takes_runs_…` test, save and reopen included).
   A colour is read as `#RRGGBB` or a theme slot wherever one goes.
-  Still open in Phase 2: connectors (Slide edits them; Word and Sheet only
-  read them).
+  Connectors (`KitDrawing 1.4`, DR25): `drawing.connect` glues one between two
+  shapes' sites in all three kits, and its ends follow the shapes in the same
+  step. In Word and Sheet they follow every edit that moves a shape (a drag,
+  a nudge, rows or columns inserted under it), not only `drawing.*` commands;
+  Slide reroutes after every edit already. `drawing.reconnect` moves one end
+  to another site or frees it, and in Word and Sheet a selected connector's
+  ends drag with the pointer, snapping to sites in reach
+  (`kition_drawing::connect::EndDrag`). Slide does not take
+  `drawing.reconnect` or the end drag yet. Evidence: the
+  `connectors_follow_…` engine tests and the bindings'
+  `a_connectors_end_drags_onto_another_shape_in_one_step` tests. Still open:
+  drawing a new connector by dragging between two shapes.
 
 ## Charts
 
