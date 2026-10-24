@@ -210,8 +210,14 @@ and checks read-only refusal.)*
   `kition_drawing::chart::trend` fits them and measures them, Word and Sheet
   draw them over unstacked series, and Slide draws them with its own renderer.
   Evidence: the `trendlines_…` engine tests and each kit's `chart.mjs` in
-  Chromium and WebKit. Secondary-axis and combination-chart formatting are
-  preserved but not yet editable.
+  Chromium and WebKit. Combinations on two axes (DR16c): a series' own type
+  and `secondary` are described and set from Format Series or `seriesFormat`
+  in all three kits, kept through saving; the shared codec groups series by
+  type and axis, makes and removes the secondary axes, and keeps series in
+  their `c:order` (reading, patching and binding a workbook). Word now draws a
+  chart's every chart type, with a secondary value axis labelled on the right.
+  Evidence: the `combinations_…` codec test, each kit's secondary-axis engine
+  test, and Word's and Sheet's `chart.mjs` in Chromium.
 
 - **Visual fidelity (Slide, 2026-10-22):** against the frozen baseline's chart
   set and settings, data table rows and the plot area border now follow the
