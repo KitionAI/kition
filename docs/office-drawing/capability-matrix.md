@@ -135,8 +135,10 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   (`kition_drawing::connect::EndDrag`). Slide does not take
   `drawing.reconnect` or the end drag yet. Evidence: the
   `connectors_follow_…` engine tests and the bindings'
-  `a_connectors_end_drags_onto_another_shape_in_one_step` tests. Still open:
-  drawing a new connector by dragging between two shapes.
+  `a_connectors_end_drags_onto_another_shape_in_one_step` tests. A line from
+  Insert › Shapes becomes a connector once its ends are dragged onto two shapes
+  (`a_plain_line_glued_at_both_ends_…`, save and reopen included). Still open:
+  drawing a connector in one drag from one shape to another.
 
 ## Charts
 
