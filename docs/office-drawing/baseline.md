@@ -62,12 +62,27 @@ kit excludes the Source Han and Noto CJK families by policy. Slides whose
 text uses these fonts cannot reach SSIM 0.999 until this difference is
 resolved. Resolving it is an owner decision, recorded as open:
 
-- **Open decision F1:** how the visual target treats text set in fonts the
-  kits cannot ship. Options include measuring with openly licensed,
-  metric-compatible substitutes installed for the comparison only, restricting
-  the strict gate to slides whose fonts are available, or keeping the gate as
-  it is and accepting that these slides stay failing. None of them may loosen
-  the metric itself (the plan forbids blur, masking, and looser thresholds).
+- **Decision F1 (owner, 2026-10-24):** text set in fonts the kits cannot ship
+  is drawn, and measured, with openly licensed, metric-compatible substitutes.
+  kition-fonts now carries Carlito (Calibri), Caladea (Cambria), Arimo
+  (Arial), Tinos (Times New Roman) and Cousine (Courier New), all OFL-1.1;
+  native Slide builds embed them, and the Slide and Word web editors load them
+  at run time. The metric itself is unchanged.
+
+  **Measured effect (2026-10-24, Slide shape set, same renderer commit,
+  only the font checkout differs):** with Calibri drawn as Arial, 137 strict
+  passes and SSIM median 0.96937; with Carlito, 137 strict passes and SSIM
+  median 0.96617. Of the 73 decks that use Calibri, 54 score lower with
+  Carlito and none higher. The corpus's references are WPS renders made where
+  Calibri was not installed: they draw Calibri text in an Arial-like face
+  (checked by eye on the worst slide, `列表5项3` slide 59). Metric-compatible
+  substitutes therefore move Kition toward Office and away from these
+  references. F1 becomes measurable only with references rendered where the
+  documents' fonts are present (PowerPoint, or WPS with Calibri installed).
+  The chart set's text is mostly in Chinese fonts with no metric-compatible
+  open substitute, so F1 does not change it. Scorecards:
+  `$HOME/.cache/kition-fidelity/f1/` (`slide-shape.json` with the
+  substitutes, `slide-shape-before.json` without, `slide-chart.json`).
 
 ## Word and Sheet
 
