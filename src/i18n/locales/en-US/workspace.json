@@ -297,6 +297,14 @@
       "overwrite": "Merge and replace",
       "dirty": "This file has unsaved edits in its open editor. Save or discard them, then merge.",
       "mergedHint": "The file now holds the agent's draft."
+    },
+    "openUrl": {
+      "title": "Open this web address?",
+      "body": "A link in this document leads outside Kition. It opens in your browser.",
+      "site": "Site:",
+      "ascii": "shown as {{host}}",
+      "open": "Open",
+      "cancel": "Cancel"
     }
   },
   "filmKit": {

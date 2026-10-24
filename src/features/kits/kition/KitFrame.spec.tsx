@@ -183,6 +183,12 @@ vi.mock('./kitConnections', () => ({
   markKitDocumentShown: vi.fn(),
 }))
 
+const external = vi.hoisted(() => ({ opened: [] as string[] }))
+vi.mock('@/services/desktop', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/desktop')>()),
+  openExternalURL: vi.fn(async (url: string) => void external.opened.push(url)),
+}))
+
 import { setReadOnlyDocuments } from '@/services/documentAccess'
 import { mountKit } from '../host/mountKit'
 import { KitFrame } from './KitFrame'
@@ -209,12 +215,12 @@ function keepReplicaOfFile() {
   store.replica = { snapshot: buffer(replica.snapshot()), blobs: new ArrayBuffer(0), fileStamp: fileState.stamp }
 }
 
-async function mount() {
+async function mount(props: Partial<Parameters<typeof KitFrame>[0]> = {}) {
   container = document.createElement('div')
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container)
-    root.render(createElement(KitFrame, { kit: KIT, path: PATH, active: true }))
+    root.render(createElement(KitFrame, { kit: KIT, path: PATH, active: true, ...props }))
   })
   await settle()
 }
@@ -227,7 +233,11 @@ beforeEach(() => {
   reads.kit.length = 0
   fileState.titles = ['Title', 'Agenda']
   store.replica = null
+  external.opened.length = 0
 })
+
+/** The handlers Kition gave the kit it mounted last. */
+const lastHandlers = () => (vi.mocked(mountKit).mock.calls.at(-1)?.[1] as unknown as { handlers: Record<string, ((params: unknown) => Promise<unknown>) | undefined> }).handlers
 
 afterEach(async () => {
   await act(async () => root?.unmount())
@@ -237,6 +247,37 @@ afterEach(async () => {
 })
 
 describe('KitFrame', () => {
+  it('opens files a link names through the workspace, and offers no opening without it', async () => {
+    const onOpenLink = vi.fn(async () => ({ opened: true }))
+    await mount({ onOpenLink })
+    const params = { link: { name: 'Plan' }, view: { heading: ['Goals'] }, placement: 'tab' }
+    expect(await lastHandlers().open!(params)).toEqual({ opened: true })
+    expect(onOpenLink).toHaveBeenCalledWith(params)
+    await act(async () => root?.unmount())
+    await mount()
+    expect(lastHandlers().open).toBeUndefined()
+  })
+
+  it('opens a web address in the browser only once the person confirmed it, showing its site', async () => {
+    await mount()
+    const asked = lastHandlers().openUrl!({ url: 'https://bücher.example/docs' })
+    await settle()
+    const dialog = document.querySelector('[data-testid="kit-open-url-dialog"]')
+    expect(dialog?.querySelector('[data-testid="kit-open-url-host"]')?.textContent).toBe('bücher.example')
+    expect(dialog?.querySelector('[data-testid="kit-open-url-ascii"]')?.textContent).toContain('xn--bcher-kva.example')
+    expect(external.opened).toEqual([])
+    await act(async () => (document.querySelector('[data-testid="kit-open-url-open"]') as HTMLButtonElement).click())
+    expect(await asked).toEqual({ opened: true })
+    expect(external.opened).toEqual(['https://bücher.example/docs'])
+
+    const declined = lastHandlers().openUrl!({ url: 'https://example.com' })
+    await settle()
+    await act(async () => (document.querySelector('[data-testid="kit-open-url-cancel"]') as HTMLButtonElement).click())
+    expect(await declined).toEqual({ opened: false })
+    expect(external.opened).toHaveLength(1)
+    expect(document.querySelector('[data-testid="kit-open-url-dialog"]')).toBeNull()
+  })
+
   it('names the file it could not open, says it was not changed, and opens it again on request', async () => {
     vi.mocked(mountKit).mockRejectedValueOnce(new Error('codec: unrecognized image format'))
     await mount()

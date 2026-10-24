@@ -297,6 +297,14 @@
       "overwrite": "Fusionner et remplacer",
       "dirty": "Ce fichier a des modifications non enregistrées dans son éditeur ouvert. Enregistrez-les ou annulez-les, puis fusionnez.",
       "mergedHint": "Le fichier contient désormais le brouillon de l'agent."
+    },
+    "openUrl": {
+      "title": "Ouvrir cette adresse web ?",
+      "body": "Un lien de ce document mène en dehors de Kition. Il s’ouvrira dans votre navigateur.",
+      "site": "Site :",
+      "ascii": "affiché comme {{host}}",
+      "open": "Ouvrir",
+      "cancel": "Annuler"
     }
   },
   "filmKit": {

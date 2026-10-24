@@ -297,6 +297,14 @@
       "overwrite": "合并并替换",
       "dirty": "这个文件在打开的编辑器里有未保存的修改。请先保存或放弃，再合并。",
       "mergedHint": "文件现在是 agent 的草稿内容。"
+    },
+    "openUrl": {
+      "title": "打开这个网址？",
+      "body": "文档里的这个链接指向 Kition 以外的地方，会在浏览器中打开。",
+      "site": "网站：",
+      "ascii": "实际地址为 {{host}}",
+      "open": "打开",
+      "cancel": "取消"
     }
   },
   "filmKit": {

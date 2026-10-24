@@ -4,6 +4,7 @@ import { KitIcon } from '@/components/KitIcon'
 import { ExtensionPanelSlot } from '@/features/extensions/public'
 import { KitFrame } from '@/features/kits/public'
 import { kitAvailable, type KitEditorEntry, type KitEditorProps } from './kitEditors'
+import { KITION_LINK_OPENER, openKitLink } from './kitLinks'
 
 /**
  * A file a kit opens, in the kit's own editor. Release builds include every kit; a development
@@ -28,7 +29,7 @@ export function KitFilePane({ kit, preview, ...props }: KitEditorProps & { kit: 
     return (
       <div className="flex h-full min-h-0">
         <div className="h-full min-w-0 flex-1">
-          <KitFrame kit={kit.embedded} {...props} />
+          <KitFrame kit={kit.embedded} {...props} onOpenLink={(params) => openKitLink(props.path, params, KITION_LINK_OPENER)} />
         </div>
         <ExtensionPanelSlot path={props.path} />
       </div>

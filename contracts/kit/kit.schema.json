@@ -239,8 +239,43 @@
           "pages",
           "timeline",
           "engine-tools",
-          "kdm"
+          "kdm",
+          "files",
+          "preview-files",
+          "open-file",
+          "open-url"
         ]
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The files beyond its document a kit may ask the host for (KitFiles 1.1; platform docs/platform/kits/manifest.md, K15). A kit with this field lists the files capability.",
+      "properties": {
+        "read": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Extensions, without the dot, of files the kit may read.",
+          "items": {
+            "$ref": "#/$defs/extension"
+          }
+        },
+        "create": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Extensions, without the dot, of files the kit may create or replace; covers every extension in exports.",
+          "items": {
+            "$ref": "#/$defs/extension"
+          }
+        },
+        "folders": {
+          "type": "boolean",
+          "description": "Folder grants are allowed (default false)."
+        },
+        "print": {
+          "type": "boolean",
+          "description": "files/print is allowed (default false)."
+        }
       }
     },
     "model": {

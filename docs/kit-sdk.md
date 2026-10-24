@@ -310,9 +310,20 @@ items with `primary`.
   (UI-G4). It answers `host/action` with its
   own actions (`kitActions.ts`: `workflow.run` through
   `POST /v1/workflows/{id}/run-record`, and `design.fromRecord`); neither is
-  offered to a preview or a read-only document. It mounts on the protocol's
-  `ready` handshake, never the frame's `load` event, and abandons a mount its
-  effect no longer needs.
+  offered to a preview or a read-only document. Links (KitLinks 1.0
+  section 5): `host/open` opens the workspace file a link names in a tab
+  (`kitLinks.ts`: a path from the document's folder, or a bare name resolved
+  to the nearest file of that name), at the link's view, and creates a
+  missing one with the engine of a kit that creates its extension when the
+  kit asks (`create`), else `not-found` or `no-kit`; `host/openUrl` opens an
+  `https:`, `http:`, or `mailto:` address in the system's browser after the
+  person confirmed it in a dialog that names the site, with its ASCII form
+  for a non-ASCII host name (`KitOpenUrlDialog.tsx`, OP8). Neither is
+  offered to a preview. A change of the frame's file on disk (the desktop
+  watcher) reaches the kit at once as `document/fileChanged` with the file's
+  new stamp (`kitFileChanges.ts`). It mounts on the protocol's `ready`
+  handshake, never the frame's `load` event, and abandons a mount its effect
+  no longer needs.
 - Writes go through `PUT /v1/kits/files`, and the runtime keeps the same
   rule: a save names the document its editor opened (`document`) and
   replaces only that file; any other write makes a new file and never

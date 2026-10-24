@@ -10,7 +10,9 @@ import {
   KitRpcError,
   LEASE_HELD_REASON,
   isGeneratePurpose,
+  isOpenableUrl,
   isReady,
+  parseOpenParams,
   parsePresence,
   parseSchemaReport,
   type AiRunResult,
@@ -51,6 +53,8 @@ export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams 
 export type { KitActionErrorReason, KitActionParams, KitActionResult, KitDefinedGeneratePurpose, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGeneratePurpose, KitGenerateResult } from './protocol'
 export type { KitView } from './protocol'
 export { parseKitView } from './protocol'
+export type { KitLinkRef, KitOpenErrorReason, KitOpenParams, KitOpenResult } from './protocol'
+export { isOpenableUrl, openErrorReason, parseLinkRef, parseOpenParams, OPEN_ERROR_REASONS, OPEN_URL_SCHEMES } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
@@ -121,6 +125,20 @@ export type KitHostHandlers = {
    * with reason `not-allowed`.
    */
   actions?: Record<string, (params: Record<string, unknown>) => Result<'host/action'>>
+  /**
+   * `host/open`: open a workspace file in the host (capability `open-file`, section 7i; KitLinks
+   * 1.0 OP1 to OP5), with its `view` (OP3), creating a missing one when asked (OP4). The params
+   * arrive checked (`parseOpenParams`); the host resolves the link against the document's folder,
+   * keeps it inside the workspace (UI-H2), and refuses with a `KitRpcError(-32000, …, { reason })`,
+   * `reason` one of `OPEN_ERROR_REASONS`.
+   */
+  open?: (params: Params<'host/open'>) => Result<'host/open'>
+  /**
+   * `host/openUrl`: open a web address in the system's browser or mail client after the person
+   * confirmed it (capability `open-url`; OP6 to OP9). Only `https:`, `http:`, and `mailto:` reach
+   * it: others are refused as `not-allowed` before (OP7).
+   */
+  openUrl?: (params: Params<'host/openUrl'>) => Result<'host/openUrl'>
 }
 
 export type MountOptions = {
@@ -244,6 +262,8 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize, lease: handlers.leases, presence: handlers.presence }
   const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
   if (handlers.generate) capabilities.push('generate')
+  if (handlers.open) capabilities.push('open-file')
+  if (handlers.openUrl) capabilities.push('open-url')
   const actions = Object.entries(handlers.actions ?? {}).filter(([, run]) => typeof run === 'function')
   capabilities.push(...actions.map(([id]) => `${HOST_ACTION_CAPABILITY_PREFIX}${id}`))
   if (options.files) capabilities.push('files', ...(options.files.pick ? ['files-pick'] : []), ...(options.files.print ? ['print'] : []))
@@ -295,6 +315,19 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       const run = typeof params?.id === 'string' ? actions.find(([id]) => id === params.id)?.[1] : undefined
       if (!run) throw new KitRpcError(-32000, `this host does not serve the action ${String(params?.id)}`, { reason: 'not-allowed' })
       return run(params.params && typeof params.params === 'object' ? params.params : {})
+    })
+    peer.handle('host/open', async (params) => {
+      if (!handlers.open) unsupported('host/open')
+      const checked = parseOpenParams(params)
+      if (!checked) throw new KitRpcError(-32602, 'host/open needs a link with a path, a name, or a docId')
+      const answer = await handlers.open(checked)
+      return { opened: answer?.opened !== false }
+    })
+    peer.handle('host/openUrl', async (params) => {
+      if (!handlers.openUrl) unsupported('host/openUrl')
+      if (!isOpenableUrl(params?.url)) throw new KitRpcError(-32000, `a host opens only https:, http:, and mailto: addresses`, { reason: 'not-allowed' })
+      const answer = await handlers.openUrl({ url: params.url })
+      return { opened: answer?.opened !== false }
     })
     const files = options.files ? openFileSession({ ...options.files, readOnly: options.document.readOnly === true, revoked: (handles) => peer.notify('files/revoked', { handles }) }) : null
     if (files) for (const method of FILES_METHODS) peer.handle(method, (params) => files.serve(method, params as never))

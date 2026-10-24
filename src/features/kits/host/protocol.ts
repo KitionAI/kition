@@ -151,7 +151,7 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`. */
   capabilities: string[]
   /**
    * The capability sets this host serves (KHP `spec/index.md` section 3.1, minor version 1.5), such as
@@ -414,6 +414,62 @@ export type KitActionResult = { done: boolean; message?: string }
 export const ACTION_ERROR_REASONS = ['not-allowed', 'no-gesture', 'not-found', 'failed'] as const
 export type KitActionErrorReason = (typeof ACTION_ERROR_REASONS)[number]
 
+/**
+ * Opening (capabilities `open-file` and `open-url`, section 7i, minor version 2.1; KitLinks 1.0
+ * section 5): the kit asks the host to open a workspace file or a web address, only from a
+ * person's gesture (OP1, OP6). `linkRef` names the target as the document stores it: a path
+ * relative to the document's folder, a bare name the host resolves (LR4), or a replica id.
+ */
+export type KitLinkRef = { path?: string; name?: string; docId?: string }
+/** `host/open`: `view` is where to show the target (OP3); `create` makes a missing target first (OP4), with `kit` picking the kit when several create its extension. */
+export type KitOpenParams = { link: KitLinkRef; view?: KitView; placement?: 'tab' | 'beside'; create?: { kit?: string } }
+/** `opened` is `false` when the person cancelled a confirmation (OP8). */
+export type KitOpenResult = { opened: boolean }
+
+/** The reasons a `host/open` or `host/openUrl` is refused (`error.data.reason` of a `-32000`; KitLinks 1.0 section 5). */
+export const OPEN_ERROR_REASONS = ['not-found', 'no-gesture', 'no-kit', 'not-allowed'] as const
+export type KitOpenErrorReason = (typeof OPEN_ERROR_REASONS)[number]
+
+/** The only schemes a host opens (OP7); every other is refused as `not-allowed`. */
+export const OPEN_URL_SCHEMES = ['https:', 'http:', 'mailto:'] as const
+
+/** Whether `url` is an absolute address with a scheme a host may open (OP7). */
+export function isOpenableUrl(url: unknown): url is string {
+  if (typeof url !== 'string' || !url) return false
+  try {
+    return (OPEN_URL_SCHEMES as readonly string[]).includes(new URL(url).protocol)
+  } catch {
+    return false
+  }
+}
+
+/** A `linkRef` checked: only non-empty string members, at least one of them; `null` otherwise. */
+export function parseLinkRef(value: unknown): KitLinkRef | null {
+  if (!isRecord(value)) return null
+  const link: KitLinkRef = {}
+  for (const key of ['path', 'name', 'docId'] as const) {
+    if (typeof value[key] === 'string' && value[key]) link[key] = value[key] as string
+  }
+  return Object.keys(link).length ? link : null
+}
+
+/** `host/open`'s params checked: a well-formed link, and only the known members of each optional one; `null` without a link. */
+export function parseOpenParams(value: unknown): KitOpenParams | null {
+  if (!isRecord(value)) return null
+  const link = parseLinkRef(value.link)
+  if (!link) return null
+  const view = parseKitView(value.view)
+  const create = isRecord(value.create) ? (typeof value.create.kit === 'string' && value.create.kit ? { kit: value.create.kit } : {}) : null
+  return { link, ...(view ? { view } : {}), placement: value.placement === 'beside' ? 'beside' : 'tab', ...(create ? { create } : {}) }
+}
+
+/** The reason a `host/open` or `host/openUrl` was refused, from the error the host answered; `null` for any other failure. */
+export function openErrorReason(error: unknown): KitOpenErrorReason | null {
+  if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
+  const reason = (error.data as { reason?: unknown }).reason
+  return (OPEN_ERROR_REASONS as readonly string[]).includes(reason as string) ? (reason as KitOpenErrorReason) : null
+}
+
 /** The reason a `host/generate` or `host/action` was refused, from the error the host answered; `null` for any other failure. */
 export function hostRequestErrorReason(error: unknown): KitGenerateErrorReason | KitActionErrorReason | null {
   if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
@@ -515,6 +571,10 @@ export type KitToHost = {
   'host/generate': [KitGenerateParams, KitGenerateResult]
   /** Runs one of the host's actions (capability `action:<id>`, section 7j); only from a person's gesture. */
   'host/action': [KitActionParams, KitActionResult]
+  /** Opens a workspace file in the host (capability `open-file`, section 7i); only from a person's gesture. */
+  'host/open': [KitOpenParams, KitOpenResult]
+  /** Opens a web address in the system's browser or mail client (capability `open-url`, section 7i); only from a person's gesture. */
+  'host/openUrl': [{ url: string }, KitOpenResult]
 }
 
 /** Notifications the kit sends. */

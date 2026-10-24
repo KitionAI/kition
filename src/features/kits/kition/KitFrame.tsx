@@ -10,7 +10,7 @@ import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
-import { mountKit, type KitConnection, type KitHostHandlers, type ModelBatchParams } from '../host/mountKit'
+import { mountKit, type KitConnection, type KitHostHandlers, type KitOpenParams, type KitOpenResult, type ModelBatchParams } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
@@ -20,10 +20,12 @@ import { kitionActions } from './kitActions'
 import { kitionGenerate } from './kitGenerate'
 import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
+import { followKitFileChanges } from './kitFileChanges'
 import { registerKitTestFrame } from './kitTestBridge'
 import { kitionTheme } from './kitionTheme'
 import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
+import { openConfirmedUrl, useOpenUrlConfirmation } from './KitOpenUrlDialog'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
 export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
@@ -211,13 +213,42 @@ function fileTypeName(path: string, kitName: string) {
   return match ? match[1].toUpperCase() : kitName
 }
 
-export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: EmbeddedKit; path: string; active: boolean; onOpenAgent?: () => void; preview?: KitPreview }) {
+/** Covers the frame while the kit opens its document. */
+function KitOpening({ label }: { label: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-background text-sm text-muted-foreground" data-testid="kit-opening">
+      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+      {label}
+    </div>
+  )
+}
+
+/**
+ * Links (KitLinks 1.0 section 5): files open in Kition's tabs (`onOpenLink`, when the editor has
+ * it), web addresses in the system's browser after the person confirmed them (OP8). Both work in
+ * read-only documents (OP5).
+ */
+function linkHandlers(latest: { current: { onOpenLink?: (params: KitOpenParams) => Promise<KitOpenResult>; askUrl: (url: string) => Promise<boolean> } }): Pick<KitHostHandlers, 'open' | 'openUrl'> {
+  const { onOpenLink } = latest.current
+  return {
+    open: onOpenLink ? (params) => (latest.current.onOpenLink ?? onOpenLink)(params) : undefined,
+    openUrl: openConfirmedUrl((url) => latest.current.askUrl(url)),
+  }
+}
+
+/**
+ * `onOpenLink` opens a workspace file a link in the kit names (`host/open`, KitLinks 1.0 OP2 to
+ * OP5); without it the kit offers no opening of files. Web addresses (`host/openUrl`) open in the
+ * system's browser once the person confirmed them (OP8).
+ */
+export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }: { kit: EmbeddedKit; path: string; active: boolean; onOpenAgent?: () => void; onOpenLink?: (params: KitOpenParams) => Promise<KitOpenResult>; preview?: KitPreview }) {
   const { t, i18n } = useTranslation('workspace')
   const frame = useRef<HTMLIFrameElement>(null)
   const [connection, setConnection] = useState<KitConnection | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
-  const latest = useRef({ onOpenAgent, t })
-  latest.current = { onOpenAgent, t }
+  const openUrl = useOpenUrlConfirmation()
+  const latest = useRef({ onOpenAgent, onOpenLink, askUrl: openUrl.ask, t })
+  latest.current = { onOpenAgent, onOpenLink, askUrl: openUrl.ask, t }
   // A co-edited document this person may only view opens read-only; the kit is opened again
   // when that becomes known after it opened (the role arrives with the room, or changes).
   const documentReadOnly = useDocumentReadOnly(path)
@@ -290,6 +321,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
             replicaWrite: ({ path: wanted, ...replica }) =>
               preview ? undefined : writeKitReplica(documentPath(wanted, path), kit.kitId, replica, { checkpoint: { origin: lastBy === 'agent' ? 'agent' : 'save', author: lastBy === 'agent' ? 'agent:kition' : 'user:local' } }),
             openAgent: !preview && latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
+            ...(preview ? {} : linkHandlers(latest)),
             changed: (next) => {
               const agentEdit = next.by === 'agent'
               state = { dirty: next.dirty, revision: next.revision }
@@ -365,7 +397,9 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
         const withdrawTest = registerKitTestFrame(path, mounted)
         const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })
         const detachCollab = collab?.attach(mounted) ?? (() => undefined)
+        const stopFileChanges = followKitFileChanges(path, mounted, KITION_KIT_HOST.stamp)
         withdraw = () => {
+          stopFileChanges()
           // A draft lives in its kit's page: it goes when the kit closes.
           setKitDraft(path, { state: 'none', revision: null })
           detachCollab()
@@ -439,12 +473,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
             }}
           />
         </div>
-      ) : connection ? null : (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-background text-sm text-muted-foreground" data-testid="kit-opening">
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          {t('kitEditor.opening')}
-        </div>
-      )}
+      ) : connection ? null : <KitOpening label={t('kitEditor.opening')} />}
+      {openUrl.dialog}
     </div>
   )
 }

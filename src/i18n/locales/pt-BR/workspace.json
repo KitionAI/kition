@@ -297,6 +297,14 @@
       "overwrite": "Mesclar e substituir",
       "dirty": "Este arquivo tem edições não salvas no editor aberto. Salve ou descarte-as e depois mescle.",
       "mergedHint": "O arquivo agora contém o rascunho do agente."
+    },
+    "openUrl": {
+      "title": "Abrir este endereço da web?",
+      "body": "Um link deste documento leva para fora do Kition. Ele será aberto no seu navegador.",
+      "site": "Site:",
+      "ascii": "exibido como {{host}}",
+      "open": "Abrir",
+      "cancel": "Cancelar"
     }
   },
   "filmKit": {
