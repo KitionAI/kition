@@ -198,13 +198,15 @@ and checks read-only refusal.)*
   (bounds, major unit, number format, shown), the data-label position and
   each series' line width, marker and smoothing. Chart Design's shared Format
   group (Format Axis, Label Position, Format Series) sets them through
-  `drawing.chart`, and each kit's browser test sets them, undoes them and, in
-  Word and Slide, saves and reopens them. Slide writes them into its chart
+  `drawing.chart`, and each kit's browser test sets them and undoes them; the
+  kits' engine tests save and reopen them. Slide writes them into its chart
   model, so they draw at once; Word patches the part and its renderer draws
-  fixed major units, markers, smooth lines and label positions. Sheet takes a
-  series' smoothing; its model has no axis scale, label position, line width
-  or marker yet, so `drawing.chart` refuses them as unsupported and the
-  editor does not offer them. Trendlines and error bars (DR16b) are
+  fixed major units, markers, smooth lines and label positions. Sheet keeps
+  them in its chart model (2026-10-24; dropped on saving before), reads and
+  writes them in the chart part (a label position only where Excel takes it
+  for the type), and draws them: axis bounds, units, formats and hidden axes,
+  label positions, line widths and marker symbols. Bounds on a category axis
+  and a position the type does not take are refused. Trendlines and error bars (DR16b) are
   described, set from Chart Elements › Trendline and Error Bars (on every
   series) or `seriesFormat`, saved and reopened in all three kits; the shared
   `kition_drawing::chart::trend` fits them and measures them, Word and Sheet
