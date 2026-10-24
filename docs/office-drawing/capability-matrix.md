@@ -138,8 +138,13 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   `connectors_follow_…` engine tests and the bindings'
   `a_connectors_end_drags_onto_another_shape_in_one_step` tests. A line from
   Insert › Shapes becomes a connector once its ends are dragged onto two shapes
-  (`a_plain_line_glued_at_both_ends_…`, save and reopen included). Still open in
-  Word and Sheet: drawing a connector in one drag from one shape to another.
+  (`a_plain_line_glued_at_both_ends_…`, save and reopen included). In Word and
+  Sheet, Insert › Shapes arms a shape (`draw.shape`) and a drag on the page or
+  sheet draws it; a line drawn from one shape's site to another's is made with
+  `drawing.connect`, a connector in one undo step
+  (`kition_drawing::connect::CreateDrag`; the bindings'
+  `a_shape_chosen_in_insert_shapes_…` tests and the Word and Sheet browser
+  runs). Kits without `draw.shape` keep inserting at their default place.
 
 ## Charts
 
