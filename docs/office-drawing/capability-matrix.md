@@ -293,10 +293,10 @@ use the flat text in every kit.
   still inserts formatted body text, not a drawing object.
 - **Collaboration:** a warp set by one person and a move of the same shape
   by another both stay (Word's `drawing_frames` and Sheet's `drawing_shapes`
-  replica tests). A shape's properties other than its frame and text are one
-  field in Word and Sheet: two people changing two different ones at once
-  (say a warp and a fill) keep one person's change, the same on every
-  replica, which DR14 allows but Office does not do.
+  replica tests). Since Word's replica schema 6 and Sheet's schema 5 a
+  shape's other members are entries of its own `look` map, so two people
+  changing two different ones at once (say a warp and a fill, or a glued end
+  and a line colour) both keep theirs.
 - **Sheet:** the warp lives in the shape's kept text body, with its adjust
   values. The page draws it bent with the shape, and printing to PDF fills
   the same bent outlines (in the page's face, Ubuntu Light).

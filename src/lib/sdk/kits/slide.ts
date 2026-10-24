@@ -457,10 +457,12 @@ export interface SlideCommands extends CommandMap {
   "drawing.transform": { dy?: number; /** flipH (no type given) */ flipH?: Json; /** flipV (no type given) */ flipV?: Json; ids?: Array<number>; /** rotateBy (no type given) */ rotateBy?: Json }
   /** Format Drawing Objects. Params: {ids, fill?, stroke?, geometry?}. Changes the document. */
   "drawing.format": { /** fill (no type given) */ fill?: Json; /** geometry (no type given) */ geometry?: Json; ids?: Array<number>; /** stroke (no type given) */ stroke?: Json }
-  /** Set Drawing Object Text. Params: {id, text? | paragraphs?, body?: {anchor, insets, wrap, autofit}}. Changes the document. */
-  "drawing.text": { /** {anchor, insets, wrap, autofit} */ body?: { anchor?: Json; autofit?: Json; insets?: Json; wrap?: Json }; id?: number }
+  /** Set Drawing Object Text. Params: {id, text? | paragraphs?, body?: {anchor, insets, wrap, autofit}, warp?: preset | null}. Changes the document. */
+  "drawing.text": { /** {anchor, insets, wrap, autofit} */ body?: { anchor?: Json; autofit?: Json; insets?: Json; wrap?: Json }; id?: number; /** preset | null */ warp?: Json }
   /** Arrange Drawing Objects. Params: {ids, order: front|back|forward|backward}. Changes the document. */
   "drawing.arrange": { ids?: Array<number>; order?: "front" | "back" | "forward" | "backward" }
+  /** Reconnect Connector. Params: {id, end: start|end, to?: id, site?: n, point?: [x, y]}. Changes the document. */
+  "drawing.reconnect": { end?: "start" | "end"; id?: number; point?: Array<number>; site?: number; /** an id */ to?: number }
   /** Connect Drawing Objects. Params: {from, to, fromSite?, toSite?, geometry?: {preset: straightConnector1|bentConnector3|curvedConnector3}}. Changes the document. */
   "drawing.connect": { /** from (no type given) */ from?: Json; /** fromSite (no type given) */ fromSite?: Json; geometry?: { preset?: "straightConnector1" | "bentConnector3" | "curvedConnector3" }; /** to (no type given) */ to?: Json; /** toSite (no type given) */ toSite?: Json }
   /** Group Drawing Objects. Params: {ids} (two or more objects on the slide, not in a group). Changes the document. */
@@ -575,6 +577,8 @@ export interface SlideCommands extends CommandMap {
   "format.textShadow": { on?: boolean }
   /** Text Outline. Params: {color?, width?: pt} (no color = none). Changes the document. */
   "format.textOutline": { color?: string; /** points */ width?: number }
+  /** Transform. Params: {preset: textArchUp|textArchDown|textCircle|textWave1|textInflate|textDeflate|textSlantUp|... (none = no transform)}. Changes the document. */
+  "format.transform": { /** textArchUp|textArchDown|textCircle|textWave1|textInflate|textDeflate|textSlantUp|... (none = no transform); none = no transform */ preset?: Json }
   /** Align. Params: {align: left|center|right|justify|justifyLow|distributed}. Changes the document. */
   "format.align": { align?: "left" | "center" | "right" | "justify" | "justifyLow" | "distributed" }
   /** Right-to-Left Text Direction. Params: {on?: bool} (off = left-to-right; switching mirrors left/right alignment). Changes the document. */
