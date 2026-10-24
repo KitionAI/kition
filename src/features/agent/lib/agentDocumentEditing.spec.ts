@@ -5,10 +5,23 @@ import {
 } from './agentDocumentEditing'
 
 describe('buildAgentDocumentEditingPromptContext', () => {
-  it('adds deterministic patch guidance for an active text document', () => {
+  it('points the agent at note_run for an active note, never at text tools', () => {
     const context = buildAgentDocumentEditingPromptContext({
       activeDocumentPath: 'Docs/Article.md',
       activeDocumentFormat: 'markdown',
+    })
+
+    expect(context).toContain('Note edit requirements:')
+    expect(context).toContain('only with note_run')
+    expect(context).toContain('never with document_write or apply_patch')
+    expect(context).toContain('with note_run (`text.insert`)')
+    expect(context).not.toContain('order all hunks from top to bottom')
+  })
+
+  it('adds deterministic patch guidance for an active text document', () => {
+    const context = buildAgentDocumentEditingPromptContext({
+      activeDocumentPath: 'Docs/Article.txt',
+      activeDocumentFormat: 'text',
     })
 
     expect(context).toContain('order all hunks from top to bottom')

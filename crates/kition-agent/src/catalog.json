@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "apply_patch",
-      "description": "Apply incremental edits to one or more workspace files using the apply_patch envelope. Use this only for small localized edits when the exact old text was returned by a complete recent read. For a whole-document rewrite, use document_write. If a patch fails, reread the file and retry with a smaller patch or fall back to document_write; do not finish the task with an unresolved write failure.\n\n## apply_patch\n\nUse the apply_patch tool to make incremental edits to files in the workspace.\n\nThe patch language is a stripped-down, file-oriented diff format. The envelope is:\n\n*** Begin Patch\n[ one or more file sections ]\n*** End Patch\n\nEach file section starts with one of:\n\n*** Add File: <path>      // create a new file. Every following line is a + line.\n*** Delete File: <path>   // remove an existing file. Nothing follows.\n*** Update File: <path>   // patch an existing file in place. May be followed by:\n*** Move to: <new path>   // optional rename.\n@@ <optional header>      // hunk boundary. Body lines start with ' ', '+' or '-'.\n*** End of File           // optional sentinel anchoring the chunk at the file end.\n\nShow 3 lines of context above and below each change. If 3 lines isn't enough to\nuniquely locate the snippet, use @@ with the class/function header. Multiple\n@@ headers can stack to disambiguate.\n\nGrammar:\nPatch := Begin { FileOp } End\nFileOp := AddFile | DeleteFile | UpdateFile\nAddFile := \"*** Add File: \" path NEWLINE { \"+\" line NEWLINE }\nDeleteFile := \"*** Delete File: \" path NEWLINE\nUpdateFile := \"*** Update File: \" path NEWLINE [ MoveTo ] { Hunk }\nMoveTo := \"*** Move to: \" newPath NEWLINE\nHunk := \"@@\" [ header ] NEWLINE { HunkLine } [ \"*** End of File\" NEWLINE ]\nHunkLine := (\" \" | \"-\" | \"+\") text NEWLINE\n\nRules:\n- Always include the action header (Add/Delete/Update).\n- New file lines must be prefixed with '+' even when creating the file.\n- File references are relative to the workspace.\n",
+      "description": "Apply incremental edits to one or more workspace files using the apply_patch envelope. Use this only for small localized edits when the exact old text was returned by a complete recent read. It never changes a note (a .md file): change notes with note_run. For a whole-document rewrite of a text file, use document_write. If a patch fails, reread the file and retry with a smaller patch or fall back to document_write; do not finish the task with an unresolved write failure.\n\n## apply_patch\n\nUse the apply_patch tool to make incremental edits to files in the workspace.\n\nThe patch language is a stripped-down, file-oriented diff format. The envelope is:\n\n*** Begin Patch\n[ one or more file sections ]\n*** End Patch\n\nEach file section starts with one of:\n\n*** Add File: <path>      // create a new file. Every following line is a + line.\n*** Delete File: <path>   // remove an existing file. Nothing follows.\n*** Update File: <path>   // patch an existing file in place. May be followed by:\n*** Move to: <new path>   // optional rename.\n@@ <optional header>      // hunk boundary. Body lines start with ' ', '+' or '-'.\n*** End of File           // optional sentinel anchoring the chunk at the file end.\n\nShow 3 lines of context above and below each change. If 3 lines isn't enough to\nuniquely locate the snippet, use @@ with the class/function header. Multiple\n@@ headers can stack to disambiguate.\n\nGrammar:\nPatch := Begin { FileOp } End\nFileOp := AddFile | DeleteFile | UpdateFile\nAddFile := \"*** Add File: \" path NEWLINE { \"+\" line NEWLINE }\nDeleteFile := \"*** Delete File: \" path NEWLINE\nUpdateFile := \"*** Update File: \" path NEWLINE [ MoveTo ] { Hunk }\nMoveTo := \"*** Move to: \" newPath NEWLINE\nHunk := \"@@\" [ header ] NEWLINE { HunkLine } [ \"*** End of File\" NEWLINE ]\nHunkLine := (\" \" | \"-\" | \"+\") text NEWLINE\n\nRules:\n- Always include the action header (Add/Delete/Update).\n- New file lines must be prefixed with '+' even when creating the file.\n- File references are relative to the workspace.\n",
       "category": "filesystem",
       "input_schema": {
         "type": "object",
@@ -537,7 +537,7 @@
     },
     {
       "name": "document_read",
-      "description": "Read the current document or a Markdown/TXT file inside the workspace. The result contains the complete document when it fits the bounded read budget. Use document_write for a whole-document rewrite; use apply_patch only for small localized edits whose exact old text is present in this result.",
+      "description": "Read the current document or a Markdown/TXT file inside the workspace. The result contains the complete document when it fits the bounded read budget. Change a note (a .md file) with note_run; for a TXT file use document_write for a whole-document rewrite, and apply_patch only for small localized edits whose exact old text is present in this result.",
       "category": "document",
       "input_schema": {
         "type": "object",
@@ -573,7 +573,7 @@
     },
     {
       "name": "document_write",
-      "description": "Overwrite an existing Markdown/TXT document in the workspace for iterative editing.",
+      "description": "Overwrite an existing TXT document in the workspace for iterative editing. Notes (.md files) are changed with note_run, never with this tool.",
       "category": "document",
       "input_schema": {
         "type": "object",
@@ -1438,7 +1438,7 @@
         "file_search",
         "fs_read"
       ],
-      "system_prompt": "Enable the document-review skill.\nLead with the main issues, then provide a directly rewritable version or an actionable revision list.\nIf the user asks for direct edits to the current document, read it first and write back with document_write to the same path.\nFeedback should be concrete at the level of headings, paragraphs, structure, factual gaps, and action items."
+      "system_prompt": "Enable the document-review skill.\nLead with the main issues, then provide a directly rewritable version or an actionable revision list.\nIf the user asks for direct edits to the current note, read it first and change it with note_run (find its commands with note_commands).\nFeedback should be concrete at the level of headings, paragraphs, structure, factual gaps, and action items."
     },
     {
       "name": "document-report-agent",

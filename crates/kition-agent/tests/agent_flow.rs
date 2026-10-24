@@ -1021,13 +1021,13 @@ async fn session_events(app: &Router, session_id: i64) -> Vec<Value> {
 async fn a_document_write_presents_the_document_after_its_result() {
     let Fixture { app, workspace, .. } = app();
     std::fs::create_dir_all(workspace.path().join("Notes")).unwrap_or_else(|err| panic!("{err}"));
-    std::fs::write(workspace.path().join("Notes/plan.md"), "old")
+    std::fs::write(workspace.path().join("Notes/plan.txt"), "old")
         .unwrap_or_else(|err| panic!("{err}"));
     let session_id = new_session(&app).await;
     let base_url = fake_provider(vec![
         tool_call(
             "document_write",
-            json!({ "path": "Notes/plan.md", "content": "# Plan" }),
+            json!({ "path": "Notes/plan.txt", "content": "# Plan" }),
         ),
         answer(&["Updated."]),
     ])
@@ -1042,7 +1042,7 @@ async fn a_document_write_presents_the_document_after_its_result() {
     assert_eq!(presented["type"], "deliverables/presented", "{events:?}");
     assert_eq!(presented["callId"], "call_1");
     assert_eq!(presented["turn"], 1);
-    assert_eq!(presented["files"][0]["path"], "Notes/plan.md");
+    assert_eq!(presented["files"][0]["path"], "Notes/plan.txt");
 }
 
 #[tokio::test(flavor = "multi_thread")]

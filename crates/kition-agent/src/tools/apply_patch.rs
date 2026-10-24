@@ -10,7 +10,7 @@
 
 use serde_json::{Value, json};
 
-use super::live_documents::{Delivery, LiveDocuments};
+use super::documents::{is_note, note_refusal};
 use crate::run::{Run, ToolOutput, ToolResult, bool_field, text_field};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -372,10 +372,8 @@ fn count_diff(old: &str, new: &str) -> (usize, usize) {
     (b.len() - common, a.len() - common)
 }
 
-/// Applies a patch. A Markdown document a renderer window has open is patched against its live
-/// text (unsaved edits included) and the result applied in that window
-/// (`live_documents.rs`); when the window does not apply it, the patch is applied to the file
-/// instead.
+/// Applies a patch. A note (Markdown) is the Note kit's document: a hunk that would change an
+/// existing note is refused, pointing at `note_run`; a new note may be added.
 pub async fn apply(run: &Run, input: &Value) -> ToolResult {
     let patch = text_field(input, "patch");
     if patch.is_empty() {
@@ -384,7 +382,6 @@ pub async fn apply(run: &Run, input: &Value) -> ToolResult {
     let dry_run = bool_field(input, "dry_run") || run.execution_mode == "preview";
     let hunks = parse(&patch)?;
     let workspace = run.workspace();
-    let live = LiveDocuments::of(run);
     let read = |path: &str| -> Result<String, String> {
         let (_, absolute) = workspace.locate(path, false)?;
         std::fs::read_to_string(absolute).map_err(|error| format!("read {path}: {error}"))
@@ -403,18 +400,18 @@ pub async fn apply(run: &Run, input: &Value) -> ToolResult {
     let mut parts = Vec::new();
     let (mut total_added, mut total_removed) = (0, 0);
     for hunk in hunks {
-        let mut delivery = Delivery::default();
         let (path, kind, move_to, added, removed) = match hunk {
             Hunk::Add { path, contents } => {
                 let (path, absolute) = workspace.locate(&path, false)?;
                 if absolute.is_dir() {
                     return Err(format!("cannot add file '{path}': path is a directory").into());
                 }
+                if is_note(&path) && absolute.exists() {
+                    return Err(note_refusal(&path).into());
+                }
                 let existing = std::fs::read_to_string(&absolute).unwrap_or_default();
                 if !dry_run {
-                    delivery = live
-                        .write(&path, &contents, "apply_patch", || write(&path, &contents))
-                        .await?;
+                    write(&path, &contents)?;
                 }
                 (
                     path,
@@ -443,48 +440,17 @@ pub async fn apply(run: &Run, input: &Value) -> ToolResult {
                 } else {
                     workspace.locate(&move_to, false)?.0
                 };
-                // An open document in place is patched against its live text; a move patches
-                // the file.
-                let window = live.window(&path).filter(|_| destination == path);
-                let live_text = match window {
-                    Some(window) => live.read(window, &path).await,
-                    None => None,
-                };
-                let (mut original, mut updated) = match &live_text {
-                    Some(text) => (text.clone(), derive(text, &path, &chunks)?),
-                    None => {
-                        let original = read(&path)?;
-                        let updated = derive(&original, &path, &chunks)?;
-                        (original, updated)
-                    }
-                };
+                if is_note(&path) || is_note(&destination) {
+                    return Err(
+                        note_refusal(if is_note(&path) { &path } else { &destination }).into(),
+                    );
+                }
+                let original = read(&path)?;
+                let updated = derive(&original, &path, &chunks)?;
                 if !dry_run {
-                    let applied = match (window, &live_text) {
-                        (Some(window), Some(_)) => {
-                            Some(live.apply(window, &path, &updated, "apply_patch").await)
-                        }
-                        _ => None,
-                    };
-                    match applied {
-                        Some(Ok(_)) => {
-                            delivery = Delivery {
-                                live: true,
-                                fallback: None,
-                            };
-                        }
-                        fallback => {
-                            if let Some(Err(reason)) = fallback {
-                                // The live text held edits the file does not have yet: patch
-                                // the file itself, so they are not written twice.
-                                original = read(&path)?;
-                                updated = derive(&original, &path, &chunks)?;
-                                delivery = Delivery::file(Some(reason));
-                            }
-                            write(&destination, &updated)?;
-                            if destination != path {
-                                remove(&path)?;
-                            }
-                        }
+                    write(&destination, &updated)?;
+                    if destination != path {
+                        remove(&path)?;
                     }
                 }
                 let (added, removed) = count_diff(&original, &updated);
@@ -501,13 +467,12 @@ pub async fn apply(run: &Run, input: &Value) -> ToolResult {
             }
             _ => "updated".to_owned(),
         };
-        parts.push(format!("{verb} `{path}`{}", delivery.note()));
+        parts.push(format!("{verb} `{path}`"));
         let mut op =
             json!({ "path": path, "kind": kind, "lines_added": added, "lines_removed": removed });
         if !move_to.is_empty() {
             op["move_path"] = json!(move_to);
         }
-        delivery.record(&mut op);
         ops.push(op);
     }
     let summary = if ops.is_empty() {
@@ -592,107 +557,50 @@ mod tests {
         assert_eq!(count_lines("a\nb"), 2);
     }
 
-    mod live {
-        use std::sync::PoisonError;
-        use std::time::Duration;
+    mod notes {
+        use super::*;
 
-        use serde_json::json;
-
-        use super::super::apply;
-        use crate::providers::testing::fixture_with_kits;
-        use crate::tools::live_documents::testing::window;
-
-        const PATCH: &str =
-            "*** Begin Patch\n*** Update File: Notes/a.md\n@@\n a\n-c\n+C\n*** End Patch";
-
-        fn setup() -> (crate::providers::testing::Fixture, kition_kits::KitManager) {
-            let kits = kition_kits::KitManager::new(None, Vec::new());
-            let fixture = fixture_with_kits("document", Some(kits.clone()));
+        fn setup() -> crate::providers::testing::Fixture {
+            let fixture = crate::providers::testing::fixture("document");
             let notes = fixture.run.workspace().root().join("Notes");
             std::fs::create_dir_all(&notes).unwrap_or_else(|err| panic!("{err}"));
             std::fs::write(notes.join("a.md"), "a\nc\n").unwrap_or_else(|err| panic!("{err}"));
-            (fixture, kits)
+            std::fs::write(notes.join("b.txt"), "a\nc\n").unwrap_or_else(|err| panic!("{err}"));
+            fixture
         }
 
-        fn file(fixture: &crate::providers::testing::Fixture) -> String {
-            std::fs::read_to_string(fixture.run.workspace().root().join("Notes/a.md"))
-                .unwrap_or_default()
-        }
-
-        #[tokio::test]
-        async fn patches_the_live_text_of_an_open_document() {
-            let (fixture, kits) = setup();
-            let applied = window(
-                kits.bridge(),
-                "Notes/a.md",
-                "a\nc\nunsaved\n",
-                json!({ "applied": true, "content": "a\nC\nunsaved\n" }),
-                Duration::ZERO,
-            );
-            let result = apply(&fixture.run, &json!({ "patch": PATCH }))
-                .await
-                .unwrap_or_else(|err| panic!("{}", err.message));
-            assert_eq!(
-                *applied.lock().unwrap_or_else(PoisonError::into_inner),
-                [
-                    json!({ "path": "Notes/a.md", "content": "a\nC\nunsaved\n", "tool": "apply_patch" })
-                ]
-            );
-            assert_eq!(
-                file(&fixture),
-                "a\nc\n",
-                "the window's session saves it, not the tool"
-            );
-            assert_eq!(result.output["file_ops"][0]["live"], true);
-            assert!(
-                result.summary.contains("applied live"),
-                "{}",
-                result.summary
-            );
-
-            // A dry run reads the live text but applies nothing.
-            let preview = apply(&fixture.run, &json!({ "patch": PATCH, "dry_run": true }))
-                .await
-                .unwrap_or_else(|err| panic!("{}", err.message));
-            assert_eq!(preview.output["file_ops"][0]["live"], false);
-            assert_eq!(
-                applied.lock().unwrap_or_else(PoisonError::into_inner).len(),
-                1
-            );
+        fn read(fixture: &crate::providers::testing::Fixture, path: &str) -> String {
+            std::fs::read_to_string(fixture.run.workspace().root().join(path)).unwrap_or_default()
         }
 
         #[tokio::test]
-        async fn a_refused_edit_patches_the_file_instead() {
-            let (fixture, kits) = setup();
-            window(
-                kits.bridge(),
-                "Notes/a.md",
-                "a\nc\nunsaved\n",
-                json!({ "applied": false, "reason": "conflict" }),
-                Duration::ZERO,
-            );
-            let result = apply(&fixture.run, &json!({ "patch": PATCH }))
-                .await
-                .unwrap_or_else(|err| panic!("{}", err.message));
-            assert_eq!(
-                file(&fixture),
-                "a\nC\n",
-                "the unsaved line stays in the editor only"
-            );
-            assert_eq!(result.output["file_ops"][0]["live"], false);
-            assert_eq!(result.output["file_ops"][0]["fallback"], "conflict");
+        async fn a_patch_never_changes_a_note_and_points_at_note_run() {
+            let fixture = setup();
+            for patch in [
+                "*** Begin Patch\n*** Update File: Notes/a.md\n@@\n a\n-c\n+C\n*** End Patch",
+                "*** Begin Patch\n*** Add File: Notes/a.md\n+replaced\n*** End Patch",
+                "*** Begin Patch\n*** Update File: Notes/b.txt\n*** Move to: Notes/a.md\n@@\n a\n-c\n+C\n*** End Patch",
+            ] {
+                let error = apply(&fixture.run, &json!({ "patch": patch }))
+                    .await
+                    .err()
+                    .map(|error| error.message)
+                    .unwrap_or_default();
+                assert!(error.contains("note_run"), "{patch}: {error}");
+            }
+            assert_eq!(read(&fixture, "Notes/a.md"), "a\nc\n");
+            assert_eq!(read(&fixture, "Notes/b.txt"), "a\nc\n");
         }
 
         #[tokio::test]
-        async fn a_document_no_window_has_open_is_patched_as_a_file() {
-            let (fixture, kits) = setup();
-            window(kits.bridge(), "Other.md", "", json!({}), Duration::ZERO);
-            let result = apply(&fixture.run, &json!({ "patch": PATCH }))
+        async fn a_patch_adds_a_new_note_and_changes_other_text_files() {
+            let fixture = setup();
+            let patch = "*** Begin Patch\n*** Add File: Notes/new.md\n+# New\n*** Update File: Notes/b.txt\n@@\n a\n-c\n+C\n*** End Patch";
+            apply(&fixture.run, &json!({ "patch": patch }))
                 .await
                 .unwrap_or_else(|err| panic!("{}", err.message));
-            assert_eq!(file(&fixture), "a\nC\n");
-            assert_eq!(result.output["file_ops"][0]["live"], false);
-            assert!(result.output["file_ops"][0].get("fallback").is_none());
+            assert_eq!(read(&fixture, "Notes/new.md"), "# New\n");
+            assert_eq!(read(&fixture, "Notes/b.txt"), "a\nC\n");
         }
     }
 }

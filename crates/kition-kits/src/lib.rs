@@ -3,7 +3,6 @@
 //! connection to them.
 
 pub mod bridge;
-pub mod document_bridge;
 pub mod drafts;
 pub mod grants;
 pub mod host;
@@ -16,7 +15,6 @@ pub mod surfaces;
 pub mod tools;
 
 pub use bridge::{Bridge, LiveChange, LiveDocument};
-pub use document_bridge::{DocumentApplied, DocumentApply};
 pub use manager::{
     Caller, DocumentView, ExecuteView, FileWrite, KITS, KitAgent, KitDefinition, KitError,
     KitManager, SavedFile,

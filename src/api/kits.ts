@@ -17,9 +17,6 @@ import type {
   KitsBridgeChanged,
   KitsBridgeCommand,
   KitsBridgeDocument,
-  KitsBridgeDocumentApplyParams,
-  KitsBridgeDocumentApplyResult,
-  KitsBridgeDocumentReadResult,
   KitsBridgeDraftInfo,
   KitsBridgeLiveDocument,
   KitsBridgeRunStep,
@@ -32,7 +29,7 @@ import type {
 import { runtimeFetch, signRuntimeURL } from '@/services/runtimeAuth'
 
 export type { KitsDraftComparison, KitsFileStat, KitsGrantSessionView, KitsHeadlessDraft }
-export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDocumentApplyParams, KitsBridgeDocumentApplyResult, KitsBridgeDocumentReadResult, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep }
+export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep }
 
 /**
  * Writes `bytes` to a workspace file: with `document` (the document an in-page editor opened, and
@@ -136,7 +133,7 @@ export function kitBridgeURL() {
   return signRuntimeURL(resolveApiURL('/v1/kits/bridge'))
 }
 
-/** An answer to a bridge request, or a `kit.changed` or `documents.open` notification, from this window. */
+/** An answer to a bridge request, or a `kit.changed` notification, from this window. */
 export function postKitBridgeMessage(session: number, message: Record<string, unknown>) {
   return request.post('/v1/kits/bridge', message, { params: { session }, suppressErrorMessage: true })
 }

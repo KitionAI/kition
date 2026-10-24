@@ -12,7 +12,6 @@ import { agent, ChangeAudit, person, randomActor, system, touchesOnlyComments, t
 import { readWorkspaceDocument, subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { registerWorkspaceEditSession } from '@/services/workspaceEditSessions'
 import { TextBinding } from '@kition/document-editor/model'
-import { registerOpenDocument } from './documentAgentBridge'
 import { addAgentReviewMarks, agentReviewHighlight, agentReviewMarks, mapAgentReviewMarks, type AgentReviewMarks } from './documentAgentReview'
 import { documentHistoryExtension, type DocumentHistory } from '@kition/document-editor/model'
 import { applyTextEdits, diffText, mergeEdits } from '@kition/document-editor/model'
@@ -180,7 +179,6 @@ export class DocumentSession {
   /** Set while the session applies an agent's edit (the edit does not touch its own review). */
   private applyingAgent = false
   private readonly reviewListeners = new Set<() => void>()
-  private unregisterAgent: (() => void) | null = null
   /** Withdraws the document from the open documents (`openDocumentSessions.ts`). */
   private withdrawOpen: (() => void) | null = null
   /** When the last checkpoint was recorded; a save records the next one `CHECKPOINT_EVERY_MS` later. */
@@ -240,7 +238,6 @@ export class DocumentSession {
     this.cleanups.push(opened.replica.subscribeText(opened.rootId, DOCUMENT_BODY, (delta) => this.onReplicaChange(delta)))
     this.cleanups.push(subscribeWorkspaceDocumentExternalChanges(this.onExternalChange))
     this.registerFlush()
-    this.registerAgentAccess()
     this.announceOpen()
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (!this.hasUnsavedChanges()) return
@@ -526,7 +523,6 @@ export class DocumentSession {
     if (path === this.pathValue) return
     this.pathValue = path
     if (this.unregisterFlush) this.registerFlush()
-    if (this.unregisterAgent) this.registerAgentAccess()
     if (this.withdrawOpen) this.announceOpen()
   }
 
@@ -637,7 +633,6 @@ export class DocumentSession {
     this.bindings.clear()
     for (const cleanup of this.cleanups.splice(0)) cleanup()
     this.unregisterFlush = null
-    this.unregisterAgent = null
     this.withdrawOpen = null
     this.textListeners.clear()
     this.commentListeners.clear()
@@ -728,17 +723,6 @@ export class DocumentSession {
     })
     this.withdrawOpen = withdraw
     this.cleanups.push(withdraw)
-  }
-
-  /** Lets the agent read and edit this document through the session (`documentAgentBridge`), under its current path. */
-  private registerAgentAccess() {
-    this.dropCleanup(this.unregisterAgent)
-    const unregister = registerOpenDocument(this.pathValue, {
-      read: () => this.read(),
-      apply: (content, meta) => this.applyAgentContent(content, meta),
-    })
-    this.unregisterAgent = unregister
-    this.cleanups.push(unregister)
   }
 
   /** The text changed from `before` by an agent's edit (`groups` undo steps): starts or grows the review. */

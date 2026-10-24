@@ -2,7 +2,6 @@
 
 use serde_json::{Value, json};
 
-use super::live_documents::LiveDocuments;
 use crate::attachments::Kind;
 use crate::run::{Run, ToolOutput, ToolResult, delivered, text_field};
 use crate::workspace::{self, parent_folder, sanitize_filename};
@@ -35,6 +34,21 @@ pub fn is_editable_document(path: &str) -> bool {
     matches!(
         workspace::extension(path).as_deref(),
         Some("md" | "markdown" | "txt")
+    )
+}
+
+/// Whether `path` is a note: Markdown, the Note kit's document.
+pub fn is_note(path: &str) -> bool {
+    matches!(
+        workspace::extension(path).as_deref(),
+        Some("md" | "markdown")
+    )
+}
+
+/// Why a text tool does not change the note at `path`: the Note kit edits it (`note_run`).
+pub fn note_refusal(path: &str) -> String {
+    format!(
+        "`{path}` is a note, which the Note kit edits: find its commands with note_commands and change it with note_run. document_write and apply_patch never change a note; artifact_write makes a new one."
     )
 }
 
@@ -92,19 +106,14 @@ pub async fn write(run: &Run, input: &Value) -> ToolResult {
         .unwrap_or_default();
     let workspace = run.workspace();
     let (path, _) = workspace.locate_existing(&path)?;
-    let delivery = LiveDocuments::of(run)
-        .write(&path, content, "document_write", || {
-            workspace.write_existing(&path, content).map(|_| ())
-        })
-        .await?;
-    let mut output = json!({ "path": path, "operation": "updated", "chars": content.chars().count(), "at": true });
-    delivery.record(&mut output);
+    if is_note(&path) {
+        return Err(note_refusal(&path).into());
+    }
+    workspace.write_existing(&path, content)?;
+    let output = json!({ "path": path, "operation": "updated", "chars": content.chars().count(), "at": true });
     Ok(ToolOutput {
         deliverables: vec![delivered(&path, &format!("Updated: {path}"))],
-        ..ToolOutput::new(
-            format!("Updated document: `{path}`{}", delivery.note()),
-            output,
-        )
+        ..ToolOutput::new(format!("Updated document: `{path}`"), output)
     })
 }
 
@@ -284,59 +293,41 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn writes_an_open_document_through_its_window() {
-        use std::sync::PoisonError;
-        use std::time::Duration;
-
-        use crate::providers::testing::fixture_with_kits;
-        use crate::tools::live_documents::testing::window;
-
-        let kits = kition_kits::KitManager::new(None, Vec::new());
-        let fixture = fixture_with_kits("document", Some(kits.clone()));
+    async fn document_write_refuses_notes_and_updates_text_files() {
+        let fixture = crate::providers::testing::fixture("document");
         let root = fixture.run.workspace().root().to_path_buf();
-        std::fs::write(root.join("open.md"), "old").unwrap_or_else(|err| panic!("{err}"));
-        std::fs::write(root.join("closed.md"), "old").unwrap_or_else(|err| panic!("{err}"));
-        let applied = window(
-            kits.bridge(),
-            "open.md",
-            "",
-            json!({ "applied": true, "content": "new" }),
-            Duration::ZERO,
+        std::fs::write(root.join("plan.md"), "old").unwrap_or_else(|err| panic!("{err}"));
+        std::fs::write(root.join("plan.txt"), "old").unwrap_or_else(|err| panic!("{err}"));
+
+        let refused = write(
+            &fixture.run,
+            &json!({ "path": "./plan.md", "content": "new" }),
+        )
+        .await
+        .err()
+        .map(|error| error.message)
+        .unwrap_or_default();
+        assert!(refused.contains("note_run"), "{refused}");
+        assert_eq!(
+            std::fs::read_to_string(root.join("plan.md")).unwrap_or_default(),
+            "old"
         );
 
-        let live = write(
+        let written = write(
             &fixture.run,
-            &json!({ "path": "./open.md", "content": "new" }),
+            &json!({ "path": "plan.txt", "content": "new" }),
         )
         .await
         .unwrap_or_else(|err| panic!("{}", err.message));
-        assert_eq!(live.output["live"], true);
-        assert_eq!(live.output["path"], "open.md");
+        assert_eq!(written.output["path"], "plan.txt");
         assert_eq!(
-            *applied.lock().unwrap_or_else(PoisonError::into_inner),
-            [json!({ "path": "open.md", "content": "new", "tool": "document_write" })]
-        );
-        assert_eq!(
-            std::fs::read_to_string(root.join("open.md")).unwrap_or_default(),
-            "old",
-            "the window's session saves it"
-        );
-
-        let file = write(
-            &fixture.run,
-            &json!({ "path": "closed.md", "content": "new" }),
-        )
-        .await
-        .unwrap_or_else(|err| panic!("{}", err.message));
-        assert_eq!(file.output["live"], false);
-        assert_eq!(
-            std::fs::read_to_string(root.join("closed.md")).unwrap_or_default(),
+            std::fs::read_to_string(root.join("plan.txt")).unwrap_or_default(),
             "new"
         );
         assert!(
             write(
                 &fixture.run,
-                &json!({ "path": "missing.md", "content": "x" })
+                &json!({ "path": "missing.txt", "content": "x" })
             )
             .await
             .is_err(),

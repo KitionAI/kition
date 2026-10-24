@@ -8,7 +8,6 @@ pub mod exec;
 pub mod files;
 pub mod images;
 pub mod kits;
-pub mod live_documents;
 pub mod web;
 
 use std::sync::Arc;

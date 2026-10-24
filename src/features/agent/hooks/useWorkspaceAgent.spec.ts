@@ -791,12 +791,12 @@ describe('useWorkspaceAgent hosted console restore', () => {
       activeDocumentPath: 'Docs/Current.md',
       content: 'What should I improve?',
       promptContext: expect.stringContaining(
-        'Read this exact path with document_read and analyze it before responding',
+        'This current document is a note open in Note. Read it with document_read',
       ),
       saveMarkdown: false,
     }))
     expect(mocks.streamAgentMessage.mock.calls[0][0].promptContext).toContain(
-      'order all hunks from top to bottom',
+      'Change it only with note_run',
     )
     expect(mocks.streamAgentMessage.mock.calls[0][0].promptContext).toContain(
       'Preferred safe image insertion: line 6, offset 30',

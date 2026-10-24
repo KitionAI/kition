@@ -40,6 +40,18 @@ export function buildAgentDocumentEditingPromptContext(input: {
     '- If no top-level blank line is available, insert after the containing top-level block and add blank-line separation; if that cannot be located, fall back to the document end.',
   ]
 
+  // A note is the Note kit's: its text is read as it is and changed only through note_run.
+  if (input.activeDocumentFormat === 'markdown' || /\.(md|markdown)$/i.test(path)) {
+    return [
+      'Note edit requirements:',
+      '- Read the current note with document_read immediately before editing, and base every edit on the returned content.',
+      '- Change it only with note_run (find its commands with note_commands); never with document_write or apply_patch. The person reviews the change as a draft.',
+      '- When the user asks for images or illustrations for this note, insert the generated workspace-relative image paths into this same note as Markdown image links with note_run (`text.insert`) before finishing the task.',
+      '',
+      ...imagePlacementRequirements,
+    ].join('\n')
+  }
+
   return [
     'Document edit reliability requirements:',
     '- Read the current document immediately before editing and base every edit on the returned content.',

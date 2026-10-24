@@ -635,60 +635,6 @@ export type KitsBridgeChanged = {
 }
 
 /**
- * documents.open (renderer to runtime, notification): every Markdown document open in this window's document sessions, the whole list each time it changes and after bridge.ready.
- */
-export type KitsBridgeDocumentsOpen = {
-  paths: KitsWorkspacePath[]
-}
-
-/**
- * document/read: the live text of an open document, unsaved edits included.
- */
-export type KitsBridgeDocumentReadParams = {
-  path: KitsWorkspacePath
-}
-
-export type KitsBridgeDocumentReadResult = {
-  open: true
-  content: string
-} | {
-  open: false
-}
-
-/**
- * document/apply: the agent's edit to an open document. The session applies and saves it, then answers; a window that does not answer in time (10 s) leaves the runtime to write the file.
- */
-export type KitsBridgeDocumentApplyParams = {
-  path: KitsWorkspacePath
-  /**
-   * The document's whole new text; the session applies the difference as the agent's edit.
-   */
-  content: string
-  /**
-   * The agent tool that made the edit, such as document_write or apply_patch.
-   */
-  tool: string
-  /**
-   * The agent turn the edit belongs to, when known.
-   */
-  turnId?: string
-}
-
-export type KitsBridgeDocumentApplyResult = {
-  applied: true
-  /**
-   * The file content after the session saved.
-   */
-  content: string
-} | {
-  applied: false
-  /**
-   * Why the window did not apply it, such as not-open.
-   */
-  reason: string
-}
-
-/**
  * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kit Standard KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason).
  */
 export type KitsContract = KitsKitList

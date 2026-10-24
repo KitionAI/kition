@@ -229,27 +229,36 @@ describe('documentMentions', () => {
       referencedDocuments: [
         {
           kind: 'file',
-          path: 'Docs/Plan.md',
-          name: 'Plan.md',
+          path: 'Docs/Plan.txt',
+          name: 'Plan.txt',
           title: 'Plan',
-          format: 'markdown',
+          format: 'text',
         },
       ],
       unresolvedTokens: ['Unknown'],
     })).toContain('Referenced workspace documents in this turn:')
+    // A note is read as text and changed only through the Note kit.
+    const notes = buildAgentDocumentMentionPromptContext({
+      referencedDocuments: [{ kind: 'file', path: 'Docs/Plan.md', name: 'Plan.md', title: 'Plan', format: 'markdown' }],
+    })
+    expect(notes).toContain('Referenced notes in this turn (open them in Note):')
+    expect(notes).toContain('Read it with document_read and change it with note_commands and note_run; never with document_write or apply_patch.')
   })
 
   it('requires analysis of the current document without an explicit mention', () => {
     const context = buildAgentDocumentMentionPromptContext({
-      activeDocumentPath: 'Docs/Current.md',
-      activeDocumentFormat: 'markdown',
+      activeDocumentPath: 'Docs/Current.txt',
+      activeDocumentFormat: 'text',
       referencedDocuments: [],
     })
 
     expect(context).toContain('Current workspace document for this turn:')
-    expect(context).toContain('Docs/Current.md')
+    expect(context).toContain('Docs/Current.txt')
     expect(context).toContain('Read this exact path with document_read and analyze it before responding')
     expect(context).toContain('Do not ask which document the user means')
+    const note = buildAgentDocumentMentionPromptContext({ activeDocumentPath: 'Docs/Current.md', activeDocumentFormat: 'markdown', referencedDocuments: [] })
+    expect(note).toContain('This current document is a note open in Note. Read it with document_read and change it with note_commands and note_run')
+    expect(note).toContain('Do not ask which document the user means')
   })
 
   it('points the agent at each kit\'s own tools for its files', () => {

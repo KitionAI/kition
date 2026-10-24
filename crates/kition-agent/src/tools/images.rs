@@ -214,7 +214,11 @@ pub fn save_hosted_images(
         lines.push("Report the saved workspace-relative paths in the final reply.".into());
     } else {
         lines.push(format!("Current linked document: `{active}`."));
-        lines.push("If the original request asked for images or illustrations for this document or article, do not finish after generating artifacts: update this same document with Markdown image links at relevant positions before the final reply. Use document_write for a whole-document rewrite. Use apply_patch only for a small localized insertion whose exact surrounding text came from a complete recent document_read.".into());
+        if super::documents::is_note(active) {
+            lines.push("If the original request asked for images or illustrations for this note or article, do not finish after generating artifacts: insert Markdown image links at relevant positions of this same note with note_run (`text.insert`; read it first with document_read to choose the positions) before the final reply.".into());
+        } else {
+            lines.push("If the original request asked for images or illustrations for this document or article, do not finish after generating artifacts: update this same document with Markdown image links at relevant positions before the final reply. Use document_write for a whole-document rewrite. Use apply_patch only for a small localized insertion whose exact surrounding text came from a complete recent document_read.".into());
+        }
         lines.push("If the user requested standalone image assets only, report the saved workspace-relative paths without modifying the document.".into());
     }
     (hosted, vec![text_part(lines.join("\n"))])

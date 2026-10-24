@@ -82,23 +82,6 @@ vi.mock('./documentStore', async () => {
   }
 })
 
-/** The documents this window offers the agent (`registerOpenDocument`), in memory. */
-const bridge = vi.hoisted(() => ({
-  open: new Map<string, { read: () => string; apply: (content: string, meta: { tool: string; turnId?: string }) => Promise<unknown> }>(),
-  log: [] as string[],
-}))
-
-vi.mock('./documentAgentBridge', () => ({
-  registerOpenDocument: (path: string, handlers: { read: () => string; apply: (content: string, meta: { tool: string }) => Promise<unknown> }) => {
-    bridge.open.set(path, handlers)
-    bridge.log.push(`+${path}`)
-    return () => {
-      if (bridge.open.get(path) === handlers) bridge.open.delete(path)
-      bridge.log.push(`-${path}`)
-    }
-  },
-}))
-
 const PATH = 'notes/plan.md'
 const views: EditorView[] = []
 const sessions: DocumentSession[] = []
@@ -113,8 +96,6 @@ beforeEach(() => {
   disk.failReads = null
   disk.beforeWrite = null
   disk.stored.clear()
-  bridge.open.clear()
-  bridge.log.length = 0
 })
 
 afterEach(() => {
@@ -630,32 +611,6 @@ describe('DocumentSession: live agent edits', () => {
     const session = await open('a\n')
     expect(session.reviewOpenMerge()).toBe(false)
     expect(session.agentReview()).toBeNull()
-  })
-})
-
-describe('DocumentSession: the agent’s way in', () => {
-  it('offers the open document to the agent until it closes, under its current path', async () => {
-    const session = await open('live\n', 'old.md')
-    expect(bridge.log).toEqual(['+old.md'])
-    const handlers = bridge.open.get('old.md')!
-    session.replaceText('live, unsaved\n', { kind: 'person', principal: 'user:local' })
-    expect(handlers.read()).toBe('live, unsaved\n')
-    await expect(handlers.apply('agent\n', { tool: 'apply_patch' })).resolves.toEqual({ applied: true, content: 'agent\n' })
-    expect(session.text()).toBe('agent\n')
-    expect(session.agentReview()?.tool).toBe('apply_patch')
-    disk.files.set('new.md', disk.files.get('old.md')!)
-    session.setPath('new.md')
-    expect(bridge.log).toEqual(['+old.md', '-old.md', '+new.md'])
-    expect([...bridge.open.keys()]).toEqual(['new.md'])
-    session.dispose()
-    expect(bridge.log.at(-1)).toBe('-new.md')
-    expect(bridge.open.size).toBe(0)
-  })
-
-  it('offers nothing before the document is open', () => {
-    const session = new DocumentSession(PATH, { root: '/vault' })
-    sessions.push(session)
-    expect(bridge.open.size).toBe(0)
   })
 })
 

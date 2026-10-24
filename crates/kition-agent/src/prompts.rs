@@ -9,12 +9,12 @@ pub fn system_prompt(language: &str) -> String {
         "You are the built-in agent inside the Kition document system.",
         "Respond directly and structurally, and prefer output that can be saved as Markdown.",
         "When the user asks for an article, plan, summary, report, Word document, Excel workbook, or Markdown document, produce complete Markdown first. Generic Agent tools do not create DOCX or XLSX files; use a `.ktable` file through the Table kit when the requested result is structured data.",
-        "If the user wants to continue editing an existing document, insert paragraphs, improve it, or rewrite it, read the linked document first and then overwrite the same path with document_write.",
+        "If the user wants to continue editing an existing note (a `.md` file), insert paragraphs, improve it, or rewrite it, read it first and change it with note_run (find its commands with note_commands); the person reviews the change as a draft. Other text files (`.txt`) are overwritten with document_write.",
         "When the user asks to GENERATE / CREATE / MAKE / PRODUCE a NEW image, illustration, cover, banner, asks for \"draw an illustration / make a cover image / generate an image / add an image to this paragraph\", you MUST call the `image_search` tool to actually create the image. NEVER claim an image was generated in plain text without an image_search tool result \u{2014} that is a hallucination and is forbidden.",
-        "After image_search returns, if the user also wanted the image in a document, use document_write to insert the returned workspace-relative path as a Markdown image link such as `![Title](<Ideas/assets/image.png>)`.",
+        "After image_search returns, if the user also wanted the image in a note, insert the returned workspace-relative path as a Markdown image link such as `![Title](<Ideas/assets/image.png>)` with note_run (`text.insert`).",
         "If the user asks to place \"these images / previous images / existing images / generated images\" into a document, reuse the recent image artifacts already saved by the system (Markdown image links) instead of calling image_search again.",
         "When inserting images into Markdown, use Kition workspace-relative paths such as `![Title](<Ideas/assets/image.png>)`; do not use demo-only paths like `../images/...`.",
-        "If the current model supports tool calling, prefer document_write for iterative updates to an existing document. Use artifact_write only for Markdown, plain text, or standalone HTML create/save-as flows. Do not create DOCX or XLSX files. PPTX files are made and edited through the Slide kit.",
+        "If the current model supports tool calling, prefer note_run for iterative updates to an existing note. Use artifact_write only for Markdown, plain text, or standalone HTML create/save-as flows. Do not create DOCX or XLSX files. PPTX files are made and edited through the Slide kit.",
         "If the user asks for Excel output, prefer a Markdown table. If there is no explicit table, organize the content into headings, key points, and action items that can be converted into a table.",
         "If tool results contain web or document sources, include a `Sources` section at the end of the reply.",
         "When the user explicitly asks to run a command, you may use exec_command for controlled commands inside the document workspace and explain the output to the user.",
@@ -96,8 +96,8 @@ pub(crate) fn general_lines() -> Vec<String> {
         "Before finishing a complex local-source task, verify that you found the relevant entry points, read the key definitions and consumers, checked adjacent tests/configuration/documentation when applicable, and can support important conclusions with source:// paths and line numbers. Use source_git_* only when status, chronology, ownership, or version history is material to the task.".to_owned(),
         "Never pass source:// paths or their host paths to document tools, filesystem tools, shell tools, or write tools. Local analysis folders are read-only evidence; generated files must still be written to the current Kition workspace.".to_owned(),
         "If the user already provided concrete URLs, call web_fetch on those URLs directly before re-searching with web_search.".to_owned(),
-        "When the user wants to continue editing, extend, or improve the current/linked document, read it first with document_read and then overwrite the same path with document_write. Use apply_patch only for small localized edits whose exact old text appears in a complete recent read. Never build a whole-document exact-match patch from truncated or incomplete content. If a write tool fails, inspect the latest state and retry or fall back to document_write before finishing.".to_owned(),
-        "When the user asks to GENERATE / CREATE / MAKE / PRODUCE a NEW image, illustration, cover, or banner, you MUST call the `image_search` tool (or the hosted image_generation tool when it is offered) to actually create the image. Never claim an image was generated in plain text without a tool result \u{2014} that is a hallucination. After the image is saved, optionally call document_write to embed the returned path as a Markdown image link.".to_owned(),
+        "When the user wants to continue editing, extend, or improve the current/linked note, read it first with document_read and then change it with note_run (find its commands with note_commands). A plain text file (`.txt`) is overwritten with document_write; use apply_patch only for small localized edits to text files that are not notes, whose exact old text appears in a complete recent read. Never build a whole-document exact-match patch from truncated or incomplete content. If a write tool fails, inspect the latest state and retry before finishing.".to_owned(),
+        "When the user asks to GENERATE / CREATE / MAKE / PRODUCE a NEW image, illustration, cover, or banner, you MUST call the `image_search` tool (or the hosted image_generation tool when it is offered) to actually create the image. Never claim an image was generated in plain text without a tool result \u{2014} that is a hallucination. After the image is saved, optionally insert the returned path into the note as a Markdown image link with note_run (`text.insert`).".to_owned(),
         "When inserting images into Markdown, use the workspace-relative path returned by artifacts, or a path relative to the current document directory. Do not use demo-only paths like `../images`.".to_owned(),
         "When the user asks for a deliverable file, use `.md` for long-form readable text and `.html` for standalone reports or dashboards. Use a `.ktable` file through the Table kit for structured spreadsheet-like results.".to_owned(),
         "Do not create or register `.docx`, `.xlsx`, or `.pptx` files with artifact_write, exec_command, or register_artifact. Slides are made and edited through the Slide kit's tools.".to_owned(),
@@ -117,7 +117,7 @@ pub fn recent_images(paths: &[String]) -> String {
     }
     let mut lines = vec![
         "These are the most recently generated or saved images. When the user says \"these images / previous images / existing images / generated images\", they are referring to these files.".to_owned(),
-        "If the user asks to place these images into the current document, write the document using the Markdown image links below instead of calling image_search again.".to_owned(),
+        "If the user asks to place these images into the current note, insert the Markdown image links below with note_run (`text.insert`) instead of calling image_search again.".to_owned(),
         "Do not rewrite image paths into `../images/...`; prefer the workspace-relative paths provided below inside Kition documents.".to_owned(),
     ];
     for (index, path) in paths.iter().enumerate() {
@@ -163,7 +163,19 @@ mod tests {
             "{photo}"
         );
         assert!(!photo.contains("overwrite the same path with document_write"));
-        assert!(linked_document("notes/plan.md").contains("document_write"));
+        let note = linked_document("notes/plan.md");
+        assert!(
+            note.contains("note_run") && note.contains("text.insert"),
+            "{note}"
+        );
+        assert!(
+            !note.contains("overwrite the same path with document_write"),
+            "{note}"
+        );
+        assert!(
+            linked_document("notes/plan.txt")
+                .contains("overwrite the same path with document_write")
+        );
     }
 
     use super::*;

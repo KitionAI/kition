@@ -8,12 +8,8 @@
 //! `POST /v1/kits/bridge?session=<id>`, one JSON-RPC message per request, and sends `kit.changed`
 //! notifications the same way. A stream that closes takes its pending requests with it; the
 //! agent then falls back to the headless kit.
-//!
-//! The same stream carries the document bridge (`document_bridge.rs`): the window announces the
-//! Markdown documents it has open with a `documents.open` notification, and the runtime sends
-//! `document/read` and `document/apply` requests for the agent's edits to them.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
@@ -77,8 +73,6 @@ type Pending = oneshot::Sender<Result<Value, BridgeFailure>>;
 struct Session {
     tx: mpsc::UnboundedSender<Value>,
     pending: Mutex<HashMap<u64, Pending>>,
-    /// The text documents the window has open, as its last `documents.open` listed them.
-    documents: Mutex<BTreeSet<String>>,
 }
 
 /// A live document's edit, as `kit.changed` reported it.
@@ -138,7 +132,6 @@ impl Bridge {
                 Arc::new(Session {
                     tx,
                     pending: Mutex::new(HashMap::new()),
-                    documents: Mutex::default(),
                 }),
             );
         (id, rx)
@@ -202,45 +195,11 @@ impl Bridge {
             .cloned()
     }
 
-    /// The newest window whose last `documents.open` listed `path` (already normalized).
-    pub(crate) fn window_with_document(&self, path: &str) -> Option<u64> {
-        self.sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .iter()
-            .filter(|(_, session)| {
-                session
-                    .documents
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .contains(path)
-            })
-            .map(|(id, _)| *id)
-            .max()
-    }
-
-    /// A message the renderer posted: an answer to a request, or a `kit.changed` or
-    /// `documents.open` notification.
+    /// A message the renderer posted: an answer to a request, or a `kit.changed` notification.
     pub fn receive(&self, session: u64, message: &Value) -> Result<(), String> {
         let Some(open) = self.session(session) else {
             return Err(format!("no bridge session {session}"));
         };
-        if message.get("method").and_then(Value::as_str) == Some("documents.open") {
-            let paths: BTreeSet<String> = message["params"]["paths"]
-                .as_array()
-                .ok_or("`documents.open` needs a `paths` array")?
-                .iter()
-                .filter_map(Value::as_str)
-                .map(normalize)
-                .filter(|path| !path.is_empty())
-                .collect();
-            tracing::debug!(session, open = paths.len(), "documents open in a window");
-            *open
-                .documents
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner) = paths;
-            return Ok(());
-        }
         if message.get("method").and_then(Value::as_str) == Some("kit.changed") {
             let params = &message["params"];
             let path = normalize(params["path"].as_str().unwrap_or_default());

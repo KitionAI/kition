@@ -79,6 +79,8 @@ const KIT_FILE_KINDS = [
   { format: 'slide', extensions: /\.kitionslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
   { format: 'table', extensions: /\.ktable$/i, prefix: 'table', kit: 'Table', one: 'a table file', many: 'table files', data: 'table data' },
   { format: 'board', extensions: /\.kboard$/i, prefix: 'board', kit: 'Board', one: 'a board', many: 'boards', data: 'board data' },
+  // A note is text: read as it is, changed only through the Note kit.
+  { format: 'markdown', extensions: /\.(?:md|markdown)$/i, prefix: 'note', kit: 'Note', one: 'a note', many: 'notes', data: 'note text', text: true },
 ] as const
 
 type KitFileKind = (typeof KIT_FILE_KINDS)[number]
@@ -89,6 +91,9 @@ function kitFileKind(format: WorkspaceDocumentFormat | undefined, path: string):
 }
 
 function kitToolsHint(kind: KitFileKind) {
+  if ('text' in kind && kind.text) {
+    return `Read it with document_read and change it with ${kind.prefix}_commands and ${kind.prefix}_run; never with document_write or apply_patch.`
+  }
   return `Inspect it with ${kind.prefix}_inspect and edit it with ${kind.prefix}_commands and ${kind.prefix}_run; never use document_read or document_write on it, because it is binary ${kind.data}.`
 }
 

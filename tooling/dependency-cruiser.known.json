@@ -1472,23 +1472,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceCreateMenu.tsx",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/document/components/DocumentExportDialog.tsx",
     "unresolvedTo": "@/features/document/components/DocumentExportDialog",
