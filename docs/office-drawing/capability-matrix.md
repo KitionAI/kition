@@ -280,8 +280,8 @@ use the flat text in every kit.
   too; underlines and highlights in warped text are not drawn. `insert.wordArt`
   still inserts formatted body text, not a drawing object.
 - **Sheet:** the warp lives in the shape's kept text body, with its adjust
-  values. The page draws it bent with the shape; printing to PDF draws the
-  text flat.
+  values. The page draws it bent with the shape, and printing to PDF fills
+  the same bent outlines (in the page's face, Ubuntu Light).
 
 ## Reference corpus
 
