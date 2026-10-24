@@ -90,14 +90,14 @@
   },
   "sheet": {
     "repository": "KitionAI/kition-sheet",
-    "version": "0.4.28",
-    "tag": "package-v0.4.28",
-    "asset": "kition-sheet-0.4.28.tgz",
-    "size": 8645975,
-    "sha256": "b6ef934a4c1a65fef9da9d9ca89abe75659df5c77124544d2fb70da165d3480b",
-    "commit": "da1e9ea1bbdbae01babd85084a7be957e4d7d9c7",
-    "sdkCommit": "102dffd0915bd8060a242ab996628f2ddd74bb4e",
-    "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
+    "version": "0.4.29",
+    "tag": "package-v0.4.29",
+    "asset": "kition-sheet-0.4.29.tgz",
+    "size": 11665801,
+    "sha256": "f7caba219ed32617d96e19f99fd6d0b848b3fb302bf001f9132512864cf21055",
+    "commit": "2ac8a193552516a449ec9ec6e83728d2837051b1",
+    "sdkCommit": "5f96af3d7662fc48bf65b933182b625a33ac6271",
+    "fontsCommit": "02e11c1cffac9b15faf41382d32b789cd4f0dc6f"
   },
   "slide": {
     "repository": "KitionAI/kition-slide",
