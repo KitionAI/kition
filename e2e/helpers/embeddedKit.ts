@@ -58,7 +58,7 @@ export async function pinKitModes(page: Page, modes: KitModes) {
  * Kition on a desktop workspace whose files kits read through the file server. Files Kition saves
  * through its file API are recorded in `saves`, and with `persist` also written to the workspace.
  * The runtime's file grants (`/v1/kits/grants`) are served over the workspace; `grants` holds
- * their sessions. `modes` pins kit editors' display modes (`{ 'kit.word': 'classic' }`, `pinKitModes`).
+ * their sessions. `modes` pins kit editors' display modes (`{ 'kit.doc': 'classic' }`, `pinKitModes`).
  */
 export async function openKitWorkspace(
   page: Page,

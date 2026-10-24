@@ -34,14 +34,15 @@ async function titleParagraphs(context) {
     slide.shapes.load()
     await context.sync()
     for (const shape of slide.shapes.items) {
-      shape.load(['props', 'body'])
+      shape.load(['body'])
+      shape.look.load()
       shapes.push({ shape, slide: index })
     }
   }
   await context.sync()
   const paragraphs = []
   for (const { shape, slide } of shapes) {
-    if (!TITLES.has(shape.props?.ph?.kind) || !shape.body) continue
+    if (!TITLES.has(shape.look.get('ph')?.kind) || !shape.body) continue
     const body = context.object(shape.body, 'TextBody')
     body.paragraphs.load()
     await context.sync()

@@ -245,7 +245,7 @@ test('captures the README Design Studio screenshot', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 750 })
   await page.goto('/documents')
   await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
-  await page.getByTestId('workspace-create-design').click()
+  await page.getByTestId('workspace-create-design-studio').click()
   await expect(page.getByTestId('design-editor')).toBeVisible()
   await page.evaluate(async () => {
     const { loadDesktopSettings, saveDesktopSettings } = await import(

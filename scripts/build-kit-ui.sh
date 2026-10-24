@@ -14,6 +14,8 @@ repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
 web="$kit_repo/web"
 out="$repo_root/public/kits/$kit-ui"
+sdk_repo="${KITION_SDK_REPO:-$kit_repo/../kition-sdk}"
+node "$sdk_repo/tools/check-kit-naming.mjs" "$kit_repo/kit.json" --key "$kit"
 [[ -f "$web/package.json" ]] || { echo "$web has no kit editor (web/package.json)" >&2; exit 1; }
 command -v pnpm >/dev/null || { echo "pnpm is required" >&2; exit 1; }
 [[ -d "$web/node_modules" ]] || pnpm --dir "$web" install --frozen-lockfile
@@ -31,6 +33,7 @@ else
   pnpm --dir "$web" run engine
 fi
 pnpm --dir "$web" run build
+node "$sdk_repo/tools/check-manifest.mjs" "$kit_repo/kit.json" --module "$web/public/engine"
 rm -rf "$out"
 mkdir -p "$out"
 # The editor and its engine; not the development host or its sample.
@@ -55,6 +58,15 @@ const kit = JSON.parse(fs.readFileSync(manifestFile, "utf8"))
 const pkg = { kitId: kit.id, version: kit.version, commit, entry: "index.html", protocol: "kition-kit-ui/1", ...(kit.ui?.brand ? { brand: kit.ui.brand } : {}) }
 fs.writeFileSync(outFile, JSON.stringify(pkg) + "\n")
 ' "$kit_repo/kit.json" "$commit" "$out/kit-ui.json"
+node "$sdk_repo/tools/check-kit-naming.mjs" "$kit_repo/kit.json" --package "$out" --key "$kit"
+# Ship the source manifest with a package-relative schema path so consumers can verify it.
+node --input-type=module - "$kit_repo/kit.json" "$out/kit.json" <<'NODE'
+import fs from 'node:fs'
+const [source, target] = process.argv.slice(2)
+const manifest = JSON.parse(fs.readFileSync(source, 'utf8'))
+if (manifest.model?.schema) manifest.model.schema = 'model/schema.json'
+fs.writeFileSync(target, JSON.stringify(manifest, null, 2) + '\n')
+NODE
 kit_id="$(node -p "require('$out/kit-ui.json').kitId")"
 version="$(node -p "require('$out/kit-ui.json').version")"
 # Marks the package as a local build, so scripts/fetch-kits.mjs never takes it for the published

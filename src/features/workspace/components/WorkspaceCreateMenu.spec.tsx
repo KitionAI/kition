@@ -21,11 +21,11 @@ describe('WorkspaceCreateMenu', () => {
           { id: 'note', label: 'createMenu.format.note', kit: 'note', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: onCreateBoard },
           { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
-          { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kitionslide', onCreate: vi.fn() },
+          { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kslide', onCreate: vi.fn() },
           { id: 'sheet', label: 'createMenu.format.sheet', kit: 'sheet', group: 'data', extension: 'xlsx', onCreate: vi.fn() },
           { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
-          { id: 'word', label: 'createMenu.format.word', kit: 'word', group: 'documents', extension: 'docx', onCreate: vi.fn() },
-          { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
+          { id: 'doc', label: 'createMenu.format.doc', kit: 'doc', group: 'documents', extension: 'docx', onCreate: vi.fn() },
+          { id: 'film', label: 'createMenu.format.film', kit: 'film', group: 'media', extension: 'kfilm', onCreate: vi.fn() },
         ],
       }))
     })
@@ -36,7 +36,7 @@ describe('WorkspaceCreateMenu', () => {
     }))
     // Every type is a kit's or Kition's own; portable formats show their extension.
     expect(groups).toEqual([
-      { label: 'Documents', items: ['Note.md', 'Word.docx'] },
+      { label: 'Documents', items: ['Note.md', 'Doc.docx'] },
       { label: 'Data', items: ['Table', 'Sheet.xlsx'] },
       { label: 'Visual', items: ['Slide', 'Board', 'Photo.psd'] },
       { label: 'Media', items: ['Film'] },
@@ -87,7 +87,7 @@ describe('WorkspaceCreateMenu', () => {
           { id: 'note', label: 'createMenu.format.note', kit: 'note', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
           { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: vi.fn() },
-          { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
+          { id: 'film', label: 'createMenu.format.film', kit: 'film', group: 'media', extension: 'kfilm', onCreate: vi.fn() },
         ],
       }))
     })

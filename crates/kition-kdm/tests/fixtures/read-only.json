@@ -271,10 +271,10 @@
         "raw": {
           "ext": "<p:extLst/>"
         },
-        "title": "Presentation"
+        "title": "SlideFile"
       },
       "id": "slide",
-      "type": "Presentation"
+      "type": "SlideFile"
     },
     {
       "fields": {
@@ -347,10 +347,10 @@
               "raw": {
                 "ext": "<p:extLst/>"
               },
-              "title": "Presentation"
+              "title": "SlideFile"
             },
             "id": "slide",
-            "type": "Presentation"
+            "type": "SlideFile"
           },
           {
             "fields": {
@@ -722,7 +722,7 @@
               "title": "Slide B"
             },
             "id": "slide",
-            "type": "Presentation"
+            "type": "SlideFile"
           },
           {
             "fields": {
@@ -774,7 +774,7 @@
               ]
             },
             "id": "slide",
-            "type": "Presentation"
+            "type": "SlideFile"
           }
         ],
         "refs": {},

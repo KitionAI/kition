@@ -1,7 +1,7 @@
 //! Kit documents as MCP resources (architecture section 13): a harness reads a document's object
 //! model (`kit://<document>/describe`) and its objects (`kit://<document>/objects/<id>`, `root`
 //! for the root object) without calling a tool. `<document>` is the file's workspace path as one
-//! percent-encoded URI segment (`kit://slides%2FLaunch.kitionslide/objects/root`). Reads go where
+//! percent-encoded URI segment (`kit://slides%2FLaunch.kslide/objects/root`). Reads go where
 //! `<prefix>_query` goes: the open kit editor, else the headless kit; never the agent's draft.
 
 use serde_json::{Value, json};
@@ -167,14 +167,11 @@ mod tests {
     #[test]
     fn uris_round_trip() {
         let object = KitResource::Object {
-            path: "talks/Q3 review.kitionslide".into(),
+            path: "talks/Q3 review.kslide".into(),
             id: "0193a/x".into(),
         };
         let uri = object.uri();
-        assert_eq!(
-            uri,
-            "kit://talks%2FQ3%20review.kitionslide/objects/0193a%2Fx"
-        );
+        assert_eq!(uri, "kit://talks%2FQ3%20review.kslide/objects/0193a%2Fx");
         assert_eq!(KitResource::parse(&uri), Some(object));
         assert_eq!(
             KitResource::parse("kit://a.kvector/describe"),

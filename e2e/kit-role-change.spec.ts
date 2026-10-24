@@ -5,7 +5,7 @@ type EngineDocument = { save(): Uint8Array; execute(command: string, params: str
 type SlideSdk = { SlideDocument: { create(name: string, width: number, height: number): EngineDocument } }
 
 const slides = kitEngine<SlideSdk>('slide', 'kition_slide_sdk')
-const PATH = 'Review.kitionslide'
+const PATH = 'Review.kslide'
 
 /** A slide file of two slides. */
 async function slideFixture() {

@@ -142,11 +142,11 @@ describe('kitBridge on the shared bridge stream', () => {
     const batches: unknown[] = []
     const refusal = Object.assign(new Error('op 1 failed'), { data: { code: 'not-found', index: 1, message: 'op 1 failed' } })
     const withdraw = registerBridgeEditor({
-      path: 'talks/m.kitionslide',
+      path: 'talks/m.kslide',
       kitId: 'kit.slide',
       revision: () => 1,
       dirty: () => false,
-      inspect: () => ({ path: 'talks/m.kitionslide', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
+      inspect: () => ({ path: 'talks/m.kslide', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
       commands: async () => [],
       run: async () => ({ completed: [], saved: false }),
       preview: async () => '',
@@ -173,7 +173,7 @@ describe('kitBridge on the shared bridge stream', () => {
     })
     const stream = FakeEventSource.streams.at(-1)!
     stream.emit({ method: 'bridge.ready', params: { session: 9 } })
-    const call = (id: number, tool: string, args: Record<string, unknown> = {}, path = 'talks/m.kitionslide', kit = 'kit.slide') => stream.emit({ id, method: 'kit/call', params: { path, kit, tool, arguments: args } })
+    const call = (id: number, tool: string, args: Record<string, unknown> = {}, path = 'talks/m.kslide', kit = 'kit.slide') => stream.emit({ id, method: 'kit/call', params: { path, kit, tool, arguments: args } })
     const set = { op: 'set', target: 'root', field: 'title', value: 'Q3' }
     call(21, 'describe')
     call(22, 'batch', { origin: { kind: 'agent', principal: 'local' }, ops: [], load: [{ target: 'root' }] })
@@ -187,7 +187,7 @@ describe('kitBridge on the shared bridge stream', () => {
     expect(byId(21)?.result).toEqual({ root: 'Presentation', types: {} })
     // Reading writes nothing and is not an agent edit.
     expect(byId(22)?.result).toEqual({ refs: {}, results: [], loaded: [], saved: false })
-    expect(agentEditing('talks/m.kitionslide')).toBe(true)
+    expect(agentEditing('talks/m.kslide')).toBe(true)
     expect(byId(23)?.result).toEqual({ refs: {}, results: [null], loaded: [], saved: true })
     expect(byId(24)?.error).toEqual({ code: -32000, message: 'op 1 failed', data: { code: 'not-found', index: 1, message: 'op 1 failed' } })
     // No draft batches on a kit that cannot run them, and none reach the document.

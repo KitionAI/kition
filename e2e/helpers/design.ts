@@ -13,7 +13,7 @@ export async function createDesign(page: Page) {
   await page
     .locator('.document-private-heading .document-create-menu-anchor > button')
     .click()
-  await page.getByTestId('workspace-create-design').click()
+  await page.getByTestId('workspace-create-design-studio').click()
   await expect(page.getByTestId('design-editor')).toBeVisible()
 }
 

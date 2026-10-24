@@ -5,13 +5,13 @@
       "board": "画板",
       "note": "笔记",
       "photo": "Photo",
-      "video": "Film",
+      "film": "Film",
       "vector": "Vector",
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
       "slide": "Slide",
-      "word": "Word",
+      "doc": "Doc",
       "sheet": "Sheet",
       "pdf": "PDF"
     },
@@ -270,9 +270,9 @@
     "unavailableTitle": "此版本不支持 Slide 编辑",
     "unavailableBody": "包含 Slide 引擎时，Slide 文件会在 Kition 中打开。"
   },
-  "wordKit": {
-    "unavailableTitle": "此版本不支持 Word 编辑",
-    "unavailableBody": "包含 Word 引擎时，Word 文件会在 Kition 中打开。"
+  "docKit": {
+    "unavailableTitle": "此版本不支持 Doc 编辑",
+    "unavailableBody": "包含 Doc 引擎时，Doc 文件会在 Kition 中打开。"
   },
   "sheetKit": {
     "unavailableTitle": "此版本不支持 Sheet 编辑",
@@ -385,7 +385,7 @@
       "slide": "Slide",
       "table": "Table",
       "vector": "Vector",
-      "word": "Word"
+      "doc": "Doc"
     }
   },
   "templateLibrary": {

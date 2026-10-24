@@ -8,7 +8,7 @@ type EngineDocument = { save(): Uint8Array; execute(command: string, params: str
 type SlideSdk = { SlideDocument: { create(name: string, width: number, height: number): EngineDocument; open(name: string, bytes: Uint8Array): EngineDocument } }
 
 const slides = kitEngine<SlideSdk>('slide', 'kition_slide_sdk')
-const words = kitEngine<{ WordDocument: { create(name: string, width: number, height: number): EngineDocument } }>('word', 'kition_word_sdk')
+const words = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): EngineDocument } }>('doc', 'kition_doc_sdk')
 const sheets = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): EngineDocument } }>('sheet', 'kition_sheet_sdk')
 const EXAMPLE = path.join(process.cwd(), 'e2e', 'fixtures', 'extensions', 'title-case')
 const EXTENSION = 'com.kition.examples.title-case'
@@ -23,7 +23,7 @@ async function exampleFiles(folder: string) {
 /** A slide file whose second slide has a title in lower case. */
 async function slideFixture() {
   const sdk = await slides.load()
-  const doc = sdk.SlideDocument.create('Review.kitionslide', 960, 540)
+  const doc = sdk.SlideDocument.create('Review.kslide', 960, 540)
   doc.execute('slide.new', JSON.stringify({ layout: 'titleAndContent', title: 'quarterly business review', body: 'revenue grew in the north' }))
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
   const bytes = doc.save()
@@ -34,7 +34,7 @@ async function slideFixture() {
 /** The texts of slide `index` of a saved slide file. */
 async function slideTexts(bytes: Buffer, index: number) {
   const sdk = await slides.load()
-  const doc = sdk.SlideDocument.open('Saved.kitionslide', bytes)
+  const doc = sdk.SlideDocument.open('Saved.kslide', bytes)
   const text = doc.execute('slide.inspect', JSON.stringify({ index }))
   doc.free()
   return text
@@ -123,7 +123,7 @@ export default async function (ctx) {
     'extensions/read-only/extension.json': Buffer.from(JSON.stringify(readOnly, null, 2)),
     'scripts/agenda.mjs': Buffer.from(script),
   }
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Review.kitionslide', await slideFixture(), files)
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Review.kslide', await slideFixture(), files)
   try {
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
@@ -143,7 +143,7 @@ export default async function (ctx) {
     await runPaletteCommand(page, `extension:${EXTENSION}:titleCase.apply`)
     await expect(page.getByText('Title-cased 1 title')).toBeVisible({ timeout: 30_000 })
     await save(kit)
-    expect(saves.map((saved) => saved.path)).toEqual(['Review.kitionslide'])
+    expect(saves.map((saved) => saved.path)).toEqual(['Review.kslide'])
     if (canReadBlobBodies(browserName)) {
       const texts = await slideTexts(saves[0].bytes, 1)
       expect(texts).toContain('Quarterly Business Review')
@@ -158,7 +158,7 @@ export default async function (ctx) {
     await expect(page.getByText('Ran agenda.mjs')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByTestId('run-script-dialog')).toHaveCount(0)
     await save(kit)
-    expect(saves.map((saved) => saved.path)).toEqual(['Review.kitionslide', 'Review.kitionslide'])
+    expect(saves.map((saved) => saved.path)).toEqual(['Review.kslide', 'Review.kslide'])
     if (canReadBlobBodies(browserName)) {
       const texts = await slideTexts(saves[1].bytes, 1)
       expect(texts).toContain('Agenda from a script')
@@ -195,7 +195,7 @@ export default async function (ctx) {
   const { host, saves, kit } = await openInKitFrame(
     page,
     baseURL!,
-    'Review.kitionslide',
+    'Review.kslide',
     await slideFixture(),
     { ...(await exampleFiles('extensions/title-case')), 'scripts/retitle.mjs': Buffer.from(retitle) },
     { persist: true },
@@ -257,7 +257,7 @@ export default async function (ctx) {
     const title = '2agenda for the review'
     for (const readOnly of [true, false]) {
       const before = await aside.getAttribute('data-editor-opening')
-      await page.evaluate(({ path, readOnly }) => window.__KITION_KIT_TEST__!.setReadOnlyDocuments(readOnly ? [path] : []), { path: 'Review.kitionslide', readOnly })
+      await page.evaluate(({ path, readOnly }) => window.__KITION_KIT_TEST__!.setReadOnlyDocuments(readOnly ? [path] : []), { path: 'Review.kslide', readOnly })
       await expect(aside).not.toHaveAttribute('data-editor-opening', before ?? '', { timeout: 60_000 })
       await expect(aside).not.toHaveAttribute('data-editor-opening', '', { timeout: 60_000 })
       await expect(aside).toHaveAttribute('data-status', 'open', { timeout: 60_000 })
@@ -280,7 +280,7 @@ export default async function (ctx) {
 test('runs a workspace script on a Word document and on a workbook through their object models', async ({ page, baseURL }) => {
   test.skip(!words.built || !sheets.built, 'the Word and Sheet kit editors are not built into public/kits')
   test.setTimeout(180_000)
-  const word = (await words.load()).WordDocument.create('Notes.docx', 612, 792)
+  const word = (await words.load()).DocDocument.create('Notes.docx', 612, 792)
   word.execute('text.insert', JSON.stringify({ text: 'first draft' }))
   const notes = Buffer.from(word.save())
   word.free()
@@ -288,7 +288,7 @@ test('runs a workspace script on a Word document and on a workbook through their
   sheet.execute('cell.set', JSON.stringify({ cell: 'B2', input: '1200' }))
   const budget = Buffer.from(sheet.save())
   sheet.free()
-  const wordScript = `// Prefixes the first paragraph, then reads it back.
+  const docScript = `// Prefixes the first paragraph, then reads it back.
 export default async function (ctx) {
   return ctx.document.run(async (context) => {
     const body = context.root.body.load()
@@ -317,17 +317,17 @@ export default async function (ctx) {
 `
   const { host, kit } = await openInKitFrame(page, baseURL!, 'Notes.docx', notes, {
     'Budget.xlsx': budget,
-    'scripts/word.mjs': Buffer.from(wordScript),
+    'scripts/word.mjs': Buffer.from(docScript),
     'scripts/sheet.mjs': Buffer.from(sheetScript),
   })
   try {
-    await expect(kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(kit.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     await runPaletteCommand(page, 'run-script')
     await page.getByTestId('run-script-path').fill('scripts/word.mjs')
     await page.getByTestId('run-script-run').click()
     await expect(page.getByText('Ran word.mjs')).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText('{"kit":"kit.word","text":"Reviewed: first draft"}')).toBeVisible()
-    await expect(kit.getByTestId('word-unsaved')).toBeVisible()
+    await expect(page.getByText('{"kit":"kit.doc","text":"Reviewed: first draft"}')).toBeVisible()
+    await expect(kit.getByTestId('doc-unsaved')).toBeVisible()
 
     // A second kit tab: its frame is the one titled with its path.
     await page.locator('.document-tree-row', { hasText: 'Budget' }).first().click()

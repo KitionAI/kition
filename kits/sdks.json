@@ -31,7 +31,7 @@
     "crate": "kition-film-sdk",
     "module": "kition_film_sdk",
     "class": "FilmDocument",
-    "name": "Edit.kitionfilm",
+    "name": "Edit.kfilm",
     "edit": [
       {
         "command": "file.newColorMatte",
@@ -132,7 +132,7 @@
     "crate": "kition-slide-sdk",
     "module": "kition_slide_sdk",
     "class": "SlideDocument",
-    "name": "Slide.kitionslide",
+    "name": "Slide.kslide",
     "edit": {
       "command": "shape.insert",
       "params": {
@@ -146,11 +146,11 @@
       }
     }
   },
-  "word": {
-    "repository": "KitionAI/kition-word",
-    "crate": "kition-word-sdk",
-    "module": "kition_word_sdk",
-    "class": "WordDocument",
+  "doc": {
+    "repository": "KitionAI/kition-doc",
+    "crate": "kition-doc-sdk",
+    "module": "kition_doc_sdk",
+    "class": "DocDocument",
     "name": "Letter.docx",
     "edit": {
       "command": "text.insert",

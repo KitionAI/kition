@@ -16,7 +16,7 @@ test('keeps a 520-layer artboard interactive while rendering 20 image layers', a
   await page
     .locator('.document-private-heading .document-create-menu-anchor > button')
     .click()
-  await page.getByTestId('workspace-create-design').click()
+  await page.getByTestId('workspace-create-design-studio').click()
   await expect(page.getByTestId('design-editor')).toBeVisible()
   await page
     .getByLabel('Import image', { exact: true })
@@ -132,7 +132,7 @@ test('keeps a 2,000-layer artboard and its layer list responsive', async ({ page
   await page
     .locator('.document-private-heading .document-create-menu-anchor > button')
     .click()
-  await page.getByTestId('workspace-create-design').click()
+  await page.getByTestId('workspace-create-design-studio').click()
   await expect(page.getByTestId('design-editor')).toBeVisible()
   await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
   await page.evaluate(async () => {

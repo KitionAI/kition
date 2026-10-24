@@ -38,7 +38,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`, `slide_*`, `word_*`, `sheet_*`, `pdf_*`).
+`design_*`, `cad_*`, `slide_*`, `doc_*`, `sheet_*`, `pdf_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -272,7 +272,7 @@ then the person's display mode: Menus (tabs open as drop-down menus or a
 drop-down ribbon panel), Single line (one row of the tab's main commands),
 Classic (the full ribbon), or Focus (no chrome but a floating bar, Cmd+\).
 kit-ui keeps the choice per kit, steps down when the window is too narrow, and
-sizes for touch. Photo, Vector, Film, Effect, and CAD default to Menus; Word,
+sizes for touch. Photo, Vector, Film, Effect, and CAD default to Menus; Doc,
 Sheet, Slide, PDF, and Design to Single line (`kit.json` `ui.display`). Canvas
 kits pass a tool rail of flyout slots; side panels sit right of the body. A
 kit declares its tabs as `{ id, label, view?, ribbon?, menu? }`
@@ -407,11 +407,11 @@ items with `primary`.
   frame of the same kind with the extension's network origins, Kition's
   theme tokens, and a channel to the extension's worker; Kition's
   `frame-src` keeps it on its page. `src/lib/sdk/kits/` registers the schema
-  of every kit with an object model (Word, Slide, Sheet, Photo, Vector,
+  of every kit with an object model (Doc, Slide, Sheet, Photo, Vector,
   Effect, CAD, PDF), generated in kition-sdk from each kit's
   `model/schema.json` at its pinned commit. `e2e/extensions.spec.ts`
   installs the example extension, runs its command and its panel, and runs
-  scripts on Slide, Word, and Sheet documents.
+  scripts on Slide, Doc, and Sheet documents.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
   folder of linked media. It is also the reference for other hosts.
@@ -720,7 +720,7 @@ Exports (Film's MP4):
   H.264 encodes at about 5 times slower than real time in single-threaded
   WebAssembly.
 - Editing a file the kit does not own (an mp4) goes through a project: "Edit
-  in Film" on the video viewer makes `<clip>.kitionfilm` beside the clip
+  in Film" on the video viewer makes `<clip>.kfilm` beside the clip
   (`createKitFile` with a `prepare` step that imports it and builds a
   sequence from it) and opens it. The clip itself is never changed.
 
@@ -834,13 +834,13 @@ Slide and page kits (Slide):
   invisible. The faces an editor hands to `addFont` come from
   `../kition-fonts` (`KITION_FONTS_DIR`), Kition's own font repository.
 
-Text kits (Word):
+Text kits (Doc):
 
 - A word processor always types: report `busy` and `wantsText` all the time,
   so every printable key and editing key reaches the engine, and command
   shortcuts (`Cmd+B`) reach the frame. Turn the engine's `Mod+` shortcuts into
   `Cmd+`.
-- Keep the session in a `RefCell` when laying out needs `&mut` (the Word kit
+- Keep the session in a `RefCell` when laying out needs `&mut` (the Doc kit
   caches its layout), since `render` and `inspect` take `&self`. Never mark
   the document changed for a caret or selection move.
 - An engine that fills its whole output with paper (`render_region`) renders
@@ -923,12 +923,12 @@ or the adapter's `large()` fixture. Run it from the kit repository with
 
 | Kit | Objects, snapshot | Open | 1,000 remote changes | Keystroke p50 / p95 | Memory per replica |
 | --- | --- | --- | --- | --- | --- |
-| Word | 173, 59 KB | 2.3 ms | 11.8 s (7 ms a change when idle) | 9.0 / 25 ms | 2.2 MB |
+| Doc | 173, 59 KB | 2.3 ms | 11.8 s (7 ms a change when idle) | 9.0 / 25 ms | 2.2 MB |
 | Slide | 354, 167 KB | 6.0 ms | 2.5 s (an import re-reads only the slides it touched) | 4.8 / 6.0 ms (one slide shown, as in the editor) | 4.1 MB |
 | Sheet | 369, 141 KB | 2.4 ms | 3.5 s | 5.7 / 6.0 ms | 1.5 MB |
 | Vector | 153, 67 KB | 2.5 ms | 4.1 s | 22.2 / 35.3 ms | 1.5 MB |
 
-Word is over the remote-change budget only while other builds load the
+Doc is over the remote-change budget only while other builds load the
 machine. A kit over
 budget records it here until it is fixed.
 

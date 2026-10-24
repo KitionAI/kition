@@ -43,10 +43,10 @@ const CASES: &[Case] = &[
     },
     Case {
         kit: "kit.film",
-        fixture: "Edit.kitionfilm",
+        fixture: "Edit.kfilm",
         command: "file.newColorMatte",
         params: || json!({ "color": "#0000ff", "seconds": 1 }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitionfilm" })),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kfilm" })),
     },
     Case {
         kit: "kit.cad",
@@ -57,13 +57,13 @@ const CASES: &[Case] = &[
     },
     Case {
         kit: "kit.slide",
-        fixture: "Slide.kitionslide",
+        fixture: "Slide.kslide",
         command: "shape.insert",
         params: || json!({ "preset": "ellipse", "rect": [100, 100, 200, 120] }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitionslide" })),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kslide" })),
     },
     Case {
-        kit: "kit.word",
+        kit: "kit.doc",
         fixture: "Letter.docx",
         command: "text.insert",
         params: || json!({ "text": "Hello" }),

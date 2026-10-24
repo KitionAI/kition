@@ -2,9 +2,9 @@
   "kdm": 1,
   "kit": "kit.test.readonly",
   "schemaVersion": 1,
-  "root": "Presentation",
+  "root": "SlideFile",
   "types": {
-    "Presentation": {
+    "SlideFile": {
       "fields": {
         "title": { "kind": "string" },
         "raw": { "kind": "json", "optional": true, "readOnly": true },

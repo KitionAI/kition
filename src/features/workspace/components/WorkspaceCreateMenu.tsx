@@ -21,7 +21,7 @@ const ESTIMATED_GROUPED_MENU_HEIGHT = 440
 const CREATE_GROUPS: readonly KitCreateGroup[] = ['documents', 'data', 'visual', 'media']
 /** Item order within the groups. Kition's own file types and the kits mix
  *  freely; a kit not listed here goes last in its group. */
-const CREATE_ORDER: readonly string[] = ['note', 'word', 'pdf', 'layout', 'table', 'sheet', 'slide', 'board', 'design', 'vector', 'photo', 'cad', 'video', 'effect']
+const CREATE_ORDER: readonly string[] = ['note', 'doc', 'pdf', 'design', 'table', 'sheet', 'slide', 'board', 'design-studio', 'vector', 'photo', 'cad', 'film', 'effect']
 
 type CreateItem = {
   id: string
@@ -70,7 +70,7 @@ export function WorkspaceCreateMenu({
   }
 
   const createItems: CreateItem[] = [
-    ...(onCreateDesign ? [{ id: 'design', group: 'visual', label: t('design:suite'), icon: <KitIcon kit="design" small className="size-4" />, testId: 'workspace-create-design', onClick: onCreateDesign } satisfies CreateItem] : []),
+    ...(onCreateDesign ? [{ id: 'design-studio', group: 'visual', label: t('design:suite'), icon: <KitIcon kit="design" small className="size-4" />, testId: 'workspace-create-design-studio', onClick: onCreateDesign } satisfies CreateItem] : []),
     ...(kitCreations ?? []).map<CreateItem>((kit) => ({
       id: kit.id,
       group: kit.group,
@@ -187,8 +187,8 @@ function createRank(id: string) {
   return rank === -1 ? CREATE_ORDER.length : rank
 }
 
-/** Formats other applications open. Kition's own (`.kitionslide`, `.kdesign`, …) say nothing to a
- *  reader; portable ones (`.docx`, `.psd`) tell Word from Document. */
+/** Formats other applications open. Kition's own (`.kslide`, `.kdesign`, …) say nothing to a
+ *  reader; portable ones (`.docx`, `.psd`) tell Doc from Note. */
 const PORTABLE_EXTENSIONS = new Set(['md', 'docx', 'xlsx', 'pptx', 'pdf', 'psd', 'dxf'])
 
 function portableExtension(extension: string) {

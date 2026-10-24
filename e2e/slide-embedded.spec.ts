@@ -29,7 +29,7 @@ async function loadSdk() {
 /** Real slides made by the same engine the page runs: a title slide, and a second slide with a square. */
 async function slidesFixture() {
   const sdk = await loadSdk()
-  const doc = sdk.SlideDocument.create('Launch.kitionslide', 960, 540)
+  const doc = sdk.SlideDocument.create('Launch.kslide', 960, 540)
   doc.execute('slide.new', '{}')
   doc.execute('shape.insert', JSON.stringify({ preset: 'rect', rect: [380, 170, 200, 200] }))
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
@@ -43,7 +43,7 @@ type InspectedSlide = { shapes: Array<{ preset?: string; text?: string }> }
 /** The shapes on slide `index` of a saved slides file. */
 async function shapesIn(bytes: Buffer, index: number) {
   const sdk = await loadSdk()
-  const doc = sdk.SlideDocument.open('Saved.kitionslide', bytes)
+  const doc = sdk.SlideDocument.open('Saved.kslide', bytes)
   const slide = JSON.parse(doc.execute('slide.inspect', JSON.stringify({ index }))) as InspectedSlide
   doc.free()
   return slide.shapes
@@ -55,7 +55,7 @@ test('opens slides in the Slide kit’s own editor, edits it there, and saves it
   const host = await installDesktopHost(page)
   try {
     const fixture = await slidesFixture()
-    await fs.writeFile(path.join(host.root, 'Launch.kitionslide'), fixture)
+    await fs.writeFile(path.join(host.root, 'Launch.kslide'), fixture)
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
@@ -102,10 +102,10 @@ test('opens slides in the Slide kit’s own editor, edits it there, and saves it
     // Save goes through Kition's file API (host/write).
     await kit.getByTestId('slides-save').click()
     await expect(kit.getByTestId('slides-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual(['Launch.kitionslide'])
+    expect(saves.map((save) => save.path)).toEqual(['Launch.kslide'])
     if (canReadBlobBodies(browserName)) {
       const sdk = await loadSdk()
-      const reopened = sdk.SlideDocument.open('Saved.kitionslide', saves[0].bytes)
+      const reopened = sdk.SlideDocument.open('Saved.kslide', saves[0].bytes)
       expect((JSON.parse(reopened.inspect()) as { slides: unknown[] }).slides).toHaveLength(3)
       reopened.free()
     }
@@ -118,7 +118,7 @@ test('keeps a slide file’s replica across a save and a reopen, and opens a fil
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slide kit editor is not built into public/kits/slide-ui')
   test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   test.setTimeout(180_000)
-  const name = 'Replica.kitionslide'
+  const name = 'Replica.kslide'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await slidesFixture(), {}, { persist: true })
   const reopen = async () => {
     await page.reload({ waitUntil: 'domcontentloaded' })

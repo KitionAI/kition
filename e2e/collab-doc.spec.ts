@@ -4,15 +4,15 @@ import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
 import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
-type NodeWordDocument = { save(name?: string): Uint8Array; execute(command: string, params: string): string; free(): void }
+type NodeDocDocument = { save(name?: string): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
-  WordDocument: { create(name: string, width: number, height: number): NodeWordDocument; open(name: string, bytes: Uint8Array): NodeWordDocument }
-}>('word', 'kition_word_sdk')
+  DocDocument: { create(name: string, width: number, height: number): NodeDocDocument; open(name: string, bytes: Uint8Array): NodeDocDocument }
+}>('doc', 'kition_doc_sdk')
 
 /** A letter made by the same engine the page runs: a title paragraph and a body paragraph. */
 async function letterFixture() {
   const sdk = await engine.load()
-  const doc = sdk.WordDocument.create('Field Notes.docx', 612, 792)
+  const doc = sdk.DocDocument.create('Field Notes.docx', 612, 792)
   doc.execute('para.style', JSON.stringify({ style: 'Title' }))
   doc.execute('text.insert', JSON.stringify({ text: 'Field notes' }))
   doc.execute('text.newParagraph', '{}')
@@ -25,7 +25,7 @@ async function letterFixture() {
 }
 
 const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
-const canvas = (kit: FrameLocator) => kit.getByTestId('word-canvas-region').screenshot()
+const canvas = (kit: FrameLocator) => kit.getByTestId('doc-canvas-region').screenshot()
 
 /**
  * The replica version at `path` once it stops changing: typing streams one small transaction per
@@ -47,7 +47,7 @@ async function settledVersion(page: Page, path: string) {
 
 /** Places the caret at the very start of the document (the title paragraph) and types `text`. */
 async function typeAtDocStart(page: Page, kit: FrameLocator, text: string) {
-  await kit.getByTestId('word-canvas-region').click({ position: { x: 20, y: 20 } })
+  await kit.getByTestId('doc-canvas-region').click({ position: { x: 20, y: 20 } })
   await page.keyboard.press('Control+Home')
   await page.keyboard.press('Meta+ArrowUp')
   await page.keyboard.type(text)
@@ -55,15 +55,15 @@ async function typeAtDocStart(page: Page, kit: FrameLocator, text: string) {
 
 /** Places the caret at the very end of the document (the body paragraph) and types `text`. */
 async function typeAtDocEnd(page: Page, kit: FrameLocator, text: string) {
-  await kit.getByTestId('word-canvas-region').click({ position: { x: 20, y: 20 } })
+  await kit.getByTestId('doc-canvas-region').click({ position: { x: 20, y: 20 } })
   await page.keyboard.press('Control+End')
   await page.keyboard.press('Meta+ArrowDown')
   await page.keyboard.type(text)
 }
 
-test('co-edits a Word document between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Word kit editor is not built into public/kits/word-ui')
-  test.skip(!kitPackageHasReplicaInfo('word', 'kition_word_sdk'), 'the Word kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh word')
+test('co-edits a Doc document between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
+  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -76,7 +76,7 @@ test('co-edits a Word document between two windows: live, and merging edits made
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
     const a = await openInKitFrame(pageA, baseURL!, 'Field Notes.docx', await letterFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
-    await expect(a.kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(a.kit.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Field Notes')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
 
@@ -86,7 +86,7 @@ test('co-edits a Word document between two windows: live, and merging edits made
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
     const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
-    await expect(kitB.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(kitB.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Field Notes.docx'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
@@ -148,7 +148,7 @@ type SavedParagraph = { text: string; bold: boolean[]; italic: boolean[] }
 /** The paragraphs of a saved `.docx`, read by the same engine through its JSON form (runs count UTF-8 bytes). */
 async function savedParagraphs(docx: Buffer): Promise<SavedParagraph[]> {
   const sdk = await engine.load()
-  const doc = sdk.WordDocument.open('Saved.docx', docx)
+  const doc = sdk.DocDocument.open('Saved.docx', docx)
   const json = JSON.parse(Buffer.from(doc.save('Saved.json')).toString('utf8')) as unknown
   doc.free()
   const out: SavedParagraph[] = []
@@ -180,7 +180,7 @@ async function savedParagraphs(docx: Buffer): Promise<SavedParagraph[]> {
 
 /** Places the caret at the start of the document's last paragraph (the body paragraph). */
 async function caretAtBodyStart(page: Page, kit: FrameLocator) {
-  await kit.getByTestId('word-canvas-region').click({ position: { x: 20, y: 20 } })
+  await kit.getByTestId('doc-canvas-region').click({ position: { x: 20, y: 20 } })
   await page.keyboard.press('Control+End')
   await page.keyboard.press('Meta+ArrowDown')
   await page.keyboard.press('Home')
@@ -200,8 +200,8 @@ async function formatBodyRange(page: Page, kit: FrameLocator, from: number, coun
 }
 
 test('two windows typing and formatting one paragraph at once keep both texts and both formats', async ({ browser, baseURL }, testInfo) => {
-  test.skip(!engine.built, 'the Word kit editor is not built into public/kits/word-ui')
-  test.skip(!kitPackageHasReplicaInfo('word', 'kition_word_sdk'), 'the Word kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh word')
+  test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
+  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
   const unavailable = kitionProSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -213,7 +213,7 @@ test('two windows typing and formatting one paragraph at once keep both texts an
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
     const a = await openInKitFrame(pageA, baseURL!, 'Field Notes.docx', await letterFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
-    await expect(a.kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(a.kit.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Field Notes')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     const pageB = await bob.newPage()
@@ -221,7 +221,7 @@ test('two windows typing and formatting one paragraph at once keep both texts an
     await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
     const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
-    await expect(kitB.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(kitB.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     const converged = async () =>
       expect.poll(() => sameReplicas(pageA, 'Field Notes.docx', pageB, 'Shared/Field Notes.docx'), { timeout: 60_000 }).toBe('same')
@@ -253,7 +253,7 @@ test('two windows typing and formatting one paragraph at once keep both texts an
 
     // Alice saves: the paragraph holds both texts, and both formats where they overlap.
     const saved = a.saves.length
-    await a.kit.getByTestId('word-save').click()
+    await a.kit.getByTestId('doc-save').click()
     await expect.poll(() => a.saves.length, { timeout: 30_000 }).toBeGreaterThan(saved)
     const paragraphs = await savedParagraphs(a.saves[a.saves.length - 1].bytes)
     const body = paragraphs.find((p) => p.text.includes('Auroras'))
@@ -272,23 +272,23 @@ test('two windows typing and formatting one paragraph at once keep both texts an
   }
 })
 
-test('without a Kition Pro session a Word document opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
-  test.skip(!engine.built, 'the Word kit editor is not built into public/kits/word-ui')
+test('without a Kition Pro session a Doc document opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
   test.setTimeout(120_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')
   const sockets = recordWebSockets(page)
   const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Field Notes.docx', await letterFixture())
   try {
-    await expect(kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(kit.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
     // The tab menu offers no sharing.
     await openTabMenu(page, 'Field Notes', 'Copy path/reference')
     await expect(page.getByRole('menuitem', { name: 'Share for co-editing' })).toHaveCount(0)
     await page.keyboard.press('Escape')
     await typeAtDocEnd(page, kit, ' Solo edit.')
-    await expect(kit.getByTestId('word-unsaved')).toBeVisible()
-    await kit.getByTestId('word-save').click()
-    await expect(kit.getByTestId('word-unsaved')).toHaveCount(0, { timeout: 30_000 })
+    await expect(kit.getByTestId('doc-unsaved')).toBeVisible()
+    await kit.getByTestId('doc-save').click()
+    await expect(kit.getByTestId('doc-unsaved')).toHaveCount(0, { timeout: 30_000 })
     expect(saves.map((save) => save.path)).toEqual(['Field Notes.docx'])
     await expect(page.locator('[data-testid="collab-status"]')).toHaveCount(0)
     expect(sockets.filter((url) => url.includes('/v1/sync'))).toEqual([])

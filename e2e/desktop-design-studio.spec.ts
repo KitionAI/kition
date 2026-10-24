@@ -29,7 +29,7 @@ test('exports a desktop design to PDF at the artboard size and renders both them
     await dismissFirstRunActivation(page)
     await setTheme(page, 'light')
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
-    await page.getByTestId('workspace-create-design').click()
+    await page.getByTestId('workspace-create-design-studio').click()
     await expect(page.getByTestId('design-editor')).toBeVisible()
     await page.getByRole('button', { name: 'Event', exact: true }).click()
     await expect(page.getByTestId('design-save-status')).toHaveText('Saved')

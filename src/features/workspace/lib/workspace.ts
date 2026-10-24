@@ -158,7 +158,7 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.(psd|psb|kphoto)$/i.test(path)) {
     return 'photo'
   }
-  if (/\.kitionfilm$/i.test(path)) {
+  if (/\.kfilm$/i.test(path)) {
     return 'film'
   }
   if (/\.kvector$/i.test(path)) {
@@ -173,7 +173,7 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.dxf$/i.test(path)) {
     return 'cad'
   }
-  if (/\.kitionslide$/i.test(path)) {
+  if (/\.kslide$/i.test(path)) {
     return 'slide'
   }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
@@ -240,7 +240,7 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
     case 'table':
       return 'table'
     case 'docx':
-      return 'word'
+      return 'doc'
     case 'xlsx':
     case 'csv':
       return 'sheet'
@@ -341,7 +341,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
   const labels: Record<WorkspaceDocumentFormat, string> = {
     markdown: 'MD',
     table: 'Table',
-    docx: 'Word',
+    docx: 'Doc',
     xlsx: 'Excel',
     pptx: 'PPT',
     pdf: 'PDF',
@@ -420,7 +420,7 @@ export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 /**
- * Formats that open in a Kition tab rather than the system app. Office files a kit edits (Word,
+ * Formats that open in a Kition tab rather than the system app. Office files a kit edits (Doc,
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {

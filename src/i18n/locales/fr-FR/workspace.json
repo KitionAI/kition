@@ -5,13 +5,13 @@
       "board": "Tableau",
       "note": "Note",
       "photo": "Photo",
-      "video": "Film",
+      "film": "Film",
       "vector": "Vector",
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
       "slide": "Slide",
-      "word": "Word",
+      "doc": "Doc",
       "sheet": "Sheet",
       "pdf": "PDF"
     },
@@ -270,9 +270,9 @@
     "unavailableTitle": "L’édition Slide n’est pas disponible dans cette version",
     "unavailableBody": "Les fichiers Slide s’ouvrent dans Kition lorsque le moteur Slide est inclus."
   },
-  "wordKit": {
-    "unavailableTitle": "L’édition Word n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Word s’ouvrent dans Kition lorsque le moteur Word est inclus."
+  "docKit": {
+    "unavailableTitle": "L’édition Doc n’est pas disponible dans cette version",
+    "unavailableBody": "Les fichiers Doc s’ouvrent dans Kition lorsque le moteur Doc est inclus."
   },
   "sheetKit": {
     "unavailableTitle": "L’édition Sheet n’est pas disponible dans cette version",
@@ -385,7 +385,7 @@
       "slide": "Slide",
       "table": "Table",
       "vector": "Vector",
-      "word": "Word"
+      "doc": "Doc"
     }
   },
   "templateLibrary": {

@@ -8,7 +8,7 @@ describe('getWorkspaceItemKitIcon', () => {
     ['markdown', 'note'],
     ['table', 'table'],
     ['table', 'table'],
-    ['docx', 'word'],
+    ['docx', 'doc'],
     ['xlsx', 'sheet'],
     ['csv', 'sheet'],
     ['pptx', 'slide'],

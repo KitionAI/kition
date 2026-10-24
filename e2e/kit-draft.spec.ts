@@ -22,7 +22,7 @@ type NodeSlideSdk = {
 async function slideFixture() {
   const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_sdk.js')).href)) as NodeSlideSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
-  const doc = sdk.SlideDocument.create('Launch.kitionslide', 960, 540)
+  const doc = sdk.SlideDocument.create('Launch.kslide', 960, 540)
   doc.execute('slide.new', '{}')
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
   const bytes = doc.save()
@@ -60,7 +60,7 @@ test("the agent edits a slide file as a draft; the person reviews it, merges it,
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
   try {
-    await fs.writeFile(path.join(host.root, 'Launch.kitionslide'), await slideFixture())
+    await fs.writeFile(path.join(host.root, 'Launch.kslide'), await slideFixture())
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     let streams = 0
@@ -68,7 +68,7 @@ test("the agent edits a slide file as a draft; the person reviews it, merges it,
       if (route.request().method() !== 'GET') return route.fallback()
       streams += 1
       if (streams > 1) return route.fulfill({ status: 204, body: '' })
-      await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' }, body: draftRunEvents('Launch.kitionslide') })
+      await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' }, body: draftRunEvents('Launch.kslide') })
     })
     const posted: Array<Record<string, unknown>> = []
     await page.route('**/v1/kits/bridge?**', async (route) => {

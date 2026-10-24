@@ -14,11 +14,11 @@ import { sheetKit } from './sheet'
 import { slideKit } from './slide'
 import { tableKit } from './table'
 import { vectorKit } from './vector'
-import { wordKit } from './word'
+import { docKit } from './doc'
 
-export { boardKit, cadKit, effectKit, filmKit, noteKit, pdfKit, photoKit, sheetKit, slideKit, tableKit, vectorKit, wordKit }
+export { boardKit, cadKit, effectKit, filmKit, noteKit, pdfKit, photoKit, sheetKit, slideKit, tableKit, vectorKit, docKit }
 
 /** Every generated kit's descriptor, by kit id. */
 export const KITS: Readonly<Record<string, KitDescriptor>> = Object.fromEntries(
-  [wordKit, slideKit, sheetKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit, boardKit, noteKit].map((kit) => [kit.id, kit]),
+  [docKit, slideKit, sheetKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit, boardKit, noteKit].map((kit) => [kit.id, kit]),
 )

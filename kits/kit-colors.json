@@ -5,8 +5,8 @@
     "light": "#5645d4",
     "dark": "#8b7cf0"
   },
-  "word": {
-    "kitId": "kit.word",
+  "doc": {
+    "kitId": "kit.doc",
     "light": "#2b5cd9",
     "dark": "#6b9bff"
   },

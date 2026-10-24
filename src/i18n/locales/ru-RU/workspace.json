@@ -5,13 +5,13 @@
       "board": "Доска",
       "note": "Заметка",
       "photo": "Photo",
-      "video": "Film",
+      "film": "Film",
       "vector": "Vector",
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
       "slide": "Slide",
-      "word": "Word",
+      "doc": "Doc",
       "sheet": "Sheet",
       "pdf": "PDF"
     },
@@ -270,9 +270,9 @@
     "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
     "unavailableBody": "Файлы Slide открываются в Kition, когда в сборку включён движок Slide."
   },
-  "wordKit": {
-    "unavailableTitle": "Редактирование Word недоступно в этой сборке",
-    "unavailableBody": "Файлы Word открываются в Kition, когда в сборку включён движок Word."
+  "docKit": {
+    "unavailableTitle": "Редактирование Doc недоступно в этой сборке",
+    "unavailableBody": "Файлы Doc открываются в Kition, когда в сборку включён движок Doc."
   },
   "sheetKit": {
     "unavailableTitle": "Редактирование Sheet недоступно в этой сборке",
@@ -385,7 +385,7 @@
       "slide": "Slide",
       "table": "Table",
       "vector": "Vector",
-      "word": "Word"
+      "doc": "Doc"
     }
   },
   "templateLibrary": {

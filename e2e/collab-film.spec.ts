@@ -20,7 +20,7 @@ async function trailerFixture(clip: Buffer) {
     },
   })
   const sdk = await engine.load()
-  const doc = sdk.FilmDocument.create('Trailer.kitionfilm', 320, 180)
+  const doc = sdk.FilmDocument.create('Trailer.kfilm', 320, 180)
   const imported = JSON.parse(doc.execute('file.import', JSON.stringify({ paths: ['bars.mp4'] }))) as { items: number[] }
   doc.execute('timeline.place', JSON.stringify({ item: imported.items[0], track: 'V1', seconds: 0 }))
   const bytes = Buffer.from(doc.save())
@@ -58,7 +58,7 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     // Alice opens her project and shares it.
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Trailer.kitionfilm', await trailerFixture(clip), { 'bars.mp4': clip }, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Trailer.kfilm', await trailerFixture(clip), { 'bars.mp4': clip }, signedIn(DEV_PRINCIPALS.alice))
     await expect(clips(a.kit)).toHaveCount(1, { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Trailer')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
@@ -70,19 +70,19 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     await openSharedLink(pageB, link)
     const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(clips(kitB)).toHaveCount(1, { timeout: 60_000 })
-    expect(existsSync(path.join(b.host.root, 'Shared', 'Trailer.kitionfilm'))).toBe(true)
+    expect(existsSync(path.join(b.host.root, 'Shared', 'Trailer.kfilm'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Trailer.kitionfilm', pageB, 'Shared/Trailer.kitionfilm'), { timeout: 15_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Trailer.kfilm', pageB, 'Shared/Trailer.kfilm'), { timeout: 15_000 }).toBe('same')
 
     // Alice cuts the clip: within a second Bob's timeline has both halves.
-    const before = JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm'))
+    const before = JSON.stringify(await replicaCounters(pageA, 'Trailer.kfilm'))
     await cutAt(pageA, a.kit, 0.5)
     // From the Add Edit until Bob's replica holds everything Alice's does.
     const cut = Date.now()
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm')), { intervals: [10] }).not.toBe(before)
-    const aliceVersion = JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm'))
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Trailer.kitionfilm')), { timeout: 5_000, intervals: [20] }).toBe(aliceVersion)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Trailer.kfilm')), { intervals: [10] }).not.toBe(before)
+    const aliceVersion = JSON.stringify(await replicaCounters(pageA, 'Trailer.kfilm'))
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Trailer.kfilm')), { timeout: 5_000, intervals: [20] }).toBe(aliceVersion)
     const live = Date.now() - cut
     testInfo.annotations.push({ type: 'live edit to the other window', description: `${live} ms` })
     expect(live).toBeLessThan(1_000)
@@ -96,13 +96,13 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     await expect(clips(kitB)).toHaveCount(3)
     await cutAt(pageA, a.kit, 0.2)
     await expect(clips(a.kit)).toHaveCount(3)
-    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Trailer.kitionfilm'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm')))
+    expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Trailer.kfilm'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Trailer.kfilm')))
 
     // Back online, both merge on their own: the same replica, and both cuts on both timelines.
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Trailer.kitionfilm', pageB, 'Shared/Trailer.kitionfilm'), { timeout: 60_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Trailer.kfilm', pageB, 'Shared/Trailer.kfilm'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(clips(a.kit)).toHaveCount(4)
     await expect(clips(kitB)).toHaveCount(4)
@@ -121,7 +121,7 @@ test('without a Kition Pro session a Film project opens and edits as before, wit
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')
   const sockets = recordWebSockets(page)
   const clip = await fs.readFile(CLIP)
-  const { host, kit } = await openInKitFrame(page, baseURL!, 'Trailer.kitionfilm', await trailerFixture(clip), { 'bars.mp4': clip })
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Trailer.kfilm', await trailerFixture(clip), { 'bars.mp4': clip })
   try {
     await expect(clips(kit)).toHaveCount(1, { timeout: 60_000 })
     await openTabMenu(page, 'Trailer', 'Copy path/reference')

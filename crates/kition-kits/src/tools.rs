@@ -1234,8 +1234,8 @@ mod tests {
             prompt("talks/Launch.pptx").contains("document_read extracts its text"),
             "PowerPoint text stays readable"
         );
-        assert!(prompt("talks/Launch.kitionslide").contains("it is binary data"));
-        assert!(prompt("letters/Hello.docx").contains("word_run"));
+        assert!(prompt("talks/Launch.kslide").contains("it is binary data"));
+        assert!(prompt("letters/Hello.docx").contains("doc_run"));
         assert!(prompt("money/Budget.xlsx").contains("sheet_run"));
         assert!(
             prompt("papers/Report.pdf").contains("pdf_run")

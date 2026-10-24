@@ -6,7 +6,7 @@ import { PresenceAvatars } from './PresenceAvatars'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const PATH = 'Shared/Plan.kitionslide'
+const PATH = 'Shared/Plan.kslide'
 let root: Root | null = null
 let container: HTMLDivElement
 

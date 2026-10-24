@@ -5,13 +5,13 @@
       "board": "Board",
       "note": "Note",
       "photo": "Photo",
-      "video": "Film",
+      "film": "Film",
       "vector": "Vector",
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
       "slide": "Slide",
-      "word": "Word",
+      "doc": "Doc",
       "sheet": "Sheet",
       "pdf": "PDF"
     },
@@ -270,9 +270,9 @@
     "unavailableTitle": "Slide editing is not available in this build",
     "unavailableBody": "Slide files open in Kition when the Slide engine is included."
   },
-  "wordKit": {
-    "unavailableTitle": "Word editing is not available in this build",
-    "unavailableBody": "Word files open in Kition when the Word engine is included."
+  "docKit": {
+    "unavailableTitle": "Doc editing is not available in this build",
+    "unavailableBody": "Doc files open in Kition when the Doc engine is included."
   },
   "sheetKit": {
     "unavailableTitle": "Sheet editing is not available in this build",
@@ -385,7 +385,7 @@
       "slide": "Slide",
       "table": "Table",
       "vector": "Vector",
-      "word": "Word"
+      "doc": "Doc"
     }
   },
   "templateLibrary": {

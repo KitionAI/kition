@@ -732,10 +732,10 @@ mod tests {
             "capability": "KitObjectModel 1.0",
             "kit": "kit.slide",
             "schemaVersion": 1,
-            "root": "Presentation",
+            "root": "SlideFile",
             "rootId": "p1",
             "types": {
-                "Presentation": { "fields": { "slides": { "kind": "list", "of": "Slide" }, "title": { "kind": "string" } } },
+                "SlideFile": { "fields": { "slides": { "kind": "list", "of": "Slide" }, "title": { "kind": "string" } } },
                 "Slide": { "fields": { "name": { "kind": "text" }, "layout": { "kind": "enum", "values": ["title", "blank"] }, "notes": { "kind": "map", "optional": true } } }
             }
         })
@@ -769,14 +769,14 @@ mod tests {
         assert!(
             known
                 .description
-                .contains("Presentation (root) { slides: list of Slide, title: string }"),
+                .contains("SlideFile (root) { slides: list of Slide, title: string }"),
             "{}",
             known.description
         );
         let batch = batch_spec(slide(), Some(&described()));
         assert!(batch.writes && !known.writes);
         let item = &batch.input_schema["properties"]["ops"]["items"]["properties"];
-        assert_eq!(item["type"]["enum"], json!(["Presentation", "Slide"]));
+        assert_eq!(item["type"]["enum"], json!(["SlideFile", "Slide"]));
         assert_eq!(item["op"]["enum"].as_array().map(Vec::len), Some(OPS.len()));
         assert_eq!(batch.input_schema["required"], json!(["path", "ops"]));
     }
@@ -791,7 +791,7 @@ mod tests {
         );
         assert_eq!(slide["name"]["type"], "string");
         assert_eq!(
-            schema["$defs"]["Presentation"]["properties"]["slides"]["items"]["type"],
+            schema["$defs"]["SlideFile"]["properties"]["slides"]["items"]["type"],
             "string"
         );
         assert!(

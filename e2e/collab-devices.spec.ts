@@ -12,7 +12,7 @@ const engine = kitEngine<{
 /** A slide file made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
 async function slideFixture() {
   const sdk = await engine.load()
-  const doc = sdk.SlideDocument.create('Keynote.kitionslide', 960, 540)
+  const doc = sdk.SlideDocument.create('Keynote.kslide', 960, 540)
   doc.execute('edit.selectAll', '{}')
   doc.execute('edit.delete', '{}')
   doc.execute('insert.textBox', JSON.stringify({ rect: [0, 255, 960, 30], text: 'Hello' }))
@@ -69,7 +69,7 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
     // On the laptop, Alice syncs her slide file to her devices: no share link, nobody else.
     const pageA = await laptop.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await (await openTabMenu(pageA, 'Keynote', 'Sync to my devices')).click()
     await expect(pageA.getByText('Synced to your devices')).toBeVisible({ timeout: 30_000 })
@@ -84,7 +84,7 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
     await useSyncServer(pageB, server.url)
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.alice))
     await openSyncedDocuments(pageB)
-    const row = pageB.getByTestId('collab-synced-document').filter({ hasText: 'Keynote.kitionslide' })
+    const row = pageB.getByTestId('collab-synced-document').filter({ hasText: 'Keynote.kslide' })
     await expect(row).toBeVisible({ timeout: 30_000 })
     await expect(row).toContainText('Only you')
     await expect(pageB.getByTestId('collab-synced-folder')).toHaveValue('')
@@ -95,9 +95,9 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
     await expect(pageB.getByTestId('collab-synced-dialog')).toHaveCount(0, { timeout: 30_000 })
     const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
-    expect(existsSync(path.join(b.host.root, 'Keynote.kitionslide'))).toBe(true)
+    expect(existsSync(path.join(b.host.root, 'Keynote.kslide'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Keynote.kitionslide'), { timeout: 15_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Keynote.kslide', pageB, 'Keynote.kslide'), { timeout: 15_000 }).toBe('same')
 
     // Now here, it is no longer listed.
     await openSyncedDocuments(pageB)
@@ -106,11 +106,11 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
     await expect(pageB.getByTestId('collab-synced-dialog')).toHaveCount(0)
 
     // Alice types on the laptop: the desktop has it live.
-    const baseline = JSON.stringify(await replicaCounters(pageB, 'Keynote.kitionslide'))
+    const baseline = JSON.stringify(await replicaCounters(pageB, 'Keynote.kslide'))
     await typeIntoShape(pageA, a.kit, 'Launch day')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')), { intervals: [10] }).not.toBe(baseline)
-    const laptopVersion = await settledVersion(pageA, 'Keynote.kitionslide')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Keynote.kitionslide')), { timeout: 10_000, intervals: [20] }).toBe(laptopVersion)
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Keynote.kslide')), { intervals: [10] }).not.toBe(baseline)
+    const laptopVersion = await settledVersion(pageA, 'Keynote.kslide')
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Keynote.kslide')), { timeout: 10_000, intervals: [20] }).toBe(laptopVersion)
 
     // She adds a slide on the desktop, and one on the laptop: both converge with both slides.
     await pageA.keyboard.press('Escape')
@@ -120,7 +120,7 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
     await a.kit.getByTestId('slides-add-slide').click()
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 4$/)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 4$/, { timeout: 10_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Keynote.kitionslide'), { timeout: 30_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Keynote.kslide', pageB, 'Keynote.kslide'), { timeout: 30_000 }).toBe('same')
     await pageA.screenshot({ path: testInfo.outputPath('laptop.png') })
     await pageB.screenshot({ path: testInfo.outputPath('desktop.png') })
   } finally {

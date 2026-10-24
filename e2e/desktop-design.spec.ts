@@ -31,7 +31,7 @@ test('edits and reopens a desktop Design with local assets, file moves, export, 
         '.document-private-heading .document-create-menu-anchor > button',
       )
       .click()
-    await page.getByTestId('workspace-create-design').click()
+    await page.getByTestId('workspace-create-design-studio').click()
     await expect(page.getByTestId('design-editor')).toBeVisible()
     await page
       .getByLabel('Import image', { exact: true })

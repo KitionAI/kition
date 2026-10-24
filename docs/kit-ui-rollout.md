@@ -14,7 +14,7 @@ were removed. See `docs/kit-sdk.md` section 4 for how it works.
   be embedded by other hosts.
 - kition-sdk, the ten kit repositories' own code, and Kition are licensed
   Apache-2.0.
-- The kit repositories are named `KitionAI/kition-<kit>` (`kition-word`,
+- The kit repositories are named `KitionAI/kition-<kit>` (`kition-doc`,
   `kition-pdf`, …) and are checked out next to Kition as `../kition-<kit>`.
 - Chinese text in the web editors uses Droid Sans Fallback (Apache-2.0) from
   `KitionAI/kition-fonts`, checked out as `../kition-fonts`, handed to each
@@ -41,7 +41,7 @@ were removed. See `docs/kit-sdk.md` section 4 for how it works.
 | Kit | Shell | Highlights |
 | --- | --- | --- |
 | Slide | Ribbon | Pilot; thumbnails, notes, slide show |
-| Word | Ribbon | Styles gallery, find and replace, contextual tabs, Chinese face |
+| Doc | Ribbon | Styles gallery, find and replace, contextual tabs, Chinese face |
 | Sheet | Ribbon | Formula bar, sheet tabs, clipboard; grid draws conditional formats, wrapped text, charts; headings and frozen panes stay in view (Standard E10 pinned bands) |
 | PDF | Ribbon | Page tools, thumbnails, bookmarks, comments, form fields, find; Chinese fonts a PDF does not embed |
 | CAD | Ribbon | Engine tools, layers palette, command line, drafting modes |

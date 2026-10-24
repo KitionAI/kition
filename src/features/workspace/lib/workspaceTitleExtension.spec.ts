@@ -22,17 +22,17 @@ describe('getWorkspaceItemTitle', () => {
     ['Photo.psd', 'Photo'],
     ['Logo.kvector', 'Logo'],
     ['Flyer.kdesign', 'Flyer'],
-    ['Movie.kitionfilm', 'Movie'],
+    ['Movie.kfilm', 'Movie'],
     ['Clip.keffect', 'Clip'],
     ['Part.dxf', 'Part'],
-    ['Deck.kitionslide', 'Deck'],
+    ['Deck.kslide', 'Deck'],
   ])('drops a kit-owned extension from %s, same as the formats kitEditors.ts already knows', (name, title) => {
     expect(getWorkspaceItemTitle(name)).toBe(title)
   })
 
   it('is case-insensitive', () => {
     expect(getWorkspaceItemTitle('Photo.PSD')).toBe('Photo')
-    expect(getWorkspaceItemTitle('Movie.KITIONFILM')).toBe('Movie')
+    expect(getWorkspaceItemTitle('Movie.KFILM')).toBe('Movie')
   })
 
   it('drops every extension the kit registry creates (kitFormats.ts), so a renamed kit extension never regresses this', () => {

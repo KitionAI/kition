@@ -24,7 +24,7 @@ pub fn infer_format(path: &str) -> &'static str {
         // Layered images, edited in the Photo kit.
         ".psd" | ".psb" | ".kphoto" => "photo",
         // Video projects, edited in the Film kit.
-        ".kitionfilm" => "film",
+        ".kfilm" => "film",
         // Vector drawings, edited in the Vector kit.
         ".kvector" => "vector",
         // Motion-graphics projects, edited in the Effect kit.
@@ -34,7 +34,7 @@ pub fn infer_format(path: &str) -> &'static str {
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
         // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
-        ".kitionslide" => "slide",
+        ".kslide" => "slide",
         // Tables, edited in the Table kit.
         ".ktable" => "table",
         // Boards, edited in the Board kit.
@@ -67,44 +67,10 @@ pub fn is_supported(path: &str) -> bool {
     has_extension(
         path,
         &[
-            "md",
-            "markdown",
-            "kidesign",
-            "txt",
-            "csv",
-            "tsv",
-            "json",
-            "html",
-            "htm",
-            "pdf",
-            "docx",
-            "xlsx",
-            "xls",
-            "pptx",
-            "ppt",
-            "png",
-            "jpg",
-            "jpeg",
-            "gif",
-            "webp",
-            "svg",
-            "psd",
-            "psb",
-            "kphoto",
-            "kitionfilm",
-            "kvector",
-            "keffect",
-            "kdesign",
-            "dxf",
-            "kitionslide",
-            "ktable",
-            "kboard",
-            "mp4",
-            "mov",
-            "webm",
-            "mp3",
-            "wav",
-            "m4a",
+            "md", "markdown", "kidesign", "txt", "csv", "tsv", "json", "html", "htm", "pdf",
+            "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg",
+            "psd", "psb", "kphoto", "kfilm", "kvector", "keffect", "kdesign", "dxf", "kslide",
+            "ktable", "kboard", "mp4", "mov", "webm", "mp3", "wav", "m4a",
         ],
     )
 }
@@ -120,8 +86,8 @@ mod tests {
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
-        assert_eq!(infer_format("films/Trailer.kitionfilm"), "film");
-        assert!(is_supported("films/Trailer.kitionfilm"));
+        assert_eq!(infer_format("films/Trailer.kfilm"), "film");
+        assert!(is_supported("films/Trailer.kfilm"));
         assert_eq!(infer_format("art/Logo.kvector"), "vector");
         assert!(is_supported("art/Logo.kvector"));
         assert_eq!(infer_format("motion/Intro.keffect"), "effect");
@@ -130,8 +96,8 @@ mod tests {
         assert!(is_supported("print/Flyer.kdesign"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
-        assert_eq!(infer_format("talks/Launch.kitionslide"), "slide");
-        assert!(is_supported("talks/Launch.kitionslide"));
+        assert_eq!(infer_format("talks/Launch.kslide"), "slide");
+        assert!(is_supported("talks/Launch.kslide"));
         assert_eq!(infer_format("data/Tasks.ktable"), "table");
         assert!(is_supported("data/Tasks.ktable"));
         assert!(!is_text("data/Tasks.ktable"));

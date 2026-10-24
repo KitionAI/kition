@@ -17,7 +17,7 @@ const engine = kitEngine<{
 /** A one-slide slide file whose lone shape is a text box across the slide's middle, where a click selects it. */
 async function slideFixture() {
   const sdk = await engine.load()
-  const doc = sdk.SlideDocument.create('Keynote.kitionslide', 960, 540)
+  const doc = sdk.SlideDocument.create('Keynote.kslide', 960, 540)
   doc.execute('edit.selectAll', '{}')
   doc.execute('edit.delete', '{}')
   doc.execute('insert.textBox', JSON.stringify({ rect: [0, 255, 960, 30], text: 'Hello' }))
@@ -49,7 +49,7 @@ test('Bob sees the shape Alice selected on a shared slide, outlined with her nam
   try {
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kslide', await slideFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
     await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 1', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Keynote')
     await expect(pageA.locator('.document-tab-list [data-testid="collab-status"]')).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
@@ -61,7 +61,7 @@ test('Bob sees the shape Alice selected on a shared slide, outlined with her nam
     const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 1', { timeout: 60_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 15_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Keynote.kslide', pageB, 'Shared/Keynote.kslide'), { timeout: 15_000 }).toBe('same')
     await expect(kitB.getByTestId('slides-peer-selection')).toHaveCount(0)
     const before = await canvas(kitB)
 
