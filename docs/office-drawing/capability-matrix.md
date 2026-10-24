@@ -132,8 +132,8 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   Slide reroutes after every edit already. `drawing.reconnect` moves one end
   to another site or frees it, and in Word and Sheet a selected connector's
   ends drag with the pointer, snapping to sites in reach
-  (`kition_drawing::connect::EndDrag`). Slide does not take
-  `drawing.reconnect` or the end drag yet. Evidence: the
+  (`kition_drawing::connect::EndDrag`). Slide takes `drawing.reconnect`; its
+  canvas does not drag connector ends yet. Evidence: the
   `connectors_follow_…` engine tests and the bindings'
   `a_connectors_end_drags_onto_another_shape_in_one_step` tests. A line from
   Insert › Shapes becomes a connector once its ends are dragged onto two shapes
