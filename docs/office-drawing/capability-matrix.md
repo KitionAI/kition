@@ -255,7 +255,7 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | P | P | P | P | Y | Y | P | P |
+| Slide | Y | P | P | P | Y | Y | Y | Y | Y |
 | Word | Y | P | P | P | Y | Y | P | Y | Y |
 | Sheet | Y | P | P | P | Y | Y | P | Y | Y |
 
@@ -271,9 +271,8 @@ text area and bends them with that geometry. `drawing.text` and
 use the flat text in every kit.
 
 - **Slide:** `insert.wordArt` makes a text box with large, styled runs (fill
-  and outline per style number). The body keeps a warp's preset name only:
-  adjust values are dropped when the file is read, and `drawing.text` refuses
-  them as `unsupported`. Warped text is drawn without its paragraph animation
+  and outline per style number). The body keeps a warp's preset and its
+  adjust values, drawn with them and set by `drawing.text`. Warped text is drawn without its paragraph animation
   states and text effects. WordArt Styles › Transform runs `format.transform`
   on the selection.
 - **Word:** a shape keeps its warp with adjust values (`wps:bodyPr/a:prstTxWarp`).

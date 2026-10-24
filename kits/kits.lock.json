@@ -90,13 +90,13 @@
   },
   "slide": {
     "repository": "KitionAI/kition-slide",
-    "version": "0.5.11",
-    "tag": "package-v0.5.11",
-    "asset": "kition-slide-0.5.11.tgz",
-    "size": 11910668,
-    "sha256": "d85a1d3ee026179bd4ae25dbb138d40c5b96ca558789fcf605e7ab2e52ec2a13",
-    "commit": "23aedfc3bf79afb678ae9a99b1e6a9e9fc0e59ef",
-    "sdkCommit": "9bd31cecf807431bbf94a0285c21764749ea0511",
+    "version": "0.5.12",
+    "tag": "package-v0.5.12",
+    "asset": "kition-slide-0.5.12.tgz",
+    "size": 11907381,
+    "sha256": "2a235abc34f4d05b33318e83c1107e10e3553f4688468f9f442d612973fe551a",
+    "commit": "9ce69f945db26c5435cfa0c4240f2d0825eb076c",
+    "sdkCommit": "1c120e0923422432af762c8ba4f002b83986b688",
     "fontsCommit": "4fa58d5a44d53986e71008ecc24732a9c045f73d"
   },
   "table": {
