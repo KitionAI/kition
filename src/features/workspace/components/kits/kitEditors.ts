@@ -84,24 +84,20 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
 ]
 
 /**
- * The Document kit (`kit.document`, `scripts/build-kit-ui.sh document`, packages/document-kit):
- * Kition's own Markdown document model and editor packaged as a kit, with a TypeScript engine.
- * Kition opens Markdown files in its native document editor; for parity checks, a development
- * build opens them in the kit instead when `localStorage['kition.dev.documentKit']` is `'1'`.
- * Without the kit's package the native editor shows (`preview`).
+ * The Note kit (`kit.note`, KitionAI/kition-note) for Markdown files, before it replaces Kition's
+ * native document editor: a development build opens `.md` and `.markdown` files in it when
+ * `localStorage['kition.dev.noteKit']` is `'1'`, as the note e2e specs do. Without the kit's
+ * package the native editor shows (`preview`).
  */
-const DOCUMENT_KIT: KitEditorEntry = {
-  ...kit('document', 'MarkdownDocument', { format: 'markdown', icon: 'document', preview: true }),
-  engine: { kitId: 'kit.document', dir: 'document-ui/engine', module: 'kition_document_engine', documentClass: 'MarkdownDocument' },
-}
+const NOTE_KIT: KitEditorEntry = kit('note', 'NoteDocument', { format: 'markdown', icon: 'document', preview: true })
 
-const DOCUMENT_KIT_DEV_FLAG = 'kition.dev.documentKit'
+const NOTE_KIT_DEV_FLAG = 'kition.dev.noteKit'
 
-/** The Document kit, when this development build opens `path` in it (`DOCUMENT_KIT_DEV_FLAG`). */
-export function documentKitForDevelopment(path: string): KitEditorEntry | null {
+/** The Note kit, when this development build opens `path` in it (`NOTE_KIT_DEV_FLAG`). */
+export function noteKitForDevelopment(path: string): KitEditorEntry | null {
   if (!import.meta.env.DEV || !/\.(md|markdown)$/i.test(path)) return null
   try {
-    return window.localStorage.getItem(DOCUMENT_KIT_DEV_FLAG) === '1' ? DOCUMENT_KIT : null
+    return window.localStorage.getItem(NOTE_KIT_DEV_FLAG) === '1' ? NOTE_KIT : null
   } catch {
     return null
   }
