@@ -449,8 +449,7 @@ item makes an empty board with the engine in the page, and the agent's
 (`KITS` in `crates/kition-kits`). `e2e/board-embedded.spec.ts` (in
 `make kit-e2e`) covers what Kition adds around the kit: opening, drawing,
 saving through Kition, and creating a board; the editor's own behavior is
-tested in the kit's repository. Kition's native board editor
-(`src/features/whiteboard`, `.kiboard` files) is being removed.
+tested in the kit's repository. Kition has no board editor of its own.
 
 ### The Document kit
 

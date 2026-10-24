@@ -29,18 +29,6 @@ export type AgentImageGenerationDocumentTarget = {
   target_revision?: string
 }
 
-export type AgentImageGenerationWhiteboardTarget = {
-  type: "image.target.whiteboard"
-  board_path: AgentImageGenerationPortablePath
-  selected_element_ids?: AgentImageGenerationIdentifier[]
-  replace_element_id?: AgentImageGenerationIdentifier
-  viewport_center?: {
-    x: number
-    y: number
-  }
-  target_revision?: string
-}
-
 /**
  * Place generated images on one design artboard. The client sizes the image to the artboard and, for editable_overlay text, adds the exact text as a separate text layer.
  */
@@ -58,7 +46,7 @@ export type AgentImageGenerationDesignTarget = {
 /**
  * Generate and edit operations use the provider's configured image-capable model independently of the conversation's runtime_model.model_name. Clients keep the selected chat model unchanged; selecting a text-only chat model must not prevent image generation or editing.
  */
-export type AgentImageGenerationIntent = (unknown) & (unknown) & (unknown) & (unknown)
+export type AgentImageGenerationIntent = (unknown) & (unknown) & (unknown)
 
 export type AgentImageGenerationProvenance = {
   request_id: AgentImageGenerationIdentifier

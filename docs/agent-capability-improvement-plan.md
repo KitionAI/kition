@@ -35,7 +35,7 @@ context, and explain its progress in the right panel.
 The first release prioritizes documents, tables, folder research, memory, and
 execution visibility. All Agent panes should share the same completion,
 provenance, recovery, and memory rules. Browser, workflow, scenario, image,
-whiteboard, and design experiences adopt those rules without losing their
+and design experiences adopt those rules without losing their
 existing specialized contracts.
 
 This is a client and public-behavior plan. Private runtime orchestration, prompts,
@@ -108,7 +108,7 @@ irrelevant stages omitted for simple tasks:
 7. Report the actual outcome, saved artifacts, checks, and unresolved issues.
 
 Writing, table creation, table analysis, folder research, workflow, browser,
-image, whiteboard, and design tasks need distinct workflow descriptions and
+image, and design tasks need distinct workflow descriptions and
 output criteria. Combined tasks can use several workflows sequentially. Do not
 force every task through a visible wizard or require approval for an already
 authorized, reversible operation.
@@ -333,7 +333,7 @@ phase completion still requires its full exit criteria.
 | P2: Writing and table delivery | Existing document targeting/editing helpers, table import flow, result review; public writing/table black-box scenarios | Source-based article, targeted revision, deterministic import, table creation, and verified analysis meet the release rubric |
 | P3: Folder evidence | Extend local-source contract, source context cards, evidence navigation, parser capability states; align the local-source PRD | Text and advertised document formats return precise sources; limits and missing coverage are visible |
 | P4: Memory and continuity | Memory contract and mocked API, account/workspace-scoped controls, per-turn memory receipts; continuity scenarios | New-session preference recall, correction/deletion, isolation, disabled memory, compaction, and restart tests pass |
-| P5: All-surface rollout | Adapters for scenario, workflow, browser, image, whiteboard, and design events; shared outcome/review UI | Existing specialized behavior is preserved and every surface passes common completion/recovery tests |
+| P5: All-surface rollout | Adapters for scenario, workflow, browser, image, and design events; shared outcome/review UI | Existing specialized behavior is preserved and every surface passes common completion/recovery tests |
 
 Dependencies: P0 precedes P1. P2 and P3 depend on P1 and can be delivered in
 separate increments. P4 can establish explicit preferences after P1, but recalling

@@ -834,7 +834,7 @@ Each entry has:
 | `word` | Word | `#2b5cd9` | `#2b5cd9` | `#6b9bff` |
 | `table` | Table | `#0e9a8a` | `#0c8375` | `#3fd1bf` |
 | `sheet` | Sheet | `#1f9d4c` | `#1a8641` | `#4fd17b` |
-| `board` | Whiteboard | `#f2b200` | `#966e00` | `#ffd04d` |
+| `board` | Board | `#f2b200` | `#966e00` | `#ffd04d` |
 | `slide` | Slide | `#f0701a` | `#c0550d` | `#ff9a55` |
 | `design` | Design Studio | `#e5486a` | `#e0244d` | `#ff7d97` |
 | `layout` | Design | `#d63e95` | `#d32f8d` | `#f57bbd` |
@@ -861,7 +861,7 @@ Where the color shows (the WPS Office model):
   selected ribbon tab, menu highlights, primary buttons, sliders, and focus
   (kit-ui `--kit-primary`).
 - **Everything else is Kition's**: the shell, dialogs, and Kition's own
-  editors (Document, Table, Whiteboard, Design Studio) keep Kition purple.
+  editors (Document, Design Studio) keep Kition purple.
   Never tint Kition chrome in a kit's color.
 
 ## Kit editor frame and display modes

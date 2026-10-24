@@ -132,8 +132,7 @@ export function useAgentImageMode(input: {
         ...options,
         ...(template ? { template_id: template.id, template_version: template.version, template_variables: variables } : {}),
         reference_paths: referencePaths,
-        surface: target.type === 'image.target.whiteboard' ? 'whiteboard'
-          : target.type === 'image.target.design' ? 'design'
+        surface: target.type === 'image.target.design' ? 'design'
           : target.type === 'image.target.chat' ? 'chat' : 'document',
         target,
         placement_preference: 'review',

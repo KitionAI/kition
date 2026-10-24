@@ -189,7 +189,7 @@
       "anyOf": [
         {
           "type": "object",
-          "description": "A canvas patch a whiteboard or design tool proposed.",
+          "description": "A canvas patch the design tool proposed.",
           "required": [
             "kind",
             "patch"
@@ -198,7 +198,6 @@
             "kind": {
               "type": "string",
               "enum": [
-                "whiteboard.patch",
                 "design.patch"
               ]
             },

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title description">
-  <title id="title">Kition product overview with the dark whiteboard workspace</title>
-  <description id="description">Kition brings documents, data tables, the real dark-mode whiteboard, agent research, and visual workflows into one desktop workspace.</description>
+  <title id="title">Kition product overview with documents, tables, boards, agents, and workflows</title>
+  <description id="description">Kition brings documents, data tables, boards, agent research, and visual workflows into one desktop workspace.</description>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#111116" />
@@ -15,7 +15,7 @@
       <stop offset="0" stop-color="#34343b" />
       <stop offset="1" stop-color="#29292f" />
     </linearGradient>
-    <linearGradient id="whiteboardCard" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="boardCard" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#3a3947" />
       <stop offset="1" stop-color="#2b2a34" />
     </linearGradient>
@@ -32,12 +32,12 @@
     <filter id="softShadow" x="-15%" y="-20%" width="130%" height="150%">
       <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.36" />
     </filter>
-    <filter id="whiteboardShadow" x="-20%" y="-25%" width="140%" height="160%">
+    <filter id="boardShadow" x="-20%" y="-25%" width="140%" height="160%">
       <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#5645d4" flood-opacity="0.22" />
     </filter>
     <clipPath id="documentClip"><rect x="66" y="733" width="298" height="248" rx="10" /></clipPath>
     <clipPath id="tableClip"><rect x="439" y="733" width="298" height="248" rx="10" /></clipPath>
-    <clipPath id="whiteboardClip"><rect x="812" y="733" width="298" height="248" rx="10" /></clipPath>
+    <clipPath id="boardClip"><rect x="812" y="733" width="298" height="248" rx="10" /></clipPath>
     <clipPath id="agentClip"><rect x="1185" y="733" width="298" height="248" rx="10" /></clipPath>
     <clipPath id="workflowClip"><rect x="1558" y="733" width="298" height="248" rx="10" /></clipPath>
   </defs>
@@ -70,7 +70,7 @@
     <image href="kition-logo-mark.png" x="58" y="42" width="62" height="62" />
     <text x="136" y="87" fill="#ffffff" font-size="42" font-weight="700" letter-spacing="-1.4">Kition</text>
     <text x="1780" y="78" fill="#c7c2ff" font-size="18" font-weight="600" text-anchor="end" letter-spacing="2.8">AI WORKSPACE</text>
-    <text x="960" y="171" fill="#ffffff" font-size="57" font-weight="700" text-anchor="middle" letter-spacing="-1.8">Documents, Tables, Whiteboards, Agents &amp; Workflows</text>
+    <text x="960" y="171" fill="#ffffff" font-size="57" font-weight="700" text-anchor="middle" letter-spacing="-1.8">Documents, Tables, Boards, Agents &amp; Workflows</text>
     <text x="960" y="218" fill="#b9b8c2" font-size="25" font-weight="400" text-anchor="middle">Turn ideas into structured, repeatable work without switching tools.</text>
 
     <g filter="url(#shadow)">
@@ -89,7 +89,7 @@
       <g>
         <rect x="888" y="372" width="250" height="42" rx="9" fill="#f5f0ff" stroke="#ddd4ff" />
         <path d="M910 386h17v15h-17zM913 390h11M913 394h7" fill="none" stroke="#5645d4" stroke-width="2" stroke-linejoin="round" />
-        <text x="940" y="400" fill="#37323f" font-size="18" font-weight="500">Campaign whiteboard</text>
+        <text x="940" y="400" fill="#37323f" font-size="18" font-weight="500">Campaign board</text>
       </g>
       <rect x="438" y="448" width="46" height="42" rx="9" fill="#ffffff" stroke="#d7d4dc" />
       <path d="M461 459v20M451 469h20" stroke="#6a6670" stroke-width="3" stroke-linecap="round" />
@@ -116,7 +116,7 @@
     <g filter="url(#softShadow)">
       <rect x="44" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
       <rect x="417" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
-      <rect x="790" y="610" width="342" height="410" rx="18" fill="url(#whiteboardCard)" stroke="#8e82ec" stroke-opacity="0.64" filter="url(#whiteboardShadow)" />
+      <rect x="790" y="610" width="342" height="410" rx="18" fill="url(#boardCard)" stroke="#8e82ec" stroke-opacity="0.64" filter="url(#boardShadow)" />
       <rect x="1163" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
       <rect x="1536" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
     </g>
@@ -136,7 +136,7 @@
       <g transform="translate(812 641)">
         <rect x="0" y="3" width="29" height="28" rx="5" fill="none" stroke="#d8d3ff" stroke-width="2.4" />
         <path d="M6 22l5-6 4 4 4-5 4 7M5 9h4M20 9h4" fill="none" stroke="#d8d3ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-        <text x="38" y="25" font-size="25" font-weight="700">Whiteboards</text>
+        <text x="38" y="25" font-size="25" font-weight="700">Boards</text>
         <text x="0" y="61" fill="#d6d2e4" font-size="16">Think visually with AI</text>
       </g>
       <g transform="translate(1185 641)">
@@ -157,7 +157,7 @@
 
     <image href="documents.webp" x="66" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#documentClip)" />
     <image href="tables.webp" x="439" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#tableClip)" />
-    <image href="whiteboards.webp" x="812" y="733" width="298" height="248" preserveAspectRatio="xMaxYMid slice" clip-path="url(#whiteboardClip)" />
+    <image href="boards.webp" x="812" y="733" width="298" height="248" preserveAspectRatio="xMaxYMid slice" clip-path="url(#boardClip)" />
     <image href="agent.webp" x="1185" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#agentClip)" />
     <image href="workflows.webp" x="1558" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#workflowClip)" />
     <text x="960" y="1056" fill="#8e8b97" font-size="15" text-anchor="middle" letter-spacing="1.2">WRITE · STRUCTURE · THINK · RESEARCH · AUTOMATE</text>

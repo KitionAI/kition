@@ -295,12 +295,6 @@ fn validate_target(surface: &str, placement: &str, target: &Map<String, Value>) 
             "cursor_offset",
             "selected_image_path",
         ],
-        "image.target.whiteboard" => &[
-            "board_path",
-            "selected_element_ids",
-            "replace_element_id",
-            "viewport_center",
-        ],
         "image.target.design" => &["design_path", "artboard", "replace_layer_id"],
         _ => return false,
     };
@@ -326,46 +320,10 @@ fn validate_target(surface: &str, placement: &str, target: &Map<String, Value>) 
     if !selected.is_empty() && !workspace_path(selected) {
         return false;
     }
-    let unique_ids = |key: &str, check: &dyn Fn(&Value) -> bool| -> bool {
-        let Some(items) = target.get(key) else {
-            return true;
-        };
-        let Some(items) = items.as_array() else {
-            return false;
-        };
-        let mut seen = std::collections::HashSet::new();
-        items.len() <= 100
-            && items
-                .iter()
-                .all(|item| check(item) && seen.insert(item.to_string()))
-    };
     match surface {
         "chat" => kind == "image.target.chat" && placement == "review",
         "document" => {
             kind == "image.target.document" && workspace_path(target_text(target, "document_path"))
-        }
-        "whiteboard" => {
-            let replace = target_text(target, "replace_element_id");
-            let center_ok = match target.get("viewport_center") {
-                None => true,
-                Some(Value::Object(point)) => {
-                    point.len() == 2
-                        && ["x", "y"].iter().all(|axis| {
-                            point
-                                .get(*axis)
-                                .and_then(Value::as_f64)
-                                .is_some_and(|n| n.abs() <= 1e7)
-                        })
-                }
-                Some(_) => false,
-            };
-            kind == "image.target.whiteboard"
-                && workspace_path(target_text(target, "board_path"))
-                && unique_ids("selected_element_ids", &|item| {
-                    item.as_str().is_some_and(identifier)
-                })
-                && (replace.is_empty() || identifier(replace))
-                && center_ok
         }
         "design" => {
             let replace = target_text(target, "replace_layer_id");

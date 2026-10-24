@@ -54,32 +54,6 @@
         "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
       }
     },
-    "whiteboardTarget": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "board_path"],
-      "properties": {
-        "type": { "const": "image.target.whiteboard" },
-        "board_path": { "$ref": "#/$defs/portablePath" },
-        "selected_element_ids": {
-          "type": "array",
-          "maxItems": 100,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/identifier" }
-        },
-        "replace_element_id": { "$ref": "#/$defs/identifier" },
-        "viewport_center": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["x", "y"],
-          "properties": {
-            "x": { "type": "number", "minimum": -10000000, "maximum": 10000000 },
-            "y": { "type": "number", "minimum": -10000000, "maximum": 10000000 }
-          }
-        },
-        "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
-      }
-    },
     "designTarget": {
       "type": "object",
       "description": "Place generated images on one design artboard. The client sizes the image to the artboard and, for editable_overlay text, adds the exact text as a separate text layer.",
@@ -156,12 +130,11 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/portablePath" }
         },
-        "surface": { "type": "string", "enum": ["document", "whiteboard", "design", "chat"] },
+        "surface": { "type": "string", "enum": ["document", "design", "chat"] },
         "target": {
           "oneOf": [
             { "$ref": "#/$defs/chatTarget" },
             { "$ref": "#/$defs/documentTarget" },
-            { "$ref": "#/$defs/whiteboardTarget" },
             { "$ref": "#/$defs/designTarget" }
           ]
         },
@@ -183,10 +156,6 @@
         {
           "if": { "properties": { "surface": { "const": "document" } } },
           "then": { "properties": { "target": { "$ref": "#/$defs/documentTarget" } } }
-        },
-        {
-          "if": { "properties": { "surface": { "const": "whiteboard" } } },
-          "then": { "properties": { "target": { "$ref": "#/$defs/whiteboardTarget" } } }
         }
       ]
     },

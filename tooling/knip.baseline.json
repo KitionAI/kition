@@ -255,7 +255,6 @@
   "types src/types/desktopSettings.ts HostedWebSearchVersion",
   "types src/types/imageGeneration.ts AgentImageDocumentTarget",
   "types src/types/imageGeneration.ts AgentImageGenerationPlacementPreference",
-  "types src/types/imageGeneration.ts AgentImageWhiteboardTarget",
   "types src/types/index.ts AIModelFormExtended",
   "types src/types/index.ts ApiResponse",
   "types src/types/index.ts AuthType",

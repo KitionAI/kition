@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <strong>Documents, Tables, Whiteboards, Agents, and Workflows in one desktop workspace.</strong><br />
+  <strong>Documents, Tables, Boards, Agents, and Workflows in one desktop workspace.</strong><br />
   Write connected knowledge, think visually, build data tools, research the web, and automate repeatable work.
 </p>
 
@@ -41,11 +41,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, the dark Whiteboard workspace, Agent research, and visual workflows" width="100%" />
+  <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, boards, Agent research, and visual workflows" width="100%" />
 </p>
 
-Kition brings Markdown documents, structured table files, an infinite
-Whiteboard, a tool-using AI agent, web research, and visual workflows into
+Kition brings Markdown documents, structured table files, infinite
+Boards, a tool-using AI agent, web research, and visual workflows into
 one desktop workspace.
 Instead of making every task begin in a blank chat, Kition gives the Agent
 editable project files, typed records, attachments, and visible processes to
@@ -62,8 +62,8 @@ repeat without handing context between disconnected tools.
 - **Structured data beside the knowledge.** Turn research and content into
   typed records, formulas, filters, groups, views, attachments, and AI fields.
 - **Visual thinking with reviewable AI changes.** Build diagrams, mind maps,
-  flows, and freeform sketches, then review Agent proposals before applying
-  them to the Whiteboard.
+  flows, and freeform sketches on a Board, then review the Agent's changes
+  before keeping them.
 - **An Agent that can act.** Search the web, inspect documents and
   table schemas, update content, and save useful output into the active project.
 - **Reviewable document edits.** Let the Agent edit the active document, inspect
@@ -138,9 +138,9 @@ regenerate, and hand off than a collection of disconnected chat outputs.
   <img src="docs/readme/scenarios/batch-product-designer.webp" alt="Kition batch product design table with generated designs, orthographic views, feature images, lifestyle shots, style boards, and launch copy" width="100%" />
 </p>
 
-### Design posters from records, Boards, and the Agent
+### Design posters from records and the Agent
 
-Design Studio turns a table record, a Board frame, or a generated image into an
+Design Studio turns a table record or a generated image into an
 editable poster. Templates bind the workspace brand kit, size variants keep one
 composition across poster, story, square, and landscape, and the Agent proposes
 text and layout changes as a reviewable preview. Exports go back into documents
@@ -151,7 +151,7 @@ and tables. See [docs/design-studio.md](docs/design-studio.md).
 </p>
 
 These scenarios show the intended Kition loop: use documents for narrative
-context, tables for structured state, Whiteboards for visual thinking, the
+context, tables for structured state, Boards for visual thinking, the
 Agent for uncertain work, and Workflows for steps that should become
 repeatable.
 
@@ -203,16 +203,16 @@ plan. Agent output can be written back into the active workspace.
 </tr>
 <tr>
 <td width="58%">
-  <img src="docs/readme/whiteboards.webp" alt="Kition dark Whiteboard workspace with connected nodes, a selected launch strategy, style controls, and drawing tools" width="100%" />
+  <img src="docs/readme/boards.webp" alt="Kition Board with a launch mind map and a process flow chart in the Board kit" width="100%" />
 </td>
 <td width="42%" valign="middle">
 
 ### Think and plan visually
 
 Build diagrams, mind maps, flowcharts, sticky-note clusters, and freeform
-sketches on an infinite canvas. The Agent can inspect the board, propose typed
-changes, and let you accept or reject the preview before it becomes part of the
-workspace.
+sketches on an infinite canvas. Boards are `.kboard` files the Board kit edits,
+and the Agent works on them through the kit's tools, live or as a draft you
+review before it becomes part of the workspace.
 
 </td>
 </tr>
@@ -286,7 +286,7 @@ most client-side contributions. More options are documented in
 
 This repository contains the public React client and its Tauri desktop shell:
 
-- document, table, Whiteboard, Agent, settings, email, scenario, and
+- document, table, Agent, settings, email, scenario, and
   workflow UI;
 - the Tauri desktop shell (`src-tauri/`) and desktop integration;
 - public runtime contracts, mocks, fixtures, and black-box tests;

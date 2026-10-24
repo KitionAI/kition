@@ -40,7 +40,7 @@ describe('Kition Cloud image template catalog', () => {
       locale: 'zh-CN',
       operation: 'edit',
       query: 'product poster',
-      surface: 'whiteboard',
+      surface: 'design',
     })
 
     expect(Object.fromEntries(url.searchParams)).toMatchObject({
@@ -51,7 +51,7 @@ describe('Kition Cloud image template catalog', () => {
       locale: 'zh-CN',
       operation: 'edit',
       query: 'product poster',
-      surface: 'whiteboard',
+      surface: 'design',
     })
   })
 

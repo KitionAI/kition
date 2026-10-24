@@ -383,7 +383,6 @@ mod tests {
     #[test]
     fn normalizes_modes() {
         assert_eq!(pane("Design"), "design");
-        assert_eq!(pane("whiteboard"), "document");
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(kit_edit_mode("Draft"), "draft");

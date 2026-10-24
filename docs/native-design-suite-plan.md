@@ -127,13 +127,11 @@ whole-editor reload behavior for undo.
 | Concern | Existing owner | Required change |
 | --- | --- | --- |
 | Workspace create menu | `src/features/workspace/components/WorkspaceCreateMenu.tsx` | Add a Design entry to workspace creation, including folder-scoped menus |
-| Creation coordination | `src/features/workspace/hooks/useWorkspaceBoardCreation.ts` | Follow its workspace write/open pattern in a separate Design creation hook |
 | Tree format, titles and icons | `src/features/workspace/lib/workspace.ts` | Recognize `.kidesign` and provide a Design icon and translated label |
 | Desktop format classification | `electron/workspace-document-formats.mjs` | Support Design listing, text read/write, organization, and reopening |
 | Desktop/browser bridge types | `src/services/desktop.ts` | Add the format and keep browser preview behavior consistent |
 | Tab lifecycle | `useWorkspaceTabs.ts` and `workspacePersistence.ts` | Add a Design tab with rename, move, restore, and workspace isolation |
 | Editor composition | `WorkspaceEditorContent.tsx` | Lazy-load the native Design pane |
-| Geometry and export precedents | `src/features/whiteboard/lib/whiteboardGeometry.ts` and `boardExport.ts` | Reuse suitable pure primitives after extracting genuinely shared responsibilities |
 | Image artifacts and clipboard | `workspaceFiles.ts`, `copyImageToClipboard`, workspace import helpers | Resolve existing assets, import images, copy rendered output |
 | Agent image results | `AgentImageResultCards.tsx` | Offer a downstream placement action for editable designs |
 

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
 import { installDocumentStoreBridge } from './helpers/documentStore'
+import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
 
@@ -186,9 +187,43 @@ test('captures README product screenshots from the onboarding source', async ({ 
   await page.screenshot({ path: 'docs/readme/agent.png' })
 })
 
+type NodeBoardDocument = { execute(command: string, params: string): string; save(): Uint8Array; free(): void }
+const boardEngine = kitEngine<{ BoardDocument: { create(name: string, width: number, height: number): NodeBoardDocument } }>('board', 'kition_board_sdk')
+
+/** A launch plan made by the Board kit's engine: its mind map and flow chart templates. */
+async function launchBoard() {
+  const sdk = await boardEngine.load()
+  const doc = sdk.BoardDocument.create('Product Launch.kboard', 1920, 1080)
+  doc.execute('template.insert', JSON.stringify({ template: 'mindmap', at: [0, 0] }))
+  doc.execute('template.insert', JSON.stringify({ template: 'flowchart', at: [0, 620] }))
+  const bytes = Buffer.from(doc.save())
+  doc.free()
+  return bytes
+}
+
+test('captures the README board screenshot from the Board kit', async ({ page, baseURL }) => {
+  test.skip(!CAPTURE_ENABLED, 'Run through pnpm capture:readme:assets.')
+  test.skip(!boardEngine.built, 'the Board kit is not built into public/kits/board-ui')
+  test.setTimeout(120_000)
+
+  await page.setViewportSize({ width: 1200, height: 750 })
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Product Launch.kboard', await launchBoard())
+  try {
+    await expect(kit.getByTestId('board-status')).toContainText('21 elements', { timeout: 60_000 })
+    await expect(page.getByTestId('kit-opening')).toHaveCount(0)
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: 'docs/readme/boards.png' })
+  } finally {
+    await host.dispose()
+  }
+})
+
 test('captures the README overview', async ({ page }) => {
   test.skip(!CAPTURE_ENABLED, 'Run through pnpm capture:readme:assets.')
 
+  await page.route('**/docs/readme/boards.webp', async (route) => {
+    await route.fulfill({ body: readFileSync('docs/readme/boards.png'), contentType: 'image/png' })
+  })
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('/docs/readme/kition-overview.svg')
   await expect(page.locator('svg')).toBeVisible()

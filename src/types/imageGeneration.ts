@@ -8,7 +8,7 @@ export const AGENT_IMAGE_GENERATION_MAX_VARIANTS = 5 as const
 export const AGENT_IMAGE_GENERATION_MAX_REFERENCES = 8 as const
 
 export type AgentImageGenerationOperation = 'generate' | 'edit'
-export type AgentImageGenerationSurface = 'document' | 'whiteboard' | 'design' | 'chat'
+export type AgentImageGenerationSurface = 'document' | 'design' | 'chat'
 export type AgentImageGenerationAspectRatio =
   | '1:1'
   | '16:9'
@@ -31,15 +31,6 @@ export type AgentImageDocumentTarget = {
   target_revision?: string
 }
 
-export type AgentImageWhiteboardTarget = {
-  type: 'image.target.whiteboard'
-  board_path: string
-  selected_element_ids?: string[]
-  replace_element_id?: string
-  viewport_center?: { x: number; y: number }
-  target_revision?: string
-}
-
 type AgentImageDesignTarget = {
   type: 'image.target.design'
   design_path: string
@@ -51,7 +42,6 @@ type AgentImageDesignTarget = {
 export type AgentImageTarget =
   | { type: 'image.target.chat' }
   | AgentImageDocumentTarget
-  | AgentImageWhiteboardTarget
   | AgentImageDesignTarget
 
 export type AgentImageGenerationIntent = {

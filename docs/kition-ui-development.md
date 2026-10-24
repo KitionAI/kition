@@ -18,7 +18,6 @@ src/
 
 packages/
   app-ui/        @kition/app-ui: shared UI primitives (buttons, dialogs, popovers, form controls, `cn`)
-  board-editor/  @kition/board-editor: the board's model and editor
   document-editor/  @kition/document-editor: the Markdown document's model and editor
 ```
 
@@ -48,8 +47,7 @@ Current feature split:
 
 - `src/features/agent`: AI chat, agent execution timeline, model selection, and agent-only interaction flows
 - `src/features/document`: rich-text document editing and document workspace flows, with Markdown files on a KDM-backed document model (see [document-model.md](document-model.md)); the model and the Markdown editor itself are `packages/document-editor`
-- `src/features/kits`: kit editors in `KitFrame` and their host (see [kit-sdk.md](kit-sdk.md)); tables are `.ktable` files the Table kit edits in its own editor
-- `src/features/whiteboard`: the Whiteboard in a workspace tab (file binding, image generation, agent bridge); its editor and KDM-backed document model are `packages/board-editor` (see [whiteboard-document.md](whiteboard-document.md))
+- `src/features/kits`: kit editors in `KitFrame` and their host (see [kit-sdk.md](kit-sdk.md)); tables are `.ktable` files the Table kit edits in its own editor, and boards `.kboard` files the Board kit edits
 - `src/features/workspace`: editor chrome, workspace navigation, tabs, tree, and media navigation
 - `src/features/settings`: desktop settings surfaces
 

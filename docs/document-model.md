@@ -6,10 +6,9 @@ transactions, per-author undo, and merge-safe concurrent edits. The `.md` file s
 interchange format — what Git tracks, what another editor can open, what the agent reads and
 writes when no window has the file open — and the replica adds editing history and merge-safe
 concurrent edits on top of it, privately, on this machine. This page describes that model and how
-the editor, the desktop shell, and the agent read and write it. See
-[whiteboard-document.md](whiteboard-document.md) for the Whiteboard's own (differently shaped) KDM
-document, and [kit-sdk.md](kit-sdk.md) for the separate Kit SDK system (tables are `.ktable`
-files the Table kit edits). Kition opens a Markdown document natively, as a built-in document type; the same
+the editor, the desktop shell, and the agent read and write it. See [kit-sdk.md](kit-sdk.md) for
+the separate Kit SDK system (tables are `.ktable` files the Table kit edits, boards `.kboard`
+files the Board kit edits). Kition opens a Markdown document natively, as a built-in document type; the same
 model and editor are also packaged as the standard kit `kit.document` (`packages/document-kit`,
 see [kit-sdk.md](kit-sdk.md)) for other applications, which a development build opens `.md`
 files in for parity checks.
@@ -45,7 +44,7 @@ Markdown's structure — headings, tables, frontmatter, embeds, tags — stays i
 field, as plain Markdown. The rich editor, the source editor, and every widget the document editor
 draws over the Markdown (tables, Mermaid diagrams, math, embeds) are views and edits of the same
 text, not a separate structured model; there is no second place a heading or a table's cell could
-drift out of sync with the file. This is deliberately unlike the Whiteboard's `kit.board`, whose
+drift out of sync with the file. This is deliberately unlike the Board kit's `kit.board`, whose
 elements and pages are each their own KDM object: a Markdown document's one unstructured text field
 is what keeps it a plain, portable `.md` file first.
 
@@ -345,11 +344,14 @@ tiny ones.
 
 ## WebAssembly loading
 
-The KDM runs on `loro-crdt` (a Rust/WebAssembly CRDT engine). `tooling/vite.config.ts` aliases the
-bare `loro-crdt` import to its bundler entry point so `vite-plugin-wasm` fetches and instantiates
-the WebAssembly asynchronously (in both development and built output) instead of the default
-browser entry's synchronous, main-thread load; see [whiteboard-document.md](whiteboard-document.md#webassembly-loading)
-for the detail, which is shared by every KDM document type in this repository.
+The KDM runs on `loro-crdt` (a Rust/WebAssembly CRDT engine), version pinned in `package.json`.
+`tooling/vite.config.ts` aliases the bare `loro-crdt` import to `loro-crdt/bundler`: the default
+browser entry point downloads and compiles its WebAssembly synchronously on the page's main thread,
+while the bundler entry imports the WebAssembly as an ES module, which `vite-plugin-wasm` fetches
+and instantiates asynchronously instead, in both development and built output. `loro-crdt` is
+listed under Vite's `optimizeDeps.include` so dev-server pre-bundling can find it even though it is
+reached only through dynamic imports, keeping it out of the startup bundle. Vitest keeps Node's
+native entry for `loro-crdt` (`tooling/vitest.config.ts` has no such alias).
 
 ## Testing pointers
 

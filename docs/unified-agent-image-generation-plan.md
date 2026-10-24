@@ -12,6 +12,11 @@ Research date: 2026-09-05
 
 ## Implementation progress
 
+On 2026-10-23 the native whiteboard was removed (W3-48): boards are `.kboard`
+files the Board kit edits, and the Board image target, its placement adapter,
+and the Board-only image studio are gone from Kition and the contract. The
+Board parts of this plan describe that removed editor.
+
 Client-side Phase 0 foundation completed on 2026-09-05:
 
 - added the public

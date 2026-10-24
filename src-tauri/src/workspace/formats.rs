@@ -143,7 +143,6 @@ mod tests {
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");
         assert!(is_editable("a/b.kidesign"));
-        assert!(!is_supported("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));
         assert!(is_text("a/b.json"));
         assert!(!is_supported("a/b.kitable"));

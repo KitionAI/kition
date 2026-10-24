@@ -77,7 +77,7 @@ export type AgentSessionEventsLlmFailure = {
  * Display-only data derived from the arguments and the value. The known shapes are listed; any other object may appear.
  */
 export type AgentSessionEventsToolResultMeta = {
-  kind: "whiteboard.patch" | "design.patch"
+  kind: "design.patch"
   patch: Record<string, unknown>
 } | {
   kind: "shell.approval"
