@@ -314,6 +314,8 @@ pub fn label(name: &str) -> Option<String> {
 /// text. `None` when no kit opens the file.
 /// Formats whose text `document_read` extracts (PDF and Office), which a kit also edits.
 const TEXT_EXTRACTED: &[&str] = &["pdf", "docx", "xlsx", "pptx"];
+/// Text formats a kit edits (Markdown, in the Note kit): `document_read` reads them as they are.
+const PLAIN_TEXT: &[&str] = &["md", "markdown"];
 
 pub fn linked_file_prompt(path: &str) -> Option<String> {
     let extension = path.trim().rsplit_once('.')?.1.to_ascii_lowercase();
@@ -336,6 +338,8 @@ pub fn linked_file_prompt(path: &str) -> Option<String> {
             ),
             if TEXT_EXTRACTED.contains(&extension.as_str()) {
                 "document_read extracts its text for reading; edit it only through the kit tools, never with document_write, fs_read, or apply_patch.".to_owned()
+            } else if PLAIN_TEXT.contains(&extension.as_str()) {
+                "document_read reads its text as it is; edit it only through the kit tools, never with document_write, fs_read, or apply_patch.".to_owned()
             } else {
                 "Do not use document_read, document_write, fs_read, or apply_patch on this file: it is binary data.".to_owned()
             },
@@ -1235,7 +1239,16 @@ mod tests {
             prompt("papers/Report.pdf").contains("pdf_run")
                 && prompt("papers/Report.pdf").contains("document_read extracts its text")
         );
-        assert!(linked_file_prompt("notes/plan.md").is_none());
+        let note = prompt("notes/plan.md");
+        assert!(
+            note.contains("note_inspect")
+                && note.contains("note_run")
+                && note.contains("in Note")
+                && note.contains("document_read reads its text as it is")
+                && !note.contains("binary data"),
+            "a note is text the agent may read: {note}"
+        );
+        assert!(linked_file_prompt("notes/plan.txt").is_none());
         let vector_kit = KITS
             .iter()
             .find(|kit| kit.id == "kit.vector")

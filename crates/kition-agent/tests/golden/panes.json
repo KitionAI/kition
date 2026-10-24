@@ -217,23 +217,21 @@
       "prompt": [
         "</skill>",
         "<skill name=\"document-report-agent\">",
-        "After image_search returns, optionally call document_write to embed the returned workspace-relative image path as a Markdown image link in the document.",
         "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
+        "Call note_inspect on this path to see its outline, properties, links, tables, tasks, and comment threads and a rendered preview before describing or changing it.",
         "Choose the artifact from intent: a readable report, dashboard, or visualization/HTML page uses artifact_write with a `.html` path and a complete standalone HTML document; plain prose uses artifact_write with a `.md` path.",
         "Current execution mode: apply.",
-        "Current linked document: `Notes/a.md`.",
+        "Current linked note: `Notes/a.md`, open in Note.",
         "Enable the document-report-agent skill.",
         "Follow an AI-first flow: explore the context with tools, extract what the answer needs, synthesize, then emit the matching artifact. Do not dump or guess folder contents.",
         "For a referenced folder, call document_list first, then document_read only the files that matter.",
         "For charts, embed ECharts or Chart.js via CDN inside the HTML payload using only data you actually read; never invent numbers.",
         "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "If the user says \"these images / the previous images / existing images / generated images\", reuse the recent image artifacts already saved by the system instead of calling image_search again.",
-        "If the user wants to continue editing, extending, rewriting, or improving this document, read it first and then overwrite the same path with document_write.",
-        "Only use artifact_write to create a new file when the user explicitly asks to create, save as, or generate a new file; pick the path extension from intent, not from any referenced source file.",
         "The artifact you produce is this turn's result; do not also restate the whole thing as plain chat. If the user asked for a report or HTML, the task is not complete until artifact_write succeeds or you state a concrete blocker.",
         "The following Kition Agent skills were automatically enabled for this request. Follow their constraints.",
         "The user is on the Kition document pane to your left. If a document is open (the skill context will carry an 'Active document the user is reading' block with title / path / description), call document_read on the path before summarising or quoting it — do not invent the document's contents from the title alone. If no document is open yet, ask the user which document they want to work with (or offer document_list / document_search to discover candidates).",
-        "When the user asks to GENERATE / CREATE / MAKE / PRODUCE a NEW image based on this document (e.g. \"generate an image from this content\", \"add an illustration\", \"draw a cover image\", \"create N images\"), you MUST call the `image_search` tool to actually produce the image. Do NOT just describe the image in prose or claim it was generated without an image_search tool result."
+        "To edit it, find command ids with note_commands (search by keywords such as `table`, `property`, or `comment`), then call note_run with the steps. note_run saves the file and returns a new preview; check it, call note_check to list what the kit finds wrong, and fix or undo (`edit.undo`) when the result is wrong.",
+        "document_read reads its text as it is; edit it only through the kit tools, never with document_write, fs_read, or apply_patch."
       ],
       "conversation": [
         {

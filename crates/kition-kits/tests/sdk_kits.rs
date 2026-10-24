@@ -97,6 +97,13 @@ const CASES: &[Case] = &[
         params: || json!({ "elements": [{ "kind": "shape", "position": { "x": 300, "y": 200 }, "size": { "w": 240, "h": 120 } }] }),
         file_command: ("document.save", || json!({ "path": "elsewhere.kboard" })),
     },
+    Case {
+        kit: "kit.note",
+        fixture: "Notes.md",
+        command: "text.insert",
+        params: || json!({ "at": 0, "text": "# Agenda\n\n" }),
+        file_command: ("document.save", || json!({ "path": "elsewhere.md" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

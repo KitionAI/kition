@@ -316,6 +316,26 @@ pub const KITS: &[KitDefinition] = &[
             command: "element.create",
         },
     },
+    // Edited in the page through its SDK; `kit-note` serves the agent for notes no editor has open.
+    KitDefinition {
+        id: "kit.note",
+        name: "Note",
+        binary_env: "KITION_KIT_NOTE_BINARY",
+        extensions: &["md", "markdown"],
+        creates: &[("md", "markdown")],
+        base_name: "Untitled note",
+        embeds: false,
+        exports: &["html", "pdf"],
+        agent: KitAgent {
+            prefix: "note",
+            noun: "note",
+            formats: "Markdown (.md)",
+            reports: "its outline, properties, links, tables, tasks, and comment threads",
+            covers: "text, headings, lists, tasks, tables, properties, links, comments, templates, and more; `text.insert` adds text",
+            queries: "`table`, `property`, or `comment`",
+            command: "text.insert",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.
