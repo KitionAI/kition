@@ -5,7 +5,6 @@ import {
   DOCUMENT_INDEX_CONFLICT,
   type DocumentIndex,
   type DocumentStoreEntry,
-  type DocumentStoreMeta,
   type KitReplicaMeta,
   deleteDocumentStore,
   isDocumentIndexConflict,
@@ -18,16 +17,8 @@ import {
 
 const DOC = '0199c2a4-7b3e-7cde-8f00-1234567890ab'
 
-function meta(docId: string = DOC, path = 'notes/a.md'): DocumentStoreMeta {
-  return {
-    docId,
-    kit: 'kit.document',
-    path,
-    fileHash: 'abc',
-    fileStamp: null,
-    exported: '00ff',
-    style: { eol: '\n', bom: false, finalNewline: true },
-  }
+function meta(docId: string = DOC, path = 'notes/a.md'): KitReplicaMeta {
+  return { docId, kit: 'kit.note', path, fileStamp: 'abc' }
 }
 
 function entry(bytes: number[], path?: string): DocumentStoreEntry {
@@ -129,7 +120,7 @@ describe('kit replicas in the document store', () => {
     window.kitionDesktop = bridge
     await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), blobs: new Uint8Array([2, 3]) })
     expect(bridge.WriteDocumentStore).toHaveBeenCalledWith({ doc_id: DOC, meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: 'AgM=' })
-    const read = await readDocumentStore<KitReplicaMeta>(DOC)
+    const read = await readDocumentStore(DOC)
     expect(read?.meta.fileStamp).toBe('v1')
     expect(Array.from(read?.blobs || [])).toEqual([2, 3])
     bridge.ReadDocumentStore.mockResolvedValueOnce({ meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: '%%' })
@@ -138,7 +129,7 @@ describe('kit replicas in the document store', () => {
 
   it('keeps blobs in local storage, and none for an entry written without', async () => {
     await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), blobs: new Uint8Array([2, 3]) })
-    expect(Array.from((await readDocumentStore<KitReplicaMeta>(DOC))?.blobs || [])).toEqual([2, 3])
+    expect(Array.from((await readDocumentStore(DOC))?.blobs || [])).toEqual([2, 3])
     await writeDocumentStore(DOC, entry([4]))
     expect((await readDocumentStore(DOC))?.blobs).toBeUndefined()
   })

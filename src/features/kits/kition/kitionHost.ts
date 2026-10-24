@@ -83,7 +83,7 @@ const appended = new Map<string, { docId: string; kitId: string; replica: Stored
 export async function readKitReplica(path: string, kitId: string): Promise<StoredReplica | null> {
   const docId = (await readDocumentIndex()).entries[path]
   if (!docId) return null
-  const entry = await readDocumentStore<KitReplicaMeta>(docId)
+  const entry = await readDocumentStore(docId)
   const meta = entry?.meta
   if (!entry?.blobs || meta?.kit !== kitId || meta.docId !== docId || typeof meta.fileStamp !== 'string') return null
   // A store that lost a change it named holds an older replica than the file: open the file plainly.
@@ -116,7 +116,7 @@ export async function writeKitReplica(path: string, kitId: string, replica: Stor
   try {
     const bytes = await loadReplicaBytes()
     replicaId = bytes.replicaIdOf(snapshot)
-    const head = await readDocumentStoreHead<KitReplicaMeta>(docId)
+    const head = await readDocumentStoreHead(docId)
     if (head && head.meta.kit === kitId && head.meta.replicaId) {
       if (head.meta.replicaId !== replicaId) {
         newLineage = true
@@ -157,7 +157,7 @@ export async function compactKitReplica(path: string): Promise<void> {
   if (!last) return
   appended.delete(path)
   try {
-    const head = await readDocumentStoreHead<KitReplicaMeta>(last.docId)
+    const head = await readDocumentStoreHead(last.docId)
     // Only what the store holds now: never a replica another save replaced meanwhile.
     if (!head || head.version !== last.version || head.meta.path !== path) return
     await writeDocumentStore(last.docId, { meta: head.meta, snapshot: new Uint8Array(last.replica.snapshot), blobs: new Uint8Array(last.replica.blobs) }, { version: last.version })

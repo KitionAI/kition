@@ -8,7 +8,6 @@ import {
   type DocumentCheckpoint,
   type DocumentCheckpointInput,
   type DocumentIndexPayload,
-  type DocumentStoreMeta,
   type DocumentStorePayload,
   type DocumentStoreStatus,
   type DocumentStoreWriteRequest,
@@ -19,7 +18,7 @@ import {
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
 import { uint8ArrayToBase64 } from './workspaceFiles'
 
-export type { DocumentCheckpoint, DocumentCheckpointInput, DocumentStoreMeta, DocumentStoreStatus, DocumentStoreWritten, KitReplicaMeta } from './bridge'
+export type { DocumentCheckpoint, DocumentCheckpointInput, DocumentStoreStatus, DocumentStoreWritten, KitReplicaMeta } from './bridge'
 
 /** The error a guarded index write fails with when another writer changed the index since it was read. */
 export const DOCUMENT_INDEX_CONFLICT = 'DOCUMENT_INDEX_CONFLICT'
@@ -33,15 +32,12 @@ const browserIndexStorageKey = 'kition.workspace.document-store.index.v1'
 const browserEntryStoragePrefix = 'kition.workspace.document-store.entry.v1:'
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/
 
-type StoredMeta = DocumentStoreMeta | KitReplicaMeta
-
 /**
- * A Markdown document's entry, or with `KitReplicaMeta` a kit replica's; readers check the meta they get. A replica is
- * `snapshot` with `changes` imported in order; `seq` names the stored version a later append follows (absent from a
+ * A kit replica's entry. A replica is `snapshot` with `changes` imported in order; `seq` names the stored version a later append follows (absent from a
  * store that cannot append), and `complete` is false when the store lost a change or blob it named.
  */
-export type DocumentStoreEntry<M extends StoredMeta = DocumentStoreMeta> = {
-  meta: M
+export type DocumentStoreEntry = {
+  meta: KitReplicaMeta
   snapshot: Uint8Array
   changes?: Uint8Array[]
   blobs?: Uint8Array
@@ -60,8 +56,8 @@ export type DocumentStoreWriteOptions = DocumentStoreOptions & {
 }
 
 /** Changes since the stored `baseSeq`, to append. */
-export type DocumentStoreAppend<M extends StoredMeta = DocumentStoreMeta> = {
-  meta: M
+export type DocumentStoreAppend = {
+  meta: KitReplicaMeta
   changes: Uint8Array
   baseSeq: number
   blobs?: Uint8Array
@@ -100,7 +96,7 @@ function checkDocumentId(docId: string) {
   if (!isValidDocumentId(docId)) throw new Error('invalid document id')
 }
 
-function checkMeta(docId: string, meta: StoredMeta) {
+function checkMeta(docId: string, meta: KitReplicaMeta) {
   if (!meta || typeof meta !== 'object' || meta.docId !== docId) throw new Error('document store meta names another document')
 }
 
@@ -133,9 +129,9 @@ function base64ToBytes(text: string, what = 'snapshot'): Uint8Array {
   return bytes
 }
 
-function toEntry<M extends StoredMeta>(payload: DocumentStorePayload | null | undefined): DocumentStoreEntry<M> | null {
+function toEntry(payload: DocumentStorePayload | null | undefined): DocumentStoreEntry | null {
   if (!payload) return null
-  const entry: DocumentStoreEntry<M> = { meta: payload.meta as M, snapshot: base64ToBytes(payload.snapshot_base64) }
+  const entry: DocumentStoreEntry = { meta: payload.meta, snapshot: base64ToBytes(payload.snapshot_base64) }
   if (Array.isArray(payload.changes_base64)) entry.changes = payload.changes_base64.map((change) => base64ToBytes(change, 'changes'))
   if (typeof payload.blobs_base64 === 'string') entry.blobs = base64ToBytes(payload.blobs_base64, 'blobs')
   if (typeof payload.seq === 'number') entry.seq = payload.seq
@@ -263,16 +259,16 @@ function nextBrowserIndexVersion() {
 // --- API ----------------------------------------------------------------
 
 /** The stored replica of `docId`, or `null` when there is none (or it is damaged). */
-export async function readDocumentStore<M extends StoredMeta = DocumentStoreMeta>(docId: string, options?: DocumentStoreOptions): Promise<DocumentStoreEntry<M> | null> {
+export async function readDocumentStore(docId: string, options?: DocumentStoreOptions): Promise<DocumentStoreEntry | null> {
   checkDocumentId(docId)
   const bridge = getDesktopBridge()
   if (bridge?.ReadDocumentStore) {
-    return toEntry<M>(await bridge.ReadDocumentStore({ doc_id: docId, ...rootRequest(options) }))
+    return toEntry(await bridge.ReadDocumentStore({ doc_id: docId, ...rootRequest(options) }))
   }
   checkBrowserRoot(options)
   const stored = readBrowserEntry(docId)
   try {
-    return toEntry<M>(stored)
+    return toEntry(stored)
   } catch {
     return null
   }
@@ -298,7 +294,7 @@ async function sendWrite(docId: string, request: DocumentStoreWriteRequest, opti
  * meta, snapshot, and blobs land together or not at all. Answers the stored version, or `null` from a store that
  * cannot append.
  */
-export async function writeDocumentStore<M extends StoredMeta = DocumentStoreMeta>(docId: string, entry: DocumentStoreEntry<M>, options?: DocumentStoreWriteOptions): Promise<DocumentStoreWritten | null> {
+export async function writeDocumentStore(docId: string, entry: DocumentStoreEntry, options?: DocumentStoreWriteOptions): Promise<DocumentStoreWritten | null> {
   checkDocumentId(docId)
   checkMeta(docId, entry.meta)
   const request: DocumentStoreWriteRequest = { doc_id: docId, meta: entry.meta, snapshot_base64: uint8ArrayToBase64(entry.snapshot) }
@@ -314,9 +310,9 @@ export async function writeDocumentStore<M extends StoredMeta = DocumentStoreMet
  * `DOCUMENT_STORE_CONFLICT` (see `isDocumentStoreConflict`) when the store is elsewhere, and the caller then writes a
  * snapshot. `compact` in the answer asks for a snapshot next.
  */
-export async function appendDocumentStore<M extends StoredMeta = DocumentStoreMeta>(
+export async function appendDocumentStore(
   docId: string,
-  append: DocumentStoreAppend<M>,
+  append: DocumentStoreAppend,
   options?: DocumentStoreWriteOptions,
 ): Promise<DocumentStoreWritten> {
   checkDocumentId(docId)
@@ -331,17 +327,17 @@ export async function appendDocumentStore<M extends StoredMeta = DocumentStoreMe
 }
 
 /** The stored meta and version of `docId` without its bytes, or `null`. */
-export async function readDocumentStoreHead<M extends StoredMeta = DocumentStoreMeta>(docId: string, options?: DocumentStoreOptions): Promise<{ meta: M; seq: number | null; version: string | null } | null> {
+export async function readDocumentStoreHead(docId: string, options?: DocumentStoreOptions): Promise<{ meta: KitReplicaMeta; seq: number | null; version: string | null } | null> {
   checkDocumentId(docId)
   const bridge = getDesktopBridge()
   if (bridge?.ReadDocumentStore) {
     const head = await bridge.ReadDocumentStore({ doc_id: docId, head_only: true, ...rootRequest(options) })
     if (!head) return null
-    return { meta: head.meta as M, seq: typeof head.seq === 'number' ? head.seq : null, version: typeof head.version === 'string' ? head.version : null }
+    return { meta: head.meta, seq: typeof head.seq === 'number' ? head.seq : null, version: typeof head.version === 'string' ? head.version : null }
   }
   checkBrowserRoot(options)
   const stored = readBrowserEntry(docId)
-  return stored ? { meta: stored.meta as M, seq: stored.seq ?? 0, version: stored.version ?? null } : null
+  return stored ? { meta: stored.meta, seq: stored.seq ?? 0, version: stored.version ?? null } : null
 }
 
 /** The document's version history on this device, newest first. */

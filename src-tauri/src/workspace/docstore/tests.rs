@@ -13,15 +13,7 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn meta(doc_id: &str, path: &str) -> Value {
-    json!({
-        "docId": doc_id,
-        "kit": "kit.document",
-        "path": path,
-        "fileHash": "abc",
-        "fileStamp": null,
-        "exported": "00",
-        "style": { "eol": "\n", "bom": false, "finalNewline": true },
-    })
+    json!({ "docId": doc_id, "kit": "kit.note", "path": path, "fileStamp": "v1" })
 }
 
 const W: Access = Access::Writer;

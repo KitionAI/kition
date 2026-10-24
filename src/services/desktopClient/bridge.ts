@@ -206,19 +206,6 @@ export type WorkspaceDocumentWriteRequest = {
   content: string
 }
 
-/** What the renderer keeps about a Markdown document's private replica in `.kition/docs/<docId>/meta.json`. */
-export type DocumentStoreMeta = {
-  docId: string
-  kit: 'kit.document'
-  /** The workspace path of the `.md` file when the replica was last stored. */
-  path: string
-  fileHash: string
-  fileStamp: string | null
-  /** The KDM version (hex) last exported to the file. */
-  exported: string
-  style: { eol: string; bom: boolean; finalNewline: boolean }
-}
-
 /**
  * What the store keeps about a replica a kit editor keeps for its file (Kit UI protocol capability `replica`): the
  * stamp of the file it was saved with.
@@ -246,7 +233,7 @@ export type DocumentStoreRequest = {
  * `meta` and `snapshot_base64` (and `blobs_base64`).
  */
 export type DocumentStorePayload = {
-  meta: DocumentStoreMeta | KitReplicaMeta
+  meta: KitReplicaMeta
   snapshot_base64: string
   changes_base64?: string[]
   /** A kit replica's blob bundle. */
@@ -286,7 +273,7 @@ export type DocumentCheckpoint = {
  * `changes_base64` since the stored `base_seq`, which fails with `DOCUMENT_STORE_CONFLICT` when the store is not there.
  */
 export type DocumentStoreWriteRequest = Omit<DocumentStoreRequest, 'head_only'> & {
-  meta: DocumentStoreMeta | KitReplicaMeta
+  meta: KitReplicaMeta
   snapshot_base64?: string
   changes_base64?: string
   base_seq?: number

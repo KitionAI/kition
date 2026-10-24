@@ -74,11 +74,11 @@ describe('kit replicas in Kition', () => {
     expect(Array.from(new Uint8Array(renamed!.snapshot))).toEqual([9])
   })
 
-  it('takes no Markdown document’s entry for a kit replica', async () => {
+  it('takes no other kit’s entry for a kit replica', async () => {
     const { writeDocumentStore, writeDocumentIndex } = await import('@/services/desktop')
     await writeDocumentIndex({ 'notes/a.md': 'doc-1' }, null)
     await writeDocumentStore('doc-1', {
-      meta: { docId: 'doc-1', kit: 'kit.document', path: 'notes/a.md', fileHash: 'h', fileStamp: null, exported: '00', style: { eol: '\n', bom: false, finalNewline: true } },
+      meta: { docId: 'doc-1', kit: 'kit.note', path: 'notes/a.md', fileStamp: 'v1' },
       snapshot: new Uint8Array([1]),
     })
     await expect(readKitReplica('notes/a.md', 'kit.photo')).resolves.toBeNull()

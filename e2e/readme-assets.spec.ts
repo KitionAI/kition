@@ -163,23 +163,32 @@ test('captures README product screenshots from the onboarding source', async ({ 
 
   await mockLocalWorkspaceApi(page)
   await mockReadmeWorkspace(page)
-  await page.route('**/workspace-files/Getting%20Started/logo.png', async (route) => {
-    await route.fulfill({ body: LOGO_CONTENT, contentType: 'image/png' })
+  // The Note kit reads the welcome note and its logo through the file server.
+  const files: Record<string, Buffer> = { [WELCOME_PATH]: Buffer.from(WELCOME_CONTENT), 'Getting Started/logo.png': LOGO_CONTENT }
+  await page.route(/\/(workspace|kit)-files\//, async (route) => {
+    const relative = decodeURIComponent(/\/(?:workspace|kit)-files\/(.*)$/.exec(new URL(route.request().url()).pathname)?.[1] ?? '')
+    const body = files[relative]
+    if (!body) return route.fulfill({ status: 404, body: '' })
+    const headers = { etag: `"readme-${body.length}"`, 'access-control-expose-headers': 'ETag', 'content-type': relative.endsWith('.png') ? 'image/png' : 'application/octet-stream' }
+    if (route.request().method() === 'HEAD') return route.fulfill({ status: 200, headers, body: '' })
+    return route.fulfill({ status: 200, headers, body })
   })
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.setViewportSize({ width: 1200, height: 750 })
   await page.goto('/documents')
 
-  await expect(page.getByTestId('document-editor')).toBeVisible()
-  await expect(page.getByText('Start with one useful action')).toBeVisible()
-  await page.locator('.document-editor .cm-scroller').evaluate((element) => {
+  // The welcome note opens in the Note kit's own editor, in a frame.
+  await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
+  const note = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
+  await expect(note.locator('.cm-content')).toContainText('Start with one useful action')
+  await note.locator('.cm-scroller').evaluate((element) => {
     element.scrollTop = 380
   }).catch(() => {})
   await page.waitForTimeout(500)
   await page.screenshot({ path: 'docs/readme/documents.png' })
 
-  await page.getByRole('button', { name: 'Open AI Chat' }).click()
-  await page.getByRole('button', { name: 'New chat' }).click()
+  // A kit's editor has its own Ask Agent button, in place of the floating launcher.
+  await note.getByRole('button', { name: 'Ask Agent' }).click()
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
   await expect(composer).toBeVisible()
   await composer.fill('Research AI workspace trends and turn the findings into an editorial plan.')

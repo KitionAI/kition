@@ -114,7 +114,7 @@ const errors = () => setError.mock.calls.map(([message]) => message).filter(Bool
 
 async function storeEntry(docId: string) {
   await desktop.writeDocumentStore(docId, {
-    meta: { docId, kit: 'kit.document', path: '', fileHash: '', fileStamp: null, exported: '', style: { eol: '\n', bom: false, finalNewline: true } },
+    meta: { docId, kit: 'kit.note', path: '', fileStamp: '' },
     snapshot: new Uint8Array([1]),
   })
 }
