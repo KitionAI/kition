@@ -268,8 +268,8 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Slide | Y | P | P | P | Y | Y | Y | Y | Y |
-| Word | Y | P | P | P | Y | Y | P | Y | Y |
-| Sheet | Y | P | P | P | Y | Y | P | Y | Y |
+| Word | Y | P | P | P | Y | Y | Y | Y | Y |
+| Sheet | Y | P | P | P | Y | Y | Y | Y | Y |
 
 Text warp is `KitDrawing 1.3` (DR26 to DR28). The shared geometry is
 `kition_drawing::warp`: each preset is an envelope (the curves the text's top
@@ -291,6 +291,12 @@ use the flat text in every kit.
   The display list draws warped text as filled paths, so PDF export bends it
   too; underlines and highlights in warped text are not drawn. `insert.wordArt`
   still inserts formatted body text, not a drawing object.
+- **Collaboration:** a warp set by one person and a move of the same shape
+  by another both stay (Word's `drawing_frames` and Sheet's `drawing_shapes`
+  replica tests). A shape's properties other than its frame and text are one
+  field in Word and Sheet: two people changing two different ones at once
+  (say a warp and a fill) keep one person's change, the same on every
+  replica, which DR14 allows but Office does not do.
 - **Sheet:** the warp lives in the shape's kept text body, with its adjust
   values. The page draws it bent with the shape, and printing to PDF fills
   the same bent outlines (in the page's face, Ubuntu Light).
