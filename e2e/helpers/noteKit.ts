@@ -23,13 +23,23 @@ async function openMarkdownInNoteKit(page: Page) {
 }
 
 /**
+ * Notes save themselves a second after a change; specs that check unsaved edits and Save turn
+ * that off (the kit's storage key `kit.note.autosave`), unless `autosave` is set.
+ */
+async function noteAutosave(page: Page, on: boolean) {
+  await page.addInitScript((value) => window.localStorage.setItem('kit.note.autosave', value), on ? 'on' : 'off')
+}
+
+/**
  * Opens the note `name` (written to the workspace from `text`, beside `others`) in the Note kit's
  * editor in Kition, and waits for its text. Answers the kit's frame, the workspace host, and the
- * files Kition saved through its file API (with `persist`, also written to the workspace).
+ * files Kition saved through its file API (with `persist`, also written to the workspace). The
+ * note does not save itself unless `autosave`.
  */
-export async function openNote(page: Page, baseURL: string, name: string, text: string, others: Record<string, Buffer> = {}, options: Parameters<typeof openKitWorkspace>[3] = {}) {
+export async function openNote(page: Page, baseURL: string, name: string, text: string, others: Record<string, Buffer> = {}, options: Parameters<typeof openKitWorkspace>[3] & { autosave?: boolean } = {}) {
   requireNoteKit()
   await openMarkdownInNoteKit(page)
+  await noteAutosave(page, options.autosave === true)
   const opened = await openInKitFrame(page, baseURL, name, Buffer.from(text), others, options)
   await expect(opened.kit.getByTestId('note-editor')).toBeVisible({ timeout: 60_000 })
   return opened

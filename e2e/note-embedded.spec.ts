@@ -78,3 +78,15 @@ test('a note follows its file changed on disk: in place without unsaved edits, b
   await expect(kit.getByTestId('note-disk-changed')).toHaveCount(0)
   await expect.poll(() => noteText(page)).toBe('# Plan\n\nGoals for the quarter. Mine.\n\nClosing words, edited outside again.\n')
 })
+
+test('a note saves itself a moment after the last change', async ({ page, baseURL, browserName }) => {
+  const name = 'Plan.md'
+  const { kit, saves } = await openNote(page, baseURL!, name, '# Plan\n\nGoals for the quarter.\n', {}, { persist: true, autosave: true })
+  await kit.locator('.cm-line', { hasText: 'Goals for the quarter.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' Saved by itself.')
+  await expect.poll(() => saves.length, { timeout: 15_000 }).toBeGreaterThan(0)
+  await expect(kit.getByTestId('note-unsaved')).toHaveCount(0)
+  expect(saves.every((save) => save.path === name)).toBe(true)
+  if (canReadBlobBodies(browserName)) expect(saves.at(-1)!.bytes.toString('utf8')).toBe('# Plan\n\nGoals for the quarter. Saved by itself.\n')
+})
