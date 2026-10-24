@@ -63,7 +63,7 @@
     "check:desktop": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
     "release:github": "node scripts/release-github.mjs",
     "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/workspace/lib/workspacePersistence.spec.ts",
-    "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-document-flow.spec.ts e2e/markdown-image-insertion.spec.ts --workers=1",
+    "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-document-flow.spec.ts --workers=1",
     "test:agent:stable": "pnpm run test:agent:unit && pnpm run test:agent:e2e",
     "test:desktop:unit": "vitest run --config tooling/vitest.config.ts src/services/desktop.spec.ts src/services/desktopBootstrap.spec.ts src/services/portalAccount.spec.ts src/services/desktopClient/tauriBridge.spec.ts src-tauri/scripts",
     "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-bundled-assets.spec.ts e2e/desktop-design-studio.spec.ts e2e/desktop-design.spec.ts e2e/desktop-image-copy.spec.ts e2e/desktop-image-import.spec.ts e2e/desktop-image-paste.spec.ts e2e/desktop-selection-translation.spec.ts e2e/desktop-shortcuts.spec.ts e2e/settings-desktop.spec.ts e2e/settings-desktop-network.spec.ts",
@@ -97,17 +97,6 @@
     "loro-crdt": "1.16.4"
   },
   "devDependencies": {
-    "@codemirror/autocomplete": "^6.20.3",
-    "@codemirror/commands": "^6.10.3",
-    "@codemirror/lang-markdown": "^6.5.0",
-    "@codemirror/language": "^6.12.3",
-    "@codemirror/language-data": "^6.5.2",
-    "@codemirror/search": "^6.7.0",
-    "@codemirror/state": "^6.6.0",
-    "@codemirror/view": "^6.43.0",
-    "@lezer/common": "^1.5.2",
-    "@lezer/highlight": "^1.2.3",
-    "@lezer/markdown": "^1.6.4",
     "@orama/orama": "^3.1.18",
     "@playwright/test": "^1.54.2",
     "@tanstack/react-query": "^5.104.0",
@@ -116,10 +105,8 @@
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@types/turndown": "^5.0.6",
     "@typescript-eslint/eslint-plugin": "^8.61.0",
     "@typescript-eslint/parser": "^8.61.0",
-    "@uiw/react-codemirror": "^4.25.10",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.10",
     "ajv": "^8.20.0",
@@ -128,7 +115,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
-    "codemirror": "^6.0.2",
     "dependency-cruiser": "^18.4.0",
     "dompurify": "3.4.13",
     "eslint": "^8.56.0",
@@ -153,7 +139,6 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
-    "turndown": "^7.2.4",
     "typescript": "6.0.3",
     "vaul": "1.1.2",
     "vite": "^8.1.5",
@@ -180,8 +165,7 @@
       "source-map-js": "1.2.2"
     },
     "patchedDependencies": {
-      "brace-expansion@5.0.11": "patches/brace-expansion@5.0.11.patch",
-      "@codemirror/view@6.43.0": "patches/@codemirror__view@6.43.0.patch"
+      "brace-expansion@5.0.11": "patches/brace-expansion@5.0.11.patch"
     },
     "auditConfig": {
       "ignoreGhsas": [

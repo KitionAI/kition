@@ -1,25 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { person, randomActor, Replica } from '@/lib/kdm'
-import { createDocumentReplica, documentBody } from '@kition/document-editor/model'
-import { documentSchema } from '@kition/document-editor/model'
-import { applyTextEdits, diffText } from '@kition/document-editor/model'
+import { randomActor, Replica } from '@/lib/kdm'
+import { createTextReplica, editText, textOf, textSchema } from '@/test/textReplica'
 import { changesSince, fromHex, holdsVersion, includesVersion, mergeReplica, replicaIdOf, revertTo, stateAt, toHex, versionOf } from './replicaBytes'
 
-const typing = person('user:test', 'typing')
-
-function edit(replica: Replica, rootId: string, next: string) {
-  const edits = diffText(documentBody(replica, rootId), next)
-  replica.transact(typing, (tx) => applyTextEdits(tx, rootId, 'body', edits))
-}
+const edit = editText
 
 function text(bytes: Uint8Array) {
-  const replica = Replica.load(documentSchema, bytes, randomActor())
-  return documentBody(replica, replica.objectsOfType('Document')[0])
+  return textOf(Replica.load(textSchema, bytes, randomActor()))
 }
 
 describe('replica bytes', () => {
   it('appends deltas, merges them back into one snapshot, and reads and restores past versions', () => {
-    const { replica, rootId } = createDocumentReplica('one\n', randomActor())
+    const { replica, rootId } = createTextReplica('one\n', randomActor())
     const snapshot = replica.snapshot()
     const first = replica.version().encode()
     const id = replicaIdOf(snapshot)
@@ -40,7 +32,7 @@ describe('replica bytes', () => {
     expect(mergeReplica(snapshot, []).bytes).toBe(snapshot)
 
     // Another document, or a replica made anew, does not continue the stored one.
-    const other = createDocumentReplica('one\n', randomActor()).replica
+    const other = createTextReplica('one\n', randomActor()).replica
     expect(changesSince(other.snapshot(), first, id)).toBeNull()
     expect(changesSince(other.snapshot(), first, replicaIdOf(other.snapshot()))).toBeNull()
 
@@ -52,7 +44,7 @@ describe('replica bytes', () => {
     const restore = revertTo(full, first)
     expect(restore).not.toBeNull()
     replica.importChanges(restore!)
-    expect(documentBody(replica, rootId)).toBe('one\n')
+    expect(textOf(replica, rootId)).toBe('one\n')
     expect(revertTo([replica.exportChanges()], replica.version().encode())).toBeNull()
   })
 })

@@ -1,6 +1,0 @@
-node_modules/
-dist/
-public/engine/
-public/sample/
-# Copied from the Kition checkout at build time (scripts/sync-kition.mjs).
-kition/

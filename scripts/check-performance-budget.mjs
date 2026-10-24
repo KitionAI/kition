@@ -77,7 +77,7 @@ if (totalCssBytes > limits.initialCssBytes) {
 if (totalCssGzipBytes > limits.initialCssGzipBytes) {
   failures.push(`gzip initial CSS ${format(totalCssGzipBytes)} exceeds ${format(limits.initialCssGzipBytes)}`)
 }
-if (assets.some((asset) => /mermaid|cytoscape|workflowroute|desktopsettingspage|scenarioroute|documentdocument|tableeditor|katex|marked|workspaceagentsidebar|documentexport/i.test(asset.asset))) {
+if (assets.some((asset) => /mermaid|cytoscape|workflowroute|desktopsettingspage|scenarioroute|tableeditor|katex|marked|workspaceagentsidebar/i.test(asset.asset))) {
   failures.push('an optional heavy feature leaked into the initial preload graph')
 }
 

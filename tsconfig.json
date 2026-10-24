@@ -27,8 +27,6 @@
       "@/*": ["src/*"],
       "@kition/app-ui": ["packages/app-ui/src/index.tsx"],
       "@kition/app-ui/*": ["packages/app-ui/src/*"],
-      "@kition/document-editor": ["packages/document-editor/src/index.ts"],
-      "@kition/document-editor/*": ["packages/document-editor/src/*"],
       "@kition/kdm": ["src/lib/kdm/index.ts"],
       "@kition/kit-engine": ["src/lib/kit-engine/index.ts"]
     }

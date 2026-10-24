@@ -6,20 +6,12 @@
 #   scripts/build-kit-ui.sh slide --ui-only  # reuse an already built, unchanged engine
 #
 # The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
-# path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too. A kit whose
-# editor is Kition's own (the document kit) builds it from this checkout, or KITION_DIR. A kit that
-# lives in Kition (`path` in kits/sdks.json, the document kit) is built from that folder of this
-# checkout, or of KITION_DIR; its licence is Kition's.
+# path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too.
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example slide}"
 [[ -z "${2:-}" || "${2:-}" == "--ui-only" ]] || { echo "unknown option: $2" >&2; exit 2; }
 repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-in_kition="$(node -e "const kit = require('$repo_root/kits/sdks.json')['$kit']; console.log(kit && kit.path ? kit.path : '')")"
-if [[ -n "$in_kition" ]]; then
-  kit_repo="${KITION_DIR:-$repo_root}/$in_kition"
-else
-  kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
-fi
+kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
 web="$kit_repo/web"
 out="$repo_root/public/kits/$kit-ui"
 [[ -f "$web/package.json" ]] || { echo "$web has no kit editor (web/package.json)" >&2; exit 1; }
@@ -45,11 +37,7 @@ mkdir -p "$out"
 cp -R "$web/dist/." "$out/"
 rm -rf "$out/dev.html" "$out/sample"
 # The kit's licence and notices travel with the package (Apache-2.0 section 4).
-if [[ -n "$in_kition" ]]; then
-  cp "${KITION_DIR:-$repo_root}/LICENSE" "$kit_repo/NOTICE" "$out/"
-else
-  cp "$kit_repo/LICENSE" "$kit_repo/NOTICE" "$out/"
-fi
+cp "$kit_repo/LICENSE" "$kit_repo/NOTICE" "$out/"
 # The kit's KDM schema (kit.json `model.schema`, platform rule K12) travels with the package as
 # model/schema.json: the schema its engine was built with, which hosts and @kition/sdk read.
 schema="$(node -p "require('$kit_repo/kit.json').model?.schema ?? ''")"

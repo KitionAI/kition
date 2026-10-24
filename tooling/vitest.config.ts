@@ -14,8 +14,6 @@ export default defineConfig({
       // The packages under packages/ are imported by path alias, not installed (packages/README.md).
       { find: /^@kition\/app-ui$/, replacement: resolve(repositoryDir, 'packages/app-ui/src/index.tsx') },
       { find: /^@kition\/app-ui\//, replacement: `${resolve(repositoryDir, 'packages/app-ui/src')}/` },
-      { find: /^@kition\/document-editor$/, replacement: resolve(repositoryDir, 'packages/document-editor/src/index.ts') },
-      { find: /^@kition\/document-editor\//, replacement: `${resolve(repositoryDir, 'packages/document-editor/src')}/` },
       // kition-sdk's @kition/kdm and @kition/kit-engine, which Kition carries as src/lib/kdm and
       // src/lib/kit-engine (scripts/sync-kit-host.mjs).
       { find: /^@kition\/kdm$/, replacement: resolve(repositoryDir, 'src/lib/kdm/index.ts') },
@@ -37,11 +35,10 @@ export default defineConfig({
     // tests land, never lower them. `pnpm run test:coverage` enforces them.
     coverage: {
       provider: 'v8',
-      include: ['src/features/document/hooks/**', 'src/services/**'],
+      include: ['src/services/**'],
       exclude: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.d.ts'],
       reporter: ['text-summary'],
       thresholds: {
-        'src/features/document/hooks/**': { statements: 34, branches: 29, functions: 43, lines: 34 },
         'src/services/**': { statements: 64, branches: 58, functions: 68, lines: 66 },
       },
     },

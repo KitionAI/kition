@@ -87,10 +87,10 @@ describe('kit replicas in Kition', () => {
 
 describe('kit replicas as appended changes', () => {
   it('appends only what a save adds, opens snapshot and changes as one replica, and compacts on close', async () => {
-    const { createDocumentReplica } = await import('@kition/document-editor/model')
+    const { createTextReplica, textOf, textSchema } = await import('@/test/textReplica')
     const { readDocumentStore, readDocumentHistory } = await import('@/services/desktop')
     const { person, randomActor } = await import('@/lib/kdm')
-    const { replica, rootId } = createDocumentReplica('one\n', randomActor())
+    const { replica, rootId } = createTextReplica('one\n', randomActor())
     const save = async (stamp: string, origin = 'save') =>
       writeKitReplica('art/a.psd', 'kit.photo', { snapshot: replica.snapshot().slice().buffer, blobs: bytes(7), fileStamp: stamp }, { checkpoint: { origin } })
     await save('v1')
@@ -105,10 +105,8 @@ describe('kit replicas as appended changes', () => {
     const read = await readKitReplica('art/a.psd', 'kit.photo')
     expect(read?.fileStamp).toBe('v2')
     const { Replica } = await import('@/lib/kdm')
-    const { documentSchema } = await import('@kition/document-editor/model')
-    const { documentBody } = await import('@kition/document-editor/model')
-    const opened = Replica.load(documentSchema, new Uint8Array(read!.snapshot), randomActor())
-    expect(documentBody(opened, rootId)).toBe('one\ntwo\n')
+    const opened = Replica.load(textSchema, new Uint8Array(read!.snapshot), randomActor())
+    expect(textOf(opened, rootId)).toBe('one\ntwo\n')
 
     await compactKitReplica('art/a.psd')
     entry = await readDocumentStore(docId)
@@ -116,7 +114,7 @@ describe('kit replicas as appended changes', () => {
     expect(await readDocumentHistory(docId)).toHaveLength(2)
 
     // A replica made anew for the file replaces it and starts the history over.
-    const fresh = createDocumentReplica('other\n', randomActor()).replica
+    const fresh = createTextReplica('other\n', randomActor()).replica
     await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: fresh.snapshot().slice().buffer, blobs: bytes(), fileStamp: 'v3' })
     expect(await readDocumentHistory(docId)).toEqual([])
   })

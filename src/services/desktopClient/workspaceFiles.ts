@@ -3,7 +3,7 @@
  */
 import { type CopyDocumentHtmlRequest, type SavePdfFileRequest, type WorkspaceAsset, type WorkspaceFileChooseResponse, type WorkspaceFileImportRequest, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
-import { ImageImportError, imageImportFailure } from '@kition/document-editor'
+import { ImageImportError, imageImportFailure } from './imageImportError'
 import { runtimeFetch } from '../runtimeAuth'
 
 export async function openWorkspaceFile(path: string) {

@@ -235,19 +235,5 @@
       "command": "text.insert",
       "params": { "at": 0, "text": "# Notes\n" }
     }
-  },
-  "document": {
-    "repository": "KitionAI/kition",
-    "path": "packages/document-kit",
-    "module": "kition_document_engine",
-    "class": "MarkdownDocument",
-    "runtime": "ts-worker",
-    "name": "Notes.md",
-    "kition": true,
-    "optional": true,
-    "edit": {
-      "command": "text.insert",
-      "params": { "at": 0, "text": "# Notes\n" }
-    }
   }
 }

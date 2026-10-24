@@ -49,7 +49,7 @@ module.exports = {
       name: 'packages-import-nothing-from-the-app',
       severity: 'error',
       comment:
-        'A package under packages/ runs outside Kition too (the document editor in the Document kit), so it imports nothing from src/ but the KDM copy (as @kition/kdm). The document editor uses app services through DocumentHost (packages/document-editor/src/host.ts), implemented in src/features/document/host.',
+        'A package under packages/ runs outside Kition too, so it imports nothing from src/ but the KDM copy (as @kition/kdm).',
       from: { path: '^packages/' },
       // src/lib/kdm and src/lib/kit-engine are kition-sdk's @kition/kdm and @kition/kit-engine,
       // which Kition carries (scripts/sync-kit-host.mjs); packages import them by those names, which
@@ -64,14 +64,6 @@ module.exports = {
       to: { path: '^packages/(?!app-ui/)' },
     },
     {
-      name: 'app-uses-document-editor-entries',
-      severity: 'error',
-      comment:
-        'Import the Markdown document through its entries: @kition/document-editor (host seam, agent action types, image import, parsers), /model (the document on the KDM), /file (a Markdown file as a replica, without the editor), /editor (the editor), /commands, /clipboard, /markdown, or /mermaid. Export what the app needs from packages/document-editor/src/{index,model,file,editor,commands,clipboard,markdown,mermaid}.ts.',
-      from: { path: '^src/' },
-      to: { path: '^packages/document-editor/src/', pathNot: '^packages/document-editor/src/(index|model|file|editor|commands|clipboard|markdown|mermaid)\\.ts$' },
-    },
-    {
       name: 'shared-layers-do-not-import-features',
       severity: 'error',
       comment: 'src/components, src/lib, src/services, src/api, and src/types must stay feature-agnostic.',
@@ -81,8 +73,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    // A kit's web/ app (packages/document-kit/web) is built by its own toolchain from Kition's styles and strings.
-    exclude: { path: ['\\.spec\\.(ts|tsx)$', '^packages/[^/]+/web/'] },
+    exclude: { path: ['\\.spec\\.(ts|tsx)$'] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     enhancedResolveOptions: {

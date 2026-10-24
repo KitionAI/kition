@@ -6,13 +6,12 @@ Source packages that Kition builds from `src/` and that run outside Kition too.
 | --- | --- | --- |
 | `@kition/app-ui` | `packages/app-ui/` | Shared UI primitives: the `src/index.tsx` controls (Button, Card, Input, Select, Disclosure, …), the shadcn-style `button`, `command`, `dialog`, `input`, `popover`, `spinner`, `switch`, `tooltip`, `confirm`, `RightSheet`, their hooks, and `cn` (`utils`). |
 | `@kition/table-editor` | `packages/table-editor/` | The table and dashboard editor, behind `TableDataSource` and `TableHost`. |
-| `@kition/document-editor` | `packages/document-editor/` | The Markdown document: its model on the Kit Data Model and its CodeMirror editor, behind `DocumentHost`. |
 
 ## How Kition uses them
 
 - They are not installed. Kition resolves them by path alias, in `tsconfig.json` (`paths`),
   `tooling/vite.config.ts`, and `tooling/vitest.config.ts`, and their npm dependencies (React,
-  react-i18next, Radix, lucide-react, CodeMirror, recharts, …) come from Kition's root
+  react-i18next, Radix, lucide-react, recharts, …) come from Kition's root
   `package.json`. Each `package.json` here names the package and its entries only.
 - `tooling/tailwind.config.ts` scans `packages/*/src`, `tsc`, ESLint, knip, dependency-cruiser,
   `scripts/check-i18n.py`, and Vitest (`packages/*/src/**/*.spec.ts(x)`) cover them like `src/`.
@@ -60,30 +59,3 @@ The packages ship no stylesheet; they use the host's. The editor needs:
 
 A host outside Kition builds these from Kition's checkout until the editor's classes move into a
 package stylesheet. Visual rules follow `docs/design.md`.
-
-## `@kition/document-editor`
-
-Entries (the app imports only these; rule `app-uses-document-editor-entries`):
-
-- `@kition/document-editor`: `DocumentHost` and `setDocumentHost`, the agent action types, pasted
-  and dropped images (kept through the host) and their failures, and the Markdown parsers the app
-  shares with the editor (wikilinks, tags, frontmatter). It loads neither the KDM nor the editor.
-- `@kition/document-editor/model`: the document on the KDM: `documentSchema` (`kit.document`), the
-  file text as the replica keeps it (`analyzeText`, `renderText`, `createDocumentReplica`), text
-  merges, the CodeMirror binding of the replica's text (`TextBinding`), its undo and redo, and text
-  sources on a replica (`replicaTextSource`, `createReplicaTextSource`).
-- `@kition/document-editor/file`: a Markdown file's bytes as a replica and back
-  (`importMarkdownFile`, `openStoredMarkdownFile`, `exportMarkdownFile`), with the schema, text,
-  and merges, but no CodeMirror: what the Document kit's engine runs in its worker.
-- `@kition/document-editor/editor`: `DocumentEditor` (CodeMirror with live preview and widgets) over
-  a `DocumentTextSource`, its extensions, and `useDocumentBinding`; `/commands` its commands;
-  `/clipboard` its clipboard reading; `/markdown` and `/mermaid` Markdown rendered to HTML.
-
-The editor's CodeMirror extensions run outside React, so the page sets its `DocumentHost` once
-(`setDocumentHost`) before an editor mounts; every member is optional, and a missing one hides or
-skips what needs it (pasted images stay links without `images`, Copy image needs `copyImage`, images
-show only self-contained URLs without `resolveImageURL`). Kition's host is
-`src/features/document/host/kitionDocumentHost.ts`, installed in `src/main.tsx`; the document
-session (file binding, store, history, agent review, comments) and the panes, dialogs, and panels
-around the editor stay in `src/features/document`. Its strings are Kition's `document` namespace,
-which the editor reads through the global i18next instance, and its styles Kition's. The Document kit (`packages/document-kit`) is this model and editor packaged as a standard kit.

@@ -1,36 +1,6 @@
 [
   {
     "type": "cycle",
-    "from": "packages/document-editor/src/menu/Menu.ts",
-    "to": "packages/document-editor/src/menu/MenuRenderer.tsx",
-    "unresolvedTo": "./MenuRenderer",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "packages/document-editor/src/menu/MenuRenderer.tsx",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "packages/document-editor/src/menu/Menu.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/features/analytics/lib/productAnalytics.ts",
     "to": "src/services/desktopUpdates.ts",
     "unresolvedTo": "@/services/desktopUpdates",
@@ -65,37 +35,6 @@
           "aliased-tsconfig",
           "aliased-tsconfig-paths",
           "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/features/document/lib/documentTemplates.ts",
-    "to": "src/features/document/lib/extendedDocumentTemplates.ts",
-    "unresolvedTo": "./extendedDocumentTemplates",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/document/lib/extendedDocumentTemplates.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/document/lib/documentTemplates.ts",
-        "dependencyTypes": [
-          "local",
-          "type-only",
           "import"
         ]
       }
@@ -392,42 +331,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/agent/hooks/useWorkspaceAgent.ts",
-    "to": "src/features/document/editor/editor/markdown-image-insertion.ts",
-    "unresolvedTo": "@/features/document/editor/editor/markdown-image-insertion",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/agent/lib/agentDocumentEditing.ts",
-    "to": "src/features/document/editor/editor/markdown-image-insertion.ts",
-    "unresolvedTo": "@/features/document/editor/editor/markdown-image-insertion",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/agent/lib/documentMentions.ts",
     "to": "src/features/workspace/lib/workspace.ts",
     "unresolvedTo": "@/features/workspace/lib/workspace",
@@ -519,142 +422,6 @@
     "from": "src/features/connections/ConnectionsSettingsPanel.tsx",
     "to": "src/features/emailProviders/emailProviderCatalog.ts",
     "unresolvedTo": "@/features/emailProviders/emailProviderCatalog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/components/DocumentMarkdownEditorPane.tsx",
-    "to": "src/features/settings/hooks/useDesktopSettings.ts",
-    "unresolvedTo": "@/features/settings/hooks/useDesktopSettings",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/components/DocumentSplitEditorPane.tsx",
-    "to": "src/features/workspace/lib/workspacePersistence.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspacePersistence",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/components/DocumentTemplateLibraryDialog.tsx",
-    "to": "src/features/workspace/components/WorkspaceTemplateLibraryFrame.tsx",
-    "unresolvedTo": "@/features/workspace/components/WorkspaceTemplateLibraryFrame",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/hooks/useDocumentExport.ts",
-    "to": "src/features/workspace/lib/workspace.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspace",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/hooks/useWorkspaceDocumentSession.ts",
-    "to": "src/features/workspace/lib/workspace.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspace",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/hooks/useWorkspaceDocumentSession.ts",
-    "to": "src/features/workspace/lib/workspacePersistence.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspacePersistence",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/hooks/useWorkspaceDocumentSession.ts",
-    "to": "src/features/workspace/lib/workspaceTree.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspaceTree",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/document/lib/documentDraft.ts",
-    "to": "src/features/workspace/lib/workspace.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspace",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -1473,40 +1240,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/document/components/DocumentExportDialog.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentExportDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/document/components/DocumentTemplateLibraryDialog.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentTemplateLibraryDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/formSync/FormSyncCreateDialog.tsx",
     "unresolvedTo": "@/features/formSync/FormSyncCreateDialog",
     "dependencyTypes": [
@@ -1532,127 +1265,6 @@
       "aliased-tsconfig-paths",
       "local",
       "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/components/DocumentHtmlPreviewPane.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentHtmlPreviewPane",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/components/DocumentMarkdownEditorPane.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentMarkdownEditorPane",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/components/DocumentRevisionReview.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentRevisionReview",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/components/DocumentSplitEditorPane.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentSplitEditorPane",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/components/MarkdownSourceEditor.tsx",
-    "unresolvedTo": "@/features/document/components/MarkdownSourceEditor",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/editor/editor/markdown-image-insertion.ts",
-    "unresolvedTo": "@/features/document/editor/editor/markdown-image-insertion",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/lib/documentRevision.ts",
-    "unresolvedTo": "@/features/document/lib/documentRevision",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
     ],
     "rule": {
       "severity": "error",
@@ -1738,57 +1350,6 @@
       "aliased-tsconfig-paths",
       "local",
       "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/document/editor/hooks/usePinnedTabs.ts",
-    "unresolvedTo": "@/features/document/editor/hooks/usePinnedTabs",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/document/hooks/useDocumentExport.ts",
-    "unresolvedTo": "@/features/document/hooks/useDocumentExport",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/document/hooks/useWorkspaceDocumentSession.ts",
-    "unresolvedTo": "@/features/document/hooks/useWorkspaceDocumentSession",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
     ],
     "rule": {
       "severity": "error",
@@ -1935,60 +1496,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceSidebar.tsx",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceSidebarPanel.tsx",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceTree.tsx",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
     "to": "src/features/workflow/components/launcher/WorkflowLauncherTemplateCard.tsx",
     "unresolvedTo": "@/features/workflow/components/launcher/WorkflowLauncherTemplateCard",
@@ -2110,58 +1617,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/hooks/useWorkspaceTreeActions.ts",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useWorkspaceTreeCreateActions.ts",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useWorkspaceTreeNodeActions.ts",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/lib/agentPaneContext.ts",
     "to": "src/features/agent/lib/paneEmptyState.ts",
     "unresolvedTo": "@/features/agent/lib/paneEmptyState",
@@ -2171,23 +1626,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/lib/workspaceTree.ts",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {

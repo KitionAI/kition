@@ -94,8 +94,6 @@ export default defineConfig(({ mode }) => ({
       // The packages under packages/ are imported by path alias, not installed (packages/README.md).
       { find: /^@kition\/app-ui$/, replacement: resolve(repositoryDir, 'packages/app-ui/src/index.tsx') },
       { find: /^@kition\/app-ui\//, replacement: `${resolve(repositoryDir, 'packages/app-ui/src')}/` },
-      { find: /^@kition\/document-editor$/, replacement: resolve(repositoryDir, 'packages/document-editor/src/index.ts') },
-      { find: /^@kition\/document-editor\//, replacement: `${resolve(repositoryDir, 'packages/document-editor/src')}/` },
       // kition-sdk's @kition/kdm and @kition/kit-engine, which Kition carries as src/lib/kdm and
       // src/lib/kit-engine (scripts/sync-kit-host.mjs).
       { find: /^@kition\/kdm$/, replacement: resolve(repositoryDir, 'src/lib/kdm/index.ts') },
@@ -108,8 +106,7 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   optimizeDeps: {
-    // The app's page only: the dependency scan reads every HTML file under the root otherwise,
-    // including a kit's own editor (packages/document-kit/web), whose imports resolve in its build.
+    // The app's page only: the dependency scan reads every HTML file under the root otherwise.
     entries: ['index.html'],
     // Search runs in a worker and starts on idle, so Vite's cold-start scanner
     // cannot discover these dependencies from index.html. Pre-bundle them to
