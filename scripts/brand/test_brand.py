@@ -52,7 +52,7 @@ class MarkTests(unittest.TestCase):
 class KitIconTests(unittest.TestCase):
     def test_kits_in_spec_order(self):
         self.assertEqual([k.id for k in kit_icons.KITS], [
-            'document', 'word', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
+            'note', 'word', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
             'vector', 'photo', 'effect', 'film', 'pdf', 'cad'])
 
     def test_each_icon_is_a_flat_soft_tile(self):
@@ -93,9 +93,9 @@ class KitIconTests(unittest.TestCase):
             for colour in (kit.hue, kit.brand_light, kit.brand_dark):
                 self.assertRegex(colour, HEX, kit.id)
 
-    def test_brand_purple_is_reserved_for_kition_and_document(self):
+    def test_brand_purple_is_reserved_for_kition_and_note(self):
         for kit in kit_icons.KITS:
-            if kit.id == 'document':
+            if kit.id == 'note':
                 continue
             for colour in (kit.hue, kit.brand_light):
                 self.assertNotEqual(colour, '#5645d4', kit.id)

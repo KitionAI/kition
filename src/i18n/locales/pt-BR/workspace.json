@@ -1,10 +1,8 @@
 {
   "createMenu": {
     "format": {
-      "markdown": "Documento",
       "table": "Tabela",
       "board": "Quadro",
-      "page": "Página",
       "note": "Nota",
       "photo": "Photo",
       "video": "Film",
@@ -83,40 +81,7 @@
     "moveToTitle": "Mover para",
     "moveToRoot": "Raiz",
     "noDestinations": "Nenhum outro destino disponível",
-    "clearIcon": "Limpar",
-    "untitled": "Sem título"
-  },
-  "itemMenu": {
-    "mode": {
-      "rich": "Texto formatado",
-      "split": "Dividido",
-      "source": "Fonte",
-      "preview": "Visualização"
-    },
-    "preference": {
-      "smallText": "Texto pequeno",
-      "fullWidth": "Largura total",
-      "toc": "Estrutura de tópicos",
-      "locked": "Bloquear página"
-    },
-    "markdownMode": {
-      "rich": "Modo de edição",
-      "preview": "Modo de leitura",
-      "source": "Modo de fonte"
-    },
-    "revertToSaved": "Reverter para a versão salva",
-    "importMarkdown": "Importar Markdown",
-    "exportFile": "Exportar arquivo",
-    "openContainingFolder": "Abrir pasta que contém o arquivo",
-    "words": "Palavras: {{formattedCount}}",
-    "updated": "Atualizado: {{time}}",
-    "textStyle": {
-      "default": "Padrão",
-      "serif": "Serifa",
-      "mono": "Monoespaçada"
-    },
-    "openInSystem": "Abrir com o aplicativo padrão",
-    "openingInSystem": "Abrindo…"
+    "clearIcon": "Limpar"
   },
   "tabs": {
     "closeTab": "Fechar aba",
@@ -132,11 +97,7 @@
     "closeRight": "Fechar abas à direita",
     "closeReadOnly": "Fechar todas as abas somente leitura",
     "copyReference": "Copiar caminho/referência",
-    "workflowsTitle": "Fluxos de trabalho",
-    "workflowsScoped": "Fluxos de trabalho · {{name}}",
-    "untitledWorkflow": "Fluxo de trabalho sem título",
-    "videos": "Vídeos",
-    "workflow": "Fluxo de trabalho"
+    "workflowsTitle": "Fluxos de trabalho"
   },
   "agentTabs": {
     "history": {
@@ -155,14 +116,10 @@
     "agentHistory": "Histórico do agente",
     "searchChats": "Pesquisar chats...",
     "noMatchingChats": "Nenhum chat correspondente.",
-    "noChatsYet": "Nenhum chat ainda. Inicie um novo.",
-    "chatRef": "Chat #{{id}}"
+    "noChatsYet": "Nenhum chat ainda. Inicie um novo."
   },
   "agentSidebar": {
     "empty": "Inicie um novo chat ou abra um existente a partir do histórico."
-  },
-  "topbar": {
-    "more": "Mais"
   },
   "fileViewer": {
     "imageActions": "Ações da imagem",
@@ -185,20 +142,10 @@
     "images": "Imagens",
     "videos": "Vídeos",
     "items": "{{count}} itens",
-    "collapse": "Recolher {{name}}",
-    "expand": "Expandir {{name}}",
     "noImagesTitle": "Nenhuma imagem ainda",
     "noVideosTitle": "Nenhum vídeo ainda",
     "noImagesDescription": "As imagens deste espaço de trabalho aparecerão aqui.",
     "noVideosDescription": "Os vídeos deste espaço de trabalho aparecerão aqui."
-  },
-  "editor": {
-    "sourcePlaceholder": "Edite a fonte Markdown aqui..."
-  },
-  "documentFile": {
-    "closeUnsavedMessage": "Não foi possível salvar suas últimas alterações neste documento. Fechá-lo e descartá-las?",
-    "closeUnsavedDiscard": "Descartar alterações e fechar",
-    "closeUnsavedKeep": "Manter aberto"
   },
   "layout": {
     "resizeSidebar": "Redimensionar barra lateral",
@@ -211,27 +158,17 @@
     "settings": "Configurações"
   },
   "errors": {
-    "createWorkflowFailed": "Falha ao criar o fluxo de trabalho",
-    "documentPathEmpty": "O caminho do documento não pode estar vazio",
-    "nameEmpty": "O nome não pode estar vazio",
-    "saveBeforeRename": "Falha ao salvar o documento atual; a renomeação foi ignorada",
-    "renameFailed": "Falha ao renomear o documento",
     "fileTypeNotDeletable": "Este tipo de arquivo ainda não pode ser excluído da biblioteca de documentos.",
     "onlyWorkspaceItemsMovable": "Somente documentos, tabelas e quadros podem ser movidos para cá. Organize arquivos do Office/PDF e semelhantes pela pasta do sistema.",
     "onlyWorkspaceItemsDuplicable": "Somente documentos, tabelas e quadros podem ser duplicados aqui.",
     "onlyWorkspaceItemsRenamable": "Somente documentos, tabelas e quadros podem ser renomeados aqui.",
     "createDocumentFailed": "Falha ao criar o documento",
-    "importMarkdownFailed": "Falha ao importar Markdown",
     "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev e tente novamente.",
     "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev e tente novamente.",
-    "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos.",
-    "openInSystemFailed": "Não foi possível abrir o arquivo. Verifique o aplicativo padrão e tente novamente.",
-    "reviewBeforeExternalOpen": "Conclua a revisão das alterações antes de abrir este arquivo em outro aplicativo."
+    "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos."
   },
   "feedback": {
-    "nameUpdated": "Nome atualizado",
     "refreshed": "Espaço de trabalho atualizado",
-    "restoredSavedVersion": "Restaurado para a versão salva",
     "documentCreated": "Documento criado",
     "folderCreated": "Pasta criada",
     "renamed": "Renomeado",
@@ -449,6 +386,108 @@
       "table": "Table",
       "vector": "Vector",
       "word": "Word"
+    }
+  },
+  "templateLibrary": {
+    "categories": {
+      "all": "All",
+      "work": "Work",
+      "planning": "Planning",
+      "personal": "Personal",
+      "workspace": "Workspace"
+    },
+    "blank": {
+      "title": "Blank document",
+      "description": "Start with an empty page and build your own structure."
+    },
+    "workspaceTemplateDescription": "Personal template from {{path}}",
+    "loadingWorkspaceTemplates": "Loading workspace templates...",
+    "templateCount": "{{count}} templates available",
+    "noMatches": "No templates found",
+    "noMatchesHint": "Try another search or category.",
+    "loadFailed": "This workspace template could not be loaded.",
+    "createFailed": "The document could not be created.",
+    "templates": {
+      "projectBrief": {
+        "title": "Project brief",
+        "description": "Define goals, scope, owners, and milestones before work begins."
+      },
+      "meetingNotes": {
+        "title": "Meeting notes",
+        "description": "Capture the agenda, decisions, discussion notes, and action items."
+      },
+      "taskTracker": {
+        "title": "Task tracker",
+        "description": "Keep tasks, owners, priorities, due dates, and status in one view."
+      },
+      "weeklyPlan": {
+        "title": "Weekly plan",
+        "description": "Set weekly outcomes, schedule focused work, and surface blockers."
+      },
+      "productLaunch": {
+        "title": "Product launch plan",
+        "description": "Coordinate launch readiness, workstreams, deadlines, and success measures."
+      },
+      "clientBrief": {
+        "title": "Client brief",
+        "description": "Organize account goals, stakeholders, opportunities, risks, and next actions."
+      },
+      "researchNotes": {
+        "title": "Research notes",
+        "description": "Collect sources, evidence, findings, open questions, and a final synthesis."
+      },
+      "weeklyReview": {
+        "title": "Weekly review",
+        "description": "Reflect on wins, lessons, goal progress, and priorities for the next week."
+      },
+      "teamDailyReport": {
+        "title": "Team daily report",
+        "description": "Share completed work, active priorities, blockers, and tomorrow's plan."
+      },
+      "personalDailyReport": {
+        "title": "Personal daily report",
+        "description": "Record one main outcome, completed tasks, notes, and the next day's priorities."
+      },
+      "brainstormingSession": {
+        "title": "Brainstorming session",
+        "description": "Collect ideas, compare value and effort, and turn promising directions into experiments."
+      },
+      "quarterlyBusinessReview": {
+        "title": "Quarterly business review",
+        "description": "Review performance metrics, lessons, risks, and priorities for the next quarter."
+      },
+      "meetingActionTracker": {
+        "title": "Meeting action tracker",
+        "description": "Turn decisions into owned actions with deadlines, priorities, and follow-up."
+      },
+      "okrPlan": {
+        "title": "OKR plan",
+        "description": "Define objectives, measurable key results, confidence, and supporting initiatives."
+      },
+      "productRequirements": {
+        "title": "Product requirements",
+        "description": "Describe the problem, user needs, requirements, user flow, metrics, and risks."
+      },
+      "flowchart": {
+        "title": "Flowchart",
+        "description": "Map a process with editable Mermaid steps, decisions, loops, and exception paths."
+      },
+      "projectTimeline": {
+        "title": "Project timeline",
+        "description": "Visualize delivery phases and track milestones, owners, dependencies, and status."
+      },
+      "organizationChart": {
+        "title": "Organization chart",
+        "description": "Document reporting lines, team structure, leaders, missions, and contacts."
+      },
+      "systemArchitecture": {
+        "title": "System architecture",
+        "description": "Explain components, integrations, data stores, ownership, and reliability concerns."
+      },
+      "productDevelopmentSwimlane": {
+        "title": "Product development swimlane",
+        "description": "Clarify product, design, engineering, and launch ownership across handoffs."
+      }
     }
   }
 }

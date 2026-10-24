@@ -82,7 +82,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
   kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
   // Markdown notes (`.md`, `.markdown`); US Letter, in points, for its pages.
-  kit('note', 'NoteDocument', { format: 'markdown', icon: 'document', create: { id: 'note', extension: KIT_CREATE_EXTENSION.note, baseName: 'Untitled note', size: { width: 612, height: 792 }, label: 'createMenu.format.note', group: 'documents' } }),
+  kit('note', 'NoteDocument', { format: 'markdown', icon: 'note', create: { id: 'note', extension: KIT_CREATE_EXTENSION.note, baseName: 'Untitled note', size: { width: 612, height: 792 }, label: 'createMenu.format.note', group: 'documents' } }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()

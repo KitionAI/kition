@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import { getBuiltinDocumentTemplates } from './documentTemplates'
 
-const t = ((key: string) => key) as TFunction<'document'>
+const t = ((key: string) => key) as TFunction<'workspace'>
 
 describe('document template cover assets', () => {
   it('ships a generated 960 by 540 WebP cover for every built-in template', () => {

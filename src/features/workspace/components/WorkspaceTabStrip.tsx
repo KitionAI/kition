@@ -469,7 +469,7 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
     return <Zap className="size-3.5 text-brand" />
   }
   const kit = getWorkspaceTabKit(tab)
-  return <KitIcon kit={kit ?? 'document'} small className="size-3.5" />
+  return <KitIcon kit={kit ?? 'note'} small className="size-3.5" />
 }
 
 /** A background tab whose document the agent changed: the change waits there for review. */

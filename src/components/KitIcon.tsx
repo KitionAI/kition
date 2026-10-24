@@ -4,7 +4,7 @@ import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import { cn } from '@kition/app-ui/utils'
 
 export const KIT_ICON_IDS = [
-  'document', 'word', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
+  'note', 'word', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
   'vector', 'photo', 'effect', 'film', 'pdf', 'cad',
 ] as const
 

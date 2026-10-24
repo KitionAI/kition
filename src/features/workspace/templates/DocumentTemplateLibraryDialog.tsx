@@ -99,7 +99,7 @@ export function DocumentTemplateLibraryDialog({
   onOpenChange,
   onCreate,
 }: DocumentTemplateLibraryDialogProps) {
-  const { t } = useTranslation('document')
+  const { t } = useTranslation('workspace')
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<TemplateCategoryFilter>('all')
   const [workspaceTemplates, setWorkspaceTemplates] = useState<TemplateEntry[] | null>(null)

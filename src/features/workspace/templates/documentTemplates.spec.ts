@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { getBuiltinDocumentTemplates } from './documentTemplates'
 
-const t = ((key: string) => key) as TFunction<'document'>
+const t = ((key: string) => key) as TFunction<'workspace'>
 
 describe('built-in document templates', () => {
   it('ships exactly 20 distinct templates across three categories', () => {

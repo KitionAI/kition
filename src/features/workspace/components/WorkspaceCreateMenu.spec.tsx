@@ -18,7 +18,7 @@ describe('WorkspaceCreateMenu', () => {
         open: true,
         onCreateFolder: vi.fn(),
         kitCreations: [
-          { id: 'note', label: 'createMenu.format.note', kit: 'document', group: 'documents', extension: 'md', onCreate: vi.fn() },
+          { id: 'note', label: 'createMenu.format.note', kit: 'note', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: onCreateBoard },
           { id: 'photo', label: 'createMenu.format.photo', kit: 'photo', group: 'visual', extension: 'psd', onCreate: vi.fn() },
           { id: 'slide', label: 'createMenu.format.slide', kit: 'slide', group: 'visual', extension: 'kitionslide', onCreate: vi.fn() },
@@ -84,7 +84,7 @@ describe('WorkspaceCreateMenu', () => {
         onCreateFolder: vi.fn(),
         onCreateDesign: vi.fn(),
         kitCreations: [
-          { id: 'note', label: 'createMenu.format.note', kit: 'document', group: 'documents', extension: 'md', onCreate: vi.fn() },
+          { id: 'note', label: 'createMenu.format.note', kit: 'note', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
           { id: 'board', label: 'createMenu.format.board', kit: 'board', group: 'visual', extension: 'kboard', onCreate: vi.fn() },
           { id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'media', extension: 'kitionfilm', onCreate: vi.fn() },
@@ -94,7 +94,7 @@ describe('WorkspaceCreateMenu', () => {
 
     const kits = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.dataset.kitIcon)
-    expect(kits).toEqual(['document', 'table', 'board', 'design', 'film'])
+    expect(kits).toEqual(['note', 'table', 'board', 'design', 'film'])
     const sources = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.getAttribute('src'))
     expect(sources.every((src) => src?.endsWith('-small.svg'))).toBe(true)

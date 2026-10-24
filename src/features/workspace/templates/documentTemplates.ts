@@ -27,7 +27,7 @@ export function renderDocumentTemplatePlaceholders(
 }
 
 export function getBuiltinDocumentTemplates(
-  t: TFunction<'document'>,
+  t: TFunction<'workspace'>,
 ): BuiltinDocumentTemplate[] {
   const templates: BuiltinDocumentTemplateSeed[] = [
     {

@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next'
 import type { BuiltinDocumentTemplateSeed } from './documentTemplateTypes'
 
 export function getExtendedDocumentTemplates(
-  t: TFunction<'document'>,
+  t: TFunction<'workspace'>,
 ): BuiltinDocumentTemplateSeed[] {
   return [
     {

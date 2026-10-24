@@ -5,7 +5,7 @@ import { getWorkspaceItemIcon, getWorkspaceItemKitIcon } from './workspace'
 
 describe('getWorkspaceItemKitIcon', () => {
   it.each([
-    ['markdown', 'document'],
+    ['markdown', 'note'],
     ['table', 'table'],
     ['table', 'table'],
     ['docx', 'word'],
@@ -37,7 +37,7 @@ describe('getWorkspaceItemKitIcon', () => {
 describe('getWorkspaceItemIcon', () => {
   it('returns the small kit icon for kit formats', () => {
     expect(getWorkspaceItemIcon('pptx')).toBe(kitIconComponent('slide', { small: true }))
-    expect(getWorkspaceItemIcon('markdown')).toBe(kitIconComponent('document', { small: true }))
+    expect(getWorkspaceItemIcon('markdown')).toBe(kitIconComponent('note', { small: true }))
     expect(getWorkspaceItemIcon('photo')).toBe(kitIconComponent('photo', { small: true }))
   })
 

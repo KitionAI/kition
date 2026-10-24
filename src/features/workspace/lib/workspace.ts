@@ -236,7 +236,7 @@ export type WorkspaceItemIcon = ComponentType<{ className?: string; 'aria-hidden
 export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIconId | null {
   switch (format) {
     case 'markdown':
-      return 'document'
+      return 'note'
     case 'table':
       return 'table'
     case 'docx':

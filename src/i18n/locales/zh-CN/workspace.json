@@ -1,10 +1,8 @@
 {
   "createMenu": {
     "format": {
-      "markdown": "文档",
       "table": "表格",
       "board": "画板",
-      "page": "页面",
       "note": "笔记",
       "photo": "Photo",
       "video": "Film",
@@ -83,40 +81,7 @@
     "moveToTitle": "移动到",
     "moveToRoot": "根目录",
     "noDestinations": "没有其他可用目标",
-    "clearIcon": "清除",
-    "untitled": "未命名"
-  },
-  "itemMenu": {
-    "mode": {
-      "rich": "富文本",
-      "split": "分栏",
-      "source": "源码",
-      "preview": "预览"
-    },
-    "preference": {
-      "smallText": "小号字体",
-      "fullWidth": "整页宽度",
-      "toc": "大纲",
-      "locked": "锁定页面"
-    },
-    "markdownMode": {
-      "rich": "编辑视图",
-      "preview": "阅读视图",
-      "source": "源码视图"
-    },
-    "revertToSaved": "还原到已保存版本",
-    "importMarkdown": "导入 Markdown",
-    "exportFile": "导出文件",
-    "openContainingFolder": "打开所在文件夹",
-    "words": "字数：{{formattedCount}}",
-    "updated": "更新时间：{{time}}",
-    "textStyle": {
-      "default": "默认",
-      "serif": "衬线",
-      "mono": "等宽"
-    },
-    "openInSystem": "使用默认应用打开",
-    "openingInSystem": "正在打开…"
+    "clearIcon": "清除"
   },
   "tabs": {
     "closeTab": "关闭标签页",
@@ -132,11 +97,7 @@
     "closeRight": "关闭右侧标签页",
     "closeReadOnly": "关闭所有只读标签页",
     "copyReference": "复制路径/引用",
-    "workflowsTitle": "工作流",
-    "workflowsScoped": "工作流 · {{name}}",
-    "untitledWorkflow": "未命名工作流",
-    "videos": "视频",
-    "workflow": "工作流"
+    "workflowsTitle": "工作流"
   },
   "agentTabs": {
     "history": {
@@ -155,14 +116,10 @@
     "agentHistory": "Agent 历史",
     "searchChats": "搜索对话…",
     "noMatchingChats": "没有匹配的对话。",
-    "noChatsYet": "还没有对话，开始一个新的吧。",
-    "chatRef": "对话 #{{id}}"
+    "noChatsYet": "还没有对话，开始一个新的吧。"
   },
   "agentSidebar": {
     "empty": "开始新对话，或从历史中打开已有对话。"
-  },
-  "topbar": {
-    "more": "更多"
   },
   "fileViewer": {
     "imageActions": "图片操作",
@@ -185,20 +142,10 @@
     "images": "图片",
     "videos": "视频",
     "items": "{{count}} 项",
-    "collapse": "折叠 {{name}}",
-    "expand": "展开 {{name}}",
     "noImagesTitle": "暂无图片",
     "noVideosTitle": "暂无视频",
     "noImagesDescription": "此工作区中的图片将显示在这里。",
     "noVideosDescription": "此工作区中的视频将显示在这里。"
-  },
-  "editor": {
-    "sourcePlaceholder": "在此编辑 Markdown 源码…"
-  },
-  "documentFile": {
-    "closeUnsavedMessage": "此文档的最新更改无法保存。要关闭它并舍弃这些更改吗？",
-    "closeUnsavedDiscard": "舍弃更改并关闭",
-    "closeUnsavedKeep": "保持打开"
   },
   "layout": {
     "resizeSidebar": "调整侧边栏大小",
@@ -211,27 +158,17 @@
     "settings": "设置"
   },
   "errors": {
-    "createWorkflowFailed": "创建工作流失败",
-    "documentPathEmpty": "文档路径不能为空",
-    "nameEmpty": "名称不能为空",
-    "saveBeforeRename": "保存当前文档失败，已跳过重命名",
-    "renameFailed": "重命名文档失败",
     "fileTypeNotDeletable": "此类文件暂时无法从文档库中删除。",
     "onlyWorkspaceItemsMovable": "此处仅支持移动文档、表格和画板。Office/PDF 等文件请通过系统文件夹整理。",
     "onlyWorkspaceItemsDuplicable": "此处仅支持复制文档、表格和画板。",
     "onlyWorkspaceItemsRenamable": "此处仅支持重命名文档、表格和画板。",
     "createDocumentFailed": "创建文档失败",
-    "importMarkdownFailed": "导入 Markdown 失败",
     "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev 启动桌面应用后重试。",
     "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev 启动桌面应用后重试。",
-    "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。",
-    "openInSystemFailed": "无法使用默认应用打开文件，请检查文件关联后重试。",
-    "reviewBeforeExternalOpen": "请先完成修改审阅，再使用其他应用打开此文件。"
+    "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。"
   },
   "feedback": {
-    "nameUpdated": "名称已更新",
     "refreshed": "已刷新工作区",
-    "restoredSavedVersion": "已还原到保存的版本",
     "documentCreated": "文档已创建",
     "folderCreated": "文件夹已创建",
     "renamed": "已重命名",
@@ -449,6 +386,108 @@
       "table": "Table",
       "vector": "Vector",
       "word": "Word"
+    }
+  },
+  "templateLibrary": {
+    "categories": {
+      "all": "全部",
+      "work": "工作",
+      "planning": "规划",
+      "personal": "个人",
+      "workspace": "工作区"
+    },
+    "blank": {
+      "title": "空白文档",
+      "description": "从空白页面开始，构建自己的结构。"
+    },
+    "workspaceTemplateDescription": "来自 {{path}} 的个人模板",
+    "loadingWorkspaceTemplates": "正在加载工作区模板…",
+    "templateCount": "{{count}} 个模板可用",
+    "noMatches": "未找到模板",
+    "noMatchesHint": "尝试其他搜索或类别。",
+    "loadFailed": "无法加载此工作区模板。",
+    "createFailed": "无法创建文档。",
+    "templates": {
+      "projectBrief": {
+        "title": "项目简介",
+        "description": "在开始工作之前定义目标、范围、所有者和里程碑。"
+      },
+      "meetingNotes": {
+        "title": "会议笔记",
+        "description": "捕捉议程、决定、讨论笔记和行动项目。"
+      },
+      "taskTracker": {
+        "title": "任务跟踪器",
+        "description": "在一个视图中保留任务、所有者、优先级、截止日期和状态。"
+      },
+      "weeklyPlan": {
+        "title": "每周计划",
+        "description": "设定每周成果、安排重点工作并明确阻碍因素。"
+      },
+      "productLaunch": {
+        "title": "产品发布计划",
+        "description": "协调发布准备、工作流、截止日期和成功指标。"
+      },
+      "clientBrief": {
+        "title": "客户简介",
+        "description": "组织客户目标、利益相关者、机会、风险和后续行动。"
+      },
+      "researchNotes": {
+        "title": "研究笔记",
+        "description": "收集来源、证据、研究结果、待解决问题和最终结论。"
+      },
+      "weeklyReview": {
+        "title": "每周回顾",
+        "description": "复盘成果、经验、目标进度和下周优先事项。"
+      },
+      "teamDailyReport": {
+        "title": "团队每日报告",
+        "description": "分享已完成的工作、正在进行的优先事项、障碍和明天的计划。"
+      },
+      "personalDailyReport": {
+        "title": "个人每日报告",
+        "description": "记录一个主要成果、已完成的任务、笔记和第二天的优先事项。"
+      },
+      "brainstormingSession": {
+        "title": "头脑风暴会议",
+        "description": "收集想法，比较价值和努力，并将有希望的方向转化为实验。"
+      },
+      "quarterlyBusinessReview": {
+        "title": "季度业务回顾",
+        "description": "查看下一季度的绩效指标、经验教训、风险和优先事项。"
+      },
+      "meetingActionTracker": {
+        "title": "会议行动跟踪器",
+        "description": "将决策转化为包含负责人、截止日期、优先级和后续安排的行动项。"
+      },
+      "okrPlan": {
+        "title": "OKR计划",
+        "description": "定义目标、可衡量的关键结果、信心和支持计划。"
+      },
+      "productRequirements": {
+        "title": "产品要求",
+        "description": "描述问题、用户需求、要求、用户流程、指标和风险。"
+      },
+      "flowchart": {
+        "title": "流程图",
+        "description": "使用可编辑的美人鱼步骤、决策、循环和异常路径映射流程。"
+      },
+      "projectTimeline": {
+        "title": "项目时间表",
+        "description": "可视化交付阶段并跟踪里程碑、所有者、依赖关系和状态。"
+      },
+      "organizationChart": {
+        "title": "组织结构图",
+        "description": "记录下属关系、团队结构、领导、任务和联系人。"
+      },
+      "systemArchitecture": {
+        "title": "系统架构",
+        "description": "解释组件、集成、数据存储、所有权和可靠性问题。"
+      },
+      "productDevelopmentSwimlane": {
+        "title": "产品开发泳道",
+        "description": "明确交接的产品、设计、工程和发布所有权。"
+      }
     }
   }
 }

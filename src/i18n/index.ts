@@ -6,7 +6,6 @@ import enSettings from './locales/en-US/settings.json'
 import enWorkspace from './locales/en-US/workspace.json'
 import enWorkspaceLauncher from './locales/en-US/workspaceLauncher.json'
 import enAgent from './locales/en-US/agent.json'
-import enDocument from './locales/en-US/document.json'
 import enErrors from './locales/en-US/errors.json'
 import enWorkflow from './locales/en-US/workflow.json'
 import enConnections from './locales/en-US/connections.json'
@@ -35,7 +34,6 @@ const resources = {
     workspace: enWorkspace,
     workspaceLauncher: enWorkspaceLauncher,
     agent: enAgent,
-    document: enDocument,
     errors: enErrors,
     workflow: enWorkflow,
     connections: enConnections,

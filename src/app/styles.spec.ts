@@ -35,29 +35,9 @@ describe('workspace scroll containment', () => {
     )
   })
 
-  it('keeps document momentum inside the active document scroller', () => {
-    expect(styles).toMatch(
-      /\.document-editor \.cm-scroller,[\s\S]*?\.document-editor-reading\s*\{[\s\S]*?scrollbar-gutter: stable;[\s\S]*?overscroll-behavior: none;[\s\S]*?\}/,
-    )
-  })
-
   it('keeps Agent scrolling isolated without changing the message width', () => {
     expect(styles).toMatch(
       /\.agent-chat-messages\s*\{[\s\S]*?scrollbar-gutter: stable;[\s\S]*?overscroll-behavior: contain;[\s\S]*?\}/,
-    )
-  })
-})
-
-describe('document completion contrast', () => {
-  it('uses themed surfaces and brand selection colors for autocomplete results', () => {
-    expect(styles).toMatch(
-      /\.document-editor \.cm-editor \.cm-tooltip\.cm-tooltip-autocomplete\s*\{[\s\S]*?bg-popover text-popover-foreground;/,
-    )
-    expect(styles).toMatch(
-      /\.document-editor \.cm-tooltip-autocomplete > ul > li\[aria-selected\]\s*\{[\s\S]*?background: hsl\(var\(--primary\)\) !important;[\s\S]*?color: hsl\(var\(--primary-foreground\)\) !important;/,
-    )
-    expect(styles).toMatch(
-      /\.document-editor \.cm-tooltip-autocomplete \.cm-completionDetail,[\s\S]*?color: hsl\(var\(--muted-foreground\)\);/,
     )
   })
 })

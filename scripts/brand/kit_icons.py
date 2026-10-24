@@ -17,7 +17,7 @@ class Kit:
 
 
 KITS = [
-    Kit('document', 'Document', '#5645d4', '#5645d4', '#8b7cf0'),
+    Kit('note', 'Note', '#5645d4', '#5645d4', '#8b7cf0'),
     Kit('word', 'Word', '#2b5cd9', '#2b5cd9', '#6b9bff'),
     Kit('table', 'Table', '#0e9a8a', '#0c8375', '#3fd1bf'),
     Kit('sheet', 'Sheet', '#1f9d4c', '#1a8641', '#4fd17b'),
@@ -60,7 +60,7 @@ def glyph(kit):
     fg, ac = kit.hue, _WHITE
     full = f'fill="{fg}"'
     back = f'fill="{fg}" fill-opacity=".4"'
-    if kit.id == 'document':
+    if kit.id == 'note':
         return _page(fg) + _line('M92 104H134', ac, 16) + _line('M92 140H160M92 168H160M92 196H132', ac, 10, .6)
     if kit.id == 'word':
         letters, _ = outline('Aa', 90, 140, 46, ac, tracking=-0.02)
@@ -163,7 +163,7 @@ def _r(x, y, w, h, fill, opacity=None, rx=0):
 def small_glyph(kit):
     c, d, w = kit.hue, kit.brand_light, _WHITE
     page = _p(_PAGE, c) + _p(_FOLD, w, '.5')
-    if kit.id == 'document':
+    if kit.id == 'note':
         return page + _r(5, 7, 6, 1, w) + _r(5, 9, 6, 1, w) + _r(5, 11, 4, 1, w)
     if kit.id == 'word':
         return page + _p('M4 7H5.4L6 10.2L6.9 7H8.1L9 10.2L9.6 7H11L9.7 12H8.4L7.5 9L6.6 12H5.3Z', w)

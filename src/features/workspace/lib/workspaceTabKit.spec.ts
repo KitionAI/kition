@@ -13,7 +13,7 @@ describe('getWorkspaceTabKit', () => {
 
   it('names Kition’s own editors', () => {
     expect(getWorkspaceTabKit(tab({ type: 'design' }))).toBe('design')
-    expect(getWorkspaceTabKit(tab({ type: 'file-viewer', format: 'markdown' }))).toBe('document')
+    expect(getWorkspaceTabKit(tab({ type: 'file-viewer', format: 'markdown' }))).toBe('note')
     expect(getWorkspaceTabKit(tab({ type: 'workflow', tablePath: '/w/a.ktable' }))).toBe('table')
   })
 
