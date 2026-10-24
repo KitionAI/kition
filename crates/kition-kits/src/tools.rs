@@ -944,7 +944,14 @@ async fn inspect(
     let mut answer = document_json(&view);
     if let Some(part) = target_part(input) {
         if let Some(objects) = part_objects(kits, &view, part).await {
+            // The part, not the whole document's outline again.
+            answer = document_summary_json(&view);
             answer["part"] = objects;
+            answer["edit"] = json!(format!(
+                "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting.",
+                tool_name(kit, Action::Run),
+                tool_name(kit, Action::Commands)
+            ));
         }
     }
     Ok(KitToolOutput {

@@ -304,16 +304,27 @@ impl Target {
                     .map_err(KitToolError::from_bridge)
             }
             Self::Headless(view) | Self::HeadlessDraft(view) => {
+                let numeric = numeric_target(&request);
                 let params = request.as_object().cloned().unwrap_or_default();
-                Ok(kits
-                    .model(
-                        Caller::Agent,
-                        view.kit_id,
-                        &view.document_id,
-                        "model.batch",
-                        params,
-                    )
-                    .await?)
+                kits.model(
+                    Caller::Agent,
+                    view.kit_id,
+                    &view.document_id,
+                    "model.batch",
+                    params,
+                )
+                .await
+                .map_err(|error| {
+                    let mut error = KitToolError::from(error);
+                    if let Some(id) = numeric {
+                        error.message.push_str(&format!(
+                            " (`{id}` looks like an id from the inspect tool's `part`: those are the kit's command ids, \
+                             not object-model ids. Edit it with the run tool and a command, for example \
+                             text.set {{\"id\": {id}, \"text\": \"...\"}}; find commands with the commands tool.)"
+                        ));
+                    }
+                    error
+                })
             }
         }
     }
@@ -589,6 +600,16 @@ pub(super) async fn query(
 
 fn loaded_count(output: &Value) -> usize {
     output["objects"].as_array().map_or(0, Vec::len)
+}
+
+/// The first op target that is a number or a string of digits: an id an agent took from the
+/// inspect tool's `part` (the kit's command ids), which the object model does not know.
+fn numeric_target(request: &Value) -> Option<String> {
+    request.get("ops")?.as_array()?.iter().find_map(|op| match op.get("target")? {
+        Value::Number(n) => Some(n.to_string()),
+        Value::String(s) if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) => Some(s.clone()),
+        _ => None,
+    })
 }
 
 pub(super) async fn batch(
