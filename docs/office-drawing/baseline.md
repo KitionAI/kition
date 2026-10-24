@@ -75,7 +75,7 @@ resolved. Resolving it is an owner decision, recorded as open:
   median 0.96617. Of the 73 decks that use Calibri, 54 score lower with
   Carlito and none higher. The corpus's references are WPS renders made where
   Calibri was not installed: they draw Calibri text in an Arial-like face
-  (checked by eye on the worst slide, `列表5项3` slide 59). Metric-compatible
+  (checked by eye on the worst slide, case `c5058dec8a214cebe` slide 59). Metric-compatible
   substitutes therefore move Kition toward Office and away from these
   references. F1 becomes measurable only with references rendered where the
   documents' fonts are present (PowerPoint, or WPS with Calibri installed).
