@@ -243,10 +243,8 @@ describe('desktop service helpers', () => {
   it('proxies desktop file export helpers through the desktop bridge', async () => {
     (window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
       shell: 'tauri',
-      SaveTextFile: vi.fn().mockResolvedValue('/tmp/exports/doc.md'),
       SaveBinaryFile: vi.fn().mockResolvedValue('/tmp/exports/doc.docx'),
       SavePdfFile: vi.fn().mockResolvedValue('/tmp/exports/doc.pdf'),
-      CopyDocumentHtml: vi.fn().mockResolvedValue(true),
       CopyImage: vi.fn().mockResolvedValue(true),
       SubmitFeedback: vi.fn().mockResolvedValue({
         ticket_id: 'ticket-123',
@@ -256,13 +254,6 @@ describe('desktop service helpers', () => {
 
     const desktopModule = await loadDesktopModule()
 
-    await expect(
-      desktopModule.saveTextFile({
-        dialogTitle: 'Export Markdown',
-        defaultFilename: 'doc.md',
-        content: '# Doc',
-      }),
-    ).resolves.toBe('/tmp/exports/doc.md')
     await expect(
       desktopModule.saveBinaryFile({
         dialogTitle: 'Export Word',
@@ -283,13 +274,6 @@ describe('desktop service helpers', () => {
       }),
     ).resolves.toBe('/tmp/exports/doc.pdf')
     await expect(
-      desktopModule.copyDocumentHtmlToClipboard({
-        html: '<article><p>Doc</p></article>',
-        text: 'Doc',
-        documentPath: 'docs/doc.md',
-      }),
-    ).resolves.toBe(true)
-    await expect(
       desktopModule.copyImageToClipboard('http://127.0.0.1:18101/uploads/image.png'),
     ).resolves.toBe(true)
     await expect(desktopModule.submitFeedbackReport({
@@ -302,7 +286,6 @@ describe('desktop service helpers', () => {
     })
 
     const bridge = (window as typeof window & { kitionDesktop?: any }).kitionDesktop
-    expect(bridge.SaveTextFile).toHaveBeenCalledWith('Export Markdown', 'doc.md', '# Doc')
     expect(bridge.SaveBinaryFile).toHaveBeenCalledWith(expect.objectContaining({
       base64_content: 'AQID',
       default_filename: 'doc.docx',
@@ -317,11 +300,6 @@ describe('desktop service helpers', () => {
       landscape: true,
       margins_type: 2,
       scale_factor: 80,
-    })
-    expect(bridge.CopyDocumentHtml).toHaveBeenCalledWith({
-      document_path: 'docs/doc.md',
-      html: '<article><p>Doc</p></article>',
-      text: 'Doc',
     })
     expect(bridge.CopyImage).toHaveBeenCalledWith({
       url: 'http://127.0.0.1:18101/uploads/image.png',
@@ -401,15 +379,6 @@ describe('desktop service helpers', () => {
       DeleteWorkspaceDocument: vi.fn().mockResolvedValue(listResponse),
       OpenWorkspaceFile: vi.fn().mockResolvedValue(''),
       OpenWorkspaceWindow: vi.fn().mockResolvedValue({ opened: true }),
-      SaveWorkspaceAsset: vi.fn().mockResolvedValue({
-        path: 'assets/image.png',
-        url: 'kition-workspace://assets/image.png',
-        mime_type: 'image/png',
-      }),
-      ReadClipboardImage: vi.fn().mockResolvedValue({
-        mime_type: 'image/png',
-        base64_content: 'AQID',
-      }),
       ImportWorkspaceFile: vi.fn().mockResolvedValue({
         ...listResponse,
         imported_path: 'Attachments/pasted-native.png',
@@ -435,29 +404,6 @@ describe('desktop service helpers', () => {
     await expect(desktopModule.deleteWorkspaceDocument('Home.md')).resolves.toEqual(listResponse)
     await expect(desktopModule.openWorkspaceFile('Agent/report.docx')).resolves.toBe('')
     await expect(desktopModule.openWorkspaceWindow('/Users/alice/projects/notes')).resolves.toEqual({ opened: true })
-    await expect(
-      desktopModule.saveWorkspaceAssetFromBlobURL({
-        blobURL: 'blob:http://127.0.0.1:3000/image-1',
-        documentPath: 'Home.md',
-      }),
-    ).resolves.toMatchObject({
-      url: 'kition-workspace://assets/image.png',
-    })
-    await expect(desktopModule.importWorkspaceImageFromClipboard({
-      folder: 'Attachments',
-      index: 1,
-    })).resolves.toEqual({
-      importedPath: 'Attachments/pasted-native.png',
-      relativePath: 'pasted-native.png',
-    })
-    await expect(desktopModule.importWorkspaceImageFromFile({
-      file: new File([new Uint8Array([1, 2, 3])], 'image.png', { type: 'image/png' }),
-      folder: 'Attachments',
-      index: 2,
-    })).resolves.toEqual({
-      importedPath: 'Attachments/pasted-native.png',
-      relativePath: 'pasted-native.png',
-    })
     await expect(desktopModule.revealWorkspaceFolder()).resolves.toBe('')
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ReadWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.WriteWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md', content: '# Updated' })
@@ -465,20 +411,6 @@ describe('desktop service helpers', () => {
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.DeleteWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.OpenWorkspaceFile).toHaveBeenCalledWith({ path: 'Agent/report.docx' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.OpenWorkspaceWindow).toHaveBeenCalledWith({ path: '/Users/alice/projects/notes' })
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.SaveWorkspaceAsset).toHaveBeenCalledWith(expect.objectContaining({
-      document_path: 'Home.md',
-      mime_type: 'image/png',
-    }))
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ImportWorkspaceFile).toHaveBeenCalledWith(expect.objectContaining({
-      folder: 'Attachments',
-      filename: expect.stringMatching(/^pasted-[a-z0-9]+-1\.png$/),
-      base64_content: 'AQID',
-    }))
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ImportWorkspaceFile).toHaveBeenCalledWith(expect.objectContaining({
-      folder: 'Attachments',
-      filename: expect.stringMatching(/^pasted-[a-z0-9]+-2\.png$/),
-      base64_content: 'AQID',
-    }))
   })
 
   it('uses a browser local workspace fallback outside desktop runtime', async () => {

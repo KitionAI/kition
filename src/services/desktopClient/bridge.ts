@@ -16,13 +16,9 @@ type KitionDesktopBridge = {
   BootstrapInitialize?: () => Promise<BootstrapInitializeResult>
   BootstrapCreateAttestation?: (request: BootstrapAttestationRequest) => Promise<BootstrapAttestationResult>
   BootstrapStatus?: () => Promise<BootstrapStatus>
-  SaveTextFile?: (dialogTitle: string, defaultFilename: string, content: string) => Promise<string>
   SaveBinaryFile?: (request: SaveFileRequest) => Promise<string>
   SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
-  CopyDocumentHtml?: (request: CopyDocumentHtmlRequest) => Promise<boolean>
   CopyImage?: (request: { url: string }) => Promise<boolean>
-  ReadClipboardImage?: () => Promise<DesktopClipboardImage | null>
-  ReadRemoteImage?: (url: string) => Promise<DesktopClipboardImage>
   SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceImage?: (request: { path: string; expected_root: string }) => Promise<DesktopClipboardImage>
@@ -47,7 +43,6 @@ type KitionDesktopBridge = {
   DeleteWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocumentListResponse>
   DeleteWorkspaceFolder?: (request: WorkspaceFolderRequest) => Promise<WorkspaceDocumentListResponse>
   OpenWorkspaceFile?: (request: WorkspaceDocumentPathRequest) => Promise<string>
-  SaveWorkspaceAsset?: (request: WorkspaceAssetSaveRequest) => Promise<WorkspaceAsset>
   ImportWorkspaceFile?: (request: WorkspaceFileImportRequest) => Promise<WorkspaceFileImportResponse>
   ChooseFilesToImport?: () => Promise<WorkspaceFileChooseResponse>
   RevealWorkspaceFolder?: (request?: Partial<WorkspaceDocumentPathRequest>) => Promise<string>
@@ -366,19 +361,6 @@ export type WorkspaceFolderMoveResponse = WorkspaceDocumentListResponse & {
   moved_path: string
 }
 
-export type WorkspaceAssetSaveRequest = {
-  document_path?: string
-  filename?: string
-  mime_type: string
-  base64_content: string
-}
-
-export type WorkspaceAsset = {
-  path: string
-  url: string
-  mime_type: string
-}
-
 export type DesktopClipboardImage = {
   mime_type: string
   base64_content: string
@@ -495,12 +477,6 @@ export type SavePdfFileRequest = {
   /** Custom page size in CSS pixels; wins over page_format. */
   page_width_px?: number
   page_height_px?: number
-}
-
-export type CopyDocumentHtmlRequest = {
-  html: string
-  text: string
-  document_path?: string
 }
 
 export type FeedbackReportSubmissionRequest = {

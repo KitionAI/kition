@@ -1,9 +1,8 @@
 /**
- * Files around documents: opening and importing files, saving assets and images, clipboard images, and saving exports to disk.
+ * Files around documents: opening and importing files, copying images, and saving exports to disk.
  */
-import { type CopyDocumentHtmlRequest, type SavePdfFileRequest, type WorkspaceAsset, type WorkspaceFileChooseResponse, type WorkspaceFileImportRequest, getDesktopBridge } from './bridge'
+import { type SavePdfFileRequest, type WorkspaceFileChooseResponse, type WorkspaceFileImportRequest, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
-import { ImageImportError, imageImportFailure } from './imageImportError'
 import { runtimeFetch } from '../runtimeAuth'
 
 export async function openWorkspaceFile(path: string) {
@@ -41,27 +40,6 @@ export async function chooseFilesToImport(): Promise<WorkspaceFileChooseResponse
   return bridge.ChooseFilesToImport()
 }
 
-function extensionFromMimeType(mimeType: string) {
-  switch (mimeType.toLowerCase()) {
-    case 'image/jpeg':
-    case 'image/jpg':
-      return '.jpg'
-    case 'image/gif':
-      return '.gif'
-    case 'image/webp':
-      return '.webp'
-    case 'image/svg+xml':
-      return '.svg'
-    default:
-      return '.png'
-  }
-}
-
-async function blobToBase64(blob: Blob) {
-  const buffer = await blob.arrayBuffer()
-  return uint8ArrayToBase64(new Uint8Array(buffer))
-}
-
 async function blobToDataURL(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -69,149 +47,6 @@ async function blobToDataURL(blob: Blob) {
     reader.onerror = () => reject(reader.error || new Error('failed to read image blob'))
     reader.readAsDataURL(blob)
   })
-}
-
-export async function saveWorkspaceAssetFromBlobURL(options: {
-  documentPath?: string
-  blobURL: string
-  index?: number
-}): Promise<WorkspaceAsset> {
-  const response = await runtimeFetch(options.blobURL)
-  if (!response.ok) {
-    throw new Error(`image blob read failed: ${response.status}`)
-  }
-
-  const blob = await response.blob()
-  const mimeType = blob.type || 'image/png'
-  const bridge = getDesktopBridge()
-
-  if (bridge?.SaveWorkspaceAsset) {
-    return bridge.SaveWorkspaceAsset({
-      document_path: options.documentPath,
-      filename: `image-${options.index || 1}${extensionFromMimeType(mimeType)}`,
-      mime_type: mimeType,
-      base64_content: await blobToBase64(blob),
-    })
-  }
-
-  const dataURL = await blobToDataURL(blob)
-  return {
-    path: dataURL,
-    url: dataURL,
-    mime_type: mimeType,
-  }
-}
-
-export async function importWorkspaceImageFromBlobURL(options: {
-  folder?: string
-  blobURL: string
-  index?: number
-}): Promise<{ importedPath: string; relativePath: string }> {
-  const bridge = getDesktopBridge()
-  if (/^https?:\/\//i.test(options.blobURL) && bridge?.ReadRemoteImage) {
-    const image = await bridge.ReadRemoteImage(options.blobURL).catch((error) => {
-      throw new ImageImportError(imageImportFailure(error), error)
-    })
-    const stamp = `${Date.now().toString(36)}-${(options.index || 1).toString(36)}`
-    const imported = await importWorkspaceFile({
-      folder: options.folder || '',
-      filename: `pasted-${stamp}${extensionFromMimeType(image.mime_type)}`,
-      base64_content: image.base64_content,
-    }).catch((error) => { throw new ImageImportError('write', error) })
-    if (!imported?.imported_path) throw new ImageImportError('write')
-    return { importedPath: imported.imported_path, relativePath: imported.imported_path }
-  }
-  const response = await runtimeFetch(options.blobURL, { referrerPolicy: 'no-referrer' })
-  if (!response.ok) {
-    throw new Error(`image blob read failed: ${response.status}`)
-  }
-
-  const blob = await response.blob()
-  if (!blob.type.startsWith('image/')) throw new Error('image response is not an image')
-  return importWorkspaceImageFromBlob({
-    blob,
-    folder: options.folder,
-    index: options.index,
-  })
-}
-
-export async function importWorkspaceImageFromFile(options: {
-  file: File
-  folder?: string
-  index?: number
-}): Promise<{ importedPath: string; relativePath: string }> {
-  return importWorkspaceImageFromBlob({
-    blob: options.file,
-    folder: options.folder,
-    index: options.index,
-  })
-}
-
-async function importWorkspaceImageFromBlob(options: {
-  blob: Blob
-  folder?: string
-  index?: number
-}) {
-  const blob = options.blob
-  const mimeType = blob.type || 'image/png'
-  const base64 = await blobToBase64(blob)
-  const stamp = `${Date.now().toString(36)}-${(options.index || 1).toString(36)}`
-  const filename = `pasted-${stamp}${extensionFromMimeType(mimeType)}`
-
-  const result = await importWorkspaceFile({
-    folder: options.folder || '',
-    filename,
-    base64_content: base64,
-  }).catch((error) => { throw new ImageImportError('write', error) })
-  if (!result?.imported_path) throw new Error('image was not saved to the workspace')
-  const importedPath = String(result?.imported_path || '')
-  const folder = String(options.folder || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
-  const normalizedImported = importedPath.replace(/\\/g, '/').replace(/^\/+/, '')
-  const relativePath = folder && normalizedImported.startsWith(`${folder}/`)
-    ? normalizedImported.slice(folder.length + 1)
-    : normalizedImported
-  return { importedPath: normalizedImported, relativePath }
-}
-
-export function canImportWorkspaceImageFromClipboard() {
-  return Boolean(getDesktopBridge()?.ReadClipboardImage)
-}
-
-export async function importWorkspaceImageFromClipboard(options: {
-  folder?: string
-  index?: number
-}): Promise<{ importedPath: string; relativePath: string } | null> {
-  const bridge = getDesktopBridge()
-  if (!bridge?.ReadClipboardImage) {
-    return null
-  }
-  const image = await bridge.ReadClipboardImage()
-  if (!image?.base64_content) {
-    return null
-  }
-
-  const folder = String(options.folder || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
-  const stamp = `${Date.now().toString(36)}-${(options.index || 1).toString(36)}`
-  const result = await importWorkspaceFile({
-    folder,
-    filename: `pasted-${stamp}.png`,
-    base64_content: image.base64_content,
-  })
-  if (!result?.imported_path) throw new Error('image was not saved to the workspace')
-  const importedPath = String(result?.imported_path || '').replace(/\\/g, '/').replace(/^\/+/, '')
-  const relativePath = folder && importedPath.startsWith(`${folder}/`)
-    ? importedPath.slice(folder.length + 1)
-    : importedPath
-  return { importedPath, relativePath }
-}
-
-export async function saveTextFile(options: { dialogTitle: string; defaultFilename: string; content: string }) {
-  const bridge = getDesktopBridge()
-  if (!bridge?.SaveTextFile) {
-    throw new Error('desktop save is unavailable')
-  }
-
-  return bridge.SaveTextFile(options.dialogTitle, options.defaultFilename, options.content)
 }
 
 export async function saveBinaryFile(options: { dialogTitle: string; defaultFilename: string; bytes: Uint8Array }) {
@@ -269,36 +104,6 @@ export async function savePdfFile(options: {
   return bridge.SavePdfFile(request)
 }
 
-export async function copyDocumentHtmlToClipboard(options: {
-  html: string
-  text: string
-  documentPath?: string
-}) {
-  const bridge = getDesktopBridge()
-  if (bridge?.CopyDocumentHtml) {
-    const request: CopyDocumentHtmlRequest = {
-      html: options.html,
-      text: options.text,
-    }
-    if (options.documentPath) {
-      request.document_path = options.documentPath
-    }
-    return bridge.CopyDocumentHtml(request)
-  }
-
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    throw new Error('rich clipboard is unavailable')
-  }
-
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      'text/html': new Blob([options.html], { type: 'text/html' }),
-      'text/plain': new Blob([options.text], { type: 'text/plain' }),
-    }),
-  ])
-  return true
-}
-
 async function imageBlobToPng(blob: Blob) {
   if (blob.type === 'image/png') return blob
   const bitmap = await createImageBitmap(blob)
@@ -344,20 +149,6 @@ export async function copyImageToClipboard(url: string) {
   const png = await imageBlobToPng(await response.blob())
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
   return true
-}
-
-export async function saveRemoteFile(url: string, defaultFilename: string, dialogTitle: string) {
-  const response = await runtimeFetch(url)
-  if (!response.ok) {
-    throw new Error(`download failed: ${response.status}`)
-  }
-
-  const buffer = await response.arrayBuffer()
-  return saveBinaryFile({
-    dialogTitle,
-    defaultFilename,
-    bytes: new Uint8Array(buffer),
-  })
 }
 
 export function uint8ArrayToBase64(bytes: Uint8Array) {

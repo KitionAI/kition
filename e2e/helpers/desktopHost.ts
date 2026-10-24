@@ -317,31 +317,13 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     bootstrap_create_attestation: () => ({ status: { official_build: false, build_channel: 'community', available: false, state: 'unavailable', installation_id: 'ins_e2e' } }),
     bootstrap_status: () => ({ official_build: false, build_channel: 'community', available: false, state: 'unavailable', installation_id: 'ins_e2e' }),
     submit_feedback: () => ({ ticket_id: 'TICKET-E2E', accepted_at: new Date().toISOString() }),
-    save_text_file: (args) => saveTo(String(args.defaultFilename || 'export.txt'), (target) => fs.writeFile(target, String(args.content ?? ''))),
     save_binary_file: ({ request }) => saveTo(String(request?.default_filename || 'export.bin'), (target) => fs.writeFile(target, Buffer.from(String(request?.base64_content || ''), 'base64'))),
     save_pdf_file: ({ request }) => saveTo(String(request?.default_filename || 'document.pdf'), (target) => fs.writeFile(target, `%PDF-1.7\n% e2e export\n${String(request?.html || '').length}\n`)),
-    copy_document_html: ({ request }) => {
-      host.clipboard = { ...host.clipboard, html: String(request?.html || ''), text: String(request?.text || ''), imageSource: '', image: null }
-      return true
-    },
     copy_image: ({ request }) => {
       const source = String(request?.url || '').trim()
       if (!source) throw new Error('image URL is required')
       host.clipboard = { html: '', text: '', imageSource: source, image: null }
       return true
-    },
-    read_clipboard_image: () => host.clipboard.image,
-    read_remote_image_command: async ({ url }) => {
-      const response = await fetch(String(url))
-      if (!response.ok) throw new Error(`image download failed: ${response.status}`)
-      const bytes = Buffer.from(await response.arrayBuffer())
-      let mime = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
-      if (!mime.startsWith('image/')) {
-        mime = bytes.subarray(0, 4).equals(Buffer.from([137, 80, 78, 71])) ? 'image/png'
-          : bytes[0] === 255 && bytes[1] === 216 ? 'image/jpeg' : ''
-      }
-      if (!mime) throw new Error('remote image response is not an image')
-      return { mime_type: mime, base64_content: bytes.toString('base64') }
     },
     list_workspace_documents: () => list(),
     read_workspace_image: async ({ request }) => {
@@ -548,17 +530,6 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     },
     open_workspace_file: () => '',
     reveal_workspace_folder: () => '',
-    save_workspace_asset: async ({ request }) => {
-      const mime = String(request?.mime_type || 'image/png')
-      if (!mime.startsWith('image/')) throw new Error('only image assets can be saved')
-      const extension = ({ 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/svg+xml': '.svg' } as Record<string, string>)[mime] || '.png'
-      const requested = sanitize(String(request?.filename || ''), `image${extension}`)
-      const ext = path.extname(requested) || extension
-      const name = `${Date.now()}-${randomUUID()}-${path.basename(requested, ext) || 'image'}${ext}`
-      await fs.mkdir(path.join(activeRoot, 'assets'), { recursive: true })
-      await fs.writeFile(path.join(activeRoot, 'assets', name), Buffer.from(String(request?.base64_content || ''), 'base64'))
-      return { path: `assets/${name}`, url: `kition-workspace://assets/${encodeURIComponent(name)}`, mime_type: mime }
-    },
     import_workspace_file: async ({ request }) => {
       checkRoot(request || {})
       const folder = String(request?.folder || '').trim()

@@ -547,32 +547,6 @@ pub fn delete_folder(root: &Path, request: &Request) -> io::Result<Value> {
     list(root)
 }
 
-fn extension_from_mime(mime: &str) -> &'static str {
-    match mime.to_ascii_lowercase().as_str() {
-        "image/jpeg" | "image/jpg" => ".jpg",
-        "image/gif" => ".gif",
-        "image/webp" => ".webp",
-        "image/svg+xml" => ".svg",
-        _ => ".png",
-    }
-}
-
-fn sanitize_asset_name(title: &str, fallback_extension: &str) -> String {
-    let fallback = format!("image{fallback_extension}");
-    let title = if title.is_empty() { &fallback } else { title };
-    let base = sanitize_base(title, &fallback);
-    if base.contains('.') {
-        base
-    } else {
-        format!("{base}{fallback_extension}")
-    }
-}
-
-pub fn workspace_url(relative: &str) -> String {
-    let encoded: Vec<String> = relative.split('/').map(encode_uri_component).collect();
-    format!("kition-workspace://{}", encoded.join("/"))
-}
-
 /// JavaScript's `encodeURIComponent`.
 pub fn encode_uri_component(value: &str) -> String {
     const SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
@@ -586,49 +560,6 @@ pub fn encode_uri_component(value: &str) -> String {
         .remove(b'(')
         .remove(b')');
     percent_encoding::utf8_percent_encode(value, SET).to_string()
-}
-
-pub fn save_asset(root: &Path, request: &Request) -> io::Result<Value> {
-    ensure_initialized(root)?;
-    let mime = match request.str("mime_type") {
-        value if value.is_empty() => "image/png".to_owned(),
-        value => value,
-    };
-    if !mime.starts_with("image/") {
-        return Err(invalid("only image assets can be saved"));
-    }
-    let assets = root.join("assets");
-    assert_safe(root, &assets, true)?;
-    fs::create_dir_all(&assets)?;
-    assert_safe(root, &assets, false)?;
-
-    let fallback_extension = extension_from_mime(&mime);
-    let requested = sanitize_asset_name(&request.str("filename"), fallback_extension);
-    let extension = match extname(&requested) {
-        "" => fallback_extension,
-        other => other,
-    };
-    let stem = match basename_without(&requested, extension) {
-        "" => "image",
-        other => other,
-    };
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis())
-        .unwrap_or_default();
-    let filename = format!("{now}-{}-{stem}{extension}", uuid::Uuid::new_v4());
-    let absolute = assets.join(&filename);
-    assert_safe(root, &absolute, true)?;
-    let bytes = BASE64
-        .decode(request.str("base64_content").trim())
-        .map_err(|error| invalid(format!("invalid base64 content: {error}")))?;
-    write_atomically(&absolute, &bytes)?;
-    let relative = format!("assets/{filename}");
-    Ok(json!({
-        "path": relative,
-        "url": workspace_url(&relative),
-        "mime_type": mime,
-    }))
 }
 
 fn sanitize_imported_filename(filename: &str) -> String {
@@ -765,8 +696,6 @@ mod tests {
         assert_eq!(sanitize_document_filename("a/b: c"), "a-b- c.md");
         assert_eq!(sanitize_document_filename("Plan.MD"), "Plan.md");
         assert_eq!(sanitize_document_filename("...hidden"), "hidden.md");
-        assert_eq!(sanitize_asset_name("", ".png"), "image.png");
-        assert_eq!(sanitize_asset_name("shot", ".jpg"), "shot.jpg");
         assert_eq!(
             sanitize_imported_filename("re|port  v2.pdf"),
             "re-port v2.pdf"
@@ -774,10 +703,6 @@ mod tests {
         assert_eq!(extname("a.b/c"), "");
         assert_eq!(extname(".md"), "");
         assert_eq!(basename_without("dir/a.md", ".md"), "a");
-        assert_eq!(
-            workspace_url("assets/a b.png"),
-            "kition-workspace://assets/a%20b.png"
-        );
     }
 
     #[test]
@@ -869,19 +794,8 @@ mod tests {
     }
 
     #[test]
-    fn saves_assets_and_imports_files() {
+    fn imports_files() {
         let (_dir, root) = workspace();
-        let asset = save_asset(
-            &root,
-            &request(
-                json!({ "mime_type": "image/png", "filename": "shot", "base64_content": "aGk=" }),
-            ),
-        )
-        .unwrap_or_else(|err| panic!("{err}"));
-        let path = asset["path"].as_str().unwrap_or_default().to_owned();
-        assert!(path.starts_with("assets/") && path.ends_with("-shot.png"));
-        assert_eq!(fs::read(root.join(&path)).ok(), Some(b"hi".to_vec()));
-
         let imported = import_file(
             &root,
             &request(json!({ "filename": "notes.txt", "base64_content": "aGk=", "folder": "in" })),

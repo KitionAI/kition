@@ -16,7 +16,7 @@ use tokio::sync::oneshot;
 
 use crate::desktop::{Desktop, MAIN_WINDOW, blocking, io_error};
 use crate::external::normalize_external_url;
-use crate::images::{ExportImages, image_bytes, read_remote_image, unresolved_image_sources};
+use crate::images::{ExportImages, image_bytes};
 use crate::proxy::ProxyManager;
 use crate::request::Request;
 use crate::supervisor::portal_base_url;
@@ -26,8 +26,6 @@ use crate::workspace::{docstore, files};
 use crate::{feedback, pdf, window, workspace_window};
 
 type CommandResult<T = Value> = Result<T, String>;
-
-const MAX_CLIPBOARD_IMAGE_BYTES: usize = 50 * 1024 * 1024;
 
 fn req(request: Option<Value>) -> Request {
     Request::new(request)
@@ -187,23 +185,6 @@ pub async fn submit_feedback(state: State<'_, Desktop>, request: Option<Value>) 
 // --- Files and clipboard ------------------------------------------------
 
 #[tauri::command]
-pub async fn save_text_file(
-    app: AppHandle,
-    state: State<'_, Desktop>,
-    dialog_title: String,
-    default_filename: String,
-    content: String,
-) -> CommandResult<String> {
-    let default_path = state.env().exports_dir.join(default_filename);
-    let Some(path) = save_dialog(&app, &dialog_title, &default_path, false).await? else {
-        return Ok(String::new());
-    };
-    let target = path.clone();
-    blocking(move || write_atomically(&target, content.as_bytes())).await?;
-    Ok(path.to_string_lossy().into_owned())
-}
-
-#[tauri::command]
 pub async fn save_binary_file(
     app: AppHandle,
     state: State<'_, Desktop>,
@@ -279,27 +260,6 @@ pub async fn save_pdf_file(
 }
 
 #[tauri::command]
-pub async fn copy_document_html(
-    app: AppHandle,
-    state: State<'_, Desktop>,
-    request: Option<Value>,
-) -> CommandResult<bool> {
-    let request = req(request);
-    let html = inline_images(&state, &request.str("html"), &request.str("document_path")).await;
-    let unresolved = unresolved_image_sources(&html);
-    if !unresolved.is_empty() {
-        return Err(format!(
-            "failed to embed {} clipboard image(s)",
-            unresolved.len()
-        ));
-    }
-    app.clipboard()
-        .write_html(html, Some(request.str("text")))
-        .map_err(io_error)?;
-    Ok(true)
-}
-
-#[tauri::command]
 pub async fn copy_image(
     app: AppHandle,
     state: State<'_, Desktop>,
@@ -315,37 +275,6 @@ pub async fn copy_image(
     let image = tauri::image::Image::new_owned(rgba.into_raw(), width, height);
     app.clipboard().write_image(&image).map_err(io_error)?;
     Ok(true)
-}
-
-#[tauri::command]
-pub async fn read_clipboard_image(app: AppHandle) -> CommandResult {
-    let Ok(image) = app.clipboard().read_image() else {
-        return Ok(Value::Null);
-    };
-    let (width, height) = (image.width(), image.height());
-    if width == 0 || height == 0 {
-        return Ok(Value::Null);
-    }
-    let Some(buffer) = image::RgbaImage::from_raw(width, height, image.rgba().to_vec()) else {
-        return Ok(Value::Null);
-    };
-    let mut png = std::io::Cursor::new(Vec::new());
-    buffer
-        .write_to(&mut png, image::ImageFormat::Png)
-        .map_err(io_error)?;
-    let png = png.into_inner();
-    if png.is_empty() {
-        return Ok(Value::Null);
-    }
-    if png.len() > MAX_CLIPBOARD_IMAGE_BYTES {
-        return Err("clipboard image exceeds 50 MB import limit".into());
-    }
-    Ok(json!({ "mime_type": "image/png", "base64_content": BASE64.encode(png) }))
-}
-
-#[tauri::command]
-pub async fn read_remote_image_command(state: State<'_, Desktop>, url: String) -> CommandResult {
-    read_remote_image(&state.http(), &url).await
 }
 
 // --- Workspace documents ------------------------------------------------
@@ -372,7 +301,6 @@ workspace_command!(move_workspace_document, files::move_document);
 workspace_command!(move_workspace_folder, files::move_folder);
 workspace_command!(delete_workspace_document, files::delete_document);
 workspace_command!(delete_workspace_folder, files::delete_folder);
-workspace_command!(save_workspace_asset, files::save_asset);
 workspace_command!(import_workspace_file, files::import_file);
 
 #[tauri::command]

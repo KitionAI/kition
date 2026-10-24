@@ -1,108 +1,21 @@
-//! Image bytes for the renderer: remote images it cannot fetch itself, and
-//! workspace images inlined into exported HTML so clipboard and PDF exports
-//! carry them.
+//! Image bytes for the renderer: images it copies to the clipboard, and
+//! workspace images inlined into exported HTML so PDF exports carry them.
 
 use std::path::Path;
 use std::sync::LazyLock;
-use std::time::Duration;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use futures_util::StreamExt;
 use regex::{Captures, Regex};
-use serde_json::{Value, json};
 use url::Url;
 
 use crate::workspace::files::{extname, resolve, resolve_safe};
 use crate::workspace::safety::{assert_safe, is_within, lexical_resolve};
 
-const MAX_REMOTE_IMAGE_BYTES: usize = 50 * 1024 * 1024;
-const REMOTE_IMAGE_TIMEOUT: Duration = Duration::from_secs(15);
-
 static IMAGE_SOURCE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"(?i)<img\b[^>]*?\bsrc=(?:"([^"]*)"|'([^']*)')[^>]*>"#)
         .unwrap_or_else(|error| panic!("invalid image source pattern: {error}"))
 });
-
-fn image_mime_from_bytes(bytes: &[u8]) -> &'static str {
-    if bytes.starts_with(&[137, 80, 78, 71, 13, 10, 26, 10]) {
-        "image/png"
-    } else if bytes.starts_with(&[255, 216, 255]) {
-        "image/jpeg"
-    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
-        "image/gif"
-    } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
-        "image/webp"
-    } else {
-        ""
-    }
-}
-
-/// Downloads a pasted image without the renderer's CORS limits.
-pub async fn read_remote_image(client: &reqwest::Client, source: &str) -> Result<Value, String> {
-    let url = Url::parse(source).map_err(|error| error.to_string())?;
-    if !matches!(url.scheme(), "http" | "https")
-        || !url.username().is_empty()
-        || url.password().is_some()
-    {
-        return Err("remote image requires an HTTP(S) URL without credentials".into());
-    }
-    let response = client
-        .get(url)
-        .timeout(REMOTE_IMAGE_TIMEOUT)
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "image download failed: {}",
-            response.status().as_u16()
-        ));
-    }
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or_default();
-    let mut mime = content_type
-        .split(';')
-        .next()
-        .unwrap_or_default()
-        .trim()
-        .to_lowercase();
-    let generic_binary = matches!(
-        mime.as_str(),
-        "" | "application/octet-stream" | "binary/octet-stream"
-    );
-    if !mime.starts_with("image/") && !generic_binary {
-        return Err("remote image response is not an image".into());
-    }
-    if response
-        .content_length()
-        .is_some_and(|length| length as usize > MAX_REMOTE_IMAGE_BYTES)
-    {
-        return Err("remote image exceeds 50 MB import limit".into());
-    }
-    let mut bytes = Vec::new();
-    let mut stream = response.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|error| error.to_string())?;
-        if bytes.len() + chunk.len() > MAX_REMOTE_IMAGE_BYTES {
-            return Err("remote image exceeds 50 MB import limit".into());
-        }
-        bytes.extend_from_slice(&chunk);
-    }
-    if bytes.is_empty() {
-        return Err("remote image response is empty".into());
-    }
-    if generic_binary {
-        mime = image_mime_from_bytes(&bytes).to_owned();
-    }
-    if mime.is_empty() {
-        return Err("remote image response is not an image".into());
-    }
-    Ok(json!({ "mime_type": mime, "base64_content": BASE64.encode(bytes) }))
-}
 
 /// Raw image bytes from a data URL or an HTTP(S) URL.
 pub async fn image_bytes(client: &reqwest::Client, source: &str) -> Result<Vec<u8>, String> {
@@ -249,19 +162,6 @@ pub fn image_mime_from_path(path: &str) -> &'static str {
 
 fn starts_with_ignore_case(value: &str, prefix: &str) -> bool {
     value.len() >= prefix.len() && value[..prefix.len()].eq_ignore_ascii_case(prefix)
-}
-
-/// The `src` values that are still not data URLs.
-pub fn unresolved_image_sources(html: &str) -> Vec<String> {
-    IMAGE_SOURCE
-        .captures_iter(html)
-        .filter_map(|captures| {
-            let raw = captures.get(1).or_else(|| captures.get(2))?.as_str();
-            let source = decode_html_attribute(raw);
-            (!source.is_empty() && !starts_with_ignore_case(&source, "data:image/"))
-                .then_some(source)
-        })
-        .collect()
 }
 
 /// Inlines workspace and runtime images as data URLs.
@@ -486,13 +386,6 @@ mod tests {
         assert_eq!(decode_html_attribute("a&amp;b&quot;"), "a&b\"");
         assert_eq!(escape_html_attribute("<a&\">"), "&lt;a&amp;&quot;&gt;");
         assert_eq!(image_mime_from_path("a.JPG?x=1"), "image/jpeg");
-        assert_eq!(image_mime_from_bytes(b"GIF89a...."), "image/gif");
-    }
-
-    #[test]
-    fn lists_unresolved_sources() {
-        let html = r#"<p><img src="data:image/png;base64,AA"><img alt='x' src='a.png'></p>"#;
-        assert_eq!(unresolved_image_sources(html), vec!["a.png".to_owned()]);
     }
 
     #[tokio::test]

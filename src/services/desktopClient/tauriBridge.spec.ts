@@ -21,7 +21,6 @@ describe('createTauriBridge', () => {
     const bridge = createTauriBridge(globals, call)
 
     await bridge.ReadWorkspaceDocument({ path: 'a.md' })
-    await bridge.SaveTextFile('Export', 'notes.md', '# Notes')
     await bridge.StoreSecureValue('key', 'value')
     await bridge.UpdatesSetBetaChannel(1 as unknown as boolean)
     await bridge.ProxySave({ host: 'proxy' })
@@ -29,7 +28,6 @@ describe('createTauriBridge', () => {
 
     expect(call.mock.calls).toEqual([
       ['read_workspace_document', { request: { path: 'a.md' } }],
-      ['save_text_file', { dialogTitle: 'Export', defaultFilename: 'notes.md', content: '# Notes' }],
       ['store_secure_value', { key: 'key', value: 'value' }],
       ['updates_set_beta_channel', { enabled: true }],
       ['proxy_save', { payload: { host: 'proxy' } }],
@@ -45,7 +43,6 @@ describe('createTauriBridge', () => {
     const requestCommands = {
       SaveBinaryFile: 'save_binary_file',
       SavePdfFile: 'save_pdf_file',
-      CopyDocumentHtml: 'copy_document_html',
       CopyImage: 'copy_image',
       SubmitFeedback: 'submit_feedback',
       ReadWorkspaceImage: 'read_workspace_image',
@@ -67,7 +64,6 @@ describe('createTauriBridge', () => {
       DeleteWorkspaceDocument: 'delete_workspace_document',
       DeleteWorkspaceFolder: 'delete_workspace_folder',
       OpenWorkspaceFile: 'open_workspace_file',
-      SaveWorkspaceAsset: 'save_workspace_asset',
       ImportWorkspaceFile: 'import_workspace_file',
       RevealWorkspaceFolder: 'reveal_workspace_folder',
       SetWorkspaceFolder: 'set_workspace_folder',
@@ -86,7 +82,6 @@ describe('createTauriBridge', () => {
       BootstrapInitialize: 'bootstrap_initialize',
       BootstrapCreateAttestation: 'bootstrap_create_attestation',
       BootstrapStatus: 'bootstrap_status',
-      ReadClipboardImage: 'read_clipboard_image',
       ListWorkspaceDocuments: 'list_workspace_documents',
       ChooseFilesToImport: 'choose_files_to_import',
       ChooseWorkspaceFolder: 'choose_workspace_folder',
@@ -117,7 +112,6 @@ describe('createTauriBridge', () => {
     await bridge.ShowNotification('Saved', 'All changes saved')
     await bridge.WindowAction('minimize')
     await bridge.OpenRuntimePath('logs')
-    await bridge.ReadRemoteImage('https://example.com/a.png')
     await bridge.ReadSecureValue('token')
     await bridge.DeleteSecureValue('token')
     await bridge.UpdatesSetAutoCheck(false)
@@ -128,7 +122,6 @@ describe('createTauriBridge', () => {
       ['show_notification', { title: 'Saved', message: 'All changes saved' }],
       ['window_action', { action: 'minimize' }],
       ['open_runtime_path', { kind: 'logs' }],
-      ['read_remote_image_command', { url: 'https://example.com/a.png' }],
       ['read_secure_value', { key: 'token' }],
       ['delete_secure_value', { key: 'token' }],
       ['updates_set_auto_check', { enabled: false }],
