@@ -123,7 +123,7 @@ Ce dépôt contient le client public React/Tauri, les contrats publics du runtim
 | --- | --- |
 | Bureau | Tauri 2 (Rust) |
 | Interface | React, TypeScript, Vite |
-| Documents | CodeMirror, Marked, Mermaid, KaTeX |
+| Documents | Marked, Mermaid, KaTeX |
 | Données et état | IndexedDB, Jotai, Zod |
 | Tests | Vitest, Playwright |
 

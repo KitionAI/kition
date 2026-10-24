@@ -131,7 +131,7 @@ pnpm dev:web
 | --- | --- |
 | 桌面端 | Tauri 2 (Rust) |
 | 界面 | React、TypeScript、Vite |
-| 文档 | CodeMirror、Marked、Mermaid、KaTeX |
+| 文档 | Marked、Mermaid、KaTeX |
 | 数据与状态 | IndexedDB、Jotai、Zod |
 | 测试 | Vitest、Playwright |
 

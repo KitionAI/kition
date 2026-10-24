@@ -123,7 +123,7 @@ Kho này chứa ứng dụng React/Tauri công khai, hợp đồng runtime công
 | --- | --- |
 | Máy tính | Tauri 2 (Rust) |
 | Giao diện | React, TypeScript, Vite |
-| Tài liệu | CodeMirror, Marked, Mermaid, KaTeX |
+| Tài liệu | Marked, Mermaid, KaTeX |
 | Dữ liệu và trạng thái | IndexedDB, Jotai, Zod |
 | Kiểm thử | Vitest, Playwright |
 

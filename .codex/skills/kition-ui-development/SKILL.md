@@ -32,15 +32,11 @@ Use this skill for frontend changes in the Kition client repository.
 - Keep workspace editor-pane prop builders and panel-assembly hooks inside `src/features/workspace/hooks`.
 - Keep workspace screen-level page composition inside `src/features/workspace/components`, not `src/app`.
 - Keep workspace tab state and tab persistence hooks inside `src/features/workspace`.
-- Keep document export dialog and rich-text editor behavior inside `src/features/document`.
-- Keep document snapshot/history persistence inside `src/features/document/lib`.
-- Keep document draft parsing and stored-content transforms inside `src/features/document/lib`.
-- Keep document rich editor panes and markdown split panes inside `src/features/document/components`.
+- Never build a Markdown editor in Kition: `.md` files open in the Note kit's own editor in `KitFrame` (`src/features/kits`), and the agent changes notes with `note_run`.
 - Move editor chrome presentation into workspace feature components instead of growing page-level JSX inline.
 - Keep desktop settings subscription and synchronization hooks inside `src/features/settings/hooks`.
 - Never build a table editor in Kition: `.ktable` files open in the Table kit's own editor in `KitFrame` (`src/features/kits`), and Kition's own features reach tables through `src/api/kitTables.ts`.
 - Use `Workspace*` names for editor shell and navigation concerns.
-- Use `Document*` names for rich-text document flows.
 - Use `Kit*` names for kit frames, kit editors, and their host.
 - Use `Agent*` names for AI chat and agent execution flows.
 - Do not create or restore a `src/react` directory.

@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `kition: true` builds from a Kition checkout too (the document kit); `path` is a kit that lives in Kition (the document kit, built from that folder; `runtime: ts-worker`, a TypeScript engine that scripts/check-kit-sdk.mjs leaves to check-manifest --module); `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
+  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md). `runtime: ts-worker` is a TypeScript engine, which scripts/check-kit-sdk.mjs leaves to check-manifest --module; `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
   "photo": {
     "repository": "KitionAI/kition-photo",
     "crate": "kition-photo-sdk",

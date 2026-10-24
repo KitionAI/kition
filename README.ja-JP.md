@@ -123,7 +123,7 @@ pnpm dev
 | --- | --- |
 | デスクトップ | Tauri 2 (Rust) |
 | UI | React、TypeScript、Vite |
-| ドキュメント | CodeMirror、Marked、Mermaid、KaTeX |
+| ドキュメント | Marked、Mermaid、KaTeX |
 | データと状態 | IndexedDB、Jotai、Zod |
 | テスト | Vitest、Playwright |
 

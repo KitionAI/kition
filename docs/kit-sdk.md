@@ -464,51 +464,52 @@ item makes an empty board with the engine in the page, and the agent's
 saving through Kition, and creating a board; the editor's own behavior is
 tested in the kit's repository. Kition has no board editor of its own.
 
-### The Document kit
+### The Note kit
 
-`kit.document` (`packages/document-kit`) packages Kition's Markdown document
-the same way: its engine is a TypeScript one (`ts-worker`), `MarkdownDocument`,
-made with `kitEngineClass` from the document on the KDM in
-`packages/document-editor` (`@kition/document-editor/file`, no CodeMirror in
-the worker). The `.md` file is the text alone: a file opens as a new replica,
-or, through `KitModel.openReplica`, with the replica a host stored for it and
-what the file adds as a `system` import change; it saves in the line style it
-was read in (line endings, byte order mark). Its commands edit the text
-(`text.insert`, `text.delete`, `text.replace`, `document.replace`,
-`text.read`; UTF-16 offsets, as CodeMirror counts them) and its comment
-threads (`comment.add`, `comment.reply`, `comment.resolve`, `comment.delete`,
-the manifest's `collaboration.comments.commands`, and `comment.threads`), each
-with a parameter schema. The editor (`web/`) is `DocumentEditor` in the kit-ui
-shell with a `DocumentHost` that only shows notices: it keeps its own replica,
-loaded from the engine's snapshot, edits it through `replicaTextSource` (typing
-undoes in runs), and exchanges changes with the engine's replica
-(`WorkerRelay`); comments are the engine's commands, so a commenter's read-only
-session writes them under kit-ui's comment backstop. `model/schema.json` is
-kept equal to `documentSchema` by a test. `scripts/build-kit-ui.sh document`
-builds the package. Kition no longer opens `.md` files in it: they open in the
-Note kit (`kit.note`, KitionAI/kition-note), registered in `KIT_EDITORS` like
-every kit. `e2e/note-embedded.spec.ts`, `e2e/note-history.spec.ts`,
-`e2e/collab-note.spec.ts`, and `e2e/note-table-widget.spec.ts` (the table gate)
-cover it in Kition.
+`kit.note` (`KitionAI/kition-note`, package `public/kits/note-ui`) is a
+normal kit: `.md` and `.markdown` files open in its own editor in `KitFrame`,
+and its Rust engine (`kition_note_sdk`, `NoteDocument`) and editor live in
+its repository, published and pinned like every other kit. Kition has no
+Markdown editor of its own: the editor, its display modes, comments, export,
+and image paste are the kit's. The `markdown` format id is unchanged, so
+`KIT_EDITORS` finds the kit by it. What Kition keeps around notes are host
+features that go through the kit:
 
-`packages/document-kit/src/engine/documentConvergence.spec.ts` runs the
-convergence suite on `MarkdownDocument`: random
-edits from the whole catalogue (typing with CJK and emoji, ranges deleted and
-replaced, whole texts written, comment threads added, answered, resolved, and
-deleted); the text scenarios type into the Markdown text, whose lines are its
-paragraphs (a split types a newline, a merge deletes one); reorder moves lines,
-as Alt+Up and Alt+Down do. Its view check compares the engine's text and
-threads with a fresh replica and requires every thread to have a comment and
-every comment to be in a thread. Every scenario the document has steps for
-passes, `fuzz` with 100 seeds too. It is not L6 yet: `fields`, `undo`, and
-`undo-reconnect` set two register fields of one object, and the only register
-a command sets is a thread's `resolved` (its anchor is fixed when it is made),
-so they are skipped until a command sets another field of a thread (a
-contract change, in kition-sdk first). The suite found that concurrent
-comment commands could leave a thread with no comments (two people deleting
-its two comments) or a reply in a thread someone deleted; both the kit
-(`KitModel.validate`) and Kition's native session (`importRemoteChanges`) now
-repair them with `repairCommentThreads` from `packages/document-editor`.
+- The agent changes a note only with `note_run` (find its commands with
+  `note_commands`): through the Kit AI bridge when an editor has the file
+  open, and through the headless `kit-note` otherwise (`KITS` in
+  `crates/kition-kits`). Its edits to an existing note arrive as a draft,
+  reviewed in `KitDraftReview` or `HeadlessDraftReview`. `document_write` and
+  `apply_patch` refuse a note; `document_read`, `document_search`, and
+  `document_list` read it as plain text.
+- Creating a note from a template is a create-menu feature
+  (`src/features/workspace/templates/`); the onboarding guides are ordinary
+  `.md` files the kit opens.
+- Search, the workspace tree, renames, bookmarks, recent files, and pinned
+  tabs are workspace features and do not depend on the kit.
+
+`e2e/note-embedded.spec.ts`, `e2e/note-history.spec.ts`,
+`e2e/collab-note.spec.ts`, and `e2e/note-table-widget.spec.ts` (the table
+gate, `pnpm test:table:e2e`) cover what Kition adds around the kit; the
+editor's own behavior is tested in the kit's repository.
+
+### The replica store
+
+A kit that declares the `replica` capability keeps its replica for a file in
+Kition's store, `.kition/docs/` under the workspace root, through the Kit UI
+protocol's `replicaRead` and `replicaWrite`. The store
+(`src-tauri/src/workspace/docstore/`, whose module comments are the
+reference) maps workspace paths to document ids (`index.json`), so a replica
+follows its file through a rename in the tree. It keeps each replica as a
+snapshot plus append-only changes and a manifest that names every file with
+its hash, so a crash reads as a stored version. Its `history.json` is the
+version history on this device, which `src/features/history/` shows and
+restores. Only the Kition holding `store.lock` writes; another Kition reads
+the store and says why it does not write. The store is local and stays out of
+Git (its own `.gitignore`): losing it loses history, never text, since the
+workspace file is the document. The Note kit's model of a `.md` file
+(schema `kit.note`, line endings, comments, identity, and merging a file
+changed on disk) is in kition-note's `docs/design.md`, section 2.
 
 ## 4b. Kit Packages And Releases
 
@@ -576,7 +577,7 @@ Kit repository:
    TypeScript harness, `@kition/convergence`: a `KitEngineAdapter` subclass
    over its `kitEngineClass` document in a vitest spec, asserting
    `report.level6()` and writing `report.toJsonText()` to
-   `KITION_CONVERGENCE_REPORT` (the Document kit's `documentConvergence.spec.ts`).
+   `KITION_CONVERGENCE_REPORT`.
 2c. Implement `KitDocument::check` (kition-sdk `docs/platform/sets/agent.md`, A21–A23): diagnostics with
    stable `<kit>.<name>` codes, a `target`, and a `fix` command hint where
    one exists, errors first, each code covered by a synthetic test. Agents

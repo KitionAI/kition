@@ -123,7 +123,7 @@ Este repositorio contiene el cliente público React/Tauri, contratos públicos d
 | --- | --- |
 | Escritorio | Tauri 2 (Rust) |
 | Interfaz | React, TypeScript, Vite |
-| Documentos | CodeMirror, Marked, Mermaid, KaTeX |
+| Documentos | Marked, Mermaid, KaTeX |
 | Datos y estado | IndexedDB, Jotai, Zod |
 | Pruebas | Vitest, Playwright |
 

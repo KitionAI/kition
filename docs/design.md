@@ -830,7 +830,7 @@ Each entry has:
 
 | Id | Name | Hue | Brand light | Brand dark |
 | --- | --- | --- | --- | --- |
-| `document` | Document | `#5645d4` | `#5645d4` | `#8b7cf0` |
+| `note` | Note | `#5645d4` | `#5645d4` | `#8b7cf0` |
 | `word` | Word | `#2b5cd9` | `#2b5cd9` | `#6b9bff` |
 | `table` | Table | `#0e9a8a` | `#0c8375` | `#3fd1bf` |
 | `sheet` | Sheet | `#1f9d4c` | `#1a8641` | `#4fd17b` |
@@ -860,8 +860,8 @@ Where the color shows (the WPS Office model):
 - **Inside a kit's editor** the kit's brand replaces the primary color: the
   selected ribbon tab, menu highlights, primary buttons, sliders, and focus
   (kit-ui `--kit-primary`).
-- **Everything else is Kition's**: the shell, dialogs, and Kition's own
-  editors (Document, Design Studio) keep Kition purple.
+- **Everything else is Kition's**: the shell, dialogs, and Design Studio
+  keep Kition purple. The Note kit's brand is Kition purple too.
   Never tint Kition chrome in a kit's color.
 
 ## Kit editor frame and display modes

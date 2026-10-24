@@ -306,7 +306,7 @@ repository.
 | --- | --- |
 | Desktop | Tauri 2 (Rust) |
 | Interface | React, TypeScript, Vite |
-| Documents | CodeMirror, Marked, Mermaid, KaTeX |
+| Documents | Marked, Mermaid, KaTeX |
 | Data and state | IndexedDB, Jotai, Zod |
 | Testing | Vitest, Playwright |
 

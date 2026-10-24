@@ -123,7 +123,7 @@ pnpm dev
 | --- | --- |
 | Настольное приложение | Tauri 2 (Rust) |
 | Интерфейс | React, TypeScript, Vite |
-| Документы | CodeMirror, Marked, Mermaid, KaTeX |
+| Документы | Marked, Mermaid, KaTeX |
 | Данные и состояние | IndexedDB, Jotai, Zod |
 | Тестирование | Vitest, Playwright |
 

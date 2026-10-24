@@ -203,6 +203,9 @@ ship `Inter` references in product code.
 
 ### Markdown Table Widget
 
+The widget is the Note kit's (kition-note `web/`), drawn in its editor in
+`KitFrame`; Kition's table gate (`pnpm test:table:e2e`) checks it there.
+
 - The table can remain visually clean by default.
 - When a table is focused, selected, or hovered, expose a lightweight table
   action surface so row and column insertion are discoverable.
@@ -266,7 +269,8 @@ ship `Inter` references in product code.
 3. Apply Quiet Workspace to the workspace shell and topbar.
 4. Apply it to Settings rows, panels, and feedback.
 5. Apply it to the table toolbar, popovers, table headers, and add-record action.
-6. Add a focused table action surface for Markdown table widgets.
+6. Add a focused table action surface for Markdown table widgets (in the Note
+   kit's editor).
 7. Align Scenario and Agent drawers with the same white, bordered, light-shadow
    panel treatment.
 8. Define small-window behavior for the workspace shell and settings.
