@@ -25,16 +25,6 @@ function collect(list: AgentSessionEventsSessionEvent[], view = emptyAgentSessio
   return { effects, view: current }
 }
 
-const whiteboardPatch = {
-  type: 'whiteboard.patch' as const,
-  schema_version: 1 as const,
-  summary: 'Create a node',
-  operations: [{
-    op: 'element.create' as const,
-    element: { id: 'node-1', kind: 'mind_node' as const, bounds: { x: 10, y: 20, width: 140, height: 70 }, text: 'Idea' },
-  }],
-}
-
 const designPatch = {
   type: 'design.patch' as const,
   schema_version: 1 as const,
@@ -126,19 +116,13 @@ describe('effectsOfEvent', () => {
   it('emits final patches from the result meta and cancels on a failed patch tool', () => {
     const { effects } = collect([
       turnStart(),
-      call('w1', 'whiteboard_propose_patch'),
-      ok('w1', 'whiteboard_propose_patch', {}, { kind: 'whiteboard.patch', patch: whiteboardPatch }),
       call('g1', 'design_propose_patch'),
       ok('g1', 'design_propose_patch', {}, { kind: 'design.patch', patch: designPatch }),
-      call('w2', 'whiteboard_propose_patch'),
-      failed('w2', 'whiteboard_propose_patch'),
       call('g2', 'design_propose_patch'),
       failed('g2', 'design_propose_patch'),
     ])
     expect(effects).toEqual([
-      { type: 'whiteboard-patch', patch: whiteboardPatch, provisional: false },
       { type: 'design-patch', patch: designPatch, provisional: false },
-      { type: 'whiteboard-patch-cancelled' },
       { type: 'design-patch-cancelled' },
     ])
   })
@@ -146,12 +130,11 @@ describe('effectsOfEvent', () => {
   it('cancels patches still open when the turn does not complete', () => {
     const { effects } = collect([
       turnStart(),
-      call('w1', 'whiteboard_propose_patch'),
       call('g1', 'design_propose_patch'),
       turnEnd('cancelled'),
     ])
-    expect(effects).toEqual([{ type: 'whiteboard-patch-cancelled' }, { type: 'design-patch-cancelled' }])
-    const completed = collect([turnStart(), call('w1', 'whiteboard_propose_patch'), turnEnd('completed')])
+    expect(effects).toEqual([{ type: 'design-patch-cancelled' }])
+    const completed = collect([turnStart(), call('g1', 'design_propose_patch'), turnEnd('completed')])
     expect(completed.effects).toEqual([])
   })
 })
@@ -175,41 +158,39 @@ describe('effectsOfStream', () => {
   }
 
   it('emits a provisional patch once the streamed arguments parse', () => {
-    const text = JSON.stringify(whiteboardPatch)
+    const text = JSON.stringify(designPatch)
     const { effects } = run([
       start,
-      args(2, 'w1', text.slice(0, 20), 'whiteboard_propose_patch'),
-      args(3, 'w1', text.slice(20)),
-      args(4, 'g1', JSON.stringify(designPatch), 'design_propose_patch'),
-      args(5, 'x1', JSON.stringify(whiteboardPatch), 'document_write'),
+      args(2, 'g1', text.slice(0, 20), 'design_propose_patch'),
+      args(3, 'g1', text.slice(20)),
+      args(4, 'x1', JSON.stringify(designPatch), 'document_write'),
     ])
     expect(effects).toEqual([
-      { type: 'whiteboard-patch', patch: whiteboardPatch, provisional: true },
       { type: 'design-patch', patch: designPatch, provisional: true },
     ])
   })
 
   it('previews a patch once, on the delta that completes its arguments', () => {
-    const first = run([start, args(2, 'w1', JSON.stringify(whiteboardPatch), 'whiteboard_propose_patch')])
+    const first = run([start, args(2, 'w1', JSON.stringify(designPatch), 'design_propose_patch')])
     expect(first.effects).toHaveLength(1)
-    expect(run([args(3, 'w1', '', 'whiteboard_propose_patch')], first.view).effects).toEqual([])
+    expect(run([args(3, 'w1', '', 'design_propose_patch')], first.view).effects).toEqual([])
   })
 
   it('ignores frames of an attempt that is not live', () => {
     const other: AgentAssistantStreamFrame = {
       type: 'chunk', attemptId: 'b', revision: 2, index: 0, time: 2,
-      chunk: { type: 'tool-call-delta', index: 1, id: 'w1', name: 'whiteboard_propose_patch', argumentsDelta: JSON.stringify(whiteboardPatch) },
+      chunk: { type: 'tool-call-delta', index: 1, id: 'w1', name: 'design_propose_patch', argumentsDelta: JSON.stringify(designPatch) },
     }
     expect(run([start, other]).effects).toEqual([])
   })
 
   it('cancels a provisional patch when its attempt settles without a message', () => {
-    const streamed = run([start, args(2, 'w1', JSON.stringify(whiteboardPatch), 'whiteboard_propose_patch')])
+    const streamed = run([start, args(2, 'w1', JSON.stringify(designPatch), 'design_propose_patch')])
     const attempt = run([{
       type: 'end', attemptId: 'a', revision: 3, index: 1,
       outcome: { kind: 'committed', eventType: 'assistant/attempt', seq: 1 },
     }], streamed.view)
-    expect(attempt.effects).toEqual([{ type: 'whiteboard-patch-cancelled' }])
+    expect(attempt.effects).toEqual([{ type: 'design-patch-cancelled' }])
     const message = run([{
       type: 'end', attemptId: 'a', revision: 3, index: 1,
       outcome: { kind: 'committed', eventType: 'assistant/message', seq: 1 },
@@ -219,7 +200,7 @@ describe('effectsOfStream', () => {
 
   it('does not cancel a called patch when only its attempt ends', () => {
     const called = applySessionEvent(opened, {
-      seq: 1, at: 2, type: 'tool/call', turn: 1, step: 1, callId: 'w9', name: 'whiteboard_propose_patch', arguments: {}, hosted: false,
+      seq: 1, at: 2, type: 'tool/call', turn: 1, step: 1, callId: 'w9', name: 'design_propose_patch', arguments: {}, hosted: false,
     })
     const attempt = run([start, {
       type: 'end', attemptId: 'a', revision: 2, index: 0, outcome: { kind: 'abandoned' },

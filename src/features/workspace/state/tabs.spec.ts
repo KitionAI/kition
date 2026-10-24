@@ -16,7 +16,7 @@ import {
 
 const doc = (path: string, extra: Partial<Extract<WorkspaceTab, { type: 'document' }>> = {}): WorkspaceTab =>
   ({ id: `document:${path}`, type: 'document', title: path, path, ...extra })
-const board = (path: string): WorkspaceTab => ({ id: `board:${path}`, type: 'board', title: path, path })
+const design = (path: string): WorkspaceTab => ({ id: `design:${path}`, type: 'design', title: path, path })
 const workflow = (tablePath: string, workflowId?: string): WorkspaceTab =>
   ({ id: `workflow:${tablePath}`, type: 'workflow', title: 'W', tablePath, workflowId })
 
@@ -94,12 +94,12 @@ describe('filterTabs', () => {
 })
 
 describe('remapTabPaths', () => {
-  it('moves document and board tabs under the renamed folder', () => {
-    const start = state([doc('old/a.md'), board('old/b.kiboard'), doc('other/c.md')], 'board:old/b.kiboard')
+  it('moves document and design tabs under the renamed folder', () => {
+    const start = state([doc('old/a.md'), design('old/b.kidesign'), doc('other/c.md')], 'design:old/b.kidesign')
     const next = remapTabPaths(start, 'old', 'new')
-    expect(ids(next)).toEqual(['document:new/a.md', 'board:new/b.kiboard', 'document:other/c.md'])
-    expect(next.tabs[1]).toMatchObject({ path: 'new/b.kiboard', title: 'b' })
-    expect(next.activeTabId).toBe('board:new/b.kiboard')
+    expect(ids(next)).toEqual(['document:new/a.md', 'design:new/b.kidesign', 'document:other/c.md'])
+    expect(next.tabs[1]).toMatchObject({ path: 'new/b.kidesign', title: 'b' })
+    expect(next.activeTabId).toBe('design:new/b.kidesign')
     expect(remapTabPaths(start, 'x', 'x')).toBe(start)
   })
 })

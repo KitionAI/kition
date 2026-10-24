@@ -1,6 +1,6 @@
 /**
  * Starts a relay (`startRelay`, `@/lib/sync`) for every open document that can be co-edited
- * (`collabDocuments.ts`: kit documents whose kit serves the `replica` capability, boards, Markdown
+ * (`collabDocuments.ts`: kit documents whose kit serves the `replica` capability, Markdown
  * documents, tables), when this window may co-edit (`collabConfigured`) and the document has a
  * room (`rooms.ts`, written by Share or Open shared document). Anything else is left alone: no
  * connection is made, nothing is sent, and no replica is touched.

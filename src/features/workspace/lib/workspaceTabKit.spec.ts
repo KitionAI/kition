@@ -8,11 +8,11 @@ describe('getWorkspaceTabKit', () => {
   it('names the kit that owns a file viewer tab', () => {
     expect(getWorkspaceTabKit(tab({ type: 'file-viewer', format: 'xlsx' }))).toBe('sheet')
     expect(getWorkspaceTabKit(tab({ type: 'file-viewer', format: 'layout' }))).toBe('layout')
+    expect(getWorkspaceTabKit(tab({ type: 'file-viewer', format: 'board' }))).toBe('board')
   })
 
   it('names Kition’s own editors', () => {
     expect(getWorkspaceTabKit(tab({ type: 'design' }))).toBe('design')
-    expect(getWorkspaceTabKit(tab({ type: 'board' }))).toBe('board')
     expect(getWorkspaceTabKit(tab({ type: 'document', format: 'markdown' }))).toBe('document')
     expect(getWorkspaceTabKit(tab({ type: 'workflow', tablePath: '/w/a.ktable' }))).toBe('table')
   })

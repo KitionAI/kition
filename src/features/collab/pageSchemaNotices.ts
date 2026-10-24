@@ -1,14 +1,13 @@
 /**
- * Schema evolution in the documents Kition edits itself, boards and Markdown documents (Kit
+ * Schema evolution in the documents Kition edits itself, Markdown documents (Kit
  * Standard 2.0 rule M5a), as kit editors report it for theirs (Kit UI protocol `document/schema`):
  * a document whose replica holds changes a newer kit wrote gets a notice that does not block
  * editing (`@/services/documentSchema`). Its replica is read when the document opens and when the
  * editor replaces it (a file replaced on disk); the relay reads it after every import
  * (`./schemaWatch`). A document a newer kit migrated does not open here at all: its editor says
- * so (a board's `newer-version`), and a relayed change of that kind blocks from the relay.
+ * so, and a relayed change of that kind blocks from the relay.
  */
 import { followOpenMarkdownDocuments } from '@/features/document/public'
-import { followOpenBoards } from '@/features/whiteboard/public'
 import type { Replica } from '@/lib/kdm'
 import { documentSchemaNotice, setDocumentSchemaNotice, type DocumentSchemaNotice } from '@/services/documentSchema'
 import { HOST_KITS } from './collabDocuments'
@@ -51,9 +50,9 @@ function follow(document: PageDocument, kit: string) {
   }
 }
 
-/** Follows every open board and Markdown document for a newer kit's changes; answers the stop. */
+/** Follows every open Markdown document for a newer kit's changes; answers the stop. */
 export function followPageSchemaNotices() {
-  const stops = [followOpenBoards((board) => follow(board, HOST_KITS.board)), followOpenMarkdownDocuments((document) => follow(document, HOST_KITS.document))]
+  const stops = [followOpenMarkdownDocuments((document) => follow(document, HOST_KITS.document))]
   return () => {
     for (const stop of stops) stop()
   }

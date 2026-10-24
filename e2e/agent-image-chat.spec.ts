@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mockAgentTurn, type AgentTurnScript } from './helpers/agentStream'
-import { openWhiteboardFixture } from './helpers/whiteboard'
+import { AGENT_WORKSPACE_DOC_PATH, openAgentWorkspace } from './helpers/markdownDocument'
 
 const template = {
   id: 'launch', version: '2', title: 'Launch poster', description: 'A calm product poster.', operation: 'generate', category: 'poster',
@@ -17,19 +17,9 @@ async function openImageChat(page: Page, chatTarget = false) {
   await page.route('https://kition.ai/test-launch.webp', (route) => route.fulfill({
     contentType: 'image/webp', path: 'src/features/media-generation/assets/image-templates/engineering-infographic.webp',
   }))
-  await openWhiteboardFixture(page)
-  await page.evaluate(async (chatTarget) => {
-    const settingsModulePath = '/src/services/desktopSettings.ts'
-    const { loadDesktopSettings, saveDesktopSettings } = await import(settingsModulePath)
-    const settings = await loadDesktopSettings()
-    await saveDesktopSettings({ ...settings, general: { ...settings.general, theme: 'light' } })
-    const bridge = (window as any).kitionDesktop
-    const previous = bridge.BackendStatus
-    bridge.BackendStatus = async () => ({ ...(await previous()), capabilities: [
-      'agent_whiteboard_v1', 'agent_image_generation_v1', ...(chatTarget ? ['agent_image_generation_chat_v1'] : []),
-    ] })
-    window.dispatchEvent(new Event('focus'))
-  }, chatTarget)
+  await openAgentWorkspace(page, {
+    capabilities: ['agent_image_generation_v1', ...(chatTarget ? ['agent_image_generation_chat_v1'] : [])],
+  })
   await page.getByRole('button', { name: 'Open AI Chat', exact: true }).click()
   const newChat = page.getByRole('button', { name: 'New chat' })
   if (await newChat.isVisible().catch(() => false)) await newChat.click()
@@ -52,7 +42,10 @@ test('keeps freeform generation, results, and follow-up edits in one visible cha
   await expect(page.getByTestId('agent-image-result')).toContainText('Images ready for review')
   expect(requests[0].body).toMatchObject({
     content: 'Create a calm launch poster',
-    image_generation_intent: { operation: 'generate', surface: 'whiteboard', placement_preference: 'review' },
+    image_generation_intent: {
+      operation: 'generate', surface: 'document', placement_preference: 'review',
+      target: { type: 'image.target.document', document_path: AGENT_WORKSPACE_DOC_PATH },
+    },
   })
   expect(requests[0].body.hide_user_message).not.toBe(true)
   await page.getByRole('button', { name: 'Edit in chat' }).click()
@@ -63,7 +56,6 @@ test('keeps freeform generation, results, and follow-up edits in one visible cha
   expect(requests[1].sessionId).toBe(requests[0].sessionId)
   expect(requests[1].body.image_generation_intent).toMatchObject({ operation: 'edit', reference_paths: ['Agent/generated-1.png'] })
   expect(requests[1].body.image_generation_intent.request_id).not.toBe(requests[0].body.image_generation_intent.request_id)
-  await expect(page.getByTestId('whiteboard-image-studio')).toHaveCount(0)
   await page.screenshot({ path: 'test-results/agent-image-chat.png', fullPage: true })
 })
 
@@ -149,7 +141,7 @@ test('generates from the template gallery with only a subject and no open editor
   await openImageChat(page, true)
   await page.getByRole('button', { name: 'Close image settings', exact: true }).click()
   await page.locator('.document-tab-list').getByRole('button', { name: 'Close tab', exact: true }).click()
-  await expect(page.getByTestId('whiteboard-svg-scene')).toHaveCount(0)
+  await expect(page.locator('.cm-content')).toHaveCount(0)
   await page.getByTestId('agent-image-mode').click()
   await page.getByTestId('agent-image-template-launch').click()
   await page.getByLabel('Subject', { exact: false }).fill('A woman and an AI robot avatar')
@@ -187,7 +179,7 @@ test('edits an image from ordinary chat without an open editor and changes its a
   await page.getByRole('button', { name: 'Start without a template' }).click()
   await page.getByRole('button', { name: 'Exit image mode', exact: true }).click()
   await page.locator('.document-tab-list').getByRole('button', { name: 'Close tab', exact: true }).click()
-  await expect(page.getByTestId('whiteboard-svg-scene')).toHaveCount(0)
+  await expect(page.locator('.cm-content')).toHaveCount(0)
   const { requests } = await mockAgentTurn(page, writeImageTurn)
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
   await composer.fill('Create a city travel poster')
@@ -232,24 +224,24 @@ test('exits image mode from the composer and sends the preserved draft as normal
   }))
   await openImageChat(page)
   const { requests } = await mockAgentTurn(page, (turn) => {
-    turn.reply('The board covers three ideas.')
+    turn.reply('The notes cover three ideas.')
   })
   const sent = () => requests.at(-1)?.body as any
   await page.getByTestId('agent-image-template-launch').click()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
-  await composer.fill('Summarize the ideas on this board.')
+  await composer.fill('Summarize the ideas in these notes.')
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Exit image mode', exact: true }).click()
   await expect(page.getByTestId('agent-image-mode')).toHaveAttribute('aria-pressed', 'false')
   await expect(page.getByTestId('agent-image-summary')).toHaveCount(0)
   await expect(page.getByRole('dialog', { name: 'Image settings' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Exit image mode', exact: true })).toHaveCount(0)
-  await expect(page.getByTestId('agent-composer-context')).toContainText('Whiteboard E2E.kiboard')
-  await expect(composer).toHaveValue('Summarize the ideas on this board.')
+  await expect(page.getByTestId('agent-composer-context')).toContainText(AGENT_WORKSPACE_DOC_PATH)
+  await expect(composer).toHaveValue('Summarize the ideas in these notes.')
   await expect(composer).toBeFocused()
   await composer.press('Enter')
-  await expect.poll(() => sent()?.content).toBe('Summarize the ideas on this board.')
+  await expect.poll(() => sent()?.content).toBe('Summarize the ideas in these notes.')
   expect(sent().image_generation_intent).toBeUndefined()
 })
 

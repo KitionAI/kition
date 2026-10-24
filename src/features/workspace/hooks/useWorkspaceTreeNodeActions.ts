@@ -1,6 +1,5 @@
 import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { loadDesignLib } from '@/features/design/public'
-import { loadBoardFile } from '@/features/whiteboard/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
@@ -17,6 +16,7 @@ import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/use
 import type { WorkspaceTab, WorkspaceTreeDropPosition, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import {
   inferWorkspaceItemFormat,
+  isDuplicableWorkspaceFormat,
   isOrganizableWorkspaceFormat,
   remapWorkspaceBranchPath,
   renameWorkspaceDocumentPath,
@@ -182,7 +182,7 @@ export function useWorkspaceTreeNodeActions({
       )
       filterWorkspaceTabs(
         (tab) => (
-          (tab.type !== 'document' && tab.type !== 'board' && tab.type !== 'design')
+          (tab.type !== 'document' && tab.type !== 'design')
           || (tab.path !== node.path && !tab.path.startsWith(childPrefix))
         ),
       )
@@ -388,7 +388,7 @@ export function useWorkspaceTreeNodeActions({
   ])
 
   const duplicateDocumentNode = useCallback(async (node: WorkspaceTreeNode) => {
-    if (node.virtual || node.type !== 'file' || !isOrganizableWorkspaceFormat(node.format)) {
+    if (node.virtual || node.type !== 'file' || !isDuplicableWorkspaceFormat(node.format)) {
       setError(t('errors.onlyWorkspaceItemsDuplicable'))
       return
     }
@@ -420,14 +420,7 @@ export function useWorkspaceTreeNodeActions({
         window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: created.path } }))
         return
       }
-      let content = source.content
-      if (node.path.toLowerCase().endsWith('.kiboard')) {
-        // A copy of a Board is a new document: two files must never share a KDM document id.
-        const { duplicateBoardFileText } = await loadBoardFile()
-        const title = (copyPath.split('/').pop() || copyPath).replace(/\.kiboard$/i, '')
-        content = duplicateBoardFileText(source.content, title) ?? source.content
-      }
-      const created = await writeWorkspaceDocument(copyPath, content)
+      const created = await writeWorkspaceDocument(copyPath, source.content)
       if (/\.(md|markdown)$/i.test(created.path)) {
         // The copy is a new document: it gets its own identity when first opened.
         await syncDocumentFileDuplicated(rootPath, node.path, created.path)

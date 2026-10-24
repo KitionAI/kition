@@ -11,7 +11,6 @@ fn extension(path: &str) -> String {
 pub fn infer_format(path: &str) -> &'static str {
     match extension(path).as_str() {
         ".kidesign" => "design",
-        ".kiboard" => "board",
         ".md" | ".markdown" => "markdown",
         ".docx" => "docx",
         ".xlsx" | ".xls" => "xlsx",
@@ -52,14 +51,14 @@ fn has_extension(path: &str, allowed: &[&str]) -> bool {
 }
 
 pub fn is_editable(path: &str) -> bool {
-    has_extension(path, &["md", "markdown", "kiboard", "kidesign"])
+    has_extension(path, &["md", "markdown", "kidesign"])
 }
 
 pub fn is_text(path: &str) -> bool {
     has_extension(
         path,
         &[
-            "md", "markdown", "kiboard", "kidesign", "txt", "csv", "tsv", "json", "html", "htm",
+            "md", "markdown", "kidesign", "txt", "csv", "tsv", "json", "html", "htm",
         ],
     )
 }
@@ -70,7 +69,6 @@ pub fn is_supported(path: &str) -> bool {
         &[
             "md",
             "markdown",
-            "kiboard",
             "kidesign",
             "txt",
             "csv",
@@ -144,7 +142,8 @@ mod tests {
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");
-        assert!(is_editable("a/b.kiboard"));
+        assert!(is_editable("a/b.kidesign"));
+        assert!(!is_supported("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));
         assert!(is_text("a/b.json"));
         assert!(!is_supported("a/b.kitable"));

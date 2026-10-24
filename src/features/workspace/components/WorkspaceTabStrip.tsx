@@ -9,9 +9,9 @@ import { canShowDocumentHistory, requestDocumentHistory } from '@/features/histo
 import { KitDraftTabMark } from '@/features/kits/public'
 import { cn } from '@kition/app-ui/utils'
 
-/** The workspace file a tab edits, for co-editing (kit documents, boards, Markdown documents). */
+/** The workspace file a tab edits, for co-editing (kit documents, Markdown documents). */
 function collabTabPath(tab: WorkspaceTab): string | null {
-  if (tab.type === 'file-viewer' || tab.type === 'board' || tab.type === 'document') return tab.path
+  if (tab.type === 'file-viewer' || tab.type === 'document') return tab.path
   return null
 }
 

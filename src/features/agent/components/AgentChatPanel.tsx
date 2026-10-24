@@ -281,7 +281,7 @@ export function AgentChatPanel({
         />
         <AgentAiComposer
           imageControls={imageGeneration ? <AgentImageComposerControls mode={imageMode} busy={busy}
-            surface={paneContext === 'whiteboard' ? paneContext : 'document'}
+            surface="document"
             accessToken={imageGeneration.accessToken} /> : undefined}
           imageSummary={imageGeneration ? <AgentImageComposerSummary mode={imageMode} busy={busy} /> : undefined}
           busy={busy}

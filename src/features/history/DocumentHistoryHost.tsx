@@ -14,7 +14,7 @@ export function requestDocumentHistory(path: string) {
   window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { path } }))
 }
 
-/** Whether the document open at `path` has a version history to show (an open document, board, or kit document). */
+/** Whether the document open at `path` has a version history to show (an open document or kit document). */
 export function canShowDocumentHistory(path: string) {
   return historyDocumentFor(path) !== null
 }

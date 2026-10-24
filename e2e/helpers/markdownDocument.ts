@@ -11,9 +11,10 @@
  * disk, raise the external-change event the app listens to, count the app's
  * writes, and make them fail (`window.__KITION_MARKDOWN_E2E_FILES__`).
  */
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 import { installDocumentStoreBridge, readDocumentStoreState } from './documentStore'
+import { mockLocalWorkspaceApi } from './mockApi'
 
 const VAULT_PATH = '/tmp/kition-e2e-vault'
 export const DEFAULT_DOC_PATH = 'table-test.md'
@@ -291,4 +292,62 @@ export async function failMarkdownFileWrites(page: Page, message: string | null)
 /** The document id the replica store's index gives `path`, or `null` when it has none. */
 export async function readDocumentIdOf(page: Page, path: string = DEFAULT_DOC_PATH) {
   return (await readDocumentStoreState(page)).index.entries[path] ?? null
+}
+
+/** The Markdown document `openAgentWorkspace` opens. */
+export const AGENT_WORKSPACE_DOC_PATH = 'Launch notes.md'
+
+/** Desktop settings with a model, so the Agent panel can send a turn. */
+const AGENT_SETTINGS = JSON.stringify({
+  general: { theme: 'light', language: 'en-US', restoreWorkspaceOnLaunch: true, confirmBeforeQuit: true, autoCheckUpdates: true },
+  shortcuts: [],
+  providers: {
+    openai: {
+      kind: 'openai', enabled: true, label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', apiKey: 'test-key',
+      accessToken: '', refreshToken: '', modelsPath: '/models', authHeader: '', authScheme: 'bearer',
+      wireApi: 'responses', reasoningEffort: 'medium', disableResponseStorage: true,
+      discoveredModels: ['gpt-test'], lastSyncedAt: '2026-08-27T12:00:00.000Z',
+    },
+  },
+  models: {
+    activeProvider: 'openai',
+    selectedModels: { openai: 'gpt-test' },
+    preferredDefaultModel: 'gpt-test',
+    preferredChatModel: 'gpt-test',
+    preferredWritingModel: 'gpt-test',
+  },
+})
+
+/**
+ * A workspace whose Agent can send a turn, with one Markdown document open
+ * (`AGENT_WORKSPACE_DOC_PATH`): a model is set up, and the runtime reports `capabilities`.
+ */
+export async function openAgentWorkspace(page: Page, options: { capabilities?: string[] } = {}) {
+  await mockLocalWorkspaceApi(page)
+  await mockDesktopBridge(page, '# Launch notes\n\nThree ideas for the launch.\n', {}, AGENT_WORKSPACE_DOC_PATH, {
+    secureValues: { 'kition.desktop.settings.v1': AGENT_SETTINGS },
+  })
+  await page.addInitScript((capabilities) => {
+    const bridge = (window as unknown as { kitionDesktop: Record<string, unknown> }).kitionDesktop
+    bridge.BackendStatus = async () => ({
+      base_url: 'http://127.0.0.1:18101/api',
+      health_url: 'http://127.0.0.1:18101/health',
+      running: true,
+      last_error: '',
+      logs: '',
+      log_file: '',
+      launch_mode: 'managed',
+      binary_path: '',
+      config_path: '',
+      working_dir: '',
+      command: '',
+      capabilities,
+    })
+    // A file dropped on the composer is imported into the workspace first.
+    bridge.ImportWorkspaceFile = async (request: { folder?: string; filename: string }) => ({
+      imported_path: `${String(request.folder || '').replace(/^\/+|\/+$/g, '')}/${request.filename}`.replace(/^\//, ''),
+    })
+  }, options.capabilities ?? [])
+  await page.goto('/')
+  await expect(page.locator('.cm-content')).toContainText('Three ideas for the launch.', { timeout: 20_000 })
 }

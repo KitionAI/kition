@@ -30,7 +30,6 @@ export type WorkspaceTab =
       format: WorkspaceDocumentFormat
     }
   | { id: string; type: 'gallery'; title: string; kind: WorkspaceMediaKind }
-  | { id: string; type: 'board'; title: string; path: string }
   | { id: string; type: 'design'; title: string; path: string }
   | {
       id: string
@@ -65,10 +64,10 @@ export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', 
 /**
  * Formats Kition's own editors (and `inferWorkspaceItemFormat` below) already know, with no kit
  * registry entry: aliases a kit's preview understands but never creates (`pptx`, `xls`, `ppt`,
- * `psb`, `kphoto`), and the native `.kiboard`/`.kidesign`/Markdown/media formats.
+ * `psb`, `kphoto`), and the native `.kidesign`/Markdown/media formats.
  */
 const workspaceNonKitExtensions = [
-  'md', 'markdown', 'kiboard', 'kidesign',
+  'md', 'markdown', 'kidesign',
   'pptx', 'xls', 'ppt', 'psb', 'kphoto',
   'csv', 'tsv', 'json', 'txt', 'html', 'htm',
   'png', 'jpe?g', 'gif', 'webp', 'svg',
@@ -84,7 +83,7 @@ const workspaceTitleExtensionPattern = new RegExp(
   `\\.(${[...new Set([...workspaceNonKitExtensions, ...kitCreateExtensions()])].join('|')})$`,
   'i',
 )
-const workspaceEditableExtensionPattern = /\.(md|markdown|kiboard|kidesign)$/i
+const workspaceEditableExtensionPattern = /\.(md|markdown|kboard|kidesign)$/i
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -138,9 +137,6 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (path.toLowerCase().endsWith('.ktable')) return 'table'
   if (path.toLowerCase().endsWith('.kboard')) return 'board'
   if (path.toLowerCase().endsWith('.kidesign')) return 'design'
-  if (path.toLowerCase().endsWith('.kiboard')) {
-    return 'board'
-  }
   if (path.toLowerCase().endsWith('.docx')) {
     return 'docx'
   }
@@ -211,7 +207,7 @@ export function renameWorkspaceDocumentPath(path: string, title: string) {
 
   const filename = normalizedPath.split('/').pop() || normalizedPath
   const extension = filename.match(workspaceEditableExtensionPattern)?.[0] || ''
-  const fallbackTitle = extension.toLowerCase() === '.kiboard' ? 'Untitled board' : 'Untitled note'
+  const fallbackTitle = extension.toLowerCase() === '.kboard' ? 'Untitled board' : 'Untitled note'
   const nextFilename = `${trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle}${extension}`
   const parentPath = normalizedPath.includes('/')
     ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
@@ -281,7 +277,6 @@ export function getWorkspaceTabKit(tab: WorkspaceTab): KitIconId | null {
     case 'workflow':
       return tab.tablePath ? 'table' : null
     case 'design':
-    case 'board':
       return tab.type
     default:
       return 'document'
@@ -421,6 +416,14 @@ export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 
 export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
   return isEditableWorkspaceFormat(format) || format === 'board' || format === 'design'
+}
+
+/**
+ * Formats the tree can duplicate as a new document. A kit file (a board among them) is not one: a copy of its bytes
+ * would keep the original's KDM document id.
+ */
+export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
+  return isEditableWorkspaceFormat(format) || format === 'design'
 }
 
 /**

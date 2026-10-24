@@ -53,17 +53,16 @@ describe('buildPrivateSectionTreeNodes hidden workflow storage', () => {
 })
 
 describe('buildPrivateSectionTreeNodes Board files', () => {
-  it('keeps .kiboard files visible as Board even when the bridge reports binary', () => {
+  it('lists a .kboard file as a Board, the Board kit opens it', () => {
     const nodes = buildPrivateSectionTreeNodes([{
       type: 'file',
-      path: 'Planning.kiboard',
-      name: 'Planning.kiboard',
-      format: 'binary',
+      path: 'Planning.kboard',
+      name: 'Planning.kboard',
     }], emptyMetadata)
 
     expect(nodes).toEqual([
       expect.objectContaining({
-        path: 'Planning.kiboard',
+        path: 'Planning.kboard',
         title: 'Planning',
         format: 'board',
       }),

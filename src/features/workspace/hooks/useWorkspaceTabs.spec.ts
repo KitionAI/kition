@@ -115,34 +115,34 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
     expect(ref.current.activeWorkspaceTabId).toBe('document:B-home.md')
   })
 
-  it('remaps durable Board paths and keeps a valid active tab after deletion', async () => {
+  it('remaps durable Design paths and keeps a valid active tab after deletion', async () => {
     const { ref } = await mountHarness('/A')
 
     await act(async () => {
       ref.current.upsertWorkspaceTab(docTab('Home.md'), { activate: false })
       ref.current.upsertWorkspaceTab({
-        id: 'board:Planning.kiboard',
-        type: 'board',
+        id: 'design:Planning.kidesign',
+        type: 'design',
         title: 'Planning',
-        path: 'Planning.kiboard',
+        path: 'Planning.kidesign',
       }, { activate: true })
       await Promise.resolve()
     })
 
     await act(async () => {
-      ref.current.remapWorkspaceTabPaths('Planning.kiboard', 'Roadmap.kiboard')
+      ref.current.remapWorkspaceTabPaths('Planning.kidesign', 'Roadmap.kidesign')
       await Promise.resolve()
     })
     expect(ref.current.workspaceTabs[1]).toEqual({
-      id: 'board:Roadmap.kiboard',
-      type: 'board',
+      id: 'design:Roadmap.kidesign',
+      type: 'design',
       title: 'Roadmap',
-      path: 'Roadmap.kiboard',
+      path: 'Roadmap.kidesign',
     })
-    expect(ref.current.activeWorkspaceTabId).toBe('board:Roadmap.kiboard')
+    expect(ref.current.activeWorkspaceTabId).toBe('design:Roadmap.kidesign')
 
     await act(async () => {
-      ref.current.filterWorkspaceTabs((tab) => tab.type !== 'board')
+      ref.current.filterWorkspaceTabs((tab) => tab.type !== 'design')
       await Promise.resolve()
     })
     expect(ref.current.workspaceTabs.map((tab) => tab.id)).toEqual(['document:Home.md'])

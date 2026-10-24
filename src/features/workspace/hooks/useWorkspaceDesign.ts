@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { loadDesignLib } from '@/features/design/public'
 import {
-  DESIGN_FROM_BOARD_ACTION,
   DESIGN_FROM_RECORD_ACTION,
   DESIGN_IMAGE_ACTION,
   DESIGN_INSERT_DOCUMENT_ACTION,
@@ -16,7 +15,6 @@ import { relativeMarkdownPath } from '@/features/document/public'
 import { listTableRecords, putTableAttachment, writeTableRecord } from '@/api/kitTables'
 import { designMarkdownLink, sendDesignToTable } from '../lib/designHandoff'
 import type { DesignDocument } from '@/features/design/public'
-import type { BoardFrameSnapshot } from '@/types/designStart'
 import { notify } from '@/lib/notify'
 import { getWorkspaceItemTitle, type WorkspaceTab } from '../lib/workspace'
 export function useWorkspaceDesign(options: {
@@ -117,18 +115,9 @@ export function useWorkspaceDesign(options: {
         return designFromRecord(entry.template, fields, { brand: brandKitBindings(kit), title, record })
       })
     }
-    const fromBoard = (event: Event) => {
-      const frame = (event as CustomEvent<BoardFrameSnapshot>).detail
-      const root = current.current.root
-      void createFrom(async ({ designFromBoardFrame, existingDesignImage }) =>
-        designFromBoardFrame(frame, (workspacePath) => existingDesignImage(root, workspacePath)),
-      )
-    }
     window.addEventListener(DESIGN_FROM_RECORD_ACTION, fromRecord)
-    window.addEventListener(DESIGN_FROM_BOARD_ACTION, fromBoard)
     return () => {
       window.removeEventListener(DESIGN_FROM_RECORD_ACTION, fromRecord)
-      window.removeEventListener(DESIGN_FROM_BOARD_ACTION, fromBoard)
     }
   }, [createFrom])
   // The document the user was on last, for "Insert into document".

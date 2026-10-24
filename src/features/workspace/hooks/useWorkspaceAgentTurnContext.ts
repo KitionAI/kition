@@ -6,7 +6,6 @@ import {
   type AgentTurnContext,
 } from '@/features/agent/public'
 import { loadMarkdownImageInsertionResolver, type MarkdownImageInsertionSnapshot } from '@/features/document/public'
-import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentDesignContext } from '@/types/designAgent'
 
 type BuildTurnContextInput = Parameters<typeof buildAgentTurnContext>[0]
@@ -17,19 +16,17 @@ const INITIAL_TURN_CONTEXT: AgentTurnContext = {
 }
 
 type UseWorkspaceAgentTurnContextOptions = {
-  /** Context for the active whiteboard, or undefined when no board is active. */
-  buildWhiteboardContext: () => AgentWhiteboardContext | undefined
   /** Context for the active design, or undefined when no design is active. */
   buildDesignContext: () => AgentDesignContext | undefined
 }
 
 /**
  * The context attached to every Agent turn: what the user is looking at
- * (document, workflow, board, design) and the cursor-aware image insertion
+ * (document, workflow, design) and the cursor-aware image insertion
  * anchor. The workspace screen refreshes the base context during render;
  * `getTurnContext` finalizes it at send time.
  */
-export function useWorkspaceAgentTurnContext({ buildWhiteboardContext, buildDesignContext }: UseWorkspaceAgentTurnContextOptions) {
+export function useWorkspaceAgentTurnContext({ buildDesignContext }: UseWorkspaceAgentTurnContextOptions) {
   const turnContextRef = useRef<AgentTurnContext>(INITIAL_TURN_CONTEXT)
   const insertionSnapshotRef = useRef<MarkdownImageInsertionSnapshot | null>(null)
 
@@ -59,10 +56,9 @@ export function useWorkspaceAgentTurnContext({ buildWhiteboardContext, buildDesi
       markdownImageInsertionSnapshot: insertionSnapshotRef.current,
       resolveMarkdownImageInsertionContext,
     })
-    const whiteboardContext = base.paneContext === 'whiteboard' ? buildWhiteboardContext() : undefined
     const designContext = base.paneContext === 'design' ? buildDesignContext() : undefined
-    return { ...base, whiteboardContext, designContext }
-  }, [buildWhiteboardContext, buildDesignContext])
+    return { ...base, designContext }
+  }, [buildDesignContext])
 
   return {
     turnContextRef,

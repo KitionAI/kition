@@ -41,9 +41,7 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     galleryPanelProps: null,
     agentPanel,
     activeAgentSession: session,
-    agentBusySessions: new Set([5]),
     stopAgentMessage: vi.fn(),
-    whiteboard: { available: true, onBridgeChange: vi.fn(), onGenerateImage: undefined },
     design: { available: true, onBridgeChange: vi.fn(), onGenerateImage: undefined },
     templateDialogs,
     workflows: { openTableFileWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
@@ -60,20 +58,18 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
 }
 
 describe('buildWorkspaceEditorContentProps', () => {
-  it('derives the title, presence, and busy state from the bundles', () => {
+  it('derives the title, presence, and the agent stop from the bundles', () => {
     const { input } = buildInput()
     const props = buildWorkspaceEditorContentProps(input)
     expect(props.documentTitle).toBe('plan')
     expect(props.hasActiveDocument).toBe(true)
-    expect(props.whiteboardAgentBusy).toBe(true)
     expect(props.documentEditorFocusRequest).toBe(3)
-    expect(props.onCancelWhiteboardAgent).toBeDefined()
-    props.onCancelWhiteboardAgent!()
+    expect(props.onCancelDesignAgent).toBeDefined()
+    props.onCancelDesignAgent!()
     expect(input.stopAgentMessage).toHaveBeenCalledWith(5)
 
     const idle = buildWorkspaceEditorContentProps(buildInput({ activeAgentSession: null }).input)
-    expect(idle.whiteboardAgentBusy).toBe(false)
-    expect(idle.onCancelWhiteboardAgent).toBeUndefined()
+    expect(idle.onCancelDesignAgent).toBeUndefined()
   })
 
   it('routes revision decisions to the pending revision path and ignores them without one', () => {

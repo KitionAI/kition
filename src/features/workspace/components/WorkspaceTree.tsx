@@ -12,6 +12,7 @@ import {
   getWorkspaceItemIconColorClass,
   inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,
+  isDuplicableWorkspaceFormat,
   isOrganizableWorkspaceFormat,
   isSupportedWorkspaceFormat,
   workspaceEmojiOptions,
@@ -257,7 +258,7 @@ export function WorkspaceTree({
         const canDelete = !node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path)))
         const canSetIcon = !node.virtual
         const canRename = !node.virtual && (node.type === 'folder' || isOrganizable)
-        const canDuplicate = !node.virtual && node.type === 'file' && isOrganizable
+        const canDuplicate = !node.virtual && node.type === 'file' && isDuplicableWorkspaceFormat(node.format)
         const canMove = !node.virtual && (node.type === 'folder' || isOrganizable)
         const canAddToChat = !node.virtual && Boolean(onAddToChat)
         const canAddToNewChat = !node.virtual && Boolean(onAddToNewChat)

@@ -69,10 +69,6 @@ function HistorySection({ label, entries, selected, onSelect }: { label: string;
   )
 }
 
-function svgSource(svg: string) {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
 function PreviewPane({ document, preview, kit }: { document: HistoryDocument; preview: HistoryPreview; kit: EmbeddedKit | null }) {
   const { t } = useTranslation('history')
   const kitPreview = useMemo(() => ({ snapshot: preview.snapshot.slice().buffer as ArrayBuffer, blobs: preview.blobs.slice().buffer as ArrayBuffer }), [preview])
@@ -81,15 +77,6 @@ function PreviewPane({ document, preview, kit }: { document: HistoryDocument; pr
       <pre className="h-full overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-[13px] leading-relaxed text-foreground" data-testid="history-preview-text">
         {preview.text || t('previewEmpty')}
       </pre>
-    )
-  }
-  if (preview.svg !== undefined) {
-    return preview.svg ? (
-      <div className="flex h-full items-center justify-center overflow-auto p-5">
-        <img src={svgSource(preview.svg)} alt={t('title')} className="max-h-full max-w-full" data-testid="history-preview-board" />
-      </div>
-    ) : (
-      <p className="p-5 text-[13px] text-muted-foreground">{t('previewEmpty')}</p>
     )
   }
   if (!kit) return <p className="p-5 text-[13px] text-muted-foreground">{t('previewFailed')}</p>

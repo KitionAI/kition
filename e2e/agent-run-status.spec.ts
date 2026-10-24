@@ -2,13 +2,13 @@ import { expect, test } from '@playwright/test'
 import enAgent from '../src/i18n/locales/en-US/agent.json' with { type: 'json' }
 import zhAgent from '../src/i18n/locales/zh-CN/agent.json' with { type: 'json' }
 import { mockAgentTurn } from './helpers/agentStream'
-import { openWhiteboardFixture } from './helpers/whiteboard'
+import { openAgentWorkspace } from './helpers/markdownDocument'
 
 for (const locale of ['en-US', 'zh-CN'] as const) {
   test(`keeps interrupted work and localized status visible (${locale})`, async ({ page }) => {
     const copy = locale === 'zh-CN' ? zhAgent : enAgent
     await page.setViewportSize({ width: locale === 'zh-CN' ? 1100 : 1440, height: 900 })
-    await openWhiteboardFixture(page)
+    await openAgentWorkspace(page)
     await page.getByRole('button', { name: 'Open AI Chat', exact: true }).click()
     const newChat = page.getByRole('button', { name: 'New chat' })
     if (await newChat.isVisible().catch(() => false)) await newChat.click()

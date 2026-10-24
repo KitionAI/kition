@@ -1,6 +1,6 @@
 /**
  * The relay side (`RelayReplica`, `@/lib/sync`) of a document whose KDM replica lives in this
- * page: an open board (`OpenBoard`) or Markdown document (`OpenMarkdownDocument`). Exports come
+ * page: an open Markdown document (`OpenMarkdownDocument`). Exports come
  * straight from the replica; imports go through the editor's own path for changes made elsewhere
  * (the one merges of the file take), so the editor shows them, they are no undo step for the
  * person, and the editor's session saves them. No blobs: images stay workspace files referenced

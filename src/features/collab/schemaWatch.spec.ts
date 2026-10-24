@@ -21,7 +21,7 @@ const empty = new ArrayBuffer(0)
 
 afterEach(() => {
   setDocumentSchemaNotice('Slide.kitionslide', null)
-  setDocumentSchemaNotice('Plan.kiboard', null)
+  setDocumentSchemaNotice('Plan.kboard', null)
 })
 
 describe('newerSchemaRefusal', () => {
@@ -44,19 +44,19 @@ describe('watchSchema', () => {
     expect(schemaBlockedPaths()).toEqual(['Slide.kitionslide'])
     expect(onBlocked).toHaveBeenCalledTimes(1)
     // Other failures say nothing about the schema.
-    const failing = watchSchema('Plan.kiboard', 'kit.board', replica({ importChanges: vi.fn(async () => Promise.reject(new Error('offline'))) }))
+    const failing = watchSchema('Plan.kboard', 'kit.board', replica({ importChanges: vi.fn(async () => Promise.reject(new Error('offline'))) }))
     await expect(failing.importChanges(empty, empty)).rejects.toThrow('offline')
-    expect(documentSchemaNotice('Plan.kiboard')).toBeNull()
+    expect(documentSchemaNotice('Plan.kboard')).toBeNull()
   })
 
   it('notes, without blocking, changes written under a newer schema that the replica took', async () => {
     let newestAuthor: number | null = 2
-    const watched = watchSchema('Plan.kiboard', 'kit.board', replica({ schema: () => ({ reads: 2, newestAuthor }) }))
+    const watched = watchSchema('Plan.kboard', 'kit.board', replica({ schema: () => ({ reads: 2, newestAuthor }) }))
     await watched.importChanges(empty, empty)
-    expect(documentSchemaNotice('Plan.kiboard')).toBeNull()
+    expect(documentSchemaNotice('Plan.kboard')).toBeNull()
     newestAuthor = 3
     await watched.importChanges(empty, empty)
-    expect(documentSchemaNotice('Plan.kiboard')).toEqual({ kit: 'kit.board', needs: 3, reads: 2, blocked: false })
+    expect(documentSchemaNotice('Plan.kboard')).toEqual({ kit: 'kit.board', needs: 3, reads: 2, blocked: false })
     expect(schemaBlockedPaths()).toEqual([])
   })
 

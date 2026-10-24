@@ -25,14 +25,9 @@ import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
 } from '@/services/desktop'
-import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
 import type { DesignAgentBridge } from '@/features/design/public'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import type { ImageStudioRequest, ImageStudioStartResult } from '@/features/media-generation/public'
-import type {
-  WhiteboardImageGenerationRequest,
-  WhiteboardImageGenerationStartResult,
-} from '@/features/whiteboard/lib/whiteboardImageGeneration'
 
 const DocumentHtmlPreviewPane = lazy(() =>
   import('@/features/document/components/DocumentHtmlPreviewPane').then((module) => ({ default: module.DocumentHtmlPreviewPane })),
@@ -61,9 +56,6 @@ const WorkspaceFileViewerPane = lazy(() =>
   import('@/features/workspace/components/WorkspaceFileViewerPane').then((module) => ({ default: module.WorkspaceFileViewerPane })),
 )
 const DesignEditorPane = lazy(() => import('@/features/design/components/DesignEditorPane').then(module => ({ default: module.DesignEditorPane })))
-const WhiteboardEditorPane = lazy(() =>
-  import('@/features/whiteboard/components/WhiteboardEditorPane').then((module) => ({ default: module.WhiteboardEditorPane })),
-)
 const WorkflowHomePage = lazy(() =>
   import('@/features/workflow/pages/WorkflowHomePage').then((module) => ({ default: module.WorkflowHomePage })),
 )
@@ -95,7 +87,7 @@ function EditorPaneFallback() {
 
 /**
  * Every editor surface mounts behind its own error boundary so a crash in one
- * document, table, board, or workflow view leaves the shell and the other
+ * document, table, or workflow view leaves the shell and the other
  * tabs usable. The Suspense fallback covers the lazy chunk load.
  */
 function EditorPaneBoundary({
@@ -142,15 +134,10 @@ type WorkspaceEditorContentProps = {
   documentEditorFocusRequest?: number
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
   getOpenedDocument: (path: string) => OpenedDocumentEntry | null
-  whiteboardAgentAvailable?: boolean
-  whiteboardAgentBusy?: boolean
-  onWhiteboardAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
-  onCancelWhiteboardAgent?: () => void
   designAgentAvailable?: boolean
   onDesignAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
   onCancelDesignAgent?: () => void
   onGenerateDesignImage?: (request: ImageStudioRequest) => Promise<ImageStudioStartResult>
-  onGenerateWhiteboardImage?: (request: WhiteboardImageGenerationRequest) => Promise<WhiteboardImageGenerationStartResult>
   onOpenWorkflow?: (tablePath: string, workflowId: string) => void
   onOpenGlobalWorkflow?: (workflowId: string) => void
   onOpenWorkflows: () => void
@@ -203,15 +190,10 @@ export function WorkspaceEditorContent({
   documentEditorFocusRequest = 0,
   galleryPanelProps,
   getOpenedDocument,
-  whiteboardAgentAvailable = false,
-  whiteboardAgentBusy = false,
   designAgentAvailable = false,
   onDesignAgentBridgeChange,
   onCancelDesignAgent,
   onGenerateDesignImage,
-  onWhiteboardAgentBridgeChange,
-  onCancelWhiteboardAgent,
-  onGenerateWhiteboardImage,
   onOpenWorkflow,
   onOpenGlobalWorkflow,
   onOpenWorkflows,
@@ -368,32 +350,6 @@ export function WorkspaceEditorContent({
           </EditorPaneBoundary>
         </div>
       ))}
-      {workspaceTabs
-        .filter((tab): tab is Extract<WorkspaceTab, { type: 'board' }> => tab.type === 'board')
-        .map((tab) => (
-          <div
-            key={tab.id}
-            className={cn(
-              'document-editor-view',
-              activeWorkspaceTabId === tab.id
-                && activeWorkspaceTab?.type === 'board'
-                && 'is-active',
-            )}
-          >
-            <EditorPaneBoundary>
-              <WhiteboardEditorPane
-                agentAvailable={whiteboardAgentAvailable}
-                agentBusy={whiteboardAgentBusy}
-                onAgentBridgeChange={onWhiteboardAgentBridgeChange}
-                onCancelAgent={onCancelWhiteboardAgent}
-                onGenerateImage={onGenerateWhiteboardImage}
-                onOpenAgent={onOpenAgent}
-                path={tab.path}
-                title={tab.title}
-              />
-            </EditorPaneBoundary>
-          </div>
-        ))}
       {activeWorkspaceTab?.type === 'document'
       && activeDocumentFormat === 'html'
       && !activeDocumentRevision ? (

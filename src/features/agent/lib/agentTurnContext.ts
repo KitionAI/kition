@@ -1,6 +1,5 @@
 import type { AgentPaneContext, AgentTaskMode } from '@/api/agent'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import type { AgentWhiteboardContext } from '@kition/board-editor'
 import type { AgentDesignContext } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } from '@/features/document/public'
 
@@ -14,8 +13,6 @@ export type AgentTurnContext = {
   /** Workflow id when paneContext === 'workflow'. Drives the backend's
    *  active-workflow context block. */
   activeWorkflowId?: string
-  /** Compact selection, viewport, or board context for AI Whiteboard turns. */
-  whiteboardContext?: AgentWhiteboardContext
   /** Bounded artboard and layer context for Design turns. */
   designContext?: AgentDesignContext
   /** Workspace path of the active design, for image placement targets. */
@@ -49,7 +46,6 @@ export function buildAgentTurnContext(input: {
   activeDocumentFormat?: WorkspaceDocumentFormat
   paneContext?: AgentPaneContext
   activeWorkflowId?: string
-  whiteboardContext?: AgentWhiteboardContext
   /** Artboard and layer context for Design turns. */
   designContext?: AgentDesignContext
   activeDesignPath?: string
@@ -64,7 +60,6 @@ export function buildAgentTurnContext(input: {
     activeDocumentFormat: input.activeDocumentFormat,
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,
-    whiteboardContext: input.whiteboardContext,
     designContext: input.designContext,
     activeDesignPath: input.activeDesignPath,
     markdownImageInsertionContext,

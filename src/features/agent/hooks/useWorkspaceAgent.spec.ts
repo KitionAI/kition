@@ -1022,13 +1022,13 @@ describe('useWorkspaceAgent session events', () => {
   const status = (value: string) => ({ jsonrpc: '2.0', method: 'session.status', params: { sessionId, status: value } })
   const frame = (body: Record<string, unknown>) => ({ jsonrpc: '2.0', method: 'agent/assistant-stream', params: { sessionId, frame: body } })
   const patch = {
-    type: 'whiteboard.patch',
+    type: 'design.patch',
     schema_version: 1,
-    summary: 'Add a node',
-    operations: [{ op: 'element.create', element: { id: 'n1', kind: 'mind_node', bounds: { x: 0, y: 0, width: 10, height: 10 }, text: 'Idea' } }],
+    summary: 'Retitle',
+    operations: [{ op: 'layer.update', layer_id: 'title', changes: { text: 'Launch' } }],
   }
 
-  /** A turn that writes a document, previews and proposes a board patch, and answers. */
+  /** A turn that writes a document, previews and proposes a design patch, and answers. */
   function turnNotifications() {
     let seq = -1
     const logged = (body: Record<string, unknown>) => {
@@ -1041,14 +1041,14 @@ describe('useWorkspaceAgent session events', () => {
       logged({ type: 'step/start', turn: 1, step: 1 }),
       logged({ type: 'user/message', content: [{ type: 'text', text: 'Plan it' }], source: { kind: 'user' } }),
       frame({ type: 'start', attemptId: 'a1', revision: 1, turn: 1, step: 1 }),
-      frame({ type: 'chunk', attemptId: 'a1', revision: 2, index: 0, time: 1, chunk: { type: 'tool-call-delta', index: 1, id: 'w1', name: 'whiteboard_propose_patch', argumentsDelta: JSON.stringify(patch) } }),
+      frame({ type: 'chunk', attemptId: 'a1', revision: 2, index: 0, time: 1, chunk: { type: 'tool-call-delta', index: 1, id: 'w1', name: 'design_propose_patch', argumentsDelta: JSON.stringify(patch) } }),
       logged({ type: 'assistant/message', content: '', stopReason: 'tool_calls', model: 'm' }),
       frame({ type: 'end', attemptId: 'a1', revision: 3, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 3 } }),
       logged({ type: 'tool/call', callId: 'd1', name: 'document_write', arguments: { path: 'Notes/plan.md' } }),
       logged({ type: 'tool/result', callId: 'd1', name: 'document_write', isError: false, content: [], value: { name: 'document_write', summary: 'Updated', output: { path: 'Notes/plan.md' } } }),
       logged({ type: 'deliverables/presented', turn: 1, callId: 'd1', files: [{ path: 'Notes/plan.md' }] }),
-      logged({ type: 'tool/call', callId: 'w1', name: 'whiteboard_propose_patch', arguments: {} }),
-      logged({ type: 'tool/result', callId: 'w1', name: 'whiteboard_propose_patch', isError: false, content: [], value: { name: 'whiteboard_propose_patch', summary: 'Proposed', output: {} }, meta: { kind: 'whiteboard.patch', patch } }),
+      logged({ type: 'tool/call', callId: 'w1', name: 'design_propose_patch', arguments: {} }),
+      logged({ type: 'tool/result', callId: 'w1', name: 'design_propose_patch', isError: false, content: [], value: { name: 'design_propose_patch', summary: 'Proposed', output: {} }, meta: { kind: 'design.patch', patch } }),
       logged({ type: 'step/start', turn: 1, step: 2 }),
       frame({ type: 'start', attemptId: 'a2', revision: 4, turn: 1, step: 2 }),
       frame({ type: 'chunk', attemptId: 'a2', revision: 5, index: 0, time: 2, chunk: { type: 'text-delta', index: 0, text: 'Done.' } }),
@@ -1097,9 +1097,9 @@ describe('useWorkspaceAgent session events', () => {
     const callbacks = {
       onWorkspaceDocumentsModified: vi.fn(),
       onWorkspaceArtifactsSaved: vi.fn(),
-      onWhiteboardPatch: vi.fn(),
-      onWhiteboardPatchCancelled: vi.fn(),
-      getTurnContext: () => ({ paneContext: 'whiteboard', whiteboardContext: { board: { path: 'Boards/a.kiboard' } } }),
+      onDesignPatch: vi.fn(),
+      onDesignPatchCancelled: vi.fn(),
+      getTurnContext: () => ({ paneContext: 'design', designContext: { design: { path: 'Designs/a.kidesign' } } }),
     }
     mocks.streamAgentMessage.mockImplementation(async (args: any) => {
       for (const notification of turnNotifications()) args.onNotification(notification)
@@ -1115,9 +1115,9 @@ describe('useWorkspaceAgent session events', () => {
     expect(callbacks.onWorkspaceDocumentsModified).toHaveBeenCalledExactlyOnceWith(['Notes/plan.md'], 30)
     expect(latest.current.agentModifiedDocumentPaths.has('Notes/plan.md')).toBe(true)
     expect(callbacks.onWorkspaceArtifactsSaved).toHaveBeenCalledExactlyOnceWith(30)
-    expect(callbacks.onWhiteboardPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true, false])
-    expect(callbacks.onWhiteboardPatch).toHaveBeenLastCalledWith({ boardPath: 'Boards/a.kiboard', patch, provisional: false, sessionId: 30 })
-    expect(callbacks.onWhiteboardPatchCancelled).not.toHaveBeenCalled()
+    expect(callbacks.onDesignPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true, false])
+    expect(callbacks.onDesignPatch).toHaveBeenLastCalledWith({ designPath: 'Designs/a.kidesign', patch, provisional: false, sessionId: 30 })
+    expect(callbacks.onDesignPatchCancelled).not.toHaveBeenCalled()
     expect(mocks.listWorkspaceDocuments).toHaveBeenCalled()
     expect(mocks.listAgentSessions).toHaveBeenCalled()
     expect(mocks.notifyFromAgentEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: 'task.completed' }))
@@ -1127,10 +1127,10 @@ describe('useWorkspaceAgent session events', () => {
   })
 
   describe('when the stream fails after a canvas patch', () => {
-    const whiteboardTurn = () => ({
-      onWhiteboardPatch: vi.fn(),
-      onWhiteboardPatchCancelled: vi.fn(),
-      getTurnContext: () => ({ paneContext: 'whiteboard', whiteboardContext: { board: { path: 'Boards/a.kiboard' } } }),
+    const designTurn = () => ({
+      onDesignPatch: vi.fn(),
+      onDesignPatchCancelled: vi.fn(),
+      getTurnContext: () => ({ paneContext: 'design', designContext: { design: { path: 'Designs/a.kidesign' } } }),
     })
     const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' })
     // Index 12 is the `tool/result` carrying the final patch; index 5 the
@@ -1144,12 +1144,12 @@ describe('useWorkspaceAgent session events', () => {
       ['an error', () => new Error('boom')],
       ['Stop', abortError],
     ])('keeps a final patch waiting for Accept after %s', async (_label, error) => {
-      const callbacks = whiteboardTurn()
+      const callbacks = designTurn()
       mocks.streamAgentMessage.mockImplementation(throwAfter(13, error))
       const { latest, unmount } = await mountHook(callbacks)
       await send(latest, 30, 'Plan it')
-      expect(callbacks.onWhiteboardPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true, false])
-      expect(callbacks.onWhiteboardPatchCancelled).not.toHaveBeenCalled()
+      expect(callbacks.onDesignPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true, false])
+      expect(callbacks.onDesignPatchCancelled).not.toHaveBeenCalled()
       await unmount()
     })
 
@@ -1157,12 +1157,12 @@ describe('useWorkspaceAgent session events', () => {
       ['an error', () => new Error('boom')],
       ['Stop', abortError],
     ])('cancels an open provisional preview after %s', async (_label, error) => {
-      const callbacks = whiteboardTurn()
+      const callbacks = designTurn()
       mocks.streamAgentMessage.mockImplementation(throwAfter(6, error))
       const { latest, unmount } = await mountHook(callbacks)
       await send(latest, 30, 'Plan it')
-      expect(callbacks.onWhiteboardPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true])
-      expect(callbacks.onWhiteboardPatchCancelled).toHaveBeenCalledExactlyOnceWith({ boardPath: 'Boards/a.kiboard', sessionId: 30 })
+      expect(callbacks.onDesignPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true])
+      expect(callbacks.onDesignPatchCancelled).toHaveBeenCalledExactlyOnceWith({ designPath: 'Designs/a.kidesign', sessionId: 30 })
       await unmount()
     })
   })

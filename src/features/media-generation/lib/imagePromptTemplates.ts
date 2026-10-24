@@ -442,7 +442,7 @@ export function buildImagePrompt(input: BuildImagePromptInput) {
   const lines = [
     templateInstruction(template.id, variables),
   ]
-  if (context) lines.push('', `Whiteboard context to incorporate when relevant: ${context}`)
+  if (context) lines.push('', `Selection context to incorporate when relevant: ${context}`)
   lines.push(
     '',
     `Output: one ${input.aspectRatio} image, ${input.resolution}, ${input.quality} quality.`,

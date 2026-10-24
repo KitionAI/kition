@@ -1,20 +1,19 @@
 /**
- * The open documents the version history works on, whatever edits them: a Markdown document or a board (their KDM
+ * The open documents the version history works on, whatever edits them: a Markdown document (its KDM
  * replica lives in this page) and a kit document (its replica lives in the kit's engine, reached over the Kit UI
  * protocol). Each answers its whole replica with its history (so any version it had can be shown and restored), takes
  * a restoring change like any change made elsewhere, and names its KDM document id (a sync room's).
  */
 import { findOpenMarkdownDocument } from '@/features/document/public'
 import { mountedKitDocument } from '@/features/kits/public'
-import { findOpenBoard } from '@/features/whiteboard/public'
 import { Version } from '@/lib/kdm'
 
-type HistoryKind = 'document' | 'board' | 'kit'
+type HistoryKind = 'document' | 'kit'
 
 export type HistoryDocument = {
   path: string
   kind: HistoryKind
-  /** The kit the document belongs to (`kit.document` and `kit.board` for Kition's own). */
+  /** The kit the document belongs to (`kit.document` for Kition's own). */
   kitId: string
   /** The whole replica, history included (a change export from nothing), and its blob bundle. */
   full: () => Promise<{ changes: Uint8Array; blobs: Uint8Array }>
@@ -53,17 +52,15 @@ export function historyDocumentFor(path: string): HistoryDocument | null {
     }
   }
   const markdown = findOpenMarkdownDocument(path)
-  const board = markdown ? null : findOpenBoard(path)
-  const open = markdown ?? board
-  if (!open) return null
+  if (!markdown) return null
   return {
     path,
-    kind: markdown ? 'document' : 'board',
-    kitId: markdown ? 'kit.document' : 'kit.board',
-    full: async () => ({ changes: open.replica().exportChanges(Version.empty()), blobs: new Uint8Array() }),
-    version: async () => open.replica().version().encode(),
-    importChanges: async (changes) => open.importChanges(changes),
-    ...(markdown ? { restoreText: (text: string, label?: string) => markdown.restoreText(text, label) } : {}),
-    replicaDocId: async () => open.replica().docId,
+    kind: 'document',
+    kitId: 'kit.document',
+    full: async () => ({ changes: markdown.replica().exportChanges(Version.empty()), blobs: new Uint8Array() }),
+    version: async () => markdown.replica().version().encode(),
+    importChanges: async (changes) => markdown.importChanges(changes),
+    restoreText: (text: string, label?: string) => markdown.restoreText(text, label),
+    replicaDocId: async () => markdown.replica().docId,
   }
 }

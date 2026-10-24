@@ -14,8 +14,6 @@ export default defineConfig({
       // The packages under packages/ are imported by path alias, not installed (packages/README.md).
       { find: /^@kition\/app-ui$/, replacement: resolve(repositoryDir, 'packages/app-ui/src/index.tsx') },
       { find: /^@kition\/app-ui\//, replacement: `${resolve(repositoryDir, 'packages/app-ui/src')}/` },
-      { find: /^@kition\/board-editor$/, replacement: resolve(repositoryDir, 'packages/board-editor/src/index.ts') },
-      { find: /^@kition\/board-editor\//, replacement: `${resolve(repositoryDir, 'packages/board-editor/src')}/` },
       { find: /^@kition\/document-editor$/, replacement: resolve(repositoryDir, 'packages/document-editor/src/index.ts') },
       { find: /^@kition\/document-editor\//, replacement: `${resolve(repositoryDir, 'packages/document-editor/src')}/` },
       // kition-sdk's @kition/kdm and @kition/kit-engine, which Kition carries as src/lib/kdm and

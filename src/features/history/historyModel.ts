@@ -6,7 +6,6 @@
  */
 import { loadDocumentPreview } from '@/features/document/public'
 import { readRoom, syncClient } from '@/features/collab/public'
-import { loadBoardPreview } from '@/features/whiteboard/public'
 import type { Checkpoint as ServerCheckpoint } from '@/lib/sync'
 import { readDocumentCheckpoint, readDocumentHistory, readDocumentIndex, recordDocumentCheckpoint, type DocumentCheckpoint } from '@/services/desktop'
 import type { HistoryDocument } from './historyDocuments'
@@ -23,8 +22,8 @@ export type ServerEntry = ServerCheckpoint & { source: 'server'; id: string }
 
 export type HistoryEntry = DeviceEntry | ServerEntry
 
-/** The document as of a checkpoint: the bytes a kit opens, or the text or drawing Kition shows. */
-export type HistoryPreview = { snapshot: Uint8Array; blobs: Uint8Array; text?: string; svg?: string }
+/** The document as of a checkpoint: the bytes a kit opens, or the text Kition shows. */
+export type HistoryPreview = { snapshot: Uint8Array; blobs: Uint8Array; text?: string }
 
 /** The document's id in the store (its history's), or `null` when the store has none for its path. */
 async function storeIdFor(path: string): Promise<string | null> {
@@ -55,7 +54,6 @@ export async function loadServerHistory(document: HistoryDocument): Promise<Serv
 
 async function render(document: HistoryDocument, snapshot: Uint8Array, blobs: Uint8Array): Promise<HistoryPreview> {
   if (document.kind === 'document') return { snapshot, blobs, text: (await loadDocumentPreview()).documentPreviewText(snapshot) }
-  if (document.kind === 'board') return { snapshot, blobs, svg: (await loadBoardPreview()).boardPreviewSvg(snapshot) }
   return { snapshot, blobs }
 }
 
@@ -93,7 +91,7 @@ async function revertDocument(document: HistoryDocument, target: Uint8Array, blo
 
 /**
  * Restores `entry` as one new change. A server checkpoint is restored by the server (every member, this one too,
- * receives the change). A device checkpoint of a Markdown document is one undo step; of a board or a kit document it
+ * receives the change). A device checkpoint of a Markdown document is one undo step; of a kit document it
  * answers `undo`, which brings the document back to how it was before. Records where the document was before, and the
  * restore, in its history.
  */

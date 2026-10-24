@@ -49,7 +49,7 @@ module.exports = {
       name: 'packages-import-nothing-from-the-app',
       severity: 'error',
       comment:
-        'A package under packages/ runs outside Kition too (the board editor in the Board kit, the document editor in the Document kit), so it imports nothing from src/ but the KDM copy (as @kition/kdm). The board editor uses app services through BoardHost (packages/board-editor/src/host.tsx), implemented in src/features/whiteboard/host. The document editor uses them through DocumentHost (packages/document-editor/src/host.ts), implemented in src/features/document/host.',
+        'A package under packages/ runs outside Kition too (the document editor in the Document kit), so it imports nothing from src/ but the KDM copy (as @kition/kdm). The document editor uses app services through DocumentHost (packages/document-editor/src/host.ts), implemented in src/features/document/host.',
       from: { path: '^packages/' },
       // src/lib/kdm and src/lib/kit-engine are kition-sdk's @kition/kdm and @kition/kit-engine,
       // which Kition carries (scripts/sync-kit-host.mjs); packages import them by those names, which
@@ -62,14 +62,6 @@ module.exports = {
       comment: 'packages/app-ui holds the shared UI primitives; it depends on npm packages only.',
       from: { path: '^packages/app-ui/' },
       to: { path: '^packages/(?!app-ui/)' },
-    },
-    {
-      name: 'app-uses-board-editor-entries',
-      severity: 'error',
-      comment:
-        'Import the board through its entries: @kition/board-editor (agent types, host seam, record and element types), @kition/board-editor/model (the board on the KDM), or @kition/board-editor/editor (the editor). Export what the app needs from packages/board-editor/src/{index,model,editor}.ts.',
-      from: { path: '^src/' },
-      to: { path: '^packages/board-editor/src/', pathNot: '^packages/board-editor/src/(index|model|editor)\\.ts$' },
     },
     {
       name: 'app-uses-document-editor-entries',

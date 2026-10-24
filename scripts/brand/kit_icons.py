@@ -21,7 +21,7 @@ KITS = [
     Kit('word', 'Word', '#2b5cd9', '#2b5cd9', '#6b9bff'),
     Kit('table', 'Table', '#0e9a8a', '#0c8375', '#3fd1bf'),
     Kit('sheet', 'Sheet', '#1f9d4c', '#1a8641', '#4fd17b'),
-    Kit('board', 'Whiteboard', '#f2b200', '#966e00', '#ffd04d'),
+    Kit('board', 'Board', '#f2b200', '#966e00', '#ffd04d'),
     Kit('slide', 'Slide', '#f0701a', '#c0550d', '#ff9a55'),
     Kit('design', 'Design Studio', '#e5486a', '#e0244d', '#ff7d97'),
     Kit('layout', 'Design', '#d63e95', '#d32f8d', '#f57bbd'),

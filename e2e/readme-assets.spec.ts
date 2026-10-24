@@ -4,154 +4,19 @@ import { expect, test, type Page } from '@playwright/test'
 import { installDocumentStoreBridge } from './helpers/documentStore'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
-import { createBoardRecordsFromElements } from '../packages/board-editor/src/lib/boardRecords'
 
 const CAPTURE_ENABLED = process.env.KITION_CAPTURE_README_ASSETS === '1'
 const VAULT_PATH = '/tmp/Kition Demo'
 const WELCOME_PATH = 'Getting Started/Welcome to Kition.md'
 const TABLE_PATH = 'Content Pipeline.ktable'
-const BOARD_PATH = 'Product Launch.kiboard'
 const WELCOME_CONTENT = readFileSync(new URL('../public/onboarding/welcome.md', import.meta.url), 'utf8')
 const LOGO_CONTENT = readFileSync(new URL('../public/onboarding/logo.png', import.meta.url))
-/** Encoded by the page through the Vite dev server: Playwright's TypeScript transform cannot load the KDM. */
-const BOARD_FILE_MODULE = '/packages/board-editor/src/kdm/boardKdmFile.ts'
-const KDM_MODULE = '/src/lib/kdm/index.ts'
-const BOARD_RECORDS = createBoardRecordsFromElements([
-  {
-    id: 'research-to-strategy',
-    kind: 'connector',
-    start: { x: 230, y: 145 },
-    end: { x: 300, y: 220 },
-    style: { strokeColor: 'blue' },
-  },
-  {
-    id: 'strategy-to-message',
-    kind: 'connector',
-    start: { x: 480, y: 220 },
-    end: { x: 540, y: 145 },
-    style: { strokeColor: 'green' },
-  },
-  {
-    id: 'strategy-to-audience',
-    kind: 'connector',
-    start: { x: 300, y: 260 },
-    end: { x: 230, y: 335 },
-    style: { strokeColor: 'orange' },
-  },
-  {
-    id: 'strategy-to-channels',
-    kind: 'connector',
-    start: { x: 480, y: 260 },
-    end: { x: 540, y: 335 },
-    style: { strokeColor: 'orange' },
-  },
-  {
-    id: 'research',
-    kind: 'rectangle',
-    x: 80,
-    y: 100,
-    width: 150,
-    height: 90,
-    text: 'Research',
-    style: { fillColor: 'blue', strokeColor: 'blue' },
-  },
-  {
-    id: 'launch-strategy',
-    kind: 'rectangle',
-    x: 300,
-    y: 195,
-    width: 180,
-    height: 90,
-    text: 'Launch strategy',
-    style: { fillColor: 'purple', strokeColor: 'purple' },
-  },
-  {
-    id: 'messaging',
-    kind: 'rectangle',
-    x: 540,
-    y: 100,
-    width: 120,
-    height: 90,
-    text: 'Messaging',
-    style: { fillColor: 'green', strokeColor: 'green' },
-  },
-  {
-    id: 'audience',
-    kind: 'rectangle',
-    x: 80,
-    y: 290,
-    width: 150,
-    height: 90,
-    text: 'Audience',
-    style: { fillColor: 'orange', strokeColor: 'orange' },
-  },
-  {
-    id: 'channels',
-    kind: 'rectangle',
-    x: 540,
-    y: 290,
-    width: 120,
-    height: 90,
-    text: 'Channels',
-    style: { fillColor: 'orange', strokeColor: 'orange' },
-  },
-  {
-    id: 'x-box-example',
-    kind: 'rectangle',
-    x: 80,
-    y: 430,
-    width: 92,
-    height: 72,
-    shapeType: 'x-box',
-    style: { fillStyle: 'none', strokeColor: 'red' },
-  },
-  {
-    id: 'x-box-label',
-    kind: 'text',
-    x: 190,
-    y: 474,
-    text: 'Needs revision',
-    fontSize: 18,
-    style: { strokeColor: 'red' },
-  },
-  {
-    id: 'check-box-example',
-    kind: 'rectangle',
-    x: 280,
-    y: 430,
-    width: 92,
-    height: 72,
-    shapeType: 'check-box',
-    style: { fillStyle: 'none', strokeColor: 'green' },
-  },
-  {
-    id: 'check-box-label',
-    kind: 'text',
-    x: 390,
-    y: 474,
-    text: 'Ready to launch',
-    fontSize: 18,
-    style: { strokeColor: 'green' },
-  },
-], 'Product Launch')
-
 async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
   await page.addInitScript(
-    ({ boardFileModule, boardPath, boardRecords, kdmModule, vaultPath, welcomePath, tablePath, welcomeContent }) => {
+    ({ vaultPath, welcomePath, tablePath, welcomeContent }) => {
       const stateWindow = window as typeof window & Record<string, unknown>
       const secureStore = new Map<string, string>()
       const updatedAt = '2026-07-24T00:00:00.000Z'
-      let boardContent: Promise<string> | null = null
-      const readBoardContent = () => {
-        // Resolved against the page: WebKit resolves an init script's bare paths against the script.
-        boardContent ??= Promise.all([
-          import(/* @vite-ignore */ new URL(boardFileModule, window.location.href).href),
-          import(/* @vite-ignore */ new URL(kdmModule, window.location.href).href),
-        ]).then(([{ createBoardFromRecords, encodeBoardFile }, { randomActor }]) => (
-          encodeBoardFile(createBoardFromRecords('Product Launch', randomActor(), boardRecords)) as string
-        ))
-        return boardContent
-      }
       const vault = {
         path: vaultPath,
         name: 'Kition Demo',
@@ -162,14 +27,6 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
       const makeListResponse = () => ({
         root_path: vaultPath,
         items: [
-          {
-            type: 'file' as const,
-            path: boardPath,
-            name: boardPath,
-            format: 'board' as const,
-            size: 0,
-            updated_at: updatedAt,
-          },
           {
             type: 'file' as const,
             path: tablePath,
@@ -239,17 +96,6 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
         ChooseDirectory: async () => ({ canceled: true, path: '' }),
         ListWorkspaceDocuments: async () => makeListResponse(),
         ReadWorkspaceDocument: async (request: { path: string }) => {
-          if (request.path === boardPath) {
-            const content = await readBoardContent()
-            return {
-              path: boardPath,
-              name: boardPath,
-              content,
-              format: 'board',
-              updated_at: updatedAt,
-              size: content.length,
-            }
-          }
           if (request.path !== welcomePath) throw new Error(`document not found: ${request.path}`)
           return {
             path: welcomePath,
@@ -272,10 +118,6 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
     },
     {
       vaultPath: VAULT_PATH,
-      boardPath: BOARD_PATH,
-      boardFileModule: BOARD_FILE_MODULE,
-      boardRecords: BOARD_RECORDS,
-      kdmModule: KDM_MODULE,
       welcomePath: WELCOME_PATH,
       tablePath: TABLE_PATH,
       welcomeContent: WELCOME_CONTENT,
@@ -344,39 +186,9 @@ test('captures README product screenshots from the onboarding source', async ({ 
   await page.screenshot({ path: 'docs/readme/agent.png' })
 })
 
-test('captures README whiteboard screenshot from the real product surface', async ({ page }) => {
+test('captures the README overview', async ({ page }) => {
   test.skip(!CAPTURE_ENABLED, 'Run through pnpm capture:readme:assets.')
 
-  await mockLocalWorkspaceApi(page)
-  await mockReadmeWorkspace(page)
-  await page.emulateMedia({ colorScheme: 'dark' })
-  await page.setViewportSize({ width: 1200, height: 750 })
-  await page.goto('/documents')
-
-  await page.getByText(BOARD_PATH, { exact: true }).click()
-  await expect(page.getByTestId('whiteboard-svg-scene')).toBeVisible()
-  await page.locator('[data-tab-title="Getting Started/Welcome to Kition"]')
-    .getByRole('button', { name: 'Close tab' })
-    .click()
-  await page.locator('[data-element-id="launch-strategy"]').click()
-  await page.getByTestId('whiteboard-selection-move-area').dblclick()
-  await expect(page.getByTestId('whiteboard-text-editor')).toBeVisible()
-  await page.getByTestId('whiteboard-text-editor').fill('Launch strategy')
-  await page.getByTestId('whiteboard-text-editor').press('Enter')
-  await expect(page.getByTestId('whiteboard-text-editor')).toBeHidden()
-  await expect(page.locator('[data-element-id="launch-strategy"]')).toContainText('Launch strategy')
-  await page.getByTestId('whiteboard-shape-menu-trigger').click()
-  await expect(page.getByTestId('whiteboard-shape-x-box')).toBeVisible()
-  await expect(page.getByTestId('whiteboard-shape-check-box')).toBeVisible()
-  await page.waitForTimeout(300)
-  await page.screenshot({ path: 'docs/readme/whiteboards.png' })
-
-  await page.route('**/docs/readme/whiteboards.webp', async (route) => {
-    await route.fulfill({
-      body: readFileSync('docs/readme/whiteboards.png'),
-      contentType: 'image/png',
-    })
-  })
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('/docs/readme/kition-overview.svg')
   await expect(page.locator('svg')).toBeVisible()

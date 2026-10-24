@@ -20,7 +20,6 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //                                  when the user is staring at a PNG
 //   workflow        → 'workflow'  (workflow editor)
 //   gallery         → 'gallery'   (image gallery)
-//   board           → 'whiteboard' (native SVG board)
 //   design          → 'design'    (artboard editor)
 //   null/undefined  → 'document'  (no tab open — fall back to general assistance)
 export function deriveAgentPaneContext(
@@ -52,8 +51,6 @@ export function deriveAgentPaneContext(
       return 'design'
     case 'gallery':
       return 'gallery'
-    case 'board':
-      return 'whiteboard'
     default: {
       // Exhaustiveness check — adding a new WorkspaceTab variant without
       // teaching this switch about it surfaces here as a tsc error,
@@ -81,8 +78,6 @@ export function resolveAgentActiveDocument(
         path: tab.tablePath || '',
         format: tab.tablePath ? 'table' : undefined,
       }
-    case 'board':
-      return { path: tab.path, format: 'board' }
     // Design placement uses completed images; no Design target is sent to older runtimes.
     case 'design':
     case 'gallery':

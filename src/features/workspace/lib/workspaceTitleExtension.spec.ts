@@ -8,7 +8,7 @@ describe('getWorkspaceItemTitle', () => {
     ['Launch.md', 'Launch'],
     ['Notes.markdown', 'Notes'],
     ['Leads.ktable', 'Leads'],
-    ['Plan.kiboard', 'Plan'],
+    ['Plan.kboard', 'Plan'],
     ['Poster.kidesign', 'Poster'],
     ['Report.docx', 'Report'],
     ['Budget.xlsx', 'Budget'],

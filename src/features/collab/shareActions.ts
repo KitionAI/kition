@@ -1,6 +1,6 @@
 /**
- * Sharing a document for co-editing, and opening a document someone shared: kit documents, boards,
- * and Markdown documents alike (`collabDocuments.ts`).
+ * Sharing a document for co-editing, and opening a document someone shared: kit documents and
+ * Markdown documents alike (`collabDocuments.ts`).
  *
  * **Share.** The document is saved first, so its file and the replica stored with it carry the
  * document's KDM identity (`docId`), then its whole history (an export from nothing) is the
@@ -12,12 +12,11 @@
  * come from the server, and Kition makes the file `Shared/<name>` from them: a kit document with
  * the kit's engine in a worker (`writeKitFileFromReplica`: the replica opens with no file bytes,
  * is saved as the file's format, and the replica it saved with is stored under the new file's
- * stamp), a board or Markdown document by its own editor's means, each as that same replica,
+ * stamp), a Markdown document by its own editor's means, each as that same replica,
  * so its editor opens the file as it and the relay joins its room.
  */
 import { loadDocumentStore } from '@/features/document/public'
 import { KITION_KIT_HOST, writeKitFileFromReplica, type KitSdkManifest } from '@/features/kits/public'
-import { loadBoardSharedFile } from '@/features/whiteboard/public'
 import { blobHashCandidates, decodeBlobSection, encodeBlobSection, SyncRpcError, type BlobEntry, type Role, type RoomListing, type RoomMembersResult, type SyncClient } from '@/lib/sync'
 import { createWorkspaceFolder, listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import { findCollabDocument, HOST_KITS, type CollabReplica } from './collabDocuments'
@@ -159,15 +158,10 @@ async function snapshotBlobs(client: SyncClient, docId: string, snapshot: Uint8A
 }
 
 /**
- * Writes a shared document Kition edits itself (a board, a Markdown document) as a new
+ * Writes a shared document Kition edits itself (a Markdown document) as a new
  * file in `folder`: answers its path and the replica version it holds, or `null` for another kit.
  */
 async function writeHostFile(client: SyncClient, docId: string, kit: string, name: string, snapshot: Uint8Array, folder: string) {
-  if (kit === HOST_KITS.board) {
-    const { path, root } = await freePath(folder, name, 'kiboard')
-    const { writeBoardFileFromReplica } = await loadBoardSharedFile()
-    return { path, version: await writeBoardFileFromReplica(path, snapshot, root) }
-  }
   if (kit === HOST_KITS.document) {
     const { path, root } = await freePath(folder, name, 'md')
     const { createDocumentFromReplica } = await loadDocumentStore()

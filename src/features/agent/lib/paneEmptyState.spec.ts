@@ -18,7 +18,6 @@ const PANES: AgentPaneContext[] = [
   'document',
   'workflow',
   'gallery',
-  'whiteboard',
 ]
 
 describe('PANE_SUGGESTIONS', () => {

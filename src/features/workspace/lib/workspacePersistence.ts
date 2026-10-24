@@ -382,20 +382,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
       }]
     }
     if (
-      item.type === 'board'
-      && typeof item.id === 'string'
-      && typeof item.title === 'string'
-      && typeof item.path === 'string'
-      && item.path.toLowerCase().endsWith('.kiboard')
-    ) {
-      return [{
-        id: `board:${item.path}`,
-        type: 'board',
-        title: item.title,
-        path: item.path,
-      }]
-    }
-    if (
       item.type === 'design'
       && typeof item.id === 'string'
       && typeof item.title === 'string'

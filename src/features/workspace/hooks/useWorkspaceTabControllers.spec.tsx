@@ -21,9 +21,8 @@ vi.mock('@kition/app-ui/confirm', () => ({
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true
 
-const BOARD: WorkspaceTab = { id: 'board:Plan.kiboard', type: 'board', title: 'Plan', path: 'Plan.kiboard' }
 const DESIGN: WorkspaceTab = { id: 'design:Poster.kidesign', type: 'design', title: 'Poster', path: 'Poster.kidesign' }
-const DOCUMENT: WorkspaceTab = { id: 'document:Notes.md', type: 'document', title: 'Notes', path: 'Notes.md', format: 'markdown', uid: 'notes' }
+const DOCUMENT: Extract<WorkspaceTab, { type: 'document' }> = { id: 'document:Notes.md', type: 'document', title: 'Notes', path: 'Notes.md', format: 'markdown', uid: 'notes' }
 
 let container: HTMLDivElement
 let root: Root | null = null
@@ -48,7 +47,6 @@ function Surface({ tabs }: { tabs: WorkspaceTab[] }) {
     setActiveResourcePath: () => {},
     workflowOpen: false,
     openDesign: () => {},
-    openBoard: () => {},
     openDocument: async () => {},
   })
   return null
@@ -87,7 +85,7 @@ beforeEach(async () => {
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container)
-    root.render(createElement(Surface, { tabs: [BOARD, DESIGN] }))
+    root.render(createElement(Surface, { tabs: [DOCUMENT, DESIGN] }))
   })
 })
 
@@ -99,79 +97,79 @@ afterEach(async () => {
 })
 
 describe('useWorkspaceTabControllers', () => {
-  it('closes a Board tab only after its pending save is written', async () => {
+  it('closes a document tab only after its pending save is written', async () => {
     let finish!: () => void
-    const editor = openEditor(BOARD.path, () => new Promise<void>((resolve) => {
+    const editor = openEditor(DOCUMENT.path, () => new Promise<void>((resolve) => {
       finish = resolve
     }))
-    await closeTab(BOARD.id)
+    await closeTab(DOCUMENT.id)
     expect(editor.flush).toHaveBeenCalledTimes(1)
     expect(closeWorkspaceTab).not.toHaveBeenCalled()
 
     await act(async () => finish())
     await settle()
-    expect(closeWorkspaceTab).toHaveBeenCalledWith(BOARD.id)
+    expect(closeWorkspaceTab).toHaveBeenCalledWith(DOCUMENT.id)
     expect(confirm).not.toHaveBeenCalled()
   })
 
-  it('asks whether to discard a Board’s changes when its save fails on close', async () => {
-    openEditor(BOARD.path, () => Promise.reject(new Error('disk full')))
+  it('asks whether to discard a document’s changes when its save fails on close', async () => {
+    openEditor(DOCUMENT.path, () => Promise.reject(new Error('disk full')))
     heldConfirm()
-    await closeTab(BOARD.id)
+    await closeTab(DOCUMENT.id)
     expect(confirm).toHaveBeenCalledTimes(1)
     expect(confirm.mock.calls[0]![0]).toMatchObject({
-      message: enWorkspace.whiteboard.file.closeUnsavedMessage,
-      confirmLabel: enWorkspace.whiteboard.file.closeUnsavedDiscard,
-      cancelLabel: enWorkspace.whiteboard.file.closeUnsavedKeep,
+      message: enWorkspace.documentFile.closeUnsavedMessage,
+      confirmLabel: enWorkspace.documentFile.closeUnsavedDiscard,
+      cancelLabel: enWorkspace.documentFile.closeUnsavedKeep,
       variant: 'destructive',
     })
-    expect(enWorkspace.whiteboard.file.closeUnsavedMessage)
-      .toBe('Your latest changes to this Board could not be saved. Close it and discard them?')
-    expect(enWorkspace.whiteboard.file.closeUnsavedDiscard).toBe('Discard changes and close')
+    expect(enWorkspace.documentFile.closeUnsavedMessage)
+      .toBe('Your latest changes to this document could not be saved. Close it and discard them?')
+    expect(enWorkspace.documentFile.closeUnsavedDiscard).toBe('Discard changes and close')
     expect(closeWorkspaceTab).not.toHaveBeenCalled()
   })
 
-  it('keeps the Board tab and its changes when the user keeps it open', async () => {
-    const editor = openEditor(BOARD.path, () => Promise.reject(new Error('disk full')))
+  it('keeps the document tab and its changes when the user keeps it open', async () => {
+    const editor = openEditor(DOCUMENT.path, () => Promise.reject(new Error('disk full')))
     const answer = heldConfirm()
-    await closeTab(BOARD.id)
+    await closeTab(DOCUMENT.id)
     await answer(false)
     expect(closeWorkspaceTab).not.toHaveBeenCalled()
     expect(editor.discard).not.toHaveBeenCalled()
     expect(editor.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('discards the Board’s changes without saving, then closes its tab', async () => {
-    const editor = openEditor(BOARD.path, () => Promise.reject(new Error('disk full')))
+  it('discards the document’s changes without saving, then closes its tab', async () => {
+    const editor = openEditor(DOCUMENT.path, () => Promise.reject(new Error('disk full')))
     const answer = heldConfirm()
-    await closeTab(BOARD.id)
+    await closeTab(DOCUMENT.id)
     closeWorkspaceTab.mockImplementation(() => {
       // The session already stopped saving when the tab (and its editor) closes.
       expect(editor.discard).toHaveBeenCalledTimes(1)
     })
     await answer(true)
     expect(editor.discard).toHaveBeenCalledTimes(1)
-    expect(closeWorkspaceTab).toHaveBeenCalledWith(BOARD.id)
+    expect(closeWorkspaceTab).toHaveBeenCalledWith(DOCUMENT.id)
     // Discarding never tries to save again.
     expect(editor.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('asks once while a Board’s close is already waiting for an answer', async () => {
-    openEditor(BOARD.path, () => Promise.reject(new Error('disk full')))
+  it('asks once while a document’s close is already waiting for an answer', async () => {
+    openEditor(DOCUMENT.path, () => Promise.reject(new Error('disk full')))
     const answer = heldConfirm()
-    await closeTab(BOARD.id)
-    await closeTab(BOARD.id)
+    await closeTab(DOCUMENT.id)
+    await closeTab(DOCUMENT.id)
     expect(confirm).toHaveBeenCalledTimes(1)
     await answer(false)
 
     confirm.mockResolvedValueOnce(false)
-    await closeTab(BOARD.id)
+    await closeTab(DOCUMENT.id)
     expect(confirm).toHaveBeenCalledTimes(2)
   })
 
   it('commits the table cell being edited in a document before its close saves', async () => {
     await act(async () => {
-      root!.render(createElement(Surface, { tabs: [DOCUMENT, BOARD] }))
+      root!.render(createElement(Surface, { tabs: [DOCUMENT, DESIGN] }))
     })
     const order: string[] = []
     // A table cell being edited: its text reaches the document when the cell loses focus.

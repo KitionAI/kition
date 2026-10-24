@@ -1,38 +1,6 @@
 [
   {
     "type": "cycle",
-    "from": "packages/board-editor/src/lib/boardBindingEngine.ts",
-    "to": "packages/board-editor/src/lib/boardStore.ts",
-    "unresolvedTo": "./boardStore",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "packages/board-editor/src/lib/boardStore.ts",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ]
-      },
-      {
-        "name": "packages/board-editor/src/lib/boardBindingEngine.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "packages/document-editor/src/menu/Menu.ts",
     "to": "packages/document-editor/src/menu/MenuRenderer.tsx",
     "unresolvedTo": "./MenuRenderer",
@@ -1213,76 +1181,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/whiteboard/components/WhiteboardEditorPane.tsx",
-    "to": "src/features/media-generation/lib/imagePromptTemplates.ts",
-    "unresolvedTo": "@/features/media-generation/lib/imagePromptTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/whiteboard/components/WhiteboardTemplateLibraryDialog.tsx",
-    "to": "src/features/workspace/components/WorkspaceTemplateLibraryFrame.tsx",
-    "unresolvedTo": "@/features/workspace/components/WorkspaceTemplateLibraryFrame",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/whiteboard/lib/whiteboardImageGeneration.ts",
-    "to": "src/features/media-generation/lib/generatedImageArtifacts.ts",
-    "unresolvedTo": "@/features/media-generation/lib/generatedImageArtifacts",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "export"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/whiteboard/lib/whiteboardImageGeneration.ts",
-    "to": "src/features/media-generation/lib/imagePromptTemplates.ts",
-    "unresolvedTo": "@/features/media-generation/lib/imagePromptTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workflow/hooks/useWorkflowDryRun.ts",
     "to": "src/features/analytics/lib/productAnalytics.ts",
     "unresolvedTo": "@/features/analytics/lib/productAnalytics",
@@ -1642,23 +1540,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/whiteboard/components/WhiteboardTemplateLibraryDialog.tsx",
-    "unresolvedTo": "@/features/whiteboard/components/WhiteboardTemplateLibraryDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
     "to": "src/features/design/components/DesignEditorPane.tsx",
     "unresolvedTo": "@/features/design/components/DesignEditorPane",
@@ -1823,59 +1704,6 @@
       "aliased-tsconfig-paths",
       "local",
       "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/whiteboard/components/WhiteboardEditorPane.tsx",
-    "unresolvedTo": "@/features/whiteboard/components/WhiteboardEditorPane",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/whiteboard/lib/whiteboardAgentBridge.ts",
-    "unresolvedTo": "@/features/whiteboard/lib/whiteboardAgentBridge",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/whiteboard/lib/whiteboardImageGeneration.ts",
-    "unresolvedTo": "@/features/whiteboard/lib/whiteboardImageGeneration",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
     ],
     "rule": {
       "severity": "error",
@@ -2216,41 +2044,6 @@
     "from": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
     "to": "src/features/workflow/templates/index.ts",
     "unresolvedTo": "@/features/workflow/templates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useWhiteboardImageGeneration.ts",
-    "to": "src/features/whiteboard/lib/whiteboardAgentBridge.ts",
-    "unresolvedTo": "@/features/whiteboard/lib/whiteboardAgentBridge",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useWhiteboardImageGeneration.ts",
-    "to": "src/features/whiteboard/lib/whiteboardImageGeneration.ts",
-    "unresolvedTo": "@/features/whiteboard/lib/whiteboardImageGeneration",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

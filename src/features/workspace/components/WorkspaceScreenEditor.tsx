@@ -35,13 +35,7 @@ export type WorkspaceScreenEditorInput = {
   galleryPanelProps: WorkspaceEditorContentProps['galleryPanelProps']
   agentPanel: Pick<WorkspaceAgentPanelState, 'open' | 'setOpen' | 'setHistoryOpen'>
   activeAgentSession: AgentSession | null
-  agentBusySessions: Set<number>
   stopAgentMessage: (sessionId: number) => void
-  whiteboard: {
-    available: boolean
-    onBridgeChange: WorkspaceEditorContentProps['onWhiteboardAgentBridgeChange']
-    onGenerateImage: WorkspaceEditorContentProps['onGenerateWhiteboardImage']
-  }
   design: {
     available: boolean
     onBridgeChange: WorkspaceEditorContentProps['onDesignAgentBridgeChange']
@@ -67,7 +61,7 @@ export type WorkspaceScreenEditorInput = {
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { documentSession, agentPanel, activeAgentSession, whiteboard, design, templateDialogs, workflows } = input
+  const { documentSession, agentPanel, activeAgentSession, design, templateDialogs, workflows } = input
   const revision = documentSession.activeDocumentRevision
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
@@ -96,11 +90,6 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     documentEditorFocusRequest: templateDialogs.documentEditorFocusRequest,
     galleryPanelProps: input.galleryPanelProps,
     getOpenedDocument: documentSession.getOpenedDocument,
-    whiteboardAgentAvailable: whiteboard.available,
-    whiteboardAgentBusy: activeAgentSession ? input.agentBusySessions.has(activeAgentSession.id) : false,
-    onWhiteboardAgentBridgeChange: whiteboard.onBridgeChange,
-    onCancelWhiteboardAgent: activeAgentSession ? () => input.stopAgentMessage(activeAgentSession.id) : undefined,
-    onGenerateWhiteboardImage: whiteboard.onGenerateImage,
     designAgentAvailable: design.available,
     onDesignAgentBridgeChange: design.onBridgeChange,
     onGenerateDesignImage: design.available ? design.onGenerateImage : undefined,

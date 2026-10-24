@@ -561,7 +561,7 @@ describe('identity across tree operations', () => {
   it('does nothing for a path the index does not name', async () => {
     await seed(['Plan.md'])
     vi.mocked(desktop.writeDocumentIndex).mockClear()
-    await renameDocument('Board.kiboard', 'Renamed.kiboard')
+    await renameDocument('Board.kboard', 'Renamed.kboard')
     await forgetDocument('Gone.md')
     expect(desktop.writeDocumentIndex).not.toHaveBeenCalled()
   })

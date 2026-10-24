@@ -1,7 +1,7 @@
 /**
  * Composition root for the workspace window: sidebar tree, tab strip, editor
  * panes, and the Agent sidebar. It owns tab state, create
- * flows, and the bridges that feed document, table, and whiteboard context to
+ * flows, and the bridges that feed document, table, and design context to
  * the Agent. It is intentionally being split into focused hooks; do not add
  * new responsibilities here (see docs/superpowers/plans, Task 1.4).
  */
@@ -38,7 +38,6 @@ import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspace
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
-import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
 import { useWorkspaceDesignAgentBridge } from '@/features/workspace/hooks/useWorkspaceDesignAgentBridge'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
 import { useWorkspaceOpeners } from '@/features/workspace/hooks/useWorkspaceOpeners'
@@ -57,8 +56,6 @@ import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useW
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
 import { useWorkspaceDocumentTranslation } from '@/features/workspace/hooks/useWorkspaceDocumentTranslation'
-import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
-import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { useAgentImageGeneration } from '@/features/workspace/hooks/useAgentImageGeneration'
 import { buildDesignImageAgentInstruction } from '@/features/design/public'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -181,12 +178,8 @@ export function WorkspaceScreen({
     clearModifiedPath: (_path: string) => {},
     modifiedPaths: new Set<string>(),
   })
-  const whiteboardBridge = useWorkspaceWhiteboardAgentBridge({ rootPath })
-  const whiteboardAgentAvailable = whiteboardBridge.available
-  const handleWhiteboardAgentBridgeChange = whiteboardBridge.handleBridgeChange
   const designBridge = useWorkspaceDesignAgentBridge({ rootPath })
   const agentTurn = useWorkspaceAgentTurnContext({
-    buildWhiteboardContext: whiteboardBridge.buildActiveContext,
     buildDesignContext: designBridge.buildActiveContext,
   })
   const agentTurnContextRef = agentTurn.turnContextRef
@@ -264,8 +257,6 @@ export function WorkspaceScreen({
         refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true }),
       ])
     },
-    onWhiteboardPatch: whiteboardBridge.receivePatch,
-    onWhiteboardPatchCancelled: whiteboardBridge.cancelPreview,
     onDesignPatch: designBridge.receivePatch,
     onDesignPatchCancelled: designBridge.cancelPreview,
     prepareActiveDocument: ensureActiveDocumentSaved,
@@ -335,7 +326,6 @@ export function WorkspaceScreen({
   const {
     openTableFileWorkflow,
     openWorkspaceWorkflow,
-    openBoard,
   } = useWorkspaceOpeners({
     upsertWorkspaceTab,
     setActiveResourcePath,
@@ -364,13 +354,11 @@ export function WorkspaceScreen({
     workflowOpen,
     onCloseWorkflow,
     openDesign: design.open,
-    openBoard,
     openDocument,
   })
 
   // The table file the workflow workbench is scoped to, when its tab names one.
   const activeTableFilePath = activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.tablePath ?? '' : ''
-  whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
   designBridge.setActiveDesignPath(activeWorkspaceTab?.type === 'design' ? activeWorkspaceTab.path : '')
   agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({ activeWorkspaceTab }))
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
@@ -393,17 +381,6 @@ export function WorkspaceScreen({
     setActiveSessionId: setActiveWorkspaceAgentSessionId,
     activeSession: activeWorkspaceAgentSession,
   } = agentPanel
-  const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
-    activeSessionId: activeWorkspaceAgentSessionId,
-    agentBusySessions,
-    agentSessionViews,
-    available: whiteboardBridge.available,
-    bridgesRef: whiteboardBridge.bridgesRef,
-    createAgentChat: createNewAgentChat,
-    modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
-    sendAgentAction: sendAgentContextAction,
-    setActiveSessionId: setActiveWorkspaceAgentSessionId,
-  })
   const handleGenerateDesignImage = useAgentImageGeneration({
     activeSessionId: activeWorkspaceAgentSessionId,
     agentBusySessions,
@@ -461,17 +438,6 @@ export function WorkspaceScreen({
     renameWorkspaceNode,
   } = treeActions
 
-  const boardCreation = useWorkspaceBoardCreation({
-    closeCreateMenu: () => workspaceTree.setCreateMenuOpen(false),
-    createFailedMessage: t('errors.createBoardFailed'),
-    expandFolder: workspaceTree.expandFolders,
-    openBoard,
-    refreshWorkspaceDocuments,
-    setError,
-    setFeedback,
-    setSaving,
-    successMessage: t('feedback.boardCreated'),
-  })
   refreshWorkspaceDocumentsRef.current = refreshWorkspaceDocuments
 
   const templateDialogs = useWorkspaceTemplateDialogs({
@@ -634,7 +600,6 @@ export function WorkspaceScreen({
     onCloseWorkflow,
     onCloseProfile,
     openDesign: design.open,
-    openBoard,
     openWorkflows: (tablePath) => (tablePath ? openTableFileWorkflow(tablePath) : openWorkspaceWorkflow()),
     openDocument,
   })
@@ -703,7 +668,6 @@ export function WorkspaceScreen({
         documentExport={documentExport}
         createFlows={createFlows}
         templateDialogs={templateDialogs}
-        boardCreation={boardCreation}
       />
       <WorkspaceLayout
         sidebarWidth={effectiveSidebarWidth}
@@ -763,13 +727,7 @@ export function WorkspaceScreen({
               galleryPanelProps,
               agentPanel,
               activeAgentSession: activeWorkspaceAgentSession,
-              agentBusySessions,
               stopAgentMessage,
-              whiteboard: {
-                available: whiteboardAgentAvailable,
-                onBridgeChange: handleWhiteboardAgentBridgeChange,
-                onGenerateImage: handleGenerateWhiteboardImage,
-              },
               design: {
                 available: designBridge.available,
                 onBridgeChange: designBridge.handleBridgeChange,

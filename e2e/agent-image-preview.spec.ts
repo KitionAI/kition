@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { mockAgentTurn } from './helpers/agentStream'
-import { openWhiteboardFixture } from './helpers/whiteboard'
+import { openAgentWorkspace } from './helpers/markdownDocument'
 
 const imagePath = 'Agent/images/46/Edited poster.png'
 const imageURL = 'http://127.0.0.1:18101/workspace-files/Agent/images/46/Edited%20poster.png'
@@ -10,7 +10,7 @@ for (const source of ['workspace path', 'runtime URL'] as const) {
     await page.route('**/workspace-files/Agent/images/46/Edited%20poster.png', (route) => route.fulfill({
       contentType: 'image/png', path: 'public/logo-mark.png',
     }))
-    await openWhiteboardFixture(page)
+    await openAgentWorkspace(page)
     await page.evaluate((imagePath) => {
       const bridge = window.kitionDesktop!
       const read = bridge.ReadWorkspaceDocument!

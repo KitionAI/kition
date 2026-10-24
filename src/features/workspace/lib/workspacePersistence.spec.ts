@@ -9,11 +9,11 @@ import {
 const ROOT_A = '/Users/alice/vault-a'
 const ROOT_B = '/Users/alice/vault-b'
 
-const boardTab = {
-  id: 'board:plan.kiboard',
-  type: 'board' as const,
+const designTab = {
+  id: 'design:plan.kidesign',
+  type: 'design' as const,
   title: 'plan',
-  path: 'plan.kiboard',
+  path: 'plan.kidesign',
 }
 
 describe('workspacePersistence tabs', () => {
@@ -26,15 +26,15 @@ describe('workspacePersistence tabs', () => {
       [ROOT_A]: [
         { id: 'browser:generic-web:example.com', type: 'browser', title: 'Example', provider: 'generic-web' },
         { id: 'browser-sites', type: 'browser-sites', title: 'Sites' },
-        boardTab,
+        designTab,
       ],
     }))
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
   })
 
   it('keeps each workspace tab list isolated under its own rootPath', () => {
-    writeWorkspaceTabs(ROOT_A, [boardTab])
+    writeWorkspaceTabs(ROOT_A, [designTab])
     writeWorkspaceTabs(ROOT_B, [
       {
         id: 'document:notes.md',
@@ -44,7 +44,7 @@ describe('workspacePersistence tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
     expect(readWorkspaceTabs(ROOT_B)).toEqual([
       {
         id: 'document:notes.md',
@@ -57,7 +57,7 @@ describe('workspacePersistence tabs', () => {
   })
 
   it('returns no tabs and does not write when rootPath is empty', () => {
-    writeWorkspaceTabs(ROOT_A, [boardTab])
+    writeWorkspaceTabs(ROOT_A, [designTab])
 
     expect(readWorkspaceTabs('')).toEqual([])
 
@@ -70,11 +70,11 @@ describe('workspacePersistence tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
   })
 
   it('writing an empty list removes that workspace’s slot', () => {
-    writeWorkspaceTabs(ROOT_A, [boardTab])
+    writeWorkspaceTabs(ROOT_A, [designTab])
     writeWorkspaceTabs(ROOT_A, [])
 
     expect(readWorkspaceTabs(ROOT_A)).toEqual([])
@@ -86,10 +86,10 @@ describe('workspacePersistence tabs', () => {
   it('migrates legacy v1 array into the first rootPath that reads it', () => {
     window.localStorage.setItem(
       'kition.document.workspace-tabs.v1',
-      JSON.stringify([boardTab]),
+      JSON.stringify([designTab]),
     )
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
     // Legacy key gets cleaned up.
     expect(window.localStorage.getItem('kition.document.workspace-tabs.v1')).toBeNull()
     // Subsequent reads from other workspaces do not see the migrated data.
@@ -112,18 +112,6 @@ describe('workspacePersistence tabs', () => {
     writeWorkspaceTabs(ROOT_A, [scoped, global])
 
     expect(readWorkspaceTabs(ROOT_A)).toEqual([scoped, global])
-  })
-
-  it('restores a native Board tab with its durable .kiboard path', () => {
-    const boardTab = {
-      id: 'board:Planning.kiboard',
-      type: 'board' as const,
-      title: 'Planning',
-      path: 'Planning.kiboard',
-    }
-    writeWorkspaceTabs(ROOT_A, [boardTab])
-
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([boardTab])
   })
 })
 

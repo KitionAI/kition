@@ -9,7 +9,6 @@ type UseWorkspaceSidebarNavigationOptions = {
   onCloseWorkflow?: () => void
   onCloseProfile?: () => void
   openDesign: (path: string) => void
-  openBoard: (path: string) => void
   /** The workflow list: the whole workspace's, or one table file's (`tablePath`). */
   openWorkflows: (tablePath?: string) => void
   openDocument: (path: string) => Promise<void>
@@ -25,7 +24,6 @@ export function useWorkspaceSidebarNavigation({
   onCloseWorkflow,
   onCloseProfile,
   openDesign,
-  openBoard,
   openWorkflows,
   openDocument,
 }: UseWorkspaceSidebarNavigationOptions) {
@@ -42,10 +40,6 @@ export function useWorkspaceSidebarNavigation({
       openDesign(path)
       return
     }
-    if (lower.endsWith('.kiboard')) {
-      openBoard(path)
-      return
-    }
     if (path.startsWith(WORKFLOWS_LEAF_PREFIX)) {
       openWorkflows(path.slice(WORKFLOWS_LEAF_PREFIX.length) || undefined)
       return
@@ -57,7 +51,7 @@ export function useWorkspaceSidebarNavigation({
       return
     }
     void openDocument(path)
-  }, [onCloseProfile, onCloseWorkflow, openBoard, openDesign, openDocument, openWorkflows, workflowOpen])
+  }, [onCloseProfile, onCloseWorkflow, openDesign, openDocument, openWorkflows, workflowOpen])
 
   return { openSidebarPath }
 }

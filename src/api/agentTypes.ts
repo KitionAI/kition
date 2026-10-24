@@ -24,7 +24,6 @@ export type AgentPaneContext =
   | 'document'
   | 'workflow'
   | 'gallery'
-  | 'whiteboard'
   | 'design'
 
 export type AgentSession = {

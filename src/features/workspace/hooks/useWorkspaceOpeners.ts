@@ -2,7 +2,6 @@ import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
-import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
 
 type UseWorkspaceOpenersOptions = {
   upsertWorkspaceTab: (tab: WorkspaceTab) => void
@@ -13,7 +12,7 @@ type UseWorkspaceOpenersOptions = {
 }
 
 /**
- * Opens the workflow list (for the whole workspace, or for one table file's tables) and boards.
+ * Opens the workflow list (for the whole workspace, or for one table file's tables).
  * A table file itself opens in the Table kit like any kit file.
  */
 export function useWorkspaceOpeners({
@@ -50,20 +49,6 @@ export function useWorkspaceOpeners({
     })
   }, [closeWorkflowWorkbench, t, upsertWorkspaceTab])
 
-  const openBoard = useCallback((path: string) => {
-    const normalizedPath = String(path || '').trim()
-    if (!normalizedPath) return
-    closeWorkflowWorkbench()
-    const filename = normalizedPath.split('/').pop() || normalizedPath
-    upsertWorkspaceTab({
-      id: `board:${normalizedPath}`,
-      type: 'board',
-      title: getWorkspaceItemTitle(filename),
-      path: normalizedPath,
-    })
-    setActiveResourcePath(normalizedPath)
-  }, [closeWorkflowWorkbench, setActiveResourcePath, upsertWorkspaceTab])
-
   // Onboarding guides and email sync setup ask to open the workflows of a table file.
   useEffect(() => {
     function openLocalWorkflow(event: Event) {
@@ -74,5 +59,5 @@ export function useWorkspaceOpeners({
     return () => window.removeEventListener('kition:onboarding:open-local-workflow', openLocalWorkflow)
   }, [openTableFileWorkflow])
 
-  return { openTableFileWorkflow, openWorkspaceWorkflow, openBoard }
+  return { openTableFileWorkflow, openWorkspaceWorkflow }
 }

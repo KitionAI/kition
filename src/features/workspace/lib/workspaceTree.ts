@@ -36,9 +36,7 @@ function resolveWorkspaceTreeFormat(
   content?: string,
 ) {
   if (path.toLowerCase().endsWith('.kidesign')) return 'design' as const
-  return path.toLowerCase().endsWith('.kiboard')
-    ? 'board' as const
-    : format || inferWorkspaceItemFormat(path, content)
+  return format || inferWorkspaceItemFormat(path, content)
 }
 
 export function getChildFolderPathForNode(node: WorkspaceTreeNode) {

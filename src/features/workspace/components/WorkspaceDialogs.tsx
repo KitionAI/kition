@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react'
 
 import type { useDocumentExport } from '@/features/document/public'
-import type { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import type { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import type { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 
@@ -11,9 +10,6 @@ const DocumentExportDialog = lazy(() =>
 )
 const DocumentTemplateLibraryDialog = lazy(() =>
   import('@/features/document/components/DocumentTemplateLibraryDialog').then((module) => ({ default: module.DocumentTemplateLibraryDialog })),
-)
-const WhiteboardTemplateLibraryDialog = lazy(() =>
-  import('@/features/whiteboard/components/WhiteboardTemplateLibraryDialog').then((module) => ({ default: module.WhiteboardTemplateLibraryDialog })),
 )
 const WorkspaceFolderCreateDialog = lazy(() =>
   import('@/features/workspace/components/WorkspaceFolderCreateDialog').then((module) => ({ default: module.WorkspaceFolderCreateDialog })),
@@ -28,7 +24,6 @@ export type WorkspaceDialogsProps = {
   documentExport: ReturnType<typeof useDocumentExport>
   createFlows: ReturnType<typeof useWorkspaceCreateFlows>
   templateDialogs: ReturnType<typeof useWorkspaceTemplateDialogs>
-  boardCreation: ReturnType<typeof useWorkspaceBoardCreation>
 }
 
 /**
@@ -41,7 +36,6 @@ export function WorkspaceDialogs({
   documentExport,
   createFlows,
   templateDialogs,
-  boardCreation,
 }: WorkspaceDialogsProps) {
   return (
     <>
@@ -90,18 +84,6 @@ export function WorkspaceDialogs({
               if (!open) templateDialogs.closeDocumentTemplateDialog()
             }}
             onCreate={templateDialogs.createDocumentFromTemplate}
-          />
-        </Suspense>
-      ) : null}
-      {boardCreation.dialogState ? (
-        <Suspense fallback={null}>
-          <WhiteboardTemplateLibraryDialog
-            open
-            busy={saving}
-            onOpenChange={(open) => {
-              if (!open) boardCreation.closeTemplateDialog()
-            }}
-            onSelect={boardCreation.createBoard}
           />
         </Suspense>
       ) : null}

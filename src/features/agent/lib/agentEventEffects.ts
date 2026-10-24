@@ -8,7 +8,6 @@
 import type { AgentDesignPatch } from '@/api/generated/agent-design'
 import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
 import type { AgentStreamNotification } from '@/api/generated/agent-stream'
-import type { AgentWhiteboardPatch } from '@/api/generated/agent-whiteboard'
 import {
   applyAssistantStream,
   applySessionEvent,
@@ -27,14 +26,11 @@ export type AgentEffect =
     type: 'connections-changed'
     detail: { source: 'configure_smtp_connection'; connectionId: string; workflowId: string; workflowAttached: boolean }
   }
-  | { type: 'whiteboard-patch'; patch: AgentWhiteboardPatch; provisional: boolean }
-  | { type: 'whiteboard-patch-cancelled' }
   | { type: 'design-patch'; patch: AgentDesignPatch; provisional: boolean }
   | { type: 'design-patch-cancelled' }
 
 /** Canvas patch tools: tool name, patch `type`, and the effect it drives. */
 const PATCH_TOOLS = [
-  { tool: 'whiteboard_propose_patch', kind: 'whiteboard.patch', effect: 'whiteboard-patch' },
   { tool: 'design_propose_patch', kind: 'design.patch', effect: 'design-patch' },
 ] as const
 
@@ -48,10 +44,8 @@ function isPatch(value: unknown, kind: PatchTool['kind']) {
   return field(value, 'type') === kind
 }
 
-function patchEffect(tool: PatchTool, patch: unknown, provisional: boolean): AgentEffect {
-  return tool.effect === 'whiteboard-patch'
-    ? { type: 'whiteboard-patch', patch: patch as AgentWhiteboardPatch, provisional }
-    : { type: 'design-patch', patch: patch as AgentDesignPatch, provisional }
+function patchEffect(_tool: PatchTool, patch: unknown, provisional: boolean): AgentEffect {
+  return { type: 'design-patch', patch: patch as AgentDesignPatch, provisional }
 }
 
 function cancelled(tools: Iterable<PatchTool>): AgentEffect[] {

@@ -97,7 +97,7 @@ export function ImageStudio({
   onReplaceResult,
   open,
   targetPath,
-  testIdPrefix = 'whiteboard-image',
+  testIdPrefix,
 }: {
   available: boolean
   context: ImageStudioContext
@@ -111,7 +111,7 @@ export function ImageStudio({
   onReplaceResult: (path: string, options: ImageStudioPlacementOptions) => void
   open: boolean
   targetPath: string
-  testIdPrefix?: string
+  testIdPrefix: string
 }) {
   const { t } = useTranslation('imageGeneration')
   const suggestedTemplateId: ImagePromptTemplateId = context.sourceImagePaths.length

@@ -70,8 +70,6 @@ import type { DesktopSettingsState } from '@/types/desktopSettings'
 import type {
   AgentImageGenerationIntent,
 } from '@/types/imageGeneration'
-import type { AgentWhiteboardContext } from '@kition/board-editor'
-import type { AgentWhiteboardPatch } from '@kition/board-editor'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
@@ -92,7 +90,6 @@ type WorkspaceAgentTurnContext = {
    *  compact trigger/action summary into the skill
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
-  whiteboardContext?: AgentWhiteboardContext
   designContext?: AgentDesignContext
   markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
@@ -107,16 +104,6 @@ type UseWorkspaceAgentOptions = {
   onSettingsSaved?: (settings: DesktopSettingsState) => void
   onWorkspaceArtifactsSaved?: (sessionId: number) => Promise<void>
   onWorkspaceDocumentsModified?: (paths: string[], sessionId: number) => void | Promise<void>
-  onWhiteboardPatch?: (input: {
-    boardPath: string
-    patch: AgentWhiteboardPatch
-    provisional: boolean
-    sessionId: number
-  }) => void
-  onWhiteboardPatchCancelled?: (input: {
-    boardPath: string
-    sessionId: number
-  }) => void
   onDesignPatch?: (input: {
     designPath: string
     patch: AgentDesignPatch
@@ -166,9 +153,7 @@ export function useWorkspaceAgent({
   onSettingsSaved,
   onWorkspaceArtifactsSaved,
   onWorkspaceDocumentsModified,
-  onWhiteboardPatch,
-  onWhiteboardPatchCancelled,
-  onDesignPatch,
+    onDesignPatch,
   onDesignPatchCancelled,
   prepareActiveDocument,
   silentInitialSessionLoad = !isDesktopRuntime(),
@@ -644,11 +629,9 @@ export function useWorkspaceAgent({
     const abortController = new AbortController()
     agentAbortControllers.current[sessionId] = abortController
     let documentsChanged = false
-    let whiteboardPathForTurn = ''
     let designPathForTurn = ''
     // Whether a provisional preview is on the canvas. A final patch waits
     // for Accept, so a failed or stopped stream cancels only a preview.
-    let whiteboardPreviewOpen = false
     let designPreviewOpen = false
 
     const runEffect = (effect: AgentEffect) => {
@@ -666,16 +649,6 @@ export function useWorkspaceAgent({
         case 'connections-changed':
           // The workflow drawer refreshes its connection list on this signal.
           window.dispatchEvent(new CustomEvent('kition:connections:changed', { detail: effect.detail }))
-          return
-        case 'whiteboard-patch':
-          whiteboardPreviewOpen = effect.provisional
-          if (whiteboardPathForTurn) {
-            onWhiteboardPatch?.({ boardPath: whiteboardPathForTurn, patch: effect.patch, provisional: effect.provisional, sessionId })
-          }
-          return
-        case 'whiteboard-patch-cancelled':
-          whiteboardPreviewOpen = false
-          if (whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
           return
         case 'design-patch':
           designPreviewOpen = effect.provisional
@@ -708,9 +681,6 @@ export function useWorkspaceAgent({
 
     try {
       const turnContext = (await getTurnContext?.()) || undefined
-      whiteboardPathForTurn = String(
-        turnContext?.whiteboardContext?.board.path || '',
-      ).trim()
       designPathForTurn = String(turnContext?.designContext?.design.path || '').trim()
       const automaticActiveDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
       const documentContextPaths = resolveAgentDocumentContextPaths(
@@ -793,7 +763,6 @@ export function useWorkspaceAgent({
         activeDocumentPath: requestActiveDocumentPath,
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
-        whiteboardContext: turnContext?.whiteboardContext,
         designContext: turnContext?.designContext,
         taskMode: turnContext?.taskMode,
         imageGenerationIntent: followup?.imageGenerationIntent,
@@ -819,7 +788,6 @@ export function useWorkspaceAgent({
       trackProductEventOnce('agent_first_request_completed', { result: 'success' })
     } catch (requestError: any) {
       // A preview whose turn never settled must not stay on the canvas.
-      if (whiteboardPreviewOpen && whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
       if (designPreviewOpen && designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
       const canceled = requestError?.name === 'AbortError'
       const view = agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView()
@@ -858,9 +826,7 @@ export function useWorkspaceAgent({
     onError,
     onFeedback,
     onWorkspaceArtifactsSaved,
-    onWhiteboardPatch,
-    onWhiteboardPatchCancelled,
-    onDesignPatch,
+          onDesignPatch,
     onDesignPatchCancelled,
     prepareActiveDocument,
     refreshAgentSessions,
