@@ -1123,24 +1123,51 @@ impl KitManager {
         let (_, list) = self
             .call::<methods::CommandsList>(kit, target, caller, &params)
             .await?;
-        let terms: Vec<String> = query
+        // Ranked, not all-words: each command scores the words of the query it contains (in its
+        // id, title, description or menu, with a few synonyms and plurals); the best come first.
+        // A query no command shares a word with still answers the closest commands, never none.
+        let terms: Vec<Vec<String>> = query
             .unwrap_or_default()
             .split_whitespace()
-            .map(str::to_lowercase)
+            .map(|term| search_variants(&term.to_lowercase()))
             .collect();
-        Ok(list
+        let mut scored: Vec<(usize, _)> = list
             .commands
             .into_iter()
-            .filter(|command| {
+            .map(|command| {
                 let haystack = format!(
-                    "{} {} {}",
+                    "{} {} {} {:?}",
                     command.id,
                     command.title,
-                    command.description.as_deref().unwrap_or_default()
+                    command.description.as_deref().unwrap_or_default(),
+                    command.menu
                 )
                 .to_lowercase();
-                terms.iter().all(|term| haystack.contains(term))
+                let id = command.id.to_lowercase();
+                let score: usize = terms
+                    .iter()
+                    .map(|variants| {
+                        if variants.iter().any(|v| id.contains(v.as_str())) {
+                            3
+                        } else if variants.iter().any(|v| haystack.contains(v.as_str())) {
+                            2
+                        } else if variants.iter().any(|v| v.len() >= 4 && haystack.contains(&v[..4])) {
+                            1
+                        } else {
+                            0
+                        }
+                    })
+                    .sum();
+                (score, command)
             })
+            .collect();
+        if !terms.is_empty() && scored.iter().any(|(score, _)| *score > 0) {
+            scored.retain(|(score, _)| *score > 0);
+        }
+        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        Ok(scored
+            .into_iter()
+            .map(|(_, command)| command)
             .map(|command| CommandView {
                 id: command.id,
                 title: command.title,
@@ -1581,4 +1608,24 @@ mod tests {
         );
         assert_eq!(split_document_id("sx::a"), (Target::Headless, "sx::a"));
     }
+}
+
+/// A query word and the words it may be written as in a command (plural, synonyms).
+fn search_variants(term: &str) -> Vec<String> {
+    let mut out = vec![term.to_owned()];
+    if term.len() > 3 && term.ends_with('s') {
+        out.push(term[..term.len() - 1].to_owned());
+    }
+    let synonyms: &[(&str, &[&str])] = &[
+        ("colour", &["color"]), ("color", &["colour", "fill"]), ("reorder", &["move", "order"]), ("remove", &["delete"]),
+        ("erase", &["delete"]), ("copy", &["duplicate"]), ("enter", &["edit"]), ("change", &["set", "edit"]),
+        ("modify", &["set", "edit"]), ("replace", &["set"]), ("values", &["data", "series"]), ("value", &["data", "series"]),
+        ("resize", &["size", "bounds"]), ("position", &["move", "bounds"]), ("typeface", &["font"]), ("bigger", &["grow", "size"]),
+    ];
+    for (word, alts) in synonyms {
+        if term == *word {
+            out.extend(alts.iter().map(|a| (*a).to_owned()));
+        }
+    }
+    out
 }

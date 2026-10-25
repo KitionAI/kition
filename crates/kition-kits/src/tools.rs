@@ -222,6 +222,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
                         }
                     },
                     "save": { "type": "boolean", "description": "Save the file after the steps. Defaults to true; a draft is never saved." },
+                    "target": { "type": "object", "description": "The part the steps act on, as in the inspect tool's target, for example {\"slide\": 3} (counted from 1). The kit goes there first, so the ids the inspect tool listed for that part work.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 } } },
                     "preview": { "type": "boolean", "description": "Attach a rendered preview of the whole document. Defaults to false; use the inspect tool with a target to look at one part." },
                     "draft": draft_property()
                 },
@@ -451,7 +452,24 @@ async fn part_preview(
 
 /// The objects of one slide or page, through the kit's `slide.inspect` or `page.inspect` query
 /// (`{index}` counted from 0) when it has one: what an agent needs to find the object to edit.
+/// Goes to one slide or page (`{index}` counted from 0) through the kit's `slide.go` or
+/// `page.go`, so that its commands, which address the part being edited, address this one.
+async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Option<DocumentView> {
+    for command in ["slide.go", "page.go"] {
+        let mut params = Map::new();
+        params.insert("index".into(), json!(part - 1));
+        if let Ok(executed) = kits
+            .execute(Caller::Agent, view.kit_id, &view.document_id, command, params)
+            .await
+        {
+            return Some(executed.document);
+        }
+    }
+    None
+}
+
 async fn part_objects(kits: &KitManager, view: &DocumentView, part: u64) -> Option<Value> {
+    model::warm(kits, view).await;
     for command in ["slide.inspect", "page.inspect"] {
         let mut params = Map::new();
         params.insert("index".into(), json!(part - 1));
@@ -930,7 +948,12 @@ async fn inspect(
             )
         });
     }
-    let view = kits.open(Caller::Agent, &path).await?;
+    let mut view = kits.open(Caller::Agent, &path).await?;
+    if let Some(part) = target_part(input) {
+        if let Some(moved) = go_to_part(kits, &view, part).await {
+            view = moved;
+        }
+    }
     let previews = if !wants_preview {
         Vec::new()
     } else if let Some(part) = target_part(input) {
@@ -949,7 +972,8 @@ async fn inspect(
             answer["part"] = objects;
             answer["edit"] = json!(format!(
                 "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting. \
-                 Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}.",
+                 The kit is now on this part; to come back to it later, pass the same `target` to the run tool. \
+                 Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}. Each object's `ref` is its id for the query and batch tools.",
                 tool_name(kit, Action::Run),
                 tool_name(kit, Action::Commands),
                 part - 1
@@ -1145,6 +1169,11 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         });
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
+    if let Some(part) = target_part(input) {
+        view = go_to_part(kits, &view, part).await.ok_or_else(|| {
+            KitToolError::invalid(format!("cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)"))
+        })?;
+    }
     let mut done = Vec::new();
     for (index, step) in steps.iter().enumerate() {
         let command = text_field(step, "command");

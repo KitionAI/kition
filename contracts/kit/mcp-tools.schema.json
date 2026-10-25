@@ -4,7 +4,7 @@
   "description": "The arguments (`input`) and structured results (`output`) of every kit tool, as kition-kits-mcp and Kition's agent offer them, generated from crates/kition-kits (`kition-kits-mcp --schemas`). `<prefix>` is the kit's `kit.json` agent prefix. A failed call answers `isError: true` and `error` in its structured content, beside what it had done. `<prefix>_query` and `<prefix>_batch` arguments name the kit's object types and fields once the server has seen its `model.describe`.",
   "tools": {
     "<prefix>_inspect": {
-      "description": "Open a document (<formats>) in <Kit> and report the document. By default it also attaches a rendered preview to the next turn so you can see it. Use it before and after editing.",
+      "description": "Open a document (<formats>) in <Kit> and report the document. By default it also attaches a rendered preview to the next turn so you can see it. With `target` (for example {\"slide\": 3}) it previews only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
       "writes": false,
       "input": {
         "type": "object",
@@ -16,6 +16,20 @@
           "preview": {
             "type": "boolean",
             "description": "Attach a rendered preview image. Defaults to true."
+          },
+          "target": {
+            "type": "object",
+            "description": "Preview only this part of the document, for example {\"slide\": 3} (counted from 1). Kits that cannot render a part fall back to the whole document.",
+            "properties": {
+              "slide": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
           },
           "draft": {
             "type": "boolean",
@@ -143,7 +157,7 @@
       }
     },
     "<prefix>_run": {
-      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands. Stops at the first failing step. Attaches a rendered preview of the result. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
+      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands. Stops at the first failing step. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
       "writes": true,
       "input": {
         "type": "object",
@@ -176,6 +190,24 @@
           "save": {
             "type": "boolean",
             "description": "Save the file after the steps. Defaults to true; a draft is never saved."
+          },
+          "target": {
+            "type": "object",
+            "description": "The part the steps act on, as in the inspect tool's target, for example {\"slide\": 3} (counted from 1). The kit goes there first, so the ids the inspect tool listed for that part work.",
+            "properties": {
+              "slide": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "preview": {
+            "type": "boolean",
+            "description": "Attach a rendered preview of the whole document. Defaults to false; use the inspect tool with a target to look at one part."
           },
           "draft": {
             "type": "boolean",
@@ -317,7 +349,7 @@
       }
     },
     "<prefix>_query": {
-      "description": "Read a document's objects in <Kit> from its object model: by id (`objects`, `root` for the document itself), or by following fields from the root (`follow`, for example `slides` or `slides.0.shapes`). Answers each object's id, type, and fields (all, or those in `fields`). Use the ids with <prefix>_batch. Call it with `describe: true` first to learn the document's object types and fields.",
+      "description": "Read a document's objects in <Kit> from its object model: by id (`objects`, `root` for the document itself), or by following fields from the root (`follow`, for example `slides` or `slides.0.shapes`). Answers each object's id, type, and fields (all, or those in `fields`). Use the ids with <prefix>_batch. Low level: to find what to edit, the inspect tool with a `target` is usually enough. Call it with `describe: true` first to learn the document's object types and fields.",
       "writes": false,
       "input": {
         "type": "object",
@@ -402,7 +434,7 @@
       }
     },
     "<prefix>_batch": {
-      "description": "Edit a document in <Kit> through its object model: one model/batch of `ops`, run in order as one undoable step (each run of ops between commands is one transaction; nothing changes when an op fails), then `load` reads objects back. Ops: create {type, fields?, ref?: \"$name\", in?: \"<target>.<field>\", at?, parent?}, set {target, field, value}, delete {target}, text.insert {target, field, index, text}, text.delete {target, field, index, count}, text.set {target, field, text}, text.mark/text.unmark {target, field, start, end, key, value?}, list.insert {target, field, item, index?}, list.move {target, field, from, to}, list.remove {target, field, index}, map.set/map.delete {target, field, key, value?}, tree.insert/tree.move {target, field, item, parent?}, command {id, params?}. A target is `root`, an object id from <prefix>_query, or a `$name` bound by an earlier create. Saves the file unless `save` is false; with `draft`, edits your draft instead (never saved). Failures answer `error.code` and the op's `index`.",
+      "description": "Edit a document in <Kit> through its object model: one model/batch of `ops`, run in order as one undoable step (each run of ops between commands is one transaction; nothing changes when an op fails), then `load` reads objects back. Ops: create {type, fields?, ref?: \"$name\", in?: \"<target>.<field>\", at?, parent?}, set {target, field, value}, delete {target}, text.insert {target, field, index, text}, text.delete {target, field, index, count}, text.set {target, field, text}, text.mark/text.unmark {target, field, start, end, key, value?}, list.insert {target, field, item, index?}, list.move {target, field, from, to}, list.remove {target, field, index}, map.set/map.delete {target, field, key, value?}, tree.insert/tree.move {target, field, item, parent?}, command {id, params?}. A target is `root`, an object id from <prefix>_query, or a `$name` bound by an earlier create. Saves the file unless `save` is false; with `draft`, edits your draft instead (never saved). Failures answer `error.code` and the op's `index`. Low level: `text.set` here replaces the text together with its formatting, and created objects get default styles; for ordinary edits prefer the kit's commands (its commands and run tools), which keep formatting.",
       "writes": true,
       "input": {
         "type": "object",

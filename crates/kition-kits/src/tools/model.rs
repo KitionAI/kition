@@ -304,6 +304,7 @@ impl Target {
                     .map_err(KitToolError::from_bridge)
             }
             Self::Headless(view) | Self::HeadlessDraft(view) => {
+                let request = with_refs(kits, view, request).await;
                 let numeric = numeric_target(&request);
                 let params = request.as_object().cloned().unwrap_or_default();
                 kits.model(
@@ -604,6 +605,65 @@ fn loaded_count(output: &Value) -> usize {
 
 /// The first op target that is a number or a string of digits: an id an agent took from the
 /// inspect tool's `part` (the kit's command ids), which the object model does not know.
+/// Numeric targets (ids from the inspect tool) replaced by their object-model ids, through the
+/// `ref` the kit's `slide.inspect` or `page.inspect` gives for the part being edited.
+async fn with_refs(kits: &KitManager, view: &DocumentView, mut request: Value) -> Value {
+    let numeric = |item: &Value| match item.get("target") {
+        Some(Value::Number(_)) => true,
+        Some(Value::String(s)) => !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()),
+        _ => false,
+    };
+    let any = ["ops", "load"].iter().any(|key| request.get(*key).and_then(Value::as_array).is_some_and(|items| items.iter().any(numeric)));
+    if !any {
+        return request;
+    }
+    warm(kits, view).await;
+    let mut refs = std::collections::HashMap::new();
+    for command in ["slide.inspect", "page.inspect"] {
+        if let Ok(executed) = kits
+            .execute(Caller::Agent, view.kit_id, &view.document_id, command, Map::new())
+            .await
+        {
+            if let Some(result) = executed.result {
+                collect_refs(&result["shapes"], &mut refs);
+                break;
+            }
+        }
+    }
+    for key in ["ops", "load"] {
+        if let Some(items) = request.get_mut(key).and_then(Value::as_array_mut) {
+            for item in items {
+                let id = match item.get("target") {
+                    Some(Value::Number(n)) => n.to_string(),
+                    Some(Value::String(s)) => s.clone(),
+                    _ => continue,
+                };
+                if let Some(r) = refs.get(&id) {
+                    item["target"] = Value::String(r.clone());
+                }
+            }
+        }
+    }
+    request
+}
+
+/// Makes the document's object model (an empty batch), so its objects have ids (`ref`s).
+pub(super) async fn warm(kits: &KitManager, view: &DocumentView) {
+    let mut params = Map::new();
+    params.insert("ops".into(), json!([]));
+    params.insert("load".into(), json!([]));
+    let _ = kits.model(Caller::Agent, view.kit_id, &view.document_id, "model.batch", params).await;
+}
+
+fn collect_refs(shapes: &Value, refs: &mut std::collections::HashMap<String, String>) {
+    for shape in shapes.as_array().into_iter().flatten() {
+        if let (Some(id), Some(r)) = (shape.get("id"), shape.get("ref").and_then(Value::as_str)) {
+            refs.insert(id.to_string(), r.to_owned());
+        }
+        collect_refs(&shape["children"], refs);
+    }
+}
+
 fn numeric_target(request: &Value) -> Option<String> {
     request.get("ops")?.as_array()?.iter().find_map(|op| match op.get("target")? {
         Value::Number(n) => Some(n.to_string()),
