@@ -80,6 +80,8 @@ export async function caretAfter(page: Page, kit: FrameLocator, text: string, { 
   await input.press('Enter')
   await input.press('Escape')
   await expect(kit.getByTestId('note-find')).toHaveCount(0)
+  // The keyboard goes back to the note a frame after Find closes; a key pressed before then is lost.
+  await expect(kit.getByTestId('kit-text-sink')).toBeFocused()
   if (!select) await page.keyboard.press('ArrowRight')
 }
 

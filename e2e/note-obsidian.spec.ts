@@ -59,3 +59,17 @@ test("draws front matter as Obsidian's properties block", async ({ page, baseURL
   await kit.locator('[data-key="done"] input[type="checkbox"]').click()
   await expect.poll(() => noteText(page)).toContain('done: false')
 })
+
+test('draws a Mermaid block as its diagram, as Obsidian does', async ({ page, baseURL }) => {
+  const text = 'Intro\n\n```mermaid\ngraph TD\n  A[Start] --> B[Done]\n```\n\nAfter\n'
+  const { kit } = await openNote(page, baseURL!, 'Diagram.md', text)
+
+  const diagram = kit.getByTestId('note-diagram')
+  await expect(diagram).toHaveCount(1, { timeout: 30_000 })
+  await expect(diagram.locator('.note-diagram-svg > svg')).toContainText('Start')
+  await diagram.hover()
+  await kit.getByTestId('note-diagram-edit').click()
+  await expect(diagram).toHaveCount(0)
+  await page.keyboard.type('%% edited\n')
+  await expect.poll(() => noteText(page)).toContain('```mermaid\n%% edited\ngraph TD')
+})
