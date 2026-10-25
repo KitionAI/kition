@@ -73,3 +73,15 @@ test('draws a Mermaid block as its diagram, as Obsidian does', async ({ page, ba
   await page.keyboard.type('%% edited\n')
   await expect.poll(() => noteText(page)).toContain('```mermaid\n%% edited\ngraph TD')
 })
+
+test('draws an HTML block as its HTML, as Obsidian does', async ({ page, baseURL }) => {
+  const text = 'Intro\n\n<details>\n<summary>More</summary>\n\nHidden body.\n\n</details>\n\nAfter\n'
+  const { kit } = await openNote(page, baseURL!, 'Details.md', text)
+
+  const block = kit.locator('[data-testid="note-diagram"][data-kind="html"]')
+  await expect(block).toHaveCount(1, { timeout: 30_000 })
+  await expect(block.locator('summary')).toHaveText('More')
+  const folded = (await block.boundingBox())!.height
+  await block.locator('summary').click()
+  await expect.poll(async () => (await block.boundingBox())!.height).toBeGreaterThan(folded + 10)
+})
