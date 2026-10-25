@@ -341,7 +341,7 @@ export async function openAgentWorkspace(page: Page, options: { capabilities?: s
   // The note opens in the Note kit's editor, in Kition's kit frame.
   await openTreeFile(page, AGENT_WORKSPACE_DOC_PATH)
   const note = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
-  await expect(note.locator('.cm-content')).toContainText('Three ideas for the launch.', { timeout: 60_000 })
+  await expect(note.getByTestId('note-text')).toContainText('Three ideas for the launch.', { timeout: 60_000 })
   return host
 }
 

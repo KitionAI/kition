@@ -1,6 +1,6 @@
 # Shared Office Drawing Editing Plan
 
-Status: In progress. This plan covers implementation of editable charts, ink, WordArt, and shapes across Kition Doc, Sheet, and Slide. Phase 0 is recorded in [the decision](office-drawing/decision.md), [the capability matrix](office-drawing/capability-matrix.md), and [the frozen baseline](office-drawing/baseline.md); Phase 1's three-kit shape slice is implemented in Slide, Sheet, and Word. Phase 3's chart slice (shared chart description, `drawing.chart`, DrawingML codec, shared Insert › Chart and Chart Design controls) is implemented in all three kits; charts are their own replica objects in every kit, so concurrent edits of one chart's members merge (DR14); Word and Slide save edited charts with an embedded workbook of their data, and axis, data-label and series formatting is editable through shared Chart Design controls (Sheet takes smoothing only); trendlines and error bars (`KitDrawing 1.1` DR16b: shared regressions and error amounts, set from Chart Elements or `seriesFormat`) are drawn and editable in all three kits; combinations on two axes (DR16c: a series' own type and secondary axis) are editable in all three kits; chart visual fidelity has improved against the baseline but no chart slide meets the strict gate: decision F1 (2026-10-24) draws fonts the kits cannot ship with metric-compatible open substitutes (Word's and Slide's text, and Sheet's cells), but the chart decks' Chinese fonts have none, and the corpus's WPS references themselves substitute Calibri, so the substitutes help Office fidelity without raising this corpus's scores (see the baseline). The ink slice (shared strokes, `drawing.ink` and `drawing.erase`, pen and eraser gestures, shared Draw controls) is implemented in all three kits. The WordArt slice's text warp (`KitDrawing 1.3`: shared warp geometry, `warp` on `drawing.text` and `drawing.insert`, warped rendering, the shared Transform menu) is implemented in all three kits; warp adjustment handles, exact Office warp formulas, and editing the text in its warped form remain open.
+Status: In progress. This plan covers implementation of editable charts, ink, WordArt, and shapes across Kition Doc, Sheet, and Slide. Phase 0 is recorded in [the decision](office-drawing/decision.md), [the capability matrix](office-drawing/capability-matrix.md), and [the frozen baseline](office-drawing/baseline.md); Phase 1's three-kit shape slice is implemented in Slide, Sheet, and Doc. Phase 3's chart slice (shared chart description, `drawing.chart`, DrawingML codec, shared Insert › Chart and Chart Design controls) is implemented in all three kits; charts are their own replica objects in every kit, so concurrent edits of one chart's members merge (DR14); Doc and Slide save edited charts with an embedded workbook of their data, and axis, data-label and series formatting is editable through shared Chart Design controls in all three kits; trendlines and error bars (`KitDrawing 1.1` DR16b: shared regressions and error amounts, set from Chart Elements or `seriesFormat`) are drawn and editable in all three kits; combinations on two axes (DR16c: a series' own type and secondary axis) are editable in all three kits; chart visual fidelity has improved against the baseline but no chart slide meets the strict gate: decision F1 (2026-10-24) draws fonts the kits cannot ship with metric-compatible open substitutes (Doc's and Slide's text, and Sheet's cells), but the chart decks' Chinese fonts have none, and the corpus's WPS references themselves substitute Calibri, so the substitutes help Office fidelity without raising this corpus's scores (see the baseline). The ink slice (shared strokes, `drawing.ink` and `drawing.erase`, pen and eraser gestures, shared Draw controls) is implemented in all three kits. The WordArt slice's text warp (`KitDrawing 1.3`: shared warp geometry, `warp` on `drawing.text` and `drawing.insert`, warped rendering, the shared Transform menu) is implemented in all three kits; warp adjustment handles, exact Office warp formulas, and editing the text in its warped form remain open.
 
 Build these capabilities as optional shared libraries in `kition-sdk`, with shared editor controls used by each kit. Each kit retains its document layout, anchoring, data binding, and file packaging. A feature is complete when a user can insert it, edit it, undo and redo changes, collaborate, save, reopen, and continue editing it in all three kits.
 
@@ -14,7 +14,7 @@ Paths in this table are relative to the named repository.
 | --- | --- | --- |
 | `kition-doc`, `crates/formats/docx/src/read/chart.rs` | Chart import produces `Vec<GraphicItem>` and estimates label widths. | Preserve chart series, categories, axes, bindings, and formatting as editable semantic data; generate drawing items from that model. |
 | `kition-doc`, `crates/engine/engine/src/cmd/insert.rs` | `insert.wordArt` inserts ordinary formatted text. | Create an editable drawing object with text, text effects, and warp parameters. |
-| `kition-doc`, `crates/engine/engine/src/cmd/draw.rs` | Drawing commands already support strokes and whole-stroke erasure. | Extract reusable stroke behavior while preserving Word anchoring and transaction behavior. |
+| `kition-doc`, `crates/engine/engine/src/cmd/draw.rs` | Drawing commands already support strokes and whole-stroke erasure. | Extract reusable stroke behavior while preserving Doc anchoring and transaction behavior. |
 | `kition-sheet`, `crates/engine/engine/src/cmd/draw.rs` | Ink point parsing uses `Shape.text`. | Migrate to typed stroke data, with a reader for existing documents. |
 | `kition-sheet`, `crates/engine/chart/src/` | Chart resolution and drawing already form a separate subsystem. | Retain workbook range resolution in Sheet; share semantic chart layout and rendering. |
 | `kition-slide`, `crates/support/geom/src/`, `crates/engine/model/src/`, `crates/render/render/src/` | Substantial geometry, style, text, and chart support already exists. | Extract capabilities incrementally, with evidence from fixtures; do not assume every existing implementation is correct or fully editable. |
@@ -46,7 +46,7 @@ All document mutations run through the worker engine. Shared UI sends typed comm
 
 | Kit | Adapter responsibilities |
 | --- | --- |
-| Word | Inline and floating anchors; paragraph and page attachment; wrapping; pagination and reflow; headers and footers; document relationships. Body text layout remains in Word. |
+| Doc | Inline and floating anchors; paragraph and page attachment; wrapping; pagination and reflow; headers and footers; document relationships. Body text layout remains in Doc. |
 | Sheet | One-cell, two-cell, and absolute anchors; move and resize with cells; row and column mutations; merged or hidden cells; viewport and freeze-pane transforms; range references and formula recalculation. |
 | Slide | Slide coordinates; master, layout, theme, and placeholder inheritance; slide-local relationships; animation references and object identity mapping. |
 
@@ -85,7 +85,7 @@ Keep layout, hit-test indices, display lists, and autofit caches derived from ca
 
 Import DOCX, XLSX, and PPTX objects into the shared semantic model while retaining their adapter-owned anchors and relationships. Export edits through the appropriate format adapter. Reopening the file must recover the edited properties and object identities needed within the document.
 
-For charts, retain and update applicable embedded workbooks, formulas, and data caches consistently. Sheet owns live range bindings; Word and Slide expose embedded chart data through the shared data editor. Preserve external references without silently fetching or rewriting them.
+For charts, retain and update applicable embedded workbooks, formulas, and data caches consistently. Sheet owns live range bindings; Doc and Slide expose embedded chart data through the shared data editor. Preserve external references without silently fetching or rewriting them.
 
 Preserve unknown extension data and unsupported properties when their owning objects survive an edit. Known edited fields take precedence over preserved raw XML. Define ownership and invalidation rules so stale raw data cannot overwrite user edits. Inventory ink representations and fallback relationships per format; an exported preview must coexist with retained editable stroke data where the target supports it.
 
@@ -95,7 +95,7 @@ Preserve unknown extension data and unsupported properties when their owning obj
 
 Create an architecture decision and capability matrix covering the four features in all three kits. Each row records import, render, hit testing, UI editing, commands, undo, collaboration, export, and reopen status, with fixture references. Record the source revisions, fonts, renderer, image dimensions, and strict comparison settings used by the current compatibility workflow.
 
-Inventory `golden_ppt/shape` and `golden_ppt/chart/` including the full-property samples using their existing on-disk names. Use portable case IDs in new English reports. Add equivalent Word and Sheet fixtures, including existing failures and anchor-sensitive examples. Freeze the reference corpus and expected output before measuring improvement.
+Inventory `golden_ppt/shape` and `golden_ppt/chart/` including the full-property samples using their existing on-disk names. Use portable case IDs in new English reports. Add equivalent Doc and Sheet fixtures, including existing failures and anchor-sensitive examples. Freeze the reference corpus and expected output before measuring improvement.
 
 Deliver model and command schemas, adapter interfaces, migration/version policy, dependency and license review, and shared module ownership. Exit when a minimal three-kit vertical slice can be implemented without each kit inventing a different model or transaction protocol.
 
@@ -103,19 +103,19 @@ Deliver model and command schemas, adapter interfaces, migration/version policy,
 
 Extract only the model, geometry, style, command, and interaction subset needed for rectangles, ellipses, and text boxes. Wire it into all three worker engines and editors. Demonstrate insert -> text/style edit -> drag/resize -> undo/redo -> save -> reopen -> edit again in DOCX, XLSX, and PPTX.
 
-Include one Word reflow case, one Sheet row/column insertion case, and one Slide inherited-theme case. Include a two-peer collaboration case and a read-only rejection case. A shared fill or geometry fix must pass all three kits without duplicating the implementation. This is the first implementation delivery, before a broad extraction of the Slide engine.
+Include one Doc reflow case, one Sheet row/column insertion case, and one Slide inherited-theme case. Include a two-peer collaboration case and a read-only rejection case. A shared fill or geometry fix must pass all three kits without duplicating the implementation. This is the first implementation delivery, before a broad extraction of the Slide engine.
 
 ### Phase 2 Complete the shared drawing foundation
 
 Migrate preset/custom geometry, effects, rich text, group transforms, connectors, adjustment handles, and selection tools in tested increments. Implement shared inspectors and property descriptions. Use differential rendering and editing fixtures to identify behavior changes before switching a feature's authoritative implementation.
 
-Retain each kit's anchor and document layout behavior. Establish shared text shaping, font resources, and measurement for drawing objects without replacing Word body layout or Sheet cell layout. Exit when the common feature modules can build on stable geometry, text, commands, and persistence boundaries.
+Retain each kit's anchor and document layout behavior. Establish shared text shaping, font resources, and measurement for drawing objects without replacing Doc body layout or Sheet cell layout. Exit when the common feature modules can build on stable geometry, text, commands, and persistence boundaries.
 
 ### Phase 3 Charts Ink and WordArt
 
 Run these feature streams in parallel after the required foundation interfaces stabilize. Each stream delivers its first usable milestone across all three kits, then completes the inventoried advanced properties.
 
-For charts, first replace Word's flattened import with semantic objects. Adapt Sheet's data resolver and Slide's chart model and renderer into the shared chart contract. Deliver the shared data editor and element inspector, then work through the full-property corpus. Shared text measurement must replace approximate character-width placement.
+For charts, first replace Doc's flattened import with semantic objects. Adapt Sheet's data resolver and Slide's chart model and renderer into the shared chart contract. Deliver the shared data editor and element inspector, then work through the full-property corpus. Shared text measurement must replace approximate character-width placement.
 
 For ink, extract reusable stroke operations, migrate Sheet's text-encoded points, and implement shared tool state and erasure. Preserve stroke identity, undo boundaries, and format-specific editable representations. Add pressure and segment erasure only with persistence and convergence tests.
 
@@ -169,7 +169,7 @@ For Kition changes, run `python3 scripts/check-i18n.py`, `pnpm test:table:e2e`, 
 
 | Risk | Control |
 | --- | --- |
-| A universal model loses Word, Sheet, or Slide behavior. | Keep anchor, layout, inheritance, and data-binding semantics in explicit adapters; require a representative test from each kit in every migration step. |
+| A universal model loses Doc, Sheet, or Slide behavior. | Keep anchor, layout, inheritance, and data-binding semantics in explicit adapters; require a representative test from each kit in every migration step. |
 | A large extraction causes regressions that cannot be isolated. | Deliver one editable vertical slice first, then migrate property groups with old/new comparisons. Use one authoritative mutation path at a time. |
 | Different font metrics or coordinate conversions prevent convergence. | Normalize units and shared drawing text measurement early; freeze fonts and test native/WASM output. |
 | Shared data appears editable but export discards changes. | Make edit-export-reopen checks part of each milestone, including embedded chart data and retained ink points. |

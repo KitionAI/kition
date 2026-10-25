@@ -11,7 +11,8 @@ test('Cmd/Ctrl+W closes the active tab and ignores extra modifiers', async ({ pa
   const tabs = page.locator('.document-tab-list .document-tab')
   await expect(tabs).toHaveCount(1)
 
-  await kit.locator('.cm-line', { hasText: 'Body text' }).click()
+  await expect(kit.getByTestId('note-text')).toContainText('Body text')
+  await kit.getByTestId('note-canvas').click({ position: { x: 40, y: 40 } })
   await page.keyboard.press('Control+Shift+W')
   await expect(tabs).toHaveCount(1)
   await page.keyboard.press('Control+Alt+W')

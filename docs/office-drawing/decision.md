@@ -7,7 +7,7 @@ the frozen visual baseline in [baseline.md](baseline.md).
 
 ## Context
 
-Word, Sheet, and Slide each grew their own drawing objects. The
+Doc, Sheet, and Slide each grew their own drawing objects. The
 [capability matrix](capability-matrix.md) shows three very different starting
 points:
 
@@ -15,7 +15,7 @@ points:
   theme style references, rich text bodies, effects), engine tools with
   selection, handles, move, resize, rotate, adjustment handles, ink strokes,
   and fine-grained KDM objects for shapes and their text.
-- **Word** stores a shape as an inline object with one of eleven kinds, RGB
+- **Doc** stores a shape as an inline object with one of eleven kinds, RGB
   fill and pen, an optional text story, and a float placement. Its editor has
   only a text tool: objects cannot be selected, moved, or resized with the
   pointer. Charts and SmartArt are flattened into drawing items and written
@@ -27,7 +27,7 @@ points:
 
 A shared module therefore has two jobs. For Slide it replaces code that
 already works, so it must be extracted from that code with old/new
-comparisons. For Word and Sheet it supplies the object editing they do not
+comparisons. For Doc and Sheet it supplies the object editing they do not
 have yet.
 
 ## Decisions
@@ -44,7 +44,7 @@ consumer. The shared editor controls start as kit-ui's drawing module
 links; they move to their own package only if they outgrow it.
 
 `kition-drawing` depends only on `serde` and `serde_json`. Kurbo conversion
-is an optional feature, because Word and Slide draw with `vello_cpu` and
+is an optional feature, because Doc and Slide draw with `vello_cpu` and
 `kurbo` while Sheet uses its own rasterizer. The crate never depends on a
 kit, on Kition, or on any renderer.
 
@@ -80,13 +80,13 @@ properties, insets, anchor, wrap, autofit), and, as later modules land,
 charts, strokes, and text warp. Colors are an explicit RGB value or a theme
 slot with transforms; resolving a theme slot is the kit's job (D7).
 
-Placement is not in the shared model. Word's float and wrap, Sheet's cell
+Placement is not in the shared model. Doc's float and wrap, Sheet's cell
 anchors, and Slide's placeholder inheritance stay in each kit. An adapter
 resolves the object's frame on its page, sheet, or slide into a shared
 `Transform`, and writes a changed frame back into its own placement.
 
 Object identity is the kit's: Slide's shape ids, Sheet's shape ids, and
-Word's inline object positions. The shared code addresses objects through an
+Doc's inline object positions. The shared code addresses objects through an
 opaque `ObjectKey` supplied by the adapter.
 
 ### D5 Typed, versioned commands, one mutation path
@@ -137,13 +137,13 @@ Each kit writes shared objects into its replica at the granularity Slide
 already uses: frame and name as their own registers, text bodies as
 paragraph objects with run marks, and the other properties in one
 properties register per object. A whole scene in one register is not
-allowed. Word and Sheet adopt this granularity when their drawing objects
+allowed. Doc and Sheet adopt this granularity when their drawing objects
 move to the shared model. Their Phase 1 tests include a two-peer case.
 
 ### D9 Known edits win over preserved XML
 
 Kits keep unknown DrawingML (Slide's `raw_ext`, Sheet's `text_body` and
-`style_refs`, Word's `vml` and embedded graphics). A preserved fragment is
+`style_refs`, Doc's `vml` and embedded graphics). A preserved fragment is
 written back only while the properties it covers are unchanged. Editing a
 covered property invalidates the fragment, and the shared codec writes the
 edited object. Each kit's tests cover an edited, preserved object.
@@ -174,12 +174,14 @@ clean-room rules.
   on.
 - Kit command names remain as aliases of the `drawing.*` commands for at
   least one minor version after every kit supports them.
+  [The command migration](command-migration.md) lists which kit command each
+  shared command covers, per kit.
 
 ## Phase 1 scope
 
 Rectangles, ellipses, and text boxes in all three kits, as the plan states:
 insert, select, move, resize, rotate, fill, outline, text, delete, undo and
-redo, save, reopen, and edit again. It includes one Word reflow case, one
+redo, save, reopen, and edit again. It includes one Doc reflow case, one
 Sheet row insertion case, one Slide inherited-theme case, a two-peer case,
 and a read-only rejection case per kit.
 
@@ -192,5 +194,5 @@ The order:
    old/new comparisons of hit testing and handle layout.
 3. Sheet gains drawing objects in its editor through the shared gestures and
    a select tool for objects.
-4. Word gains object selection, handles, and moving and resizing for floating
+4. Doc gains object selection, handles, and moving and resizing for floating
    and inline shapes.

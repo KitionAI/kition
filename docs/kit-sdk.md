@@ -469,9 +469,14 @@ tested in the kit's repository. Kition has no board editor of its own.
 `kit.note` (`KitionAI/kition-note`, package `public/kits/note-ui`) is a
 normal kit: `.md` and `.markdown` files open in its own editor in `KitFrame`,
 and its Rust engine (`kition_note_sdk`, `NoteDocument`) and editor live in
-its repository, published and pinned like every other kit. Kition has no
-Markdown editor of its own: the editor, its display modes, comments, export,
-and image paste are the kit's. The `markdown` format id is unchanged, so
+its repository, published and pinned like every other kit. As in Word, the
+engine lays the note out, draws it on the canvas (a live preview: Markdown
+shows on the caret's lines, tables as grids, pictures in place), and edits it
+through its `text` tool; the editor is kit-ui's frame around that canvas, with
+the table controls, panels, and find bar over engine commands, and a visually
+hidden copy of the text for assistive technology (`note-text`, which specs
+read too). Kition has no Markdown editor of its own: the editor, its display
+modes, comments, export, and image paste are the kit's. The `markdown` format id is unchanged, so
 `KIT_EDITORS` finds the kit by it. What Kition keeps around notes are host
 features that go through the kit:
 
@@ -490,8 +495,12 @@ features that go through the kit:
 
 `e2e/note-embedded.spec.ts`, `e2e/note-history.spec.ts`,
 `e2e/collab-note.spec.ts`, and `e2e/note-table-widget.spec.ts` (the table
-gate, `pnpm test:table:e2e`) cover what Kition adds around the kit; the
-editor's own behavior is tested in the kit's repository.
+gate, `pnpm test:table:e2e`: the grid, the append buttons on the edge rails,
+the column menu, cell editing, and undo, each checked in the saved file) cover
+what Kition adds around the kit; they place the caret the way a person can on
+a canvas (Find, then the arrow keys) and read the text from `note-text`
+(`e2e/helpers/noteKit.ts`). The editor's own behavior is tested in the kit's
+repository.
 
 ### The replica store
 

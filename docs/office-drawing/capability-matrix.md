@@ -24,7 +24,7 @@ and redoes the edit as one step. **Collab** merges concurrent edits through
 KDM at object granularity. **Export** writes the edit. **Reopen** reads the
 edit back as editable data.
 
-Source revisions at the Phase 0 baseline: Slide kit `cfa3929`, Word kit
+Source revisions at the Phase 0 baseline: Slide kit `cfa3929`, Doc kit
 `967b531`, Sheet kit `1271e80`, SDK `469247d`. Rows marked *(Phase 1)* were
 re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 
@@ -33,7 +33,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Slide *(Phase 1)* | Y | Y | Y | Y | Y | Y | Y | Y | Y |
-| Word *(Phase 1)* | P | Y | Y | Y | Y | Y | Y | Y | Y |
+| Doc *(Phase 1)* | P | Y | Y | Y | Y | Y | Y | Y | Y |
 | Sheet *(Phase 1)* | P | Y | Y | Y | Y | Y | Y | Y | Y |
 
 - **Phase 1 evidence.** Slide: `cmd/drawing.rs` tests (the `drawing.*`
@@ -44,14 +44,18 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   typing, nudge, delete, reopen), `kdm-model` `tests/drawing_shapes.rs` (two
   peers, migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Sheet
   import stays P: shape text keeps only plain text as an editable property.
-  Word: `cmd/drawing.rs` (commands, DOCX round trip of id, preset, frame and
+  Doc: `cmd/drawing.rs` (commands, DOCX round trip of id, preset, frame and
   text, copies get new ids), `outline.rs`, `bindings/wasm/src/objects.rs`
   (pointer move, resize, rotate, Escape, nudge, reopen), `kdm-model`
   `tests/drawing_frames.rs` (move against format on two peers, schema 3
-  migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Word import
-  stays P: theme colours and run formatting of shapes are not modelled; colours
-  are RGB.
-  Ids (DR2): Word's and Sheet's are the file's drawing ids, replicated, so
+  migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Doc import
+  stays P: colours are kept as RGB, not as theme references. Since 2026-10-24
+  theme colours (`a:schemeClr`, `a:sysClr`) and the style's references
+  (`wps:style`: fill, outline and width, text colour) are read into them, so a
+  shape Doc inserts draws as Doc draws it, and a shape keeps its text frame
+  (`wps:bodyPr` anchor and margins), laid out, described and set by
+  `drawing.text`.
+  Ids (DR2): Doc's and Sheet's are the file's drawing ids, replicated, so
   they survive both replicas and reopening a file. Slide's are the shapes'
   replica objects: the same on every replica and across reopening with the
   replica, but new when a PPTX is opened without one (DR2's SHOULD).
@@ -59,7 +63,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   references, effects, text bodies). Engine tools select, move, resize,
   rotate, and adjust. KDM keeps the frame, name, and text paragraphs as their
   own objects. Visual fidelity is measured separately ([baseline.md](baseline.md)).
-- **Word:** eleven shape kinds, RGB fill and pen, a text story, effects, and a
+- **Doc:** eleven shape kinds, RGB fill and pen, a text story, effects, and a
   float placement. The importer maps preset names onto those kinds, so other
   presets lose their geometry. `insert.shape`, `shape.fill`, `shape.outline`,
   `shape.change`, and `arrange.*` exist. The editor's only tool is the text
@@ -79,10 +83,10 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 - **Phase 2, adjust handles and arrange (2026-10-22).** kition-sdk's shared
   gestures add adjust handles (`adjust_handles`, `hit_adjust`,
   `Gesture::adjusting`: a drag previews the new outline and commits one
-  `drawing.format`), now in Word's and Sheet's editors (Slide had its own).
+  `drawing.format`), now in Doc's and Sheet's editors (Slide had its own).
   `drawing.arrange` (`KitDrawing 1.4`, DR21; `kition_drawing::arrange`)
   moves objects in their stack in all three kits, and Shape Format's shared
-  Arrange menus run it. Word keeps a floating object's place in the stack
+  Arrange menus run it. Doc keeps a floating object's place in the stack
   (`relativeHeight`) and lays a page's floating objects out in that order;
   inline objects have no place in it. Sheet keeps charts above shapes, so
   each moves among its own kind, and now saves the drawing part in the order
@@ -90,14 +94,14 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   tests (`floating_objects_move_in_the_stack…`,
   `shapes_and_charts_move_in_their_stacks…`,
   `objects_move_in_the_slides_stack…`, `a_shapes_adjust_handle_reshapes_it…`)
-  and the Word and Sheet `web/tests/drawing.mjs` runs in Chromium and WebKit.
+  and the Doc and Sheet `web/tests/drawing.mjs` runs in Chromium and WebKit.
   Groups (`KitDrawing 1.4`, DR22): `drawing.group` and `drawing.ungroup` in
-  Slide and Word, with a group described as kind `group` and its `members`
-  (their ids kept through grouping and, in Word, through saving); a group
+  Slide and Doc, with a group described as kind `group` and its `members`
+  (their ids kept through grouping and, in Doc, through saving); a group
   moves, resizes and turns with its members, and a member is described where
   the group shows it but is changed through its group (`unsupported`
-  otherwise). Word's editor adds objects to the selection with Shift, and
-  Shape Format's shared Group and Ungroup run the commands (Word
+  otherwise). Doc's editor adds objects to the selection with Shift, and
+  Shape Format's shared Group and Ungroup run the commands (Doc
   `web/tests/drawing.mjs`, Chromium and WebKit). Sheet groups too (since
   2026-10-23): a group's key is an object id, the group is one object in the
   sheet's list, moving or sizing it carries its members, and the editor
@@ -105,32 +109,32 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   (`shapes_group_move_and_resize_together…`, Sheet browser runs).
   Gradient fills (`KitDrawing 1.4`, DR23): described and set through
   `drawing.format` in all three kits, from Shape Format's shared gradient
-  presets in Word and Sheet (Slide's own Format pane sets them there). Word
+  presets in Doc and Sheet (Slide's own Format pane sets them there). Doc
   shapes now keep gradients at all: read from and written as `a:gradFill`,
   and painted by the rasteriser (PDF export draws the first colour for now).
-  Evidence: each kit's `gradient_fills_…` engine test, Word's
+  Evidence: each kit's `gradient_fills_…` engine test, Doc's
   `a_gradient_fill_runs_from_its_first_colour_to_its_last` pixel test, and the
-  Word and Sheet browser runs in Chromium and WebKit.
+  Doc and Sheet browser runs in Chromium and WebKit.
   Shadow and glow (`KitDrawing 1.4`, DR24): described and set through
-  `drawing.format` in Slide and Word, from Shape Format's shared Effects menu
-  in Word and Sheet (Slide's own Format pane sets them there). Sheet shapes
+  `drawing.format` in Slide and Doc, from Shape Format's shared Effects menu
+  in Doc and Sheet (Slide's own Format pane sets them there). Sheet shapes
   keep them since 2026-10-23 (read from and written as `a:effectLst`, drawn
   under the shape).
-  Word's PDF export now paints gradient fills as shadings. Evidence: the
-  `shadows_and_glows_…` engine tests, Word's `a_gradient_fill_is_a_shading`
-  PDF test, and the Word and Sheet browser runs in Chromium and WebKit.
+  Doc's PDF export now paints gradient fills as shadings. Evidence: the
+  `shadows_and_glows_…` engine tests, Doc's `a_gradient_fill_is_a_shading`
+  PDF test, and the Doc and Sheet browser runs in Chromium and WebKit.
   Rich text in shapes (DR8): `drawing.text` takes paragraphs with alignment
   and runs with font, size, bold, italic, underline and colour in all three
-  kits, and `drawing.describe` reports them; Word writes them into the text
+  kits, and `drawing.describe` reports them; Doc writes them into the text
   box story, Sheet into a text body it draws and saves, Slide into its text
   body (each kit's `shape_text_takes_runs_…` test, save and reopen included).
   A colour is read as `#RRGGBB` or a theme slot wherever one goes.
   Connectors (`KitDrawing 1.4`, DR25): `drawing.connect` glues one between two
   shapes' sites in all three kits, and its ends follow the shapes in the same
-  step. In Word and Sheet they follow every edit that moves a shape (a drag,
+  step. In Doc and Sheet they follow every edit that moves a shape (a drag,
   a nudge, rows or columns inserted under it), not only `drawing.*` commands;
   Slide reroutes after every edit already. `drawing.reconnect` moves one end
-  to another site or frees it, and in Word and Sheet a selected connector's
+  to another site or frees it, and in Doc and Sheet a selected connector's
   ends drag with the pointer, snapping to sites in reach
   (`kition_drawing::connect::EndDrag`). Slide takes `drawing.reconnect`, and
   its canvas already drags connector ends onto sites and glues a line drawn
@@ -138,12 +142,12 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   `connectors_follow_…` engine tests and the bindings'
   `a_connectors_end_drags_onto_another_shape_in_one_step` tests. A line from
   Insert › Shapes becomes a connector once its ends are dragged onto two shapes
-  (`a_plain_line_glued_at_both_ends_…`, save and reopen included). In Word and
+  (`a_plain_line_glued_at_both_ends_…`, save and reopen included). In Doc and
   Sheet, Insert › Shapes arms a shape (`draw.shape`) and a drag on the page or
   sheet draws it; a line drawn from one shape's site to another's is made with
   `drawing.connect`, a connector in one undo step
   (`kition_drawing::connect::CreateDrag`; the bindings'
-  `a_shape_chosen_in_insert_shapes_…` tests and the Word and Sheet browser
+  `a_shape_chosen_in_insert_shapes_…` tests and the Doc and Sheet browser
   runs). Kits without `draw.shape` keep inserting at their default place.
 
 ## Charts
@@ -151,7 +155,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Slide | P | P | Y | Y | Y | Y | Y | P | Y |
-| Word | P | P | Y | Y | Y | Y | Y | P | Y |
+| Doc | P | P | Y | Y | Y | Y | Y | P | Y |
 | Sheet | P | P | Y | Y | Y | Y | Y | P | Y |
 
 *(Phase 3, charts: all three kits implement `KitDrawing 1.1` charts through
@@ -170,7 +174,7 @@ and checks read-only refusal.)*
   categories and series. A chart is its own KDM object (schema version 4), one
   map entry per member, so concurrent edits of one chart's title and data both
   stay.
-- **Word:** a chart is described from its part; `drawing.chart` patches the
+- **Doc:** a chart is described from its part; `drawing.chart` patches the
   part, keeps it on the chart object and draws it again. Inserted charts get
   a new part. Charts now move and resize (SmartArt diagrams stay frozen), and
   their frames are their own replica register, so a move and an edit made at
@@ -189,7 +193,7 @@ and checks read-only refusal.)*
   positions), so concurrent edits of different charts, or of one chart's
   members, all stay; a schema 3 replica migrates its charts on the first
   write.
-- **Word and Slide:** a chart made here, or whose data were edited, is saved
+- **Doc and Slide:** a chart made here, or whose data were edited, is saved
   with a new embedded workbook of its data (`c:externalData`, the series bound
   to its ranges), so another application can edit the data as cells again. A
   type the description does not edit (bubble, stock) keeps its data as
@@ -198,26 +202,28 @@ and checks read-only refusal.)*
   (bounds, major unit, number format, shown), the data-label position and
   each series' line width, marker and smoothing. Chart Design's shared Format
   group (Format Axis, Label Position, Format Series) sets them through
-  `drawing.chart`, and each kit's browser test sets them, undoes them and, in
-  Word and Slide, saves and reopens them. Slide writes them into its chart
-  model, so they draw at once; Word patches the part and its renderer draws
-  fixed major units, markers, smooth lines and label positions. Sheet takes a
-  series' smoothing; its model has no axis scale, label position, line width
-  or marker yet, so `drawing.chart` refuses them as unsupported and the
-  editor does not offer them. Trendlines and error bars (DR16b) are
+  `drawing.chart`, and each kit's browser test sets them and undoes them; the
+  kits' engine tests save and reopen them. Slide writes them into its chart
+  model, so they draw at once; Doc patches the part and its renderer draws
+  fixed major units, markers, smooth lines and label positions. Sheet keeps
+  them in its chart model (2026-10-24; dropped on saving before), reads and
+  writes them in the chart part (a label position only where Excel takes it
+  for the type), and draws them: axis bounds, units, formats and hidden axes,
+  label positions, line widths and marker symbols. Bounds on a category axis
+  and a position the type does not take are refused. Trendlines and error bars (DR16b) are
   described, set from Chart Elements › Trendline and Error Bars (on every
   series) or `seriesFormat`, saved and reopened in all three kits; the shared
-  `kition_drawing::chart::trend` fits them and measures them, Word and Sheet
+  `kition_drawing::chart::trend` fits them and measures them, Doc and Sheet
   draw them over unstacked series, and Slide draws them with its own renderer.
   Evidence: the `trendlines_…` engine tests and each kit's `chart.mjs` in
   Chromium and WebKit. Combinations on two axes (DR16c): a series' own type
   and `secondary` are described and set from Format Series or `seriesFormat`
   in all three kits, kept through saving; the shared codec groups series by
   type and axis, makes and removes the secondary axes, and keeps series in
-  their `c:order` (reading, patching and binding a workbook). Word now draws a
+  their `c:order` (reading, patching and binding a workbook). Doc now draws a
   chart's every chart type, with a secondary value axis labelled on the right.
   Evidence: the `combinations_…` codec test, each kit's secondary-axis engine
-  test, and Word's and Sheet's `chart.mjs` in Chromium.
+  test, and Doc's and Sheet's `chart.mjs` in Chromium.
 
 - **Visual fidelity (Slide, 2026-10-22):** against the frozen baseline's chart
   set and settings, data table rows and the plot area border now follow the
@@ -235,8 +241,8 @@ and checks read-only refusal.)*
 
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Slide | P | Y | Y | Y | Y | Y | P | Y | Y |
-| Word | P | P | Y | Y | Y | Y | Y | Y | Y |
+| Slide | P | Y | Y | Y | Y | Y | Y | Y | Y |
+| Doc | P | P | Y | Y | Y | Y | Y | Y | Y |
 | Sheet | P | P | Y | Y | Y | Y | Y | Y | Y |
 
 *(Phase 3, ink: all three kits implement `KitDrawing 1.2` ink through
@@ -252,10 +258,14 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
   was a point test that pushed an undo step per pointer event; it is now the
   shared swept-path gesture, one step per drag. Saved ink (a group of `Ink N`
   freeforms) now reads back as ink instead of a group of shapes; pressure is
-  not kept in the file (read back as 0.5). The ink layer is one KDM properties
-  value: two people drawing on one slide at once keep one side's strokes
-  (open).
-- **Word:** a stroke is a floating freeform (the existing `draw.stroke`); the
+  not kept in the file (read back as 0.5). In the replica (schema version 6,
+  2026-10-24) each stroke of the ink layer is its own entry, so strokes two
+  people draw on one slide at once all stay, and strokes they erase at once
+  are all gone (before, the layer was one value and one side's strokes were
+  lost). Evidence: `kdm-model` `tests/replicas.rs`
+  `strokes_two_people_draw_and_erase_on_one_slide_at_once_all_count` and the
+  schema 5 migration test.
+- **Doc:** a stroke is a floating freeform (the existing `draw.stroke`); the
   editor now draws and erases with the pointer, which it could not before.
   Each stroke is its own inline object, so concurrent strokes merge.
 - **Sheet:** a stroke is an `Ink` shape (its own KDM object). The editor now
@@ -269,7 +279,7 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
 | Kit | Import | Render | Hit | UI | Cmd | Undo | Collab | Export | Reopen |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Slide | Y | P | P | P | Y | Y | Y | Y | Y |
-| Word | Y | P | P | P | Y | Y | Y | Y | Y |
+| Doc | Y | P | P | P | Y | Y | Y | Y | Y |
 | Sheet | Y | P | P | P | Y | Y | Y | Y | Y |
 
 Text warp is `KitDrawing 1.3` (DR26 to DR28). The shared geometry is
@@ -288,14 +298,14 @@ use the flat text in every kit.
   adjust values, drawn with them and set by `drawing.text`. Warped text is drawn without its paragraph animation
   states and text effects. WordArt Styles › Transform runs `format.transform`
   on the selection.
-- **Word:** a shape keeps its warp with adjust values (`wps:bodyPr/a:prstTxWarp`).
+- **Doc:** a shape keeps its warp with adjust values (`wps:bodyPr/a:prstTxWarp`).
   The display list draws warped text as filled paths, so PDF export bends it
   too; underlines and highlights in warped text are not drawn. `insert.wordArt`
-  still inserts formatted body text, not a drawing object.
+  inserts a drawing object with its warp (the `insert_wordart_…` engine test).
 - **Collaboration:** a warp set by one person and a move of the same shape
-  by another both stay (Word's `drawing_frames` and Sheet's `drawing_shapes`
-  replica tests). Since Word's replica schema 6, Sheet's schema 5 and
-  Slide's schema 5 a shape's other members are entries of its own `look` map, so two people
+  by another both stay (Doc's `drawing_frames` and Sheet's `drawing_shapes`
+  replica tests). Since Doc's replica schema 6, Sheet's schema 5 and
+  Slide's schema 5 (6 for ink strokes) a shape's other members are entries of its own `look` map, so two people
   changing two different ones at once (say a warp and a fill, or a glued end
   and a line colour) both keep theirs.
 - **Sheet:** the warp lives in the shape's kept text body, with its adjust
@@ -307,9 +317,9 @@ use the flat text in every kit.
 | Kit | Shape cases | Chart cases | Ink cases | WordArt cases |
 | --- | --- | --- | --- | --- |
 | Slide | 168 decks under the PPTX corpus's `shape` folder | 178 decks under `chart` | 2 decks under the ink folder | Inside the shape and text decks; not separated yet |
-| Word | Not separated yet | Not separated yet | Not separated yet | Not separated yet |
+| Doc | Not separated yet | Not separated yet | Not separated yet | Not separated yet |
 | Sheet | Not separated yet | Not separated yet | Not separated yet | Not separated yet |
 
-The Word and Sheet corpora exist as archives next to the PPTX corpus. Phase 1
-adds a drawing case list for each, by portable case id, before any Word or
+The Doc and Sheet corpora exist as archives next to the PPTX corpus. Phase 1
+adds a drawing case list for each, by portable case id, before any Doc or
 Sheet drawing path changes.

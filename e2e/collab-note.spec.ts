@@ -3,7 +3,7 @@ import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { openKitWorkspace } from './helpers/embeddedKit'
 import { DEV_PRINCIPALS, kitionProSkipReason, openSharedLink, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
-import { noteText, openNote, requireNoteKit } from './helpers/noteKit'
+import { caretAfter, noteText, openNote, requireNoteKit } from './helpers/noteKit'
 
 /**
  * A note co-edited between two windows through Kition's sync server: the Note kit's replica (the
@@ -16,8 +16,7 @@ const status = (page: Page) => page.locator('.document-tab-list [data-testid="co
 
 /** Types `text` at the end of the line holding `line`. */
 async function typeAfter(page: Page, kit: FrameLocator, line: string, text: string) {
-  await kit.locator('.cm-line', { hasText: line }).first().click()
-  await page.keyboard.press('End')
+  await caretAfter(page, kit, line)
   await page.keyboard.type(text)
 }
 
@@ -46,7 +45,7 @@ test('co-edits a note between two windows: live text and comments, and merging t
     const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
     await openSharedLink(pageB, link)
     const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
-    await expect(kitB.locator('.cm-content')).toContainText('Goals for the quarter.', { timeout: 60_000 })
+    await expect(kitB.getByTestId('note-text')).toContainText('Goals for the quarter.', { timeout: 60_000 })
     expect(existsSync(path.join(b.host.root, 'Shared', 'Plan.md'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect.poll(() => sameReplicas(pageA, 'Plan.md', pageB, 'Shared/Plan.md'), { timeout: 15_000 }).toBe('same')
@@ -58,8 +57,8 @@ test('co-edits a note between two windows: live text and comments, and merging t
     await expect.poll(() => noteText(pageA), { timeout: 10_000 }).toContain('Closing words. From Bob.')
 
     // A comment is part of the shared note: Bob sees Alice's thread.
+    await caretAfter(pageA, a.kit, 'Goals', { select: true })
     await a.kit.getByTestId('note-comments-toggle').click()
-    await a.kit.locator('.cm-line', { hasText: 'Goals for the quarter.' }).first().dblclick()
     await a.kit.getByTestId('note-comments-new').click()
     await a.kit.getByTestId('note-comment-panel-new-input').fill('Which quarter?')
     await a.kit.getByTestId('note-comment-panel-new-send').click()

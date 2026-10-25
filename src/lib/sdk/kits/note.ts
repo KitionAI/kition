@@ -155,6 +155,92 @@ export interface NoteCommands extends CommandMap {
   "comment.delete": { /** The comment's id. */ comment: string; /** The thread's id. */ thread: string }
   /** Set the line endings. Params: { eol: "lf" | "crlf", bom?: boolean }. Changes the document. */
   "file.setLineEndings": { /** Write a UTF-8 byte order mark; unchanged by default. */ bom?: boolean; /** LF or CRLF for every line. */ eol: "lf" | "crlf" }
+  /** Read the selection. Params: {} */
+  "selection.get": Record<string, never>
+  /** Set the selection. Params: { anchor?: number, focus?: number, line?: number, column?: number } */
+  "selection.set": { /** Where the selection starts, in Unicode characters. */ anchor: number; /** Where it ends (the caret); anchor by default. */ focus?: number }
+  /** Select All. Params: {} */
+  "edit.selectAll": Record<string, never>
+  /** Cut. Params: {}. Changes the document. */
+  "edit.cut": Record<string, never>
+  /** Where the tables are drawn. Params: {} */
+  "table.geometry": Record<string, never>
+  /** The pictures the note draws that are not loaded. Params: {} */
+  "image.wanted": Record<string, never>
+  /** Hand the note a picture's bytes. Params: { name: string, data: string } */
+  "image.set": { /** Its bytes, base64. */ data: string; /** The picture's name as the note writes it. */ name: string }
+  /** Replace the selection. Params: { text: string }. Changes the document. */
+  "selection.replace": { /** The text that replaces the selection. */ text: string }
+  /** Where a character is drawn. Params: { at: number } */
+  "selection.where": { /** The character, from 0, in Unicode characters. */ at: number }
+  /** Bold. Params: {}. Changes the document. */
+  "format.bold": Record<string, never>
+  /** Italic. Params: {}. Changes the document. */
+  "format.italic": Record<string, never>
+  /** Strikethrough. Params: {}. Changes the document. */
+  "format.strike": Record<string, never>
+  /** Inline Code. Params: {}. Changes the document. */
+  "format.code": Record<string, never>
+  /** Highlight. Params: {}. Changes the document. */
+  "format.highlight": Record<string, never>
+  /** Link. Params: {}. Changes the document. */
+  "format.link": Record<string, never>
+  /** Paragraph. Params: {}. Changes the document. */
+  "format.paragraph": Record<string, never>
+  /** Heading 1. Params: {}. Changes the document. */
+  "format.heading1": Record<string, never>
+  /** Heading 2. Params: {}. Changes the document. */
+  "format.heading2": Record<string, never>
+  /** Heading 3. Params: {}. Changes the document. */
+  "format.heading3": Record<string, never>
+  /** Heading 4. Params: {}. Changes the document. */
+  "format.heading4": Record<string, never>
+  /** Heading 5. Params: {}. Changes the document. */
+  "format.heading5": Record<string, never>
+  /** Heading 6. Params: {}. Changes the document. */
+  "format.heading6": Record<string, never>
+  /** Bulleted List. Params: {}. Changes the document. */
+  "list.bullet": Record<string, never>
+  /** Numbered List. Params: {}. Changes the document. */
+  "list.numbered": Record<string, never>
+  /** Task List. Params: {}. Changes the document. */
+  "list.task": Record<string, never>
+  /** Quote. Params: {}. Changes the document. */
+  "format.quote": Record<string, never>
+  /** Promote Heading. Params: {}. Changes the document. */
+  "format.headingUp": Record<string, never>
+  /** Demote Heading. Params: {}. Changes the document. */
+  "format.headingDown": Record<string, never>
+  /** Select Section. Params: {} */
+  "edit.selectSection": Record<string, never>
+  /** Sort Lines. Params: {}. Changes the document. */
+  "edit.sortLines": Record<string, never>
+  /** Trim Trailing Spaces. Params: {}. Changes the document. */
+  "edit.trimWhitespace": Record<string, never>
+  /** Wikilink. Params: {}. Changes the document. */
+  "insert.wikilink": Record<string, never>
+  /** Embed. Params: {}. Changes the document. */
+  "insert.embed": Record<string, never>
+  /** Image. Params: {}. Changes the document. */
+  "insert.image": Record<string, never>
+  /** Tag. Params: {}. Changes the document. */
+  "insert.tag": Record<string, never>
+  /** Table. Params: {}. Changes the document. */
+  "insert.table": Record<string, never>
+  /** Math Block. Params: {}. Changes the document. */
+  "insert.mathBlock": Record<string, never>
+  /** Callout. Params: {}. Changes the document. */
+  "insert.callout": Record<string, never>
+  /** Footnote. Params: {}. Changes the document. */
+  "insert.footnote": Record<string, never>
+  /** Date. Params: {}. Changes the document. */
+  "insert.date": Record<string, never>
+  /** Date and Time. Params: {}. Changes the document. */
+  "insert.timestamp": Record<string, never>
+  /** Code Block. Params: {}. Changes the document. */
+  "insert.codeBlock": Record<string, never>
+  /** Horizontal Rule. Params: {}. Changes the document. */
+  "insert.rule": Record<string, never>
   /** Undo. Params: { scope?: "person" | "agent" }. Changes the document. */
   "edit.undo": { /** Whose last step to undo: the person's or the agent's. By default the scope of whoever runs it (an agent undoes only its own steps). */ scope?: "person" | "agent" }
   /** Redo. Params: { scope?: "person" | "agent" }. Changes the document. */
