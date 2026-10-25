@@ -538,12 +538,12 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
 - **Publishing** runs on a developer machine, never in the private kit
   repositories' CI (their Actions minutes are limited):
   `scripts/publish-kit.sh <kit>` clones the pushed `origin/main` of the kit,
-  kition-sdk, and kition-fonts side by side in a scratch folder (local changes
+  kition-sdk, kition-tessera, and kition-fonts side by side in a scratch folder (local changes
   never reach a package), builds the package with `scripts/build-kit-ui.sh`,
   uploads `kition-<kit>-<version>.tgz` to a `package-v<version>` Release of
   the kit's repository with `gh`, and pins it in `kits/kits.lock.json`
-  (version, commit, size, SHA-256, and the kition-sdk and kition-fonts
-  commits). A version is published once: bump `version` in the kit's
+  (version, commit, size, SHA-256, and the kition-sdk, kition-tessera, and
+  kition-fonts commits). A version is published once: bump `version` in the kit's
   `kit.json` to publish a change. `--dry-run` builds and packs only.
 - **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads the
   pinned packages into `public/kits/` with `gh release download`, checks size
@@ -848,8 +848,7 @@ Slide and page kits (Slide):
   draw icons from `@kition/tessera-icons/react` or kit-ui's `TesseraIcons`,
   never from lucide-react, and name icons for their own engine commands in
   `web/src/commandIcons.ts` (`registerCommandIcons`). `scripts/publish-kit.sh`
-  does not clone kition-tessera yet, so a kit built on kition-sdk's current
-  main cannot be published until it does.
+  clones kition-tessera beside kition-sdk too.
 
 Text kits (Doc):
 

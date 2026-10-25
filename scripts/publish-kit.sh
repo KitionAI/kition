@@ -8,8 +8,9 @@
 #   scripts/publish-kit.sh photo --dry-run  build and pack only
 #
 # It runs on a developer machine, never in the kit repositories' CI. It builds pushed commits
-# only: clean clones of the kit, kition-sdk, and kition-fonts (origin/main, or KIT_REF, SDK_REF,
-# and FONTS_REF) side by side in a scratch folder, so local changes never reach a package. A version
+# only: clean clones of the kit, kition-sdk, kition-tessera, and kition-fonts (origin/main, or
+# KIT_REF, SDK_REF, TESSERA_REF, and FONTS_REF) side by side in a scratch folder, so local changes
+# never reach a package. A version
 # is published once; bump `version` in the kit's kit.json to publish a change.
 set -euo pipefail
 kit="${1:?usage: scripts/publish-kit.sh <kit> [--dry-run]}"
@@ -20,6 +21,8 @@ parent="$(dirname "$repo_root")"
 kit_repo="${KIT_REPO:-$parent/kition-$kit}"
 sdk_repo="${KITION_SDK_REPO:-$parent/kition-sdk}"
 fonts_repo="${KITION_FONTS_REPO:-$parent/kition-fonts}"
+# kit-ui links its components, tokens, and icons from a kition-tessera checkout beside kition-sdk.
+tessera_repo="${KITION_TESSERA_REPO:-$parent/kition-tessera}"
 scratch="${KITION_KIT_SCRATCH:-${TMPDIR:-/tmp}}"; scratch="${scratch%/}/kition-kit-publish/$kit"
 repository="$(node -e "const kit = require('$repo_root/kits/sdks.json')['$kit']; if (!kit) process.exit(1); console.log(kit.repository)")" \
   || { echo "kits/sdks.json has no kit \"$kit\"" >&2; exit 2; }
@@ -48,8 +51,10 @@ rm -rf "$scratch"
 mkdir -p "$scratch"
 kit_commit="$(clone "$kit_repo" "kition-$kit" "${KIT_REF:-origin/main}")"
 sdk_commit="$(clone "$sdk_repo" kition-sdk "${SDK_REF:-origin/main}")"
+tessera_commit="$(clone "$tessera_repo" kition-tessera "${TESSERA_REF:-origin/main}")"
 fonts_commit="$(clone "$fonts_repo" kition-fonts "${FONTS_REF:-origin/main}")"
 kit_dir="$scratch/kition-$kit"
+pnpm --dir "$scratch/kition-tessera" install --frozen-lockfile
 pnpm --dir "$scratch/kition-sdk" install --frozen-lockfile
 # The kit checkout's build cache, so only the kit's own crates compile again. The engine's SQLite
 # needs a C compiler that targets wasm32 (build-kit-ui.sh uses Homebrew's LLVM when it is there).
@@ -74,10 +79,10 @@ if gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then
 fi
 gh release create "$tag" "$scratch/$asset" --repo "$repository" --target "$kit_commit" \
   --title "Kit package $version" \
-  --notes "The kit's package (editor and engine) for hosts of the Kit UI protocol. Built from $kit_commit with kition-sdk $sdk_commit and kition-fonts $fonts_commit."
+  --notes "The kit's package (editor and engine) for hosts of the Kit UI protocol. Built from $kit_commit with kition-sdk $sdk_commit, kition-tessera $tessera_commit, and kition-fonts $fonts_commit."
 
-KIT="$kit" ENTRY="$(printf '{"repository":"%s","version":"%s","tag":"%s","asset":"%s","size":%s,"sha256":"%s","commit":"%s","sdkCommit":"%s","fontsCommit":"%s"}' \
-  "$repository" "$version" "$tag" "$asset" "$size" "$sha256" "$kit_commit" "$sdk_commit" "$fonts_commit")" \
+KIT="$kit" ENTRY="$(printf '{"repository":"%s","version":"%s","tag":"%s","asset":"%s","size":%s,"sha256":"%s","commit":"%s","sdkCommit":"%s","tesseraCommit":"%s","fontsCommit":"%s"}' \
+  "$repository" "$version" "$tag" "$asset" "$size" "$sha256" "$kit_commit" "$sdk_commit" "$tessera_commit" "$fonts_commit")" \
   node -e "
 const fs = require('fs')
 const file = '$repo_root/kits/kits.lock.json'
