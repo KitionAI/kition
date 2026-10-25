@@ -94,6 +94,7 @@
     "@fontsource-variable/inter": "5.3.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
     "@fontsource-variable/lora": "5.3.0",
+    "@kition/tessera-icons": "github:KitionAI/kition-tessera#313165abba9e078eaa7c8834a3ee29208d1dc637&path:/packages/icons",
     "loro-crdt": "1.16.4"
   },
   "devDependencies": {
@@ -127,7 +128,6 @@
     "jsdom": "^29.1.1",
     "katex": "^0.17.0",
     "knip": "^6.38.0",
-    "lucide-react": "^1.14.0",
     "marked": "^12.0.0",
     "mermaid": "^11.16.1",
     "postcss": "^8.5.26",

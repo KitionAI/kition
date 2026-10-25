@@ -1,29 +1,4 @@
-import {
-  Blocks,
-  BookOpenText,
-  Briefcase,
-  CalendarDays,
-  ChartGantt,
-  ChartNoAxesCombined,
-  CheckSquare,
-  ClipboardList,
-  Contact,
-  FilePlus2,
-  FileText,
-  FlaskConical,
-  GitBranch,
-  Lightbulb,
-  ListChecks,
-  LoaderCircle,
-  Megaphone,
-  Network,
-  NotebookPen,
-  PanelsTopLeft,
-  RotateCcw,
-  Rocket,
-  Target,
-  Workflow,
-} from 'lucide-react'
+import { BlocksIcon as Blocks, BookOpenTextIcon as BookOpenText, BriefcaseIcon as Briefcase, CalendarDaysIcon as CalendarDays, ChartGanttIcon as ChartGantt, ChartNoAxesCombinedIcon as ChartNoAxesCombined, SquareCheckBigIcon as CheckSquare, ClipboardListIcon as ClipboardList, ContactIcon as Contact, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FlaskConicalIcon as FlaskConical, GitBranchIcon as GitBranch, LightbulbIcon as Lightbulb, ListChecksIcon as ListChecks, LoaderCircleIcon as LoaderCircle, MegaphoneIcon as Megaphone, NetworkIcon as Network, NotebookPenIcon as NotebookPen, PanelsTopLeftIcon as PanelsTopLeft, RotateCcwIcon as RotateCcw, RocketIcon as Rocket, TargetIcon as Target, WorkflowIcon as Workflow } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 

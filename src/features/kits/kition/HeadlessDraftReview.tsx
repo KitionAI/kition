@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Bot, Check, Loader2, X } from 'lucide-react'
+import { TriangleAlertIcon as AlertTriangle, BotIcon as Bot, CheckIcon as Check, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
 import { Button } from '@kition/app-ui/button'
 import { RightSheet } from '@kition/app-ui/RightSheet'
 import { compareKitDraft, type KitsDraftComparison } from '@/api/kits'

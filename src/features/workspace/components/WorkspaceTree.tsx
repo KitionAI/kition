@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, LayoutDashboard, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Table2, Trash2, Zap } from 'lucide-react'
+import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, LayoutDashboardIcon as LayoutDashboard, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, Table2Icon as Table2, TrashIcon as Trash2, ZapIcon as Zap } from '@kition/tessera-icons/react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'

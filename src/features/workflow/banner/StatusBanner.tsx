@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CheckCircle2, FileWarning, TriangleAlert, ZapOff } from 'lucide-react'
+import { CircleCheckIcon as CheckCircle2, FileExclamationPointIcon as FileWarning, TriangleAlertIcon as TriangleAlert, ZapOffIcon as ZapOff } from '@kition/tessera-icons/react'
 
 import type { NodeStatus } from '@/features/workflow/canvas/NodeCard'
 

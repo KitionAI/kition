@@ -1,4 +1,4 @@
-import { Check, Circle, LoaderCircle } from 'lucide-react'
+import { CheckIcon as Check, CircleIcon as Circle, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 

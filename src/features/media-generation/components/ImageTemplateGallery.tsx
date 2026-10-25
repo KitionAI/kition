@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { SearchIcon as Search } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import {

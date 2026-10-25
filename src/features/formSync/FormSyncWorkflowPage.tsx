@@ -1,18 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  CloudOff,
-  CloudUpload,
-  Copy,
-  ExternalLink,
-  FileInput,
-  Plus,
-  RefreshCw,
-  Save,
-  Trash2,
-} from 'lucide-react'
+import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, CheckIcon as Check, CloudOffIcon as CloudOff, CloudUploadIcon as CloudUpload, CopyIcon as Copy, ExternalLinkIcon as ExternalLink, FileInputIcon as FileInput, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 
 import { Button } from '@kition/app-ui/button'
 import { Input } from '@kition/app-ui/input'

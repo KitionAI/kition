@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { CheckCircle2, LoaderCircle, MessageSquareText } from 'lucide-react'
+import { CircleCheckIcon as CheckCircle2, LoaderCircleIcon as LoaderCircle, MessageSquareTextIcon as MessageSquareText } from '@kition/tessera-icons/react'
 
 import { Button, Card, Input, Textarea } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'

@@ -1,4 +1,4 @@
-import { FileCheck2, FilePlus2, FileText, FolderPlus, Plus } from 'lucide-react'
+import { FileCheckCornerIcon as FileCheck2, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderPlusIcon as FolderPlus, PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react'
+import { SearchIcon as Search, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLauncherTemplateCard } from './WorkflowLauncherTemplateCard'

@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Loader2Icon, type LucideProps } from 'lucide-react';
+import { LoaderCircleIcon as Loader2Icon, type IconProps } from '@kition/tessera-icons/react';
 
 import { cn } from './utils';
 
@@ -21,7 +21,7 @@ export function Spinner({
   className,
   size,
   ...props
-}: Partial<LucideProps & VariantProps<typeof spinnerVariants>>) {
+}: Partial<IconProps & VariantProps<typeof spinnerVariants>>) {
   return (
     <Loader2Icon
       className={cn(spinnerVariants({ size }), className)}

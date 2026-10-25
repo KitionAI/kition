@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Menu, X } from 'lucide-react'
+import { MenuIcon as Menu, XIcon as X } from '@kition/tessera-icons/react'
 import { toast, Toaster } from 'sonner'
 import { ConfirmProvider } from '@kition/app-ui/confirm'
 import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBanner'

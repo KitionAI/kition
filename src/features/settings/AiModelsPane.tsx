@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Plus, RefreshCcw, Search } from 'lucide-react'
+import { TriangleAlertIcon as AlertTriangle, PlusIcon as Plus, RefreshCcwIcon as RefreshCcw, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { cn } from '@kition/app-ui/utils'
 import { Button, Disclosure, Input, PasswordInput, Select } from '@kition/app-ui'
 import {

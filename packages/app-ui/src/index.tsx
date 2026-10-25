@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { Check, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import { CheckIcon as Check, ChevronDownIcon as ChevronDown, EyeIcon as Eye, EyeOffIcon as EyeOff } from '@kition/tessera-icons/react'
 import { cn } from './utils'
 import { useTranslation } from 'react-i18next'
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { X } from 'lucide-react'
+import { XIcon as X } from '@kition/tessera-icons/react'
 
 /**
  * PropertiesDrawer is the right-side editing surface. It mirrors the mockup

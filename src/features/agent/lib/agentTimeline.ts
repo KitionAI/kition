@@ -1,14 +1,4 @@
-import {
-  FileText,
-  FileType2,
-  FileSpreadsheet,
-  Globe2,
-  Image as ImageIcon,
-  Presentation,
-  Terminal,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react'
+import { FileTextIcon as FileText, FileTypeCornerIcon as FileType2, FileSpreadsheetIcon as FileSpreadsheet, EarthIcon as Globe2, ImageIcon, PresentationIcon as Presentation, TerminalIcon as Terminal, WrenchIcon as Wrench, type IconComponent } from '@kition/tessera-icons/react'
 import type { AgentRunLogItem, AgentTaskStep } from './agentTimelineTypes'
 import { compactAgentRunDetail, sanitizeAgentVisibleDetail } from './agentTimelineText'
 import {
@@ -311,7 +301,7 @@ export function formatAgentRunLogExpandedDetail(
   return item.detail || dict.sections.noDetail
 }
 
-export function resolveAgentToolIcon(toolName: string, outputPath?: string): LucideIcon {
+export function resolveAgentToolIcon(toolName: string, outputPath?: string): IconComponent {
   if ((toolName === 'artifact_write' || toolName === 'register_artifact') && outputPath) {
     const ext = outputPath.slice(outputPath.lastIndexOf('.')).toLowerCase()
     if (ext === '.pptx') {

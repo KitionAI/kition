@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { Button, Input } from '@kition/app-ui'
 import { Switch } from '@kition/app-ui/switch'
 import {

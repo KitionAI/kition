@@ -1,4 +1,4 @@
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@kition/app-ui'

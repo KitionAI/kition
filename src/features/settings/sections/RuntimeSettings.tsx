@@ -3,7 +3,7 @@ import { getDesktopInfo, openRuntimePath, type DesktopInfo } from '@/services/de
 import { Button } from '@kition/app-ui'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { FolderOpen } from 'lucide-react'
+import { FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
 
 export function RuntimeSettings() {
   const { t } = useTranslation('settings')

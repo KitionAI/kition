@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRightIcon as ChevronRight } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLauncherAgentCard } from './WorkflowLauncherAgentCard'
 import { WorkflowLauncherTemplateCard } from './WorkflowLauncherTemplateCard'

@@ -1,4 +1,4 @@
-import { Bot, Braces, Database, FilePenLine, Filter, Mail, Search, Sparkles, WandSparkles, Webhook, X } from 'lucide-react'
+import { BotIcon as Bot, BracesIcon as Braces, DatabaseIcon as Database, FilePenLineIcon as FilePenLine, FunnelIcon as Filter, MailIcon as Mail, SearchIcon as Search, SparklesIcon as Sparkles, WandSparklesIcon as WandSparkles, WebhookIcon as Webhook, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Maximize2, Minus, Plus } from 'lucide-react'
+import { Maximize2Icon as Maximize2, MinusIcon as Minus, PlusIcon as Plus } from '@kition/tessera-icons/react'
 
 import { InsertPoint } from './InsertPoint'
 import type { InsertableActionType } from './WorkflowNodePicker'

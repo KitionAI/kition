@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Filter, Mail, Plus } from 'lucide-react'
+import { FunnelIcon as Filter, MailIcon as Mail, PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { WorkflowNodePicker, type InsertableActionType } from './WorkflowNodePicker'
 
 /**

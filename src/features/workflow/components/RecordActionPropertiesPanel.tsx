@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { PlusIcon as Plus, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { LoaderCircleIcon as Loader2 } from '@kition/tessera-icons/react'
 import { writeKitFile } from '@/api/kits'
 import { isTableFilePath, notifyTableFilesChanged } from '@/api/kitTables'
 import { Button } from '@kition/app-ui'

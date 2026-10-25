@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 type DialogPrimitiveProps = React.ComponentProps<typeof DialogPrimitive.Root>;
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { XIcon } from 'lucide-react';
+import { XIcon } from '@kition/tessera-icons/react';
 import type { ComponentProps } from 'react';
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';

@@ -1,4 +1,4 @@
-import { ChevronRight, LoaderCircle } from 'lucide-react'
+import { ChevronRightIcon as ChevronRight, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 
 import type { EmailSyncRun, EmailSyncWorkflow } from '@/api/emailSync'
 

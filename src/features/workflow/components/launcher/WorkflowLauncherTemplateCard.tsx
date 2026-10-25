@@ -1,4 +1,4 @@
-import { AlarmClock, CalendarClock, Database, FileText, LoaderCircle, MessageSquare, Plus, Send, Sparkles } from 'lucide-react'
+import { AlarmClockIcon as AlarmClock, CalendarClockIcon as CalendarClock, DatabaseIcon as Database, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, MessageSquareIcon as MessageSquare, PlusIcon as Plus, SendIcon as Send, SparklesIcon as Sparkles } from '@kition/tessera-icons/react'
 import type { ComponentType } from 'react'
 import type { WorkflowTemplate, TemplateIconRef } from '@/features/workflow/templates'
 

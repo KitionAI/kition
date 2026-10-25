@@ -1,13 +1,4 @@
-import {
-  AlertCircle,
-  Inbox,
-  ListRestart,
-  LoaderCircle,
-  Play,
-  RefreshCw,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react'
+import { CircleAlertIcon as AlertCircle, InboxIcon as Inbox, ListRestartIcon as ListRestart, LoaderCircleIcon as LoaderCircle, PlayIcon as Play, RefreshCwIcon as RefreshCw, RotateCcwIcon as RotateCcw, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { useConfirm } from '@kition/app-ui/confirm'

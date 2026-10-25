@@ -1,4 +1,4 @@
-import { GitBranch } from 'lucide-react'
+import { GitBranchIcon as GitBranch } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { setAgentKitEditMode, useAgentKitEditMode } from '@/features/agent/lib/agentKitEditMode'
 import { cn } from '@kition/app-ui/utils'

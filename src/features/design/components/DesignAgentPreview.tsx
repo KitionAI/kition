@@ -1,4 +1,4 @@
-import { Check, Sparkles, X } from 'lucide-react'
+import { CheckIcon as Check, SparklesIcon as Sparkles, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'
 import type { DesignAgentPreviewState } from '../hooks/useDesignAgentPatch'

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LoaderCircle, Puzzle, Trash2 } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle, PuzzleIcon as Puzzle, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { Button, Input } from '@kition/app-ui'
 import { useExtensions, type ExtensionsApi, type InstalledExtension } from '@/features/extensions/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'

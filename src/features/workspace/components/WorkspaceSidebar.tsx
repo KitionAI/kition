@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronDown, ChevronRight, Folder, LoaderCircle, PanelLeftClose, Plus, RefreshCw, Search, Zap } from 'lucide-react'
+import { ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, FolderIcon as Folder, LoaderCircleIcon as LoaderCircle, PanelLeftCloseIcon as PanelLeftClose, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SearchIcon as Search, ZapIcon as Zap } from '@kition/tessera-icons/react'
 import { type ClipboardEvent as ReactClipboardEvent, type DragEvent as ReactDragEvent, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'

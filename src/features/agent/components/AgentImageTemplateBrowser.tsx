@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { SearchIcon as Search, SlidersHorizontalIcon as SlidersHorizontal, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input } from '@kition/app-ui'
 import { listImageTemplates } from '@/features/media-generation/api/imageTemplates'

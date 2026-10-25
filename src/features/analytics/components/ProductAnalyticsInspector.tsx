@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { ListChecks, Trash2 } from 'lucide-react'
+import { ListChecksIcon as ListChecks, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 
 import { Button, Disclosure } from '@kition/app-ui'
 import {

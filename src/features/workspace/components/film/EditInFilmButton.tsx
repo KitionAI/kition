@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Clapperboard, Loader2 } from 'lucide-react'
+import { ClapperboardIcon as Clapperboard, LoaderCircleIcon as Loader2 } from '@kition/tessera-icons/react'
 import { notify } from '@/lib/notify'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { kitAvailable, kitEditorFor } from '../kits/kitEditors'

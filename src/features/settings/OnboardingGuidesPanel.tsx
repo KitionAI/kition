@@ -7,7 +7,7 @@ import {
   useImportOnboardingGuides,
   type OnboardingGuideManifest,
 } from './useImportOnboardingGuides'
-import { Download, FolderCheck, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
+import { DownloadIcon as Download, FolderCheckIcon as FolderCheck, LoaderCircleIcon as Loader2, RefreshCwIcon as RefreshCw, SparklesIcon as Sparkles, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from '@/i18n'
 import { SettingsPaneHeader } from './primitives'
 import { ONBOARDING_GUIDE_MANIFEST_URL } from '@/features/onboarding/onboardingGuideManifest'

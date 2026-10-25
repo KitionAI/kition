@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Cloud, FolderCheck, KeyRound, Laptop, LoaderCircle } from 'lucide-react'
+import { CloudIcon as Cloud, FolderCheckIcon as FolderCheck, KeyRoundIcon as KeyRound, LaptopIcon as Laptop, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 
 import { Button } from '@kition/app-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'

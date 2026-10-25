@@ -1,4 +1,4 @@
-import { Command, X } from 'lucide-react'
+import { CommandIcon as Command, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'

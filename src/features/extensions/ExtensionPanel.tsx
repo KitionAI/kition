@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'
 import { kitionTheme } from '@/features/kits/public'

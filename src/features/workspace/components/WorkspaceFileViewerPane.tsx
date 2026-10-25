@@ -1,6 +1,6 @@
 import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Copy, Paintbrush, ExternalLink, FileText, FolderOpen } from 'lucide-react'
+import { CopyIcon as Copy, PaintbrushIcon as Paintbrush, ExternalLinkIcon as ExternalLink, FileTextIcon as FileText, FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { ContextActionMenu } from '@kition/app-ui/context-action-menu'
 import { copyImageToClipboard, openWorkspaceFile, revealWorkspaceFolder } from '@/services/desktop'

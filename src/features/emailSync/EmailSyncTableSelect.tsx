@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Table2 } from 'lucide-react'
+import { CheckIcon as Check, ChevronDownIcon as ChevronDown, Table2Icon as Table2 } from '@kition/tessera-icons/react'
 import { useState } from 'react'
 
 import { cn } from '@kition/app-ui/utils'

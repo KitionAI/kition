@@ -1,4 +1,4 @@
-import { LoaderCircle, Play, Plus, Send } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle, PlayIcon as Play, PlusIcon as Plus, SendIcon as Send } from '@kition/tessera-icons/react'
 import { InlineError } from '@/components/states'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'

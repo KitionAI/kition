@@ -4,7 +4,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import { Maximize, Minus, Plus } from 'lucide-react'
+import { MaximizeIcon as Maximize, MinusIcon as Minus, PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'
 import type { Bounds, DesignDocument } from '../lib/designTypes'

@@ -1,4 +1,4 @@
-import { Check, Copy } from 'lucide-react'
+import { CheckIcon as Check, CopyIcon as Copy } from '@kition/tessera-icons/react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@kition/app-ui'

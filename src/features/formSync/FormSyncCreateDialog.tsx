@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileInput } from 'lucide-react'
+import { FileInputIcon as FileInput } from '@kition/tessera-icons/react'
 
 import { listTableFiles, type KitTablesTable } from '@/api/kitTables'
 import { Button } from '@kition/app-ui/button'

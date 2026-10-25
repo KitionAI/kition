@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircle, Trash2, UserMinus } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle, TrashIcon as Trash2, UserMinusIcon as UserMinus } from '@kition/tessera-icons/react'
 import { Button, Input } from '@kition/app-ui'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
 import { notify } from '@/lib/notify'

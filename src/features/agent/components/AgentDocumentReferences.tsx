@@ -1,4 +1,4 @@
-import { ChevronDown, FileText, Folder, X } from 'lucide-react'
+import { ChevronDownIcon as ChevronDown, FileTextIcon as FileText, FolderIcon as Folder, XIcon as X } from '@kition/tessera-icons/react'
 
 import { cn } from '@kition/app-ui/utils'
 

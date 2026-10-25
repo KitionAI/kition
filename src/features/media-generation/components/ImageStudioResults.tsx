@@ -1,4 +1,4 @@
-import { Check, ImagePlus, LoaderCircle } from 'lucide-react'
+import { CheckIcon as Check, ImagePlusIcon as ImagePlus, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 

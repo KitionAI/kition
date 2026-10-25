@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
-import { ExternalLink, Search } from 'lucide-react'
+import { ExternalLinkIcon as ExternalLink, SearchIcon as Search } from '@kition/tessera-icons/react'
 
 import { cn } from '@kition/app-ui/utils'
 import { DialogDescription, DialogTitle } from '@kition/app-ui/dialog'

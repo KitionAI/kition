@@ -1,7 +1,7 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
 import { KitIcon } from '@/components/KitIcon'
-import { FileInput, FolderPlus, Zap } from 'lucide-react'
+import { FileInputIcon as FileInput, FolderPlusIcon as FolderPlus, ZapIcon as Zap } from '@kition/tessera-icons/react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'

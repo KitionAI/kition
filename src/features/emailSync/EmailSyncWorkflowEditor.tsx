@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail } from 'lucide-react'
+import { ArrowLeftIcon as ArrowLeft, MailIcon as Mail } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Button, Input, PasswordInput } from '@kition/app-ui'

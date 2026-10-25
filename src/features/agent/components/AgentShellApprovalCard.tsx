@@ -1,4 +1,4 @@
-import { ShieldAlert, SquareTerminal } from 'lucide-react'
+import { ShieldAlertIcon as ShieldAlert, SquareTerminalIcon as SquareTerminal } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentShellApprovalDecision,

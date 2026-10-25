@@ -1,4 +1,4 @@
-import { FileVideo2, Image as ImageIcon } from 'lucide-react'
+import { FileVideoCameraIcon as FileVideo2, ImageIcon } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import {
   formatCompactNumber,

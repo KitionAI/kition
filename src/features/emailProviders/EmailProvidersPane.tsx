@@ -1,4 +1,4 @@
-import { Save, Search } from 'lucide-react'
+import { SaveIcon as Save, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { Button, Input, PasswordInput } from '@kition/app-ui'

@@ -1,6 +1,6 @@
 import type { ApiTimestamp } from '@/types'
 import { toEpochMs } from '@/lib/timestamps'
-import { Bot, ChevronsRight, History, Plus, Search, X } from 'lucide-react'
+import { BotIcon as Bot, ChevronsRightIcon as ChevronsRight, RotateCcwClockIcon as History, PlusIcon as Plus, SearchIcon as Search, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'

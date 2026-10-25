@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@kition/app-ui'

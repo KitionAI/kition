@@ -1,4 +1,4 @@
-import { AlertCircle, LoaderCircle } from 'lucide-react'
+import { CircleAlertIcon as AlertCircle, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { InlineError } from '@/components/states'
 import { useTranslation } from 'react-i18next'
 

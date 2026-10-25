@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react'
+import { SparklesIcon as Sparkles } from '@kition/tessera-icons/react'
 
 export function WorkflowLauncherDecor() {
   return (

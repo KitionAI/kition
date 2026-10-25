@@ -1,4 +1,4 @@
-import { ArrowUp, Check, FileText, Folder, X } from 'lucide-react'
+import { ArrowUpIcon as ArrowUp, CheckIcon as Check, FileTextIcon as FileText, FolderIcon as Folder, XIcon as X } from '@kition/tessera-icons/react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

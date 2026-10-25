@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import {
-  Check,
-  CreditCard,
-  ExternalLink,
-  LifeBuoy,
-  LoaderCircle,
-  LogOut,
-  ShieldCheck,
-  WalletCards,
-} from 'lucide-react'
+import { CheckIcon as Check, CreditCardIcon as CreditCard, ExternalLinkIcon as ExternalLink, LifeBuoyIcon as LifeBuoy, LoaderCircleIcon as LoaderCircle, LogOutIcon as LogOut, ShieldCheckIcon as ShieldCheck, WalletCardsIcon as WalletCards } from '@kition/tessera-icons/react'
 
 import { CreditUsageBadge } from '@/components/CreditUsageBadge'
 import { KitionLogoMark } from '@/components/KitionLogoMark'

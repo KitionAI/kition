@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Globe, Network, ShieldAlert } from 'lucide-react'
+import { GlobeIcon as Globe, NetworkIcon as Network, ShieldAlertIcon as ShieldAlert } from '@kition/tessera-icons/react'
 import { Button, Input, PasswordInput, Select } from '@kition/app-ui'
 import {
   SettingsPaneHeader,

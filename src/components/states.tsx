@@ -5,7 +5,7 @@
  * docs/design.md: 12px cards, 8px buttons, restrained borders.
  */
 import type { HTMLAttributes, ReactNode } from 'react'
-import { FileWarning } from 'lucide-react'
+import { FileExclamationPointIcon as FileWarning } from '@kition/tessera-icons/react'
 
 import { Button } from '@kition/app-ui'
 import { cn } from '@kition/app-ui/utils'

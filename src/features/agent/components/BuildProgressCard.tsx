@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import type { ScenarioBuildEvent } from '@/features/scenario/types'
 import { cn } from '@kition/app-ui/utils'
 

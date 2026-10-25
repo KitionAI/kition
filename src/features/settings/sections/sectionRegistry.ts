@@ -1,4 +1,4 @@
-import { Bot, CircleUserRound, Code2, Database, Info, Mail, Monitor, Network, Palette, Puzzle, Settings, Users } from 'lucide-react'
+import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MailIcon as Mail, MonitorIcon as Monitor, NetworkIcon as Network, PaletteIcon as Palette, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera-icons/react'
 
 /** The settings sections in sidebar order, with where each one's searchable copy lives. */
 export const settingsSections = [

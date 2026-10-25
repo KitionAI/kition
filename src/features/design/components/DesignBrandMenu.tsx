@@ -1,4 +1,4 @@
-import { ChevronDown, Palette } from 'lucide-react'
+import { ChevronDownIcon as ChevronDown, PaletteIcon as Palette } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'
 import {

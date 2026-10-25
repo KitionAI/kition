@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search } from 'lucide-react'
+import { SearchIcon as Search } from '@kition/tessera-icons/react'
 import type { SearchHit } from '../types'
 import type { SearchService } from '../service/searchService'
 import { SearchResultItem } from './SearchResultItem'

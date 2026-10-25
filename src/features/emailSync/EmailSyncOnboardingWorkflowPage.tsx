@@ -1,4 +1,4 @@
-import { Mail, Settings2 } from 'lucide-react'
+import { MailIcon as Mail, Settings2Icon as Settings2 } from '@kition/tessera-icons/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

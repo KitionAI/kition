@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown } from 'lucide-react'
+import { CheckIcon as Check, ChevronDownIcon as ChevronDown } from '@kition/tessera-icons/react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
 import { cn } from '@kition/app-ui/utils'

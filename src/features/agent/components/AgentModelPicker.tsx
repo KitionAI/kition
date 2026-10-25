@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { CheckIcon as Check, ChevronDownIcon as ChevronDown, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'

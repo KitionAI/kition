@@ -1,6 +1,6 @@
 import { useWorkspaceImageGeneration } from '../hooks/useWorkspaceImageGeneration'
 import type { AgentTurnContext } from '@/features/agent/lib/agentTurnContext'
-import { Bot } from 'lucide-react'
+import { BotIcon as Bot } from '@kition/tessera-icons/react'
 import type { ComponentProps } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentChatPanel } from '@/features/agent/components/AgentChatPanel'

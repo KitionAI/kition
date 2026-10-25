@@ -1,4 +1,4 @@
-import { FileImage, FileText, FileVideo2 } from 'lucide-react'
+import { FileImageIcon as FileImage, FileTextIcon as FileText, FileVideoCameraIcon as FileVideo2 } from '@kition/tessera-icons/react'
 import { describe, expect, it } from 'vitest'
 import { kitIconComponent } from '@/components/KitIcon'
 import { getWorkspaceItemIcon, getWorkspaceItemKitIcon } from './workspace'

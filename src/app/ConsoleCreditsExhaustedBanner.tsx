@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, ExternalLink, X } from 'lucide-react'
+import { TriangleAlertIcon as AlertTriangle, ExternalLinkIcon as ExternalLink, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@kition/app-ui'

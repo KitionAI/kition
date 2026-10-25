@@ -1,10 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { getGeneratedImageToolOutputPaths, isGeneratedImageArtifact } from '@/features/media-generation/public'
-import {
-  Check, ChevronDown, ChevronRight, Clock3, FileImage, FileSpreadsheet,
-  FileText, FileType2, FileVideo2, LoaderCircle, Presentation, Sparkles, Volume2, X,
-  type LucideIcon,
-} from 'lucide-react'
+import { CheckIcon as Check, ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, Clock3Icon as Clock3, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FileTypeCornerIcon as FileType2, FileVideoCameraIcon as FileVideo2, LoaderCircleIcon as LoaderCircle, PresentationIcon as Presentation, SparklesIcon as Sparkles, Volume2Icon as Volume2, XIcon as X, type IconComponent } from '@kition/tessera-icons/react'
 import { Fragment, useEffect, useState } from 'react'
 import type { AgentShellApprovalDecision, AgentShellApprovalRequest } from '@/api/agent'
 import { InteractiveAgentMarkdown } from './InteractiveAgentMarkdown'
@@ -496,7 +492,7 @@ function AgentToolImageStrip({ images, onOpenArtifact }: {
   )
 }
 
-function resolveAgentArtifactIcon(path: string): LucideIcon {
+function resolveAgentArtifactIcon(path: string): IconComponent {
   const lowerPath = path.toLowerCase()
   if (/\.(xlsx|xls|csv|tsv|ktable)$/i.test(lowerPath)) {
     return FileSpreadsheet

@@ -147,7 +147,7 @@ export default defineConfig(({ mode }) => ({
             },
             {
               name: 'icons',
-              test: /\/node_modules\/lucide-react\//,
+              test: /\/node_modules\/@kition\/tessera-icons\//,
               priority: 20,
             },
             {

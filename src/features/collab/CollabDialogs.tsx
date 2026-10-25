@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { Button, Input } from '@kition/app-ui'
 import { notify } from '@/lib/notify'
 import { SyncRpcError } from '@/lib/sync'

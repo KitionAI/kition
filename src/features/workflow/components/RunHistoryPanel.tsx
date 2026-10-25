@@ -1,6 +1,6 @@
 import type { ApiTimestamp } from '@/types'
 import { toEpochMs } from '@/lib/timestamps'
-import { History as HistoryIcon, Pause, Play, RefreshCw, X } from 'lucide-react'
+import { RotateCcwClockIcon as HistoryIcon, PauseIcon as Pause, PlayIcon as Play, RefreshCwIcon as RefreshCw, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

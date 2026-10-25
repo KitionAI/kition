@@ -1,15 +1,4 @@
-import {
-  ArrowLeft,
-  Ban,
-  Check,
-  Image as ImageIcon,
-  ImagePlus,
-  LoaderCircle,
-  SlidersHorizontal,
-  TextCursorInput,
-  WandSparkles,
-  X,
-} from 'lucide-react'
+import { ArrowLeftIcon as ArrowLeft, BanIcon as Ban, CheckIcon as Check, ImageIcon, ImagePlusIcon as ImagePlus, LoaderCircleIcon as LoaderCircle, SlidersHorizontalIcon as SlidersHorizontal, TextCursorInputIcon as TextCursorInput, WandSparklesIcon as WandSparkles, XIcon as X } from '@kition/tessera-icons/react'
 import {
   useEffect,
   useMemo,

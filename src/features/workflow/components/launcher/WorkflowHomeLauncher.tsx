@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { InlineError } from '@/components/states'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircle, Plus, Sparkles } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle, PlusIcon as Plus, SparklesIcon as Sparkles } from '@kition/tessera-icons/react'
 import { getBuiltinTemplates, type WorkflowTemplate } from '@/features/workflow/templates'
 import { WorkflowLauncherDecor } from './WorkflowLauncherDecor'
 import { WorkflowLauncherTemplateGrid } from './WorkflowLauncherTemplateGrid'

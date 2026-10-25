@@ -1,17 +1,5 @@
 import { InlineError } from '@/components/states'
-import {
-  AlertCircle,
-  ChevronLeft,
-  FileText,
-  LoaderCircle,
-  Mail,
-  Play,
-  Plus,
-  RefreshCw,
-  Save,
-  Send,
-  X,
-} from 'lucide-react'
+import { CircleAlertIcon as AlertCircle, ChevronLeftIcon as ChevronLeft, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, MailIcon as Mail, PlayIcon as Play, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, SendIcon as Send, XIcon as X } from '@kition/tessera-icons/react'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bot, Check, FileDiff, Loader2, X } from 'lucide-react'
+import { BotIcon as Bot, CheckIcon as Check, FileDiffIcon as FileDiff, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
 import { Button } from '@kition/app-ui/button'
 import { RightSheet } from '@kition/app-ui/RightSheet'
 import { notify } from '@/lib/notify'

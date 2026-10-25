@@ -1,4 +1,4 @@
-import { Check, FileClock, FileText, LoaderCircle, MoreHorizontal, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { CheckIcon as Check, FileClockIcon as FileClock, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, EllipsisIcon as MoreHorizontal, SlidersHorizontalIcon as SlidersHorizontal, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useState } from 'react'
 import { Button } from '@kition/app-ui'
 import { cn } from '@kition/app-ui/utils'

@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { InlineError } from '@/components/states'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

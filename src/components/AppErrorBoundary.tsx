@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { TriangleAlertIcon as AlertTriangle } from '@kition/tessera-icons/react'
 
 import { Button } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'

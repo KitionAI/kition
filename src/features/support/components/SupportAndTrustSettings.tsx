@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ClipboardCheck, LifeBuoy, MessageSquareText, Scale, ShieldCheck } from 'lucide-react'
+import { ClipboardCheckIcon as ClipboardCheck, LifeBuoyIcon as LifeBuoy, MessageSquareTextIcon as MessageSquareText, ScaleIcon as Scale, ShieldCheckIcon as ShieldCheck } from '@kition/tessera-icons/react'
 
 import { Button } from '@kition/app-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'

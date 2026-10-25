@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ChevronDown,
-  MoreHorizontal,
-  X,
-} from 'lucide-react'
+import { ChevronDownIcon as ChevronDown, EllipsisIcon as MoreHorizontal, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { Button, Card, CardContent, Input } from '@kition/app-ui'

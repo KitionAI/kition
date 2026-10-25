@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, Search } from 'lucide-react'
+import { CheckIcon as Check, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { cn } from '@kition/app-ui/utils'
 import { Button } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'

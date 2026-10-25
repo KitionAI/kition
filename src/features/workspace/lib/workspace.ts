@@ -1,6 +1,6 @@
 import type { ApiTimestamp } from '@/types'
 import { toEpochMs } from '@/lib/timestamps'
-import { FileImage, FileText, FileVideo2, Volume2 } from 'lucide-react'
+import { FileImageIcon as FileImage, FileTextIcon as FileText, FileVideoCameraIcon as FileVideo2, Volume2Icon as Volume2 } from '@kition/tessera-icons/react'
 import type { ComponentType } from 'react'
 import { kitIconComponent, type KitIconId } from '@/components/KitIcon'
 import { getCurrentLocale } from '@/i18n'

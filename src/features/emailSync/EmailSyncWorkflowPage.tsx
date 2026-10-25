@@ -1,15 +1,4 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock3,
-  ListRestart,
-  LoaderCircle,
-  Mail,
-  RefreshCw,
-  RotateCcw,
-  Trash2,
-  XCircle,
-} from 'lucide-react'
+import { CircleAlertIcon as AlertCircle, CircleCheckIcon as CheckCircle2, Clock3Icon as Clock3, ListRestartIcon as ListRestart, LoaderCircleIcon as LoaderCircle, MailIcon as Mail, RefreshCwIcon as RefreshCw, RotateCcwIcon as RotateCcw, TrashIcon as Trash2, CircleXIcon as XCircle } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Button } from '@kition/app-ui'

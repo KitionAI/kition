@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Mail, MoreHorizontal, Plus, Power, Sparkles, Trash2, TriangleAlert, Zap } from 'lucide-react'
+import { CopyIcon as Copy, MailIcon as Mail, EllipsisIcon as MoreHorizontal, PlusIcon as Plus, PowerIcon as Power, SparklesIcon as Sparkles, TrashIcon as Trash2, TriangleAlertIcon as TriangleAlert, ZapIcon as Zap } from '@kition/tessera-icons/react'
 
 export type NodeStatus = 'green' | 'red' | 'amber' | 'muted'
 

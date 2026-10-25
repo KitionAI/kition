@@ -1,5 +1,5 @@
 import './AgentImageComposerControls.css'
-import { ArrowLeft, ImagePlus, Loader2, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowLeftIcon as ArrowLeft, ImagePlusIcon as ImagePlus, LoaderCircleIcon as Loader2, SlidersHorizontalIcon as SlidersHorizontal, XIcon as X } from '@kition/tessera-icons/react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'

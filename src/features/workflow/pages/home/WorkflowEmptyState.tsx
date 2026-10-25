@@ -1,4 +1,4 @@
-import { FileText, Plus } from 'lucide-react'
+import { FileTextIcon as FileText, PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'

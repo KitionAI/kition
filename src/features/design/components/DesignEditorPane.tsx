@@ -9,18 +9,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
 } from 'react'
-import {
-  Circle,
-  ImagePlus,
-  Layers,
-  LayoutTemplate,
-  Minus,
-  MousePointer2,
-  SlidersHorizontal,
-  Square,
-  Type,
-  X,
-} from 'lucide-react'
+import { CircleIcon as Circle, ImagePlusIcon as ImagePlus, LayersIcon as Layers, LayoutTemplateIcon as LayoutTemplate, MinusIcon as Minus, MousePointer2Icon as MousePointer2, SlidersHorizontalIcon as SlidersHorizontal, SquareIcon as Square, TypeIcon as Type, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/app-ui'
 import { notify } from '@/lib/notify'

@@ -53,7 +53,7 @@ describe('WorkspaceAgentTabBar', () => {
     renderTabBar(true, onToggleOpen)
 
     const collapse = portal.querySelector<HTMLButtonElement>('[data-testid="workspace-agent-collapse"]')
-    expect(collapse?.querySelector('.lucide-chevrons-right')).toBeTruthy()
+    expect(collapse?.querySelector('.tessera-icon-chevrons-right')).toBeTruthy()
 
     act(() => collapse?.click())
     expect(onToggleOpen).toHaveBeenCalledTimes(1)

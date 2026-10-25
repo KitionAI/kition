@@ -1,5 +1,5 @@
 import './AgentComposerContext.css'
-import { Database, FileCode2, FileImage, FileSpreadsheet, FileText, Folder, FolderLock, PenTool, X } from 'lucide-react'
+import { DatabaseIcon as Database, FileCodeCornerIcon as FileCode2, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FolderIcon as Folder, FolderLockIcon as FolderLock, PenToolIcon as PenTool, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { AgentLocalSource } from '@/api/agent'
 import type { AgentDocumentReference } from './AgentDocumentReferences'

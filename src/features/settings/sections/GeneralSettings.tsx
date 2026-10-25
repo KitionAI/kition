@@ -10,7 +10,7 @@ import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } f
 import { isPristine } from '@/features/settings/dirty'
 import { getLocaleEndonym, setCurrentLocale, SUPPORTED_LOCALES, useTranslation, type Locale } from '@/i18n'
 import { cn } from '@kition/app-ui/utils'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheckIcon as ShieldCheck } from '@kition/tessera-icons/react'
 import { preserveLiveThemePreview } from '@/features/settings/sections/themePreview'
 
 type GeneralToggleField = {

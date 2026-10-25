@@ -1,4 +1,4 @@
-import { Inbox, LoaderCircle, Plus, Sparkles, Table2 } from 'lucide-react'
+import { InboxIcon as Inbox, LoaderCircleIcon as LoaderCircle, PlusIcon as Plus, SparklesIcon as Sparkles, Table2Icon as Table2 } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

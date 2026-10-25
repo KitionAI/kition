@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Textarea } from '@kition/app-ui'

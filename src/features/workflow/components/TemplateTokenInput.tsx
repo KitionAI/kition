@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
+import { PlusIcon as Plus } from '@kition/tessera-icons/react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
 import { fieldTypeIcon, fieldTypeLabel } from '@/features/workflow/lib/fieldTypeIcon'

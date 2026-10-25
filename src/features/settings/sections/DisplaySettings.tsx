@@ -6,7 +6,7 @@ import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } f
 import { isPristine } from '@/features/settings/dirty'
 import { useTranslation } from '@/i18n'
 import { cn } from '@kition/app-ui/utils'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcwIcon as RotateCcw } from '@kition/tessera-icons/react'
 import { preserveLiveThemePreview } from '@/features/settings/sections/themePreview'
 
 const themeModeOptions: Array<{ value: DesktopThemeMode }> = [

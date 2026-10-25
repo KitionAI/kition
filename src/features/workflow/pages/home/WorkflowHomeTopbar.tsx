@@ -1,4 +1,4 @@
-import { ChevronLeft, LoaderCircle, Play, Plus, RefreshCw, Save, X } from 'lucide-react'
+import { ChevronLeftIcon as ChevronLeft, LoaderCircleIcon as LoaderCircle, PlayIcon as Play, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'

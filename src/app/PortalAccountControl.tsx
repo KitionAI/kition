@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
-import { X } from 'lucide-react'
+import { XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { KitionAccountPanel } from '@/features/account/components/KitionAccountPanel'

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { Button } from '@kition/app-ui'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
 import { cn } from '@kition/app-ui/utils'

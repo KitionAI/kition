@@ -1,4 +1,4 @@
-import { AppWindow, ArrowRightLeft, LoaderCircle } from 'lucide-react'
+import { AppWindowIcon as AppWindow, ArrowRightLeftIcon as ArrowRightLeft, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@kition/app-ui'

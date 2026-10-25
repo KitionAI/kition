@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUp, LoaderCircle, Plus, Sparkles, Table } from 'lucide-react'
+import { ArrowLeftIcon as ArrowLeft, ArrowUpIcon as ArrowUp, LoaderCircleIcon as LoaderCircle, PlusIcon as Plus, SparklesIcon as Sparkles, TableIcon as Table } from '@kition/tessera-icons/react'
 import { InlineError } from '@/components/states'
 import { useTranslation } from 'react-i18next'
 import { TriggerTableSelect, type TriggerTableOption } from '@/features/workflow/components/TriggerTableSelect'
