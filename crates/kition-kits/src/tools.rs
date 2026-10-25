@@ -29,7 +29,7 @@ use crate::drafts::{self, DraftState};
 use crate::manager::{Caller, DocumentView, KITS, KitDefinition, KitManager};
 
 const PREVIEW_SIZE: u32 = 1024;
-const MAX_COMMANDS: usize = 40;
+const MAX_COMMANDS: usize = 12;
 
 /// What a kit tool does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -970,10 +970,11 @@ async fn inspect(
             // The part, not the whole document's outline again.
             answer = document_summary_json(&view);
             answer["part"] = objects;
+            lean_objects(&mut answer["part"]);
             answer["edit"] = json!(format!(
                 "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting. \
                  The kit is now on this part; to come back to it later, pass the same `target` to the run tool. \
-                 Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}. Each object's `ref` is its id for the query and batch tools.",
+                 Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}. The query and batch tools take these ids too.",
                 tool_name(kit, Action::Run),
                 tool_name(kit, Action::Commands),
                 part - 1
@@ -1113,10 +1114,61 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
     Ok(listed_commands(&query, found))
 }
 
+/// A command as the search answers it: id, title, and its params in kit command notation, with
+/// the schema's short notes the notation does not carry (`index: a position counted from 0`).
+fn compact_command(command: Value) -> Value {
+    let schema = &command["params"];
+    let notation = schema["description"]
+        .as_str()
+        .map(str::to_owned)
+        .or_else(|| command["description"].as_str().map(|d| d.trim_start_matches("Params: ").to_owned()))
+        .unwrap_or_default();
+    let mut notes = Vec::new();
+    if let Some(properties) = schema["properties"].as_object() {
+        for (name, property) in properties {
+            if let Some(note) = property["description"].as_str() {
+                if note.len() <= 60 && !notation.contains(note) {
+                    notes.push(format!("{name}: {note}"));
+                }
+            }
+        }
+    }
+    let params = if notes.is_empty() { notation } else { format!("{notation} [{}]", notes.join("; ")) };
+    let mut out = json!({ "id": command["id"], "title": command["title"], "params": params });
+    if command["enabled"] == Value::Bool(false) {
+        out["enabled"] = Value::Bool(false);
+    }
+    out
+}
+
+/// An inspect answer's objects without what the agent does not need: object-model `ref`s (the
+/// server translates numeric ids itself) and zero rotations.
+fn lean_objects(value: &mut Value) {
+    if let Some(shapes) = value.get_mut("shapes").and_then(Value::as_array_mut) {
+        for shape in shapes {
+            lean_shape(shape);
+        }
+    }
+}
+
+fn lean_shape(shape: &mut Value) {
+    if let Some(object) = shape.as_object_mut() {
+        object.remove("ref");
+        if object.get("rotation").and_then(Value::as_f64) == Some(0.0) {
+            object.remove("rotation");
+        }
+        if let Some(children) = object.get_mut("children").and_then(Value::as_array_mut) {
+            for child in children {
+                lean_shape(child);
+            }
+        }
+    }
+}
+
 /// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
 fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
     let total = found.len();
-    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).collect();
+    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
     let summary = if total > listed.len() {
         format!(
             "{total} commands match `{query}`; showing {}. Use more specific keywords.",

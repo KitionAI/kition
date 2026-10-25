@@ -1131,40 +1131,56 @@ impl KitManager {
             .split_whitespace()
             .map(|term| search_variants(&term.to_lowercase()))
             .collect();
-        let mut scored: Vec<(usize, _)> = list
+        let fields: Vec<(String, String, String)> = list
+            .commands
+            .iter()
+            .map(|command| {
+                (
+                    command.id.to_lowercase(),
+                    command.title.to_lowercase(),
+                    format!("{} {:?}", command.description.as_deref().unwrap_or_default(), command.menu).to_lowercase(),
+                )
+            })
+            .collect();
+        let has = |(id, title, rest): &(String, String, String), v: &str| id.contains(v) || title.contains(v) || rest.contains(v);
+        let n = fields.len() as f64;
+        let weights: Vec<f64> = terms
+            .iter()
+            .map(|variants| {
+                let df = fields.iter().filter(|f| variants.iter().any(|v| has(f, v))).count() as f64;
+                ((n + 1.0) / (df + 1.0)).ln() + 0.1
+            })
+            .collect();
+        let mut scored: Vec<(f64, _)> = list
             .commands
             .into_iter()
-            .map(|command| {
-                let haystack = format!(
-                    "{} {} {} {:?}",
-                    command.id,
-                    command.title,
-                    command.description.as_deref().unwrap_or_default(),
-                    command.menu
-                )
-                .to_lowercase();
-                let id = command.id.to_lowercase();
-                let score: usize = terms
+            .zip(fields.iter())
+            .map(|(command, (id, title, rest))| {
+                let score: f64 = terms
                     .iter()
-                    .map(|variants| {
-                        if variants.iter().any(|v| id.contains(v.as_str())) {
-                            3
-                        } else if variants.iter().any(|v| haystack.contains(v.as_str())) {
-                            2
-                        } else if variants.iter().any(|v| v.len() >= 4 && haystack.contains(&v[..4])) {
-                            1
+                    .zip(&weights)
+                    .map(|(variants, weight)| {
+                        let field = if variants.iter().any(|v| id.contains(v.as_str())) {
+                            3.0
+                        } else if variants.iter().any(|v| title.contains(v.as_str())) {
+                            2.0
+                        } else if variants.iter().any(|v| rest.contains(v.as_str())) {
+                            1.0
+                        } else if variants.iter().any(|v| v.len() >= 4 && (id.contains(&v[..4]) || title.contains(&v[..4]))) {
+                            0.5
                         } else {
-                            0
-                        }
+                            0.0
+                        };
+                        field * weight
                     })
                     .sum();
                 (score, command)
             })
             .collect();
-        if !terms.is_empty() && scored.iter().any(|(score, _)| *score > 0) {
-            scored.retain(|(score, _)| *score > 0);
+        if !terms.is_empty() && scored.iter().any(|(score, _)| *score > 0.0) {
+            scored.retain(|(score, _)| *score > 0.0);
         }
-        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         Ok(scored
             .into_iter()
             .map(|(_, command)| command)
