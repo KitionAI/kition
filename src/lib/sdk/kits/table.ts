@@ -154,77 +154,77 @@ export interface TableCommands extends CommandMap {
   /** tables.list. Params: the params of the data-document route GET /tables: its ids (tableId, ...), query values, and body fields */
   "table.tables.list": { [key: string]: never }
   /** tables.create. Params: the params of the data-document route POST /tables: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.tables.create": { [key: string]: never }
+  "table.tables.create": { title?: string; name?: string; description?: string; fields?: Array<{ title?: string; name?: string; type?: string; primary?: boolean; required?: boolean; readonly?: boolean; options?: Json; formula?: string; ai_prompt?: string }>; views?: Array<{ title?: string; type?: string; config?: Json }>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** tables.update. Params: the params of the data-document route PATCH /tables/{tableId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.tables.update": { [key: string]: never }
+  "table.tables.update": { /** The table's id. */ tableId: number; /** The table's new title. */ title?: string; /** The table's new description. */ description?: string; /** Free-form metadata the host keeps with the table. */ meta?: Json; /** The id of the field that becomes the primary field. */ primary_field_id?: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** tables.delete. Params: the params of the data-document route DELETE /tables/{tableId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.tables.delete": { [key: string]: never }
+  "table.tables.delete": { /** The table's id. */ tableId: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** fields.list. Params: the params of the data-document route GET /tables/{tableId}/fields: its ids (tableId, ...), query values, and body fields */
-  "table.fields.list": { [key: string]: never }
+  "table.fields.list": { /** The table's id. */ tableId: number }
   /** fields.create. Params: the params of the data-document route POST /tables/{tableId}/fields: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.fields.create": { [key: string]: never }
+  "table.fields.create": { /** The table's id. */ tableId: number; title?: string; name?: string; type?: string; required?: boolean; readonly?: boolean; is_primary?: boolean; options?: Json; formula?: string; ai_prompt?: string; meta?: Json; order?: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** fields.update. Params: the params of the data-document route PATCH /tables/{tableId}/fields/{fieldId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.fields.update": { [key: string]: never }
+  "table.fields.update": { /** The table's id. */ tableId: number; /** The field's id. */ fieldId: number; title?: string; /** The field type, such as `text`, `long_text`, `number`, `single_select`, `date`. */ type?: string; required?: boolean; readonly?: boolean; is_primary?: boolean; /** The type's options, such as `{ "choices": [...] }` for a select. */ options?: Json; formula?: string; ai_prompt?: string; meta?: Json; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** fields.delete. Params: the params of the data-document route DELETE /tables/{tableId}/fields/{fieldId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.fields.delete": { [key: string]: never }
+  "table.fields.delete": { /** The table's id. */ tableId: number; /** The field's id. */ fieldId: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** fields.duplicate. Params: the params of the data-document route POST /tables/{tableId}/fields/{fieldId}/duplicate: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.fields.duplicate": { [key: string]: never }
+  "table.fields.duplicate": { /** The table's id. */ tableId: number; /** The field's id. */ fieldId: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** fields.linkCandidates. Params: the params of the data-document route GET /tables/{tableId}/fields/{fieldId}/link-candidates: its ids (tableId, ...), query values, and body fields */
-  "table.fields.linkCandidates": { [key: string]: never }
+  "table.fields.linkCandidates": { /** The table's id. */ tableId: number; /** The field's id. */ fieldId: number; /** Text to match in the candidates' display values. */ q?: string; /** How many items to answer at most. */ limit?: number }
   /** views.list. Params: the params of the data-document route GET /tables/{tableId}/views: its ids (tableId, ...), query values, and body fields */
-  "table.views.list": { [key: string]: never }
+  "table.views.list": { /** The table's id. */ tableId: number }
   /** views.create. Params: the params of the data-document route POST /tables/{tableId}/views: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.create": { [key: string]: never }
+  "table.views.create": { /** The table's id. */ tableId: number; title?: string; type?: string; config?: Json; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.update. Params: the params of the data-document route PATCH /tables/{tableId}/views/{viewId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.update": { [key: string]: never }
+  "table.views.update": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; title?: string; /** The view type, such as `grid`, `kanban`, `gallery`, `calendar`, `form`. */ type?: string; /** The view's configuration object. */ config?: Json; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.delete. Params: the params of the data-document route DELETE /tables/{tableId}/views/{viewId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.delete": { [key: string]: never }
+  "table.views.delete": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.getFilterTree. Params: the params of the data-document route GET /tables/{tableId}/views/{viewId}/filter-tree: its ids (tableId, ...), query values, and body fields */
-  "table.views.getFilterTree": { [key: string]: never }
+  "table.views.getFilterTree": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number }
   /** views.putFilterTree. Params: the params of the data-document route PUT /tables/{tableId}/views/{viewId}/filter-tree: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.putFilterTree": { [key: string]: never }
+  "table.views.putFilterTree": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; tree?: { conjunction?: string; children?: Array<{ group?: { conjunction?: string; children?: Array<Json> }; condition?: { field_id?: number; operator?: string; value?: Json } }> }; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.getSorts. Params: the params of the data-document route GET /tables/{tableId}/views/{viewId}/sorts: its ids (tableId, ...), query values, and body fields */
-  "table.views.getSorts": { [key: string]: never }
+  "table.views.getSorts": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number }
   /** views.putSorts. Params: the params of the data-document route PUT /tables/{tableId}/views/{viewId}/sorts: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.putSorts": { [key: string]: never }
+  "table.views.putSorts": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; items?: Array<{ field_id?: number; direction?: string }>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.getGroups. Params: the params of the data-document route GET /tables/{tableId}/views/{viewId}/groups: its ids (tableId, ...), query values, and body fields */
-  "table.views.getGroups": { [key: string]: never }
+  "table.views.getGroups": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number }
   /** views.putGroups. Params: the params of the data-document route PUT /tables/{tableId}/views/{viewId}/groups: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.putGroups": { [key: string]: never }
+  "table.views.putGroups": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; items?: Array<{ field_id?: number; direction?: string }>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.patchConfig. Params: the params of the data-document route PATCH /tables/{tableId}/views/{viewId}/config: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.patchConfig": { [key: string]: never }
+  "table.views.patchConfig": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; row_height?: string; frozen_column_count?: number; search_query?: string; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** views.listFields. Params: the params of the data-document route GET /tables/{tableId}/views/{viewId}/view-fields: its ids (tableId, ...), query values, and body fields */
-  "table.views.listFields": { [key: string]: never }
+  "table.views.listFields": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number }
   /** views.patchField. Params: the params of the data-document route PATCH /tables/{tableId}/views/{viewId}/view-fields/{fieldId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.views.patchField": { [key: string]: never }
+  "table.views.patchField": { /** The table's id. */ tableId: number; /** The view's id. */ viewId: number; /** The field's id. */ fieldId: number; visible?: boolean; width?: number; position?: number; frozen?: boolean; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** records.list. Params: the params of the data-document route GET /tables/{tableId}/records: its ids (tableId, ...), query values, and body fields */
-  "table.records.list": { [key: string]: never }
+  "table.records.list": { /** The table's id. */ tableId: number; /** How many items to answer at most. */ limit?: number; /** How many items to skip, from 0. */ offset?: number }
   /** records.create. Params: the params of the data-document route POST /tables/{tableId}/records: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.records.create": { [key: string]: never }
+  "table.records.create": { /** The table's id. */ tableId: number; values?: { [key: string]: Json }; order?: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** records.update. Params: the params of the data-document route PATCH /tables/{tableId}/records/{recordId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.records.update": { [key: string]: never }
+  "table.records.update": { /** The table's id. */ tableId: number; /** The record's id. */ recordId: number; values?: { [key: string]: Json }; order?: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** records.delete. Params: the params of the data-document route DELETE /tables/{tableId}/records/{recordId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.records.delete": { [key: string]: never }
+  "table.records.delete": { /** The table's id. */ tableId: number; /** The record's id. */ recordId: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** records.history. Params: the params of the data-document route GET /tables/{tableId}/records/{recordId}/history: its ids (tableId, ...), query values, and body fields */
-  "table.records.history": { [key: string]: never }
+  "table.records.history": { /** The table's id. */ tableId: number; /** The record's id. */ recordId: number; /** How many items to answer at most. */ limit?: number; /** How many items to skip, from 0. */ offset?: number }
   /** records.bulkDelete. Params: the params of the data-document route POST /tables/{tableId}/records/bulk-delete: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.records.bulkDelete": { [key: string]: never }
+  "table.records.bulkDelete": { /** The table's id. */ tableId: number; row_keys?: Array<string>; target_position?: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** records.bulkCopy. Params: the params of the data-document route POST /tables/{tableId}/records/bulk-copy: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.records.bulkCopy": { [key: string]: never }
+  "table.records.bulkCopy": { /** The table's id. */ tableId: number; row_keys?: Array<string>; target_position?: number; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** links.list. Params: the params of the data-document route GET /tables/{tableId}/records/{recordId}/links: its ids (tableId, ...), query values, and body fields */
-  "table.links.list": { [key: string]: never }
+  "table.links.list": { /** The table's id. */ tableId: number; /** The record's id. */ recordId: number; /** The link field's id. */ field_id: number }
   /** links.replace. Params: the params of the data-document route POST /tables/{tableId}/records/{recordId}/links: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.links.replace": { [key: string]: never }
+  "table.links.replace": { /** The table's id. */ tableId: number; /** The record's id. */ recordId: number; field_id?: number; target_row_keys?: Array<string>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** links.delete. Params: the params of the data-document route DELETE /tables/{tableId}/records/{recordId}/links: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.links.delete": { [key: string]: never }
+  "table.links.delete": { /** The table's id. */ tableId: number; /** The record's id. */ recordId: number; field_id?: number; target_row_keys?: Array<string>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** csv.import. Params: the params of the data-document route POST /tables/{tableId}/import/csv: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.csv.import": { [key: string]: never }
+  "table.csv.import": { /** The table's id. */ tableId: number; content?: string; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** csv.export. Params: the params of the data-document route GET /tables/{tableId}/export/csv: its ids (tableId, ...), query values, and body fields */
-  "table.csv.export": { [key: string]: never }
+  "table.csv.export": { /** The table's id. */ tableId: number }
   /** markdown.export. Params: the params of the data-document route GET /tables/{tableId}/export/markdown: its ids (tableId, ...), query values, and body fields */
-  "table.markdown.export": { [key: string]: never }
+  "table.markdown.export": { /** The table's id. */ tableId: number }
   /** transact. Params: the params of the data-document route POST /transact: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.transact": { [key: string]: never }
+  "table.transact": { ops: Array<Json>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** undo. Params: the params of the data-document route POST /undo: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
   "table.undo": { [key: string]: never }
   /** redo. Params: the params of the data-document route POST /redo: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
@@ -234,23 +234,25 @@ export interface TableCommands extends CommandMap {
   /** dashboards.list. Params: the params of the data-document route GET /dashboards: its ids (tableId, ...), query values, and body fields */
   "table.dashboards.list": { [key: string]: never }
   /** dashboards.upsert. Params: the params of the data-document route PUT /dashboards/{dashboardId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.dashboards.upsert": { [key: string]: never }
+  "table.dashboards.upsert": { /** The dashboard's id. */ dashboardId: string; title?: string; order?: number; source_table_id?: number; /** The widgets' positions. */ layout?: Array<Json>; /** The widgets, each an object with its own `id`. */ widgets?: Array<{ [key: string]: Json }>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** dashboards.delete. Params: the params of the data-document route DELETE /dashboards/{dashboardId}: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.dashboards.delete": { [key: string]: never }
+  "table.dashboards.delete": { /** The dashboard's id. */ dashboardId: string; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** attachments.put. Params: the params of the data-document route POST /tables/{tableId}/attachments: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.attachments.put": { [key: string]: never }
+  "table.attachments.put": { /** The table's id. */ tableId: number; name?: string; mimeType?: string; /** The file's bytes, standard base64. */ data?: string; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** attachments.read. Params: the params of the data-document route GET /blobs/{hash}: its ids (tableId, ...), query values, and body fields */
-  "table.attachments.read": { [key: string]: never }
+  "table.attachments.read": { /** The blob's SHA-256, as an attachment's url names it after kition-blob:. */ hash: string }
   /** import.preview. Params: {fileName, content (base64 of the bytes), source?, sheet?}: the data-import preview request */
-  "table.import.preview": { [key: string]: never }
+  "table.import.preview": { fileName?: string; content?: string; /** A preview request's `source`: `{ kind: "workspace", workspace_path }` names the workspace file?the host read the bytes from; anything else is an upload named by `fileName`. */ source?: { kind?: string; workspace_path?: string }; sheet?: string }
   /** import.run. Params: the data-import execute request (its destination table, write_mode, schema_mode, unique_by?, field_overrides?, import_token?) with fileName, content (base64 of the bytes), and sheet?; asOrigin? (system:<name>) writes as a host feature. Changes the document. */
-  "table.import.run": { [key: string]: never }
+  "table.import.run": { import_token?: string; /** The execute request's `target`. `document_id` is not checked: the kit has one document. */ target?: { kind?: string; path?: string; table_title?: string; document_id?: number; table_id?: number }; write_mode?: string; schema_mode?: string; unique_by?: Array<string>; field_overrides?: Array<{ index?: number; title?: string; type?: string; options?: { [key: string]: Json } }>; idempotency_key?: string; fileName?: string; content?: string; /** A preview request's `source`: `{ kind: "workspace", workspace_path }` names the workspace file?the host read the bytes from; anything else is an upload named by `fileName`. */ source?: { kind?: string; workspace_path?: string }; sheet?: string; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** ai.prepare. Params: {tableId, fieldId, recordId? | record_ids?, limit?, action?, config?}: the prompts of an AI field run, for the host to generate */
-  "table.ai.prepare": { [key: string]: never }
+  "table.ai.prepare": { /** The table's id. */ tableId: number; /** The AI field's id. */ fieldId: number; /** One record to run on. */ recordId?: number; /** The AI action, such as summary, extract, improve, or customize; default the field's. */ action?: string; /** Overrides of the field's AI configuration for this run. */ config?: { [key: string]: Json }; /** The records to run on, instead of recordId. */ record_ids?: Array<number>; /** How many records to prepare at most. */ limit?: number }
   /** ai.apply. Params: {tableId, fieldId, recordId?, action?, config?, results: [{recordId, text? | image? | images? | error?}]}: what the host generated; asOrigin? (system:<name>) writes as a host feature. Changes the document. */
-  "table.ai.apply": { [key: string]: never }
+  "table.ai.apply": { /** The table's id. */ tableId: number; /** The AI field's id. */ fieldId: number; /** One record to run on. */ recordId?: number; /** The AI action, such as summary, extract, improve, or customize; default the field's. */ action?: string; /** Overrides of the field's AI configuration for this run. */ config?: { [key: string]: Json }; /** What the host generated, one entry per record. */ results: Array<{ recordId: number; text?: string; image?: Json; images?: Array<Json>; error?: string }>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** changes.since. Params: {version (base64 of a version; empty for every change)}: the records created, updated, and deleted since it, with their origins */
-  "table.changes.since": { [key: string]: never }
+  "table.changes.since": { /** Base64 of a version a previous answer gave; empty for every change. */ version?: string }
+  /** preview.render. Params: {focus?, scale?, maxSize?}: a PNG preview of the table, field, or record cell a diagnostic names (focus: the object the check answered it is about), up to scale 2 and 4096 pixels */
+  "table.preview.render": { /** A diagnostic's target, as the check answered it (named focus because the host reads a top-level target as a file): path (tables/<id>, tables/<id>/fields/<id>, tables/<id>/records/<id>/fields/<id>, or dashboards/<id>) or sheet (a table's title). Default the first table. */ focus?: { path?: string; sheet?: string }; /** Device pixels per document pixel, above 0 and up to 2; default 1. */ scale?: number; /** The longest side in pixels, 1 to 4096; default 4096. */ maxSize?: number }
 }
 
 /** A Table file opened with `openDocument<Base, TableCommands>`. */
