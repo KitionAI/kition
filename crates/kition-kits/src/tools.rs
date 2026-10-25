@@ -948,9 +948,11 @@ async fn inspect(
             answer = document_summary_json(&view);
             answer["part"] = objects;
             answer["edit"] = json!(format!(
-                "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting.",
+                "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting. \
+                 Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}.",
                 tool_name(kit, Action::Run),
-                tool_name(kit, Action::Commands)
+                tool_name(kit, Action::Commands),
+                part - 1
             ));
         }
     }
