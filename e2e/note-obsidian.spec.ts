@@ -6,7 +6,8 @@ import { caretAfter, noteText, openNote, pressCommand } from './helpers/noteKit'
  * The Note kit in Kition behaves as Obsidian's live preview (W3-64): a sample of the kit's own
  * parity suite (kition-note web/tests/obsidian.mjs) on the pinned package in KitFrame. Brackets
  * pair and a closer steps over its pair, Enter continues a list, the command key with L checks a
- * task, Alt+Up moves a line, the caret blinks, and a right click opens the editor's menu.
+ * task, Alt+Up takes the caret to its line's start (measured in Obsidian, which does not move the
+ * line), the caret blinks, and a right click opens the editor's menu.
  */
 test.setTimeout(180_000)
 
@@ -29,7 +30,8 @@ test('edits a note as Obsidian does', async ({ page, baseURL }) => {
 
   await caretAfter(page, kit, 'beta')
   await page.keyboard.press('Alt+ArrowUp')
-  await expect.poll(() => noteText(page)).toContain('beta\nalpha')
+  await page.keyboard.type('X')
+  await expect.poll(() => noteText(page)).toContain('alpha\nXbeta')
 
   const caret = kit.getByTestId('note-caret')
   await expect(caret).toHaveCount(1)
@@ -45,4 +47,15 @@ test('edits a note as Obsidian does', async ({ page, baseURL }) => {
   await expect(kit.getByTestId('note-menu-copy')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(kit.getByTestId('note-context-menu')).toHaveCount(0)
+})
+
+test("draws front matter as Obsidian's properties block", async ({ page, baseURL }) => {
+  const text = '---\ntags:\n  - alpha\n  - beta\ndone: true\n---\n\n# Body\n'
+  const { kit } = await openNote(page, baseURL!, 'Properties.md', text)
+
+  await expect(kit.getByTestId('note-property')).toHaveCount(2)
+  await expect(kit.getByTestId('note-properties-add')).toBeVisible()
+  await expect(kit.locator('[data-testid="note-property"][data-key="tags"] .note-property-pill')).toHaveText(['alpha×', 'beta×'])
+  await kit.locator('[data-key="done"] input[type="checkbox"]').click()
+  await expect.poll(() => noteText(page)).toContain('done: false')
 })
