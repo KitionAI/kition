@@ -47,12 +47,40 @@ export async function noteFrame(page: Page): Promise<Frame> {
   return found!
 }
 
-/** The note's text as its editor holds it. */
+/**
+ * The note's text as its editor holds it. The Note kit draws the note on a canvas (its engine lays
+ * it out and paints it) and keeps the text in a visually hidden document for assistive technology.
+ */
 export async function noteText(page: Page) {
-  return (await noteFrame(page)).evaluate(() => {
-    const content = document.querySelector('.cm-content') as (HTMLElement & { cmTile?: { root: { view: { state: { doc: { toString(): string } } } } } }) | null
-    return content?.cmTile?.root.view.state.doc.toString() ?? ''
-  })
+  return (await noteFrame(page)).evaluate(() => document.querySelector('[data-testid="note-text"]')?.textContent ?? '')
+}
+
+/** The pictures the note draws (image-only lines whose picture was read through the host). */
+export async function notePictures(page: Page) {
+  return (await noteFrame(page)).evaluate(() => (document.querySelector('[data-testid="note-text"]')?.getAttribute('data-pictures') ?? '').split('\n').filter(Boolean))
+}
+
+/** Waits until the note holds `text` (through its accessible document). */
+export async function waitForNoteText(page: Page, text: string) {
+  await expect.poll(() => noteText(page), { timeout: 30_000 }).toContain(text)
+}
+
+/**
+ * Puts the caret right after `text` (its first occurrence) the way a person can on the canvas:
+ * Find (Mod+F) selects it, Escape closes the find bar, and ArrowRight collapses the selection at
+ * its end. With `select`, the found text stays selected.
+ */
+export async function caretAfter(page: Page, kit: FrameLocator, text: string, { select = false } = {}) {
+  await waitForNoteText(page, text)
+  await kit.getByTestId('note-canvas').click({ position: { x: 10, y: 10 } })
+  await pressCommand(page, kit, 'f')
+  const input = kit.getByTestId('note-find-input')
+  await expect(input).toBeVisible()
+  await input.fill(text)
+  await input.press('Enter')
+  await input.press('Escape')
+  await expect(kit.getByTestId('note-find')).toHaveCount(0)
+  if (!select) await page.keyboard.press('ArrowRight')
 }
 
 /** Presses `key` with the platform's command key, as the kit reads the platform (`navigator.platform`). */

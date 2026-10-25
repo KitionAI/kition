@@ -180,10 +180,7 @@ test('captures README product screenshots from the onboarding source', async ({ 
   // The welcome note opens in the Note kit's own editor, in a frame.
   await expect(page.locator('[data-testid="kit-frame"][data-active="true"]')).toBeVisible()
   const note = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
-  await expect(note.locator('.cm-content')).toContainText('Start with one useful action')
-  await note.locator('.cm-scroller').evaluate((element) => {
-    element.scrollTop = 380
-  }).catch(() => {})
+  await expect(note.getByTestId('note-text')).toContainText('Start with one useful action')
   await page.waitForTimeout(500)
   await page.screenshot({ path: 'docs/readme/documents.png' })
 

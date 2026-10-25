@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import historyCopy from '../src/i18n/locales/en-US/history.json' with { type: 'json' }
-import { noteText, openNote } from './helpers/noteKit'
+import { caretAfter, noteText, openNote } from './helpers/noteKit'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 /**
@@ -21,8 +21,7 @@ test('restores an earlier version of a note from its version history', async ({ 
   const name = 'Plan.md'
   const { kit, saves } = await openNote(page, baseURL!, name, '# Plan\n\nFirst draft.\n', {}, { persist: true })
   const typeAfter = async (line: string, text: string) => {
-    await kit.locator('.cm-line', { hasText: line }).click()
-    await page.keyboard.press('End')
+    await caretAfter(page, kit, line)
     await page.keyboard.type(text)
   }
   // Saves until nothing is unsaved: typing may still be on its way to the engine when Save runs.
