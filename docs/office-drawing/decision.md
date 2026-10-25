@@ -174,6 +174,8 @@ clean-room rules.
   on.
 - Kit command names remain as aliases of the `drawing.*` commands for at
   least one minor version after every kit supports them.
+  [The command migration](command-migration.md) lists which kit command each
+  shared command covers, per kit.
 
 ## Phase 1 scope
 
