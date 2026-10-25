@@ -49,8 +49,12 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   (pointer move, resize, rotate, Escape, nudge, reopen), `kdm-model`
   `tests/drawing_frames.rs` (move against format on two peers, schema 3
   migration), and `web/tests/drawing.mjs` in Chromium and WebKit. Word import
-  stays P: theme colours and run formatting of shapes are not modelled; colours
-  are RGB.
+  stays P: colours are kept as RGB, not as theme references. Since 2026-10-24
+  theme colours (`a:schemeClr`, `a:sysClr`) and the style's references
+  (`wps:style`: fill, outline and width, text colour) are read into them, so a
+  shape Word inserts draws as Word draws it, and a shape keeps its text frame
+  (`wps:bodyPr` anchor and margins), laid out, described and set by
+  `drawing.text`.
   Ids (DR2): Word's and Sheet's are the file's drawing ids, replicated, so
   they survive both replicas and reopening a file. Slide's are the shapes'
   replica objects: the same on every replica and across reopening with the
@@ -297,11 +301,11 @@ use the flat text in every kit.
 - **Word:** a shape keeps its warp with adjust values (`wps:bodyPr/a:prstTxWarp`).
   The display list draws warped text as filled paths, so PDF export bends it
   too; underlines and highlights in warped text are not drawn. `insert.wordArt`
-  still inserts formatted body text, not a drawing object.
+  inserts a drawing object with its warp (the `insert_wordart_…` engine test).
 - **Collaboration:** a warp set by one person and a move of the same shape
   by another both stay (Word's `drawing_frames` and Sheet's `drawing_shapes`
   replica tests). Since Word's replica schema 6, Sheet's schema 5 and
-  Slide's schema 5 a shape's other members are entries of its own `look` map, so two people
+  Slide's schema 5 (6 for ink strokes) a shape's other members are entries of its own `look` map, so two people
   changing two different ones at once (say a warp and a fill, or a glued end
   and a line colour) both keep theirs.
 - **Sheet:** the warp lives in the shape's kept text body, with its adjust
