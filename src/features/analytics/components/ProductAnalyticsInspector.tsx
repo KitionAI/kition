@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { ListChecksIcon as ListChecks, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 
-import { Button, Disclosure } from '@kition/app-ui'
+import { Button, Disclosure } from '@kition/tessera'
 import {
   clearProductAnalyticsQueue,
   getProductAnalyticsQueue,
@@ -30,7 +30,7 @@ export function ProductAnalyticsInspector() {
         description={t('general.analyticsQueuedEventsDescription', { count: events.length })}
       >
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={clearProductAnalyticsQueue}
           disabled={events.length === 0}

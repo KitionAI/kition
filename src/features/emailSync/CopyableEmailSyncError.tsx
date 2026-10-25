@@ -1,8 +1,8 @@
 import { CheckIcon as Check, CopyIcon as Copy } from '@kition/tessera-icons/react'
 import { useEffect, useRef, useState } from 'react'
 
-import { Button } from '@kition/app-ui'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
+import { Button } from '@kition/tessera'
 
 export function CopyableEmailSyncError({
   message,
@@ -45,7 +45,7 @@ export function CopyableEmailSyncError({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="md" iconOnly
         className="size-7 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
         aria-label={copied ? 'Error copied' : 'Copy error'}
         title={copied ? 'Copied' : 'Copy error'}

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import type { AgentSession } from '@/api/agent'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { formatWorkspaceTime } from '@/features/workspace/lib/workspace'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 type SessionHistoryGroupKey = 'today' | 'week' | 'older'
 

@@ -1,4 +1,14 @@
-@tailwind base;
+/*
+ * Cascade order: Tailwind's reset, then Tessera's components (@kition/tessera), then everything
+ * unlayered (Kition's own rules and Tailwind's components and utilities). A class at a call site
+ * therefore adjusts a Tessera control, and the reset never flattens one.
+ */
+@layer reset, tessera;
+@import '@kition/tessera/styles.css' layer(tessera);
+
+@layer reset {
+  @tailwind base;
+}
 @tailwind components;
 @tailwind utilities;
 
@@ -1218,8 +1228,8 @@
   }
 
   /* The one menu style (docs/product-ui-style.md popovers): 12px radius, hairline
-     border, light shadow, inset rounded items. ActionMenu in packages/app-ui uses the
-     same geometry; plain-DOM menus (tab and tree menus) use these classes. */
+     border, light shadow, inset rounded items, the geometry of Tessera's popovers; plain-DOM
+     menus (tab and tree menus) use these classes. */
   .app-menu {
     @apply z-50 min-w-48 overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-sm text-popover-foreground;
     box-shadow: var(--shadow-floating);
@@ -1894,42 +1904,12 @@
     background: var(--document-border, hsl(var(--border)));
   }
 
-  .document-sidebar .el-select {
-    @apply h-9 rounded-md px-2.5 pr-10 shadow-none;
-    background: var(--document-control, hsl(var(--background)));
-    border-color: var(--document-border, hsl(var(--input)));
-  }
 
-  .document-sidebar .el-select:hover,
-  .document-sidebar .el-select.is-open {
-    background: var(--document-main-surface, hsl(var(--card)));
-    border-color: var(--document-border, hsl(var(--border)));
-    box-shadow: none;
-  }
 
-  .document-sidebar .el-select.is-open {
-    @apply ring-0;
-  }
 
-  .document-sidebar .el-select-chevron {
-    @apply inset-y-1 right-1 h-auto rounded-md;
-    background: transparent;
-  }
 
-  .document-sidebar .el-select-menu {
-    @apply rounded-lg p-1 shadow-lg;
-    background: var(--document-main-surface, hsl(var(--card)));
-    border-color: var(--document-border, hsl(var(--border)));
-  }
 
-  .document-sidebar .el-select-option {
-    @apply rounded-md px-2.5 py-2;
-  }
 
-  .document-sidebar .el-select-option:hover,
-  .document-sidebar .el-select-option.is-selected {
-    background: var(--document-hover, hsl(var(--muted)));
-  }
 
   .document-sidebar > .border-b button {
     box-shadow: none;
@@ -3411,51 +3391,16 @@
     @apply flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-muted/65;
   }
 
-  .el-select {
-    @apply relative inline-flex h-10 w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-input/90 bg-background/90 px-3.5 pr-12 text-left text-sm text-foreground outline-none transition-all duration-200 hover:border-ring/35 hover:bg-card focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20;
-    box-shadow: var(--shadow-soft);
-  }
 
-  .el-select.is-open {
-    @apply border-ring bg-card ring-2 ring-ring/15;
-  }
 
-  .el-select.is-placeholder {
-    @apply text-muted-foreground;
-  }
 
-  .el-select.is-disabled {
-    @apply cursor-not-allowed opacity-60 shadow-none;
-  }
 
-  .el-select-chevron {
-    @apply pointer-events-none absolute inset-y-1.5 right-1.5 flex w-8 items-center justify-center rounded-lg bg-muted/70 text-muted-foreground;
-  }
 
-  .el-select-menu {
-    @apply absolute left-0 right-0 top-[calc(100%+10px)] z-30 overflow-hidden rounded-xl border border-border/80 bg-card/95 p-2 backdrop-blur-xl;
-    box-shadow: var(--shadow-elevated);
-  }
 
-  .el-select-options {
-    @apply max-h-72 overflow-y-auto pr-1;
-  }
 
-  .el-select-option {
-    @apply flex w-full items-center justify-between gap-3 rounded-2xl px-3.5 py-3 text-left text-sm text-foreground transition-all duration-150 hover:bg-muted/80 hover:text-foreground;
-  }
 
-  .el-select-option.is-selected {
-    @apply bg-accent/75 text-foreground shadow-sm;
-  }
 
-  .el-select-option.is-disabled {
-    @apply cursor-not-allowed opacity-50 hover:bg-transparent;
-  }
 
-  .el-select-option-check {
-    @apply shrink-0 text-accent-foreground transition-opacity duration-150;
-  }
 
   .app-list-shell {
     @apply divide-y border-y p-0;
@@ -4034,17 +3979,11 @@
   }
 
   .settings-input,
-  .settings-select .el-select {
+  .settings-select select {
     @apply h-14 rounded-md border border-input bg-background px-4 text-base shadow-none;
   }
 
-  .settings-select .el-select {
-    @apply pr-14;
-  }
 
-  .settings-select .el-select-chevron {
-    @apply inset-y-2 right-2 rounded-md;
-  }
 
   .settings-cta-button {
     @apply h-14 rounded-md px-8 text-base font-semibold;
@@ -4129,9 +4068,6 @@
     @apply block;
   }
 
-  .el-form-item .el-select {
-    @apply min-w-0;
-  }
 
   .el-message {
     @apply border-border;
@@ -4307,7 +4243,7 @@
 
   .settings-modal-window .settings-input,
   .settings-modal-window .settings-select,
-  .settings-modal-window .settings-select .el-select {
+  .settings-modal-window .settings-select select {
     @apply h-10 rounded-lg text-sm;
   }
 
@@ -4347,13 +4283,7 @@
     @apply border-r pr-4;
   }
 
-  .disclosure-trigger {
-    @apply flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-foreground hover:bg-muted/60;
-  }
 
-  .disclosure-body {
-    @apply mt-2 space-y-2;
-  }
 }
 
 @media (max-width: 1200px) {
@@ -4989,7 +4919,7 @@
 
   .settings-modal-window .settings-input,
   .settings-modal-window .settings-select,
-  .settings-modal-window .settings-select .el-select {
+  .settings-modal-window .settings-select select {
     width: 100%;
     min-width: 0;
     max-width: none;
@@ -5043,4 +4973,29 @@
     min-width: 0;
     overflow-wrap: anywhere;
   }
+}
+
+/*
+ * Tessera's theme tokens from Kition's own (docs/product-ui-style.md, CSS Variable Mapping), light
+ * and dark alike: they read the variables `.dark` swaps. Unlayered, so they win over the defaults
+ * in Tessera's layer.
+ */
+:root {
+  --kit-font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif;
+  --kit-surface: hsl(var(--popover));
+  --kit-surface-muted: hsl(var(--muted));
+  --kit-canvas: hsl(var(--surface-soft));
+  --kit-text: hsl(var(--foreground));
+  --kit-text-muted: hsl(var(--muted-foreground));
+  --kit-border: hsl(var(--border));
+  --kit-primary: hsl(var(--primary));
+  --kit-primary-text: hsl(var(--primary-foreground));
+  --kit-primary-soft: hsl(var(--accent));
+  --kit-danger: hsl(var(--destructive));
+  --kit-radius-control: 8px;
+  --kit-radius-card: 12px;
+  --kit-shadow-card: var(--shadow-soft);
+  --kui-shadow-floating: var(--shadow-floating);
+  --kui-input-border: hsl(var(--input));
+  --kui-hover: hsl(var(--accent));
 }

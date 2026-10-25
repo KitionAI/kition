@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, MouseEvent } from 'react'
 import { TriangleAlertIcon as AlertTriangle, ZapIcon as Zap } from '@kition/tessera-icons/react'
 
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 type SharedAttrs = Pick<
   HTMLAttributes<HTMLElement>,

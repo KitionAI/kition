@@ -1,6 +1,6 @@
 import { ChevronDownIcon as ChevronDown, FileTextIcon as FileText, FolderIcon as Folder, XIcon as X } from '@kition/tessera-icons/react'
 
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 export type AgentDocumentReference = {
   path: string

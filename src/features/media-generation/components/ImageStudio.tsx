@@ -23,7 +23,7 @@ import {
   type ImagePromptTextMode,
   type ImagePromptVariableValues,
 } from '@/features/media-generation/lib/imagePromptTemplates'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 import { openExternalURL } from '@/services/desktop'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 

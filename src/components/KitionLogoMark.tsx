@@ -1,7 +1,7 @@
 import type { ImgHTMLAttributes } from 'react'
 
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 const LOGO_SRC = resolveBundledAssetURL('logo-mark.png')
 

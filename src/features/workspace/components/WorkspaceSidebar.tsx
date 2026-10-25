@@ -6,7 +6,7 @@ import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCr
 import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
 import { carriesFiles } from '@/lib/fileDropGuard'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 export function WorkspaceSidebar({
   loading,

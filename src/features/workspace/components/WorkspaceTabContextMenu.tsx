@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 export type WorkspaceTabContextMenuItem = {
   key: string

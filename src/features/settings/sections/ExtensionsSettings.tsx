@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { LoaderCircleIcon as LoaderCircle, PuzzleIcon as Puzzle, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
-import { Button, Input } from '@kition/app-ui'
+import { Button, Switch, TextInput } from '@kition/tessera'
 import { useExtensions, type ExtensionsApi, type InstalledExtension } from '@/features/extensions/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { networkSources, type ExtensionManifest } from '@/lib/extensions/manifest'
 import { notify } from '@/lib/notify'
-import { Switch } from '@kition/app-ui/switch'
 
 /**
  * Settings > Extensions: install an extension from the workspace (a folder, its extension.json,
@@ -46,7 +45,7 @@ export function ExtensionsSettings() {
               if (path.trim() && !busy) void install()
             }}
           >
-            <Input
+            <TextInput size="lg"
               value={path}
               onChange={(event) => setPath(event.target.value)}
               placeholder={t('extensions.installPlaceholder')}
@@ -56,7 +55,7 @@ export function ExtensionsSettings() {
               disabled={busy}
               data-testid="extensions-install-path"
             />
-            <Button type="submit" size="sm" disabled={!path.trim() || busy || !ready} data-testid="extensions-install">
+            <Button variant="primary" type="submit" size="sm" disabled={!path.trim() || busy || !ready} data-testid="extensions-install">
               {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
               {t('extensions.install')}
             </Button>
@@ -115,7 +114,7 @@ function ExtensionRow({ extension, api }: { extension: InstalledExtension; api: 
           aria-label={t('extensions.enabledLabel', { name: manifest.name })}
           data-testid="extension-enabled"
         />
-        <Button type="button" variant="outline" size="sm" onClick={() => void api.remove(extension.id)} aria-label={t('extensions.removeLabel', { name: manifest.name })} data-testid="extension-remove">
+        <Button type="button" variant="secondary" size="sm" onClick={() => void api.remove(extension.id)} aria-label={t('extensions.removeLabel', { name: manifest.name })} data-testid="extension-remove">
           <Trash2 className="size-4" aria-hidden="true" />
           {t('extensions.remove')}
         </Button>

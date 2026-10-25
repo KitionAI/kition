@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TriangleAlertIcon as AlertTriangle, PlusIcon as Plus, RefreshCcwIcon as RefreshCcw, SearchIcon as Search } from '@kition/tessera-icons/react'
-import { cn } from '@kition/app-ui/utils'
-import { Button, Disclosure, Input, PasswordInput, Select } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, Disclosure, PasswordInput, Select, TextInput } from '@kition/tessera'
 import {
   type KitionAccountState,
   useKitionAccount,
@@ -75,7 +75,7 @@ function ProviderConnectionFields({
     case 'kimi':
       return (
         <SettingsRow title={t('models.apiKey')} description={t('models.apiKeyDescription')}>
-          <PasswordInput
+          <PasswordInput size="lg"
             className="settings-input"
             aria-label={t('models.apiKey')}
             value={provider.apiKey ?? ''}
@@ -94,7 +94,7 @@ function ProviderConnectionFields({
       return (
         <>
           <SettingsRow title={t('models.baseUrl')}>
-            <Input
+            <TextInput size="lg"
               className="settings-input"
               value={provider.baseUrl ?? ''}
               onChange={(event) => onPatch({ baseUrl: event.target.value })}
@@ -102,7 +102,7 @@ function ProviderConnectionFields({
             />
           </SettingsRow>
           <SettingsRow title={t('models.apiKey')}>
-            <PasswordInput
+            <PasswordInput size="lg"
               className="settings-input"
               aria-label={t('models.apiKey')}
               value={provider.apiKey ?? ''}
@@ -136,7 +136,7 @@ function ProviderConnectionFields({
             {isKitionAccountUsable(kitionAccount.status) ? null : (
               <Button
                 size="sm"
-                variant={kitionAccount.status === 'connecting' ? 'outline' : 'default'}
+                variant={kitionAccount.status === 'connecting' ? 'secondary' : 'primary'}
                 disabled={kitionAccount.status === 'loading'}
                 onClick={kitionAccount.status === 'credits_empty'
                   ? onKitionAccountTopup
@@ -167,7 +167,7 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
     <>
       {kind === 'custom' ? (
         <SettingsRow title={t('models.baseUrl')}>
-          <Input
+          <TextInput size="lg"
             className="settings-input"
             value={provider.baseUrl ?? ''}
             onChange={(event) => onPatch({ baseUrl: event.target.value })}
@@ -176,7 +176,7 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
         </SettingsRow>
       ) : null}
       <SettingsRow title={t('models.modelsEndpoint')} description={t('models.modelsEndpointDescription')}>
-        <Input
+        <TextInput size="lg"
           className="settings-input"
           value={provider.modelsPath ?? ''}
           onChange={(event) => onPatch({ modelsPath: event.target.value })}
@@ -186,7 +186,7 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
       {kind === 'custom' ? (
         <>
           <SettingsRow title={t('models.authScheme')}>
-            <Select
+            <Select size="lg"
               className="settings-select"
               value={provider.authScheme}
               onChange={(event) => onPatch({ authScheme: event.target.value as typeof provider.authScheme })}
@@ -197,7 +197,7 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
             </Select>
           </SettingsRow>
           <SettingsRow title={t('models.wireApi')}>
-            <Select
+            <Select size="lg"
               className="settings-select"
               value={provider.wireApi}
               onChange={(event) => onPatch({ wireApi: event.target.value as typeof provider.wireApi })}
@@ -208,7 +208,7 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
             </Select>
           </SettingsRow>
           <SettingsRow title={t('models.reasoningEffort')}>
-            <Select
+            <Select size="lg"
               className="settings-select"
               value={provider.reasoningEffort}
               onChange={(event) => onPatch({ reasoningEffort: event.target.value as typeof provider.reasoningEffort })}
@@ -222,7 +222,7 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
       ) : null}
       {kind === 'kition_console' ? (
         <SettingsRow title={t('models.webSearchVersion')}>
-          <Select
+          <Select size="lg"
             className="settings-select"
             value={provider.hostedWebSearchVersion}
             onChange={(event) => onPatch({ hostedWebSearchVersion: event.target.value as typeof provider.hostedWebSearchVersion })}
@@ -252,7 +252,7 @@ function ProviderMetadataRow({ count, lastSyncedAt, syncing, error, onSync, onRe
     return (
       <div className="settings-provider-metadata is-error" role="alert">
         <span><AlertTriangle className="mr-2 inline size-4" />{t('models.syncFailed', { error })}</span>
-        <Button size="sm" variant="outline" onClick={onRetry}>{t('models.retry')}</Button>
+        <Button size="sm" variant="secondary" onClick={onRetry}>{t('models.retry')}</Button>
       </div>
     )
   }
@@ -260,7 +260,7 @@ function ProviderMetadataRow({ count, lastSyncedAt, syncing, error, onSync, onRe
   return (
     <div className="settings-provider-metadata">
       <span>{t('models.modelsCount', { count, when })}</span>
-      <Button size="sm" variant="outline" onClick={onSync} disabled={syncing}>
+      <Button size="sm" variant="secondary" onClick={onSync} disabled={syncing}>
         <RefreshCcw className={cn('mr-2 size-4', syncing && 'animate-spin')} />
         {syncing ? t('models.syncing') : t('models.syncNow')}
       </Button>
@@ -286,7 +286,7 @@ function KitionCloudModelCatalog({
         <span>{error
           ? <><AlertTriangle className="mr-2 inline size-4" />{t('models.syncFailed', { error })}</>
           : t('models.kitionHostedModelsReady')}</span>
-        <Button size="sm" variant="outline" onClick={onSync} disabled={syncing}>
+        <Button size="sm" variant="secondary" onClick={onSync} disabled={syncing}>
           <RefreshCcw className={cn('mr-2 size-4', syncing && 'animate-spin')} />
           {syncing ? t('models.syncing') : error ? t('models.retry') : t('models.syncNow')}
         </Button>
@@ -501,7 +501,7 @@ export function AiModelsPane() {
               )
             })}
             {!visibleProviders.length ? <p className="px-3 py-4 text-sm text-muted-foreground">No providers found.</p> : null}
-            <Button variant="ghost" className="settings-provider-add"><Plus className="size-4" />{t('models.addCustom')}</Button>
+            <Button size="md" variant="ghost" className="settings-provider-add"><Plus className="size-4" />{t('models.addCustom')}</Button>
           </aside>
           <div className="settings-provider-editor">
             <header className="settings-provider-editor-head">
@@ -566,7 +566,7 @@ export function AiModelsPane() {
           (activeKind === 'kition_console'
             ? isKitionAccountAuthenticated(kitionAccount.state.status)
             : activeProvider.enabled) ? (
-            <Button variant="ghost" className="text-destructive" onClick={() => setConfirmDisconnect(true)}>
+            <Button size="md" variant="ghost" className="text-destructive" onClick={() => setConfirmDisconnect(true)}>
               {t('models.disconnect')}
             </Button>
           ) : undefined

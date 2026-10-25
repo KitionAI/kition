@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { CircleCheckIcon as CheckCircle2, LoaderCircleIcon as LoaderCircle, MessageSquareTextIcon as MessageSquareText } from '@kition/tessera-icons/react'
 
-import { Button, Card, Input, Textarea } from '@kition/app-ui'
+import { Button, Card, TextInput, Textarea } from '@kition/tessera'
 import { useTranslation } from '@/i18n'
 import { submitFeedbackReport } from '@/services/desktop'
 
@@ -61,7 +61,7 @@ export function FeedbackForm({
             </div>
           </div>
           <div className="flex justify-end">
-            <Button onClick={onClose}>{t('about.feedbackDone')}</Button>
+            <Button size="md" variant="primary" onClick={onClose}>{t('about.feedbackDone')}</Button>
           </div>
         </Card>
       </div>
@@ -105,7 +105,7 @@ export function FeedbackForm({
 
           <label className="block space-y-2 text-sm font-medium text-foreground">
             <span>{t('about.feedbackEmailLabel')}</span>
-            <Input
+            <TextInput size="lg"
               type="email"
               value={contactEmail}
               onChange={(event) => {
@@ -126,10 +126,10 @@ export function FeedbackForm({
           {error ? <div className="settings-feedback" role="alert">{error}</div> : null}
 
           <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+            <Button size="md" type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               {t('about.feedbackCancel')}
             </Button>
-            <Button type="submit" disabled={!canSubmit || submitting}>
+            <Button size="md" variant="primary" type="submit" disabled={!canSubmit || submitting}>
               {submitting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
               {submitting ? t('about.feedbackSubmitting') : t('about.feedbackSubmit')}
             </Button>

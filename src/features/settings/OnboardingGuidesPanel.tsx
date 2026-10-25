@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
-import { Button, Card, CardContent } from '@kition/app-ui'
+import { Button, Card, CardContent, useDialogFocus } from '@kition/tessera'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import {
   onboardingGuideFolderExists,
@@ -68,7 +67,7 @@ export function OnboardingGuidesPanel({ onClose }: { onClose?: () => void } = {}
     content = (
       <div className="space-y-3">
         <p className="text-sm text-red-600">{t('onboardingGuides.loadFailed', { message: state.message })}</p>
-        <Button onClick={() => void load()} size="sm" variant="outline">
+        <Button onClick={() => void load()} size="sm" variant="secondary">
           <RefreshCw className="mr-2 h-4 w-4" /> {t('onboardingGuides.retry')}
         </Button>
       </div>
@@ -157,7 +156,7 @@ function OnboardingGuidesPanelReady(props: {
         <span className="text-[13px] font-semibold uppercase text-muted-foreground">
           {t('onboardingGuides.guides')}
         </span>
-        <Button
+        <Button variant="primary"
           onClick={() => void importAll()}
           disabled={noWorkspace || busy}
           size="sm"
@@ -194,7 +193,7 @@ function OnboardingGuidesPanelReady(props: {
                   onClick={() => void importSingle(guide.slug)}
                   disabled={disabled || installed}
                   size="sm"
-                  variant={installed ? 'outline' : 'default'}
+                  variant={installed ? 'secondary' : 'primary'}
                 >
                   {installed
                     ? t('onboardingGuides.imported')

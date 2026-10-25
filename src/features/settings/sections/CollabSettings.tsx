@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
-import { Button, Input } from '@kition/app-ui'
-import { Switch } from '@kition/app-ui/switch'
+import { cn } from '@/lib/cn'
+import { Button, Switch, TextInput } from '@kition/tessera'
 import {
   refreshAccountSettings,
   requestSyncedDocuments,
@@ -15,7 +15,6 @@ import {
 } from '@/features/collab/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { cn } from '@kition/app-ui/utils'
 
 /**
  * Co-editing: the sync server this window connects to (empty: co-editing is off), whether it is
@@ -79,7 +78,7 @@ export function CollabSettings() {
               if (dirty) save()
             }}
           >
-            <Input
+            <TextInput size="lg"
               value={draft}
               onChange={(event) => {
                 setDraft(event.target.value)
@@ -91,7 +90,7 @@ export function CollabSettings() {
               spellCheck={false}
               data-testid="collab-server-url"
             />
-            <Button type="submit" size="sm" disabled={!dirty} data-testid="collab-server-save">
+            <Button variant="primary" type="submit" size="sm" disabled={!dirty} data-testid="collab-server-save">
               {t('collab.save')}
             </Button>
           </form>
@@ -101,7 +100,7 @@ export function CollabSettings() {
           <span className="text-sm text-muted-foreground">{t(`collab.status.${status}`)}</span>
         </SettingsRow>
         <SettingsRow title={t('collab.testTitle')} description={test.result ? t(`collab.testResult.${test.result}`) : t('collab.testDescription')}>
-          <Button type="button" variant="outline" size="sm" disabled={!draft.trim() || test.busy} onClick={runTest} data-testid="collab-server-test" data-result={test.result ?? undefined}>
+          <Button type="button" variant="secondary" size="sm" disabled={!draft.trim() || test.busy} onClick={runTest} data-testid="collab-server-test" data-result={test.result ?? undefined}>
             {test.busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {t('collab.test')}
           </Button>
@@ -121,7 +120,7 @@ export function CollabSettings() {
           />
         </SettingsRow>
         <SettingsRow title={t('collab.syncedTitle')} description={t('collab.syncedDescription')}>
-          <Button type="button" variant="outline" size="sm" disabled={!saved} onClick={requestSyncedDocuments} data-testid="collab-synced-show">
+          <Button type="button" variant="secondary" size="sm" disabled={!saved} onClick={requestSyncedDocuments} data-testid="collab-synced-show">
             {t('collab.syncedShow')}
           </Button>
         </SettingsRow>

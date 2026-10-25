@@ -1,9 +1,9 @@
 import { SaveIcon as Save, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Button, Input, PasswordInput } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, PasswordInput, TextInput, useConfirm } from '@kition/tessera'
 import { ConnectionsSettingsPanel } from '@/features/connections/ConnectionsSettingsPanel'
-import { useConfirm } from '@kition/app-ui/confirm'
 import { deleteConnection, type ConnectionView } from '@/api/connections'
 import { ProviderSwitch } from '@/features/emailSync/EmailSyncSettingsPanel'
 import {
@@ -12,7 +12,6 @@ import {
   type EmailSyncWorkflow,
 } from '@/api/emailSync'
 import { SettingsPaneHeader } from '@/features/settings/primitives'
-import { cn } from '@kition/app-ui/utils'
 import { getSecureValue, setSecureValue } from '@/services/desktop'
 import {
   emailProviderCatalog,
@@ -130,7 +129,7 @@ export function EmailProvidersPane() {
     }
     if (!(await confirm({
       message: `Disconnect ${getEmailProvider(providerId).label}? Inbox Sync and Email Delivery settings for this provider will be removed. Imported files remain in the workspace.`,
-      variant: 'destructive',
+      variant: 'danger',
     }))) return
     setToggleBusy(providerId)
     try {
@@ -256,7 +255,7 @@ export function EmailProvidersPane() {
             <h3 className="text-sm font-semibold text-foreground">Account credentials</h3>
             <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
               <span>Email address or account</span>
-              <Input
+              <TextInput size="lg"
                 value={accountDraft.username}
                 onChange={(event) => updateAccount({ username: event.target.value })}
                 placeholder={selectedProvider.accountHint}
@@ -265,7 +264,7 @@ export function EmailProvidersPane() {
             </label>
             <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
               <span>{selectedProvider.credentialLabel}</span>
-              <PasswordInput
+              <PasswordInput size="lg"
                 value={accountDraft.password}
                 onChange={(event) => updateAccount({ password: event.target.value })}
                 placeholder={storedCredential || selectedWorkflow || selectedConnection ? 'Stored credential' : selectedProvider.credentialLabel}
@@ -274,7 +273,7 @@ export function EmailProvidersPane() {
             </label>
             <p className="text-xs text-muted-foreground">Stored once in Kition's local credential store and reused by Inbox Sync and Email Delivery.</p>
             <div className="flex items-center gap-3">
-              <Button disabled={!accountDraft.username.trim()} onClick={() => void acceptCredential()}>
+              <Button size="md" variant="primary" disabled={!accountDraft.username.trim()} onClick={() => void acceptCredential()}>
                 <Save className="size-4" />
                 Save account
               </Button>

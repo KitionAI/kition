@@ -7,8 +7,8 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { FileExclamationPointIcon as FileWarning } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/app-ui'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
+import { Button } from '@kition/tessera'
 
 /** A neutral placeholder block; size it with width and height classes. */
 function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -76,7 +76,7 @@ export function InlineError({ message, children, size = 'md', onRetry, retryLabe
     >
       <div className="min-w-0 flex-1">{children ?? message}</div>
       {onRetry ? (
-        <Button type="button" variant="outline" size="sm" className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/15" onClick={onRetry}>
+        <Button type="button" variant="secondary" size="sm" className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/15" onClick={onRetry}>
           {retryLabel}
         </Button>
       ) : null}

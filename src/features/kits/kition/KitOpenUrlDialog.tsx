@@ -1,9 +1,8 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
 import { openExternalURL } from '@/services/desktop'
 import type { KitOpenResult } from '../host/mountKit'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
 
 /**
  * What the confirmation shows of a web address a kit asks to open (KitLinks 1.0 OP8): the whole
@@ -29,12 +28,12 @@ function KitOpenUrlDialog({ url, onSettle }: { url: string; onSettle: (open: boo
   const { t } = useTranslation('workspace')
   const parts = openUrlParts(url)
   return (
-    <Dialog open onOpenChange={(open) => !open && onSettle(false)}>
-      <DialogContent size="sm" data-testid="kit-open-url-dialog">
-        <DialogHeader>
-          <DialogTitle>{t('kitEditor.openUrl.title')}</DialogTitle>
-          <DialogDescription>{t('kitEditor.openUrl.body')}</DialogDescription>
-        </DialogHeader>
+    <Modal open onOpenChange={(open) => !open && onSettle(false)}>
+      <ModalContent size="sm" data-testid="kit-open-url-dialog">
+        <ModalHeader>
+          <ModalTitle>{t('kitEditor.openUrl.title')}</ModalTitle>
+          <ModalDescription>{t('kitEditor.openUrl.body')}</ModalDescription>
+        </ModalHeader>
         {parts ? (
           <div className="space-y-2 text-[13px]">
             <p>
@@ -46,16 +45,16 @@ function KitOpenUrlDialog({ url, onSettle }: { url: string; onSettle: (open: boo
             </p>
           </div>
         ) : null}
-        <DialogFooter>
-          <Button variant="secondary" onClick={() => onSettle(false)} data-testid="kit-open-url-cancel">
+        <ModalFooter>
+          <Button size="md" variant="subtle" onClick={() => onSettle(false)} data-testid="kit-open-url-cancel">
             {t('kitEditor.openUrl.cancel')}
           </Button>
-          <Button onClick={() => onSettle(true)} data-testid="kit-open-url-open">
+          <Button size="md" variant="primary" onClick={() => onSettle(true)} data-testid="kit-open-url-open">
             {t('kitEditor.openUrl.open')}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }
 

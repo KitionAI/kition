@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
-import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
-import { Button } from '@kition/app-ui'
+import { Button, useDialogFocus } from '@kition/tessera'
 import { useTranslation } from '@/i18n'
 
 type Props = {
@@ -33,8 +32,8 @@ export function DisconnectConfirmDialog({ providerName, onCancel, onConfirm, pen
         <p>{t('disconnectDialog.body')}</p>
         {error ? <p className="disconnect-dialog-error" role="alert">{error}</p> : null}
         <div className="disconnect-dialog-actions">
-          <Button variant="outline" onClick={onCancel} disabled={pending}>{t('disconnectDialog.cancel')}</Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={pending}>
+          <Button size="md" variant="secondary" onClick={onCancel} disabled={pending}>{t('disconnectDialog.cancel')}</Button>
+          <Button size="md" variant="danger" onClick={onConfirm} disabled={pending}>
             {pending ? t('disconnectDialog.disconnecting') : t('disconnectDialog.disconnect')}
           </Button>
         </div>

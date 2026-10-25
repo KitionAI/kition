@@ -7,7 +7,7 @@ import { KitIcon } from '@/components/KitIcon'
 import { canShareDocument, CollabTabIndicators, isDocumentCollab, requestShareDocument, requestSyncDocument, useCollabAvailable } from '@/features/collab/public'
 import { canShowDocumentHistory, requestDocumentHistory } from '@/features/history/public'
 import { KitDraftTabMark } from '@/features/kits/public'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 /** The workspace file a tab edits, for co-editing (kit documents). */
 function collabTabPath(tab: WorkspaceTab): string | null {

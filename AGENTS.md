@@ -93,8 +93,10 @@ own interaction tests live in the kition-table repository and run there.
 
 - Push design fixes into shared tokens and shared primitives before page-local
   overrides.
-- Prefer shared styles in `src/app/styles.css` and shared controls in
-  `packages/app-ui/src/index.tsx` when possible.
+- Prefer shared styles in `src/app/styles.css` and shared controls from Kition
+  Tessera (`@kition/tessera`; its docs at `kition-tessera/site`, `llms.txt` for
+  agents) when possible. A control Tessera lacks goes into Tessera first; see
+  `packages/README.md`.
 - When reviewing screenshots, compare geometry, palette, hierarchy, and control
   emphasis against `docs/design.md`.
 

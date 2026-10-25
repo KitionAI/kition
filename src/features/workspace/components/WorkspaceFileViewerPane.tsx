@@ -2,7 +2,8 @@ import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CopyIcon as Copy, PaintbrushIcon as Paintbrush, ExternalLinkIcon as ExternalLink, FileTextIcon as FileText, FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { ContextActionMenu } from '@kition/app-ui/context-action-menu'
+import { ContextMenu, MenuItem } from '@kition/tessera'
+import { cn } from '@/lib/cn'
 import { copyImageToClipboard, openWorkspaceFile, revealWorkspaceFolder } from '@/services/desktop'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
@@ -12,7 +13,6 @@ import {
   getWorkspaceItemIconColorClass,
   getWorkspaceItemTitle,
 } from '@/features/workspace/lib/workspace'
-import { cn } from '@kition/app-ui/utils'
 import { notify } from '@/lib/notify'
 import { EditInFilmButton } from './film/EditInFilmButton'
 import { KitFilePane } from './kits/KitFilePane'
@@ -180,12 +180,19 @@ function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneP
           </div>
         )}
       </div>
-      {active && format === 'image' && imageMenu ? <ContextActionMenu
-        label={t('fileViewer.imageActions')} position={imageMenu} onClose={closeImageMenu}
-        items={[{
-          id: 'copy-image', label: t('fileViewer.copyImage'), icon: <Copy className="size-4" aria-hidden="true" />,
-          disabled: busy === 'copy', onSelect: () => { void handleCopyImage() },
-        }]} /> : null}
+      {active && format === 'image' && imageMenu ? (
+        <ContextMenu at={imageMenu} onClose={closeImageMenu} label={t('fileViewer.imageActions')}>
+          <MenuItem
+            icon={Copy}
+            label={t('fileViewer.copyImage')}
+            disabled={busy === 'copy'}
+            testId="context-action-copy-image"
+            onSelect={() => {
+              void handleCopyImage()
+            }}
+          />
+        </ContextMenu>
+      ) : null}
     </div>
   )
 }

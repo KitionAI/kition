@@ -1,8 +1,7 @@
 import { CircleAlertIcon as AlertCircle, CircleCheckIcon as CheckCircle2, Clock3Icon as Clock3, ListRestartIcon as ListRestart, LoaderCircleIcon as LoaderCircle, MailIcon as Mail, RefreshCwIcon as RefreshCw, RotateCcwIcon as RotateCcw, TrashIcon as Trash2, CircleXIcon as XCircle } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Button } from '@kition/app-ui'
-import { useConfirm } from '@kition/app-ui/confirm'
+import { Button, useConfirm } from '@kition/tessera'
 import { getEmailProvider, resolveEmailProviderId } from '@/features/emailProviders/emailProviderCatalog'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
@@ -144,7 +143,7 @@ export function EmailSyncWorkflowPage({ workflowId }: { workflowId: string }) {
     if (!workflow) return
     if (!(await confirm({
       message: `Delete ${workflow.name}? Imported tables and Markdown documents will remain in the workspace.`,
-      variant: 'destructive',
+      variant: 'danger',
     }))) return
     setBusy('delete')
     setError('')
@@ -202,7 +201,7 @@ export function EmailSyncWorkflowPage({ workflowId }: { workflowId: string }) {
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="md" iconOnly
             className="text-destructive hover:text-destructive"
             disabled={Boolean(activeRun || busy)}
             onClick={() => void removeWorkflow()}
@@ -210,11 +209,11 @@ export function EmailSyncWorkflowPage({ workflowId }: { workflowId: string }) {
           >
             {busy === 'delete' ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
           </Button>
-          <Button variant="outline" size="sm" disabled={Boolean(activeRun || busy)} onClick={() => void start('incremental')}>
+          <Button variant="secondary" size="sm" disabled={Boolean(activeRun || busy)} onClick={() => void start('incremental')}>
             {busy === 'incremental' ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
             Sync now
           </Button>
-          <Button size="sm" disabled={Boolean(activeRun || busy)} onClick={() => void start('full')} data-testid="email-sync-workflow-sync-all">
+          <Button variant="primary" size="sm" disabled={Boolean(activeRun || busy)} onClick={() => void start('full')} data-testid="email-sync-workflow-sync-all">
             {busy === 'full' ? <LoaderCircle className="size-4 animate-spin" /> : <ListRestart className="size-4" />}
             Sync all
           </Button>
@@ -357,7 +356,7 @@ function CurrentRunPanel({ run, onCancel, canceling }: { run: EmailSyncRun | nul
           </div>
         </div>
         {active ? (
-          <Button variant="outline" size="sm" disabled={canceling || run.status === 'canceling'} onClick={onCancel}>
+          <Button variant="secondary" size="sm" disabled={canceling || run.status === 'canceling'} onClick={onCancel}>
             <XCircle className="size-4" />
             Cancel
           </Button>

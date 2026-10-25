@@ -1,8 +1,8 @@
 import { XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Textarea } from '@kition/app-ui'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
+import { Button, TextInput, Textarea } from '@kition/tessera'
 import type { AgentImageMode, AgentImageOptions } from '../hooks/useAgentImageMode'
 
 export function AgentImageSettings({ mode, busy }: { mode: AgentImageMode; busy: boolean }) {
@@ -29,7 +29,7 @@ export function AgentImageSettings({ mode, busy }: { mode: AgentImageMode; busy:
         {!mode.template ? <p className="text-sm leading-relaxed text-muted-foreground">{t('chat.freeform')}</p> : null}
         {mode.template ? <div className="space-y-3">
           {mode.template.variables.map((variable) => {
-            const Control = variable.multiline ? Textarea : Input
+            const Control = variable.multiline ? Textarea : TextInput
             return <label key={variable.key} className="block space-y-1.5">
               <span className="block text-xs font-medium">{variable.label}{variable.required ? ' *' : ''}</span>
               <Control className="agent-image-field" value={mode.variables[variable.key] || ''} required={variable.required}
@@ -69,7 +69,7 @@ export function AgentImageSettings({ mode, busy }: { mode: AgentImageMode; busy:
     </div>
     <div className="agent-image-panel-footer">
       <button type="button" className="agent-composer-tool" onClick={() => { mode.setEnabled(false); close() }}>{t('chat.useChat')}</button>
-      <Button size="sm" onClick={close}>{t('chat.done')}</Button>
+      <Button variant="primary" size="sm" onClick={close}>{t('chat.done')}</Button>
     </div>
   </>
 }

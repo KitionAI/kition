@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
-import { Button } from '@kition/app-ui'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
 import { KitFrame, type EmbeddedKit } from '@/features/kits/public'
 import { notify } from '@/lib/notify'
 import { historyDocumentFor, type HistoryDocument } from './historyDocuments'
@@ -148,12 +147,12 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
   const kit = document ? kitFor(document.kitId) : null
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !restoring && onClose()}>
-      <DialogContent size="none" className="h-[min(720px,85vh)] gap-0 overflow-hidden p-0 md:max-w-[1040px]" data-testid="history-dialog">
-        <DialogHeader className="space-y-1 border-b px-5 py-4">
-          <DialogTitle>{t('title')}</DialogTitle>
-          <DialogDescription>{name}</DialogDescription>
-        </DialogHeader>
+    <Modal open onOpenChange={(open) => !open && !restoring && onClose()}>
+      <ModalContent size="none" className="h-[min(720px,85vh)] gap-0 overflow-hidden p-0 md:max-w-[1040px]" data-testid="history-dialog">
+        <ModalHeader className="space-y-1 border-b px-5 py-4">
+          <ModalTitle>{t('title')}</ModalTitle>
+          <ModalDescription>{name}</ModalDescription>
+        </ModalHeader>
         <div className="flex min-h-0 flex-1">
           <nav className="w-[280px] shrink-0 overflow-y-auto border-r p-2" aria-label={t('title')}>
             {!document || failed ? (
@@ -187,14 +186,14 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
             )}
           </div>
         </div>
-        <DialogFooter className="border-t px-5 py-3">
-          <Button variant="outline" onClick={onClose} disabled={restoring}>{t('close')}</Button>
-          <Button variant="brand" onClick={() => void restore()} disabled={!selected || !preview?.preview || restoring} data-testid="history-restore">
+        <ModalFooter className="border-t px-5 py-3">
+          <Button size="md" variant="secondary" onClick={onClose} disabled={restoring}>{t('close')}</Button>
+          <Button size="md" variant="primary" onClick={() => void restore()} disabled={!selected || !preview?.preview || restoring} data-testid="history-restore">
             {restoring ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
             {restoring ? t('restoring') : t('restore')}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

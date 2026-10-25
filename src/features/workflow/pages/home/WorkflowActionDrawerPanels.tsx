@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { ConnectionView } from '@/api/connections'
 import type { NodeIssue, WorkflowDefinition } from '@/api/workflows'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { AddRecordActionPropertiesPanel } from '@/features/workflow/components/AddRecordActionPropertiesPanel'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { RecordActionPropertiesPanel } from '@/features/workflow/components/RecordActionPropertiesPanel'
@@ -87,7 +87,7 @@ export function WorkflowAddRecordDrawerPanel({ context, targetLabel }: { context
           </p>
           <div className="mt-2">
             {scheduled ? (
-              <Button variant="outline" size="sm" data-testid="workflow-add-record-run-now" disabled={testBlocked} onClick={() => { void nodeTest.run(selected.id, actionNodeId) }}>
+              <Button variant="secondary" size="sm" data-testid="workflow-add-record-run-now" disabled={testBlocked} onClick={() => { void nodeTest.run(selected.id, actionNodeId) }}>
                 {nodeTest.status === 'running' ? <LoaderCircle className="size-4 animate-spin" /> : <Play className="size-4" />}
                 {t('panels.addRecord.runNow')}
               </Button>
@@ -276,7 +276,7 @@ export function WorkflowEmailDrawerPanel({ context, connections, onNewConnection
             {t('panels.drawer.testStep.descriptionPre')}{tableLabel}{t('panels.drawer.testStep.descriptionMid')}<code className="rounded bg-card px-1 py-0.5 text-[10px] text-primary">manual.test</code>{t('panels.drawer.testStep.descriptionPost')}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <Button
+            <Button size="md" variant="primary"
               className="h-8 bg-primary px-3 hover:bg-primary/90"
               onClick={() => void nodeTest.run(selected.id, selected.action.nodeId || DEFAULT_ACTION_NODE_ID, { to: draft.to })}
               disabled={nodeTest.status === 'running' || Boolean(validation.to)}

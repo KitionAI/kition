@@ -1,8 +1,8 @@
 import type { ComponentType, ReactNode } from 'react'
 import { ExternalLinkIcon as ExternalLink, SearchIcon as Search } from '@kition/tessera-icons/react'
 
-import { cn } from '@kition/app-ui/utils'
-import { DialogDescription, DialogTitle } from '@kition/app-ui/dialog'
+import { cn } from '@/lib/cn'
+import { ModalDescription, ModalTitle } from '@kition/tessera'
 
 export type WorkspaceTemplateCategoryItem<CategoryId extends string> = {
   id: CategoryId
@@ -44,8 +44,8 @@ export function WorkspaceTemplateLibraryFrame<CategoryId extends string>({
         <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
           <Icon className="size-4" />
         </span>
-        <DialogTitle className="text-lg font-semibold text-foreground">{title}</DialogTitle>
-        <DialogDescription className="sr-only">{description}</DialogDescription>
+        <ModalTitle className="text-lg font-semibold text-foreground">{title}</ModalTitle>
+        <ModalDescription className="sr-only">{description}</ModalDescription>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[208px_minmax(0,1fr)] max-lg:grid-cols-[196px_minmax(0,1fr)] max-md:grid-cols-1">

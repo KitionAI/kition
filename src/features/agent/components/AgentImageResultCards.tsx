@@ -1,6 +1,6 @@
 import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { resolveAgentImageURL } from '@/services/workspaceFiles'
 import type { AgentImageArtifact } from '@/types/imageGeneration'
 import type { imageJobOf } from '../lib/agentImageJob'
@@ -42,12 +42,12 @@ export function AgentImageResultCards({ job, busy, onOpen, onEdit, onRetry, canR
             })}</span> : null}
             {artifact.provenance.model_id ? <span className="block">{artifact.provenance.model_id}</span> : null}
           </figcaption>
-          <Button variant="secondary" size="sm" onClick={() => requestUseImageInDesign(artifact.path, false, headlineFor?.(job.requestId))}>{t('design:useImage')}</Button>
-          {onEdit ? <Button variant="secondary" size="sm" disabled={busy} onClick={() => onEdit(artifact)}>{t('chat.edit')}</Button> : null}
+          <Button variant="subtle" size="sm" onClick={() => requestUseImageInDesign(artifact.path, false, headlineFor?.(job.requestId))}>{t('design:useImage')}</Button>
+          {onEdit ? <Button variant="subtle" size="sm" disabled={busy} onClick={() => onEdit(artifact)}>{t('chat.edit')}</Button> : null}
         </figure>)}
       </div>
       {onRetry && canRetry?.(job.requestId) && !active && job.error?.retryable !== false ? (
-        <Button variant="secondary" size="sm" disabled={busy} onClick={() => onRetry(job.requestId)}>{t('chat.reuseSettings')}</Button>
+        <Button variant="subtle" size="sm" disabled={busy} onClick={() => onRetry(job.requestId)}>{t('chat.reuseSettings')}</Button>
       ) : null}
     </section>
 }

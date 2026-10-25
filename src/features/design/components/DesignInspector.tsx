@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import {
   DEFAULT_CONSTRAINTS,
   DESIGN_FONT_FAMILIES,
@@ -487,7 +487,7 @@ export function DesignInspector({
       <div className="design-action-grid">
         <Button
           size="sm"
-          variant="secondary"
+          variant="subtle"
           disabled={selection.length < 2}
           onClick={() => {
             store.execute({ type: 'group', ids: selection })
@@ -498,7 +498,7 @@ export function DesignInspector({
         </Button>
         <Button
           size="sm"
-          variant="secondary"
+          variant="subtle"
           disabled={n?.type !== 'group' || n.opacity !== 1}
           onClick={() => store.execute({ type: 'ungroup', ids: selection })}
         >

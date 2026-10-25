@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 import { useDocumentCollab } from './collabStore'
 import { PresenceAvatars } from './PresenceAvatars'
 import { useCollabConnectionState, type CollabConnectionState } from './syncConnection'

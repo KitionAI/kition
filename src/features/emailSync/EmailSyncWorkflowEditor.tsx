@@ -1,7 +1,7 @@
 import { ArrowLeftIcon as ArrowLeft, MailIcon as Mail } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { Button, Input, PasswordInput } from '@kition/app-ui'
+import { Button, PasswordInput, TextInput } from '@kition/tessera'
 import {
   emailProviderCatalog,
   getEmailProvider,
@@ -105,7 +105,7 @@ export function EmailSyncWorkflowEditor({
       {layout === 'page' ? (
         <header className="sticky top-0 z-10 border-b border-border bg-background/95 px-6 py-4 backdrop-blur">
           <div className="mx-auto flex max-w-4xl items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={onCancel} aria-label="Back to workflows">
+            <Button variant="ghost" size="md" iconOnly onClick={onCancel} aria-label="Back to workflows">
               <ArrowLeft className="size-4" />
             </Button>
             <div>
@@ -142,11 +142,11 @@ export function EmailSyncWorkflowEditor({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
               <span>Email address or account</span>
-              <Input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={provider.accountHint} />
+              <TextInput size="lg" value={username} onChange={(event) => setUsername(event.target.value)} placeholder={provider.accountHint} />
             </label>
             <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
               <span>{provider.credentialLabel}</span>
-              <PasswordInput
+              <PasswordInput size="lg"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder={storedCredential || workflow ? 'Stored credential' : provider.credentialLabel}

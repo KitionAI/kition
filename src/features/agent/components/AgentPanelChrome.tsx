@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 type AgentPanelHeaderProps = {
   title: string

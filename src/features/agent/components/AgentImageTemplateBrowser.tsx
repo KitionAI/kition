@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SearchIcon as Search, SlidersHorizontalIcon as SlidersHorizontal, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input } from '@kition/app-ui'
+import { Button, TextInput } from '@kition/tessera'
 import { listImageTemplates } from '@/features/media-generation/api/imageTemplates'
 import { ImageTemplateThumbnail } from '@/features/media-generation/components/ImageTemplateThumbnail'
 import type { ImageTemplateCatalogResponse, ImageTemplateSummary } from '@/features/media-generation/lib/imageTemplateContract'
@@ -65,21 +65,21 @@ export function AgentImageTemplateBrowser({ active, surface, accessToken, hasRef
       <div className="agent-image-panel-header">
         <strong className="text-sm font-medium">{t('chat.templates')}</strong>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={onFreeform}>{t('chat.withoutTemplate')}</Button>
+          <Button variant="subtle" size="sm" onClick={onFreeform}>{t('chat.withoutTemplate')}</Button>
           <button type="button" className="agent-composer-tool size-7 !p-0" aria-label={t('chat.closeSettings')}
             onClick={onClose}><X className="size-4" aria-hidden="true" /></button>
         </div>
       </div>
       <div className="relative mx-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <Input ref={searchInput} aria-label={t('chat.search')} placeholder={t('chat.search')} className="pl-9"
+        <TextInput size="lg" ref={searchInput} aria-label={t('chat.search')} placeholder={t('chat.search')} className="pl-9"
           value={query} onChange={(event) => setQuery(event.target.value)} />
       </div>
       <div ref={scrollArea} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4" aria-busy={loading}>
         {loading ? <p role="status" className="text-sm text-muted-foreground">{t('chat.loading')}</p> : null}
         {failed ? <div role="status" className="space-y-3 text-sm text-muted-foreground">
           <p>{t('chat.catalogUnavailable')}</p>
-          <Button variant="secondary" size="sm" onClick={() => setRetry((value) => value + 1)}>{t('chat.retry')}</Button>
+          <Button variant="subtle" size="sm" onClick={() => setRetry((value) => value + 1)}>{t('chat.retry')}</Button>
         </div> : null}
         {!loading && page?.items.length === 0 ? <p role="status">{t('gallery.empty')}</p> : null}
         <div className="agent-image-template-grid">
@@ -110,9 +110,9 @@ export function AgentImageTemplateBrowser({ active, surface, accessToken, hasRef
                 : t('chat.catalogRange', { start: (cursors.length - 1) * PAGE_SIZE + 1, end: (cursors.length - 1) * PAGE_SIZE + page.items.length, total: page.total_count })
               : t('chat.catalogPage', { page: cursors.length }) : null}
           </span>
-          <Button variant="secondary" size="sm" disabled={loading || cursors.length < 2}
+          <Button variant="subtle" size="sm" disabled={loading || cursors.length < 2}
             onClick={() => setCursors((values) => values.slice(0, -1))}>{t('chat.previous')}</Button>
-          <Button variant="secondary" size="sm" disabled={loading || !page?.next_cursor || cursors.includes(page.next_cursor)}
+          <Button variant="subtle" size="sm" disabled={loading || !page?.next_cursor || cursors.includes(page.next_cursor)}
             onClick={() => setCursors((values) => [...values, page?.next_cursor])}>{t('chat.next')}</Button>
         </div>
       </div>

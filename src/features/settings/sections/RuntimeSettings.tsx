@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getDesktopInfo, openRuntimePath, type DesktopInfo } from '@/services/desktop'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
@@ -68,7 +68,7 @@ export function RuntimeSettings() {
             title={row.label}
             description={row.path || t('runtime.desktopOnly')}
           >
-            <Button variant="outline" size="sm" onClick={() => void handleOpen(row.kind)}>
+            <Button variant="secondary" size="sm" onClick={() => void handleOpen(row.kind)}>
               <FolderOpen className="size-4" />
               {t('common.open')}
             </Button>

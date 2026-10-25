@@ -3,13 +3,13 @@ import { useEffect, useState } from 'react'
 import { openExternalURL } from '@/services/desktop'
 import { createDefaultDesktopSettings, loadDesktopSettings, saveDesktopSettings } from '@/services/desktopSettings'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
-import { Button, Select } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, Select } from '@kition/tessera'
 import { OnboardingGuidesPanel } from '@/features/settings/OnboardingGuidesPanel'
 import { KITION_PRIVACY_URL } from '@/features/account/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } from '@/features/settings/primitives'
 import { isPristine } from '@/features/settings/dirty'
 import { getLocaleEndonym, setCurrentLocale, SUPPORTED_LOCALES, useTranslation, type Locale } from '@/i18n'
-import { cn } from '@kition/app-ui/utils'
 import { ShieldCheckIcon as ShieldCheck } from '@kition/tessera-icons/react'
 import { preserveLiveThemePreview } from '@/features/settings/sections/themePreview'
 
@@ -103,7 +103,7 @@ export function GeneralSettings() {
       <SettingsPaneHeader title={t('general.paneTitle')} description={t('general.paneDescription')} />
       <SettingsSection title={t('language.label')}>
         <SettingsRow title={t('language.label')} description={t('language.description')}>
-          <Select
+          <Select size="lg"
             className="settings-select w-full max-w-[220px]"
             value={settings.general.language}
             onChange={(event) => updateLanguage(event.target.value as Locale)}
@@ -117,7 +117,7 @@ export function GeneralSettings() {
           </Select>
         </SettingsRow>
         <SettingsRow title={t('language.translationTarget.label')} description={t('language.translationTarget.description')}>
-          <Select
+          <Select size="lg"
             className="settings-select w-full max-w-[220px]"
             value={settings.general.translationTargetLanguage}
             onChange={(event) => updateGeneral({
@@ -159,7 +159,7 @@ export function GeneralSettings() {
           title={t('general.analyticsPrivacyPolicy')}
           description={t('general.analyticsPrivacyPolicyDescription')}
         >
-          <Button variant="outline" onClick={() => void openExternalURL(KITION_PRIVACY_URL)}>
+          <Button size="md" variant="secondary" onClick={() => void openExternalURL(KITION_PRIVACY_URL)}>
             <ShieldCheck className="size-4" />
             {t('general.openPrivacyPolicy')}
           </Button>
@@ -190,8 +190,8 @@ export function GeneralSettings() {
           title={t('general.gettingStarted')}
           description={t('general.gettingStartedDescription')}
         >
-          <Button
-            variant="outline"
+          <Button size="md"
+            variant="secondary"
             onClick={() => window.dispatchEvent(new CustomEvent('kition:onboarding:open'))}
             data-testid="reopen-getting-started"
           >
@@ -207,7 +207,7 @@ export function GeneralSettings() {
           title={t('general.onboardingGuides')}
           description={t('general.onboardingGuidesDescription')}
         >
-          <Button variant="outline" onClick={() => setGettingStartedGuidesOpen(true)}>
+          <Button size="md" variant="secondary" onClick={() => setGettingStartedGuidesOpen(true)}>
             {t('common.open')}
           </Button>
         </SettingsRow>

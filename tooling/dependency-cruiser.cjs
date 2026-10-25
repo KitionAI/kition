@@ -57,13 +57,6 @@ module.exports = {
       to: { path: '^src/', pathNot: '^src/lib/(kdm|kit-engine)/' },
     },
     {
-      name: 'app-ui-is-a-leaf-package',
-      severity: 'error',
-      comment: 'packages/app-ui holds the shared UI primitives; it depends on npm packages only.',
-      from: { path: '^packages/app-ui/' },
-      to: { path: '^packages/(?!app-ui/)' },
-    },
-    {
       name: 'shared-layers-do-not-import-features',
       severity: 'error',
       comment: 'src/components, src/lib, src/services, src/api, and src/types must stay feature-agnostic.',

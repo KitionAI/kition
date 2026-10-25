@@ -1,8 +1,7 @@
 import { CircleAlertIcon as AlertCircle, InboxIcon as Inbox, ListRestartIcon as ListRestart, LoaderCircleIcon as LoaderCircle, PlayIcon as Play, RefreshCwIcon as RefreshCw, RotateCcwIcon as RotateCcw, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { useConfirm } from '@kition/app-ui/confirm'
-import { Button, Disclosure, Input, PasswordInput } from '@kition/app-ui'
+import { Button, Disclosure, PasswordInput, TextInput, useConfirm } from '@kition/tessera'
 import {
   getEmailProvider,
   resolveEmailProviderId,
@@ -272,7 +271,7 @@ export function EmailSyncSettingsPanel({
     if (!workflow) return
     if (!(await confirm({
       message: `Disconnect ${provider.label}? Imported tables and Markdown documents will remain in the workspace.`,
-      variant: 'destructive',
+      variant: 'danger',
     }))) return
     setBusy('delete')
     setError('')
@@ -351,10 +350,10 @@ export function EmailSyncSettingsPanel({
         {!sharedAccount ? (
           <FormSection title="Mailbox account">
             <FormField label="Email address or account">
-              <Input value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} placeholder={provider.accountHint} data-testid="email-sync-username" />
+              <TextInput size="lg" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} placeholder={provider.accountHint} data-testid="email-sync-username" />
             </FormField>
             <FormField label={provider.credentialLabel}>
-              <PasswordInput value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} placeholder={form.id ? 'Leave blank to keep the stored credential' : provider.credentialLabel} data-testid="email-sync-password" />
+              <PasswordInput size="lg" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} placeholder={form.id ? 'Leave blank to keep the stored credential' : provider.credentialLabel} data-testid="email-sync-password" />
             </FormField>
           </FormSection>
         ) : null}
@@ -421,10 +420,10 @@ export function EmailSyncSettingsPanel({
                 </Button>
               </div>
             ) : null}
-            <FormField label="Connection name"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={`${provider.label} inbox`} data-testid="email-sync-name" /></FormField>
+            <FormField label="Connection name"><TextInput size="lg" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={`${provider.label} inbox`} data-testid="email-sync-name" /></FormField>
             <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-3">
-              <FormField label="IMAP host"><Input value={form.host} onChange={(event) => setForm({ ...form, host: event.target.value })} placeholder="imap.example.com" data-testid="email-sync-host" /></FormField>
-              <FormField label="Port"><Input value={form.port} onChange={(event) => setForm({ ...form, port: event.target.value })} inputMode="numeric" data-testid="email-sync-port" /></FormField>
+              <FormField label="IMAP host"><TextInput size="lg" value={form.host} onChange={(event) => setForm({ ...form, host: event.target.value })} placeholder="imap.example.com" data-testid="email-sync-host" /></FormField>
+              <FormField label="Port"><TextInput size="lg" value={form.port} onChange={(event) => setForm({ ...form, port: event.target.value })} inputMode="numeric" data-testid="email-sync-port" /></FormField>
             </div>
             <div className="grid grid-cols-[150px_minmax(0,1fr)] gap-3">
               <FormField label="TLS">
@@ -434,37 +433,37 @@ export function EmailSyncSettingsPanel({
                   <option value="plain">Plain</option>
                 </select>
               </FormField>
-              <FormField label="Mailbox"><Input value={form.mailbox} onChange={(event) => setForm({ ...form, mailbox: event.target.value })} data-testid="email-sync-mailbox" /></FormField>
+              <FormField label="Mailbox"><TextInput size="lg" value={form.mailbox} onChange={(event) => setForm({ ...form, mailbox: event.target.value })} data-testid="email-sync-mailbox" /></FormField>
             </div>
-            <FormField label="Markdown folder"><Input value={form.contentFolder} onChange={(event) => setForm({ ...form, contentFolder: event.target.value })} data-testid="email-sync-content-folder" /></FormField>
-            <FormField label="Attachment folder"><Input value={form.attachmentFolder} onChange={(event) => setForm({ ...form, attachmentFolder: event.target.value })} data-testid="email-sync-attachment-folder" /></FormField>
+            <FormField label="Markdown folder"><TextInput size="lg" value={form.contentFolder} onChange={(event) => setForm({ ...form, contentFolder: event.target.value })} data-testid="email-sync-content-folder" /></FormField>
+            <FormField label="Attachment folder"><TextInput size="lg" value={form.attachmentFolder} onChange={(event) => setForm({ ...form, attachmentFolder: event.target.value })} data-testid="email-sync-attachment-folder" /></FormField>
           </div>
         </Disclosure>
       </div>
 
       <footer className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-        <Button disabled={!canSubmit || busy !== ''} onClick={() => void save()} data-testid="email-sync-save">
+        <Button size="md" variant="primary" disabled={!canSubmit || busy !== ''} onClick={() => void save()} data-testid="email-sync-save">
           {busy === 'save' ? <LoaderCircle className="size-4 animate-spin" /> : null}
           {runAfterSave ? 'Save and sync all' : 'Save workflow'}
         </Button>
         {workflow && showRunActions ? (
           <>
-            <Button variant="outline" disabled={busy !== '' || syncInProgress} onClick={() => void runAction('sync')} data-testid="email-sync-run">
+            <Button size="md" variant="secondary" disabled={busy !== '' || syncInProgress} onClick={() => void runAction('sync')} data-testid="email-sync-run">
               {busy === 'sync' ? <LoaderCircle className="size-4 animate-spin" /> : <Play className="size-4" />}
               Sync now
             </Button>
-            <Button variant="outline" disabled={busy !== '' || syncInProgress} onClick={() => void runAction('sync-all')} data-testid="email-sync-run-all">
+            <Button size="md" variant="secondary" disabled={busy !== '' || syncInProgress} onClick={() => void runAction('sync-all')} data-testid="email-sync-run-all">
               {busy === 'sync-all' ? <LoaderCircle className="size-4 animate-spin" /> : <ListRestart className="size-4" />}
               Sync all
             </Button>
-            <Button variant="ghost" size="icon" className="ml-auto text-destructive hover:text-destructive" disabled={busy !== ''} onClick={() => void remove()} aria-label={`Disconnect ${provider.label}`}>
+            <Button variant="ghost" size="md" iconOnly className="ml-auto text-destructive hover:text-destructive" disabled={busy !== ''} onClick={() => void remove()} aria-label={`Disconnect ${provider.label}`}>
               {busy === 'delete' ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
             </Button>
           </>
         ) : null}
-        {workflow ? <Button variant="outline" disabled={busy !== '' || syncInProgress} onClick={() => void runAction('test')}>Test</Button> : null}
-        {onCancel ? <Button variant="ghost" onClick={onCancel}>Cancel</Button> : null}
-        <Button variant="ghost" size="icon" className="ml-auto" disabled={loading} onClick={() => void refresh()} aria-label="Refresh inbox providers">
+        {workflow ? <Button size="md" variant="secondary" disabled={busy !== '' || syncInProgress} onClick={() => void runAction('test')}>Test</Button> : null}
+        {onCancel ? <Button size="md" variant="ghost" onClick={onCancel}>Cancel</Button> : null}
+        <Button variant="ghost" size="md" iconOnly className="ml-auto" disabled={loading} onClick={() => void refresh()} aria-label="Refresh inbox providers">
           <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
         </Button>
       </footer>

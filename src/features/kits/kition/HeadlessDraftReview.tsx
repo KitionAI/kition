@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TriangleAlertIcon as AlertTriangle, BotIcon as Bot, CheckIcon as Check, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
-import { Button } from '@kition/app-ui/button'
-import { RightSheet } from '@kition/app-ui/RightSheet'
+import { Button, Sheet } from '@kition/tessera'
 import { compareKitDraft, type KitsDraftComparison } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import {
@@ -186,7 +185,7 @@ function HeadlessDraftReviewSheet({ path }: { path: string }) {
   const stale = confirmOverwrite || Boolean(comparison?.stale ?? draft?.stale)
 
   return (
-    <RightSheet
+    <Sheet testId="right-sheet"
       open
       onClose={closeHeadlessDraftReview}
       title={t('kitEditor.headlessDraft.title', { name: path.split('/').pop() ?? path })}
@@ -194,17 +193,17 @@ function HeadlessDraftReviewSheet({ path }: { path: string }) {
         <div className="kit-draft-review__footer">
           <p>{t('kitEditor.headlessDraft.hint')}</p>
           <div className="kit-draft-review__actions">
-            <Button variant="outline" size="md" type="button" disabled={busy} onClick={() => void discard()} data-testid="headless-draft-discard">
+            <Button variant="secondary" size="sm" type="button" disabled={busy} onClick={() => void discard()} data-testid="headless-draft-discard">
               <X />
               {t('kitEditor.draft.discard')}
             </Button>
             {confirmOverwrite ? (
-              <Button variant="destructive" size="md" type="button" disabled={busy} onClick={() => void merge(true)} data-testid="headless-draft-overwrite">
+              <Button variant="danger" size="sm" type="button" disabled={busy} onClick={() => void merge(true)} data-testid="headless-draft-overwrite">
                 <AlertTriangle />
                 {t('kitEditor.headlessDraft.overwrite')}
               </Button>
             ) : (
-              <Button size="md" type="button" disabled={busy || !comparison} onClick={() => void merge(false)} data-testid="headless-draft-merge">
+              <Button variant="primary" size="sm" type="button" disabled={busy || !comparison} onClick={() => void merge(false)} data-testid="headless-draft-merge">
                 <Check />
                 {t('kitEditor.draft.merge')}
               </Button>
@@ -233,7 +232,7 @@ function HeadlessDraftReviewSheet({ path }: { path: string }) {
           <Comparison comparison={comparison} />
         )}
       </div>
-    </RightSheet>
+    </Sheet>
   )
 }
 

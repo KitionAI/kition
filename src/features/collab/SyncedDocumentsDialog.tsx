@@ -7,8 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
-import { Button } from '@kition/app-ui'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
 import type { RoomListing } from '@/lib/sync'
 import { canOpenKit, openSyncedDocument, type SharedKit } from './shareActions'
 import { listDocumentsElsewhere, onDocumentListChanged, workspaceFolders } from './syncedDocuments'
@@ -95,12 +94,12 @@ export function SyncedDocumentsDialog({
   const rooms = listed.rooms
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !opening.docId && onClose()}>
-      <DialogContent size="lg" className="gap-0 p-0" data-testid="collab-synced-dialog">
-        <DialogHeader className="space-y-2 border-b px-5 py-4">
-          <DialogTitle>{t('collab.synced.title')}</DialogTitle>
-          <DialogDescription>{t('collab.synced.description')}</DialogDescription>
-        </DialogHeader>
+    <Modal open={open} onOpenChange={(next) => !next && !opening.docId && onClose()}>
+      <ModalContent size="lg" className="gap-0 p-0" data-testid="collab-synced-dialog">
+        <ModalHeader className="space-y-2 border-b px-5 py-4">
+          <ModalTitle>{t('collab.synced.title')}</ModalTitle>
+          <ModalDescription>{t('collab.synced.description')}</ModalDescription>
+        </ModalHeader>
         <div className="space-y-3 px-5 py-4">
           <label className="flex items-center gap-2 text-[13px]">
             <span className="shrink-0 text-muted-foreground">{t('collab.synced.folder')}</span>
@@ -150,7 +149,7 @@ export function SyncedDocumentsDialog({
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       disabled={!openable || Boolean(opening.docId)}
                       title={openable ? undefined : t('collab.synced.cannotOpen')}
                       onClick={() => openHere(room)}
@@ -170,12 +169,12 @@ export function SyncedDocumentsDialog({
             </p>
           ) : null}
         </div>
-        <DialogFooter className="border-t px-5 py-4">
-          <Button type="button" variant="outline" onClick={onClose} disabled={Boolean(opening.docId)}>
+        <ModalFooter className="border-t px-5 py-4">
+          <Button size="md" type="button" variant="secondary" onClick={onClose} disabled={Boolean(opening.docId)}>
             {t('collab.close')}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

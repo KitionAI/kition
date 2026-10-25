@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { TriangleAlertIcon as AlertTriangle } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { useTranslation } from '@/i18n'
 
 export type AppErrorBoundaryScope = 'app' | 'pane'
@@ -115,15 +115,15 @@ function AppErrorFallback({ scope, label, error, onRetry }: AppErrorFallbackProp
         </details>
         <div className="mt-4 flex justify-end gap-2">
           {scope === 'app' ? (
-            <Button
-              variant="outline"
+            <Button size="md"
+              variant="secondary"
               data-testid="app-error-boundary-reload"
               onClick={() => window.location.reload()}
             >
               {t('errorBoundary.reload')}
             </Button>
           ) : null}
-          <Button data-testid="app-error-boundary-retry" onClick={onRetry}>
+          <Button size="md" variant="primary" data-testid="app-error-boundary-retry" onClick={onRetry}>
             {t('errorBoundary.retry')}
           </Button>
         </div>

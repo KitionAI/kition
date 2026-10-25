@@ -687,5 +687,12 @@
     "connectAccount": "Conecta una cuenta de correo para activar este paso.",
     "startWorkflow": "Iniciar este flujo de trabajo",
     "defaultTable": "Bandeja de entrada"
+  },
+  "formSync": {
+    "copyPublicLink": "Copiar enlace público",
+    "openPublicForm": "Abrir formulario público",
+    "moveFieldUp": "Subir campo",
+    "moveFieldDown": "Bajar campo",
+    "deleteField": "Eliminar campo"
   }
 }

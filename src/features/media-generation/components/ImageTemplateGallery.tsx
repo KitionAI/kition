@@ -9,7 +9,7 @@ import {
   type ImagePromptTemplateView,
   type ImagePromptVariableKey,
 } from '@/features/media-generation/lib/imagePromptTemplates'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 
 import type { ImageStudioContext } from '../lib/imageStudioTypes'

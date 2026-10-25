@@ -1,7 +1,7 @@
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 
 export type WorkflowSaveBarProps = {
   dirty: boolean
@@ -27,10 +27,10 @@ export function WorkflowSaveBar({ dirty, dirtyFields, drawerOpen, saving, saveDi
         <span className="truncate">{t('panels.drawer.pageSaveBar.messagePrefix', { fields: dirtyFields.join(', ') })}</span>
       </div>
       <div className="flex shrink-0 gap-2">
-        <Button variant="outline" className="border-border bg-transparent text-popover-foreground hover:bg-muted/80" onClick={onDiscard} disabled={saving} data-testid="workflow-home-discard">
+        <Button size="md" variant="secondary" className="border-border bg-transparent text-popover-foreground hover:bg-muted/80" onClick={onDiscard} disabled={saving} data-testid="workflow-home-discard">
           {t('panels.drawer.pageSaveBar.discard')}
         </Button>
-        <Button className="bg-primary hover:bg-primary/90" onClick={onSave} disabled={saveDisabled} data-testid="workflow-home-save">
+        <Button size="md" variant="primary" className="bg-primary hover:bg-primary/90" onClick={onSave} disabled={saveDisabled} data-testid="workflow-home-save">
           {saving ? <LoaderCircle className="size-4 animate-spin" /> : null}
           {t('panels.drawer.pageSaveBar.save')}
         </Button>
@@ -57,10 +57,10 @@ export function WorkflowDrawerSaveRow({ validationErrorCount, saving, onDiscard,
           ? t('panels.drawer.saveBar.validationErrors', { count: validationErrorCount })
           : t('panels.drawer.saveBar.unsavedEdits')}
       </span>
-      <Button variant="outline" onClick={onDiscard} disabled={saving} data-testid="workflow-drawer-discard">
+      <Button size="md" variant="secondary" onClick={onDiscard} disabled={saving} data-testid="workflow-drawer-discard">
         {t('panels.drawer.saveBar.discard')}
       </Button>
-      <Button className="bg-primary hover:bg-primary/90" onClick={onSave} disabled={validationErrorCount > 0 || saving} data-testid="workflow-drawer-save">
+      <Button size="md" variant="primary" className="bg-primary hover:bg-primary/90" onClick={onSave} disabled={validationErrorCount > 0 || saving} data-testid="workflow-drawer-save">
         {saving ? <LoaderCircle className="size-3 animate-spin" /> : null}
         {t('panels.drawer.saveBar.save')}
       </Button>

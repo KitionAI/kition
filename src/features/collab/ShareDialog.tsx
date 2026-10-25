@@ -6,8 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle, TrashIcon as Trash2, UserMinusIcon as UserMinus } from '@kition/tessera-icons/react'
-import { Button, Input } from '@kition/app-ui'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
 import { notify } from '@/lib/notify'
 import { ROLE_RANK, type Member, type Role } from '@/lib/sync'
 import { useDocumentCollab } from './collabStore'
@@ -136,12 +135,12 @@ export function ShareDialog({ shared, onClose, errorText }: { shared: SharedDial
   const roleLabel = (role: Role) => t(`collab.role.${role}`)
 
   return (
-    <Dialog open={Boolean(shared)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="sm" className="gap-0 p-0" data-testid="collab-share-dialog">
-        <DialogHeader className="space-y-2 border-b px-5 py-4">
-          <DialogTitle>{t('collab.sharedTitle')}</DialogTitle>
-          <DialogDescription>{t('collab.sharedDescription')}</DialogDescription>
-        </DialogHeader>
+    <Modal open={Boolean(shared)} onOpenChange={(open) => !open && onClose()}>
+      <ModalContent size="sm" className="gap-0 p-0" data-testid="collab-share-dialog">
+        <ModalHeader className="space-y-2 border-b px-5 py-4">
+          <ModalTitle>{t('collab.sharedTitle')}</ModalTitle>
+          <ModalDescription>{t('collab.sharedDescription')}</ModalDescription>
+        </ModalHeader>
         <div className="space-y-3 px-5 py-4">
           <div className="inline-flex gap-1 rounded-lg border border-border p-0.5" role="radiogroup" aria-label={t('collab.accessLabel')}>
             {allowed.map((role) => (
@@ -149,7 +148,7 @@ export function ShareDialog({ shared, onClose, errorText }: { shared: SharedDial
                 key={role}
                 type="button"
                 size="sm"
-                variant={access === role ? 'secondary' : 'ghost'}
+                variant={access === role ? 'subtle' : 'ghost'}
                 role="radio"
                 aria-checked={access === role}
                 disabled={busy}
@@ -162,15 +161,15 @@ export function ShareDialog({ shared, onClose, errorText }: { shared: SharedDial
           </div>
           <div className="flex items-center gap-2">
             {shown ? (
-              <Input readOnly value={shown} aria-label={t('collab.linkLabel')} data-testid="collab-share-link" onFocus={(event) => event.currentTarget.select()} />
+              <TextInput size="lg" readOnly value={shown} aria-label={t('collab.linkLabel')} data-testid="collab-share-link" onFocus={(event) => event.currentTarget.select()} />
             ) : (
-              <Button type="button" variant="outline" className="w-full" disabled={busy} data-testid="collab-share-new-link" onClick={() => choose(access)}>
+              <Button size="md" type="button" variant="secondary" className="w-full" disabled={busy} data-testid="collab-share-new-link" onClick={() => choose(access)}>
                 {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {t('collab.newLink')}
               </Button>
             )}
             {isOwner && shown ? (
-              <Button type="button" variant="ghost" size="icon" title={t('collab.revokeLink')} aria-label={t('collab.revokeLink')} disabled={busy} data-testid="collab-share-revoke" onClick={revoke}>
+              <Button type="button" variant="ghost" size="md" iconOnly title={t('collab.revokeLink')} aria-label={t('collab.revokeLink')} disabled={busy} data-testid="collab-share-revoke" onClick={revoke}>
                 <Trash2 className="size-4" />
               </Button>
             ) : null}
@@ -201,7 +200,7 @@ export function ShareDialog({ shared, onClose, errorText }: { shared: SharedDial
                             </option>
                           ))}
                         </select>
-                        <Button type="button" variant="ghost" size="icon" className="size-7" title={t('collab.removeMember', { name })} aria-label={t('collab.removeMember', { name })} data-testid="collab-member-remove" onClick={() => remove(member)}>
+                        <Button type="button" variant="ghost" size="md" iconOnly className="size-7" title={t('collab.removeMember', { name })} aria-label={t('collab.removeMember', { name })} data-testid="collab-member-remove" onClick={() => remove(member)}>
                           <UserMinus className="size-4" />
                         </Button>
                       </>
@@ -214,11 +213,11 @@ export function ShareDialog({ shared, onClose, errorText }: { shared: SharedDial
             </div>
           ) : null}
         </div>
-        <DialogFooter className="border-t px-5 py-4">
-          <Button type="button" variant="outline" onClick={onClose}>
+        <ModalFooter className="border-t px-5 py-4">
+          <Button size="md" type="button" variant="secondary" onClick={onClose}>
             {t('collab.close')}
           </Button>
-          <Button
+          <Button size="md" variant="primary"
             type="button"
             disabled={!shown}
             onClick={() => {
@@ -227,8 +226,8 @@ export function ShareDialog({ shared, onClose, errorText }: { shared: SharedDial
           >
             {t('collab.copyLink')}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

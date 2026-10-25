@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { applyDesktopAppearance, applyDesktopDisplay, createDefaultDesktopDisplaySettings, createDefaultDesktopSettings, loadDesktopSettings, saveDesktopSettings } from '@/services/desktopSettings'
 import type { DesktopDisplaySettings, DesktopSettingsState, DesktopThemeMode } from '@/types/desktopSettings'
-import { Button, Input, Select } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, Select, TextInput } from '@kition/tessera'
 import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } from '@/features/settings/primitives'
 import { isPristine } from '@/features/settings/dirty'
 import { useTranslation } from '@/i18n'
-import { cn } from '@kition/app-ui/utils'
 import { RotateCcwIcon as RotateCcw } from '@kition/tessera-icons/react'
 import { preserveLiveThemePreview } from '@/features/settings/sections/themePreview'
 
@@ -156,7 +156,7 @@ export function DisplaySettings() {
         saving={saving}
         lastSavedAt={lastSavedAt}
         destructive={
-          <Button variant="outline" size="sm" onClick={() => void resetToDefaults()}>
+          <Button variant="secondary" size="sm" onClick={() => void resetToDefaults()}>
             <RotateCcw className="size-4" />
             {t('display.restoreDefaults')}
           </Button>
@@ -179,7 +179,7 @@ function DisplayAppearanceSection({ display, theme, onUpdate, onUpdateTheme }: D
             <Button
               key={item.value}
               size="sm"
-              variant={theme === item.value ? 'default' : 'outline'}
+              variant={theme === item.value ? 'primary' : 'secondary'}
               onClick={() => onUpdateTheme(item.value)}
             >
               {t(`themeMode.${item.value}`)}
@@ -211,7 +211,7 @@ function DisplayAppearanceSection({ display, theme, onUpdate, onUpdateTheme }: D
             <Button
               key={item.value}
               size="sm"
-              variant={display.density === item.value ? 'default' : 'outline'}
+              variant={display.density === item.value ? 'primary' : 'secondary'}
               onClick={() => onUpdate('density', item.value)}
             >
               {t(`display.density.${item.value}`)}
@@ -258,7 +258,7 @@ function DisplayTypographySection({ display, theme, onUpdate, onUpdateTheme }: D
   return (
     <SettingsSection title={t('display.typographySection')}>
       <SettingsRow title={t('display.codeFont')}>
-        <Select
+        <Select size="lg"
           className="settings-select w-full max-w-[220px]"
           value={display.codeFontFamily}
           onChange={(event) => onUpdate('codeFontFamily', event.target.value as DesktopDisplaySettings['codeFontFamily'])}
@@ -274,7 +274,7 @@ function DisplayTypographySection({ display, theme, onUpdate, onUpdateTheme }: D
         title={t('display.codeFontSize')}
         description={t('display.codeFontSizeDescription')}
       >
-        <Input
+        <TextInput size="lg"
           type="number"
           min={12}
           max={18}
@@ -291,7 +291,7 @@ function DisplayTypographySection({ display, theme, onUpdate, onUpdateTheme }: D
             <Button
               key={item.value}
               size="sm"
-              variant={display.agentTimelineLineHeight === item.value ? 'default' : 'outline'}
+              variant={display.agentTimelineLineHeight === item.value ? 'primary' : 'secondary'}
               onClick={() => onUpdate('agentTimelineLineHeight', item.value)}
             >
               {t(`display.lineHeight.${item.value}`)}

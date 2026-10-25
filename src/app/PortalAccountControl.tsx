@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
+import { useDialogFocus } from '@kition/tessera'
 import { XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 

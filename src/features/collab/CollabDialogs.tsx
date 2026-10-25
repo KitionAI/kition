@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
-import { Button, Input } from '@kition/app-ui'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
 import { notify } from '@/lib/notify'
 import { SyncRpcError } from '@/lib/sync'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
 import { collabConfigured, CollabUnavailableError } from './syncConnection'
 import { onCollabSettingsChanged } from './collabSettings'
 import { ShareDialog, type SharedDialogDocument } from './ShareDialog'
@@ -147,20 +146,20 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
     <>
       <ShareDialog shared={shared} onClose={() => setShared(null)} errorText={errorText} />
       <SyncedDocumentsDialog open={listing} onClose={() => setListing(false)} kitFor={kitFor} onOpened={onOpened} errorText={errorText} />
-      <Dialog open={Boolean(opening)} onOpenChange={(open) => !open && !opening?.busy && setOpening(null)}>
-        <DialogContent size="sm" className="gap-0 p-0" data-testid="collab-open-dialog">
+      <Modal open={Boolean(opening)} onOpenChange={(open) => !open && !opening?.busy && setOpening(null)}>
+        <ModalContent size="sm" className="gap-0 p-0" data-testid="collab-open-dialog">
           <form
             onSubmit={(event) => {
               event.preventDefault()
               submit()
             }}
           >
-            <DialogHeader className="space-y-2 border-b px-5 py-4">
-              <DialogTitle>{t('collab.openShared')}</DialogTitle>
-              <DialogDescription>{t('collab.openSharedDescription')}</DialogDescription>
-            </DialogHeader>
+            <ModalHeader className="space-y-2 border-b px-5 py-4">
+              <ModalTitle>{t('collab.openShared')}</ModalTitle>
+              <ModalDescription>{t('collab.openSharedDescription')}</ModalDescription>
+            </ModalHeader>
             <div className="space-y-2 px-5 py-4">
-              <Input
+              <TextInput size="lg"
                 value={opening?.link ?? ''}
                 onChange={(event) => setOpening((current) => (current ? { ...current, link: event.target.value, error: '' } : current))}
                 placeholder={t('collab.linkPlaceholder')}
@@ -175,18 +174,18 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
                 </p>
               ) : null}
             </div>
-            <DialogFooter className="border-t px-5 py-4">
-              <Button type="button" variant="outline" onClick={() => setOpening(null)} disabled={opening?.busy}>
+            <ModalFooter className="border-t px-5 py-4">
+              <Button size="md" type="button" variant="secondary" onClick={() => setOpening(null)} disabled={opening?.busy}>
                 {t('collab.cancel')}
               </Button>
-              <Button type="submit" disabled={!opening?.link.trim() || opening?.busy} data-testid="collab-open-submit">
+              <Button size="md" variant="primary" type="submit" disabled={!opening?.link.trim() || opening?.busy} data-testid="collab-open-submit">
                 {opening?.busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {t('collab.open')}
               </Button>
-            </DialogFooter>
+            </ModalFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </ModalContent>
+      </Modal>
     </>
   )
 }

@@ -2,8 +2,7 @@ import { LoaderCircleIcon as LoaderCircle, MailIcon as Mail, PlusIcon as Plus, R
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Disclosure, Input, PasswordInput } from '@kition/app-ui'
-import { useConfirm } from '@kition/app-ui/confirm'
+import { Button, Disclosure, PasswordInput, TextInput, useConfirm } from '@kition/tessera'
 import {
   emailProviderCatalog,
   getEmailProvider,
@@ -122,10 +121,10 @@ export function ConnectionsSettingsPanel({
           <p>{t('panel.subtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void refresh()} aria-label={t('panel.refreshAria')}>
+          <Button variant="secondary" size="sm" onClick={() => void refresh()} aria-label={t('panel.refreshAria')}>
             <RefreshCw className="size-4" />
           </Button>
-          <Button size="sm" onClick={() => setModal(emptyForm())} data-testid="connection-new">
+          <Button variant="primary" size="sm" onClick={() => setModal(emptyForm())} data-testid="connection-new">
             <Plus className="size-4" />
             {t('panel.newConnection')}
           </Button>
@@ -172,7 +171,7 @@ export function ConnectionsSettingsPanel({
                 <Mail className="mx-auto mb-3 size-7 text-primary" />
                 <div className="text-sm font-semibold text-foreground">{t('panel.emptyTitle')}</div>
                 <p className="mt-1 text-xs text-muted-foreground">{t('panel.emptyHint')}</p>
-                <Button size="sm" className="mt-4" onClick={() => setModal(emptyForm())}>
+                <Button variant="primary" size="sm" className="mt-4" onClick={() => setModal(emptyForm())}>
                   {t('panel.emptyCta')}
                 </Button>
               </div>
@@ -359,19 +358,19 @@ export function ConnectionModal({
             {provider.credentialHint}
           </div> : null}
           {!sharedAccount ? <>
-            <FormField label="Email address or account"><Input value={form.username} placeholder={provider.accountHint} onChange={(event) => setForm({ ...form, username: event.target.value })} data-testid="connection-username" /></FormField>
+            <FormField label="Email address or account"><TextInput size="lg" value={form.username} placeholder={provider.accountHint} onChange={(event) => setForm({ ...form, username: event.target.value })} data-testid="connection-username" /></FormField>
             <FormField label={provider.credentialLabel}>
-              <PasswordInput value={form.password} placeholder={form.id ? t('modal.passwordPlaceholderEdit') : provider.credentialLabel} onChange={(event) => setForm({ ...form, password: event.target.value })} data-testid="connection-password" />
+              <PasswordInput size="lg" value={form.password} placeholder={form.id ? t('modal.passwordPlaceholderEdit') : provider.credentialLabel} onChange={(event) => setForm({ ...form, password: event.target.value })} data-testid="connection-password" />
             </FormField>
           </> : null}
-          <FormField label={t('modal.fieldFromName')}><Input value={form.fromName} placeholder={t('modal.fromNamePlaceholder')} onChange={(event) => setForm({ ...form, fromName: event.target.value })} data-testid="connection-from-name" /></FormField>
+          <FormField label={t('modal.fieldFromName')}><TextInput size="lg" value={form.fromName} placeholder={t('modal.fromNamePlaceholder')} onChange={(event) => setForm({ ...form, fromName: event.target.value })} data-testid="connection-from-name" /></FormField>
 
           <Disclosure title="Advanced" defaultOpen={form.providerId === 'custom'}>
             <div className="grid gap-3 pt-3">
-              <FormField label={t('modal.fieldName')}><Input value={form.name} placeholder={`${provider.label} delivery`} onChange={(event) => setForm({ ...form, name: event.target.value })} data-testid="connection-name" /></FormField>
+              <FormField label={t('modal.fieldName')}><TextInput size="lg" value={form.name} placeholder={`${provider.label} delivery`} onChange={(event) => setForm({ ...form, name: event.target.value })} data-testid="connection-name" /></FormField>
               <div className="grid grid-cols-[1fr_120px] gap-3">
-                <FormField label={t('modal.fieldHost')}><Input value={form.host} placeholder={t('modal.hostPlaceholder')} onChange={(event) => setForm({ ...form, host: event.target.value })} data-testid="connection-host" /></FormField>
-                <FormField label={t('modal.fieldPort')}><Input value={form.port} placeholder={t('modal.portPlaceholder')} onChange={(event) => setForm({ ...form, port: event.target.value })} data-testid="connection-port" /></FormField>
+                <FormField label={t('modal.fieldHost')}><TextInput size="lg" value={form.host} placeholder={t('modal.hostPlaceholder')} onChange={(event) => setForm({ ...form, host: event.target.value })} data-testid="connection-host" /></FormField>
+                <FormField label={t('modal.fieldPort')}><TextInput size="lg" value={form.port} placeholder={t('modal.portPlaceholder')} onChange={(event) => setForm({ ...form, port: event.target.value })} data-testid="connection-port" /></FormField>
               </div>
               <div className="grid grid-cols-[160px_1fr] gap-3">
                 <FormField label={t('modal.fieldTls')}>
@@ -379,7 +378,7 @@ export function ConnectionModal({
                     {tlsOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </FormField>
-                <FormField label={t('modal.fieldFromAddress')}><Input type="email" value={form.from} placeholder="Defaults to the account address" onChange={(event) => setForm({ ...form, from: event.target.value })} data-testid="connection-from" /></FormField>
+                <FormField label={t('modal.fieldFromAddress')}><TextInput size="lg" type="email" value={form.from} placeholder="Defaults to the account address" onChange={(event) => setForm({ ...form, from: event.target.value })} data-testid="connection-from" /></FormField>
               </div>
             </div>
           </Disclosure>
@@ -387,8 +386,8 @@ export function ConnectionModal({
           {okMessage ? <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">{okMessage}</div> : null}
         </div>
         <footer className={embedded ? 'flex justify-end gap-2 border-t border-border pt-4' : 'flex justify-end gap-2 border-t border-border bg-muted/40 px-5 py-4'}>
-          {!embedded ? <Button variant="outline" onClick={onClose}>{t('modal.cancel')}</Button> : null}
-          <Button disabled={!canSubmit || saving} onClick={() => void submit()} data-testid="connection-save">
+          {!embedded ? <Button size="md" variant="secondary" onClick={onClose}>{t('modal.cancel')}</Button> : null}
+          <Button size="md" variant="primary" disabled={!canSubmit || saving} onClick={() => void submit()} data-testid="connection-save">
             {saving ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {t('modal.testAndSave')}
           </Button>
@@ -434,9 +433,9 @@ function ConnectionDetail({ connection, onEdit, onDelete, onTest }: {
         <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">{connection.lastErrorMessage}</div>
       ) : null}
       <div className="mt-6 flex gap-2">
-        <Button variant="outline" onClick={onEdit}>{t('detail.edit')}</Button>
-        <Button
-          variant="outline"
+        <Button size="md" variant="secondary" onClick={onEdit}>{t('detail.edit')}</Button>
+        <Button size="md"
+          variant="secondary"
           onClick={async () => {
             setBusy('test')
             try { await onTest() } finally { setBusy('') }
@@ -446,15 +445,15 @@ function ConnectionDetail({ connection, onEdit, onDelete, onTest }: {
           {busy === 'test' ? <LoaderCircle className="size-4 animate-spin" /> : null}
           {t('detail.test')}
         </Button>
-        <Button
-          variant="outline"
+        <Button size="md"
+          variant="secondary"
           className="ml-auto text-destructive hover:text-destructive"
           onClick={async () => {
             const used = connection.usedByCount || 0
             const message = used > 0
               ? t('confirms.deleteWithUsage', { name: connection.name, count: used })
               : t('confirms.deleteNoUsage', { name: connection.name })
-            if (!(await confirm({ message, variant: 'destructive' }))) return
+            if (!(await confirm({ message, variant: 'danger' }))) return
             setBusy('delete')
             try { await onDelete() } finally { setBusy('') }
           }}

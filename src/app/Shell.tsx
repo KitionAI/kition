@@ -2,7 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MenuIcon as Menu, XIcon as X } from '@kition/tessera-icons/react'
 import { toast, Toaster } from 'sonner'
-import { ConfirmProvider } from '@kition/app-ui/confirm'
+import { cn } from '@/lib/cn'
+import { ConfirmProvider, useMediaQuery } from '@kition/tessera'
 import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBanner'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { appLocationPathname, leaveAppView, readAppLocation, resolveSettingsSection, type AppLocation } from '@/app/appLocation'
@@ -15,10 +16,8 @@ import { WorkspaceLauncherScreen } from '@/features/workspace/components/Workspa
 import { WorkspaceOpenModeDialog } from '@/features/workspace/components/WorkspaceOpenModeDialog'
 import { useWorkspaceVaults } from '@/features/workspace/hooks/useWorkspaceVaults'
 import { getWorkspaceDisplayName } from '@/features/workspace/lib/workspacePersistence'
-import { cn } from '@kition/app-ui/utils'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
-import { useMediaQuery } from '@kition/app-ui/hooks/use-media-query'
 import {
   getDesktopBackendStatus,
   getDesktopInfo,

@@ -1,7 +1,7 @@
 import type { ComponentType, ImgHTMLAttributes } from 'react'
 
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 export const KIT_ICON_IDS = [
   'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design', 'layout',

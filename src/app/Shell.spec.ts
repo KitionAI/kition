@@ -97,7 +97,7 @@ vi.mock('@/features/workspace/components/WorkspaceOpenModeDialog', () => ({
   WorkspaceOpenModeDialog: () => null,
 }))
 
-vi.mock('@kition/app-ui/utils', () => ({
+vi.mock('@/lib/cn', () => ({
   cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' '),
 }))
 

@@ -1,7 +1,7 @@
 import { GitBranchIcon as GitBranch } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { setAgentKitEditMode, useAgentKitEditMode } from '@/features/agent/lib/agentKitEditMode'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 /** The composer's choice of how the agent edits kit documents: live, or as a draft to review. */
 export function AgentKitEditModeToggle({ disabled }: { disabled?: boolean }) {

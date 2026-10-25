@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ClipboardCheckIcon as ClipboardCheck, LifeBuoyIcon as LifeBuoy, MessageSquareTextIcon as MessageSquareText, ScaleIcon as Scale, ShieldCheckIcon as ShieldCheck } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { KITION_PRIVACY_URL, KITION_SUPPORT_URL, KITION_TERMS_URL } from '@/features/account/lib/accountLinks'
 import { FeedbackForm } from '@/features/support/components/FeedbackForm'
@@ -72,14 +72,14 @@ export function SupportAndTrustSettings({
     <>
       <SettingsSection title={t('about.supportSection')} description={t('about.supportSectionDescription')}>
         <SettingsRow title={t('about.contactSupport')} description={t('about.contactSupportDescription')}>
-          <Button onClick={() => openSupport(KITION_CONTACT_SUPPORT_URL)}>
+          <Button size="md" variant="primary" onClick={() => openSupport(KITION_CONTACT_SUPPORT_URL)}>
             <LifeBuoy className="size-4" />
             {t('about.contactSupportAction')}
           </Button>
         </SettingsRow>
         <SettingsRow title={t('about.sendFeedback')} description={t('about.sendFeedbackDescription')}>
-          <Button
-            variant="outline"
+          <Button size="md"
+            variant="secondary"
             onClick={openFeedback}
             aria-expanded={feedbackOpen}
             data-testid="open-feedback-form"
@@ -96,7 +96,7 @@ export function SupportAndTrustSettings({
           />
         ) : null}
         <SettingsRow title={t('about.copyDiagnostics')} description={t('about.copyDiagnosticsDescription')}>
-          <Button variant="outline" onClick={() => void copyDiagnostics()} disabled={copying} data-testid="copy-support-diagnostics">
+          <Button size="md" variant="secondary" onClick={() => void copyDiagnostics()} disabled={copying} data-testid="copy-support-diagnostics">
             <ClipboardCheck className="size-4" />
             {copying ? t('about.copyingDiagnostics') : t('about.copyDiagnosticsAction')}
           </Button>
@@ -105,13 +105,13 @@ export function SupportAndTrustSettings({
       </SettingsSection>
       <SettingsSection title={t('about.trustSection')}>
         <SettingsRow title={t('about.privacyPolicy')} description={t('about.privacyPolicyDescription')}>
-          <Button variant="outline" onClick={() => void openExternalURL(KITION_PRIVACY_URL)}>
+          <Button size="md" variant="secondary" onClick={() => void openExternalURL(KITION_PRIVACY_URL)}>
             <ShieldCheck className="size-4" />
             {t('about.openPrivacy')}
           </Button>
         </SettingsRow>
         <SettingsRow title={t('about.termsOfService')} description={t('about.termsOfServiceDescription')}>
-          <Button variant="outline" onClick={() => void openExternalURL(KITION_TERMS_URL)}>
+          <Button size="md" variant="secondary" onClick={() => void openExternalURL(KITION_TERMS_URL)}>
             <Scale className="size-4" />
             {t('about.openTerms')}
           </Button>

@@ -2,11 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDownIcon as ChevronDown, EllipsisIcon as MoreHorizontal, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
-import { Button, Card, CardContent, Input } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, Card, CardContent, TextInput, useConfirm, useDismissableLayer } from '@kition/tessera'
 import { SkeletonRows } from '@/components/states'
-import { useConfirm } from '@kition/app-ui/confirm'
-import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
-import { cn } from '@kition/app-ui/utils'
 import type { VaultEntry } from '@/services/desktop'
 
 type WorkspaceLauncherScreenProps = {
@@ -115,7 +113,7 @@ export function WorkspaceLauncherScreen({
 
   const handleRemove = (vaultPath: string) =>
     runAction(async () => {
-      if (!(await confirm({ message: t('vault.removeConfirm'), variant: 'destructive' }))) {
+      if (!(await confirm({ message: t('vault.removeConfirm'), variant: 'danger' }))) {
         return
       }
       await onRemoveVault(vaultPath)
@@ -139,7 +137,7 @@ export function WorkspaceLauncherScreen({
           <div className="flex items-center justify-between pb-3">
             <span className="text-sm font-medium text-foreground">{t('title')}</span>
             {variant === 'dialog' && onClose ? (
-              <Button variant="ghost" size="icon" onClick={onClose} aria-label={tCommon('actions.close')}>
+              <Button variant="ghost" size="md" iconOnly onClick={onClose} aria-label={tCommon('actions.close')}>
                 <X className="size-4" />
               </Button>
             ) : null}
@@ -227,9 +225,9 @@ export function WorkspaceLauncherScreen({
                 title={t('actions.open.title')}
                 description={t('actions.open.description')}
               >
-                <Button
+                <Button size="md"
                   type="button"
-                  variant="secondary"
+                  variant="subtle"
                   disabled={isBusy}
                   onClick={handleOpenLocal}
                 >
@@ -252,7 +250,7 @@ export function WorkspaceLauncherScreen({
             >
               <h2 className="text-base font-medium text-foreground">{t('vault.renameTitle')}</h2>
               <p className="mt-1 truncate text-xs text-muted-foreground">{renameTarget.path}</p>
-              <Input
+              <TextInput size="lg"
                 autoFocus
                 className="mt-3"
                 placeholder={t('vault.renamePlaceholder')}
@@ -263,10 +261,10 @@ export function WorkspaceLauncherScreen({
                 <p className="mt-3 text-xs text-destructive">{actionError}</p>
               ) : null}
               <div className="mt-5 flex justify-end gap-2">
-                <Button variant="ghost" type="button" onClick={() => setRenameTarget(null)} disabled={isBusy}>
+                <Button size="md" variant="ghost" type="button" onClick={() => setRenameTarget(null)} disabled={isBusy}>
                   {t('actions.create.cancel')}
                 </Button>
-                <Button
+                <Button size="md" variant="primary"
                   type="button"
                   className="bg-brand text-brand-foreground hover:bg-brand/90"
                   onClick={handleRenameSubmit}

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { CloudIcon as Cloud, FolderCheckIcon as FolderCheck, KeyRoundIcon as KeyRound, LaptopIcon as Laptop, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { isKitionAccountSessionUsable } from '@/features/account/lib/accountState'
 import { useTranslation } from '@/i18n'
@@ -100,7 +100,7 @@ export function FirstRunActivationPanel({
                 <h2 className="text-sm font-semibold">{t('firstRun.choice.cloud')}</h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('firstRun.choice.cloudDescription')}</p>
               </div>
-              <Button
+              <Button size="md" variant="primary"
                 className="shrink-0 sm:min-w-44"
                 onClick={() => void handleCloudAction()}
                 disabled={kitionAccount.state.status === 'loading' || (busy && kitionAccount.state.status !== 'connecting')}
@@ -119,8 +119,8 @@ export function FirstRunActivationPanel({
                 <h2 className="text-sm font-semibold">{t('firstRun.choice.byo')}</h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('firstRun.choice.byoDescription')}</p>
               </div>
-              <Button
-                variant="outline"
+              <Button size="md"
+                variant="secondary"
                 className="shrink-0 sm:min-w-44"
                 onClick={onConfigureModels}
                 data-testid="first-run-configure-models"
@@ -138,8 +138,8 @@ export function FirstRunActivationPanel({
                 <h2 className="text-sm font-semibold">{t('firstRun.choice.local')}</h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('firstRun.choice.localDescription')}</p>
               </div>
-              <Button
-                variant="outline"
+              <Button size="md"
+                variant="secondary"
                 className="shrink-0 sm:min-w-44"
                 onClick={onStartLocal}
                 data-testid="first-run-start-local"
@@ -159,7 +159,7 @@ export function FirstRunActivationPanel({
         </div>
 
         <footer className="flex items-center justify-end border-t border-border px-6 py-4 sm:px-8">
-          <Button variant="ghost" onClick={onSkip}>{t('firstRun.skip')}</Button>
+          <Button size="md" variant="ghost" onClick={onSkip}>{t('firstRun.skip')}</Button>
         </footer>
       </section>
     </div>

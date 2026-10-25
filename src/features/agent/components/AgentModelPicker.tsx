@@ -1,9 +1,9 @@
 import { CheckIcon as Check, ChevronDownIcon as ChevronDown, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
+import { cn } from '@/lib/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
-import { cn } from '@kition/app-ui/utils'
 
 type AgentModelPickerProps = {
   className?: string

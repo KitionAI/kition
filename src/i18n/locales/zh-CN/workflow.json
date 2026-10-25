@@ -687,5 +687,12 @@
     "connectAccount": "连接一个邮箱账户以启用此步骤。",
     "startWorkflow": "启动此工作流",
     "defaultTable": "收件箱"
+  },
+  "formSync": {
+    "copyPublicLink": "复制公开链接",
+    "openPublicForm": "打开公开表单",
+    "moveFieldUp": "上移字段",
+    "moveFieldDown": "下移字段",
+    "deleteField": "删除字段"
   }
 }

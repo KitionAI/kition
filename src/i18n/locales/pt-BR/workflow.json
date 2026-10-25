@@ -687,5 +687,12 @@
     "connectAccount": "Conecte uma conta de e-mail para ativar esta etapa.",
     "startWorkflow": "Iniciar este fluxo de trabalho",
     "defaultTable": "Caixa de entrada"
+  },
+  "formSync": {
+    "copyPublicLink": "Copiar link público",
+    "openPublicForm": "Abrir formulário público",
+    "moveFieldUp": "Mover campo para cima",
+    "moveFieldDown": "Mover campo para baixo",
+    "deleteField": "Excluir campo"
   }
 }

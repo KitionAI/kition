@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import type { ScenarioBuildEvent } from '@/features/scenario/types'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 export interface BuildProgressCardProps {
   events: ScenarioBuildEvent[]

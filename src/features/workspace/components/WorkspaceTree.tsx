@@ -21,8 +21,8 @@ import {
 } from '@/features/workspace/lib/workspace'
 import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
 import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
-import { cn } from '@kition/app-ui/utils'
-import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
+import { cn } from '@/lib/cn'
+import { useDismissableLayer } from '@kition/tessera'
 
 type WorkspaceTreeDropIndicator = { path: string; position: WorkspaceTreeDropPosition }
 

@@ -16,8 +16,7 @@ src/
   lib/          Shared low-level utilities
   types/        Shared TypeScript types
 
-packages/
-  app-ui/        @kition/app-ui: shared UI primitives (buttons, dialogs, popovers, form controls, `cn`)
+packages/       Source packages run outside Kition too (none at the moment; packages/README.md)
 ```
 
 Editor workspace layout should follow a consistent chrome:
@@ -85,7 +84,7 @@ Examples:
 - Let `src/app/Shell.tsx` stay focused on route-level shell chrome, modal routing, and app-wide entry concerns.
 - Let workspace screen components own editor-page composition, portal consumption, and feature orchestration.
 - Do not place new Agent presentation logic back into `src/app/Shell.tsx`.
-- Keep `packages/app-ui` to generic primitives. Do not place app-level business UI there.
+- Shared controls come from Kition Tessera (`@kition/tessera`): buttons, form fields, Modal, Popover, Sheet, Switch, Confirm, Command. Add a missing generic control to Tessera, not to Kition; keep app-level business UI in `src/`.
 
 ## Size And Split Rules
 
@@ -115,7 +114,7 @@ Transition note:
 
 - Remove dead pages, dead wrapper files, and duplicated utilities when found.
 - Avoid one-line indirection files unless they provide a stable public boundary with real value.
-- Reuse `cn` from `@kition/app-ui/utils` instead of duplicating it.
+- Reuse `cn` from `@/lib/cn` instead of duplicating it.
 
 ## Implementation Workflow
 

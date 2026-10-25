@@ -2,7 +2,7 @@ import { CheckIcon as Check, CircleIcon as Circle, LoaderCircleIcon as LoaderCir
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 type PlanStep = {
   step: string

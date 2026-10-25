@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Input, Select } from '@kition/app-ui'
+import { Button, Select, TextInput } from '@kition/tessera'
 import {
   SettingsActionBar,
   SettingsPaneHeader,
@@ -58,7 +58,7 @@ function BrandKitEditor({ root }: { root: string }) {
     <>
       <SettingsSection title={t('brand.identitySection')}>
         <SettingsRow title={t('brand.name')} description={t('brand.nameDescription')}>
-          <Input
+          <TextInput size="lg"
             className="settings-input"
             aria-label={t('brand.name')}
             value={draft.name ?? ''}
@@ -66,7 +66,7 @@ function BrandKitEditor({ root }: { root: string }) {
           />
         </SettingsRow>
         <SettingsRow title={t('brand.font')} description={t('brand.fontDescription')}>
-          <Select
+          <Select size="lg"
             className="settings-select"
             aria-label={t('brand.font')}
             value={draft.fontFamily ?? ''}
@@ -81,7 +81,7 @@ function BrandKitEditor({ root }: { root: string }) {
           </Select>
         </SettingsRow>
         <SettingsRow title={t('brand.logo')} description={t('brand.logoDescription')}>
-          <Input
+          <TextInput size="lg"
             className="settings-input"
             aria-label={t('brand.logo')}
             value={draft.logoPath ?? ''}

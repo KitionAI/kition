@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlobeIcon as Globe, NetworkIcon as Network, ShieldAlertIcon as ShieldAlert } from '@kition/tessera-icons/react'
-import { Button, Input, PasswordInput, Select } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, PasswordInput, Select, TextInput } from '@kition/tessera'
 import {
   SettingsPaneHeader,
   SettingsSection,
@@ -22,7 +23,6 @@ import {
   type DesktopProxyTestResult,
 } from '@/types/desktopProxy'
 import { notify } from '@/lib/notify/notify'
-import { cn } from '@kition/app-ui/utils'
 
 type FormState = DesktopProxyState & {
   /**
@@ -276,7 +276,7 @@ export function NetworkSettings() {
       >
         <SettingsSection>
           <SettingsRow title={t('network.proxy.schemeLabel')}>
-            <Select
+            <Select size="lg"
               value={form.scheme}
               onChange={(event) => update('scheme', event.target.value as DesktopProxyScheme)}
               aria-label={t('network.proxy.schemeLabel')}
@@ -292,7 +292,7 @@ export function NetworkSettings() {
           </SettingsRow>
 
           <SettingsRow title={t('network.proxy.hostLabel')} description={errors.host}>
-            <Input
+            <TextInput size="lg"
               type="text"
               value={form.host}
               onChange={(event) => update('host', event.target.value)}
@@ -303,7 +303,7 @@ export function NetworkSettings() {
           </SettingsRow>
 
           <SettingsRow title={t('network.proxy.portLabel')} description={errors.port}>
-            <Input
+            <TextInput size="lg"
               type="number"
               min={1}
               max={65535}
@@ -321,7 +321,7 @@ export function NetworkSettings() {
 
         <SettingsSection title={t('network.proxy.usernameLabel').replace(/ \(.*\)$/, '')}>
           <SettingsRow title={t('network.proxy.usernameLabel')}>
-            <Input
+            <TextInput size="lg"
               type="text"
               value={form.username}
               autoComplete="off"
@@ -336,7 +336,7 @@ export function NetworkSettings() {
             description={t('network.proxy.passwordHelp')}
           >
             <div className="flex w-full max-w-[288px] flex-col items-stretch gap-2">
-              <PasswordInput
+              <PasswordInput size="lg"
                 value={form.passwordDraft ?? ''}
                 autoComplete="off"
                 onChange={(event) => update('passwordDraft', event.target.value)}
@@ -366,7 +366,7 @@ export function NetworkSettings() {
             title={t('network.proxy.noProxyLabel')}
             description={t('network.proxy.noProxyHint')}
           >
-            <Input
+            <TextInput size="lg"
               type="text"
               value={form.noProxy}
               onChange={(event) => update('noProxy', event.target.value)}
@@ -382,8 +382,8 @@ export function NetworkSettings() {
           title={t('network.proxy.testButton')}
           description={t('network.proxy.scopeNote')}
         >
-          <Button
-            variant="outline"
+          <Button size="md"
+            variant="secondary"
             onClick={() => void handleTest()}
             disabled={testing || hasErrors || !form.enabled}
           >
@@ -460,10 +460,10 @@ function RestartConfirmDialog({ busy, onConfirm, onCancel }: RestartDialogProps)
           {busy ? t('network.proxy.restart.restarting') : t('network.proxy.restart.body')}
         </p>
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={busy}>
+          <Button size="md" variant="secondary" onClick={onCancel} disabled={busy}>
             {t('network.proxy.restart.cancelButton')}
           </Button>
-          <Button onClick={onConfirm} disabled={busy}>
+          <Button size="md" variant="primary" onClick={onConfirm} disabled={busy}>
             {busy ? t('network.proxy.restart.restarting') : t('network.proxy.restart.confirmButton')}
           </Button>
         </div>

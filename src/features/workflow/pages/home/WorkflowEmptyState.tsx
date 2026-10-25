@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'
 import { EmptyState } from '@/components/states'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { WorkflowHomeLauncher } from '@/features/workflow/components/launcher/WorkflowHomeLauncher'
 import type { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowLauncherState'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
@@ -39,7 +39,7 @@ export function WorkflowEmptyState(props: WorkflowEmptyStateProps) {
           title={t('panels.home.emptyCreateTitle')}
           description={t('panels.home.emptyCreateHint')}
           action={(
-            <Button className="bg-primary hover:bg-primary/90" onClick={props.onOpenModeDialog} data-testid="table-file-workflows-create-cta">
+            <Button size="md" variant="primary" className="bg-primary hover:bg-primary/90" onClick={props.onOpenModeDialog} data-testid="table-file-workflows-create-cta">
               <Plus className="mr-1 size-4" />
               {t('panels.home.emptyCreateButton')}
             </Button>

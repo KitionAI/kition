@@ -6,7 +6,7 @@ import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 import type { DesignAgentBridge } from '@/features/design/public'
 import type { ImageStudioRequest, ImageStudioStartResult } from '@/features/media-generation/public'
 

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BotIcon as Bot, CheckIcon as Check, FileDiffIcon as FileDiff, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
-import { Button } from '@kition/app-ui/button'
-import { RightSheet } from '@kition/app-ui/RightSheet'
+import { Button, Sheet } from '@kition/tessera'
 import { notify } from '@/lib/notify'
 import type { DraftComparison, DraftInfo, DraftOrigin, DraftSummary, KitConnection } from '../host/mountKit'
 import { useKitDraft } from './kitDrafts'
@@ -32,11 +31,11 @@ function KitDraftBanner({ info, onReview, onDiscard }: { info: DraftInfo; onRevi
         </span>
       </div>
       <div className="document-revision-toolbar__actions">
-        <Button variant="outline" size="md" type="button" onClick={onDiscard} data-testid="kit-draft-discard">
+        <Button variant="secondary" size="sm" type="button" onClick={onDiscard} data-testid="kit-draft-discard">
           <X />
           {t('kitEditor.draft.discard')}
         </Button>
-        <Button variant={ready ? 'default' : 'outline'} size="md" type="button" onClick={onReview} data-testid="kit-draft-review">
+        <Button variant={ready ? 'primary' : 'secondary'} size="sm" type="button" onClick={onReview} data-testid="kit-draft-review">
           <FileDiff />
           {t('kitEditor.draft.review')}
         </Button>
@@ -122,7 +121,7 @@ function KitDraftReviewSheet({
   }
 
   return (
-    <RightSheet
+    <Sheet testId="right-sheet"
       open={open && info.state !== 'none'}
       onClose={onClose}
       title={t('kitEditor.draft.reviewTitle')}
@@ -130,11 +129,11 @@ function KitDraftReviewSheet({
         <div className="kit-draft-review__footer">
           <p>{t('kitEditor.draft.localHint')}</p>
           <div className="kit-draft-review__actions">
-            <Button variant="outline" size="md" type="button" disabled={busy} onClick={() => void decide(onDiscard)} data-testid="kit-draft-review-discard">
+            <Button variant="secondary" size="sm" type="button" disabled={busy} onClick={() => void decide(onDiscard)} data-testid="kit-draft-review-discard">
               <X />
               {t('kitEditor.draft.discard')}
             </Button>
-            <Button size="md" type="button" disabled={busy || !comparison} onClick={() => void decide(onMerge)} data-testid="kit-draft-merge">
+            <Button variant="primary" size="sm" type="button" disabled={busy || !comparison} onClick={() => void decide(onMerge)} data-testid="kit-draft-merge">
               <Check />
               {t('kitEditor.draft.merge')}
             </Button>
@@ -191,7 +190,7 @@ function KitDraftReviewSheet({
           </>
         )}
       </div>
-    </RightSheet>
+    </Sheet>
   )
 }
 

@@ -1,8 +1,7 @@
 import { CheckIcon as Check, FileClockIcon as FileClock, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, EllipsisIcon as MoreHorizontal, SlidersHorizontalIcon as SlidersHorizontal, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useState } from 'react'
-import { Button } from '@kition/app-ui'
-import { cn } from '@kition/app-ui/utils'
-import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
+import { cn } from '@/lib/cn'
+import { Button, Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
 
 export type WorkflowDetailView = 'configuration' | 'history' | 'logs'
 
@@ -51,8 +50,8 @@ export function WorkflowHomeActionsMenu({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
-          size="icon"
+          variant="secondary"
+          size="md" iconOnly
           aria-label={labels.moreActions}
           title={labels.moreActions}
           data-testid="workflow-home-more-actions"

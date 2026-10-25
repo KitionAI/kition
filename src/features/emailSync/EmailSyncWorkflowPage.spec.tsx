@@ -22,7 +22,7 @@ vi.mock('@/api/emailSync', () => ({
   updateEmailSyncWorkflow: vi.fn(),
 }))
 
-vi.mock('@kition/app-ui/confirm', () => ({ useConfirm: () => vi.fn().mockResolvedValue(true) }))
+vi.mock('@kition/tessera', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera')>()), useConfirm: () => vi.fn().mockResolvedValue(true) }))
 vi.mock('@/api/kitTables', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/kitTables')>()), listTableFiles: vi.fn() }))
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true

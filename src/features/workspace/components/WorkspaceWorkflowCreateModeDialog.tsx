@@ -2,7 +2,7 @@ import { InboxIcon as Inbox, LoaderCircleIcon as LoaderCircle, PlusIcon as Plus,
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/app-ui'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
 import { tableKey } from '@/api/kitTables'
 import { WorkflowLauncherTemplateCard } from '@/features/workflow/components/launcher/WorkflowLauncherTemplateCard'
 import {
@@ -10,14 +10,6 @@ import {
   type WorkflowTemplate,
 } from '@/features/workflow/templates'
 import type { WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@kition/app-ui/dialog'
 
 export type WorkspaceWorkflowCreateModeChoice =
   | { kind: 'template'; template: WorkflowTemplate; context: WorkflowRouteContext | null }
@@ -108,8 +100,8 @@ export function WorkspaceWorkflowCreateModeDialog({
   const disabled = Boolean(busyKind)
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (disabled ? null : onOpenChange(next))}>
-      <DialogContent
+    <Modal open={open} onOpenChange={(next) => (disabled ? null : onOpenChange(next))}>
+      <ModalContent
         size="2xl"
         className="gap-0 p-0"
         data-testid="workspace-workflow-create-mode-dialog"
@@ -117,20 +109,20 @@ export function WorkspaceWorkflowCreateModeDialog({
         data-context-table-id={effectiveContext?.tableId || ''}
         data-context-document-path={effectiveContext?.documentPath || ''}
       >
-        <DialogHeader className="space-y-1.5 border-b px-6 py-4">
-          <DialogTitle>
+        <ModalHeader className="space-y-1.5 border-b px-6 py-4">
+          <ModalTitle>
             {view === 'mode'
               ? t('launcher.createModeDialog.title')
               : t('launcher.createModeDialog.titleTemplateView')}
-          </DialogTitle>
-          <DialogDescription>
+          </ModalTitle>
+          <ModalDescription>
             {view === 'mode'
               ? effectiveContext?.tableName
                 ? t('launcher.createModeDialog.descriptionWithScope', { scope: effectiveContext.tableName })
                 : t('launcher.createModeDialog.descriptionDefault')
               : t('launcher.createModeDialog.descriptionTemplateView')}
-          </DialogDescription>
-        </DialogHeader>
+          </ModalDescription>
+        </ModalHeader>
 
         <div className="px-6 py-5">
           {tableOptions.length > 1 ? (
@@ -282,7 +274,7 @@ export function WorkspaceWorkflowCreateModeDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="items-center border-t px-6 py-4 sm:justify-between">
+        <ModalFooter className="items-center border-t px-6 py-4 sm:justify-between">
           {view === 'template' ? (
             <button
               type="button"
@@ -299,26 +291,26 @@ export function WorkspaceWorkflowCreateModeDialog({
           )}
           <div className="flex items-center gap-2">
             {view === 'template' ? (
-              <Button
+              <Button size="md"
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => setView('mode')}
                 disabled={disabled}
               >
                 {t('launcher.createModeDialog.back')}
               </Button>
             ) : null}
-            <Button
+            <Button size="md"
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => onOpenChange(false)}
               disabled={disabled}
             >
               {t('launcher.createModeDialog.cancel')}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

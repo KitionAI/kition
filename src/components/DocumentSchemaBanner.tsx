@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DownloadIcon as Download, LoaderCircleIcon as Loader2, RefreshCwIcon as RefreshCw, TriangleAlertIcon as TriangleAlert } from '@kition/tessera-icons/react'
-import { Button } from '@kition/app-ui/button'
+import { Button } from '@kition/tessera'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { checkForUpdates, downloadUpdate, installUpdate, type UpdateState } from '@/services/desktopUpdates'
 
@@ -64,12 +64,12 @@ export function DocumentSchemaBanner({ path, kitName, kitVersion }: { path: stri
       </div>
       <div className="document-revision-toolbar__actions">
         {update?.phase === 'available' ? (
-          <Button variant="default" size="md" type="button" disabled={busy} onClick={() => void install()} data-testid="document-schema-install">
+          <Button variant="primary" size="sm" type="button" disabled={busy} onClick={() => void install()} data-testid="document-schema-install">
             {busy ? <Loader2 className="animate-spin" /> : <Download />}
             {t('documentSchema.install')}
           </Button>
         ) : (
-          <Button variant="default" size="md" type="button" disabled={busy} onClick={() => void check()} data-testid="document-schema-check">
+          <Button variant="primary" size="sm" type="button" disabled={busy} onClick={() => void check()} data-testid="document-schema-check">
             {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             {t('documentSchema.check')}
           </Button>

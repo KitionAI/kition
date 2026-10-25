@@ -300,15 +300,12 @@ test('network panel: switching scheme to SOCKS5 propagates to Save payload', asy
   await waitForNetworkPanel(page)
   await useProxyRow(page).locator('.el-switch').click()
 
-  // The Scheme picker is the custom Select widget from components/ui — a button
-  // that toggles a menu of role=option entries. The native <select> it wraps is
-  // sr-only and not driveable via selectOption() in Playwright.
+  // The Scheme picker is Tessera's Select: a native <select> (role combobox).
   await page
     .locator('.settings-row')
     .filter({ hasText: 'Scheme' })
-    .getByRole('button', { name: 'Scheme' })
-    .click()
-  await page.getByRole('option', { name: 'SOCKS5', exact: true }).click()
+    .getByRole('combobox', { name: 'Scheme' })
+    .selectOption({ label: 'SOCKS5' })
   await page.getByPlaceholder('proxy.company.com').fill('socks.example.com')
   await page.getByPlaceholder('1080').fill('1080')
 

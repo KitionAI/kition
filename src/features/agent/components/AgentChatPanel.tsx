@@ -18,8 +18,8 @@ import { isKitionAccountUsable } from '@/features/account/lib/accountState'
 import type { AgentMentionableDocument } from '@/features/agent/lib/documentMentions'
 import { type AgentPaneContext, emptyStateForPane } from '@/features/agent/lib/paneEmptyState'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
-import { Button } from '@kition/app-ui'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
+import { Button } from '@kition/tessera'
 
 type AgentChatPanelProps = {
   session: AgentSession
@@ -211,7 +211,7 @@ export function AgentChatPanel({
             description={emptyState.description}
             actions={needsModelConfig ? (
               <div className="agent-chat-empty-cta">
-                <Button
+                <Button size="md" variant="primary"
                   onClick={onConfigureModel}
                   data-testid="agent-empty-configure-model"
                 >
@@ -220,7 +220,7 @@ export function AgentChatPanel({
               </div>
             ) : hostedAccountBlocked ? (
               <div className="agent-chat-empty-cta">
-                <Button
+                <Button size="md" variant="primary"
                   onClick={hostedAccountCreditsEmpty
                     ? onHostedAccountBilling
                     : hostedAccountStatus === 'connecting'

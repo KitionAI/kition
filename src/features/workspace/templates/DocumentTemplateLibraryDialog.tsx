@@ -2,7 +2,8 @@ import { BlocksIcon as Blocks, BookOpenTextIcon as BookOpenText, BriefcaseIcon a
 import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button, Modal, ModalContent } from '@kition/tessera'
 import { loadTemplateContent, listTemplates, type TemplateEntry } from './workspaceTemplates'
 import type { DocumentCreationPreset } from './documentCreation'
 import {
@@ -14,16 +15,11 @@ import {
   type DocumentTemplatePreview,
   type DocumentTemplateTone,
 } from './documentTemplates'
-import { cn } from '@kition/app-ui/utils'
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import {
   WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME,
   WorkspaceTemplateLibraryFrame,
 } from '@/features/workspace/components/WorkspaceTemplateLibraryFrame'
-import {
-  Dialog,
-  DialogContent,
-} from '@kition/app-ui/dialog'
 
 type TemplateCategoryFilter = 'all' | 'workspace' | DocumentTemplateCategory
 
@@ -178,8 +174,8 @@ export function DocumentTemplateLibraryDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => (disabled ? null : onOpenChange(nextOpen))}>
-      <DialogContent
+    <Modal open={open} onOpenChange={(nextOpen) => (disabled ? null : onOpenChange(nextOpen))}>
+      <ModalContent
         size="none"
         className={WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME}
         data-testid="document-template-library-dialog"
@@ -271,8 +267,8 @@ export function DocumentTemplateLibraryDialog({
             </p>
           </section>
         </WorkspaceTemplateLibraryFrame>
-      </DialogContent>
-    </Dialog>
+      </ModalContent>
+    </Modal>
   )
 }
 
@@ -331,7 +327,7 @@ function TemplateCard({
           ) : null}
         </button>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-foreground/0 opacity-0 transition group-hover:bg-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100">
-          <Button type="button" size="sm" className="pointer-events-auto" disabled={disabled} onClick={onClick}>
+          <Button variant="primary" type="button" size="sm" className="pointer-events-auto" disabled={disabled} onClick={onClick}>
             Use
           </Button>
         </div>

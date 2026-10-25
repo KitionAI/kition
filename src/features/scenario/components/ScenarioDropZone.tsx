@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 
 export interface ScenarioDropZoneProps {
   onFiles: (files: File[]) => void

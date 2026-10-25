@@ -2,7 +2,7 @@ import { MailIcon as Mail, Settings2Icon as Settings2 } from '@kition/tessera-ic
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
 import { PropertiesDrawer } from '@/features/workflow/drawer/PropertiesDrawer'
@@ -36,7 +36,7 @@ export function EmailSyncOnboardingWorkflowPage({
             {t('emailInboxSetup.setupRequired')}
           </span>
         </div>
-        <Button size="sm" onClick={() => setActivePanel('action')}>
+        <Button variant="primary" size="sm" onClick={() => setActivePanel('action')}>
           <Settings2 className="size-4" />
           {t('emailInboxSetup.configureEmail')}
         </Button>

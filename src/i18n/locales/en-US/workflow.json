@@ -687,5 +687,12 @@
     "connectAccount": "Connect an email account to activate this step.",
     "startWorkflow": "Start this workflow",
     "defaultTable": "Inbox"
+  },
+  "formSync": {
+    "copyPublicLink": "Copy public link",
+    "openPublicForm": "Open public form",
+    "moveFieldUp": "Move field up",
+    "moveFieldDown": "Move field down",
+    "deleteField": "Delete field"
   }
 }

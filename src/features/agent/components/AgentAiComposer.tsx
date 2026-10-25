@@ -3,7 +3,8 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Textarea } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Textarea } from '@kition/tessera'
 import type { AgentLocalSource } from '@/api/agent'
 import { AgentContextAddMenu } from '@/features/agent/components/AgentContextAddMenu'
 import { AgentComposerContext } from '@/features/agent/components/AgentComposerContext'
@@ -18,7 +19,6 @@ import {
   stripAgentDocumentMentions,
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
-import { cn } from '@kition/app-ui/utils'
 
 type AgentAiComposerProps = {
   imageControls?: ReactNode

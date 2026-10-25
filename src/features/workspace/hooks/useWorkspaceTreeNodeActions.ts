@@ -3,7 +3,7 @@ import { loadDesignLib } from '@/features/design/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
-import { useConfirm } from '@kition/app-ui/confirm'
+import { useConfirm } from '@kition/tessera'
 import {
   syncDocumentFileDeleted,
   syncDocumentFileDuplicated,
@@ -148,7 +148,7 @@ export function useWorkspaceTreeNodeActions({
     if (!(await confirm({
       message,
       confirmLabel: t('tree.delete'),
-      variant: 'destructive',
+      variant: 'danger',
     }))) {
       return
     }

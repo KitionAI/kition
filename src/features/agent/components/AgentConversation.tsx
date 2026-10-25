@@ -17,7 +17,7 @@ import {
 } from '../lib/agentSessionView'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { stripAgentDocumentMentions } from '../lib/documentMentions'
-import { cn } from '@kition/app-ui/utils'
+import { cn } from '@/lib/cn'
 import { resolveAgentImageURL, resolveAgentImageWorkspacePath } from '@/services/workspaceFiles'
 import {
   buildAgentRunLogItems, extractAgentToolImageResults,

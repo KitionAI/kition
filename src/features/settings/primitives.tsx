@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { CheckIcon as Check, SearchIcon as Search } from '@kition/tessera-icons/react'
-import { cn } from '@kition/app-ui/utils'
-import { Button } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button } from '@kition/tessera'
 import { useTranslation } from '@/i18n'
 
 type SettingsPaneHeaderProps = {
@@ -138,8 +138,8 @@ export function SettingsActionBar({
         <span className="settings-action-bar-status">{t('actions.unsavedChanges')}</span>
       </div>
       <div className="settings-action-bar-right">
-        <Button variant="outline" onClick={onCancel} disabled={saving}>{t('actions.cancel')}</Button>
-        <Button onClick={onSave} disabled={saving}>{saving ? t('actions.saving') : (saveLabel ?? t('actions.save'))}</Button>
+        <Button size="md" variant="secondary" onClick={onCancel} disabled={saving}>{t('actions.cancel')}</Button>
+        <Button size="md" variant="primary" onClick={onSave} disabled={saving}>{saving ? t('actions.saving') : (saveLabel ?? t('actions.save'))}</Button>
       </div>
     </div>
   )

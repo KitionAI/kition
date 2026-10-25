@@ -687,5 +687,12 @@
     "connectAccount": "Connectez un compte e-mail pour activer cette étape.",
     "startWorkflow": "Démarrer ce workflow",
     "defaultTable": "Boîte de réception"
+  },
+  "formSync": {
+    "copyPublicLink": "Copier le lien public",
+    "openPublicForm": "Ouvrir le formulaire public",
+    "moveFieldUp": "Monter le champ",
+    "moveFieldDown": "Descendre le champ",
+    "deleteField": "Supprimer le champ"
   }
 }

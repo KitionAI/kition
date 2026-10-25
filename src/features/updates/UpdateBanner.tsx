@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { openExternalURL } from '@/services/desktop'
 import { downloadUpdate, installUpdate } from '@/services/desktopUpdates'
 import { dismissVersion, isVersionDismissed } from './dismissedVersion'
@@ -43,7 +43,7 @@ export function UpdateBanner() {
         </span>
         <div className="kition-update-banner__actions">
           <Button
-            variant="default"
+            variant="primary"
             size="sm"
             className="kition-update-banner__primary"
             onClick={() => void downloadUpdate()}
@@ -88,7 +88,7 @@ export function UpdateBanner() {
       <div className="kition-update-banner kition-update-banner--success" role="status">
         <span className="kition-update-banner__label">{t('updates.readyToInstall', { version: s.version })}</span>
         <Button
-          variant="default"
+          variant="primary"
           size="sm"
           className="kition-update-banner__primary"
           onClick={() => void installUpdate()}

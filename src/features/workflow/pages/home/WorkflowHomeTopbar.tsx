@@ -2,7 +2,7 @@ import { ChevronLeftIcon as ChevronLeft, LoaderCircleIcon as LoaderCircle, PlayI
 import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { SampleRowPicker } from '@/features/workflow/components/SampleRowPicker'
 import { WorkflowStatusToggle } from '@/features/workflow/components/WorkflowStatusToggle'
 import { WorkflowHomeActionsMenu, type WorkflowDetailView } from '@/features/workflow/pages/WorkflowHomeActionsMenu'
@@ -47,7 +47,7 @@ export function WorkflowDetailTopbar({ selected, hideClose, scopedTablePath, str
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {runTest.visible ? (
           <>
-            <Button variant="outline" onClick={runTest.onRun} disabled={runDisabled} data-testid="workflow-home-run-test">
+            <Button size="md" variant="secondary" onClick={runTest.onRun} disabled={runDisabled} data-testid="workflow-home-run-test">
               {runTest.running ? <LoaderCircle className="size-4 animate-spin" /> : <Play className="size-4" />}
               {t('panels.home.runTest')}
             </Button>
@@ -61,7 +61,7 @@ export function WorkflowDetailTopbar({ selected, hideClose, scopedTablePath, str
             ) : null}
           </>
         ) : null}
-        <Button onClick={save.onSave} disabled={save.disabled} data-testid="workflow-home-save-topbar">
+        <Button size="md" variant="primary" onClick={save.onSave} disabled={save.disabled} data-testid="workflow-home-save-topbar">
           {save.saving ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
           {t('panels.home.save')}
         </Button>
@@ -120,7 +120,7 @@ export function WorkflowIndexTopbar({ hideClose, breadcrumbLeft, breadcrumbRight
           <button type="button" className="inline-grid size-8 place-items-center rounded-lg border border-border bg-card hover:bg-muted/40" onClick={onRefresh} aria-label={t('panels.home.refreshAria')}>
             <RefreshCw className="size-4" />
           </button>
-          <Button className="h-8 bg-primary px-3 hover:bg-primary/90" onClick={onCreate} data-testid="workflow-home-create">
+          <Button size="md" variant="primary" className="h-8 bg-primary px-3 hover:bg-primary/90" onClick={onCreate} data-testid="workflow-home-create">
             <Plus className="size-4" />
             {t('panels.home.create')}
           </Button>

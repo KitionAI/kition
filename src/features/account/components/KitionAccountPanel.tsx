@@ -3,7 +3,8 @@ import { CheckIcon as Check, CreditCardIcon as CreditCard, ExternalLinkIcon as E
 
 import { CreditUsageBadge } from '@/components/CreditUsageBadge'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
-import { Button } from '@kition/app-ui'
+import { cn } from '@/lib/cn'
+import { Button } from '@kition/tessera'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
 import {
@@ -16,7 +17,6 @@ import {
   type KitionAccountStatus,
 } from '@/features/account/lib/accountState'
 import { useTranslation } from '@/i18n'
-import { cn } from '@kition/app-ui/utils'
 import { openExternalURL } from '@/services/desktop'
 import {
   trackProductEvent,
@@ -193,23 +193,23 @@ export function KitionAccountPanel() {
 
           <div className="kition-account-panel__actions">
             {showTopupPrimary ? (
-              <Button onClick={() => openBilling(links.topup)} data-testid="kition-account-topup">
+              <Button size="md" variant="primary" onClick={() => openBilling(links.topup)} data-testid="kition-account-topup">
                 <WalletCards className="size-4" />
                 {t('account.topUpCredits')}
               </Button>
             ) : (
-              <Button onClick={() => openBilling(links.billing)} data-testid="kition-account-manage-plan">
+              <Button size="md" variant="primary" onClick={() => openBilling(links.billing)} data-testid="kition-account-manage-plan">
                 <CreditCard className="size-4" />
                 {t('account.managePlan')}
               </Button>
             )}
             {showTopupPrimary && links.billing !== links.topup ? (
-              <Button variant="outline" onClick={() => openBilling(links.billing)}>
+              <Button size="md" variant="secondary" onClick={() => openBilling(links.billing)}>
                 <CreditCard className="size-4" />
                 {t('account.managePlan')}
               </Button>
             ) : null}
-            <Button variant="ghost" className="text-destructive" onClick={() => void logout()} data-testid="portal-account-logout-button">
+            <Button size="md" variant="ghost" className="text-destructive" onClick={() => void logout()} data-testid="portal-account-logout-button">
               <LogOut className="size-4" />
               {t('account.signOut')}
             </Button>
@@ -223,7 +223,7 @@ export function KitionAccountPanel() {
               <span>{benefit}</span>
             </div>
           ))}
-          <Button
+          <Button size="md" variant="primary"
             className="kition-account-panel__primary"
             disabled={effectiveStatus === 'loading'}
             onClick={effectiveStatus === 'connecting' ? cancelConnect : () => void ensureReady()}

@@ -17,6 +17,7 @@ import {
 
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 import { AppShell } from './Shell'
+import { TesseraStrings } from './TesseraStrings'
 
 let appStartedTracked = false
 
@@ -89,8 +90,10 @@ export function App() {
   }, [])
 
   return (
-    <AppErrorBoundary scope="app">
-      <AppShell />
-    </AppErrorBoundary>
+    <TesseraStrings>
+      <AppErrorBoundary scope="app">
+        <AppShell />
+      </AppErrorBoundary>
+    </TesseraStrings>
   )
 }

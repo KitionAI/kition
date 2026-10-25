@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input } from '@kition/app-ui'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
 import type { ExtensionService } from './extensionService'
 import { loadExtensionService } from './serviceLoader'
 
@@ -36,20 +35,20 @@ export default function RunScriptDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => (!open && !busy ? onClose() : undefined)}>
-      <DialogContent size="sm" className="gap-0 p-0" data-testid="run-script-dialog">
+    <Modal open onOpenChange={(open) => (!open && !busy ? onClose() : undefined)}>
+      <ModalContent size="sm" className="gap-0 p-0" data-testid="run-script-dialog">
         <form
           onSubmit={(event) => {
             event.preventDefault()
             if (path.trim() && !busy) void run()
           }}
         >
-          <DialogHeader className="space-y-2 border-b px-5 py-4">
-            <DialogTitle>{t('extensions.runScript.title')}</DialogTitle>
-            <DialogDescription>{t('extensions.runScript.description', { document: name })}</DialogDescription>
-          </DialogHeader>
+          <ModalHeader className="space-y-2 border-b px-5 py-4">
+            <ModalTitle>{t('extensions.runScript.title')}</ModalTitle>
+            <ModalDescription>{t('extensions.runScript.description', { document: name })}</ModalDescription>
+          </ModalHeader>
           <div className="px-5 py-4">
-            <Input
+            <TextInput size="lg"
               value={path}
               onChange={(event) => setPath(event.target.value)}
               placeholder={t('extensions.runScript.placeholder')}
@@ -60,17 +59,17 @@ export default function RunScriptDialog({ onClose }: { onClose: () => void }) {
               data-testid="run-script-path"
             />
           </div>
-          <DialogFooter className="border-t px-5 py-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+          <ModalFooter className="border-t px-5 py-4">
+            <Button size="md" type="button" variant="secondary" onClick={onClose} disabled={busy}>
               {t('extensions.runScript.cancel')}
             </Button>
-            <Button type="submit" disabled={busy || !path.trim() || !document} data-testid="run-script-run">
+            <Button size="md" variant="primary" type="submit" disabled={busy || !path.trim() || !document} data-testid="run-script-run">
               {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
               {t('extensions.runScript.run')}
             </Button>
-          </DialogFooter>
+          </ModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ModalContent>
+    </Modal>
   )
 }

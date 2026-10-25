@@ -1,7 +1,7 @@
 import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, EyeIcon as Eye, EyeOffIcon as EyeOff, LockIcon as Lock, LockOpenIcon as Unlock } from '@kition/tessera-icons/react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import type { DesignDocument } from '../lib/designTypes'
 import type { DesignStore } from '../lib/designStore'
 
@@ -79,7 +79,7 @@ export function DesignLayers({
         </button>
         <Button
           variant="ghost"
-          size="icon"
+          size="md" iconOnly
           title={n.visible ? t('hide') : t('show')}
           aria-label={`${n.visible ? t('hide') : t('show')} ${n.name}`}
           onClick={() => store.execute({ type: 'patch', ids: [id], patch: { visible: !n.visible } })}
@@ -88,7 +88,7 @@ export function DesignLayers({
         </Button>
         <Button
           variant="ghost"
-          size="icon"
+          size="md" iconOnly
           title={n.locked ? t('unlock') : t('lock')}
           aria-label={`${n.locked ? t('unlock') : t('lock')} ${n.name}`}
           onClick={() => store.execute({ type: 'patch', ids: [id], patch: { locked: !n.locked } })}
@@ -105,7 +105,7 @@ export function DesignLayers({
         {[-1, 1].map((direction) => (
           <Button
             key={direction}
-            size="icon"
+            size="md" iconOnly
             variant="ghost"
             disabled={selection.length !== 1}
             aria-label={direction === 1 ? t('bringForward') : t('sendBackward')}

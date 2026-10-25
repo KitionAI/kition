@@ -2,7 +2,7 @@ import { InlineError } from '@/components/states'
 import { CircleAlertIcon as AlertCircle, ChevronLeftIcon as ChevronLeft, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, MailIcon as Mail, PlayIcon as Play, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, SendIcon as Send, XIcon as X } from '@kition/tessera-icons/react'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
 import { ConnectionModal, formFromConnection } from '@/features/connections/ConnectionsSettingsPanel'
 import { listChannels, listConnections, type ChannelSchema, type ConnectionView } from '@/api/connections'
 import {
@@ -83,15 +83,6 @@ import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTab
 import { useTableSchemaCache } from '@/features/workflow/hooks/useTableSchemaCache'
 import { useWorkflowDraftState } from '@/features/workflow/hooks/useWorkflowDraftState'
 import { useWorkflowGraphState } from '@/features/workflow/hooks/useWorkflowGraphState'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@kition/app-ui/dialog'
-
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
 import { WorkflowDetailTopbar, WorkflowIndexTopbar } from '@/features/workflow/pages/home/WorkflowHomeTopbar'
 import { WorkflowBuildBanner, WorkflowRunTestHeader, WorkflowUnresolvedTemplateBanner } from '@/features/workflow/pages/home/WorkflowHomeBanners'

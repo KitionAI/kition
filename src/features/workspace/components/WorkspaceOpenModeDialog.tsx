@@ -1,15 +1,7 @@
 import { AppWindowIcon as AppWindow, ArrowRightLeftIcon as ArrowRightLeft, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/app-ui'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@kition/app-ui/dialog'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
 
 type WorkspaceOpenModeDialogProps = {
   open: boolean
@@ -35,19 +27,19 @@ export function WorkspaceOpenModeDialog({
   const { t } = useTranslation('workspaceLauncher')
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (busy ? null : onOpenChange(next))}>
-      <DialogContent
+    <Modal open={open} onOpenChange={(next) => (busy ? null : onOpenChange(next))}>
+      <ModalContent
         size="lg"
         className="gap-0 overflow-hidden p-0"
         data-testid="workspace-open-mode-dialog"
       >
-        <DialogHeader className="space-y-2 border-b px-6 py-5">
-          <DialogTitle>{t('openMode.title', { name: workspaceName })}</DialogTitle>
-          <DialogDescription>{t('openMode.description')}</DialogDescription>
+        <ModalHeader className="space-y-2 border-b px-6 py-5">
+          <ModalTitle>{t('openMode.title', { name: workspaceName })}</ModalTitle>
+          <ModalDescription>{t('openMode.description')}</ModalDescription>
           <p className="truncate text-xs text-muted-foreground" title={workspacePath}>
             {workspacePath}
           </p>
-        </DialogHeader>
+        </ModalHeader>
 
         <div className="grid gap-3 px-6 py-5 sm:grid-cols-2">
           <div className="flex min-h-44 flex-col rounded-xl border border-border bg-card p-4 text-card-foreground shadow-soft">
@@ -60,9 +52,9 @@ export function WorkspaceOpenModeDialog({
                 {t('openMode.current.description')}
               </p>
             </div>
-            <Button
+            <Button size="md"
               type="button"
-              variant="outline"
+              variant="secondary"
               className="mt-4 w-full"
               disabled={busy}
               onClick={onOpenCurrent}
@@ -82,9 +74,9 @@ export function WorkspaceOpenModeDialog({
                 {t('openMode.new.description')}
               </p>
             </div>
-            <Button
+            <Button size="md"
               type="button"
-              variant="brand"
+              variant="primary"
               className="mt-4 w-full"
               disabled={busy}
               onClick={onOpenNew}
@@ -102,8 +94,8 @@ export function WorkspaceOpenModeDialog({
           </p>
         ) : null}
 
-        <DialogFooter className="border-t px-6 py-4">
-          <Button
+        <ModalFooter className="border-t px-6 py-4">
+          <Button size="md"
             type="button"
             variant="ghost"
             disabled={busy}
@@ -111,8 +103,8 @@ export function WorkspaceOpenModeDialog({
           >
             {t('openMode.cancel')}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

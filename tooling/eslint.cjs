@@ -55,13 +55,13 @@ module.exports = {
           },
           {
             name: 'radix-ui',
-            message: 'Use the primitives in @kition/app-ui (packages/app-ui) instead of importing Radix directly in features.',
+            message: 'Use the components in @kition/tessera instead of importing Radix directly in features.',
           },
         ],
         patterns: [
           {
             group: ['@radix-ui/*'],
-            message: 'Use the primitives in @kition/app-ui (packages/app-ui) instead of importing Radix directly in features.',
+            message: 'Use the components in @kition/tessera instead of importing Radix directly in features.',
           },
         ],
       },
@@ -83,16 +83,6 @@ module.exports = {
     'dist/',
     'dist-desktop/',
     'node_modules/',
-    // shadcn-ui upstream, not our style domain
-    'packages/app-ui/src/button.tsx',
-    'packages/app-ui/src/command.tsx',
-    'packages/app-ui/src/dialog.tsx',
-    'packages/app-ui/src/input.tsx',
-    'packages/app-ui/src/popover.tsx',
-    'packages/app-ui/src/spinner.tsx',
-    'packages/app-ui/src/switch.tsx',
-    'packages/app-ui/src/tooltip.tsx',
-    'packages/app-ui/src/hooks/use-*.ts',
     'public/',
     'src-tauri/target/',
     'src-tauri/gen/',
@@ -175,8 +165,8 @@ module.exports = {
       rules: { 'no-restricted-imports': 'off' },
     },
     {
-      // The kit itself wraps Radix; features consume the wrappers.
-      files: ['src/components/**', 'packages/app-ui/src/**'],
+      // Shared components may wrap Radix; features use them or @kition/tessera.
+      files: ['src/components/**'],
       rules: { 'no-restricted-imports': ['error', { paths: [{ name: 'sonner', message: 'Import from @/lib/notify instead.' }] }] },
     },
     {

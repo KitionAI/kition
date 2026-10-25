@@ -2,17 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FileInputIcon as FileInput } from '@kition/tessera-icons/react'
 
 import { listTableFiles, type KitTablesTable } from '@/api/kitTables'
-import { Button } from '@kition/app-ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@kition/app-ui/dialog'
-import { Input } from '@kition/app-ui/input'
-
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
 import { createFormSyncWorkflow, type FormSyncWorkflow } from './api'
 import { buildInitialFormFields, findTargetTable, loadFormTargetTable } from './formBuilder'
 
@@ -101,23 +91,23 @@ export function FormSyncCreateDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" className="gap-0 p-0" data-testid="form-sync-create-dialog">
-        <DialogHeader className="space-y-2 border-b px-6 py-5">
+    <Modal open={open} onOpenChange={onOpenChange}>
+      <ModalContent size="lg" className="gap-0 p-0" data-testid="form-sync-create-dialog">
+        <ModalHeader className="space-y-2 border-b px-6 py-5">
           <div className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <FileInput className="size-4" />
             </span>
             <div>
-              <DialogTitle>Create form</DialogTitle>
-              <DialogDescription>Start as a local draft. You can configure and publish it when ready.</DialogDescription>
+              <ModalTitle>Create form</ModalTitle>
+              <ModalDescription>Start as a local draft. You can configure and publish it when ready.</ModalDescription>
             </div>
           </div>
-        </DialogHeader>
+        </ModalHeader>
         <div className="grid gap-5 px-6 py-5">
           <label className="grid gap-2 text-sm font-medium">
             Form name
-            <Input value={name} onChange={(event) => setName(event.target.value)} autoFocus />
+            <TextInput size="lg" value={name} onChange={(event) => setName(event.target.value)} autoFocus />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             Destination table
@@ -142,18 +132,18 @@ export function FormSyncCreateDialog({
           </div>
           {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
         </div>
-        <DialogFooter className="border-t px-6 py-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+        <ModalFooter className="border-t px-6 py-4">
+          <Button size="sm" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button size="sm" variant="primary"
             onClick={() => void createDraft()}
             disabled={!selectedTable || !name.trim() || status !== 'idle'}
             loading={status === 'saving'}
           >
             Create draft
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }
 

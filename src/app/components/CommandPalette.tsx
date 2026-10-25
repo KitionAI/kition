@@ -1,7 +1,7 @@
 import { CommandIcon as Command, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { useExtensionPaletteItems } from '@/features/extensions/public'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -171,7 +171,7 @@ export function CommandPalette({
             placeholder={t('commandPalette.placeholder')}
             data-testid="command-palette-input"
           />
-          <Button variant="ghost" size="icon" aria-label={t('commandPalette.close')} onClick={onClose}>
+          <Button variant="ghost" size="md" iconOnly aria-label={t('commandPalette.close')} onClick={onClose}>
             <X className="size-4" />
           </Button>
         </div>

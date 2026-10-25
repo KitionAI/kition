@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { kitionTheme } from '@/features/kits/public'
 import type { ExtensionService } from './extensionService'
 import { closeExtensionPanel, type OpenPanel } from './panelState'
@@ -93,7 +93,7 @@ export default function ExtensionPanel({ path, open }: { path: string; open: Ope
           </p>
           {contributed ? <p className="truncate text-[12px] leading-4 text-muted-foreground">{contributed.extensionName}</p> : null}
         </div>
-        <Button variant="ghost" size="icon" aria-label={t('extensions.panel.close')} onClick={() => closeExtensionPanel(path)} data-testid="extension-panel-close">
+        <Button variant="ghost" size="md" iconOnly aria-label={t('extensions.panel.close')} onClick={() => closeExtensionPanel(path)} data-testid="extension-panel-close">
           <X className="size-4" />
         </Button>
       </header>

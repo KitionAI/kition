@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { MaximizeIcon as Maximize, MinusIcon as Minus, PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import type { Bounds, DesignDocument } from '../lib/designTypes'
 import type { DesignStore } from '../lib/designStore'
 import {
@@ -521,7 +521,7 @@ export function DesignCanvas({
       <div className="design-zoom">
         <Button
           variant="ghost"
-          size="icon"
+          size="md" iconOnly
           aria-label={t('zoomOut')}
           onClick={() => setZoom(Math.max(0.02, zoom / 1.2))}
         >
@@ -530,7 +530,7 @@ export function DesignCanvas({
         <span>{Math.round(zoom * 100)}%</span>
         <Button
           variant="ghost"
-          size="icon"
+          size="md" iconOnly
           aria-label={t('zoomIn')}
           onClick={() => setZoom(Math.min(4, zoom * 1.2))}
         >
@@ -538,7 +538,7 @@ export function DesignCanvas({
         </Button>
         <Button
           variant="ghost"
-          size="icon"
+          size="md" iconOnly
           aria-label={t('fit')}
           onClick={() => {
             setZoom(null)

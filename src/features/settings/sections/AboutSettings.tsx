@@ -6,7 +6,7 @@ import { checkForUpdates, downloadUpdate, installUpdate, setAutoCheckUpdates, se
 import { useUpdateState } from '@/features/updates/public'
 import { UpdateDownloadProgress } from '@/features/updates/public'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { SupportAndTrustSettings } from '@/features/support/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { getCurrentLocale, useTranslation } from '@/i18n'
@@ -156,13 +156,13 @@ export function AboutSettings() {
       />
       <SettingsSection title={t('about.linksSection')}>
         <SettingsRow title={t('about.sourceCode')} description={t('about.sourceCodeDescription')}>
-          <Button variant="outline" className="w-40" onClick={() => void openExternalURL(GITHUB_REPO_URL)}>{t('about.openGitHub')}</Button>
+          <Button size="md" variant="secondary" className="w-40" onClick={() => void openExternalURL(GITHUB_REPO_URL)}>{t('about.openGitHub')}</Button>
         </SettingsRow>
         <SettingsRow title={t('about.reportIssue')} description={t('about.reportIssueDescription')}>
-          <Button variant="outline" className="w-40" onClick={() => void openExternalURL(`${GITHUB_REPO_URL}/issues`)}>{t('about.openIssues')}</Button>
+          <Button size="md" variant="secondary" className="w-40" onClick={() => void openExternalURL(`${GITHUB_REPO_URL}/issues`)}>{t('about.openIssues')}</Button>
         </SettingsRow>
         <SettingsRow title={t('about.license')} description={t('about.licenseDescription')}>
-          <Button variant="outline" className="w-40" onClick={() => void openExternalURL(`${GITHUB_REPO_URL}/blob/main/LICENSE`)}>{t('about.viewLicense')}</Button>
+          <Button size="md" variant="secondary" className="w-40" onClick={() => void openExternalURL(`${GITHUB_REPO_URL}/blob/main/LICENSE`)}>{t('about.viewLicense')}</Button>
         </SettingsRow>
       </SettingsSection>
       {feedback ? <div className="settings-feedback">{feedback}</div> : null}
@@ -208,9 +208,9 @@ function renderUpdateAction(
 ) {
   switch (state.phase) {
     case 'checking':
-      return <Button variant="outline" disabled>{t('about.update.actionChecking')}</Button>
+      return <Button size="md" variant="secondary" disabled>{t('about.update.actionChecking')}</Button>
     case 'available':
-      return <Button variant="default" disabled={busy} onClick={onDownload}>{t('about.update.actionDownload', { version: state.version ?? '?' })}</Button>
+      return <Button size="md" variant="primary" disabled={busy} onClick={onDownload}>{t('about.update.actionDownload', { version: state.version ?? '?' })}</Button>
     case 'downloading':
       return (
         <UpdateDownloadProgress
@@ -219,12 +219,12 @@ function renderUpdateAction(
         />
       )
     case 'downloaded':
-      return <Button variant="default" disabled={busy} onClick={onInstall}>{t('about.update.actionInstall')}</Button>
+      return <Button size="md" variant="primary" disabled={busy} onClick={onInstall}>{t('about.update.actionInstall')}</Button>
     case 'error':
-      return <Button variant="outline" disabled={busy} onClick={onCheck}>{t('about.update.actionRetry')}</Button>
+      return <Button size="md" variant="secondary" disabled={busy} onClick={onCheck}>{t('about.update.actionRetry')}</Button>
     case 'unsupported':
       return null
     default:
-      return <Button variant="outline" disabled={busy} onClick={onCheck}>{t('about.update.actionCheck')}</Button>
+      return <Button size="md" variant="secondary" disabled={busy} onClick={onCheck}>{t('about.update.actionCheck')}</Button>
   }
 }

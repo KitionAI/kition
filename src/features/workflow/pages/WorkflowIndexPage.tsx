@@ -3,7 +3,7 @@ import { InlineError } from '@/components/states'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import type { WorkflowDefinition } from '@/api/workflows'
 import { WORKFLOW_CHANGED_EVENT, listWorkflowRuns, listWorkflows } from '@/api/workflows'
 import {
@@ -375,7 +375,7 @@ export function WorkflowIndexPage({
           >
             <div className="text-sm">{t('panels.home.list.emptyNone')}</div>
             <Button
-              variant="default"
+              variant="primary"
               size="sm"
               data-testid="workflow-index-create"
               onClick={openCreateWorkflow}

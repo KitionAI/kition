@@ -1,4 +1,4 @@
-import { useConfirm } from '@kition/app-ui/confirm'
+import { Button, useConfirm } from '@kition/tessera'
 import {
   useCallback,
   useEffect,
@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { CircleIcon as Circle, ImagePlusIcon as ImagePlus, LayersIcon as Layers, LayoutTemplateIcon as LayoutTemplate, MinusIcon as Minus, MousePointer2Icon as MousePointer2, SlidersHorizontalIcon as SlidersHorizontal, SquareIcon as Square, TypeIcon as Type, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
 import { notify } from '@/lib/notify'
 import { useDesignSession } from '../hooks/useDesignSession'
 import { useDesignImages } from '../hooks/useDesignImages'
@@ -93,7 +92,7 @@ export function DesignEditorPane({
             <p className="design-help">{t('errors.preserved')}</p>
             <Button
               size="sm"
-              variant="secondary"
+              variant="subtle"
               onClick={() => setReload((value) => value + 1)}
             >
               {t('retry')}
@@ -491,7 +490,7 @@ function DesignEditor({
             <Button
               key={key}
               variant="ghost"
-              size="icon"
+              size="md" iconOnly
               disabled={busy && key === 'image'}
               title={t(`tools.${key}`)}
               aria-label={t(`tools.${key}`)}
@@ -507,7 +506,7 @@ function DesignEditor({
             <Button
               className="design-panel-close"
               variant="ghost"
-              size="icon"
+              size="md" iconOnly
               aria-label={t('closePanel')}
               onClick={() => setPanel(null)}
             >
@@ -546,7 +545,7 @@ function DesignEditor({
             <Button
               className="design-panel-close"
               variant="ghost"
-              size="icon"
+              size="md" iconOnly
               aria-label={t('closePanel')}
               onClick={() => setPanel(null)}
             >

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as Loader2 } from '@kition/tessera-icons/react'
 import { writeKitFile } from '@/api/kits'
 import { isTableFilePath, notifyTableFilesChanged } from '@/api/kitTables'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { FileNotice } from '@/components/states'
 import { notify } from '@/lib/notify'
@@ -195,7 +195,7 @@ function KitOpenFailure({ path, kitName, failure, onRetry }: { path: string; kit
       detail={failure}
       data-testid="kit-open-failed"
     >
-      <Button variant="outline" onClick={onRetry} data-testid="kit-open-retry">
+      <Button size="md" variant="secondary" onClick={onRetry} data-testid="kit-open-retry">
         {t('kitEditor.tryAgain')}
       </Button>
     </FileNotice>

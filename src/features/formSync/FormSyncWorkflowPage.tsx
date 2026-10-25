@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, CheckIcon as Check, CloudOffIcon as CloudOff, CloudUploadIcon as CloudUpload, CopyIcon as Copy, ExternalLinkIcon as ExternalLink, FileInputIcon as FileInput, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/app-ui/button'
-import { Input } from '@kition/app-ui/input'
-import { Switch } from '@kition/app-ui/switch'
-
+import { Button, Switch, TextInput } from '@kition/tessera'
 import {
   getFormSyncWorkflow,
   syncFormSyncWorkflow,
@@ -25,6 +23,7 @@ const fieldTypes: Array<{ value: FormSyncFieldType; label: string }> = [
 ]
 
 export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
+  const { t } = useTranslation('workflow')
   const [workflow, setWorkflow] = useState<FormSyncWorkflow | null>(null)
   const [targetTable, setTargetTable] = useState<FormTargetTable | null>(null)
   const [name, setName] = useState('')
@@ -172,15 +171,15 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {workflow.published ? (
-            <Button variant="outline" onClick={() => void persist(false)} disabled={status !== 'idle'}>
+            <Button size="sm" variant="secondary" onClick={() => void persist(false)} disabled={status !== 'idle'}>
               <CloudOff /> Unpublish
             </Button>
           ) : (
-            <Button onClick={() => void persist(true)} disabled={status !== 'idle'}>
+            <Button size="sm" variant="primary" onClick={() => void persist(true)} disabled={status !== 'idle'}>
               <CloudUpload /> Publish
             </Button>
           )}
-          <Button variant="outline" onClick={() => void persist()} disabled={status !== 'idle'}>
+          <Button size="sm" variant="secondary" onClick={() => void persist()} disabled={status !== 'idle'}>
             <Save /> Save changes
           </Button>
         </div>
@@ -196,11 +195,11 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
               {workflow.public_url ? (
                 <div className="mt-3 flex min-w-0 items-center gap-2 rounded-lg border bg-muted/30 p-2">
                   <code className="min-w-0 flex-1 truncate px-2 text-xs">{workflow.public_url}</code>
-                  <Button size="iconSm" variant="ghost" label="Copy public link" onClick={() => void copyPublicURL()}><Copy /></Button>
+                  <Button size="sm" iconOnly variant="ghost" aria-label={t('formSync.copyPublicLink')} onClick={() => void copyPublicURL()}><Copy /></Button>
                   <Button
-                    size="iconSm"
+                    size="sm" iconOnly
                     variant="ghost"
-                    label="Open public form"
+                    aria-label={t('formSync.openPublicForm')}
                     onClick={() => window.open(workflow.public_url, '_blank', 'noopener,noreferrer')}
                   >
                     <ExternalLink />
@@ -221,7 +220,7 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
               <div className="grid gap-4 p-5">
                 <label className="grid gap-2 text-sm font-medium">
                   Form title
-                  <Input value={name} onChange={(event) => setName(event.target.value)} />
+                  <TextInput size="lg" value={name} onChange={(event) => setName(event.target.value)} />
                 </label>
                 <div className="grid gap-3">
                   {fields.map((field, index) => (
@@ -236,8 +235,8 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
                       onDelete={() => setFields((current) => current.filter((_, fieldIndex) => fieldIndex !== index))}
                     />
                   ))}
-                  <Button
-                    variant="outline"
+                  <Button size="sm"
+                    variant="secondary"
                     className="w-full border-dashed"
                     onClick={() => setFields((current) => [
                       ...current,
@@ -263,7 +262,7 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
                 <label className="grid gap-2 text-sm font-medium">
                   Sync every
                   <span className="flex items-center gap-2">
-                    <Input
+                    <TextInput size="lg"
                       className="w-24"
                       type="number"
                       min={1}
@@ -275,7 +274,7 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
                     <span className="font-normal text-muted-foreground">minutes</span>
                   </span>
                 </label>
-                <Button variant="outline" onClick={() => void syncNow()} disabled={!workflow.published || status !== 'idle'}>
+                <Button size="sm" variant="secondary" onClick={() => void syncNow()} disabled={!workflow.published || status !== 'idle'}>
                   <RefreshCw className={status === 'syncing' ? 'animate-spin' : ''} /> Sync now
                 </Button>
               </div>
@@ -314,12 +313,13 @@ function FormFieldEditor({
   onMove: (direction: -1 | 1) => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation('workflow')
   return (
     <div className="rounded-xl border bg-muted/15 p-4">
       <div className="grid gap-3 lg:grid-cols-[minmax(150px,1fr)_150px_minmax(150px,1fr)_auto]">
         <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
           Label
-          <Input value={field.label} onChange={(event) => onChange({ label: event.target.value })} />
+          <TextInput size="lg" value={field.label} onChange={(event) => onChange({ label: event.target.value })} />
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
           Type
@@ -346,9 +346,9 @@ function FormFieldEditor({
           </select>
         </label>
         <div className="flex items-end gap-1">
-          <Button size="iconSm" variant="ghost" label="Move field up" onClick={() => onMove(-1)} disabled={index === 0}><ArrowUp /></Button>
-          <Button size="iconSm" variant="ghost" label="Move field down" onClick={() => onMove(1)} disabled={index === total - 1}><ArrowDown /></Button>
-          <Button size="iconSm" variant="ghost" label="Delete field" onClick={onDelete} disabled={total === 1}><Trash2 /></Button>
+          <Button size="sm" iconOnly variant="ghost" aria-label={t('formSync.moveFieldUp')} onClick={() => onMove(-1)} disabled={index === 0}><ArrowUp /></Button>
+          <Button size="sm" iconOnly variant="ghost" aria-label={t('formSync.moveFieldDown')} onClick={() => onMove(1)} disabled={index === total - 1}><ArrowDown /></Button>
+          <Button size="sm" iconOnly variant="ghost" aria-label={t('formSync.deleteField')} onClick={onDelete} disabled={total === 1}><Trash2 /></Button>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -359,7 +359,7 @@ function FormFieldEditor({
         {field.type === 'select' ? (
           <label className="flex min-w-[260px] flex-1 items-center gap-2 text-sm">
             <span className="shrink-0 text-muted-foreground">Options</span>
-            <Input
+            <TextInput size="lg"
               value={(field.options || []).join(', ')}
               onChange={(event) => onChange({ options: event.target.value.split(',').map((option) => option.trim()) })}
               placeholder="Option 1, Option 2"

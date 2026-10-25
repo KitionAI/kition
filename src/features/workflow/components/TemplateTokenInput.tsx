@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlusIcon as Plus } from '@kition/tessera-icons/react'
 
-import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
+import { cn } from '@/lib/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
 import { fieldTypeIcon, fieldTypeLabel } from '@/features/workflow/lib/fieldTypeIcon'
 import type { BodyPart, BodyTemplate, FieldSchema, TableSchema } from './BodyTemplateEditor.types'
-import { cn } from '@kition/app-ui/utils'
 
 export interface TemplateTokenInputProps {
   /** Current template value. Always a BodyTemplate (parts array) so subject

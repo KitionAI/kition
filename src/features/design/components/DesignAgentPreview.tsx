@@ -1,6 +1,6 @@
 import { CheckIcon as Check, SparklesIcon as Sparkles, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 import type { DesignAgentPreviewState } from '../hooks/useDesignAgentPatch'
 
 export function DesignAgentPreviewControls({
@@ -56,7 +56,7 @@ export function DesignAgentPreviewControls({
         {streaming ? (
           <Button
             size="sm"
-            variant="secondary"
+            variant="subtle"
             onClick={onCancel}
             data-testid="design-agent-cancel"
           >
@@ -67,7 +67,7 @@ export function DesignAgentPreviewControls({
           <>
             <Button
               size="sm"
-              variant="secondary"
+              variant="subtle"
               onClick={onReject}
               data-testid="design-agent-reject"
             >
@@ -75,7 +75,7 @@ export function DesignAgentPreviewControls({
               {t('agentPreview.reject')}
             </Button>
             {state.status === 'ready' ? (
-              <Button size="sm" onClick={onAccept} data-testid="design-agent-accept">
+              <Button variant="primary" size="sm" onClick={onAccept} data-testid="design-agent-accept">
                 <Check />
                 {t('agentPreview.accept')}
               </Button>

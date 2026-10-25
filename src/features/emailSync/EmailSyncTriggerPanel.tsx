@@ -1,7 +1,7 @@
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useEffect, useState } from 'react'
 
-import { Button } from '@kition/app-ui'
+import { Button } from '@kition/tessera'
 
 export function EmailSyncTriggerPanel({
   enabled,
@@ -47,7 +47,7 @@ export function EmailSyncTriggerPanel({
         </select>
       </label>
 
-      <Button
+      <Button size="md" variant="primary"
         disabled={busy}
         onClick={() => onSave(
           value !== 'manual',
