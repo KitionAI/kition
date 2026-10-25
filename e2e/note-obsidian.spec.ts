@@ -85,3 +85,12 @@ test('draws an HTML block as its HTML, as Obsidian does', async ({ page, baseURL
   await block.locator('summary').click()
   await expect.poll(async () => (await block.boundingBox())!.height).toBeGreaterThan(folded + 10)
 })
+
+test('takes back a run of typing in one Undo, as Obsidian does', async ({ page, baseURL }) => {
+  const { kit } = await openNote(page, baseURL!, 'Undo.md', '# Undo\n\nstart\n')
+  await caretAfter(page, kit, 'start')
+  await page.keyboard.type(' hello world')
+  await expect.poll(() => noteText(page)).toContain('start hello world')
+  await pressCommand(page, kit, 'z')
+  await expect.poll(() => noteText(page)).toBe('# Undo\n\nstart\n')
+})
