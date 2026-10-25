@@ -842,6 +842,14 @@ Slide and page kits (Slide):
   repository (`../kition-fonts`), or web builds have no fonts and text is
   invisible. The faces an editor hands to `addFont` come from
   `../kition-fonts` (`KITION_FONTS_DIR`), Kition's own font repository.
+- Kit editors need kition-tessera checked out next to kition-sdk
+  (`../kition-tessera`): kit-ui takes its components, theme tokens, and
+  Tessera Icons from it, and each kit's Vite config allows reading it. Kits
+  draw icons from `@kition/tessera-icons/react` or kit-ui's `TesseraIcons`,
+  never from lucide-react, and name icons for their own engine commands in
+  `web/src/commandIcons.ts` (`registerCommandIcons`). `scripts/publish-kit.sh`
+  does not clone kition-tessera yet, so a kit built on kition-sdk's current
+  main cannot be published until it does.
 
 Text kits (Doc):
 
