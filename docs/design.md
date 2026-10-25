@@ -853,8 +853,8 @@ Where the color shows (the WPS Office model):
   in a light tint of the hue with the glyph in the hue. In 16 px lists (New
   menu, file tree, tabs, file viewer) use the small cut, `<KitIcon kit="..."
   small />`: the kit's solid silhouette in its hue on a 16×16 pixel grid, no
-  tile. Show kit icons wherever a kit or a kit-owned file appears; keep Lucide
-  for actions and plain files.
+  tile. Show kit icons wherever a kit or a kit-owned file appears; use Tessera
+  Icons (`@kition/tessera-icons`) for actions and plain files.
 - **Tabs** stay neutral: the active tab is the page surface with a hairline
   border. The kit's small icon is the only per-kit color in the tab strip.
 - **Inside a kit's editor** the kit's brand replaces the primary color: the
