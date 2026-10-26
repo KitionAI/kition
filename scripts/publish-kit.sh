@@ -21,7 +21,7 @@ parent="$(dirname "$repo_root")"
 kit_repo="${KIT_REPO:-$parent/kition-$kit}"
 sdk_repo="${KITION_SDK_REPO:-$parent/kition-sdk}"
 fonts_repo="${KITION_FONTS_REPO:-$parent/kition-fonts}"
-# kit-ui links its components, tokens, and icons from a kition-tessera checkout beside kition-sdk.
+# kit-editor links its components, tokens, and icons from a kition-tessera checkout beside kition-sdk.
 tessera_repo="${KITION_TESSERA_REPO:-$parent/kition-tessera}"
 scratch="${KITION_KIT_SCRATCH:-${TMPDIR:-/tmp}}"; scratch="${scratch%/}/kition-kit-publish/$kit"
 repository="$(node -e "const kit = require('$repo_root/kits/sdks.json')['$kit']; if (!kit) process.exit(1); console.log(kit.repository)")" \

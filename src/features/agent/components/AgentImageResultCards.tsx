@@ -1,6 +1,6 @@
 import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { resolveAgentImageURL } from '@/services/workspaceFiles'
 import type { AgentImageArtifact } from '@/types/imageGeneration'
 import type { imageJobOf } from '../lib/agentImageJob'

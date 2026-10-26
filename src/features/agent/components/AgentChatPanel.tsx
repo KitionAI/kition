@@ -19,7 +19,7 @@ import type { AgentMentionableDocument } from '@/features/agent/lib/documentMent
 import { type AgentPaneContext, emptyStateForPane } from '@/features/agent/lib/paneEmptyState'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
 import { cn } from '@/lib/cn'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 
 type AgentChatPanelProps = {
   session: AgentSession

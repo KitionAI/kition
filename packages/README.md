@@ -2,7 +2,7 @@
 
 Source packages that Kition builds from `src/` and that run outside Kition too. There are none at
 the moment: Kition's shared controls (buttons, form fields, modals, popovers, sheets, confirm, the
-command list) come from Kition Tessera (`@kition/tessera`, below), and kit editors live in the
+command list) come from Kition Tessera (`@kition/tessera-ui`, below), and kit editors live in the
 kits' own repositories, shipped as packages in `public/kits/<kit>-ui/`
 ([docs/kit-sdk.md](../docs/kit-sdk.md)).
 
@@ -18,13 +18,13 @@ kits' own repositories, shipped as packages in `public/kits/<kit>-ui/`
 
 ## Kition Tessera
 
-`@kition/tessera` (components) and `@kition/tessera-icons` (icons) are git dependencies pinned to
+`@kition/tessera-ui` (components) and `@kition/tessera-icons` (icons) are git dependencies pinned to
 one commit of the public `KitionAI/kition-tessera` repository in `package.json`; `pnpm.overrides`
 points the packages' own Tessera dependencies (`@kition/tessera-icons`,
 `@kition/tessera-tokens`) at the same commit. Move all four together with
 `node scripts/pin-tessera.mjs <commit>`.
 
-- **Styles.** `src/app/styles.css` imports `@kition/tessera/styles.css` into the `tessera` cascade
+- **Styles.** `src/app/styles.css` imports `@kition/tessera-ui/styles.css` into the `tessera` cascade
   layer, above Tailwind's reset (`reset` layer) and below everything unlayered, so a Tailwind class
   at a call site adjusts a Tessera control. The same file maps Tessera's theme tokens (`--kit-*`)
   to Kition's variables, light and dark.

@@ -1,7 +1,7 @@
 import { CircleAlertIcon as AlertCircle, InboxIcon as Inbox, ListRestartIcon as ListRestart, LoaderCircleIcon as LoaderCircle, PlayIcon as Play, RefreshCwIcon as RefreshCw, RotateCcwIcon as RotateCcw, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { Button, Disclosure, PasswordInput, TextInput, useConfirm } from '@kition/tessera'
+import { Button, Disclosure, PasswordInput, TextInput, useConfirm } from '@kition/tessera-ui'
 import {
   getEmailProvider,
   resolveEmailProviderId,

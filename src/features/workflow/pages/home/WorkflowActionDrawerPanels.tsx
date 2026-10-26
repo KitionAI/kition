@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { ConnectionView } from '@/api/connections'
 import type { NodeIssue, WorkflowDefinition } from '@/api/workflows'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { AddRecordActionPropertiesPanel } from '@/features/workflow/components/AddRecordActionPropertiesPanel'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { RecordActionPropertiesPanel } from '@/features/workflow/components/RecordActionPropertiesPanel'

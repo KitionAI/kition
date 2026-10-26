@@ -2,7 +2,7 @@ import { LoaderCircleIcon as LoaderCircle, MailIcon as Mail, PlusIcon as Plus, R
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Disclosure, PasswordInput, TextInput, useConfirm } from '@kition/tessera'
+import { Button, Disclosure, PasswordInput, TextInput, useConfirm } from '@kition/tessera-ui'
 import {
   emailProviderCatalog,
   getEmailProvider,

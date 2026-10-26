@@ -1,7 +1,7 @@
 import { ArrowLeftIcon as ArrowLeft, MailIcon as Mail } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { Button, PasswordInput, TextInput } from '@kition/tessera'
+import { Button, PasswordInput, TextInput } from '@kition/tessera-ui'
 import {
   emailProviderCatalog,
   getEmailProvider,

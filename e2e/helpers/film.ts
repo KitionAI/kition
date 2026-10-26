@@ -11,7 +11,7 @@ export const filmPlay = (kit: FrameLocator) => kit.getByTestId('film-program-tra
 
 /**
  * Add Edit at the playhead (`sequence.addEdit`, Cmd+K on a Mac, Ctrl+K elsewhere); upstream's
- * monitors have no split button. The kit reads the platform from `navigator.platform` (kit-ui's
+ * monitors have no split button. The kit reads the platform from `navigator.platform` (kit-editor's
  * `isMac`), which the browser's device emulation may set apart from the machine running the test.
  */
 export async function filmAddEdit(page: Page, kit: FrameLocator) {

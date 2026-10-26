@@ -2,7 +2,7 @@ import { CheckIcon as Check, ChevronDownIcon as ChevronDown, Table2Icon as Table
 import { useState } from 'react'
 
 import { cn } from '@/lib/cn'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, Popover, PopoverContent, PopoverTrigger } from '@kition/tessera-ui'
 
 export type EmailSyncTableOption = {
   id: number

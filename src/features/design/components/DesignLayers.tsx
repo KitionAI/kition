@@ -1,7 +1,7 @@
 import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, EyeIcon as Eye, EyeOffIcon as EyeOff, LockIcon as Lock, LockOpenIcon as Unlock } from '@kition/tessera-icons/react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import type { DesignDocument } from '../lib/designTypes'
 import type { DesignStore } from '../lib/designStore'
 

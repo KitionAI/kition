@@ -46,7 +46,7 @@ export type KitUiHostButton = {
   place: string
   /** The label per locale; `en-US` is the fallback. */
   label: Record<string, string>
-  /** A `@kition/kit-ui` icon name, or a `data:image/…` URL. */
+  /** A `@kition/kit-editor` icon name, or a `data:image/…` URL. */
   icon?: string
   /** As `Cmd+Enter`. */
   shortcut?: string

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Pins Kition to one commit of Kition Tessera (the public KitionAI/kition-tessera repository):
-// the `@kition/tessera` and `@kition/tessera-icons` dependencies and the `pnpm.overrides` that
+// the `@kition/tessera-ui` and `@kition/tessera-icons` dependencies and the `pnpm.overrides` that
 // point those packages' own `@kition/tessera-icons` and `@kition/tessera-tokens` at the same
 // commit. See packages/README.md.
 //
@@ -15,7 +15,7 @@ const file = path.join(repo, 'package.json')
 const manifest = JSON.parse(fs.readFileSync(file, 'utf8'))
 const spec = (commit, dir) => `github:KitionAI/kition-tessera#${commit}&path:/packages/${dir}`
 const slots = [
-  [manifest.dependencies, '@kition/tessera', 'tessera'],
+  [manifest.dependencies, '@kition/tessera-ui', 'ui'],
   [manifest.dependencies, '@kition/tessera-icons', 'icons'],
   [manifest.pnpm.overrides, '@kition/tessera-icons', 'icons'],
   [manifest.pnpm.overrides, '@kition/tessera-tokens', 'tokens'],

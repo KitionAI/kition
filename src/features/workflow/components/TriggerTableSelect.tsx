@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckIcon as Check, ChevronDownIcon as ChevronDown } from '@kition/tessera-icons/react'
 
 import { cn } from '@/lib/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera-ui'
 
 export type TriggerTableOption = {
   /** `tableKey(documentPath, tableId)`: the option's value in the picker. */

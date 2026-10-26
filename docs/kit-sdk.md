@@ -24,7 +24,7 @@ platform rules and levels key off the platform fields (`engine.contract`,
 
 A kit's editor runs **inside the Kition tab**. The kit's engine is compiled to
 WebAssembly (its *SDK*) and runs in a Web Worker. The kit's own editor (React,
-on kition-sdk's `@kition/kit-ui`, in the kit repository's `web/`) draws the
+on kition-sdk's `@kition/kit-editor`, in the kit repository's `web/`) draws the
 menus, panels, and canvas around it, and Kition shows that editor in an
 iframe over the Kit UI protocol (section 4). The kit's engine and editor form
 one **kit package**, which needs nothing from Kition, so other applications
@@ -114,7 +114,7 @@ kit repository (for example KitionAI/kition-photo, standalone, private)
   (git dependency) kition-sdk     KitionAI/kition-sdk: KitDocument, export_kit_document!,
                                   testing::check_contract, host (lent files), raster
   crates/kition-<kit>-sdk         the kit's SDK: its engine behind KitDocument, as WebAssembly
-  web/                            the kit's own editor on @kition/kit-ui; with the engine,
+  web/                            the kit's own editor on @kition/kit-editor; with the engine,
                                   the kit package (web/scripts/build-engine.sh, pnpm build)
   apps/kit-<kit>                  the headless Kit Protocol executable (agent)
   KITION_CHANGES.md               every upstream file Kition changed, and why
@@ -260,18 +260,18 @@ edits a stale copy and its save overwrites the person's work. See
 ## 4. Kits In Kition (Standard 6.1)
 
 A kit draws its own editor: the kit repository's `web/` app (React, on
-kition-sdk's `@kition/kit-ui`) holds the ribbon, panels, canvas, and dialogs
+kition-sdk's `@kition/kit-editor`) holds the ribbon, panels, canvas, and dialogs
 next to the engine, and Kition shows it in an iframe and talks to it over the
 Kit UI protocol (`kition-kit-ui/1`, kition-sdk `docs/platform/reference/ui-protocol.md`). Kition
 keeps the shell: files, the workspace, the agent, the theme, the language, and
 its own shortcuts.
 
-All ten kits draw on kit-ui's `EditorFrame`: a top bar with the kit's tabs
+All ten kits draw on kit-editor's `EditorFrame`: a top bar with the kit's tabs
 (File, Home, Insert, …, or a ported app's menus) and the document actions,
 then the person's display mode: Menus (tabs open as drop-down menus or a
 drop-down ribbon panel), Single line (one row of the tab's main commands),
 Classic (the full ribbon), or Focus (no chrome but a floating bar, Cmd+\).
-kit-ui keeps the choice per kit, steps down when the window is too narrow, and
+kit-editor keeps the choice per kit, steps down when the window is too narrow, and
 sizes for touch. Photo, Vector, Film, Effect, and CAD default to Menus; Doc,
 Sheet, Slide, PDF, and Design to Single line (`kit.json` `ui.display`). Canvas
 kits pass a tool rail of flyout slots; side panels sit right of the body. A
@@ -370,7 +370,7 @@ items with `primary`.
   runtime, confined like `/kit-files/`. `KitFrame` serving the kit's
   `files/*` requests from them is the next step.
 - A document this person may only view (a view-only share link, a `viewer`
-  role) opens with `document.readOnly`. kit-ui's engine worker then refuses
+  role) opens with `document.readOnly`. kit-editor's engine worker then refuses
   every edit (reason `read-only`) by its exported `READ_ONLY_RULES`, and the
   editor shows View only instead of Undo, Redo, and Save; a kit's own panels
   read it with `useReadOnly()`. When the role changes, `KitFrame` opens the
@@ -472,7 +472,7 @@ and its Rust engine (`kition_note_sdk`, `NoteDocument`) and editor live in
 its repository, published and pinned like every other kit. As in Word, the
 engine lays the note out, draws it on the canvas (a live preview: Markdown
 shows on the caret's lines, tables as grids, pictures in place), and edits it
-through its `text` tool; the editor is kit-ui's frame around that canvas, with
+through its `text` tool; the editor is kit-editor's frame around that canvas, with
 the table controls, panels, and find bar over engine commands, and a visually
 hidden copy of the text for assistive technology (`note-text`, which specs
 read too). Kition has no Markdown editor of its own: the editor, its display
@@ -651,7 +651,7 @@ with a large file.
 ## 6. Rules Learned The Hard Way
 
 These rules came from Kition's former in-page editors; they apply to the
-kits' own editors (kit-ui's canvas and engine worker) in the same way.
+kits' own editors (kit-editor's canvas and engine worker) in the same way.
 
 Loading and security:
 
@@ -843,9 +843,9 @@ Slide and page kits (Slide):
   invisible. The faces an editor hands to `addFont` come from
   `../kition-fonts` (`KITION_FONTS_DIR`), Kition's own font repository.
 - Kit editors need kition-tessera checked out next to kition-sdk
-  (`../kition-tessera`): kit-ui takes its components, theme tokens, and
+  (`../kition-tessera`): kit-editor takes its components, theme tokens, and
   Tessera Icons from it, and each kit's Vite config allows reading it. Kits
-  draw icons from `@kition/tessera-icons/react` or kit-ui's `TesseraIcons`,
+  draw icons from `@kition/tessera-icons/react` or kit-editor's `TesseraIcons`,
   never from lucide-react, and name icons for their own engine commands in
   `web/src/commandIcons.ts` (`registerCommandIcons`). `scripts/publish-kit.sh`
   clones kition-tessera beside kition-sdk too.

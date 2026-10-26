@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { MaximizeIcon as Maximize, MinusIcon as Minus, PlusIcon as Plus } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import type { Bounds, DesignDocument } from '../lib/designTypes'
 import type { DesignStore } from '../lib/designStore'
 import {

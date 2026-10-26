@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'
 import { EmptyState } from '@/components/states'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { WorkflowHomeLauncher } from '@/features/workflow/components/launcher/WorkflowHomeLauncher'
 import type { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowLauncherState'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'

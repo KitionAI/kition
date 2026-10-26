@@ -2,7 +2,7 @@ import { ChevronLeftIcon as ChevronLeft, LoaderCircleIcon as LoaderCircle, PlayI
 import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { SampleRowPicker } from '@/features/workflow/components/SampleRowPicker'
 import { WorkflowStatusToggle } from '@/features/workflow/components/WorkflowStatusToggle'
 import { WorkflowHomeActionsMenu, type WorkflowDetailView } from '@/features/workflow/pages/WorkflowHomeActionsMenu'

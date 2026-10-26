@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera-ui'
 import { notify } from '@/lib/notify'
 import { SyncRpcError } from '@/lib/sync'
 import { collabConfigured, CollabUnavailableError } from './syncConnection'

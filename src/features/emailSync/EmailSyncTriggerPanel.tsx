@@ -1,7 +1,7 @@
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useEffect, useState } from 'react'
 
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 
 export function EmailSyncTriggerPanel({
   enabled,

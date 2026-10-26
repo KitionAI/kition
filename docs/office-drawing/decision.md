@@ -39,7 +39,7 @@ The shared drawing code is a new crate, `kition-drawing`, in the
 starts as one crate with internal modules (`model`, `geom`, `edit`, `ops`,
 `display`, and later `ooxml`, `chart`, `ink`). A module becomes its own crate
 only when a kit needs it without the others, for example a chart-only
-consumer. The shared editor controls start as kit-ui's drawing module
+consumer. The shared editor controls start as kit-editor's drawing module
 (`DrawingInsertGroup`, `DrawingFormatGroup`), which every kit editor already
 links; they move to their own package only if they outgrow it.
 
@@ -52,7 +52,7 @@ kit, on Kition, or on any renderer.
 
 While Phase 1 to 3 change the crate often, kits depend on `kition-drawing`
 by path, from the `kition-sdk` checkout next to them. That is the same
-checkout their editors already link `@kition/kit-ui` from, and the one
+checkout their editors already link `@kition/kit-editor` from, and the one
 Kition's kit build scripts expect, so no new requirement is added.
 `kition-drawing` does not depend on the `kition-sdk` crate, so a kit's pinned
 `kition-sdk` revision is unaffected.

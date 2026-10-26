@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import {
   DEFAULT_CONSTRAINTS,
   DESIGN_FONT_FAMILIES,

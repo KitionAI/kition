@@ -1,7 +1,7 @@
 import { ChevronDownIcon as ChevronDown, CopyIcon as Copy, DownloadIcon as Download, Redo2Icon as Redo2, Table2Icon as Table2, Undo2Icon as Undo2, WandSparklesIcon as WandSparkles } from '@kition/tessera-icons/react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import type { DesignSaveStatus } from '../lib/designSession'
 import type { DesignExportPresets } from '../lib/designExportPresets'
 import type { DesignExportFormat } from '../hooks/useDesignFileActions'

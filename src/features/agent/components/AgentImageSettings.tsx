@@ -2,7 +2,7 @@ import { XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
-import { Button, TextInput, Textarea } from '@kition/tessera'
+import { Button, TextInput, Textarea } from '@kition/tessera-ui'
 import type { AgentImageMode, AgentImageOptions } from '../hooks/useAgentImageMode'
 
 export function AgentImageSettings({ mode, busy }: { mode: AgentImageMode; busy: boolean }) {

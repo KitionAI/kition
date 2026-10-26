@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlobeIcon as Globe, NetworkIcon as Network, ShieldAlertIcon as ShieldAlert } from '@kition/tessera-icons/react'
 import { cn } from '@/lib/cn'
-import { Button, PasswordInput, Select, TextInput } from '@kition/tessera'
+import { Button, PasswordInput, Select, TextInput } from '@kition/tessera-ui'
 import {
   SettingsPaneHeader,
   SettingsSection,

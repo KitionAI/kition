@@ -94,7 +94,7 @@ own interaction tests live in the kition-table repository and run there.
 - Push design fixes into shared tokens and shared primitives before page-local
   overrides.
 - Prefer shared styles in `src/app/styles.css` and shared controls from Kition
-  Tessera (`@kition/tessera`; its docs at `kition-tessera/site`, `llms.txt` for
+  Tessera (`@kition/tessera-ui`; its docs at `kition-tessera/site`, `llms.txt` for
   agents) when possible. A control Tessera lacks goes into Tessera first; see
   `packages/README.md`.
 - When reviewing screenshots, compare geometry, palette, hierarchy, and control
@@ -115,7 +115,7 @@ own interaction tests live in the kition-table repository and run there.
   protocol) by contract, not by embedding another runtime.
 - Kit editors run in the page: the kit's engine is compiled to WebAssembly
   and runs in a Web Worker, and the kit draws its own editor (its repository's
-  `web/` on kition-sdk's `@kition/kit-ui`), which Kition shows in an iframe
+  `web/` on kition-sdk's `@kition/kit-editor`), which Kition shows in an iframe
   over the Kit UI protocol (`KitFrame`). Never embed a kit's native window over
   a tab, and never build kit editors inside Kition; both were tried and
   removed. Native kit executables run only `headless`, for the agent.

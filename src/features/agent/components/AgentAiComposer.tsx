@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
-import { Textarea } from '@kition/tessera'
+import { Textarea } from '@kition/tessera-ui'
 import type { AgentLocalSource } from '@/api/agent'
 import { AgentContextAddMenu } from '@/features/agent/components/AgentContextAddMenu'
 import { AgentComposerContext } from '@/features/agent/components/AgentComposerContext'

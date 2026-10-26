@@ -2,7 +2,7 @@ import { ChevronDownIcon as ChevronDown, RefreshCwIcon as RefreshCw, SearchIcon 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera-ui'
 import { listTableRecords, type KitTablesRecord } from '@/api/kitTables'
 
 /**

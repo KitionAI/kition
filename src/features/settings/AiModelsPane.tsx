@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TriangleAlertIcon as AlertTriangle, PlusIcon as Plus, RefreshCcwIcon as RefreshCcw, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { cn } from '@/lib/cn'
-import { Button, Disclosure, PasswordInput, Select, TextInput } from '@kition/tessera'
+import { Button, Disclosure, PasswordInput, Select, TextInput } from '@kition/tessera-ui'
 import {
   type KitionAccountState,
   useKitionAccount,

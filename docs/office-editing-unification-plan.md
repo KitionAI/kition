@@ -38,7 +38,7 @@ The following are proposed logical modules. Establish boundaries before deciding
 | Chart engine | Series and axis semantics, resolved data, chart layout, element selection, and rendering. Workbook formulas remain outside this module. |
 | Ink engine | Stroke acquisition, smoothing, pressure handling, selection, erasure, and stroke splitting. |
 | DrawingML codecs | Common shape, style, text, chart, and supported ink serialization. Document package ownership stays with each kit. |
-| Shared editor controls | Shape gallery, format inspector, chart data editor, pen controls, and WordArt controls, built on `@kition/kit-ui`. |
+| Shared editor controls | Shape gallery, format inspector, chart data editor, pen controls, and WordArt controls, built on `@kition/kit-editor`. |
 
 All document mutations run through the worker engine. Shared UI sends typed commands and reads selection descriptions; it must not maintain another authoritative object model. Engine overlays provide selection and editing geometry. Native headless execution uses the same commands and model as the browser editor.
 

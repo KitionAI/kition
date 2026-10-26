@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PlusIcon as Plus } from '@kition/tessera-icons/react'
 
 import { cn } from '@/lib/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/tessera-ui'
 import { fieldTypeIcon, fieldTypeLabel } from '@/features/workflow/lib/fieldTypeIcon'
 import type { BodyPart, BodyTemplate, FieldSchema, TableSchema } from './BodyTemplateEditor.types'
 

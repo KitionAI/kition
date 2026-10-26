@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { CloudIcon as Cloud, FolderCheckIcon as FolderCheck, KeyRoundIcon as KeyRound, LaptopIcon as Laptop, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { isKitionAccountSessionUsable } from '@/features/account/lib/accountState'
 import { useTranslation } from '@/i18n'

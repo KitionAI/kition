@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Button, useDialogFocus } from '@kition/tessera'
+import { Button, useDialogFocus } from '@kition/tessera-ui'
 import { useTranslation } from '@/i18n'
 
 type Props = {

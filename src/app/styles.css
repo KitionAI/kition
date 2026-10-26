@@ -1,10 +1,10 @@
 /*
- * Cascade order: Tailwind's reset, then Tessera's components (@kition/tessera), then everything
+ * Cascade order: Tailwind's reset, then Tessera's components (@kition/tessera-ui), then everything
  * unlayered (Kition's own rules and Tailwind's components and utilities). A class at a call site
  * therefore adjusts a Tessera control, and the reset never flattens one.
  */
 @layer reset, tessera;
-@import '@kition/tessera/styles.css' layer(tessera);
+@import '@kition/tessera-ui/styles.css' layer(tessera);
 
 @layer reset {
   @tailwind base;

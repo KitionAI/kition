@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createStrings, StringsProvider, TESSERA_CATALOGS } from '@kition/tessera'
+import { createStrings, StringsProvider, TESSERA_CATALOGS } from '@kition/tessera-ui'
 
 /** Tessera's labels that Kition already translates in its `common` namespace, in every locale. */
 const FROM_COMMON: Readonly<Record<string, string>> = {
