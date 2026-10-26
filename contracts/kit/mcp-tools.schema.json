@@ -19,7 +19,7 @@
           },
           "target": {
             "type": "object",
-            "description": "Preview only this part of the document, for example {\"slide\": 3} (counted from 1). Kits that cannot render a part fall back to the whole document.",
+            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
             "properties": {
               "slide": {
                 "type": "integer",
@@ -28,6 +28,18 @@
               "page": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "range": {
+                "type": "string"
+              },
+              "sheet": {
+                "type": "string"
+              },
+              "paragraphs": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
               }
             }
           },
@@ -383,8 +395,11 @@
             "description": "At most this many objects. Defaults to 50."
           },
           "describe": {
-            "type": "boolean",
-            "description": "Also answer the kit's object types (model.describe) and their JSON Schema."
+            "type": [
+              "boolean",
+              "string"
+            ],
+            "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full."
           },
           "draft": {
             "type": "boolean",

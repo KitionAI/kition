@@ -208,7 +208,7 @@ pub fn query_spec(kit: &'static KitDefinition, described: Option<&Value>) -> Kit
                 "follow": { "type": "string", "description": "A field path from the first object (the root by default): field names, and list or tree positions, joined with dots. Reads the objects it ends at." },
                 "fields": string_list("Only these fields of each object. Defaults to all.", &fields),
                 "limit": { "type": "integer", "minimum": 1, "maximum": MAX_LIMIT, "description": format!("At most this many objects. Defaults to {DEFAULT_LIMIT}.") },
-                "describe": { "type": "boolean", "description": "Also answer the kit's object types (model.describe) and their JSON Schema." },
+                "describe": { "type": ["boolean", "string"], "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full." },
                 "draft": draft_property()
             },
             "required": ["path"]
@@ -570,13 +570,24 @@ pub(super) async fn query(
     if total > limit {
         output["truncated"] = Value::Bool(true);
     }
-    if input.get("describe").and_then(Value::as_bool) == Some(true) {
-        let described = target
-            .describe(kits, kit)
-            .await
-            .map_err(|error| unsupported(kit, error))?;
-        output["schema"] = describe_schema(&described);
-        output["describe"] = described;
+    // `describe: true`: the types and their fields, one line each; `describe: "Paragraph,Run"`:
+    // those types in full. (The whole description is too large to read: 117K characters for Word.)
+    match input.get("describe") {
+        Some(Value::Bool(true)) => {
+            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
+            output["types"] = json!(type_listing(&described));
+            output["describe_more"] = json!("pass describe: \"<Type>[,<Type>]\" for those types in full");
+        }
+        Some(Value::String(wanted)) => {
+            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
+            let names: Vec<&str> = wanted.split(',').map(str::trim).filter(|n| !n.is_empty()).collect();
+            let picked: Map<String, Value> = described["types"]
+                .as_object()
+                .map(|types| types.iter().filter(|(name, _)| names.contains(&name.as_str())).map(|(n, t)| (n.clone(), t.clone())).collect())
+                .unwrap_or_default();
+            output["describe"] = json!({ "root": described["root"], "types": picked });
+        }
+        _ => {}
     }
     if let Target::Live { draft, .. } = &target {
         output["live"] = Value::Bool(true);
