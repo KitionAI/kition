@@ -419,7 +419,7 @@ test.describe('app shell navigation', () => {
     await expect(page.getByTestId('document-editor')).toBeVisible()
     await page.waitForTimeout(250)
 
-    await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0)
+    await expect(page.locator('.kui-toast[data-level="error"]')).toHaveCount(0)
     expect(notificationPolicyCalls).toBe(0)
     expect(lifecycleHookCalls).toBe(0)
   })

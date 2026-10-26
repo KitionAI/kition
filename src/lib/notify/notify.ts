@@ -1,4 +1,4 @@
-import { toast, type ExternalToast } from 'sonner'
+import { toast, type ToastOptions } from '@kition/tessera-ui'
 
 export type NotifyId = string | number
 
@@ -14,9 +14,9 @@ export interface NotifyOpts {
 const DEFAULT_DURATION_MS = 4000
 const DEFAULT_ERROR_DURATION_MS = 6000
 
-function toSonner(opts: NotifyOpts | undefined, defaultDuration: number): ExternalToast {
+function toToast(opts: NotifyOpts | undefined, defaultDuration: number): ToastOptions {
   const duration = opts?.duration ?? defaultDuration
-  const out: ExternalToast = { duration }
+  const out: ToastOptions = { duration }
   if (opts?.id !== undefined) out.id = opts.id
   if (opts?.description !== undefined) out.description = opts.description
   if (opts?.action) {
@@ -30,20 +30,20 @@ function toSonner(opts: NotifyOpts | undefined, defaultDuration: number): Extern
 
 export const notify = {
   success(msg: string, opts?: NotifyOpts): NotifyId {
-    return toast.success(msg, toSonner(opts, DEFAULT_DURATION_MS))
+    return toast.success(msg, toToast(opts, DEFAULT_DURATION_MS))
   },
   error(msg: string, opts?: NotifyOpts): NotifyId {
-    return toast.error(msg, toSonner(opts, DEFAULT_ERROR_DURATION_MS))
+    return toast.error(msg, toToast(opts, DEFAULT_ERROR_DURATION_MS))
   },
   warning(msg: string, opts?: NotifyOpts): NotifyId {
-    return toast.warning(msg, toSonner(opts, DEFAULT_DURATION_MS))
+    return toast.warning(msg, toToast(opts, DEFAULT_DURATION_MS))
   },
   info(msg: string, opts?: NotifyOpts): NotifyId {
-    return toast.info(msg, toSonner(opts, DEFAULT_DURATION_MS))
+    return toast.info(msg, toToast(opts, DEFAULT_DURATION_MS))
   },
   loading(msg: string, opts?: NotifyOpts): NotifyId {
-    // sonner's loading is sticky by default; respect explicit duration only.
-    const out = toSonner(opts, Number.POSITIVE_INFINITY)
+    // A loading notice stays until its result replaces it; respect an explicit duration only.
+    const out = toToast(opts, Number.POSITIVE_INFINITY)
     if (opts?.duration === undefined) delete out.duration
     return toast.loading(msg, out)
   },
@@ -56,7 +56,7 @@ export const notify = {
     action: { label: string; onClick: () => void },
     opts?: Omit<NotifyOpts, 'duration' | 'action'>,
   ): NotifyId {
-    return toast.error(msg, toSonner({ ...opts, duration: Number.POSITIVE_INFINITY, action }, DEFAULT_ERROR_DURATION_MS))
+    return toast.error(msg, toToast({ ...opts, duration: Number.POSITIVE_INFINITY, action }, DEFAULT_ERROR_DURATION_MS))
   },
 
   promise<T>(
@@ -68,7 +68,7 @@ export const notify = {
     },
     opts?: NotifyOpts,
   ): Promise<T> {
-    toast.promise(p, { loading: msgs.loading, success: msgs.success, error: msgs.error, ...toSonner(opts, DEFAULT_DURATION_MS) })
+    void toast.promise(p, { loading: msgs.loading, success: msgs.success, error: msgs.error }, toToast(opts, DEFAULT_DURATION_MS))
     return p
   },
 }
