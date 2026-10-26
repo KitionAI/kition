@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from 'sonner'
+import { toast } from '@kition/tessera-ui'
 import { notify } from './notify'
 
-vi.mock('sonner', () => ({
+vi.mock('@kition/tessera-ui', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),
@@ -29,7 +29,7 @@ beforeEach(() => {
 })
 
 describe('notify basic variants', () => {
-  it('success forwards message to sonner', () => {
+  it('success forwards message to the Tessera toast', () => {
     notify.success('saved')
     expect(mocked.success).toHaveBeenCalledWith('saved', expect.any(Object))
   })
@@ -86,7 +86,7 @@ describe('persistentError', () => {
 })
 
 describe('promise wrapper', () => {
-  it('forwards promise + messages to sonner', async () => {
+  it('forwards promise + messages to the Tessera toast', async () => {
     const p = Promise.resolve('hello')
     await notify.promise(p, { loading: 'L', success: 'S', error: 'E' })
     expect(mocked.promise).toHaveBeenCalled()

@@ -50,8 +50,9 @@ module.exports = {
       {
         paths: [
           {
-            name: 'sonner',
-            message: 'Import from @/lib/notify instead. Direct sonner usage is only allowed inside src/lib/notify/ and Shell.tsx (for <Toaster>).',
+            name: '@kition/tessera-ui',
+            importNames: ['toast', 'Toaster'],
+            message: 'Import from @/lib/notify instead. Tessera\'s toast is used directly only inside src/lib/notify/ and Shell.tsx (for <Toaster>).',
           },
           {
             name: 'radix-ui',
@@ -167,7 +168,7 @@ module.exports = {
     {
       // Shared components may wrap Radix; features use them or @kition/tessera-ui.
       files: ['src/components/**'],
-      rules: { 'no-restricted-imports': ['error', { paths: [{ name: 'sonner', message: 'Import from @/lib/notify instead.' }] }] },
+      rules: { 'no-restricted-imports': ['error', { paths: [{ name: '@kition/tessera-ui', importNames: ['toast', 'Toaster'], message: 'Import from @/lib/notify instead.' }] }] },
     },
     {
 

@@ -12,7 +12,7 @@ test('a workspace error toast leaves the tab strip clickable', async ({ page, ba
   })
   // A JSON file opens in the system's application, which fails here.
   await page.locator('.document-tree-row', { hasText: 'data.json' }).first().click()
-  const toast = page.locator('[data-sonner-toast]').first()
+  const toast = page.locator('.kui-toast').first()
   await expect(toast).toBeVisible({ timeout: 10_000 })
 
   const tabBox = await page.locator('.document-tab-list').first().boundingBox()

@@ -1,9 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MenuIcon as Menu, XIcon as X } from '@kition/tessera-icons/react'
-import { toast, Toaster } from 'sonner'
 import { cn } from '@/lib/cn'
-import { ConfirmProvider, useMediaQuery } from '@kition/tessera-ui'
+import { ConfirmProvider, toast, Toaster, useMediaQuery } from '@kition/tessera-ui'
 import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBanner'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { appLocationPathname, leaveAppView, readAppLocation, resolveSettingsSection, type AppLocation } from '@/app/appLocation'
@@ -86,7 +85,7 @@ const navigateAdapters: NavigateAdapters = {
     window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: vp } }))
   },
   getCmViewForPath: () => null,   // V1 — flash wired in follow-up
-  showToast: (msg) => { toast(msg) },
+  showToast: (msg) => { toast.info(msg) },
 }
 
 const NOTE_READ_CONCURRENCY = 8
@@ -847,7 +846,7 @@ export function AppShell() {
       <ExtensionDialogs />
       <ConsoleCreditsExhaustedBanner />
       {/* Below the tab strip: a toast must never cover the tab chrome (docs/design.md). */}
-      <Toaster position="top-center" offset={{ top: TOAST_TOP_OFFSET }} mobileOffset={{ top: TOAST_TOP_OFFSET }} richColors closeButton />
+      <Toaster offset={TOAST_TOP_OFFSET} />
     </div>
     </ConfirmProvider>
   )
