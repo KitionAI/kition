@@ -20,8 +20,8 @@ overrides:
   '@xmldom/xmldom@>=0.9.0 <0.9.12': 0.9.12
   postcss-selector-parser@>=6.0.0 <6.1.4: 6.1.4
   source-map-js: 1.2.2
-  '@kition/tessera-icons': github:KitionAI/kition-tessera#7cef4f9e8584e978eb6ccef781b1e164631ba991&path:/packages/icons
-  '@kition/tessera-tokens': github:KitionAI/kition-tessera#7cef4f9e8584e978eb6ccef781b1e164631ba991&path:/packages/tokens
+  '@kition/tessera-icons': github:KitionAI/kition-tessera#ea3ab631ab68b436976510caac17a46dfc616509&path:/packages/icons
+  '@kition/tessera-tokens': github:KitionAI/kition-tessera#ea3ab631ab68b436976510caac17a46dfc616509&path:/packages/tokens
 
 patchedDependencies:
   brace-expansion@5.0.11:
@@ -45,11 +45,11 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@kition/tessera':
-        specifier: github:KitionAI/kition-tessera#7cef4f9e8584e978eb6ccef781b1e164631ba991&path:/packages/tessera
-        version: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/tessera(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        specifier: github:KitionAI/kition-tessera#ea3ab631ab68b436976510caac17a46dfc616509&path:/packages/tessera
+        version: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/tessera(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@kition/tessera-icons':
-        specifier: github:KitionAI/kition-tessera#7cef4f9e8584e978eb6ccef781b1e164631ba991&path:/packages/icons
-        version: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/icons(react@19.2.5)
+        specifier: github:KitionAI/kition-tessera#ea3ab631ab68b436976510caac17a46dfc616509&path:/packages/icons
+        version: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/icons(react@19.2.5)
       loro-crdt:
         specifier: 1.16.4
         version: 1.16.4
@@ -380,8 +380,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kition/tessera-icons@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/icons':
-    resolution: {path: /packages/icons, tarball: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991}
+  '@kition/tessera-icons@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/icons':
+    resolution: {path: /packages/icons, tarball: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509}
     version: 0.1.0
     peerDependencies:
       react: '>=18'
@@ -389,12 +389,12 @@ packages:
       react:
         optional: true
 
-  '@kition/tessera-tokens@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/tokens':
-    resolution: {path: /packages/tokens, tarball: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991}
+  '@kition/tessera-tokens@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/tokens':
+    resolution: {path: /packages/tokens, tarball: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509}
     version: 0.1.0
 
-  '@kition/tessera@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/tessera':
-    resolution: {path: /packages/tessera, tarball: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991}
+  '@kition/tessera@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/tessera':
+    resolution: {path: /packages/tessera, tarball: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509}
     version: 0.1.0
     peerDependencies:
       react: '>=19'
@@ -4193,16 +4193,16 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kition/tessera-icons@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/icons(react@19.2.5)':
+  '@kition/tessera-icons@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/icons(react@19.2.5)':
     optionalDependencies:
       react: 19.2.5
 
-  '@kition/tessera-tokens@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/tokens': {}
+  '@kition/tessera-tokens@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/tokens': {}
 
-  '@kition/tessera@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/tessera(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@kition/tessera@https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/tessera(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
-      '@kition/tessera-icons': https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/icons(react@19.2.5)
-      '@kition/tessera-tokens': https://codeload.github.com/KitionAI/kition-tessera/tar.gz/7cef4f9e8584e978eb6ccef781b1e164631ba991#path:/packages/tokens
+      '@kition/tessera-icons': https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/icons(react@19.2.5)
+      '@kition/tessera-tokens': https://codeload.github.com/KitionAI/kition-tessera/tar.gz/ea3ab631ab68b436976510caac17a46dfc616509#path:/packages/tokens
       cmdk: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       radix-ui: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react: 19.2.5
