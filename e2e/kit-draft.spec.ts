@@ -30,7 +30,7 @@ async function slideFixture() {
   return Buffer.from(bytes)
 }
 
-/** Whether the built Slide package carries a kit-ui that keeps drafts (protocol section 7d). */
+/** Whether the built Slide package carries a kit-editor that keeps drafts (protocol section 7d). */
 async function packageKeepsDrafts() {
   if (!existsSync(UI_ASSETS)) return false
   for (const name of await fs.readdir(UI_ASSETS)) {

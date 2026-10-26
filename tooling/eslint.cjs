@@ -55,13 +55,13 @@ module.exports = {
           },
           {
             name: 'radix-ui',
-            message: 'Use the components in @kition/tessera instead of importing Radix directly in features.',
+            message: 'Use the components in @kition/tessera-ui instead of importing Radix directly in features.',
           },
         ],
         patterns: [
           {
             group: ['@radix-ui/*'],
-            message: 'Use the components in @kition/tessera instead of importing Radix directly in features.',
+            message: 'Use the components in @kition/tessera-ui instead of importing Radix directly in features.',
           },
         ],
       },
@@ -165,7 +165,7 @@ module.exports = {
       rules: { 'no-restricted-imports': 'off' },
     },
     {
-      // Shared components may wrap Radix; features use them or @kition/tessera.
+      // Shared components may wrap Radix; features use them or @kition/tessera-ui.
       files: ['src/components/**'],
       rules: { 'no-restricted-imports': ['error', { paths: [{ name: 'sonner', message: 'Import from @/lib/notify instead.' }] }] },
     },

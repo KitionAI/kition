@@ -19,7 +19,7 @@ test('edits, comments on, and saves a note: the file keeps its line endings and 
   const name = 'Plan.md'
   const { kit, saves } = await openNote(page, baseURL!, name, PLAN, {}, { persist: true })
   await expect(kit.getByTestId('note-title')).toContainText('Plan')
-  // kit-ui's editor frame, in the kit's default display mode (kit.json `ui.display`), around the
+  // kit-editor's editor frame, in the kit's default display mode (kit.json `ui.display`), around the
   // engine's canvas.
   await expect(kit.locator('.kui-app')).toHaveAttribute('data-mode', 'line')
   await expect(kit.locator('[data-testid="note-canvas"] canvas').first()).toBeVisible()

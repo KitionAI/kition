@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as Loader2 } from '@kition/tessera-icons/react'
 import { writeKitFile } from '@/api/kits'
 import { isTableFilePath, notifyTableFilesChanged } from '@/api/kitTables'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { FileNotice } from '@/components/states'
 import { notify } from '@/lib/notify'
@@ -33,7 +33,7 @@ export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
 /**
  * Kition's shortcuts the kit forwards (the kit saves itself with Cmd+S). Cmd+K stays the kit's
  * (Word, Slide, and Sheet insert links with it); Cmd+. opens Kition's command palette from
- * inside a kit instead, a key no kit binds (kit-ui's RESERVED_SHORTCUTS).
+ * inside a kit instead, a key no kit binds (kit-editor's RESERVED_SHORTCUTS).
  */
 const HOST_SHORTCUTS = ['Cmd+N', 'Cmd+O', 'Cmd+W', 'Cmd+T', 'Cmd+,', 'Cmd+Q', 'Cmd+P', 'Cmd+.']
 

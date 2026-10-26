@@ -1,7 +1,7 @@
 import { TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { DrawerField, DrawerSection } from '@/features/workflow/drawer/PropertiesDrawer'
 
 /**

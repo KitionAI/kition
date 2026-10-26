@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import type { DesignDocument } from '../lib/designTypes'
 import type { DesignStore } from '../lib/designStore'
 import { designVariantList } from '../lib/designVariants'

@@ -1,4 +1,4 @@
-import { Button, useConfirm } from '@kition/tessera'
+import { Button, useConfirm } from '@kition/tessera-ui'
 import {
   useCallback,
   useEffect,

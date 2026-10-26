@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, CheckIcon as Check, CloudOffIcon as CloudOff, CloudUploadIcon as CloudUpload, CopyIcon as Copy, ExternalLinkIcon as ExternalLink, FileInputIcon as FileInput, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 
-import { Button, Switch, TextInput } from '@kition/tessera'
+import { Button, Switch, TextInput } from '@kition/tessera-ui'
 import {
   getFormSyncWorkflow,
   syncFormSyncWorkflow,

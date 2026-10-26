@@ -2,7 +2,7 @@ import { InlineError } from '@/components/states'
 import { CircleAlertIcon as AlertCircle, ChevronLeftIcon as ChevronLeft, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, MailIcon as Mail, PlayIcon as Play, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SaveIcon as Save, SendIcon as Send, XIcon as X } from '@kition/tessera-icons/react'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
 import { ConnectionModal, formFromConnection } from '@/features/connections/ConnectionsSettingsPanel'
 import { listChannels, listConnections, type ChannelSchema, type ConnectionView } from '@/api/connections'
 import {

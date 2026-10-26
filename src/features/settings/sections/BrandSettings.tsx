@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Select, TextInput } from '@kition/tessera'
+import { Button, Select, TextInput } from '@kition/tessera-ui'
 import {
   SettingsActionBar,
   SettingsPaneHeader,

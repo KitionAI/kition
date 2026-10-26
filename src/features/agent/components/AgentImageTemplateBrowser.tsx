@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SearchIcon as Search, SlidersHorizontalIcon as SlidersHorizontal, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button, TextInput } from '@kition/tessera'
+import { Button, TextInput } from '@kition/tessera-ui'
 import { listImageTemplates } from '@/features/media-generation/api/imageTemplates'
 import { ImageTemplateThumbnail } from '@/features/media-generation/components/ImageTemplateThumbnail'
 import type { ImageTemplateCatalogResponse, ImageTemplateSummary } from '@/features/media-generation/lib/imageTemplateContract'

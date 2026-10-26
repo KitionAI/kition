@@ -84,7 +84,7 @@ Examples:
 - Let `src/app/Shell.tsx` stay focused on route-level shell chrome, modal routing, and app-wide entry concerns.
 - Let workspace screen components own editor-page composition, portal consumption, and feature orchestration.
 - Do not place new Agent presentation logic back into `src/app/Shell.tsx`.
-- Shared controls come from Kition Tessera (`@kition/tessera`): buttons, form fields, Modal, Popover, Sheet, Switch, Confirm, Command. Add a missing generic control to Tessera, not to Kition; keep app-level business UI in `src/`.
+- Shared controls come from Kition Tessera (`@kition/tessera-ui`): buttons, form fields, Modal, Popover, Sheet, Switch, Confirm, Command. Add a missing generic control to Tessera, not to Kition; keep app-level business UI in `src/`.
 
 ## Size And Split Rules
 

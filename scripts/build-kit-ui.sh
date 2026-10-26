@@ -6,7 +6,7 @@
 #   scripts/build-kit-ui.sh slide --ui-only  # reuse an already built, unchanged engine
 #
 # The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
-# path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too, and kit-ui
+# path. Its web/ app links kition-sdk's @kition/kit-editor from a sibling checkout too, and kit-editor
 # links kition-tessera's components and icons from one beside it (../kition-tessera).
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example slide}"

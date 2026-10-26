@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ClipboardCheckIcon as ClipboardCheck, LifeBuoyIcon as LifeBuoy, MessageSquareTextIcon as MessageSquareText, ScaleIcon as Scale, ShieldCheckIcon as ShieldCheck } from '@kition/tessera-icons/react'
 
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { KITION_PRIVACY_URL, KITION_SUPPORT_URL, KITION_TERMS_URL } from '@/features/account/lib/accountLinks'
 import { FeedbackForm } from '@/features/support/components/FeedbackForm'

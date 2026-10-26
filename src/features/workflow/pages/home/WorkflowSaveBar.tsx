@@ -1,7 +1,7 @@
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 
 export type WorkflowSaveBarProps = {
   dirty: boolean

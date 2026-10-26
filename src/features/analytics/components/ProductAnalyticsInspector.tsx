@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { ListChecksIcon as ListChecks, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 
-import { Button, Disclosure } from '@kition/tessera'
+import { Button, Disclosure } from '@kition/tessera-ui'
 import {
   clearProductAnalyticsQueue,
   getProductAnalyticsQueue,

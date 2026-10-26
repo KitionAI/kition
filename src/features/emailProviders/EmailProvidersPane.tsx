@@ -2,7 +2,7 @@ import { SaveIcon as Save, SearchIcon as Search } from '@kition/tessera-icons/re
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { cn } from '@/lib/cn'
-import { Button, PasswordInput, TextInput, useConfirm } from '@kition/tessera'
+import { Button, PasswordInput, TextInput, useConfirm } from '@kition/tessera-ui'
 import { ConnectionsSettingsPanel } from '@/features/connections/ConnectionsSettingsPanel'
 import { deleteConnection, type ConnectionView } from '@/api/connections'
 import { ProviderSwitch } from '@/features/emailSync/EmailSyncSettingsPanel'

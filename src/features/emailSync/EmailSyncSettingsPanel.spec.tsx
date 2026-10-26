@@ -18,7 +18,7 @@ vi.mock('@/services/desktop', () => ({
 
 vi.mock('@/api/kitTables', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/kitTables')>()), listTableFiles: vi.fn() }))
 
-vi.mock('@kition/tessera', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera')>()), useConfirm: () => vi.fn(async () => true) }))
+vi.mock('@kition/tessera-ui', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera-ui')>()), useConfirm: () => vi.fn(async () => true) }))
 
 vi.mock('@/api/emailSync', () => ({
   EMAIL_SYNC_CHANGED_EVENT: 'kition:email-sync:changed',

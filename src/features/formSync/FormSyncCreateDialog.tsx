@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FileInputIcon as FileInput } from '@kition/tessera-icons/react'
 
 import { listTableFiles, type KitTablesTable } from '@/api/kitTables'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera-ui'
 import { createFormSyncWorkflow, type FormSyncWorkflow } from './api'
 import { buildInitialFormFields, findTargetTable, loadFormTargetTable } from './formBuilder'
 

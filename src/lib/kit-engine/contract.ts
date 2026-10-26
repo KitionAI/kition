@@ -2,7 +2,7 @@
 /**
  * Engine contract 2 as TypeScript (Kit Harness Protocol (KHP) spec/kits/engine.md, architecture 7.2): the document
  * class a kit's engine worker drives. A WebAssembly engine made with `export_kit_document!` and
- * `export_kit_session!` has exactly these members, so one worker (`@kition/kit-ui`), the embed
+ * `export_kit_session!` has exactly these members, so one worker (`@kition/kit-editor`), the embed
  * SDK, and the object model serve both runtimes.
  */
 

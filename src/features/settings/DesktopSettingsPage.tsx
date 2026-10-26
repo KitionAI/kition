@@ -1,7 +1,7 @@
 import './settings-modal.css'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/cn'
-import { useDialogFocus } from '@kition/tessera'
+import { useDialogFocus } from '@kition/tessera-ui'
 import { EmailProvidersPane } from '@/features/emailProviders/public'
 import { AiModelsPane } from '@/features/settings/AiModelsPane'
 import { NetworkSettings } from '@/features/settings/NetworkSettings'

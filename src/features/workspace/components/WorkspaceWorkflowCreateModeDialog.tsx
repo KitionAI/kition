@@ -2,7 +2,7 @@ import { InboxIcon as Inbox, LoaderCircleIcon as LoaderCircle, PlusIcon as Plus,
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
 import { tableKey } from '@/api/kitTables'
 import { WorkflowLauncherTemplateCard } from '@/features/workflow/components/launcher/WorkflowLauncherTemplateCard'
 import {

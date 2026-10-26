@@ -1,7 +1,7 @@
 import { AppWindowIcon as AppWindow, ArrowRightLeftIcon as ArrowRightLeft, LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
 
 type WorkspaceOpenModeDialogProps = {
   open: boolean

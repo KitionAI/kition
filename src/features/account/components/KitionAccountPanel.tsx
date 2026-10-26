@@ -4,7 +4,7 @@ import { CheckIcon as Check, CreditCardIcon as CreditCard, ExternalLinkIcon as E
 import { CreditUsageBadge } from '@/components/CreditUsageBadge'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { cn } from '@/lib/cn'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
 import {

@@ -2,7 +2,7 @@ import { CheckIcon as Check, CopyIcon as Copy } from '@kition/tessera-icons/reac
 import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/cn'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 
 export function CopyableEmailSyncError({
   message,

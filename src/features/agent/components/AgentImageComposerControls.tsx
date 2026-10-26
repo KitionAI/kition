@@ -3,7 +3,7 @@ import { ArrowLeftIcon as ArrowLeft, ImagePlusIcon as ImagePlus, LoaderCircleIco
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@kition/tessera'
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@kition/tessera-ui'
 import type { AgentImageMode } from '../hooks/useAgentImageMode'
 import { useAgentImagePanelPlacement } from '../hooks/useAgentImagePanelPlacement'
 import { AgentImageSettings } from './AgentImageSettings'

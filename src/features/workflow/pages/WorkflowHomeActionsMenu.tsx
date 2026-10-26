@@ -1,7 +1,7 @@
 import { CheckIcon as Check, FileClockIcon as FileClock, FileTextIcon as FileText, LoaderCircleIcon as LoaderCircle, EllipsisIcon as MoreHorizontal, SlidersHorizontalIcon as SlidersHorizontal, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import { useState } from 'react'
 import { cn } from '@/lib/cn'
-import { Button, Popover, PopoverContent, PopoverTrigger } from '@kition/tessera'
+import { Button, Popover, PopoverContent, PopoverTrigger } from '@kition/tessera-ui'
 
 export type WorkflowDetailView = 'configuration' | 'history' | 'logs'
 

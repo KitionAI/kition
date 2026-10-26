@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { kitionTheme } from '@/features/kits/public'
 import type { ExtensionService } from './extensionService'
 import { closeExtensionPanel, type OpenPanel } from './panelState'

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Button, Card, CardContent, useDialogFocus } from '@kition/tessera'
+import { Button, Card, CardContent, useDialogFocus } from '@kition/tessera-ui'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import {
   onboardingGuideFolderExists,

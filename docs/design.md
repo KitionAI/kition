@@ -859,14 +859,14 @@ Where the color shows (the WPS Office model):
   border. The kit's small icon is the only per-kit color in the tab strip.
 - **Inside a kit's editor** the kit's brand replaces the primary color: the
   selected ribbon tab, menu highlights, primary buttons, sliders, and focus
-  (kit-ui `--kit-primary`).
+  (kit-editor `--kit-primary`).
 - **Everything else is Kition's**: the shell, dialogs, and Design Studio
   keep Kition purple. The Note kit's brand is Kition purple too.
   Never tint Kition chrome in a kit's color.
 
 ## Kit editor frame and display modes
 
-Every kit editor (the kits' own pages, on kit-ui's `EditorFrame`) has the same zones: a 36 px top
+Every kit editor (the kits' own pages, on kit-editor's `EditorFrame`) has the same zones: a 36 px top
 bar (the kit's tabs, then the document actions, the display mode button, and Save in the project
 purple or the kit's brand color inside the kit), the command area of the display mode, the tool
 rail on the left for canvas kits, collapsible panels on the right, the canvas, and the status bar.

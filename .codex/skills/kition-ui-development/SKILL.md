@@ -47,7 +47,7 @@ Use this skill for frontend changes in the Kition client repository.
 - Prefer workspace hooks for tree loading, create/delete/move flows, and root switching instead of rebuilding worktree behavior inline in `Shell.tsx`.
 - Prefer workspace hooks for topbar actions such as editor mode switching, import/export entrypoints, and item-menu commands instead of rebuilding them inline in `Shell.tsx`.
 - Remove dead wrappers, dead pages, duplicated helpers, and stale imports during refactors.
-- Take shared controls from Kition Tessera (`@kition/tessera`); add a missing generic control there, not app business logic.
+- Take shared controls from Kition Tessera (`@kition/tessera-ui`); add a missing generic control there, not app business logic.
 
 ## Validation
 

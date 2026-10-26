@@ -22,7 +22,7 @@ import {
 import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
 import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
 import { cn } from '@/lib/cn'
-import { useDismissableLayer } from '@kition/tessera'
+import { useDismissableLayer } from '@kition/tessera-ui'
 
 type WorkspaceTreeDropIndicator = { path: string; position: WorkspaceTreeDropPosition }
 

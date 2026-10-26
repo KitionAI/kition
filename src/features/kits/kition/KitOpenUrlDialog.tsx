@@ -1,6 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
 import { openExternalURL } from '@/services/desktop'
 import type { KitOpenResult } from '../host/mountKit'
 

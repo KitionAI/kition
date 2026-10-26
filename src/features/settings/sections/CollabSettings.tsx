@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { cn } from '@/lib/cn'
-import { Button, Switch, TextInput } from '@kition/tessera'
+import { Button, Switch, TextInput } from '@kition/tessera-ui'
 import {
   refreshAccountSettings,
   requestSyncedDocuments,

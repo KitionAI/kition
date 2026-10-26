@@ -1,6 +1,6 @@
 import { CheckIcon as Check, SparklesIcon as Sparkles, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import type { DesignAgentPreviewState } from '../hooks/useDesignAgentPatch'
 
 export function DesignAgentPreviewControls({

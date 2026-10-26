@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera-ui'
 import type { ExtensionService } from './extensionService'
 import { loadExtensionService } from './serviceLoader'
 

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
 
 /**
  * ConfirmDialog + ConfirmState — split out of WorkflowHomePage (WF-C1c).

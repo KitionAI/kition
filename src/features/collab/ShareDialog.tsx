@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle, TrashIcon as Trash2, UserMinusIcon as UserMinus } from '@kition/tessera-icons/react'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera-ui'
 import { notify } from '@/lib/notify'
 import { ROLE_RANK, type Member, type Role } from '@/lib/sync'
 import { useDocumentCollab } from './collabStore'

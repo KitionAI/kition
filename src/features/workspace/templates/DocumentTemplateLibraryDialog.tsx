@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
-import { Button, Modal, ModalContent } from '@kition/tessera'
+import { Button, Modal, ModalContent } from '@kition/tessera-ui'
 import { loadTemplateContent, listTemplates, type TemplateEntry } from './workspaceTemplates'
 import type { DocumentCreationPreset } from './documentCreation'
 import {

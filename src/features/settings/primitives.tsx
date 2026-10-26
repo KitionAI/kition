@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { CheckIcon as Check, SearchIcon as Search } from '@kition/tessera-icons/react'
 import { cn } from '@/lib/cn'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { useTranslation } from '@/i18n'
 
 type SettingsPaneHeaderProps = {

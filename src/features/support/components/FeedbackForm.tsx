@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { CircleCheckIcon as CheckCircle2, LoaderCircleIcon as LoaderCircle, MessageSquareTextIcon as MessageSquareText } from '@kition/tessera-icons/react'
 
-import { Button, Card, TextInput, Textarea } from '@kition/tessera'
+import { Button, Card, TextInput, Textarea } from '@kition/tessera-ui'
 import { useTranslation } from '@/i18n'
 import { submitFeedbackReport } from '@/services/desktop'
 

@@ -161,7 +161,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 *(Phase 3, charts: all three kits implement `KitDrawing 1.1` charts through
 kition-sdk's `kition_drawing::chart`, the shared description (`ChartSpec`),
 the `drawing.chart` change and the DrawingML chart codec. Insert › Chart and
-Chart Design are the shared kit-ui controls in every kit, so a person's edit
+Chart Design are the shared kit-editor controls in every kit, so a person's edit
 and an agent's are the same command. Each kit has a native test and a
 Chromium and WebKit browser test that inserts, edits, undoes, saves, reopens
 and checks read-only refusal.)*
@@ -250,7 +250,7 @@ kition-sdk's `kition_drawing::ink`: the shared stroke (tool, colour, width,
 points with pressure), `drawing.ink` and `drawing.erase`, a pen gesture that
 previews and adds one stroke on release, and an eraser whose swept path takes
 the strokes it touches on release, each one undo step. The Draw tab is the
-shared kit-ui `InkGroup` in every kit, driving the same `draw.*` commands and
+shared kit-editor `InkGroup` in every kit, driving the same `draw.*` commands and
 `draw.state`. Each kit has native tests and a Chromium and WebKit browser test
 that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
 

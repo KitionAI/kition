@@ -43,7 +43,7 @@ export async function serveWorkspace(page: Page, root: string) {
   })
 }
 
-/** A kit editor's display mode, by kit id: kit-ui keeps the person's choice in the page's storage. */
+/** A kit editor's display mode, by kit id: kit-editor keeps the person's choice in the page's storage. */
 export type KitModes = Record<string, 'menus' | 'line' | 'classic'>
 
 /**

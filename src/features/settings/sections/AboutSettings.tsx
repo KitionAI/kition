@@ -6,7 +6,7 @@ import { checkForUpdates, downloadUpdate, installUpdate, setAutoCheckUpdates, se
 import { useUpdateState } from '@/features/updates/public'
 import { UpdateDownloadProgress } from '@/features/updates/public'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { SupportAndTrustSettings } from '@/features/support/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { getCurrentLocale, useTranslation } from '@/i18n'

@@ -1,7 +1,7 @@
 import { CircleAlertIcon as AlertCircle, CircleCheckIcon as CheckCircle2, Clock3Icon as Clock3, ListRestartIcon as ListRestart, LoaderCircleIcon as LoaderCircle, MailIcon as Mail, RefreshCwIcon as RefreshCw, RotateCcwIcon as RotateCcw, TrashIcon as Trash2, CircleXIcon as XCircle } from '@kition/tessera-icons/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Button, useConfirm } from '@kition/tessera'
+import { Button, useConfirm } from '@kition/tessera-ui'
 import { getEmailProvider, resolveEmailProviderId } from '@/features/emailProviders/emailProviderCatalog'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'

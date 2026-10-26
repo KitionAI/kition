@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TriangleAlertIcon as AlertTriangle, BotIcon as Bot, CheckIcon as Check, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
-import { Button, Sheet } from '@kition/tessera'
+import { Button, Sheet } from '@kition/tessera-ui'
 import { compareKitDraft, type KitsDraftComparison } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import {

@@ -6,7 +6,7 @@ were removed. See `docs/kit-sdk.md` section 4 for how it works.
 ## Decision
 
 - Each kit implements its full editor in React inside its own repository
-  (`web/`), on the shared library `@kition/kit-ui` in kition-sdk, matching
+  (`web/`), on the shared library `@kition/kit-editor` in kition-sdk, matching
   the original application's UI.
 - Kition is the shell, the platform, and the standard: files, tabs, the
   agent, theme, language, and the kit registry. It shows a kit's editor in

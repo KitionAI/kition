@@ -35,7 +35,7 @@ vi.mock('@/api/dataDocuments', () => ({
   renameDataDocumentByPath: vi.fn(async () => ({ renamed: true })),
 }))
 
-vi.mock('@kition/tessera', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera')>()), useConfirm: () => async () => true }))
+vi.mock('@kition/tessera-ui', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera-ui')>()), useConfirm: () => async () => true }))
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

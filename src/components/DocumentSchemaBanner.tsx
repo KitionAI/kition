@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DownloadIcon as Download, LoaderCircleIcon as Loader2, RefreshCwIcon as RefreshCw, TriangleAlertIcon as TriangleAlert } from '@kition/tessera-icons/react'
-import { Button } from '@kition/tessera'
+import { Button } from '@kition/tessera-ui'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { checkForUpdates, downloadUpdate, installUpdate, type UpdateState } from '@/services/desktopUpdates'
 
