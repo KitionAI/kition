@@ -10,6 +10,7 @@
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
+      "scene": "Cena",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -266,6 +267,10 @@
     "unavailableTitle": "A edição de CAD não está disponível nesta versão",
     "unavailableBody": "Arquivos do CAD abrem no Kition quando o mecanismo CAD está incluído."
   },
+  "sceneKit": {
+    "unavailableTitle": "A edição de cenas não está disponível nesta versão",
+    "unavailableBody": "As cenas abrem no Kition quando o mecanismo Scene está incluído."
+  },
   "slideKit": {
     "unavailableTitle": "A edição de Slide não está disponível nesta versão",
     "unavailableBody": "Arquivos do Slide abrem no Kition quando o mecanismo Slide está incluído."
@@ -375,6 +380,7 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
+      "scene": "Cena",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

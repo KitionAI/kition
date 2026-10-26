@@ -22,6 +22,7 @@ describe('getWorkspaceItemKitIcon', () => {
     ['vector', 'vector'],
     ['effect', 'effect'],
     ['cad', 'cad'],
+    ['scene', 'scene'],
   ] as const)('maps %s to the %s kit', (format, kit) => {
     expect(getWorkspaceItemKitIcon(format)).toBe(kit)
   })

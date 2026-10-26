@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 
 export const KIT_ICON_IDS = [
   'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
-  'vector', 'photo', 'effect', 'film', 'pdf', 'cad',
+  'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'scene',
 ] as const
 
 export type KitIconId = (typeof KIT_ICON_IDS)[number]

@@ -337,6 +337,26 @@ pub const KITS: &[KitDefinition] = &[
             command: "text.insert",
         },
     },
+    // Edited in the page through its SDK; `kit-scene` serves the agent.
+    KitDefinition {
+        id: "kit.scene",
+        name: "Scene",
+        binary_env: "KITION_KIT_SCENE_BINARY",
+        extensions: &["kscene"],
+        creates: &[("kscene", "kscene")],
+        base_name: "Untitled scene",
+        embeds: false,
+        exports: &["glb", "gltf", "obj", "stl", "png"],
+        agent: KitAgent {
+            prefix: "scene",
+            noun: "3D scene",
+            formats: ".kscene",
+            reports: "its objects (meshes, lights, cameras, empties) with transforms, materials, and modifiers, the mode, and the selection",
+            covers: "adding primitives, transforms, parenting, edit-mode modeling (extrude, inset, loop cut), modifiers, materials, lights, cameras, rendering, and glTF/OBJ/STL import and export; rotations are in degrees and Z is up",
+            queries: "`cube`, `extrude`, or `modifier`",
+            command: "add.cube",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

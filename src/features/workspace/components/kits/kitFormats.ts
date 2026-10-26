@@ -20,6 +20,7 @@ export const KIT_CREATE_EXTENSION = {
   table: 'ktable',
   board: 'kboard',
   note: 'md',
+  scene: 'kscene',
 } as const
 
 /** Every extension a kit's create menu item makes, for a workspace tab title to drop. */

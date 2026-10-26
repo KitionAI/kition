@@ -235,5 +235,16 @@
       "command": "text.insert",
       "params": { "at": 0, "text": "# Notes\n" }
     }
+  },
+  "scene": {
+    "repository": "KitionAI/kition-scene",
+    "crate": "kition-scene-sdk",
+    "module": "kition_scene_sdk",
+    "class": "SceneDocument",
+    "name": "Room.kscene",
+    "edit": {
+      "command": "add.uvSphere",
+      "params": { "location": [2, 0, 1], "radius": 0.5 }
+    }
   }
 }
