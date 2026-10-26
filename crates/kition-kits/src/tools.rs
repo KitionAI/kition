@@ -627,6 +627,29 @@ fn document_content(blocks: &[Value], span: Option<(usize, Option<usize>)>) -> V
     content
 }
 
+/// The commands nearest an unknown id, by the words in it (`paragraph.insertAfter` searches
+/// `paragraph insert after`), for the error that tells the agent the id does not exist.
+async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> String {
+    let mut words = String::new();
+    for ch in id.chars() {
+        if ch == '.' || ch == '_' || ch == '-' {
+            words.push(' ');
+        } else if ch.is_uppercase() {
+            words.push(' ');
+            words.extend(ch.to_lowercase());
+        } else {
+            words.push(ch);
+        }
+    }
+    match kits.commands(Caller::Agent, view.kit_id, Some(&view.document_id), Some(&words)).await {
+        Ok(found) if !found.is_empty() => {
+            let near: Vec<String> = found.iter().take(5).map(|c| format!("{} {}", c.id, c.description.as_deref().unwrap_or_default().trim_start_matches("Params: "))).collect();
+            format!(" — nearest commands: {}", near.join("; "))
+        }
+        _ => String::new(),
+    }
+}
+
 /// Goes to one slide or page (`{index}` counted from 0) through the kit's `slide.go` or
 /// `page.go`, so that its commands, which address the part being edited, address this one.
 async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Option<DocumentView> {
@@ -1433,6 +1456,9 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             }
             Err(error) => {
                 let mut failure = KitToolError::from(error);
+                if matches!(failure.code, ErrorCode::UnknownCommand) {
+                    failure.message.push_str(&nearest_commands(kits, &view, &command).await);
+                }
                 if !matches!(
                     failure.code,
                     ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable
