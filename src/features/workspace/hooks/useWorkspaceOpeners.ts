@@ -49,7 +49,7 @@ export function useWorkspaceOpeners({
     })
   }, [closeWorkflowWorkbench, t, upsertWorkspaceTab])
 
-  // Onboarding guides and email sync setup ask to open the workflows of a table file.
+  // Onboarding guides ask to open the workflows of a table file.
   useEffect(() => {
     function openLocalWorkflow(event: Event) {
       const tablePath = String((event as CustomEvent<{ tablePath?: string }>).detail?.tablePath || '').trim()

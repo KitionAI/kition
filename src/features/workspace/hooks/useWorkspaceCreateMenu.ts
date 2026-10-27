@@ -75,10 +75,6 @@ export function useWorkspaceCreateMenu({
       }
       void createDocumentInside(node)
     },
-    onCreateFormForTable: (node: WorkspaceTreeNode) => {
-      closeCreateMenu()
-      createFlows.openFormSyncCreate(node.path)
-    },
     onCreateWorkflowForTable: (node: WorkspaceTreeNode) => {
       closeCreateMenu()
       setTableFileCreateContext(null)

@@ -14,7 +14,6 @@
     { "asset": "templates/task-tracker.ktable", "filename": "Task Tracker.ktable", "folder": "Projects & Planning" },
     { "asset": "templates/thumbnail-generator.ktable", "filename": "YouTube & TikTok Thumbnail Generator.ktable", "folder": "AI & Creative" },
     { "asset": "templates/receipt-ocr-table.ktable", "filename": "Receipt OCR Table.ktable", "folder": "AI & Creative" },
-    { "asset": "templates/email-inbox-sync.ktable", "filename": "Email Inbox Sync.ktable", "folder": "Operations & Analytics" },
     { "asset": "templates/leads-landing-page.ktable", "filename": "Leads Landing Page.ktable", "folder": "Sales & Customer" },
     { "asset": "templates/sdr-cold-call-manager.ktable", "filename": "SDR Cold Call Manager.ktable", "folder": "Sales & Customer" },
     { "asset": "templates/product-launch-website.ktable", "filename": "Product Launch Website.ktable", "folder": "Projects & Planning" },

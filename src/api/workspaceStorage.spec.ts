@@ -30,7 +30,6 @@ const status = {
     assets: 2,
     workflows: 1,
     agent_sessions: 1,
-    sync_states: 0,
     total_bytes: 4096,
   },
   issues: [],

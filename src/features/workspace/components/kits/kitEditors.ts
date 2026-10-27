@@ -78,7 +78,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('slide', 'SlideDocument', { format: 'pptx', icon: 'slide', preview: true }),
   // US Letter, in points.
   kit('pdf', 'PdfDocument', { format: 'pdf', icon: 'pdf', preview: true, create: { id: 'pdf', extension: KIT_CREATE_EXTENSION.pdf, baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', group: 'documents' } }),
-  // Kition's host features (workflows, form and email sync) reach a table's records through the kit too.
+  // Kition's host features (workflows) reach a table's records through the kit too.
   kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
   kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
   // Markdown notes (`.md`, `.markdown`); US Letter, in points, for its pages.

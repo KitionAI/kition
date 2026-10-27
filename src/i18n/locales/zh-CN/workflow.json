@@ -186,8 +186,7 @@
       },
       "aiCta": "或者描述一下 — 让 AI 帮你搭建",
       "back": "返回",
-      "cancel": "取消",
-      "fullEmailSync": "完整同步邮箱收件箱"
+      "cancel": "取消"
     }
   },
   "errors": {
@@ -672,27 +671,5 @@
       "hoursAgo": "{{n}} 小时前",
       "daysAgo": "{{n}} 天前"
     }
-  },
-  "emailInboxSetup": {
-    "title": "同步邮箱收件箱",
-    "setupRequired": "需要设置",
-    "configureEmail": "配置邮箱",
-    "triggerStep": "步骤 1 · 触发器",
-    "emailStep": "步骤 2 · 邮件",
-    "scheduledTrigger": "定时触发",
-    "manualTrigger": "手动触发",
-    "everyMinutes": "每 {{count}} 分钟",
-    "runManually": "在工作流中手动运行",
-    "importInto": "将邮件导入 {{table}}",
-    "connectAccount": "连接一个邮箱账户以启用此步骤。",
-    "startWorkflow": "启动此工作流",
-    "defaultTable": "收件箱"
-  },
-  "formSync": {
-    "copyPublicLink": "复制公开链接",
-    "openPublicForm": "打开公开表单",
-    "moveFieldUp": "上移字段",
-    "moveFieldDown": "下移字段",
-    "deleteField": "删除字段"
   }
 }

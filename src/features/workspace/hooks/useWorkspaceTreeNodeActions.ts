@@ -68,9 +68,8 @@ type UseWorkspaceTreeNodeActionsOptions = {
   >
 }
 
-// Workflows, form sync, and email sync name table files by path: a renamed or moved table
-// file (or a folder holding some) is followed there. Fire-and-forget by design — failure here
-// mustn't roll back the disk op.
+// Workflows name table files by path: a renamed or moved table file (or a folder holding some)
+// is followed there. Fire-and-forget by design — failure here mustn't roll back the disk op.
 function followMovedTableFiles(fromPath: string, toPath: string) {
   if (!fromPath || !toPath || fromPath === toPath) {
     return
@@ -80,8 +79,8 @@ function followMovedTableFiles(fromPath: string, toPath: string) {
   })
 }
 
-// The workflows, form syncs, and email syncs bound to a deleted table file (or to the table files
-// of a deleted folder) go with it. Fire-and-forget, as for moves: the file is already in the Trash.
+// The workflows bound to a deleted table file (or to the table files of a deleted folder) go
+// with it. Fire-and-forget, as for moves: the file is already in the Trash.
 function followDeletedTableFiles(node: WorkspaceTreeNode) {
   const gone = new Set<string>()
   if (node.type === 'folder' || isTableFilePath(node.path)) gone.add(node.path)

@@ -55,7 +55,6 @@
         "assets",
         "workflows",
         "agent_sessions",
-        "sync_states",
         "total_bytes"
       ],
       "properties": {
@@ -64,7 +63,6 @@
         "assets": { "type": "integer", "minimum": 0 },
         "workflows": { "type": "integer", "minimum": 0 },
         "agent_sessions": { "type": "integer", "minimum": 0 },
-        "sync_states": { "type": "integer", "minimum": 0 },
         "total_bytes": { "type": "integer", "minimum": 0 }
       }
     },
@@ -154,7 +152,6 @@
             "workflow_run",
             "agent_session",
             "agent_session_events",
-            "sync_state",
             "workspace_metadata"
           ]
         },

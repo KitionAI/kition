@@ -81,9 +81,6 @@ migration. Private runtime implementation remains outside this repository.
   `GET /agent/sessions/{id}/session-events` serves them, without provider-native
   replay items) are mirrored under `.kition/agents/` and restored at startup.
   Only state files of the current version (3) are imported.
-- Form and email sync definitions, cursors, items, and run state are mirrored
-  under `.kition/sync/` and restored at startup. Passwords, tokens, and email
-  secret payloads are excluded and must be reconnected on a new device.
 - The storage endpoints inventory files, verify content hashes, detect legacy
   and external references, and migrate Markdown attachment references with
   dry-run support. The inventory counts `.ktable` files as `tables` (item kind

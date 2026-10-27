@@ -3,7 +3,7 @@
  * contract. API specs use it so a request body or a mocked response cannot
  * drift from contracts/runtime/*.schema.json without a failing test.
  *
- *   expectMatchesContract(payload, 'email-sync', 'saveInput')
+ *   expectMatchesContract(payload, 'kit-tables', 'writeRecordRequest')
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'

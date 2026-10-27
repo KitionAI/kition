@@ -10,7 +10,7 @@ const EXPECTED_FIRST_RUN_FILES = [
   'Getting Started/logo.png',
   'Getting Started/Projects & Planning/Task Tracker.ktable',
   'Getting Started/AI & Creative/Receipt OCR Table.ktable',
-  'Getting Started/Operations & Analytics/Email Inbox Sync.ktable',
+  'Getting Started/Operations & Analytics/Business Analytics Dashboard.ktable',
   'Getting Started/Sales & Customer/Simple Client CRM.ktable',
 ]
 

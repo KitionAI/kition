@@ -1,7 +1,6 @@
 /**
  * The workspace's table files as Kition's own features see them: the workflow editor's table and
- * field pickers, form and email sync targets, the workspace tree's table leaves, templates, and
- * the design handoff. The runtime answers through the Table kit (`contracts/runtime/kit-tables`);
+ * field pickers, the workspace tree's table leaves, templates, and the design handoff. The runtime answers through the Table kit (`contracts/runtime/kit-tables`);
  * a table is named by its file's path and its id in the file.
  */
 import request from './request'
@@ -56,11 +55,6 @@ export function createTableFile(path: string, title?: string) {
 /** Adds a table to a file. */
 export function createTable(path: string, title: string, fields: KitTablesFieldSeed[] = [], feature?: string) {
   return request.post<KitTablesTable>('/v1/kit-tables/tables', { path, title, ...(fields.length ? { fields } : {}), ...(feature ? { feature } : {}) })
-}
-
-/** Renames a table, or replaces its metadata (where host features keep their table-bound drafts). */
-export function updateTable(ref: TableRef, change: { title?: string; meta?: Record<string, unknown> }, feature?: string) {
-  return request.post<KitTablesTable>('/v1/kit-tables/tables/update', { ...ref, ...change, ...(feature ? { feature } : {}) })
 }
 
 /** A table's fields as the kit answers them, and the table. */

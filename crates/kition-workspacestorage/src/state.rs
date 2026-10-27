@@ -1,20 +1,19 @@
-//! Mirroring agent sessions and sync state into workspace files, and
+//! Mirroring agent sessions into workspace files, and
 //! importing them on startup, so a workspace folder carries its history.
 //!
 //! Layout:
 //! * `.kition/agents/<session id>/session.json` (the session row and the
 //!   number of exported log events) and `session-events.jsonl` (the session event log,
 //!   one event per line as `GET /agent/sessions/{id}/session-events` serves
-//!   it, without `system/message` events and with inline images omitted);
-//! * `.kition/sync/forms/state.json` and `.kition/sync/email/state.json`.
+//!   it, without `system/message` events and with inline images omitted).
 
 use std::path::Path;
 
-use kition_core::{AppError, AppResult, Millis};
+use kition_core::{AppError, AppResult};
 use kition_store::Db;
 use kition_store::rows::{self, AgentSession};
 use kition_workspace::AssetStore;
-use kition_workspace::fsutil::{write_atomic, write_json_atomic};
+use kition_workspace::fsutil::write_atomic;
 use rusqlite::Connection;
 use rusqlite::types::Value as SqlValue;
 use serde::{Deserialize, Serialize};
@@ -25,15 +24,7 @@ use serde_json::{Map, Value};
 pub const STATE_SCHEMA_VERSION: i64 = 3;
 
 /// Tables whose changes are mirrored into workspace files.
-pub const MIRRORED_TABLES: [&str; 7] = [
-    "agent_sessions",
-    "agent_session_events",
-    "form_sync_workflows",
-    "form_sync_items",
-    "workflows",
-    "sync_items",
-    "sync_runs",
-];
+pub const MIRRORED_TABLES: [&str; 2] = ["agent_sessions", "agent_session_events"];
 
 fn importable(version: i64) -> bool {
     version == STATE_SCHEMA_VERSION
@@ -160,234 +151,6 @@ fn import_event(
     Ok(())
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct FormSnapshot {
-    #[serde(default)]
-    schema_version: i64,
-    #[serde(default)]
-    workflows: Option<Vec<PortableFormWorkflow>>,
-    #[serde(default)]
-    items: Vec<FormItem>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct EmailSnapshot {
-    #[serde(default)]
-    schema_version: i64,
-    #[serde(default)]
-    workflows: Option<Vec<PortableEmailWorkflow>>,
-    #[serde(default)]
-    items: Vec<EmailItem>,
-    #[serde(default)]
-    runs: Vec<EmailRun>,
-}
-
-fn de_time<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Millis, D::Error> {
-    kition_core::time::flexible::required(d)
-}
-
-fn de_opt_time<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Millis>, D::Error> {
-    kition_core::time::flexible::optional(d)
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct PortableFormWorkflow {
-    #[serde(default)]
-    id: String,
-    #[serde(default)]
-    user_id: i64,
-    #[serde(default)]
-    name: String,
-    #[serde(default)]
-    template_id: String,
-    #[serde(default)]
-    binding_id: String,
-    #[serde(default)]
-    remote_source_id: String,
-    #[serde(default)]
-    public_url: String,
-    #[serde(default)]
-    published: bool,
-    #[serde(default)]
-    document_path: String,
-    #[serde(default)]
-    table_id: String,
-    #[serde(default)]
-    fields: Value,
-    #[serde(default)]
-    target: Value,
-    #[serde(default)]
-    schedule_enabled: bool,
-    #[serde(default)]
-    interval_minutes: i64,
-    #[serde(default)]
-    status: String,
-    #[serde(default)]
-    cursor_id: i64,
-    #[serde(
-        default,
-        deserialize_with = "de_opt_time",
-        skip_serializing_if = "Option::is_none"
-    )]
-    last_sync_at: Option<Millis>,
-    #[serde(
-        default,
-        deserialize_with = "de_opt_time",
-        skip_serializing_if = "Option::is_none"
-    )]
-    next_sync_at: Option<Millis>,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    last_error: String,
-    #[serde(default)]
-    synced_submissions: i64,
-    #[serde(default, deserialize_with = "de_time")]
-    created_at: Millis,
-    #[serde(default, deserialize_with = "de_time")]
-    updated_at: Millis,
-}
-
-/// Form sync items keep the legacy field names (they never had JSON tags).
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct FormItem {
-    #[serde(rename = "ID", default)]
-    id: i64,
-    #[serde(rename = "WorkflowID", default)]
-    workflow_id: String,
-    #[serde(rename = "SubmissionID", default)]
-    submission_id: String,
-    #[serde(rename = "RecordID", default)]
-    record_id: String,
-    #[serde(rename = "CompletedAt", default, deserialize_with = "de_opt_time")]
-    completed_at: Option<Millis>,
-    #[serde(rename = "CreatedAt", default, deserialize_with = "de_time")]
-    created_at: Millis,
-    #[serde(rename = "UpdatedAt", default, deserialize_with = "de_time")]
-    updated_at: Millis,
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct PortableEmailWorkflow {
-    #[serde(default)]
-    id: String,
-    #[serde(default)]
-    user_id: i64,
-    #[serde(default)]
-    name: String,
-    #[serde(default)]
-    connection: Value,
-    #[serde(default)]
-    target: Value,
-    #[serde(default)]
-    schedule_enabled: bool,
-    #[serde(default)]
-    interval_minutes: i64,
-    #[serde(default)]
-    include_attachments: bool,
-    #[serde(default)]
-    status: String,
-    #[serde(
-        default,
-        deserialize_with = "de_opt_time",
-        skip_serializing_if = "Option::is_none"
-    )]
-    last_sync_at: Option<Millis>,
-    #[serde(
-        default,
-        deserialize_with = "de_opt_time",
-        skip_serializing_if = "Option::is_none"
-    )]
-    next_sync_at: Option<Millis>,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    last_error: String,
-    #[serde(default)]
-    synced_messages: i64,
-    #[serde(default)]
-    cursor_uid_validity: i64,
-    #[serde(default)]
-    cursor_uid: i64,
-    #[serde(default, deserialize_with = "de_time")]
-    created_at: Millis,
-    #[serde(default, deserialize_with = "de_time")]
-    updated_at: Millis,
-}
-
-/// Email sync items keep the legacy field names (they never had JSON tags).
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct EmailItem {
-    #[serde(rename = "ID", default)]
-    id: i64,
-    #[serde(rename = "WorkflowID", default)]
-    workflow_id: String,
-    #[serde(rename = "Mailbox", default)]
-    mailbox: String,
-    #[serde(rename = "UIDValidity", default)]
-    uid_validity: i64,
-    #[serde(rename = "UID", default)]
-    uid: i64,
-    #[serde(rename = "DocumentPath", default)]
-    document_path: String,
-    #[serde(rename = "Status", default)]
-    status: String,
-    #[serde(rename = "LastError", default)]
-    last_error: String,
-    #[serde(rename = "CompletedAt", default, deserialize_with = "de_opt_time")]
-    completed_at: Option<Millis>,
-    #[serde(rename = "CreatedAt", default, deserialize_with = "de_time")]
-    created_at: Millis,
-    #[serde(rename = "UpdatedAt", default, deserialize_with = "de_time")]
-    updated_at: Millis,
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct EmailRun {
-    #[serde(default)]
-    id: String,
-    #[serde(default)]
-    workflow_id: String,
-    #[serde(default)]
-    mode: String,
-    #[serde(default)]
-    status: String,
-    #[serde(default)]
-    discovered_messages: i64,
-    #[serde(default)]
-    processed_messages: i64,
-    #[serde(default)]
-    imported: i64,
-    #[serde(default)]
-    updated: i64,
-    #[serde(default)]
-    skipped: i64,
-    #[serde(default)]
-    failed: i64,
-    #[serde(default)]
-    current_batch: i64,
-    #[serde(default)]
-    table_path: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    error: String,
-    #[serde(
-        default,
-        deserialize_with = "de_opt_time",
-        skip_serializing_if = "Option::is_none"
-    )]
-    started_at: Option<Millis>,
-    #[serde(
-        default,
-        deserialize_with = "de_opt_time",
-        skip_serializing_if = "Option::is_none"
-    )]
-    finished_at: Option<Millis>,
-    #[serde(default, deserialize_with = "de_time")]
-    created_at: Millis,
-    #[serde(default, deserialize_with = "de_time")]
-    updated_at: Millis,
-}
-
-fn raw_json(text: &str) -> Value {
-    serde_json::from_str(text).unwrap_or(Value::Null)
-}
-
 /// Restores one exported session and its log, all or nothing.
 fn import_session(conn: &mut Connection, dir: &Path, workspace_root: &str) -> AppResult<()> {
     let Some(snapshot) = read_json::<SessionSnapshot>(&dir.join("session.json"))? else {
@@ -488,107 +251,9 @@ impl StateMirror {
         Ok(())
     }
 
-    /// Restores form and email sync workflows from workspace state files.
-    pub fn import_sync_state(&self) -> AppResult<()> {
-        let conn = self.db.conn()?;
-        let forms: Option<FormSnapshot> =
-            read_json(&self.workspace().join(".kition/sync/forms/state.json"))?;
-        if let Some(snapshot) = forms.filter(|s| importable(s.schema_version)) {
-            for w in snapshot.workflows.unwrap_or_default() {
-                let exists: bool = conn
-                    .query_row(
-                        "SELECT COUNT(*) FROM form_sync_workflows WHERE id = ?1",
-                        [&w.id],
-                        |r| r.get::<_, i64>(0),
-                    )
-                    .map(|c| c > 0)?;
-                if !exists {
-                    kition_formsync::store::upsert_exact(
-                        &conn,
-                        &kition_formsync::types::Workflow {
-                            id: w.id,
-                            user_id: w.user_id,
-                            name: w.name,
-                            template_id: w.template_id,
-                            binding_id: w.binding_id,
-                            remote_source_id: w.remote_source_id,
-                            public_url: w.public_url,
-                            published: w.published,
-                            document_path: w.document_path,
-                            table_id: w.table_id,
-                            fields_json: w.fields.to_string(),
-                            target_json: w.target.to_string(),
-                            schedule_enabled: w.schedule_enabled,
-                            interval_minutes: w.interval_minutes,
-                            status: w.status,
-                            cursor_id: w.cursor_id,
-                            last_sync_at: w.last_sync_at,
-                            next_sync_at: w.next_sync_at,
-                            last_error: w.last_error,
-                            synced_submissions: w.synced_submissions,
-                            created_at: w.created_at,
-                            updated_at: w.updated_at,
-                        },
-                    )?;
-                }
-            }
-            for item in snapshot.items {
-                conn.execute(
-                    "INSERT OR IGNORE INTO form_sync_items (id, workflow_id, submission_id, record_id, completed_at, created_at, updated_at) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                    rusqlite::params![item.id, item.workflow_id, item.submission_id, item.record_id, item.completed_at, item.created_at, item.updated_at],
-                )?;
-            }
-        }
-        let email: Option<EmailSnapshot> =
-            read_json(&self.workspace().join(".kition/sync/email/state.json"))?;
-        if let Some(snapshot) = email.filter(|s| importable(s.schema_version)) {
-            let mut owners = std::collections::HashMap::new();
-            for w in snapshot.workflows.unwrap_or_default() {
-                owners.insert(w.id.clone(), w.user_id);
-                conn.execute(
-                    "INSERT OR IGNORE INTO workflows (id, user_id, name, connection_json, secret_json, target_json, schedule_enabled, \
-                     interval_minutes, include_attachments, status, last_sync_at, next_sync_at, last_error, synced_messages, \
-                     cursor_uid_validity, cursor_uid, created_at, updated_at) \
-                     VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
-                    rusqlite::params![
-                        w.id, w.user_id, w.name, w.connection.to_string(), w.target.to_string(), w.schedule_enabled,
-                        w.interval_minutes, w.include_attachments, w.status, w.last_sync_at, w.next_sync_at, w.last_error,
-                        w.synced_messages, w.cursor_uid_validity, w.cursor_uid, w.created_at, w.updated_at
-                    ],
-                )?;
-            }
-            for item in snapshot.items {
-                conn.execute(
-                    "INSERT OR IGNORE INTO sync_items (id, workflow_id, mailbox, uid_validity, uid, document_path, status, last_error, \
-                     completed_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                    rusqlite::params![
-                        item.id, item.workflow_id, item.mailbox, item.uid_validity, item.uid, item.document_path, item.status,
-                        item.last_error, item.completed_at, item.created_at, item.updated_at
-                    ],
-                )?;
-            }
-            for run in snapshot.runs {
-                let user_id = owners.get(&run.workflow_id).copied().unwrap_or_default();
-                conn.execute(
-                    "INSERT OR IGNORE INTO sync_runs (id, workflow_id, user_id, mode, status, discovered_messages, processed_messages, \
-                     imported, updated, skipped, failed, current_batch, table_path, error, cancel_requested, started_at, finished_at, \
-                     created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?17, ?18)",
-                    rusqlite::params![
-                        run.id, run.workflow_id, user_id, run.mode, run.status, run.discovered_messages, run.processed_messages,
-                        run.imported, run.updated, run.skipped, run.failed, run.current_batch, run.table_path, run.error,
-                        run.started_at, run.finished_at, run.created_at, run.updated_at
-                    ],
-                )?;
-            }
-        }
-        Ok(())
-    }
-
     /// Writes all mirrored state to the workspace.
     pub fn export(&self) -> AppResult<()> {
-        self.export_agent_state()?;
-        self.export_sync_state()
+        self.export_agent_state()
     }
 
     fn export_agent_state(&self) -> AppResult<()> {
@@ -637,144 +302,7 @@ impl StateMirror {
         Ok(())
     }
 
-    fn export_sync_state(&self) -> AppResult<()> {
-        let conn = self.db.conn()?;
-        let workflows: Vec<PortableFormWorkflow> = kition_formsync::store::list_all(&conn)?
-            .into_iter()
-            .map(|w| PortableFormWorkflow {
-                id: w.id,
-                user_id: w.user_id,
-                name: w.name,
-                template_id: w.template_id,
-                binding_id: w.binding_id,
-                remote_source_id: w.remote_source_id,
-                public_url: w.public_url,
-                published: w.published,
-                document_path: w.document_path,
-                table_id: w.table_id,
-                fields: raw_json(&w.fields_json),
-                target: raw_json(&w.target_json),
-                schedule_enabled: w.schedule_enabled,
-                interval_minutes: w.interval_minutes,
-                status: w.status,
-                cursor_id: w.cursor_id,
-                last_sync_at: w.last_sync_at,
-                next_sync_at: w.next_sync_at,
-                last_error: w.last_error,
-                synced_submissions: w.synced_submissions,
-                created_at: w.created_at,
-                updated_at: w.updated_at,
-            })
-            .collect();
-        let items = {
-            let mut statement = conn.prepare(
-                "SELECT id, workflow_id, submission_id, record_id, completed_at, created_at, updated_at FROM form_sync_items ORDER BY id ASC",
-            )?;
-            statement
-                .query_map([], |r| {
-                    Ok(FormItem {
-                        id: r.get(0)?,
-                        workflow_id: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
-                        submission_id: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
-                        record_id: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
-                        completed_at: r.get(4)?,
-                        created_at: r.get::<_, Option<i64>>(5)?.unwrap_or_default(),
-                        updated_at: r.get::<_, Option<i64>>(6)?.unwrap_or_default(),
-                    })
-                })?
-                .collect::<Result<Vec<_>, _>>()?
-        };
-        write_json_atomic(
-            &self.workspace().join(".kition/sync/forms/state.json"),
-            &FormSnapshot {
-                schema_version: STATE_SCHEMA_VERSION,
-                workflows: (!workflows.is_empty()).then_some(workflows),
-                items,
-            },
-        )?;
-
-        let workflows: Vec<PortableEmailWorkflow> = kition_emailsync::store::all_workflows(&conn)?
-            .into_iter()
-            .map(|w| PortableEmailWorkflow {
-                id: w.id.clone(),
-                user_id: w.user_id,
-                name: w.name.clone(),
-                connection: raw_json(&w.connection_json),
-                target: raw_json(&w.target_json),
-                schedule_enabled: w.schedule_enabled,
-                interval_minutes: w.interval_minutes,
-                include_attachments: w.include_attachments,
-                status: w.status.clone(),
-                last_sync_at: w.last_sync_at,
-                next_sync_at: w.next_sync_at,
-                last_error: w.last_error.clone(),
-                synced_messages: w.synced_messages,
-                cursor_uid_validity: i64::from(w.cursor_uid_validity),
-                cursor_uid: i64::from(w.cursor_uid),
-                created_at: w.created_at,
-                updated_at: w.updated_at,
-            })
-            .collect();
-        let items = {
-            let mut statement = conn.prepare(
-                "SELECT id, workflow_id, mailbox, uid_validity, uid, document_path, status, last_error, completed_at, created_at, updated_at \
-                 FROM sync_items ORDER BY id ASC",
-            )?;
-            statement
-                .query_map([], |r| {
-                    let text = |i: usize| -> rusqlite::Result<String> {
-                        Ok(r.get::<_, Option<String>>(i)?.unwrap_or_default())
-                    };
-                    Ok(EmailItem {
-                        id: r.get(0)?,
-                        workflow_id: text(1)?,
-                        mailbox: text(2)?,
-                        uid_validity: r.get::<_, Option<i64>>(3)?.unwrap_or_default(),
-                        uid: r.get::<_, Option<i64>>(4)?.unwrap_or_default(),
-                        document_path: text(5)?,
-                        status: text(6)?,
-                        last_error: text(7)?,
-                        completed_at: r.get(8)?,
-                        created_at: r.get::<_, Option<i64>>(9)?.unwrap_or_default(),
-                        updated_at: r.get::<_, Option<i64>>(10)?.unwrap_or_default(),
-                    })
-                })?
-                .collect::<Result<Vec<_>, _>>()?
-        };
-        let runs = kition_emailsync::store::all_runs(&conn)?
-            .into_iter()
-            .map(|r| EmailRun {
-                id: r.id,
-                workflow_id: r.workflow_id,
-                mode: r.mode,
-                status: r.status,
-                discovered_messages: r.discovered_messages,
-                processed_messages: r.processed_messages,
-                imported: r.imported,
-                updated: r.updated,
-                skipped: r.skipped,
-                failed: r.failed,
-                current_batch: r.current_batch,
-                table_path: r.table_path,
-                error: r.error,
-                started_at: r.started_at,
-                finished_at: r.finished_at,
-                created_at: r.created_at,
-                updated_at: r.updated_at,
-            })
-            .collect();
-        write_json_atomic(
-            &self.workspace().join(".kition/sync/email/state.json"),
-            &EmailSnapshot {
-                schema_version: STATE_SCHEMA_VERSION,
-                workflows: (!workflows.is_empty()).then_some(workflows),
-                items,
-                runs,
-            },
-        )
-    }
-
-    /// Number of state files under `.kition/agents` and `.kition/sync`.
+    /// Number of state files under `.kition/agents`.
     pub fn count_state_files(&self) -> usize {
         fn count(dir: &Path) -> usize {
             std::fs::read_dir(dir)
@@ -793,7 +321,6 @@ impl StateMirror {
                 .unwrap_or(0)
         }
         count(&self.workspace().join(".kition/agents"))
-            + count(&self.workspace().join(".kition/sync"))
     }
 
     /// Agent sessions in this workspace that exist only in the database.

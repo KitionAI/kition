@@ -277,7 +277,7 @@ pub const KITS: &[KitDefinition] = &[
         },
     },
     // Edited in the page through its SDK; `kit-table` serves the agent and the host table client
-    // (workflows, form and email sync) for files no editor has open.
+    // (workflows) for files no editor has open.
     KitDefinition {
         id: "kit.table",
         name: "Table",

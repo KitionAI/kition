@@ -13,7 +13,6 @@ import {
 import { WorkflowNewPage } from './WorkflowNewPage'
 import { WorkflowHomePage, type StreamingPreview } from './WorkflowHomePage'
 import { WorkflowIndexPage } from './WorkflowIndexPage'
-import { EmailSyncWorkflowPage } from '@/features/emailSync/EmailSyncWorkflowPage'
 
 export interface WorkflowRouteProps {
   workflowContext: WorkflowRouteContext | null
@@ -211,16 +210,12 @@ export function WorkflowRoute({ workflowContext, schemaLookup, scopedTablePath, 
       )
     }
     return (
-      workflowId.startsWith('mail_') ? (
-        <EmailSyncWorkflowPage workflowId={workflowId} />
-      ) : (
-        <WorkflowHomePage
-          initialSelectedId={workflowId}
-          scopedTablePath={scopedTablePath}
-          rootPath={rootPath}
-          onClose={onExit}
-        />
-      )
+      <WorkflowHomePage
+        initialSelectedId={workflowId}
+        scopedTablePath={scopedTablePath}
+        rootPath={rootPath}
+        onClose={onExit}
+      />
     )
   }
 

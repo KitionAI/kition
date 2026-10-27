@@ -13,21 +13,15 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
  *      schema through `/v1/kit-tables/fields` and POSTs the workflow bound to
  *      the file (`trigger.documentPath`) and the picked table.
  *   4. A multi-table file lets the person pick the trigger table.
- *   5. The onboarding Inbox opens on its email sync workflow canvas.
- *   6. Onboarding table files materialise their runnable workflows on first
+ *   5. Onboarding table files materialise their runnable workflows on first
  *      open (creating missing target tables through `/v1/kit-tables/tables`).
  */
 
 const VAULT_PATH = '/tmp/kition-table-file-workflows-e2e-vault'
 const DOC_PATH = 't2.ktable'
-const ONBOARDING_INBOX_PATH = 'Getting Started/Guides/Email Automation/Inbox.ktable'
 
 const SINGLE_TABLE: KitTableFixture[] = [
   { id: '12', title: 'Prospects' },
-]
-
-const ONBOARDING_INBOX_TABLES: KitTableFixture[] = [
-  { id: '12', title: 'Inbox' },
 ]
 
 const MULTI_TABLE: KitTableFixture[] = [
@@ -141,7 +135,7 @@ async function mockDesktopBridge(page: Page, docPath = DOC_PATH) {
           config_path: '',
           working_dir: '',
           command: '',
-          capabilities: ['documents', 'tables', 'workflow', 'email_sync'],
+          capabilities: ['documents', 'tables', 'workflow'],
         }),
         StoreSecureValue: async (key: string, value: string) => {
           secureStore.set(key, value)
@@ -336,97 +330,6 @@ test.describe('table file workflows tab', () => {
     await expect.poll(() => api.workflowPosts).toHaveLength(1)
     expect(api.workflowPosts[0]).toMatchObject({ trigger: { documentPath: DOC_PATH, tableId: '13' } })
     expect(tables.fieldsCalls[0]).toEqual({ path: DOC_PATH, tableId: '13' })
-  })
-
-  test('email inbox sync is launched from the shared template picker', async ({ page }) => {
-    const { api } = await setup(page, MULTI_TABLE)
-    await page.route('**/api/v1/email-sync/workflows', (route) => fulfillJson(route, { code: 200, data: { items: [] } }))
-    await openTableFileWorkflowsTab(page)
-
-    await page.getByTestId('workflow-index-create').click()
-    await page.getByTestId('create-mode-template').click()
-    await page.getByTestId('email-sync-workflow-template').click()
-
-    await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0)
-    // The template opens as a workflow canvas (a schedule trigger, then the
-    // inbox sync); its email settings open from "Configure email".
-    await expect(page.getByRole('heading', { name: 'Sync email inbox' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /trigger: Scheduled trigger/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /action: Sync email inbox/ })).toBeVisible()
-    await expect(page.getByTestId('email-sync-workflow-editor')).toHaveCount(0)
-    await page.getByRole('button', { name: 'Configure email' }).click()
-    await expect(page.getByTestId('email-sync-workflow-editor')).toBeVisible()
-    await expect(page.getByTestId('email-sync-table-select')).toContainText('Prospects')
-    await expect(page.getByTestId('email-sync-settings-panel')).toContainText(DOC_PATH)
-    expect(api.workflowPosts).toHaveLength(0)
-  })
-
-  test('the onboarding Inbox opens with the included email sync workflow', async ({ page }) => {
-    const { api } = await setup(page, ONBOARDING_INBOX_TABLES, ONBOARDING_INBOX_PATH)
-    await page.route('**/api/v1/email-sync/workflows', (route) => fulfillJson(route, { code: 200, data: { items: [] } }))
-    await openTableFileWorkflowsTab(page, ONBOARDING_INBOX_PATH)
-
-    await expect(page.getByTestId('email-sync-onboarding-workflow-page')).toBeVisible()
-    await expect(page.getByTestId('workflow-index-empty')).toHaveCount(0)
-    const trigger = page.locator('[data-testid="workflow-canvas-node"][data-node-role="trigger"]')
-    await expect(trigger).toContainText('Scheduled trigger')
-    await expect(trigger).toContainText('Every 15 minutes')
-    await expect(page.locator('[data-testid="workflow-canvas-node"][data-node-role="action"]')).toContainText('Sync email inbox')
-
-    await page.locator('[data-testid="workflow-canvas-node"][data-node-role="action"]').click()
-    await expect(page.getByTestId('email-sync-workflow-editor')).toBeVisible()
-    await expect(page.getByTestId('email-sync-table-select')).toContainText('Inbox')
-    await expect(page.getByTestId('email-sync-settings-panel')).toContainText(ONBOARDING_INBOX_PATH)
-    expect(api.workflowPosts).toHaveLength(0)
-  })
-
-  test('reopening a configured onboarding Inbox returns to its workflow canvas', async ({ page }) => {
-    await page.setViewportSize({ width: 2048, height: 1152 })
-    const emailWorkflow = {
-      id: 'mail_onboarding',
-      name: '163 Mail inbox',
-      connection: { host: 'imap.163.com', port: 993, tls_mode: 'tls', username: 'person@163.com', mailbox: 'INBOX' },
-      target: { table_path: ONBOARDING_INBOX_PATH, content_folder: 'Mail/Messages', attachment_folder: 'Mail/Attachments' },
-      schedule: { enabled: true, interval_minutes: 15 },
-      include_attachments: true,
-      status: 'active',
-      synced_messages: 10,
-      last_sync_at: '2026-07-23T11:17:16Z',
-      created_at: '2026-07-23T11:00:00Z',
-      updated_at: '2026-07-23T11:17:16Z',
-    }
-    const completedRun = {
-      id: 'mailrun_completed',
-      workflow_id: emailWorkflow.id,
-      mode: 'full',
-      status: 'completed',
-      discovered_messages: 10,
-      processed_messages: 10,
-      imported: 10,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-      current_batch: 1,
-      table_path: ONBOARDING_INBOX_PATH,
-      started_at: '2026-07-23T11:16:00Z',
-      finished_at: '2026-07-23T11:17:16Z',
-      created_at: '2026-07-23T11:16:00Z',
-      updated_at: '2026-07-23T11:17:16Z',
-    }
-    await setup(page, ONBOARDING_INBOX_TABLES, ONBOARDING_INBOX_PATH)
-    await page.route('**/api/v1/email-sync/**', (route) => {
-      const path = new URL(route.request().url()).pathname
-      if (path === '/api/v1/email-sync/workflows') return fulfillJson(route, { code: 200, data: { items: [emailWorkflow] } })
-      if (path === '/api/v1/email-sync/runs') return fulfillJson(route, { code: 200, data: { items: [completedRun] } })
-      return fulfillJson(route, { code: 200, data: {} })
-    })
-    await openTableFileWorkflowsTab(page, ONBOARDING_INBOX_PATH)
-
-    await expect(page.getByTestId('email-sync-workflow-page')).toBeVisible()
-    await expect(page.getByTestId('email-sync-workflow-page')).toContainText('163 Mail inbox')
-    await expect(page.locator('[data-testid="workflow-canvas-node"][data-node-role="trigger"]')).toContainText('Scheduled trigger')
-    await expect(page.locator('[data-testid="workflow-canvas-node"][data-node-role="action"]')).toContainText('Sync email inbox')
-    await expect(page.getByTestId('email-sync-workflow-row')).toHaveCount(0)
   })
 
   test('the onboarding workflow appears on first open, is enabled, and creates a real test row', async ({ page }) => {

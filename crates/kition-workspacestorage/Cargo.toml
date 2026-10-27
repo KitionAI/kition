@@ -12,8 +12,6 @@ workspace = true
 
 [dependencies]
 kition-core = { workspace = true }
-kition-emailsync = { workspace = true }
-kition-formsync = { workspace = true }
 kition-http = { workspace = true }
 kition-kdm = { workspace = true }
 kition-store = { workspace = true }

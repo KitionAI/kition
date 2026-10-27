@@ -25,15 +25,14 @@ pub struct Deps {
     pub workspace_dir: Option<PathBuf>,
     pub events: EventBus,
     pub connections: kition_connections::Store,
-    pub cloud_session: kition_core::cloud::CloudSessionProvider,
     /// Kition Cloud sign-in; AI features require an active session.
     pub portal: kition_desktop::PortalAuth,
     /// Model provider calls, shared by every AI feature.
     pub ai: kition_ai::engine::Engine,
     /// Kits for this workspace; they stop when the runtime restarts.
     pub kits: kition_kits::KitManager,
-    /// The host table client: how workflows, form and email sync, and the renderer's table
-    /// pickers reach `.ktable` files, all through the Table kit.
+    /// The host table client: how workflows and the renderer's table pickers reach `.ktable`
+    /// files, all through the Table kit.
     pub table_client: kition_tableclient::TableClient,
 }
 
@@ -92,10 +91,11 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
         None => short_hash(""),
     };
     let portal = kition_desktop::PortalAuth::new(&config.portal_base_url);
-    let cloud_session = portal.cloud_session_provider();
     let ai = kition_ai::engine::Engine::new(
         upload_dir.clone(),
-        Some(kition_ai::engine::cloud_resolver(cloud_session.clone())),
+        Some(kition_ai::engine::cloud_resolver(
+            portal.cloud_session_provider(),
+        )),
     );
     let kits = kition_kits::KitManager::from_env(workspace_dir.clone());
     write_token_file(&config, &upload_dir, workspace_dir.as_deref())?;
@@ -104,7 +104,6 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
     Ok(Deps {
         table_client,
         kits,
-        cloud_session,
         portal,
         ai,
         config,
@@ -171,56 +170,27 @@ pub fn router(deps: &Deps) -> Router {
         agent,
         ai_gate: deps.ai_gate(),
     }));
-    let api = match &deps.workspace_dir {
-        Some(root) => {
-            let forms = kition_formsync::Service::new(
-                deps.db.clone(),
-                deps.cloud_session.clone(),
-                Arc::new(crate::adapters::ClientTableWriter(
-                    deps.table_client.clone(),
-                )),
-            );
-            kition_formsync::start_scheduler(forms.clone());
-            let mail = kition_emailsync::Service::new(
-                kition_emailsync::store::Store {
-                    db: deps.db.clone(),
-                    secrets: deps.connections.secrets.clone(),
-                },
-                Arc::new(kition_emailsync::imap::ImapFetcher),
-                kition_emailsync::workspace::WorkspaceWriter {
-                    root: root.clone(),
-                    tables: deps.table_client.clone(),
-                },
-            );
-            kition_emailsync::start_scheduler(mail.clone());
-            let renamed = crate::workflows::rename_hook(deps, &workflows.state.engine.store);
-            let deleted = crate::workflows::delete_hook(deps, &workflows.state.engine.store);
-            api.merge(kition_tableclient::routes::router(
-                kition_tableclient::routes::KitTablesState {
-                    auth: deps.auth(),
-                    tables: deps.table_client.clone(),
-                    renamed: Some(renamed),
-                    deleted: Some(deleted),
-                },
-            ))
-            .merge(kition_tableclient::scenario::router(
-                kition_tableclient::scenario::ScenarioState {
-                    auth: deps.auth(),
-                    tables: deps.table_client.clone(),
-                    engine: deps.ai.clone(),
-                    ai_gate: deps.ai_gate(),
-                },
-            ))
-            .merge(kition_emailsync::router(kition_emailsync::EmailSyncState {
+    let api = if deps.workspace_dir.is_some() {
+        let renamed = crate::workflows::rename_hook(&workflows.state.engine.store);
+        let deleted = crate::workflows::delete_hook(&workflows.state.engine.store);
+        api.merge(kition_tableclient::routes::router(
+            kition_tableclient::routes::KitTablesState {
                 auth: deps.auth(),
-                service: mail,
-            }))
-            .merge(kition_formsync::router(kition_formsync::FormSyncState {
+                tables: deps.table_client.clone(),
+                renamed: Some(renamed),
+                deleted: Some(deleted),
+            },
+        ))
+        .merge(kition_tableclient::scenario::router(
+            kition_tableclient::scenario::ScenarioState {
                 auth: deps.auth(),
-                service: forms,
-            }))
-        }
-        None => api,
+                tables: deps.table_client.clone(),
+                engine: deps.ai.clone(),
+                ai_gate: deps.ai_gate(),
+            },
+        ))
+    } else {
+        api
     };
     // Workspace storage needs a workspace directory; without one its routes are not mounted.
     let assets = deps

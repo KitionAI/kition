@@ -56,7 +56,6 @@ pub fn run(conn: &mut Connection, path: &Path) -> AppResult<()> {
                     "ALTER TABLE `{}` ADD `{}` {}",
                     table.name, column.name, column.definition
                 ))?;
-                backfill_added_column(&tx, &table.name, &column.name)?;
             }
         }
     }
@@ -70,19 +69,6 @@ pub fn run(conn: &mut Connection, path: &Path) -> AppResult<()> {
         tx.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))?;
     }
     tx.commit()?;
-    Ok(())
-}
-
-/// Data fixes that must run when a column first appears.
-fn backfill_added_column(conn: &Connection, table: &str, column: &str) -> AppResult<()> {
-    // Forms that already had a cloud source were published before the
-    // `published` flag existed.
-    if table == "form_sync_workflows" && column == "published" {
-        conn.execute(
-            "UPDATE form_sync_workflows SET published = 1 WHERE remote_source_id <> ''",
-            [],
-        )?;
-    }
     Ok(())
 }
 
@@ -188,7 +174,7 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap_or_default();
-        assert_eq!(tables, 20);
+        assert_eq!(tables, 15);
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap_or_default();

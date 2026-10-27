@@ -18,7 +18,6 @@ describe('onboarding static assets', () => {
       'Task Tracker.ktable',
       'YouTube & TikTok Thumbnail Generator.ktable',
       'Receipt OCR Table.ktable',
-      'Email Inbox Sync.ktable',
       'Leads Landing Page.ktable',
       'SDR Cold Call Manager.ktable',
       'Product Launch Website.ktable',
@@ -32,7 +31,6 @@ describe('onboarding static assets', () => {
       'Projects & Planning',
       'AI & Creative',
       'AI & Creative',
-      'Operations & Analytics',
       'Sales & Customer',
       'Sales & Customer',
       'Projects & Planning',
@@ -87,16 +85,8 @@ describe('onboarding static assets', () => {
     const receiptGuide = manifest.guides.find(
       (guide: { slug: string }) => guide.slug === 'receipt-extraction',
     )
-    const emailGuide = manifest.guides.find(
-      (guide: { slug: string }) => guide.slug === 'email-automation',
-    )
     expect(receiptGuide?.assets).toBeUndefined()
-    expect(emailGuide?.tableFile).toBe('Inbox.ktable')
-    const inboxTable = readFileSync(resolve(dir, 'email-automation/Inbox.ktable'))
-    expect(inboxTable.subarray(0, 16).toString('utf8')).toBe('SQLite format 3\u0000')
-    expect(inboxTable.byteLength).toBeGreaterThan(100_000)
     expect(manifest.guides.map((guide: { displayName: string }) => guide.displayName)).toEqual([
-      'Email Automation',
       'Lead Automation',
       'Receipt Extraction',
       'Product Content',
@@ -144,11 +134,5 @@ describe('onboarding static assets', () => {
     expect(english).not.toContain('Guides/Email Automation/')
 
     expect(readdirSync(dir).filter((name) => /^welcome\..+\.md$/.test(name))).toEqual([])
-    const emailAutomation = readFileSync(resolve(dir, 'email-automation/intro.md'), 'utf8')
-    expect(emailAutomation).toContain('# Email Automation')
-    expect(emailAutomation).toContain('Getting Started/Guides/Email Automation/Inbox.ktable')
-    expect(emailAutomation).toContain('imap.163.com')
-    expect(emailAutomation).toContain('Select the **Document** value')
-    expect(emailAutomation).toContain('`Scheduled trigger` followed by `Sync email inbox`')
   })
 })

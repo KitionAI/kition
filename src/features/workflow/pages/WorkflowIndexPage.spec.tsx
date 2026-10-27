@@ -6,9 +6,6 @@ import { listWorkflowRuns, listWorkflows } from '@/api/workflows'
 import { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowLauncherState'
 import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTableLabels'
 import { ensureOnboardingWorkflow } from '@/features/workflow/lib/ensureOnboardingWorkflow'
-import { useTableEmailSyncWorkflows } from '@/features/emailSync/useTableEmailSyncWorkflows'
-import { requestEmailSyncSetup } from '@/features/emailSync/setupRequest'
-import { isEmailInboxSyncTemplateTable } from '@/features/emailSync/templateSetup'
 import { WorkflowIndexPage } from './WorkflowIndexPage'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -30,30 +27,6 @@ vi.mock('@/features/workflow/lib/ensureOnboardingWorkflow', () => ({
 vi.mock('@/features/workspace/components/WorkspaceWorkflowCreateModeDialog', () => ({
   WorkspaceWorkflowCreateModeDialog: () => null,
 }))
-vi.mock('@/features/emailSync/useTableEmailSyncWorkflows', () => ({
-  normalizeEmailSyncTablePath: (path: string) => path.replaceAll('\\', '/').replace(/^\/+/, '').replace(/\/+$/, ''),
-  useTableEmailSyncWorkflows: vi.fn(),
-}))
-vi.mock('@/features/emailSync/templateSetup', () => ({
-  isEmailInboxSyncTemplateTable: vi.fn(),
-}))
-vi.mock('@/features/emailSync/EmailSyncOnboardingWorkflowPage', () => ({
-  EmailSyncOnboardingWorkflowPage: ({ tablePath, runAfterSave }: { tablePath: string; runAfterSave?: string }) => (
-    <div
-      data-testid="mock-email-sync-onboarding-workflow"
-      data-table-path={tablePath}
-      data-run-after-save={runAfterSave || ''}
-    >
-      {tablePath}
-    </div>
-  ),
-}))
-vi.mock('@/features/emailSync/EmailSyncWorkflowPage', () => ({
-  EmailSyncWorkflowPage: ({ workflowId }: { workflowId: string }) => (
-    <div data-testid="mock-email-sync-workflow-page">{workflowId}</div>
-  ),
-}))
-
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -97,14 +70,6 @@ beforeEach(() => {
     created: [{ id: 'wf_lead_email' } as never],
     existing: [],
   })
-  vi.mocked(useTableEmailSyncWorkflows).mockReturnValue({
-    status: 'ready',
-    supported: true,
-    workflows: [],
-    latestRuns: {},
-    error: '',
-  })
-  vi.mocked(isEmailInboxSyncTemplateTable).mockResolvedValue(false)
   sessionStorage.clear()
 })
 
@@ -116,30 +81,6 @@ afterEach(() => {
 })
 
 describe('WorkflowIndexPage onboarding workflow preparation', () => {
-  it('opens the email sync workflow canvas when the page mounts after template navigation', async () => {
-    vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
-    requestEmailSyncSetup('Projects/Email Inbox Sync.ktable', { runAfterSave: 'full' })
-
-    await mount('Projects/Email Inbox Sync.ktable')
-
-    const canvas = container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')
-    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.ktable')
-    expect(canvas?.getAttribute('data-run-after-save')).toBe('full')
-    expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
-  })
-
-  it('recovers the email sync workflow canvas for an existing template table after navigation was lost', async () => {
-    vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
-    vi.mocked(isEmailInboxSyncTemplateTable).mockResolvedValueOnce(true)
-
-    await mount('Projects/Email Inbox Sync.ktable')
-
-    const canvas = container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')
-    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.ktable')
-    expect(canvas?.getAttribute('data-run-after-save')).toBe('full')
-    expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
-  })
-
   it('materializes and opens the lead email workflow for its scoped table file', async () => {
     const onSelectWorkflow = await mount()
 
@@ -151,94 +92,11 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
     expect(onSelectWorkflow).toHaveBeenCalledWith('wf_lead_email')
   })
 
-  it('shows a configured email sync in the shared workflow table', async () => {
+  it('shows the empty state for a table file without workflows', async () => {
     vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
-    vi.mocked(useTableEmailSyncWorkflows).mockReturnValue({
-      status: 'ready',
-      supported: true,
-      workflows: [{
-        id: 'mail_1',
-        name: 'Personal inbox',
-        connection: { host: 'imap.example.com', port: 993, tls_mode: 'tls', username: 'person@example.com', mailbox: 'INBOX' },
-        target: { table_path: 'Projects/Customer Requests.ktable', content_folder: 'Mail', attachment_folder: 'Mail/Attachments' },
-        schedule: { enabled: true, interval_minutes: 15 },
-        include_attachments: true,
-        status: 'active',
-        synced_messages: 3,
-        created_at: '2026-07-22T00:00:00Z',
-        updated_at: '2026-07-22T00:00:00Z',
-      }],
-      latestRuns: {
-        mail_1: {
-          id: 'mailrun_1',
-          workflow_id: 'mail_1',
-          mode: 'full',
-          status: 'running',
-          discovered_messages: 500,
-          processed_messages: 240,
-          imported: 230,
-          updated: 2,
-          skipped: 8,
-          failed: 0,
-          current_batch: 3,
-          table_path: 'Projects/Customer Requests.ktable',
-          created_at: '2026-07-22T00:00:00Z',
-          updated_at: '2026-07-22T00:01:00Z',
-        },
-      },
-      error: '',
-    })
     const onSelectWorkflow = await mount('Projects/Customer Requests.ktable')
 
-    expect(container.querySelector('[data-testid="email-sync-workflow-row"]')?.textContent)
-      .toContain('Personal inbox')
-    expect(container.querySelector('[data-testid="email-sync-workflow-row"]')?.textContent)
-      .toContain('Sync all · 240 / 500 processed')
-    container.querySelector<HTMLTableRowElement>('[data-testid="email-sync-workflow-row"]')?.click()
-    expect(onSelectWorkflow).toHaveBeenCalledWith('mail_1', 'Projects/Customer Requests.ktable')
-    expect(container.querySelector('[data-testid="table-email-sync-workflow-index"]')).toBeNull()
-    expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
-  })
-
-  it('opens the included email sync workflow for the onboarding inbox', async () => {
-    vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
-    await mount('Getting Started/Guides/Email Automation/Inbox.ktable')
-
-    expect(container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')?.textContent)
-      .toBe('Getting Started/Guides/Email Automation/Inbox.ktable')
-    expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
-    expect(ensureOnboardingWorkflow).not.toHaveBeenCalled()
-  })
-
-  it('renders the single configured onboarding inbox workflow directly', async () => {
-    vi.mocked(useTableEmailSyncWorkflows).mockReturnValue({
-      status: 'ready',
-      supported: true,
-      workflows: [{
-        id: 'mail_onboarding',
-        name: 'Personal inbox',
-        connection: { host: 'imap.example.com', port: 993, tls_mode: 'tls', username: 'person@example.com', mailbox: 'INBOX' },
-        target: {
-          table_path: 'Getting Started/Guides/Email Automation/Inbox.ktable',
-          content_folder: 'Mail/Messages',
-          attachment_folder: 'Mail/Attachments',
-        },
-        schedule: { enabled: true, interval_minutes: 15 },
-        include_attachments: true,
-        status: 'active',
-        synced_messages: 10,
-        created_at: '2026-07-23T00:00:00Z',
-        updated_at: '2026-07-23T00:00:00Z',
-      }],
-      latestRuns: {},
-      error: '',
-    })
-
-    const onSelectWorkflow = await mount('Getting Started/Guides/Email Automation/Inbox.ktable')
-
-    expect(container.querySelector('[data-testid="mock-email-sync-workflow-page"]')?.textContent)
-      .toBe('mail_onboarding')
+    expect(container.querySelector('[data-testid="workflow-index-empty"]')).not.toBeNull()
     expect(onSelectWorkflow).not.toHaveBeenCalled()
-    expect(container.querySelector('[data-testid="email-sync-workflow-row"]')).toBeNull()
   })
 })

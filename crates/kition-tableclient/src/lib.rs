@@ -1,5 +1,5 @@
-//! The host table client: how Kition's host features (workflows, form and email sync, the
-//! scenario builder, the workspace tree and search) read and write `.ktable` files.
+//! The host table client: how Kition's host features (workflows, the scenario builder, the
+//! workspace tree and search) read and write `.ktable` files.
 //!
 //! Kition has no table engine of its own. Every request goes to the Table kit, as the agent's
 //! table tools do: to the live editor through the Kit AI bridge when a renderer window has the
@@ -133,7 +133,7 @@ pub struct TableInfo {
     pub name: String,
     pub title: String,
     pub fields: Vec<FieldInfo>,
-    /// The table's own metadata, which host features may keep things in (form drafts).
+    /// The table's own metadata, which host features may keep things in.
     pub meta: Value,
 }
 

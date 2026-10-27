@@ -58,34 +58,16 @@ impl kition_workflow::WorkflowAi for EngineWorkflowAi {
     }
 }
 
-/// Follows a renamed table file in every host feature that names it by path: workflows,
-/// form sync targets, and email sync targets.
-pub fn rename_hook(deps: &Deps, store: &Arc<Store>) -> kition_tableclient::routes::RenameHook {
-    let (store, db) = (store.clone(), deps.db.clone());
-    Arc::new(move |from: &str, to: &str| {
-        let mut updated = store.rename_document_path(from, to)?;
-        let conn = db.conn().map_err(|e| e.to_string())?;
-        updated += kition_formsync::store::rename_document_path(&conn, from, to)
-            .map_err(|e| e.to_string())?;
-        updated += kition_emailsync::store::rename_table_path(&conn, from, to)
-            .map_err(|e| e.to_string())?;
-        Ok(updated)
-    })
+/// Follows a renamed table file in the workflows that name it by path.
+pub fn rename_hook(store: &Arc<Store>) -> kition_tableclient::routes::RenameHook {
+    let store = store.clone();
+    Arc::new(move |from: &str, to: &str| store.rename_document_path(from, to))
 }
 
-/// Follows a deleted table file in every host feature bound to it: its workflows, form syncs,
-/// and email syncs are removed, as a deleted data document's workflows always were.
-pub fn delete_hook(deps: &Deps, store: &Arc<Store>) -> kition_tableclient::routes::DeleteHook {
-    let (store, db) = (store.clone(), deps.db.clone());
-    Arc::new(move |path: &str| {
-        let mut removed = store.delete_by_document_path(path)?;
-        let conn = db.conn().map_err(|e| e.to_string())?;
-        removed += kition_formsync::store::delete_by_document_path(&conn, path)
-            .map_err(|e| e.to_string())?;
-        removed += kition_emailsync::store::delete_by_table_path(&conn, path)
-            .map_err(|e| e.to_string())?;
-        Ok(removed)
-    })
+/// Removes a deleted table file's workflows, as a deleted data document's workflows always were.
+pub fn delete_hook(store: &Arc<Store>) -> kition_tableclient::routes::DeleteHook {
+    let store = store.clone();
+    Arc::new(move |path: &str| store.delete_by_document_path(path))
 }
 
 pub struct Workflows {

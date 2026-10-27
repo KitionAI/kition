@@ -8,7 +8,7 @@
  *   (`TABLE_FILES_CHANGED_EVENT`).
  * - `kition:workspace-reload`, the manual "re-read the tree" event.
  * - The runtime change events dispatched by the API modules after a write
- *   (workflows, form sync, email sync, connections).
+ *   (workflows, connections).
  */
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -17,8 +17,6 @@ import { subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExtern
 import { WORKFLOW_CHANGED_EVENT, WORKFLOW_ENABLED_CHANGED_EVENT } from '@/lib/workflowEvents'
 import { CONNECTIONS_CHANGED_EVENT } from './connections'
 import { isTableFilePath, notifyTableFilesChanged } from './kitTables'
-import { EMAIL_SYNC_CHANGED_EVENT } from './emailSync'
-import { FORM_SYNC_CHANGED_EVENT } from './formSync'
 
 export const WORKSPACE_RELOAD_EVENT = 'kition:workspace-reload'
 
@@ -47,10 +45,7 @@ function invalidateWorkspace(queryClient: QueryClient) {
 }
 
 function invalidateWorkflows(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.workflows() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.formSyncWorkflows() }),
-  ])
+  return queryClient.invalidateQueries({ queryKey: queryKeys.workflows() })
 }
 
 /**
@@ -73,10 +68,6 @@ export function installWorkspaceInvalidation(queryClient: QueryClient) {
     listen(WORKSPACE_RELOAD_EVENT, () => { void invalidateWorkspace(queryClient) })
     listen(WORKFLOW_CHANGED_EVENT, () => { void invalidateWorkflows(queryClient) })
     listen(WORKFLOW_ENABLED_CHANGED_EVENT, () => { void invalidateWorkflows(queryClient) })
-    listen(FORM_SYNC_CHANGED_EVENT, () => { void invalidateWorkflows(queryClient) })
-    listen(EMAIL_SYNC_CHANGED_EVENT, () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.emailSyncWorkflows() })
-    })
     listen(CONNECTIONS_CHANGED_EVENT, () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.connections() })
     })

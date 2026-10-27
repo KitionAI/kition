@@ -1,6 +1,6 @@
 //! Workflow triggers from edits the host did not make itself.
 //!
-//! Kition's own writes (workflows, form and email sync) publish `RecordCreated` and
+//! Kition's own writes (workflows) publish `RecordCreated` and
 //! `RecordUpdated` as they write. Everyone else's edits happen inside the Table kit: the
 //! person's and a collaborator's in an open editor, the agent's in the editor or the headless
 //! kit. The watcher asks the kit what changed since the version it last saw
@@ -276,7 +276,7 @@ mod tests {
             "updated": [
                 { "tableId": 1, "recordId": 7, "fieldIds": [3], "origin": "person:kit" },
                 { "tableId": 2, "recordId": 4, "fieldIds": [1], "origin": "agent:turn-1" },
-                { "tableId": 2, "recordId": 5, "fieldIds": [1], "origin": "system:formsync" }
+                { "tableId": 2, "recordId": 5, "fieldIds": [1], "origin": "system:workflow" }
             ],
             "deleted": []
         });

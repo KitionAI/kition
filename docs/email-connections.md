@@ -3,36 +3,28 @@
 Kition workflows send email through reusable SMTP connections. Create and test
 the connection first, then select it in the workflow's **Send email** action.
 
-Kition also imports inbox messages through IMAP. Open **Settings > Email
-Providers**, choose a provider, and enter the account address plus the provider
-credential. The account address and provider credential are stored once per
-provider and reused by inbox and delivery workflows.
-
-Inbox synchronization is configured from the destination table, a `.ktable`
-file. Open its workflows from the sidebar, select **New workflow**, and choose
-**Full email inbox sync**. The workflow names the table by its file path and
-table id.
-The workflow owns its mailbox, destination, schedule, attachment policy,
-current progress, and run history. Email Providers does not own sync execution.
+Open **Settings > Email Providers**, choose a provider, and enter the account
+address plus the provider credential. They are stored once per provider and
+reused by the provider's SMTP connection.
 
 ## Built-In Providers
 
-| Provider | IMAP | SMTP | Credential |
-| --- | --- | --- | --- |
-| Gmail | `imap.gmail.com:993` TLS | `smtp.gmail.com:587` STARTTLS | Google app password |
-| Outlook / Microsoft 365 | `outlook.office365.com:993` TLS | `smtp.office365.com:587` STARTTLS | App password when required |
-| Yahoo Mail | `imap.mail.yahoo.com:993` TLS | `smtp.mail.yahoo.com:465` TLS | Yahoo app password |
-| iCloud Mail | `imap.mail.me.com:993` TLS | `smtp.mail.me.com:587` STARTTLS | Apple app-specific password |
-| 163 Mail | `imap.163.com:993` TLS | `smtp.163.com:465` TLS | Client authorization code |
-| 126 Mail | `imap.126.com:993` TLS | `smtp.126.com:465` TLS | Client authorization code |
-| QQ Mail | `imap.qq.com:993` TLS | `smtp.qq.com:465` TLS | Client authorization code |
-| Foxmail | `imap.qq.com:993` TLS | `smtp.qq.com:465` TLS | Client authorization code |
-| Zoho Mail | `imap.zoho.com:993` TLS | `smtp.zoho.com:465` TLS | App password when required |
-| Fastmail | `imap.fastmail.com:993` TLS | `smtp.fastmail.com:465` TLS | Fastmail app password |
-| GMX Mail | `imap.gmx.com:993` TLS | `mail.gmx.com:587` STARTTLS | Email password |
-| Mail.com | `imap.mail.com:993` TLS | `smtp.mail.com:587` STARTTLS | Email password |
-| Proton Mail Bridge | `127.0.0.1:1143` STARTTLS | `127.0.0.1:1025` STARTTLS | Bridge-generated password |
-| Custom IMAP / SMTP | User supplied | User supplied | Password or token |
+| Provider | SMTP | Credential |
+| --- | --- | --- |
+| Gmail | `smtp.gmail.com:587` STARTTLS | Google app password |
+| Outlook / Microsoft 365 | `smtp.office365.com:587` STARTTLS | App password when required |
+| Yahoo Mail | `smtp.mail.yahoo.com:465` TLS | Yahoo app password |
+| iCloud Mail | `smtp.mail.me.com:587` STARTTLS | Apple app-specific password |
+| 163 Mail | `smtp.163.com:465` TLS | Client authorization code |
+| 126 Mail | `smtp.126.com:465` TLS | Client authorization code |
+| QQ Mail | `smtp.qq.com:465` TLS | Client authorization code |
+| Foxmail | `smtp.qq.com:465` TLS | Client authorization code |
+| Zoho Mail | `smtp.zoho.com:465` TLS | App password when required |
+| Fastmail | `smtp.fastmail.com:465` TLS | Fastmail app password |
+| GMX Mail | `mail.gmx.com:587` STARTTLS | Email password |
+| Mail.com | `smtp.mail.com:587` STARTTLS | Email password |
+| Proton Mail Bridge | `127.0.0.1:1025` STARTTLS | Bridge-generated password |
+| Custom SMTP | User supplied | Password or token |
 
 Provider settings can vary by account region or administrator policy. When the
 provider documents different endpoints, enter those values under **Advanced**.

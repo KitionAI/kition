@@ -24,20 +24,6 @@ import { openWorkflowRoute, openWorkflowDetail, type WorkflowRouteContext } from
 import { listTableFiles } from '@/api/kitTables'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
 import { ensureOnboardingWorkflow } from '@/features/workflow/lib/ensureOnboardingWorkflow'
-import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/onboardingGuideManifest'
-import { EmailSyncOnboardingWorkflowPage } from '@/features/emailSync/EmailSyncOnboardingWorkflowPage'
-import { EmailSyncWorkflowPage } from '@/features/emailSync/EmailSyncWorkflowPage'
-import { EmailSyncWorkflowTableRow } from '@/features/emailSync/EmailSyncWorkflowTableRow'
-import {
-  consumeEmailSyncSetupRequest,
-  EMAIL_SYNC_SETUP_REQUEST_EVENT,
-} from '@/features/emailSync/setupRequest'
-import {
-  normalizeEmailSyncTablePath,
-  useTableEmailSyncWorkflows,
-} from '@/features/emailSync/useTableEmailSyncWorkflows'
-import type { EmailSyncRun, EmailSyncWorkflow } from '@/api/emailSync'
-import { isEmailInboxSyncTemplateTable } from '@/features/emailSync/templateSetup'
 
 export interface WorkflowIndexPageProps {
   /** Scope to a specific table file. Filters list and query to workflows bound
@@ -60,11 +46,6 @@ interface IndexPageState {
   latestRuns: Record<string, WorkflowRunRecord | null>
   status: 'loading' | 'done' | 'error'
   error: string
-}
-
-type EmailSyncCanvasRequest = {
-  tablePath: string
-  runAfterSave?: 'full'
 }
 
 const timeStrings: RelativeTimeStrings = {
@@ -111,11 +92,6 @@ export function WorkflowIndexPage({
       current = false
     }
   }, [modeDialogOpen, scopedTablePath])
-  const [emailSyncCanvasRequest, setEmailSyncCanvasRequest] = useState<EmailSyncCanvasRequest | null>(() => (
-    scopedTablePath ? consumeEmailSyncSetupRequest(scopedTablePath) : null
-  ))
-  const [emailSyncTemplateTable, setEmailSyncTemplateTable] = useState(false)
-  const emailSync = useTableEmailSyncWorkflows(scopedTablePath)
   const [onboardingPreparation, setOnboardingPreparation] = useState<{
     key: string
     status: 'checking' | 'done'
@@ -123,7 +99,6 @@ export function WorkflowIndexPage({
   const onboardingKey = scopedTablePath ? `${rootPath || ''}\u0000${scopedTablePath}` : ''
   const loadVersionRef = useRef(0)
   const onboardingAttemptRef = useRef('')
-  const emailTemplateSetupAttemptRef = useRef('')
   const onboardingScopeKeyRef = useRef(onboardingKey)
   const mountedRef = useRef(true)
   const onSelectWorkflowRef = useRef(onSelectWorkflow)
@@ -133,8 +108,6 @@ export function WorkflowIndexPage({
   onSelectWorkflowRef.current = onSelectWorkflow
   workflowsRef.current = state.workflows
   translateRef.current = t
-  const isEmailAutomationOnboardingTable = Boolean(scopedTablePath)
-    && normalizeEmailSyncTablePath(scopedTablePath!) === EMAIL_AUTOMATION_TABLE_PATH
 
   useEffect(() => {
     mountedRef.current = true
@@ -193,56 +166,6 @@ export function WorkflowIndexPage({
     }
   }, [loadWorkflows])
 
-  useEffect(() => {
-    const pendingRequest = scopedTablePath
-      ? consumeEmailSyncSetupRequest(scopedTablePath)
-      : null
-    if (pendingRequest) setEmailSyncCanvasRequest(pendingRequest)
-
-    function handleEmailSyncSetup(event: Event) {
-      const detail = (event as CustomEvent<EmailSyncCanvasRequest>).detail
-      const tablePath = String(detail?.tablePath || '').trim()
-      const pendingRequest = scopedTablePath
-        ? consumeEmailSyncSetupRequest(scopedTablePath)
-        : null
-      const detailMatches = Boolean(
-        tablePath
-        && scopedTablePath
-        && normalizeEmailSyncTablePath(tablePath) === normalizeEmailSyncTablePath(scopedTablePath),
-      )
-      const request = pendingRequest || (detailMatches ? detail : null)
-      if (request && scopedTablePath) {
-        setModeDialogOpen(false)
-        setEmailSyncCanvasRequest({
-          tablePath: scopedTablePath,
-          ...(request.runAfterSave === 'full' ? { runAfterSave: 'full' } : {}),
-        })
-      }
-    }
-    window.addEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, handleEmailSyncSetup)
-    return () => window.removeEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, handleEmailSyncSetup)
-  }, [scopedTablePath])
-
-  useEffect(() => {
-    if (
-      !scopedTablePath
-      || emailSync.status !== 'ready'
-      || emailSync.workflows.length > 0
-    ) return
-    const key = `${rootPath || ''}\u0000${normalizeEmailSyncTablePath(scopedTablePath)}`
-    if (emailTemplateSetupAttemptRef.current === key) return
-    emailTemplateSetupAttemptRef.current = key
-    setEmailSyncTemplateTable(false)
-    let active = true
-    void isEmailInboxSyncTemplateTable(scopedTablePath).then((matches) => {
-      if (!active || !matches) return
-      setEmailSyncTemplateTable(true)
-    })
-    return () => {
-      active = false
-    }
-  }, [emailSync.status, emailSync.workflows.length, rootPath, scopedTablePath])
-
   // Onboarding table files ship runnable scenarios, not just gallery cards. A
   // single new scenario opens directly; table files with several stay on the
   // list so the user can compare the available workflows.
@@ -251,10 +174,6 @@ export function WorkflowIndexPage({
     const key = `${rootPath || ''}\u0000${scopedTablePath}`
     if (onboardingAttemptRef.current === key) return
     onboardingAttemptRef.current = key
-    if (isEmailAutomationOnboardingTable) {
-      setOnboardingPreparation({ key, status: 'done' })
-      return
-    }
     setOnboardingPreparation({ key, status: 'checking' })
     void ensureOnboardingWorkflow({
       tableFilePath: scopedTablePath,
@@ -274,7 +193,7 @@ export function WorkflowIndexPage({
       console.warn('onboarding workflow initialization failed', err)
       setOnboardingPreparation({ key, status: 'done' })
     })
-  }, [isEmailAutomationOnboardingTable, loadWorkflows, rootPath, scopedTablePath, state.status])
+  }, [loadWorkflows, rootPath, scopedTablePath, state.status])
 
   // Scope workflows to the table file if provided
   const scopedWorkflows = useMemo(() => {
@@ -302,68 +221,22 @@ export function WorkflowIndexPage({
   }
 
   const handleRowClick = (workflowId: string) => {
-    const emailWorkflow = emailSync.workflows.find((item) => item.id === workflowId)
-    if (emailWorkflow) {
-      onSelectWorkflow(workflowId, emailWorkflow.target.table_path)
-      return
-    }
     const workflow = state.workflows.find((item) => item.id === workflowId)
     const tableFilePath = workflow ? resolveWorkflowTableFilePath(workflow) : ''
     onSelectWorkflow(workflowId, tableFilePath || undefined)
-  }
-
-  const usesEmailSyncCanvas = isEmailAutomationOnboardingTable
-    || emailSyncTemplateTable
-    || Boolean(emailSyncCanvasRequest)
-
-  const showEmailSyncOnboardingWorkflow = usesEmailSyncCanvas
-    && state.status === 'done'
-    && tableLabelsStatus === 'done'
-    && !onboardingPending
-    && emailSync.status === 'ready'
-    && scopedWorkflows.length === 0
-    && emailSync.workflows.length === 0
-
-  const configuredEmailOnboardingWorkflow = usesEmailSyncCanvas
-    && state.status === 'done'
-    && tableLabelsStatus === 'done'
-    && !onboardingPending
-    && emailSync.status === 'ready'
-    && scopedWorkflows.length === 0
-    && emailSync.workflows.length === 1
-      ? emailSync.workflows[0]
-      : null
-
-  if (configuredEmailOnboardingWorkflow) {
-    return <EmailSyncWorkflowPage workflowId={configuredEmailOnboardingWorkflow.id} />
-  }
-
-  if (showEmailSyncOnboardingWorkflow) {
-    return (
-      <EmailSyncOnboardingWorkflowPage
-        tablePath={scopedTablePath!}
-        runAfterSave={emailSyncCanvasRequest?.runAfterSave || (emailSyncTemplateTable ? 'full' : undefined)}
-        onSaved={(workflow) => {
-          setEmailSyncCanvasRequest(null)
-          onSelectWorkflow(workflow.id, workflow.target.table_path)
-        }}
-      />
-    )
   }
 
   return (
     <div data-testid="workflow-index-page" className="flex h-full flex-col bg-card">
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {state.status === 'loading' || tableLabelsStatus === 'loading' || onboardingPending || emailSync.status === 'loading' ? (
+        {state.status === 'loading' || tableLabelsStatus === 'loading' || onboardingPending ? (
           <WorkflowListSkeleton label={t('panels.home.list.loading')} />
         ) : state.status === 'error' ? (
           <InlineError className="m-3" message={state.error} />
-        ) : scopedWorkflows.length || emailSync.workflows.length ? (
+        ) : scopedWorkflows.length ? (
           <WorkflowDefinitionTable
             workflows={scopedWorkflows}
-            emailSyncWorkflows={emailSync.workflows}
-            emailSyncLatestRuns={emailSync.latestRuns}
             latestRuns={state.latestRuns}
             tableLabels={tableLabels}
             onRowClick={handleRowClick}
@@ -398,11 +271,6 @@ export function WorkflowIndexPage({
           busyKind={launcher.busyAction === 'ai' ? 'chat' : launcher.busyAction}
           busyTemplateId={launcher.busyTemplateId}
           errorMessage={launcher.error}
-          emailSyncTablePath={scopedTablePath}
-          onSelectEmailSync={(tablePath, runAfterSave) => {
-            setModeDialogOpen(false)
-            setEmailSyncCanvasRequest({ tablePath, runAfterSave })
-          }}
         />
       )}
     </div>
@@ -419,15 +287,11 @@ interface WorkflowTableRowProps {
 
 function WorkflowDefinitionTable({
   workflows,
-  emailSyncWorkflows,
-  emailSyncLatestRuns,
   latestRuns,
   tableLabels,
   onRowClick,
 }: {
   workflows: WorkflowDefinition[]
-  emailSyncWorkflows: EmailSyncWorkflow[]
-  emailSyncLatestRuns: Record<string, EmailSyncRun | null>
   latestRuns: Record<string, WorkflowRunRecord | null>
   tableLabels: Record<string, TableLabel>
   onRowClick: (workflowId: string) => void
@@ -459,16 +323,6 @@ function WorkflowDefinitionTable({
         </tr>
       </thead>
       <tbody>
-        {emailSyncWorkflows.map((workflow) => (
-          <EmailSyncWorkflowTableRow
-            key={`email-sync:${workflow.id}`}
-            workflow={workflow}
-            latestRun={emailSyncLatestRuns[workflow.id] || null}
-            tablePath={workflow.target.table_path}
-            tableTitle={workflow.target.table_id != null ? tableLabelFor(tableLabels, workflow.target.table_path, String(workflow.target.table_id))?.tableName : undefined}
-            onOpen={() => onRowClick(workflow.id)}
-          />
-        ))}
         {workflows.map((workflow) => (
           <WorkflowTableRow
             key={workflow.id}

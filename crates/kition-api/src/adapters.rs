@@ -1,13 +1,12 @@
-//! Bridges between route groups: workflows and form sync read and write tables through the host
-//! table client (`kition-tableclient`), which reaches every `.ktable` file through the Table kit.
+//! Bridges between route groups: workflows read and write tables through the host table client
+//! (`kition-tableclient`), which reaches every `.ktable` file through the Table kit.
 
-use kition_formsync::{TableField, TableRecord, TableWriter};
 use kition_tableclient::TableClient;
 use kition_workflow::types::{FieldSchema, TableSchema};
 use kition_workflow::{RecordView, Tables};
 use serde_json::{Map, Value};
 
-/// Runs the table client's future from the blocking thread a workflow or a sync calls on.
+/// Runs the table client's future from the blocking thread a workflow calls on.
 fn blocking<T>(work: impl std::future::Future<Output = T>) -> T {
     tokio::runtime::Handle::current().block_on(work)
 }
@@ -85,59 +84,6 @@ impl Tables for ClientTables {
             values,
             "system:workflow",
         ))
-        .map_err(|e| e.message)
-    }
-}
-
-/// Form sync writes submissions through the Table kit, as `system:formsync`.
-pub struct ClientTableWriter(pub TableClient);
-
-impl TableWriter for ClientTableWriter {
-    fn fields(
-        &self,
-        _user_id: i64,
-        document_path: &str,
-        table_id: &str,
-    ) -> Result<Vec<TableField>, String> {
-        let table = blocking(self.0.table(document_path, table_id)).map_err(|e| e.message)?;
-        Ok(table
-            .fields
-            .into_iter()
-            .map(|field| TableField {
-                id: field.id,
-                name: field.title,
-            })
-            .collect())
-    }
-
-    fn records(
-        &self,
-        _user_id: i64,
-        document_path: &str,
-        table_id: &str,
-    ) -> Result<Vec<TableRecord>, String> {
-        let records = blocking(self.0.records(document_path, table_id)).map_err(|e| e.message)?;
-        Ok(records
-            .into_iter()
-            .map(|record| TableRecord {
-                id: record.id,
-                fields: record.values,
-            })
-            .collect())
-    }
-
-    fn create(
-        &self,
-        _user_id: i64,
-        document_path: &str,
-        table_id: &str,
-        values: &Map<String, Value>,
-    ) -> Result<String, String> {
-        blocking(
-            self.0
-                .create_record(document_path, table_id, values, "system:formsync"),
-        )
-        .map(|record| record.id)
         .map_err(|e| e.message)
     }
 }

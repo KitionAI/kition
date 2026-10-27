@@ -1,6 +1,6 @@
 [package]
 name = "kition-tableclient"
-description = "The host table client: Kition's host features (workflows, form and email sync, the scenario builder) read and write .ktable files only through the Table kit."
+description = "The host table client: Kition's host features (workflows, the scenario builder) read and write .ktable files only through the Table kit."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

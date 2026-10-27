@@ -28,7 +28,6 @@ pub struct Summary {
     pub assets: i64,
     pub workflows: i64,
     pub agent_sessions: i64,
-    pub sync_states: i64,
     pub total_bytes: i64,
 }
 
@@ -103,8 +102,6 @@ pub fn classify_path(path: &str) -> &'static str {
         "agent_session"
     } else if lower.starts_with(".kition/agents/") && lower.ends_with("/session-events.jsonl") {
         "agent_session_events"
-    } else if lower.starts_with(".kition/sync/") {
-        "sync_state"
     } else if lower == "workflow.json"
         || (lower.contains("/workflows/") && lower.ends_with("definition.json"))
     {
@@ -212,7 +209,6 @@ impl StateMirror {
                 }
                 "workflow" | "workflow_run" => summary.workflows += 1,
                 "agent_session" => summary.agent_sessions += 1,
-                "sync_state" => summary.sync_states += 1,
                 _ => {}
             }
             if include_items {

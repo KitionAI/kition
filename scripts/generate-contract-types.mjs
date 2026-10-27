@@ -7,7 +7,7 @@
  *
  * One module per contracts/runtime/<name>.schema.json. Every `$defs` entry
  * becomes an exported type named <PascalName><PascalKey>, so
- * email-sync.schema.json#/$defs/workflow is `EmailSyncWorkflow`, and the root
+ * kit-tables.schema.json#/$defs/table is `KitTablesTable`, and the root
  * schema becomes `<PascalName>Contract`. Hand-written API modules alias these
  * names instead of redeclaring shapes, which keeps the client and the private
  * runtime on the same contract by construction.

@@ -1344,10 +1344,6 @@
     padding-left: 14.5rem;
   }
 
-  .workspace-editor-frame:has(.workspace-kitable-sidebar.is-collapsed[data-mode='workflow']) .form-sync-workflow-topbar {
-    padding-left: 12rem;
-  }
-
   .workspace-editor-frame:has(.workspace-kitable-sidebar.is-collapsed[data-mode='workflow']) [data-testid='workflow-home-topbar'] [data-testid='status-toggle'] {
     @apply hidden;
   }

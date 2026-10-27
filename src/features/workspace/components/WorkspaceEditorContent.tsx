@@ -23,12 +23,6 @@ const WorkflowHomePage = lazy(() =>
 const WorkflowIndexPage = lazy(() =>
   import('@/features/workflow/pages/WorkflowIndexPage').then((module) => ({ default: module.WorkflowIndexPage })),
 )
-const EmailSyncWorkflowPage = lazy(() =>
-  import('@/features/emailSync/EmailSyncWorkflowPage').then((module) => ({ default: module.EmailSyncWorkflowPage })),
-)
-const FormSyncWorkflowPage = lazy(() =>
-  import('@/features/formSync/FormSyncWorkflowPage').then((module) => ({ default: module.FormSyncWorkflowPage })),
-)
 
 function EditorPaneFallback() {
   const { t } = useTranslation('common')
@@ -152,18 +146,12 @@ export function WorkspaceEditorContent({
             {tab.workflowId ? (
               // Detail mode: show single workflow editor
               <EditorPaneBoundary fallback={null}>
-                {tab.workflowId.startsWith('formsync_') ? (
-                  <FormSyncWorkflowPage workflowId={tab.workflowId} />
-                ) : tab.workflowId.startsWith('mail_') ? (
-                  <EmailSyncWorkflowPage workflowId={tab.workflowId} />
-                ) : (
-                  <WorkflowHomePage
-                    hideClose
-                    initialSelectedId={tab.workflowId}
-                    scopedTablePath={tab.tablePath}
-                    rootPath={rootPath}
-                  />
-                )}
+                <WorkflowHomePage
+                  hideClose
+                  initialSelectedId={tab.workflowId}
+                  scopedTablePath={tab.tablePath}
+                  rootPath={rootPath}
+                />
               </EditorPaneBoundary>
             ) : (
               // Index mode: show list of workflows scoped to a table file

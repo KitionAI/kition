@@ -10,9 +10,6 @@ const DocumentTemplateLibraryDialog = lazy(() =>
 const WorkspaceFolderCreateDialog = lazy(() =>
   import('@/features/workspace/components/WorkspaceFolderCreateDialog').then((module) => ({ default: module.WorkspaceFolderCreateDialog })),
 )
-const FormSyncCreateDialog = lazy(() =>
-  import('@/features/formSync/FormSyncCreateDialog').then((module) => ({ default: module.FormSyncCreateDialog })),
-)
 
 export type WorkspaceDialogsProps = {
   /** A workspace write is in flight; dialogs show their busy state. */
@@ -54,18 +51,6 @@ export function WorkspaceDialogs({
               if (!open) templateDialogs.closeDocumentTemplateDialog()
             }}
             onCreate={templateDialogs.createDocumentFromTemplate}
-          />
-        </Suspense>
-      ) : null}
-      {createFlows.formSyncCreateState ? (
-        <Suspense fallback={null}>
-          <FormSyncCreateDialog
-            open
-            documentPath={createFlows.formSyncCreateState.documentPath}
-            onOpenChange={(open) => {
-              if (!open) createFlows.closeFormSyncCreate()
-            }}
-            onCreated={createFlows.handleFormSyncCreated}
           />
         </Suspense>
       ) : null}

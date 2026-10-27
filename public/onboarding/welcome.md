@@ -59,11 +59,10 @@ The built-in templates cover different kinds of work:
 | [[Getting Started/Projects & Planning/Product Launch Website.ktable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
 | [[Getting Started/Projects & Planning/Project Gantt Planner.ktable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
 | [[Getting Started/Operations & Analytics/Business Analytics Dashboard.ktable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
-| [[Getting Started/Operations & Analytics/Email Inbox Sync.ktable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
 | [[Getting Started/AI & Creative/Receipt OCR Table.ktable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
 | [[Getting Started/AI & Creative/YouTube & TikTok Thumbnail Generator.ktable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
 | [[Getting Started/AI & Creative/Batch Product Designer.ktable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
-| [[Getting Started/Operations & Analytics/Restaurant Operations.ktable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
+| [[Getting Started/Operations & Analytics/Restaurant Operations.ktable]] | Reservations, guest preferences, and private events | Calendar, kanban, and form views |
 
 > [!note] Template copies are independent
 > If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
@@ -92,7 +91,6 @@ Getting Started/
     Task Tracker.ktable
   Operations & Analytics/
     Business Analytics Dashboard.ktable
-    Email Inbox Sync.ktable
     Restaurant Operations.ktable
 Projects/
   Product launch/
@@ -180,7 +178,6 @@ Open **Settings > Onboarding Guides** when you want a larger, guided example. Im
 
 | Guide | What it demonstrates | Requirement |
 | --- | --- | --- |
-| Email Automation | Inbox sync, Markdown messages, and SMTP delivery | Email provider credentials |
 | Lead Automation | A record-created follow-up workflow | None to inspect |
 | Receipt Extraction | A reusable structured extraction prompt | AI provider to run again |
 | Product Content | Image and copy generation fields | Image-capable AI provider to run again |

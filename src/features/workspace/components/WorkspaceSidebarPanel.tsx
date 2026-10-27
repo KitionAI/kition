@@ -15,8 +15,6 @@ type WorkspaceSidebarPanelProps = {
   moveTargets: WorkspaceTreeNode[]
   onCreateFolder: () => void
   onCreateInside: (node: WorkspaceTreeNode) => void
-  /** A form for one of a table file's tables. */
-  onCreateFormForTable?: (node: WorkspaceTreeNode) => void
   onDelete: (node: WorkspaceTreeNode) => void
   onDuplicate: (node: WorkspaceTreeNode) => void
   onMoveToFolder: (node: WorkspaceTreeNode, targetNode: WorkspaceTreeNode | null) => void
@@ -64,7 +62,6 @@ export function WorkspaceSidebarPanel({
   moveTargets,
   onCreateFolder,
   onCreateInside,
-  onCreateFormForTable,
   onDelete,
   onDuplicate,
   onMoveToFolder,

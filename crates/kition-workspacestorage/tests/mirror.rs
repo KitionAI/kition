@@ -38,7 +38,7 @@ fn logged(conn: &rusqlite::Connection, key: &str) -> Vec<(i64, i64, Value)> {
 }
 
 #[test]
-fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
+fn restores_agent_sessions_with_their_log() {
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let root = workspace.path().to_string_lossy().into_owned();
     let source = Db::open_in_memory().unwrap_or_else(|err| panic!("{err}"));
@@ -70,13 +70,6 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
             ..Default::default()
         };
         rows::insert(&conn, &elsewhere).unwrap_or_else(|err| panic!("{err}"));
-        conn.execute(
-            "INSERT INTO workflows (id, user_id, name, connection_json, secret_json, target_json, schedule_enabled, interval_minutes, \
-             include_attachments, status, synced_messages, cursor_uid_validity, cursor_uid, created_at, updated_at) \
-             VALUES ('w1', 1, 'Inbox', '{\"host\":\"h\"}', '{\"password\":\"secret\"}', '{}', 0, 5, 0, 'paused', 0, 0, 0, 1, 2)",
-            [],
-        )
-        .unwrap_or_else(|err| panic!("{err}"));
     }
     mirror(workspace.path(), source)
         .export()
@@ -103,9 +96,6 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
     assert!(lines[2].get("rawItems").is_none(), "{}", lines[2]);
     assert!(!dir.join("messages.jsonl").exists());
     assert!(!workspace.path().join(".kition/agents/2").exists());
-    let email = std::fs::read_to_string(workspace.path().join(".kition/sync/email/state.json"))
-        .unwrap_or_default();
-    assert!(email.contains("Inbox") && !email.contains("secret"));
 
     let restored = Db::open_in_memory().unwrap_or_else(|err| panic!("{err}"));
     let target = mirror(workspace.path(), restored.clone());
@@ -114,9 +104,6 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
             .import_agent_state()
             .unwrap_or_else(|err| panic!("{err}"));
     }
-    target
-        .import_sync_state()
-        .unwrap_or_else(|err| panic!("{err}"));
     let conn = restored.conn().unwrap_or_else(|err| panic!("{err}"));
     let session = rows::find::<AgentSession>(&conn, 1)
         .ok()
@@ -143,14 +130,6 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
         ],
         "imported once, without provider-native items"
     );
-    let secret: Option<String> = conn
-        .query_row(
-            "SELECT secret_json FROM workflows WHERE id = 'w1'",
-            [],
-            |r| r.get(0),
-        )
-        .unwrap_or_default();
-    assert_eq!(secret, None);
 }
 
 #[test]

@@ -1,7 +1,7 @@
 //! `/kit-tables`: the renderer's view of the workspace's table files for Kition's own features
-//! (the workflow editor's table and field pickers, form and email sync targets, the workspace
-//! tree's table leaves, search, templates, and the design handoff). Every answer comes from the
-//! Table kit through the host table client; `contracts/runtime/kit-tables.schema.json`.
+//! (the workflow editor's table and field pickers, the workspace tree's table leaves, search,
+//! templates, and the design handoff). Every answer comes from the Table kit through the host
+//! table client; `contracts/runtime/kit-tables.schema.json`.
 
 use std::sync::Arc;
 

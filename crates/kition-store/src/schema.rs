@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn parses_tables_columns_and_indexes() {
         let schema = parse(MAIN_SQL);
-        assert_eq!(schema.tables.len(), 20);
+        assert_eq!(schema.tables.len(), 15);
         let users = schema.tables.iter().find(|table| table.name == "users");
         let users = users.unwrap_or_else(|| panic!("users table"));
         assert!(

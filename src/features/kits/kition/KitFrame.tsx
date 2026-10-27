@@ -124,7 +124,7 @@ async function writeForKit(path: string, readOnly: boolean, { path: wanted, byte
   if (mode === 'save' && readOnly) throw new Error(`${path} is open read-only`)
   const target = mode === 'save' ? documentPath(wanted, path) : await unusedPath(workspacePath(wanted))
   await writeKitFile(target, new Uint8Array(bytes), mode === 'save' ? { document: target } : {})
-  // Kition's own table pickers (workflows, form and email sync) read the saved tables.
+  // Kition's own table pickers (workflows) read the saved tables.
   if (isTableFilePath(target)) notifyTableFilesChanged(target)
   return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
 }

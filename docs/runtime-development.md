@@ -28,10 +28,10 @@ runtime crates.
 | `kition-store` | The SQLite database, schema, and migrations. |
 | `kition-ai` | Model providers (OpenAI Responses and Anthropic Messages), streaming, retries, and image generation. |
 | `kition-agent` | Agent sessions, the streamed agent turn, its tools, the execution policy, and MCP servers. |
-| `kition-tableclient` | The host table client: workflows, form and email sync, the scenario builder, and the `/v1/kit-tables*` routes read and write `.ktable` files through the Table kit (`kit.table`), by the Kit AI bridge when an editor has the file open and by the headless `kit-table` otherwise. Kition has no table engine of its own. |
+| `kition-tableclient` | The host table client: workflows, the scenario builder, and the `/v1/kit-tables*` routes read and write `.ktable` files through the Table kit (`kit.table`), by the Kit AI bridge when an editor has the file open and by the headless `kit-table` otherwise. Kition has no table engine of its own. |
 | `kition-time` | Millisecond timestamps, without runtime dependencies (re-exported by `kition-core`). |
 | `kition-workflow` | Workflow definitions, triggers, runs, and the AI workflow builder. |
-| Other crates | Connections, email and form sync, desktop features, and workspace storage. |
+| Other crates | Connections, desktop features, and workspace storage. |
 
 ## Checks
 

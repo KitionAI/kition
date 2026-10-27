@@ -20,14 +20,6 @@ vi.mock('@/features/workflow/pages/WorkflowHomePage', () => ({
   WorkflowHomePage: () => <div data-testid="mock-workflow-detail" />,
 }))
 
-vi.mock('@/features/emailSync/EmailSyncWorkflowPage', () => ({
-  EmailSyncWorkflowPage: ({ workflowId }: { workflowId: string }) => <div data-testid="mock-email-sync-workflow-detail">{workflowId}</div>,
-}))
-
-vi.mock('@/features/formSync/FormSyncWorkflowPage', () => ({
-  FormSyncWorkflowPage: ({ workflowId }: { workflowId: string }) => <div data-testid="mock-form-sync-workflow-detail">{workflowId}</div>,
-}))
-
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -95,32 +87,13 @@ describe('WorkspaceEditorContent workflow routing', () => {
     expect(onOpenWorkflows).toHaveBeenCalledOnce()
   })
 
-  it('renders email sync IDs with the email workflow detail surface', async () => {
-    const tab = {
-      id: 'workflow:Mail/Emails.ktable',
-      type: 'workflow' as const,
-      title: 'Emails',
-      tablePath: 'Mail/Emails.ktable',
-      workflowId: 'mail_1',
-    }
-    await render({
-      ...baseProps(),
-      activeWorkspaceTabId: tab.id,
-      activeWorkspaceTab: tab,
-      workspaceTabs: [tab],
-    })
-
-    expect(container.querySelector('[data-testid="mock-email-sync-workflow-detail"]')?.textContent).toBe('mail_1')
-    expect(container.querySelector('[data-testid="mock-workflow-detail"]')).toBeNull()
-  })
-
-  it('renders form sync IDs with the form builder surface', async () => {
+  it('renders a table file workflow with the workflow detail surface', async () => {
     const tab = {
       id: 'workflow:Events.ktable',
       type: 'workflow' as const,
       title: 'Events',
       tablePath: 'Events.ktable',
-      workflowId: 'formsync_1',
+      workflowId: 'auto_3',
     }
     await render({
       ...baseProps(),
@@ -129,8 +102,7 @@ describe('WorkspaceEditorContent workflow routing', () => {
       workspaceTabs: [tab],
     })
 
-    expect(container.querySelector('[data-testid="mock-form-sync-workflow-detail"]')?.textContent).toBe('formsync_1')
-    expect(container.querySelector('[data-testid="mock-workflow-detail"]')).toBeNull()
+    expect(container.querySelector('[data-testid="mock-workflow-detail"]')).not.toBeNull()
   })
 
   it('opens a workflow from the global list in its resolved table file tab', async () => {

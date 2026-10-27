@@ -100,12 +100,6 @@
         "privacy": "此工作流在本地运行，不会将工作区内容发送到 AI 服务。"
       }
     },
-    "scenario": {
-      "eyebrow": "入门场景",
-      "emailTitle": "导入电子邮件收件箱",
-      "emailDescription": "连接Gmail、163 Mail、Outlook或其他提供商，并将邮件同步到准备好的收件箱表中。",
-      "emailAction": "设置收件箱同步"
-    },
     "continue": "继续",
     "back": "返回",
     "skip": "暂时跳过",

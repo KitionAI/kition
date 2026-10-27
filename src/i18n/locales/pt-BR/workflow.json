@@ -186,8 +186,7 @@
       },
       "aiCta": "Ou descreva — deixe a IA criar o fluxo de trabalho",
       "back": "Voltar",
-      "cancel": "Cancelar",
-      "fullEmailSync": "Sincronização completa da caixa de entrada"
+      "cancel": "Cancelar"
     }
   },
   "errors": {
@@ -672,27 +671,5 @@
       "hoursAgo": "há {{n}}h",
       "daysAgo": "há {{n}}d"
     }
-  },
-  "emailInboxSetup": {
-    "title": "Sincronizar caixa de entrada",
-    "setupRequired": "Configuração necessária",
-    "configureEmail": "Configurar e-mail",
-    "triggerStep": "Etapa 1 · Gatilho",
-    "emailStep": "Etapa 2 · E-mail",
-    "scheduledTrigger": "Gatilho agendado",
-    "manualTrigger": "Gatilho manual",
-    "everyMinutes": "A cada {{count}} minutos",
-    "runManually": "Executar manualmente pelo fluxo de trabalho",
-    "importInto": "Importar mensagens para {{table}}",
-    "connectAccount": "Conecte uma conta de e-mail para ativar esta etapa.",
-    "startWorkflow": "Iniciar este fluxo de trabalho",
-    "defaultTable": "Caixa de entrada"
-  },
-  "formSync": {
-    "copyPublicLink": "Copiar link público",
-    "openPublicForm": "Abrir formulário público",
-    "moveFieldUp": "Mover campo para cima",
-    "moveFieldDown": "Mover campo para baixo",
-    "deleteField": "Excluir campo"
   }
 }

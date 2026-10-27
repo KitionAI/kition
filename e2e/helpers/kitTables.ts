@@ -2,7 +2,7 @@ import type { Page, Route } from '@playwright/test'
 
 /**
  * Mocks the runtime's `/api/v1/kit-tables*` API (contracts/runtime/kit-tables.schema.json): the
- * workspace's `.ktable` files as Kition's own features (workflows, form and email sync, search,
+ * workspace's `.ktable` files as Kition's own features (workflows, search,
  * design handoff) see them. Specs describe files and tables; the mock answers the list, fields,
  * records, and write endpoints from them and records every call it served.
  */

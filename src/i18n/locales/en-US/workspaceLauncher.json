@@ -100,12 +100,6 @@
         "privacy": "This workflow runs locally and does not send workspace content to an AI service."
       }
     },
-    "scenario": {
-      "eyebrow": "Onboarding scenario",
-      "emailTitle": "Import an email inbox",
-      "emailDescription": "Connect Gmail, 163 Mail, Outlook, or another provider and sync messages into the prepared Inbox table.",
-      "emailAction": "Set up inbox sync"
-    },
     "continue": "Continue",
     "back": "Back",
     "skip": "Skip for now",

@@ -21,18 +21,16 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('WorkspaceWorkflowCreateModeDialog email sync template', () => {
-  it('launches email sync from the shared template picker', async () => {
-    const onSelectEmailSync = vi.fn()
+describe('WorkspaceWorkflowCreateModeDialog template picker', () => {
+  it('creates a workflow from a built-in template', async () => {
+    const onSelect = vi.fn()
     await act(async () => {
       root = createRoot(container)
       root.render(createElement(WorkspaceWorkflowCreateModeDialog, {
         open: true,
         onOpenChange: vi.fn(),
         context: null,
-        onSelect: vi.fn(),
-        emailSyncTablePath: 'Projects/Customer Requests.ktable',
-        onSelectEmailSync,
+        onSelect,
       }))
       await Promise.resolve()
     })
@@ -40,11 +38,10 @@ describe('WorkspaceWorkflowCreateModeDialog email sync template', () => {
     await act(async () => {
       (document.querySelector('[data-testid="create-mode-template"]') as HTMLButtonElement).click()
     })
-    const template = document.querySelector('[data-testid="email-sync-workflow-template"]') as HTMLButtonElement
-    expect(template.textContent).toContain('Full email inbox sync')
-    expect(template.textContent).toContain('Import every message from the selected IMAP mailbox')
+    const cards = document.querySelectorAll<HTMLButtonElement>('[data-testid="workflow-launcher-template-card"]')
+    expect(cards.length).toBeGreaterThan(0)
 
-    await act(async () => template.click())
-    expect(onSelectEmailSync).toHaveBeenCalledWith('Projects/Customer Requests.ktable', 'full')
+    await act(async () => cards[0].click())
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: 'template', context: null }))
   })
 })

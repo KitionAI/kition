@@ -364,7 +364,6 @@ export function WorkspaceScreen({
   const createFlows = useWorkspaceCreateFlows({
     createMenuFolder,
     createFolder,
-    openTableFileWorkflow,
   })
 
   const workspaceMoveTargets = useMemo(

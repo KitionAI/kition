@@ -1,4 +1,4 @@
-import { InboxIcon as Inbox, LoaderCircleIcon as LoaderCircle, PlusIcon as Plus, SparklesIcon as Sparkles, Table2Icon as Table2 } from '@kition/tessera-icons/react'
+import { LoaderCircleIcon as LoaderCircle, PlusIcon as Plus, SparklesIcon as Sparkles, Table2Icon as Table2 } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -37,8 +37,6 @@ type WorkspaceWorkflowCreateModeDialogProps = {
    *  spinner without affecting the rest of the grid. */
   busyTemplateId?: string
   errorMessage?: string | null
-  emailSyncTablePath?: string
-  onSelectEmailSync?: (tablePath: string, runAfterSave: 'full') => void
 }
 
 const EMPTY_TABLE_OPTIONS: WorkflowRouteContext[] = []
@@ -68,8 +66,6 @@ export function WorkspaceWorkflowCreateModeDialog({
   busyKind,
   busyTemplateId,
   errorMessage,
-  emailSyncTablePath,
-  onSelectEmailSync,
 }: WorkspaceWorkflowCreateModeDialogProps) {
   type View = 'mode' | 'template'
   const [view, setView] = useState<View>('mode')
@@ -95,8 +91,6 @@ export function WorkspaceWorkflowCreateModeDialog({
     () => getBuiltinTemplates(t, { tableName: effectiveContext?.tableName }),
     [effectiveContext?.tableName, t],
   )
-  const showEmailSyncTemplate = Boolean(emailSyncTablePath && onSelectEmailSync)
-  const templateCount = templates.length + (showEmailSyncTemplate ? 1 : 0)
   const disabled = Boolean(busyKind)
 
   return (
@@ -162,7 +156,7 @@ export function WorkspaceWorkflowCreateModeDialog({
                       className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-medium text-brand"
                       data-testid="create-mode-template-count"
                     >
-                      {t('launcher.createModeDialog.modeTemplate.badge', { count: templateCount })}
+                      {t('launcher.createModeDialog.modeTemplate.badge', { count: templates.length })}
                     </span>
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
@@ -240,27 +234,6 @@ export function WorkspaceWorkflowCreateModeDialog({
                   onSelect={(t) => onSelect({ kind: 'template', template: t, context: effectiveContext })}
                 />
               ))}
-              {showEmailSyncTemplate ? (
-                <button
-                  type="button"
-                  data-testid="email-sync-workflow-template"
-                  onClick={() => onSelectEmailSync(emailSyncTablePath!, 'full')}
-                  className="group flex h-full w-full flex-col items-stretch gap-3 rounded-xl border border-border bg-card p-4 text-left card-interactive hover:border-primary/30 hover:shadow-soft"
-                >
-                  <div className="flex items-center">
-                    <span className="grid size-7 place-items-center rounded-md bg-primary/15 text-primary">
-                      <Inbox className="size-4" />
-                    </span>
-                    <span className="-ml-1.5 grid size-7 place-items-center rounded-md bg-tint-mint text-foreground">
-                      <Table2 className="size-4" />
-                    </span>
-                  </div>
-                  <span className="block text-sm font-medium text-foreground">{t('launcher.createModeDialog.fullEmailSync')}</span>
-                  <span className="-mt-1 block text-xs leading-relaxed text-muted-foreground">
-                    Import every message from the selected IMAP mailbox into this table, then keep later runs incremental.
-                  </span>
-                </button>
-              ) : null}
             </div>
           )}
 

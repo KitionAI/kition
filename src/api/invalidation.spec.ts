@@ -15,12 +15,10 @@ vi.mock('@/services/desktop', () => ({
 
 // Only the event names are needed; keep the HTTP modules (and the axios
 // client they build at import time) out of this test.
-vi.mock('./formSync', () => ({ FORM_SYNC_CHANGED_EVENT: 'kition:form-sync:changed' }))
-vi.mock('./emailSync', () => ({ EMAIL_SYNC_CHANGED_EVENT: 'kition:email-sync:changed' }))
 vi.mock('./connections', () => ({ CONNECTIONS_CHANGED_EVENT: 'kition:connections:changed' }))
 
 import { queryKeys } from './queryKeys'
-import { FORM_SYNC_CHANGED_EVENT } from './formSync'
+import { WORKFLOW_CHANGED_EVENT } from '@/lib/workflowEvents'
 import {
   installWorkspaceInvalidation,
   invalidateForWorkspaceChange,
@@ -104,7 +102,7 @@ describe('installWorkspaceInvalidation', () => {
     expect(isInvalidated(client, keys.tree)).toBe(true)
     expect(isInvalidated(client, keys.otherRootTree)).toBe(false)
 
-    window.dispatchEvent(new CustomEvent(FORM_SYNC_CHANGED_EVENT))
+    window.dispatchEvent(new CustomEvent(WORKFLOW_CHANGED_EVENT))
     await Promise.resolve()
     expect(isInvalidated(client, keys.workflows)).toBe(true)
     expect(isInvalidated(client, keys.connections)).toBe(false)
@@ -112,7 +110,7 @@ describe('installWorkspaceInvalidation', () => {
     dispose()
     expect(watcher.unsubscribe).toHaveBeenCalledTimes(1)
     client.setQueryData(keys.connections, { seeded: true })
-    window.dispatchEvent(new CustomEvent(FORM_SYNC_CHANGED_EVENT))
+    window.dispatchEvent(new CustomEvent(WORKFLOW_CHANGED_EVENT))
     await Promise.resolve()
     expect(isInvalidated(client, keys.connections)).toBe(false)
   })

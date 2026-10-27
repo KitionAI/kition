@@ -5,12 +5,6 @@ import { cn } from '@/lib/cn'
 import { Button, PasswordInput, TextInput, useConfirm } from '@kition/tessera-ui'
 import { ConnectionsSettingsPanel } from '@/features/connections/ConnectionsSettingsPanel'
 import { deleteConnection, type ConnectionView } from '@/api/connections'
-import { ProviderSwitch } from '@/features/emailSync/EmailSyncSettingsPanel'
-import {
-  deleteEmailSyncWorkflow,
-  listEmailSyncWorkflows,
-  type EmailSyncWorkflow,
-} from '@/api/emailSync'
 import { SettingsPaneHeader } from '@/features/settings/primitives'
 import { getSecureValue, setSecureValue } from '@/services/desktop'
 import {
@@ -29,7 +23,6 @@ type AccountDraft = { username: string; password: string }
 export function EmailProvidersPane() {
   const [selectedProviderId, setSelectedProviderId] = useState<EmailProviderId>('gmail')
   const [search, setSearch] = useState('')
-  const [workflows, setWorkflows] = useState<EmailSyncWorkflow[]>([])
   const [toggleBusy, setToggleBusy] = useState<EmailProviderId | null>(null)
   const [pendingEnabledProviderId, setPendingEnabledProviderId] = useState<EmailProviderId | null>(null)
   const [connections, setConnections] = useState<ConnectionView[]>([])
@@ -48,38 +41,18 @@ export function EmailProvidersPane() {
       : emailProviderCatalog
   }, [search])
 
-  const workflowByProvider = useMemo(() => {
-    const map = new Map<EmailProviderId, EmailSyncWorkflow>()
-    for (const workflow of workflows) {
-      const providerId = resolveEmailProviderId('imap', workflow.connection.host, workflow.connection.username)
-      if (!map.has(providerId)) map.set(providerId, workflow)
-    }
-    return map
-  }, [workflows])
-
-  const workflowsByProvider = useMemo(() => {
-    const map = new Map<EmailProviderId, EmailSyncWorkflow[]>()
-    for (const workflow of workflows) {
-      const providerId = resolveEmailProviderId('imap', workflow.connection.host, workflow.connection.username)
-      map.set(providerId, [...(map.get(providerId) || []), workflow])
-    }
-    return map
-  }, [workflows])
-
   const connectionByProvider = useMemo(() => {
     const map = new Map<EmailProviderId, ConnectionView>()
     for (const connection of connections) {
-      const providerId = resolveEmailProviderId('smtp', String(connection.settings.host || ''), String(connection.settings.username || ''))
+      const providerId = resolveEmailProviderId(String(connection.settings.host || ''), String(connection.settings.username || ''))
       if (!map.has(providerId)) map.set(providerId, connection)
     }
     return map
   }, [connections])
 
   const selectedProvider = getEmailProvider(selectedProviderId)
-  const selectedWorkflow = workflowByProvider.get(selectedProviderId)
   const selectedConnection = connectionByProvider.get(selectedProviderId)
-  const configuredUsername = selectedWorkflow?.connection.username
-    || String(selectedConnection?.settings.username || selectedConnection?.settings.from || '')
+  const configuredUsername = String(selectedConnection?.settings.username || selectedConnection?.settings.from || '')
     || storedUsernames[selectedProviderId]
     || ''
   const accountDraft = accountDrafts[selectedProviderId] || { username: configuredUsername, password: '' }
@@ -99,10 +72,6 @@ export function EmailProvidersPane() {
   }, [selectedProviderId])
 
   useEffect(() => {
-    void listEmailSyncWorkflows().then(setWorkflows).catch(() => setWorkflows([]))
-  }, [])
-
-  useEffect(() => {
     if (!configuredUsername) return
     setAccountDrafts((current) => {
       const existing = current[selectedProviderId]
@@ -114,31 +83,25 @@ export function EmailProvidersPane() {
   const handleConnectionsChange = useCallback((nextConnections: ConnectionView[]) => {
     setConnections(nextConnections)
     setPendingEnabledProviderId((current) => current && nextConnections.some((connection) => (
-      resolveEmailProviderId('smtp', String(connection.settings.host || ''), String(connection.settings.username || '')) === current
+      resolveEmailProviderId(String(connection.settings.host || ''), String(connection.settings.username || '')) === current
     )) ? null : current)
   }, [])
 
   async function toggleProvider(providerId: EmailProviderId) {
     setSelectedProviderId(providerId)
     setAccountSaved(false)
-    const providerWorkflows = workflowsByProvider.get(providerId) || []
     const connection = connectionByProvider.get(providerId)
-    if (!providerWorkflows.length && !connection && !storedCredentials[providerId]) {
+    if (!connection && !storedCredentials[providerId]) {
       setPendingEnabledProviderId((current) => current === providerId ? null : providerId)
       return
     }
     if (!(await confirm({
-      message: `Disconnect ${getEmailProvider(providerId).label}? Inbox Sync and Email Delivery settings for this provider will be removed. Imported files remain in the workspace.`,
+      message: `Disconnect ${getEmailProvider(providerId).label}? Email Delivery settings for this provider will be removed.`,
       variant: 'danger',
     }))) return
     setToggleBusy(providerId)
     try {
-      await Promise.all([
-        ...providerWorkflows.map((workflow) => deleteEmailSyncWorkflow(workflow.id)),
-        connection ? deleteConnection(connection.id, { force: true }) : Promise.resolve(),
-      ])
-      const workflowIds = new Set(providerWorkflows.map((workflow) => workflow.id))
-      setWorkflows((current) => current.filter((item) => !workflowIds.has(item.id)))
+      if (connection) await deleteConnection(connection.id, { force: true })
       if (connection) setConnections((current) => current.filter((item) => item.id !== connection.id))
       await Promise.all([
         setSecureValue(emailProviderCredentialKey(providerId), ''),
@@ -185,7 +148,7 @@ export function EmailProvidersPane() {
     <div className="settings-pane" data-testid="email-providers-pane">
       <SettingsPaneHeader
         title="Email Providers"
-        description="Store provider credentials once. Inbox synchronization is configured and monitored from table workflows."
+        description="Store provider credentials once for send-email workflow actions."
       />
 
       <div className="settings-provider-layout email-provider-center">
@@ -203,16 +166,13 @@ export function EmailProvidersPane() {
 
           <div className="grid gap-1">
             {visibleProviders.map((provider) => {
-              const workflow = workflowByProvider.get(provider.id)
               const connection = connectionByProvider.get(provider.id)
               const enabled = Boolean(
-                workflow
-                || connection
+                connection
                 || storedCredentials[provider.id]
                 || pendingEnabledProviderId === provider.id,
               )
-              const account = workflow?.connection.username
-                || String(connection?.settings.username || connection?.settings.from || '')
+              const account = String(connection?.settings.username || connection?.settings.from || '')
               const active = selectedProviderId === provider.id
               return (
                 <div key={provider.id} className={cn('email-provider-row', active && 'is-active')}>
@@ -225,18 +185,23 @@ export function EmailProvidersPane() {
                     }}
                     data-testid={`email-provider-row-${provider.id}`}
                   >
-                    <span className={cn('settings-provider-dot', (workflow || connection || storedCredentials[provider.id]) && 'is-on')} />
+                    <span className={cn('settings-provider-dot', (connection || storedCredentials[provider.id]) && 'is-on')} />
                     <span className="settings-provider-name min-w-0">
                       <strong className="truncate">{provider.label}</strong>
                       <em className="truncate">{account || storedUsernames[provider.id] || provider.credentialLabel}</em>
                     </span>
                   </button>
-                  <ProviderSwitch
-                    checked={enabled}
-                    disabled={toggleBusy === provider.id}
-                    label={`${enabled ? 'Disconnect' : 'Connect'} ${provider.label}`}
-                    onChange={() => void toggleProvider(provider.id)}
-                  />
+                  <span className={cn('el-switch', enabled && 'is-checked')}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={enabled}
+                      aria-label={`${enabled ? 'Disconnect' : 'Connect'} ${provider.label}`}
+                      disabled={toggleBusy === provider.id}
+                      className="settings-switch-button"
+                      onClick={() => void toggleProvider(provider.id)}
+                    />
+                  </span>
                 </div>
               )
             })}
@@ -267,11 +232,11 @@ export function EmailProvidersPane() {
               <PasswordInput size="lg"
                 value={accountDraft.password}
                 onChange={(event) => updateAccount({ password: event.target.value })}
-                placeholder={storedCredential || selectedWorkflow || selectedConnection ? 'Stored credential' : selectedProvider.credentialLabel}
+                placeholder={storedCredential || selectedConnection ? 'Stored credential' : selectedProvider.credentialLabel}
                 data-testid="email-provider-account-password"
               />
             </label>
-            <p className="text-xs text-muted-foreground">Stored once in Kition's local credential store and reused by Inbox Sync and Email Delivery.</p>
+            <p className="text-xs text-muted-foreground">Stored once in Kition's local credential store and reused by Email Delivery.</p>
             <div className="flex items-center gap-3">
               <Button size="md" variant="primary" disabled={!accountDraft.username.trim()} onClick={() => void acceptCredential()}>
                 <Save className="size-4" />

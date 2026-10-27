@@ -1,5 +1,5 @@
 //! Portable workspace storage: `/workspace/storage` routes and mirroring of
-//! agent and sync state into the workspace folder.
+//! agent state into the workspace folder.
 
 pub mod state;
 pub mod storage;
@@ -157,9 +157,6 @@ async fn migrate(
 pub fn start_mirroring(mirror: StateMirror) -> AppResult<()> {
     if let Err(err) = mirror.import_agent_state() {
         tracing::warn!(error = %err, "agent state import failed");
-    }
-    if let Err(err) = mirror.import_sync_state() {
-        tracing::warn!(error = %err, "sync state import failed");
     }
     mirror.export()?;
     let notify = Arc::new(Notify::new());

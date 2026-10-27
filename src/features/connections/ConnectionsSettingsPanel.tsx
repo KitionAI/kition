@@ -81,7 +81,7 @@ export function ConnectionsSettingsPanel({
   )
   const emailChannel = channels.find((item) => item.channel === 'email_smtp')
   const providerConnection = connections.find((connection) => (
-    resolveEmailProviderId('smtp', String(connection.settings.host || ''), String(connection.settings.username || '')) === providerId
+    resolveEmailProviderId(String(connection.settings.host || ''), String(connection.settings.username || '')) === providerId
   ))
 
   if (embedded) {
@@ -504,7 +504,7 @@ function emptyForm(providerId: EmailProviderId = 'gmail'): ConnectionFormState {
 export function formFromConnection(connection: ConnectionView): ConnectionFormState {
   return {
     id: connection.id,
-    providerId: resolveEmailProviderId('smtp', String(connection.settings.host || ''), String(connection.settings.username || '')),
+    providerId: resolveEmailProviderId(String(connection.settings.host || ''), String(connection.settings.username || '')),
     name: connection.name,
     host: String(connection.settings.host || ''),
     port: String(connection.settings.port || '587'),

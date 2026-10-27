@@ -25,8 +25,6 @@ export const queryKeys = {
 
   runtime: ['runtime'] as const,
   workflows: () => ['runtime', 'workflows'] as const,
-  formSyncWorkflows: () => ['runtime', 'form-sync-workflows'] as const,
-  emailSyncWorkflows: () => ['runtime', 'email-sync-workflows'] as const,
   connections: () => ['runtime', 'connections'] as const,
   agentSessions: () => ['runtime', 'agent-sessions'] as const,
   agentSession: (id: string) => ['runtime', 'agent-sessions', id] as const,

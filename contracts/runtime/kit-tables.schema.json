@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/kit-tables.schema.json",
   "title": "Kition Table Files for Host Features",
-  "description": "/api/v1/kit-tables: the workspace's .ktable files (all of them, or the one ?path= names) as Kition's own features see them (the workflow editor's table and field pickers, form and email sync targets, the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.",
+  "description": "/api/v1/kit-tables: the workspace's .ktable files (all of them, or the one ?path= names) as Kition's own features see them (the workflow editor's table and field pickers, the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.",
   "$ref": "#/$defs/fileList",
   "x-endpoints": {
     "list": "GET /api/v1/kit-tables?path=",
@@ -43,7 +43,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "title": { "type": "string" },
-        "meta": { "type": "object", "description": "The table's own metadata; Kition keeps a table's unpublished form drafts in it (form_sync_workflows)." },
+        "meta": { "type": "object", "description": "The table's own metadata, which host features may keep things in." },
         "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } }
       }
     },
@@ -252,7 +252,7 @@
       "additionalProperties": false,
       "required": ["updated"],
       "properties": {
-        "updated": { "type": "integer", "minimum": 0, "description": "Workflows, form sync targets, and email sync targets that now name the new path." }
+        "updated": { "type": "integer", "minimum": 0, "description": "Workflows that now name the new path." }
       }
     },
     "deletedRequest": {
@@ -268,7 +268,7 @@
       "additionalProperties": false,
       "required": ["removed"],
       "properties": {
-        "removed": { "type": "integer", "minimum": 0, "description": "Workflows, form syncs, and email syncs bound to the deleted files, which were removed." }
+        "removed": { "type": "integer", "minimum": 0, "description": "Workflows bound to the deleted files, which were removed." }
       }
     },
     "reason": {

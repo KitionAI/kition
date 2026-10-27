@@ -2,14 +2,6 @@
   "version": 1,
   "guides": [
     {
-      "slug": "email-automation",
-      "displayName": "Email Automation",
-      "summary": "Import an IMAP inbox into a local table, open full messages as Markdown, and configure outbound workflow email.",
-      "intro": "intro.md",
-      "seeds": [],
-      "tableFile": "Inbox.ktable"
-    },
-    {
       "slug": "lead-automation",
       "displayName": "Lead Automation",
       "summary": "Inspect a prebuilt record-created workflow with bound fields and an email action.",
