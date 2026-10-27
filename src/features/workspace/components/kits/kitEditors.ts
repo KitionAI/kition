@@ -84,6 +84,8 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
   // 3D scenes; the size is the viewport a new scene opens with (the engine starts the default scene).
   kit('cube', 'CubeDocument', { format: 'cube', icon: 'cube', create: { id: 'cube', extension: KIT_CREATE_EXTENSION.cube, baseName: 'Untitled cube', size: { width: 1280, height: 720 }, label: 'createMenu.format.cube', group: 'visual' } }),
+  // Interface designs; the size is the first frame a new design starts with (kit.json `creates`).
+  kit('fig', 'FigDocument', { format: 'fig', icon: 'fig', create: { id: 'fig', extension: KIT_CREATE_EXTENSION.fig, baseName: 'Untitled fig', size: { width: 1440, height: 1024 }, label: 'createMenu.format.fig', group: 'visual' } }),
   // Markdown notes (`.md`, `.markdown`); US Letter, in points, for its pages.
   kit('note', 'NoteDocument', { format: 'markdown', icon: 'note', create: { id: 'note', extension: KIT_CREATE_EXTENSION.note, baseName: 'Untitled note', size: { width: 612, height: 792 }, label: 'createMenu.format.note', group: 'documents' } }),
 ]

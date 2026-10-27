@@ -11,6 +11,7 @@
       "layout": "Design",
       "cad": "CAD",
       "cube": "Куб",
+      "fig": "Fig",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -271,6 +272,10 @@
     "unavailableTitle": "Редактирование Куба недоступно в этой сборке",
     "unavailableBody": "Файлы Куба открываются в Kition, когда в сборку включён движок Cube."
   },
+  "figKit": {
+    "unavailableTitle": "Редактирование Fig недоступно в этой сборке",
+    "unavailableBody": "Файлы Fig открываются в Kition, когда в сборку включён движок Fig."
+  },
   "slideKit": {
     "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
     "unavailableBody": "Файлы Slide открываются в Kition, когда в сборку включён движок Slide."
@@ -381,6 +386,7 @@
       "board": "Board",
       "cad": "CAD",
       "cube": "Куб",
+      "fig": "Fig",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

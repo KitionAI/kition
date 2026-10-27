@@ -503,6 +503,21 @@ reference application only (the kit is a clean-room Apache-2.0
 implementation). `e2e/cube-embedded.spec.ts` (in `make kit-e2e`) covers opening,
 editing, saving, and creating a scene through Kition.
 
+### The Fig kit
+
+`kit.fig` (`KitionAI/kition-fig`, package `public/kits/fig-ui`) is the
+interface design and prototyping kit: `.kfig` files open in its own editor in
+`KitFrame`, on its Rust engine (`kition_fig_sdk`, `FigDocument`) in the
+worker. The engine also imports `.fig` and `.sketch` files; Kition opens only
+`.kfig` in the kit. The create menu's Fig item makes `Untitled fig.kfig`
+(one 1440 x 1024 frame) with the engine in the page, and the agent's `fig_*`
+tools run on the headless `kit-fig` (`view.describe`, `document.check`).
+`e2e/fig-embedded.spec.ts` (in `make kit-e2e`) covers opening, editing,
+saving, and creating a design through Kition. Build it locally with
+`scripts/build-kit-ui.sh fig`; the SDK registry marks Fig optional until its
+first package is published and pinned. It uses engine contract 1; no KDM
+collaboration or agent drafts are claimed.
+
 ### The Note kit
 
 `kit.note` (`KitionAI/kition-note`, package `public/kits/note-ui`) is a

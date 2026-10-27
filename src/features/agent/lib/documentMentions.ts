@@ -76,6 +76,7 @@ const KIT_FILE_KINDS = [
   { format: 'layout', extensions: /\.kdesign$/i, prefix: 'design', kit: 'Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
   { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
   { format: 'cube', extensions: /\.kcube$/i, prefix: 'cube', kit: 'Cube', one: 'a 3D scene', many: '3D scenes', data: 'scene data' },
+  { format: 'fig', extensions: /\.kfig$/i, prefix: 'fig', kit: 'Fig', one: 'an interface design', many: 'interface designs', data: 'design data' },
   // PowerPoint files stay attachments whose text is extracted; only .kslide files are kit-only.
   { format: 'slide', extensions: /\.kslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
   { format: 'table', extensions: /\.ktable$/i, prefix: 'table', kit: 'Table', one: 'a table file', many: 'table files', data: 'table data' },

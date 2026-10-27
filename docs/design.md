@@ -845,6 +845,8 @@ Each entry has:
 | `pdf` | PDF | `#dc3b2e` | `#db3527` | `#ff7a6b` |
 | `cad` | CAD | `#4f6d8a` | `#4f6d8a` | `#8eabc8` |
 | `html` | HTML | `#c65b32` | `#b64b22` | `#ff986b` |
+| `cube` | Cube | `#c47a32` | `#9a5a22` | `#e3a46b` |
+| `fig` | Fig | `#00a676` | `#00875f` | `#02da96` |
 
 Brand purple belongs to Kition; only Document, Kition's home format, shares it.
 

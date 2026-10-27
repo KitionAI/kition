@@ -118,6 +118,13 @@ const CASES: &[Case] = &[
         params: || json!({ "location": [2, 0, 1], "radius": 0.5 }),
         file_command: ("document.save", || json!({ "path": "elsewhere.kcube" })),
     },
+    Case {
+        kit: "kit.fig",
+        fixture: "Screen.kfig",
+        command: "shape.rectangle",
+        params: || json!({ "x": 0, "y": 0, "width": 40, "height": 40 }),
+        file_command: ("document.save", || json!({ "path": "elsewhere.kfig" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

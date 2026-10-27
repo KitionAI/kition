@@ -1,5 +1,5 @@
 import './AgentComposerContext.css'
-import { BoxIcon as Box, DatabaseIcon as Database, FileCodeCornerIcon as FileCode2, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FolderIcon as Folder, FolderLockIcon as FolderLock, PenToolIcon as PenTool, XIcon as X } from '@kition/tessera-icons/react'
+import { BoxIcon as Box, DatabaseIcon as Database, FileCodeCornerIcon as FileCode2, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FolderIcon as Folder, FolderLockIcon as FolderLock, FrameIcon as Frame, PenToolIcon as PenTool, XIcon as X } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { AgentLocalSource } from '@/api/agent'
 import type { AgentDocumentReference } from './AgentDocumentReferences'
@@ -55,6 +55,7 @@ function referenceIcon(document: AgentDocumentReference) {
   const extension = document.path.split('.').pop()?.toLowerCase()
   if (extension === 'kboard') return PenTool
   if (extension === 'kcube') return Box
+  if (extension === 'kfig') return Frame
   if (extension === 'sql') return Database
   if (/^(ktable|csv|xlsx?|tsv)$/.test(extension || '')) return FileSpreadsheet
   if (/^(png|jpe?g|webp|gif|svg|avif)$/.test(extension || '')) return FileImage

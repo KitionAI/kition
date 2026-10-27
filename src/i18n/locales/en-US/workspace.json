@@ -11,6 +11,7 @@
       "layout": "Design",
       "cad": "CAD",
       "cube": "Cube",
+      "fig": "Fig",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -271,6 +272,10 @@
     "unavailableTitle": "Cube editing is not available in this build",
     "unavailableBody": "Cube files open in Kition when the Cube engine is included."
   },
+  "figKit": {
+    "unavailableTitle": "Fig editing is not available in this build",
+    "unavailableBody": "Fig files open in Kition when the Fig engine is included."
+  },
   "slideKit": {
     "unavailableTitle": "Slide editing is not available in this build",
     "unavailableBody": "Slide files open in Kition when the Slide engine is included."
@@ -381,6 +386,7 @@
       "board": "Board",
       "cad": "CAD",
       "cube": "Cube",
+      "fig": "Fig",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

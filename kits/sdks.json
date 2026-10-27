@@ -269,5 +269,17 @@
       "command": "add.uvSphere",
       "params": { "location": [2, 0, 1], "radius": 0.5 }
     }
+  },
+  "fig": {
+    "repository": "KitionAI/kition-fig",
+    "crate": "kition-fig-sdk",
+    "module": "kition_fig_sdk",
+    "class": "FigDocument",
+    "name": "Screen.kfig",
+    "optional": true,
+    "edit": {
+      "command": "shape.rectangle",
+      "params": { "x": 0, "y": 0, "width": 40, "height": 40 }
+    }
   }
 }

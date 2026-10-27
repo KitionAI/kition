@@ -11,6 +11,7 @@
       "layout": "Design",
       "cad": "CAD",
       "cube": "Cubo",
+      "fig": "Fig",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -271,6 +272,10 @@
     "unavailableTitle": "La edición de Cubo no está disponible en esta versión",
     "unavailableBody": "Los archivos de Cubo se abren en Kition cuando se incluye el motor de Cube."
   },
+  "figKit": {
+    "unavailableTitle": "La edición de Fig no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Fig se abren en Kition cuando se incluye el motor Fig."
+  },
   "slideKit": {
     "unavailableTitle": "La edición de Slide no está disponible en esta versión",
     "unavailableBody": "Los archivos de Slide se abren en Kition cuando se incluye el motor Slide."
@@ -381,6 +386,7 @@
       "board": "Board",
       "cad": "CAD",
       "cube": "Cubo",
+      "fig": "Fig",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

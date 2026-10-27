@@ -22,6 +22,7 @@ export const KIT_CREATE_EXTENSION = {
   html: 'html',
   note: 'md',
   cube: 'kcube',
+  fig: 'kfig',
 } as const
 
 /** Every extension a kit's create menu item makes, for a workspace tab title to drop. */

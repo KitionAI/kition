@@ -376,6 +376,26 @@ pub const KITS: &[KitDefinition] = &[
             command: "add.cube",
         },
     },
+    // Edited in the page through its SDK; `kit-fig` serves the agent.
+    KitDefinition {
+        id: "kit.fig",
+        name: "Fig",
+        binary_env: "KITION_KIT_FIG_BINARY",
+        extensions: &["kfig"],
+        creates: &[("kfig", "fig")],
+        base_name: "Untitled fig",
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "fig",
+            noun: "interface design",
+            formats: ".kfig",
+            reports: "its pages, layer count, selection, tool, and undo state",
+            covers: "frames, shapes, text, auto layout, components, styles, variables, prototyping, and more",
+            queries: "`rectangle`, `auto layout`, or `component`",
+            command: "shape.rectangle",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

@@ -33,6 +33,7 @@ KITS = [
     Kit('cad', 'CAD', '#4f6d8a', '#4f6d8a', '#8eabc8'),
     Kit('html', 'HTML', '#c65b32', '#b64b22', '#ff986b'),
     Kit('cube', 'Cube', '#c47a32', '#9a5a22', '#e3a46b'),
+    Kit('fig', 'Fig', '#00a676', '#00875f', '#02da96'),
 ]
 
 # The kit that declares each palette entry as its `ui.brand`; Design Studio is Kition's own.
@@ -146,6 +147,15 @@ def glyph(kit):
                 + f'<path d="M56 82L128 124V208L56 166Z" {full}/>'
                 + f'<path d="M200 82V166L128 208V124Z" fill="{fg}" fill-opacity=".72"/>'
                 + _line('M56 82L128 124L200 82M128 124V208', ac, 5, .7) + ring('M32 160C32 208 224 208 224 160'))
+    if kit.id == 'fig':
+        # Two screens of an interface, a prototype link running from a button on one to the other.
+        return (f'<rect x="146" y="88" width="76" height="120" rx="14" {back}/>'
+                + _line('M162 112H206', fg, 9, .7) + f'<rect x="162" y="128" width="44" height="32" rx="6" {back}/>'
+                + f'<rect x="34" y="48" width="88" height="152" rx="16" {full}/>'
+                + _line('M54 76H102', ac, 10, .75) + _line('M54 100H90', ac, 8, .5)
+                + f'<rect x="54" y="152" width="48" height="24" rx="7" fill="{ac}" opacity=".9"/>'
+                + _line('M122 164C140 164 132 134 144 134', fg, 7) + f'<path d="M140 122L156 134L140 146Z" {full}/>'
+                + f'<circle cx="102" cy="164" r="8" {full} stroke="{ac}" stroke-width="4"/>')
     raise ValueError(f'unknown kit {kit.id}')
 
 
@@ -218,6 +228,10 @@ def small_glyph(kit):
     if kit.id == 'cube':
         return (_p('M8 1L14 4.5V11.5L8 15L2 11.5V4.5Z', c) + _p('M8 1L14 4.5L8 8L2 4.5Z', w, '.5')
                 + _p('M8 8L14 4.5V11.5L8 15Z', w, '.25'))
+    if kit.id == 'fig':
+        # The screen with its button, the link, and the second screen behind.
+        return (_r(10, 5, 5, 9, c, '.55', rx=1) + _r(1, 2, 8, 12, c, rx=1.5) + _r(3, 4, 4, 1, w)
+                + _r(3, 10, 4, 2, w) + _r(9, 9, 2, 1, c))
     raise ValueError(f'unknown kit {kit.id}')
 
 

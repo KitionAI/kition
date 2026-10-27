@@ -41,6 +41,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".kboard" => "board",
         // 3D scenes, edited in the Cube kit.
         ".kcube" => "cube",
+        // Interface designs, edited in the Fig kit.
+        ".kfig" => "fig",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -72,7 +74,7 @@ pub fn is_supported(path: &str) -> bool {
             "md", "markdown", "kidesign", "txt", "csv", "tsv", "json", "html", "htm", "pdf",
             "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg",
             "psd", "psb", "kphoto", "kfilm", "kvector", "keffect", "kdesign", "dxf", "kslide",
-            "ktable", "kboard", "kcube", "mp4", "mov", "webm", "mp3", "wav", "m4a",
+            "ktable", "kboard", "kcube", "kfig", "mp4", "mov", "webm", "mp3", "wav", "m4a",
         ],
     )
 }
@@ -110,6 +112,9 @@ mod tests {
         assert_eq!(infer_format("models/Room.kcube"), "cube");
         assert!(is_supported("models/Room.KCUBE"));
         assert!(!is_text("models/Room.kcube"));
+        assert_eq!(infer_format("ui/Screen.kfig"), "fig");
+        assert!(is_supported("ui/Screen.KFIG"));
+        assert!(!is_text("ui/Screen.kfig"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");
