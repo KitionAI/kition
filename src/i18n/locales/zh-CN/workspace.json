@@ -244,6 +244,31 @@
       "ascii": "实际地址为 {{host}}",
       "open": "打开",
       "cancel": "取消"
+    },
+    "filePicker": {
+      "title": {
+        "open": "选择文件",
+        "folder": "选择文件夹",
+        "save": "保存到工作区"
+      },
+      "body": {
+        "open": "文档需要工作区中的一个文件。",
+        "folder": "文档需要工作区中的一个文件夹。",
+        "save": "为新文件命名，并选择保存的文件夹。"
+      },
+      "name": "文件名",
+      "search": "搜索",
+      "workspaceRoot": "工作区",
+      "loading": "正在加载…",
+      "empty": "没有匹配的文件",
+      "replaces": "此文件夹中已有名为 {{name}} 的文件。保存会替换它。",
+      "import": "从这台电脑导入",
+      "confirm": {
+        "open": "打开",
+        "folder": "选择",
+        "save": "保存"
+      },
+      "cancel": "取消"
     }
   },
   "filmKit": {

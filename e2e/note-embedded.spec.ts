@@ -111,9 +111,9 @@ test('keeps a CRLF note with a byte order mark byte for byte, unedited and edite
   expect(saved.toString('utf8')).toBe('\ufeff# Bom\r\n\r\nFirst line. Edited.\r\n')
 })
 
-test('an image pasted into a note is kept in the workspace, beside the note in its attachments', async ({ page, baseURL, browserName }) => {
+test('an image pasted into a note is kept in the workspace, beside the note', async ({ page, baseURL, browserName }) => {
   const name = 'Notes/Pictures.md'
-  const { kit, saves } = await openNote(page, baseURL!, name, '# Pictures\n\nThe end.\n', {}, { persist: true })
+  const { kit, host } = await openNote(page, baseURL!, name, '# Pictures\n\nThe end.\n', {}, { persist: true })
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGMIc70CRAwQCgAmOgW99kNaOgAAAABJRU5ErkJggg==', 'base64')
   // On a line of its own, so the note draws the picture once the caret leaves it.
   await caretAfter(page, kit, 'The end.')
@@ -123,11 +123,12 @@ test('an image pasted into a note is kept in the workspace, beside the note in i
     data.items.add(new File([new Uint8Array(bytes)], 'dot.png', { type: 'image/png' }))
     sink.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   }, [...png])
-  // Kition writes it as a new file (never replacing one) in the note's attachments folder.
-  await expect.poll(() => saves.map((save) => save.path ?? '').find((path) => path.startsWith('attachments/Notes/Pictures.md/pasted-')), { timeout: 15_000 }).toBeTruthy()
-  if (canReadBlobBodies(browserName)) expect(saves.find((save) => save.path?.startsWith('attachments/'))!.bytes.equals(png)).toBe(true)
+  // The kit creates it through KitFiles (`files/create`): a new file, never replacing one, beside the note.
+  const pasted = async () => (await fs.readdir(path.join(host.root, 'Notes'))).filter((file) => file.startsWith('pasted-') && file.endsWith('.png'))
+  await expect.poll(pasted, { timeout: 15_000 }).toHaveLength(1)
+  if (canReadBlobBodies(browserName)) expect((await fs.readFile(path.join(host.root, 'Notes', (await pasted())[0]))).equals(png)).toBe(true)
   // The note links it relative to its folder, and draws it once the caret is elsewhere.
-  await expect.poll(() => noteText(page)).toContain('](../attachments/Notes/Pictures.md/pasted-')
+  await expect.poll(() => noteText(page)).toContain(`](${(await pasted())[0]})`)
   await page.keyboard.press('ArrowUp')
   await expect.poll(() => notePictures(page), { timeout: 15_000 }).toEqual([expect.stringContaining('pasted-')])
 })

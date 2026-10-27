@@ -244,6 +244,31 @@
       "ascii": "exibido como {{host}}",
       "open": "Abrir",
       "cancel": "Cancelar"
+    },
+    "filePicker": {
+      "title": {
+        "open": "Escolher um arquivo",
+        "folder": "Escolher uma pasta",
+        "save": "Salvar no espaço de trabalho"
+      },
+      "body": {
+        "open": "O documento pede um arquivo do seu espaço de trabalho.",
+        "folder": "O documento pede uma pasta do seu espaço de trabalho.",
+        "save": "Dê um nome ao novo arquivo e escolha a pasta dele."
+      },
+      "name": "Nome do arquivo",
+      "search": "Pesquisar",
+      "workspaceRoot": "Espaço de trabalho",
+      "loading": "Carregando…",
+      "empty": "Nenhum arquivo correspondente",
+      "replaces": "Já existe um arquivo chamado {{name}} nesta pasta. Salvar vai substituí-lo.",
+      "import": "Importar deste computador",
+      "confirm": {
+        "open": "Abrir",
+        "folder": "Escolher",
+        "save": "Salvar"
+      },
+      "cancel": "Cancelar"
     }
   },
   "filmKit": {

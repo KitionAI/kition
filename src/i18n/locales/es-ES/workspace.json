@@ -244,6 +244,31 @@
       "ascii": "se muestra como {{host}}",
       "open": "Abrir",
       "cancel": "Cancelar"
+    },
+    "filePicker": {
+      "title": {
+        "open": "Elegir un archivo",
+        "folder": "Elegir una carpeta",
+        "save": "Guardar en el espacio de trabajo"
+      },
+      "body": {
+        "open": "El documento pide un archivo de tu espacio de trabajo.",
+        "folder": "El documento pide una carpeta de tu espacio de trabajo.",
+        "save": "Pon nombre al nuevo archivo y elige la carpeta donde irá."
+      },
+      "name": "Nombre del archivo",
+      "search": "Buscar",
+      "workspaceRoot": "Espacio de trabajo",
+      "loading": "Cargando…",
+      "empty": "No hay archivos que coincidan",
+      "replaces": "Ya hay un archivo llamado {{name}} en esta carpeta. Al guardar se reemplazará.",
+      "import": "Importar desde este equipo",
+      "confirm": {
+        "open": "Abrir",
+        "folder": "Elegir",
+        "save": "Guardar"
+      },
+      "cancel": "Cancelar"
     }
   },
   "filmKit": {

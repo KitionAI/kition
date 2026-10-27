@@ -158,6 +158,11 @@ export function registerBridgeEditor(editor: BridgeEditor) {
   }
 }
 
+/** Whether the workspace file at `path` is open in a kit editor with unsaved edits (KitFiles FA14). */
+export function openWithUnsavedEdits(path: string) {
+  return editors.get(normalize(path))?.dirty() ?? false
+}
+
 /** Tells the agent a live document changed (A8 `kit.changed`), and who changed it. */
 export function reportBridgeChange(change: KitsBridgeChanged) {
   runtimeBridge.notify('kit.changed', { ...change, path: normalize(change.path) })

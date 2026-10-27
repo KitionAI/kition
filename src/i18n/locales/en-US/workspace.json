@@ -244,6 +244,31 @@
       "ascii": "shown as {{host}}",
       "open": "Open",
       "cancel": "Cancel"
+    },
+    "filePicker": {
+      "title": {
+        "open": "Choose a file",
+        "folder": "Choose a folder",
+        "save": "Save to the workspace"
+      },
+      "body": {
+        "open": "The document asks for a file from your workspace.",
+        "folder": "The document asks for a folder in your workspace.",
+        "save": "Name the new file and choose the folder it goes in."
+      },
+      "name": "File name",
+      "search": "Search",
+      "workspaceRoot": "Workspace",
+      "loading": "Loading…",
+      "empty": "No matching files",
+      "replaces": "A file named {{name}} is already in this folder. Saving replaces it.",
+      "import": "Import from this computer",
+      "confirm": {
+        "open": "Open",
+        "folder": "Choose",
+        "save": "Save"
+      },
+      "cancel": "Cancel"
     }
   },
   "filmKit": {

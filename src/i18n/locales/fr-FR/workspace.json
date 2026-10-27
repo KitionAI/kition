@@ -244,6 +244,31 @@
       "ascii": "affiché comme {{host}}",
       "open": "Ouvrir",
       "cancel": "Annuler"
+    },
+    "filePicker": {
+      "title": {
+        "open": "Choisir un fichier",
+        "folder": "Choisir un dossier",
+        "save": "Enregistrer dans l’espace de travail"
+      },
+      "body": {
+        "open": "Le document demande un fichier de votre espace de travail.",
+        "folder": "Le document demande un dossier de votre espace de travail.",
+        "save": "Nommez le nouveau fichier et choisissez son dossier."
+      },
+      "name": "Nom du fichier",
+      "search": "Rechercher",
+      "workspaceRoot": "Espace de travail",
+      "loading": "Chargement…",
+      "empty": "Aucun fichier correspondant",
+      "replaces": "Un fichier nommé {{name}} existe déjà dans ce dossier. L’enregistrement le remplace.",
+      "import": "Importer depuis cet ordinateur",
+      "confirm": {
+        "open": "Ouvrir",
+        "folder": "Choisir",
+        "save": "Enregistrer"
+      },
+      "cancel": "Annuler"
     }
   },
   "filmKit": {

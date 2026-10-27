@@ -26,6 +26,8 @@ import { kitionTheme } from './kitionTheme'
 import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 import { openConfirmedUrl, useOpenUrlConfirmation } from './KitOpenUrlDialog'
+import { kitionFilesOption } from './kitionFiles'
+import { useWorkspacePicker } from './WorkspaceFilePicker'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
 export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
@@ -228,6 +230,23 @@ function KitOpening({ label }: { label: string }) {
  * it), web addresses in the system's browser after the person confirmed them (OP8). Both work in
  * read-only documents (OP5).
  */
+/** `host/stamp`: the version of the document's own file or of a file beside it the kit may read. */
+async function stampForKit(document: string, { path: wanted }: { path: string }) {
+  const file = readableFile(wanted, document)
+  return { version: file.own ? await KITION_KIT_HOST.stamp(file.path) : await stampKitFile(file.path) }
+}
+
+/** `host/notify`: the kit's notice as one of Kition's toasts. */
+function showKitNotice(notice: { level?: string; title: string; description?: string }) {
+  const show = notice.level === 'error' ? notify.error : notice.level === 'success' ? notify.success : notice.level === 'warning' ? notify.warning : notify.info
+  show(notice.title, notice.description ? { description: notice.description } : undefined)
+}
+
+/** `host/shortcut`: Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here. */
+function relayShortcut(key: { key: string; code: string; meta?: boolean; ctrl?: boolean; shift?: boolean; alt?: boolean }) {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: key.key, code: key.code, metaKey: key.meta, ctrlKey: key.ctrl, shiftKey: key.shift, altKey: key.alt, bubbles: true }))
+}
+
 function linkHandlers(latest: { current: { onOpenLink?: (params: KitOpenParams) => Promise<KitOpenResult>; askUrl: (url: string) => Promise<boolean> } }): Pick<KitHostHandlers, 'open' | 'openUrl'> {
   const { onOpenLink } = latest.current
   return {
@@ -247,6 +266,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
   const [connection, setConnection] = useState<KitConnection | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const openUrl = useOpenUrlConfirmation()
+  const picker = useWorkspacePicker(path)
   const latest = useRef({ onOpenAgent, onOpenLink, askUrl: openUrl.ask, t })
   latest.current = { onOpenAgent, onOpenLink, askUrl: openUrl.ask, t }
   // A co-edited document this person may only view opens read-only; the kit is opened again
@@ -276,6 +296,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
     // Who made the last edit: a save after an agent's edits is the agent's checkpoint in the history.
     let lastBy: 'agent' | 'person' = 'person'
     let withdraw: (() => void) | null = null
+    // The workspace as the kit's file storage (KitFiles 1.0), for a kit whose manifest asks for files.
+    let files: Awaited<ReturnType<typeof kitionFilesOption>> = null
     // Leases, conflict notices, presence, and newer-kit notices (Kit UI protocol sections 7b, 7c, 7e, and 7f).
     const collab = preview ? null : kitCollabHandlers(path, kit.kitId, openedReadOnly, () => latest.current.t)
     // A run of this effect that is cleaned up (StrictMode's first run, a closed tab) must not take
@@ -291,6 +313,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
         // A preview opens its replica alone, like a kit opened again from a carried replica.
         const carry: Carried | null = preview ? { changes: preview.snapshot, blobs: preview.blobs, open: 'replica' } : carried.current
         const fileStamp = carry?.open === 'replica' ? (stamp ?? (await KITION_KIT_HOST.stamp(path))) : null
+        files = preview ? null : await kitionFilesOption({ kit: kit.kitId, dir: kit.dir, document: path, readOnly: openedReadOnly, pick: picker.pick })
         if (closed) return
         let fromCarried = carry && fileStamp ? { snapshot: carry.changes, blobs: carry.blobs, fileStamp } : null
         const lend = KITION_KIT_HOST.lend?.(path) ?? undefined
@@ -298,6 +321,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
+          ...(files ? { files: files.option } : {}),
           document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(preview ? {} : openingView(path)), ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
           theme: kitionTheme(),
           locale: i18n.language,
@@ -305,10 +329,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           capabilitySets: KITION_CAPABILITY_SETS,
           handlers: {
             read: (params) => readForKit(path, params),
-            stamp: async ({ path: wanted }) => {
-              const file = readableFile(wanted, path)
-              return { version: file.own ? await KITION_KIT_HOST.stamp(file.path) : await stampKitFile(file.path) }
-            },
+            stamp: (params) => stampForKit(path, params),
             write: (params) => writeForKit(path, openedReadOnly, params),
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
             // The replica the kit keeps next to its file (a PSD's), in the document store.
@@ -328,10 +349,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
               lastBy = agentEdit ? 'agent' : 'person'
               if (!preview) reportBridgeChange({ path, revision: next.revision, by: agentEdit ? 'agent' : 'person' })
             },
-            notify: (notice) => {
-              const show = notice.level === 'error' ? notify.error : notice.level === 'success' ? notify.success : notice.level === 'warning' ? notify.warning : notify.info
-              show(notice.title, notice.description ? { description: notice.description } : undefined)
-            },
+            notify: showKitNotice,
             draftChanged: (info) => setKitDraft(path, info),
             // The person's models for what the kit generates (Kit UI protocol section 7j): not for a
             // preview or a read-only document, which the kit cannot write an answer into.
@@ -340,10 +358,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
             // start a design from one.
             actions: preview || openedReadOnly ? undefined : kitionActions(path),
             ...collab?.handlers,
-            // Kition's own shortcuts, pressed inside the kit, reach Kition as if pressed here.
-            shortcut: (key) => {
-              window.dispatchEvent(new KeyboardEvent('keydown', { key: key.key, code: key.code, metaKey: key.meta, ctrlKey: key.ctrl, shiftKey: key.shift, altKey: key.alt, bubbles: true }))
-            },
+            shortcut: relayShortcut,
           },
         })
         if (closed) {
@@ -420,11 +435,12 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
       abandon.abort()
       withdraw?.()
       mounted?.close()
+      void files?.end()
       setConnection(null)
       // A clean close folds the changes saved since the stored snapshot into a new one.
       if (!preview) void compactKitReplica(path)
     }
-  }, [i18n, kit.kitId, path, openedReadOnly, reopened, preview])
+  }, [i18n, kit.kitId, kit.dir, path, openedReadOnly, reopened, preview, picker.pick])
 
   useEffect(() => {
     if (readOnly === openedReadOnly) return undefined
@@ -475,6 +491,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
         </div>
       ) : connection ? null : <KitOpening label={t('kitEditor.opening')} />}
       {openUrl.dialog}
+      {picker.dialog}
     </div>
   )
 }
