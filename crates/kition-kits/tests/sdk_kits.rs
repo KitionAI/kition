@@ -111,6 +111,13 @@ const CASES: &[Case] = &[
         params: || json!({ "at": 0, "text": "# Agenda\n\n" }),
         file_command: ("document.save", || json!({ "path": "elsewhere.md" })),
     },
+    Case {
+        kit: "kit.cube",
+        fixture: "Room.kcube",
+        command: "add.uvSphere",
+        params: || json!({ "location": [2, 0, 1], "radius": 0.5 }),
+        file_command: ("document.save", || json!({ "path": "elsewhere.kcube" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

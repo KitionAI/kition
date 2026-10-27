@@ -10,6 +10,7 @@
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
+      "cube": "3D 立方",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -266,6 +267,10 @@
     "unavailableTitle": "此版本不支持 CAD 编辑",
     "unavailableBody": "包含 CAD 引擎时，CAD 文件会在 Kition 中打开。"
   },
+  "cubeKit": {
+    "unavailableTitle": "此版本不支持编辑 3D 立方",
+    "unavailableBody": "包含 3D 立方引擎时，3D 立方文件会在 Kition 中打开。"
+  },
   "slideKit": {
     "unavailableTitle": "此版本不支持 Slide 编辑",
     "unavailableBody": "包含 Slide 引擎时，Slide 文件会在 Kition 中打开。"
@@ -375,6 +380,7 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
+      "cube": "3D 立方",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

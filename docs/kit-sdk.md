@@ -486,6 +486,23 @@ item makes an empty board with the engine in the page, and the agent's
 saving through Kition, and creating a board; the editor's own behavior is
 tested in the kit's repository. Kition has no board editor of its own.
 
+### The Cube kit
+
+`kit.cube` (`KitionAI/kition-cube`, package `public/kits/cube-ui`) is the
+3D kit: `.kcube` files (a ZIP of the scene as JSON and each mesh as a binary
+buffer) open in its own editor in `KitFrame`. Its Rust engine
+(`kition_cube_sdk`, `CubeDocument`) renders the viewport in software in the
+worker; the document's size is the editor's viewport (`view.resize`), and the
+view, shading, and selection are session state that never makes the file
+dirty. It exports glTF/GLB, OBJ, STL, and PNG renders, and places glTF, OBJ,
+and STL files into a scene. The create menu's Cube item makes the starter
+scene (a cube, a light, and a camera) with the engine in the page, and the
+agent's `cube_*` tools run on the headless `kit-cube`, with rotations in
+degrees and Z up. Its features and defaults are checked against Blender as a
+reference application only (the kit is a clean-room Apache-2.0
+implementation). `e2e/cube-embedded.spec.ts` (in `make kit-e2e`) covers opening,
+editing, saving, and creating a scene through Kition.
+
 ### The Note kit
 
 `kit.note` (`KitionAI/kition-note`, package `public/kits/note-ui`) is a

@@ -53,7 +53,7 @@ class KitIconTests(unittest.TestCase):
     def test_kits_in_spec_order(self):
         self.assertEqual([k.id for k in kit_icons.KITS], [
             'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
-            'vector', 'photo', 'effect', 'film', 'pdf', 'cad'])
+            'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'cube'])
 
     def test_each_icon_is_a_flat_soft_tile(self):
         for kit in kit_icons.KITS:

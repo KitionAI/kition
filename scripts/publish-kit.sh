@@ -42,8 +42,11 @@ clone() {
     echo "$name $commit is not pushed" >&2
     exit 1
   fi
-  git clone -q --shared --no-checkout "$repo" "$scratch/$name"
-  git -C "$scratch/$name" checkout -q --detach "$commit"
+  git clone -q --shared --no-checkout "$repo" "$scratch/$name" || exit 1
+  # A clone copies only the local branches, which can be behind the pushed commit.
+  git -C "$scratch/$name" fetch -q "$repo" '+refs/remotes/origin/*:refs/remotes/source/*' || exit 1
+  # `|| exit`: errexit does not reach into the command substitution that calls clone.
+  git -C "$scratch/$name" checkout -q --detach "$commit" || exit 1
   echo "$commit"
 }
 

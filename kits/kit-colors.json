@@ -74,5 +74,10 @@
     "kitId": "kit.html",
     "light": "#b64b22",
     "dark": "#ff986b"
+  },
+  "cube": {
+    "kitId": "kit.cube",
+    "light": "#9a5a22",
+    "dark": "#e3a46b"
   }
 }

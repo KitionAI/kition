@@ -28,7 +28,7 @@ describe('KitIcon', () => {
   it('lists the kits', () => {
     expect(KIT_ICON_IDS).toEqual([
       'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
-      'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'html',
+      'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'html', 'cube',
     ])
   })
 

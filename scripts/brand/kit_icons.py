@@ -32,6 +32,7 @@ KITS = [
     Kit('pdf', 'PDF', '#dc3b2e', '#db3527', '#ff7a6b'),
     Kit('cad', 'CAD', '#4f6d8a', '#4f6d8a', '#8eabc8'),
     Kit('html', 'HTML', '#c65b32', '#b64b22', '#ff986b'),
+    Kit('cube', 'Cube', '#c47a32', '#9a5a22', '#e3a46b'),
 ]
 
 # The kit that declares each palette entry as its `ui.brand`; Design Studio is Kition's own.
@@ -137,6 +138,14 @@ def glyph(kit):
                 + _line('M76 220H200', fg, 6) + _line('M76 212V228M200 212V228', fg, 6)
                 + f'<circle cx="182" cy="90" r="26" fill="none" stroke="{fg}" stroke-width="8"/>'
                 + _line('M182 56V124M148 90H216', fg, 4, .8))
+    if kit.id == 'cube':
+        # A cube in three tones, ringed by an orbit that passes behind it and in front.
+        def ring(d):
+            return _line(d, fg, 7, .55).replace('stroke-linejoin="round"', 'stroke-linejoin="round" stroke-dasharray="1 15"')
+        return (ring('M32 160C32 112 224 112 224 160') + f'<path d="M128 40L200 82L128 124L56 82Z" {back}/>'
+                + f'<path d="M56 82L128 124V208L56 166Z" {full}/>'
+                + f'<path d="M200 82V166L128 208V124Z" fill="{fg}" fill-opacity=".72"/>'
+                + _line('M56 82L128 124L200 82M128 124V208', ac, 5, .7) + ring('M32 160C32 208 224 208 224 160'))
     raise ValueError(f'unknown kit {kit.id}')
 
 
@@ -206,6 +215,9 @@ def small_glyph(kit):
         return _p('M4 1H11L14 4V15H2V1Z', c) + _line('M6 6L4 8L6 10M10 6L12 8L10 10M9 5L7 11', w, 1.2)
     if kit.id == 'cad':
         return _p('M2 1V15H16Z', c) + _p('M4 7V13H10Z', w)
+    if kit.id == 'cube':
+        return (_p('M8 1L14 4.5V11.5L8 15L2 11.5V4.5Z', c) + _p('M8 1L14 4.5L8 8L2 4.5Z', w, '.5')
+                + _p('M8 8L14 4.5V11.5L8 15Z', w, '.25'))
     raise ValueError(f'unknown kit {kit.id}')
 
 

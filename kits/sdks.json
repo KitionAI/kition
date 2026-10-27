@@ -258,5 +258,16 @@
         "source": "<!doctype html><html><body style=\"margin:0;background:#5645d4\">Hello</body></html>"
       }
     }
+  },
+  "cube": {
+    "repository": "KitionAI/kition-cube",
+    "crate": "kition-cube-sdk",
+    "module": "kition_cube_sdk",
+    "class": "CubeDocument",
+    "name": "Room.kcube",
+    "edit": {
+      "command": "add.uvSphere",
+      "params": { "location": [2, 0, 1], "radius": 0.5 }
+    }
   }
 }
