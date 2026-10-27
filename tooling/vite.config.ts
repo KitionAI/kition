@@ -92,10 +92,8 @@ export default defineConfig(({ mode }) => ({
     alias: [
       { find: '@', replacement: resolve(repositoryDir, 'src') },
       // The packages under packages/ are imported by path alias, not installed (packages/README.md).
-      // kition-sdk's @kition/kdm and @kition/kit-engine, which Kition carries as src/lib/kdm and
-      // src/lib/kit-engine (scripts/sync-kit-host.mjs).
+      // kition-sdk's @kition/kdm, which Kition carries as src/lib/kdm (scripts/sync-kit-host.mjs).
       { find: /^@kition\/kdm$/, replacement: resolve(repositoryDir, 'src/lib/kdm/index.ts') },
-      { find: /^@kition\/kit-engine$/, replacement: resolve(repositoryDir, 'src/lib/kit-engine/index.ts') },
       // loro-crdt's default browser entry downloads and compiles its WebAssembly synchronously on
       // the page's thread. Its bundler entry imports the WebAssembly instead, which
       // vite-plugin-wasm fetches and instantiates asynchronously, in development and in builds

@@ -51,10 +51,9 @@ module.exports = {
       comment:
         'A package under packages/ runs outside Kition too, so it imports nothing from src/ but the KDM copy (as @kition/kdm).',
       from: { path: '^packages/' },
-      // src/lib/kdm and src/lib/kit-engine are kition-sdk's @kition/kdm and @kition/kit-engine,
-      // which Kition carries (scripts/sync-kit-host.mjs); packages import them by those names, which
-      // a kit's build takes from kition-sdk.
-      to: { path: '^src/', pathNot: '^src/lib/(kdm|kit-engine)/' },
+      // src/lib/kdm is kition-sdk's @kition/kdm, which Kition carries (scripts/sync-kit-host.mjs);
+      // packages import it by that name, which a kit's build takes from kition-sdk.
+      to: { path: '^src/', pathNot: '^src/lib/kdm/' },
     },
     {
       name: 'shared-layers-do-not-import-features',

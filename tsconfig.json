@@ -25,8 +25,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@kition/kdm": ["src/lib/kdm/index.ts"],
-      "@kition/kit-engine": ["src/lib/kit-engine/index.ts"]
+      "@kition/kdm": ["src/lib/kdm/index.ts"]
     }
   },
   "include": [
