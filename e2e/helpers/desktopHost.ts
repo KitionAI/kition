@@ -37,6 +37,9 @@ export type DesktopHost = {
   clipboard: { html: string; text: string; imageSource: string; image: { mime_type: string; base64_content: string } | null }
   /** Answers the next save dialog with this path, or cancels with `null`. */
   saveDialogPath: string | null
+  /** The PDFs printed with the system's print panel (`print_pdf`, macOS), and what the panel answers next. */
+  prints: Array<{ bytes: Buffer; title: string }>
+  printAnswer: boolean
   /** Files returned by the import file picker. */
   importPaths: string[]
   secureValues: Map<string, string>
@@ -109,6 +112,8 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     calls: [],
     clipboard: { html: '', text: '', imageSource: '', image: null },
     saveDialogPath: null,
+    prints: [],
+    printAnswer: true,
     importPaths: [],
     secureValues: new Map(Object.entries(options.secureValues || {})),
     storeStatus: { writable: true, holder: null },
@@ -324,6 +329,11 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       if (!source) throw new Error('image URL is required')
       host.clipboard = { html: '', text: '', imageSource: source, image: null }
       return true
+    },
+    // Raw bytes, as `invoke` sends a Uint8Array; the title in a header.
+    print_pdf: ({ bytes, headers }) => {
+      host.prints.push({ bytes: Buffer.from(bytes as number[]), title: decodeURIComponent(String((headers as Record<string, string> | undefined)?.['kition-print-title'] ?? '')) })
+      return host.printAnswer
     },
     list_workspace_documents: () => list(),
     read_workspace_image: async ({ request }) => {
@@ -634,7 +644,9 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       },
       unregisterCallback: (id: number) => callbacks.delete(id),
       convertFileSrc: (filePath: string) => filePath,
-      invoke: async (command: string, args: Record<string, unknown> = {}) => {
+      invoke: async (command: string, args: Record<string, unknown> | Uint8Array = {}, options?: { headers?: Record<string, string> }) => {
+        // A raw body (a Uint8Array) reaches the host as numbers, with the call's headers.
+        if (args instanceof Uint8Array) args = { bytes: [...args], headers: options?.headers ?? {} }
         if (command === 'plugin:event|listen') {
           const event = String(args.event)
           listeners.set(event, [...(listeners.get(event) || []), Number(args.handler)])

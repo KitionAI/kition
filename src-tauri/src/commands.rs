@@ -259,6 +259,30 @@ pub async fn save_pdf_file(
     Ok(path.to_string_lossy().into_owned())
 }
 
+/// Prints the PDF in the request's raw body with the system's print panel
+/// (KitFiles `files/print`); the `kition-print-title` header names the job,
+/// percent-encoded. Answers whether the person printed.
+#[tauri::command]
+pub async fn print_pdf(
+    window: tauri::WebviewWindow,
+    request: tauri::ipc::Request<'_>,
+) -> CommandResult<bool> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("print_pdf takes the PDF as raw bytes".into());
+    };
+    let title = request
+        .headers()
+        .get("kition-print-title")
+        .and_then(|value| value.to_str().ok())
+        .map(|value| {
+            percent_encoding::percent_decode_str(value)
+                .decode_utf8_lossy()
+                .into_owned()
+        })
+        .unwrap_or_default();
+    pdf::print_with_dialog(&window, bytes.clone(), title).await
+}
+
 #[tauri::command]
 pub async fn copy_image(
     app: AppHandle,

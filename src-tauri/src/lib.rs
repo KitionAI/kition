@@ -262,6 +262,7 @@ pub fn run() {
             commands::submit_feedback,
             commands::save_binary_file,
             commands::save_pdf_file,
+            commands::print_pdf,
             commands::copy_image,
             commands::list_workspace_documents,
             commands::read_workspace_image,

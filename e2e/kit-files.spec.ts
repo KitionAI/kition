@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { keepKitChannels, noteGesture as gesture, requestFromNote as fromKit } from './helpers/kitChannel'
 import { openNote } from './helpers/noteKit'
 
 /**
@@ -12,44 +13,8 @@ import { openNote } from './helpers/noteKit'
  */
 test.setTimeout(180_000)
 
-type Answer = { result?: Record<string, any>; error?: { code: number; message: string; data?: { reason?: string } } }
-
-/** Sends one `files/*` request from inside the note kit's frame over its host channel. */
-async function fromKit(page: Page, method: string, params: Record<string, unknown>, bytes?: string): Promise<Answer> {
-  const frame = page.frames().find((candidate) => candidate.url().includes('/kits/note-ui/'))
-  if (!frame) throw new Error('the note kit frame is not open')
-  return frame.evaluate(
-    async ({ method, params, bytes }) => {
-      const port = (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort
-      if (!port) throw new Error('the kit has no host channel')
-      const id = `e2e-files-${Math.random().toString(36).slice(2)}`
-      return new Promise<Answer>((resolve) => {
-        const answer = (event: MessageEvent) => {
-          if (event.data?.id !== id) return
-          port.removeEventListener('message', answer)
-          // Bytes the host answers (`files/read`) as text: an ArrayBuffer does not leave the frame.
-          const bytes = event.data.result?.bytes
-          resolve(bytes ? { ...event.data, result: { ...event.data.result, bytes: undefined, text: new TextDecoder().decode(bytes) } } : event.data)
-        }
-        port.addEventListener('message', answer)
-        const body = bytes === undefined ? params : { ...params, bytes: new TextEncoder().encode(bytes).buffer }
-        port.postMessage({ jsonrpc: '2.0', id, method, params: body })
-      })
-    },
-    { method, params, bytes },
-  )
-}
-
-/** A person's gesture in the kit, which `files/create` and `files/pick` need (FA6, FA11). */
-const gesture = (kit: FrameLocator) => kit.getByTestId('note-title').click()
-
 test('Kition serves files/create and files/write beside the note, never replacing a file, and refuses what the manifest does not declare', async ({ page, baseURL }) => {
-  // Every frame keeps the host channel it is handed, so the test can speak for the kit.
-  await page.addInitScript(() => {
-    window.addEventListener('message', (event) => {
-      if ((event.data as { kitionKitUi?: number } | null)?.kitionKitUi === 1 && event.ports[0]) (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort = event.ports[0]
-    })
-  })
+  await keepKitChannels(page)
   const { kit, host } = await openNote(page, baseURL!, 'Notes/Roadmap.md', '# Roadmap\n\nGoals.\n', { 'Notes/Report.html': Buffer.from('<p>old</p>') })
 
   await gesture(kit)
@@ -80,11 +45,7 @@ test('Kition serves files/create and files/write beside the note, never replacin
 })
 
 test('files/pick opens the workspace picker: save into a chosen folder, a replacement warned of, and a cancel that grants nothing', async ({ page, baseURL }) => {
-  await page.addInitScript(() => {
-    window.addEventListener('message', (event) => {
-      if ((event.data as { kitionKitUi?: number } | null)?.kitionKitUi === 1 && event.ports[0]) (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort = event.ports[0]
-    })
-  })
+  await keepKitChannels(page)
   const { kit, host } = await openNote(page, baseURL!, 'Plan.md', '# Plan\n\nGoals.\n', { 'Exports/Old.pdf': Buffer.from('%PDF-old'), '.kition/secret.pdf': Buffer.from('x') })
 
   // Save mode: the person names the file and chooses its folder; the kit gets a handle and a name.
@@ -127,11 +88,7 @@ test('files/pick opens the workspace picker: save into a chosen folder, a replac
 })
 
 test('files/pick opens a workspace file or lists a folder for a kit whose manifest reads them', async ({ page, baseURL }) => {
-  await page.addInitScript(() => {
-    window.addEventListener('message', (event) => {
-      if ((event.data as { kitionKitUi?: number } | null)?.kitionKitUi === 1 && event.ports[0]) (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort = event.ports[0]
-    })
-  })
+  await keepKitChannels(page)
   // The note's manifest as a kit that reads text files and folders would declare it (K15).
   await page.route('**/kits/note-ui/kit.json', async (route) => {
     const manifest = await (await route.fetch()).json()

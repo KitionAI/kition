@@ -3,6 +3,7 @@ import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/servic
 import { FILE_ERROR_REASONS, KitRpcError, type KitFileErrorReason, type KitFilesPickParams } from '../host/protocol'
 import { fileError, type KitFileEntry, type KitFilesManifest, type KitFilesOptions, type KitFilesStorage } from '../host/files'
 import { openWithUnsavedEdits } from './kitBridge'
+import { kitionPrint } from './kitionPrint'
 import { readKitFile, stampKitFile } from './kitionHost'
 
 /** The largest chunk one `files/write` request carries to the runtime (it takes 64 MiB). */
@@ -153,13 +154,14 @@ async function kitFilesManifest(dir: string): Promise<KitFilesManifest | null> {
 
 /**
  * `mountKit`'s `files` option for the kit in package `dir` editing `document`, when its manifest
- * asks for files (none otherwise): the workspace as its storage and `pick` as its picker. `end`
- * closes the grant session.
+ * asks for files (none otherwise): the workspace as its storage, `pick` as its picker, and
+ * Kition's printing for a kit that may print. `end` closes the grant session.
  */
 export async function kitionFilesOption({ kit, dir, document, readOnly, pick }: { kit: string; dir: string; document: string; readOnly: boolean; pick: (params: KitFilesPickParams) => Promise<string[]> }) {
   const manifest = await kitFilesManifest(dir)
   if (!manifest) return null
   const { storage, end } = kitionFilesStorage({ kit, document, manifest, readOnly })
-  const option: KitFilesOptions = { storage, kit, principal: 'user:local', manifest, pick }
+  const print = manifest.print ? kitionPrint() : undefined
+  const option: KitFilesOptions = { storage, kit, principal: 'user:local', manifest, pick, ...(print ? { print } : {}) }
   return { option, end }
 }

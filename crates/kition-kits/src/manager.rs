@@ -409,7 +409,9 @@ pub enum Caller {
 pub enum KitError {
     #[error("`{0}` is not a known kit")]
     UnknownKit(String),
-    #[error("{name} is not installed. Set {binary_env} to the kit's headless executable and restart Kition.")]
+    #[error(
+        "{name} is not installed. Set {binary_env} to the kit's headless executable and restart Kition."
+    )]
     NotInstalled {
         name: &'static str,
         binary_env: &'static str,

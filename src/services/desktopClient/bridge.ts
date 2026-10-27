@@ -19,6 +19,8 @@ type KitionDesktopBridge = {
   SaveBinaryFile?: (request: SaveFileRequest) => Promise<string>
   SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
   CopyImage?: (request: { url: string }) => Promise<boolean>
+  /** Prints a PDF with the system's print panel; answers whether the person printed. */
+  PrintPdf?: (bytes: Uint8Array, title: string) => Promise<boolean>
   SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceImage?: (request: { path: string; expected_root: string }) => Promise<DesktopClipboardImage>
