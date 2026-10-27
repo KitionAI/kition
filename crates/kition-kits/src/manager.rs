@@ -409,7 +409,7 @@ pub enum Caller {
 pub enum KitError {
     #[error("`{0}` is not a known kit")]
     UnknownKit(String),
-    #[error("{name} is not installed. Set {binary_env} to a kit-photo build and restart Kition.")]
+    #[error("{name} is not installed. Set {binary_env} to the kit's headless executable and restart Kition.")]
     NotInstalled {
         name: &'static str,
         binary_env: &'static str,
@@ -1197,16 +1197,26 @@ impl KitManager {
                 (
                     command.id.to_lowercase(),
                     command.title.to_lowercase(),
-                    format!("{} {:?}", command.description.as_deref().unwrap_or_default(), command.menu).to_lowercase(),
+                    format!(
+                        "{} {:?}",
+                        command.description.as_deref().unwrap_or_default(),
+                        command.menu
+                    )
+                    .to_lowercase(),
                 )
             })
             .collect();
-        let has = |(id, title, rest): &(String, String, String), v: &str| id.contains(v) || title.contains(v) || rest.contains(v);
+        let has = |(id, title, rest): &(String, String, String), v: &str| {
+            id.contains(v) || title.contains(v) || rest.contains(v)
+        };
         let n = fields.len() as f64;
         let weights: Vec<f64> = terms
             .iter()
             .map(|variants| {
-                let df = fields.iter().filter(|f| variants.iter().any(|v| has(f, v))).count() as f64;
+                let df = fields
+                    .iter()
+                    .filter(|f| variants.iter().any(|v| has(f, v)))
+                    .count() as f64;
                 ((n + 1.0) / (df + 1.0)).ln() + 0.1
             })
             .collect();
@@ -1225,7 +1235,9 @@ impl KitManager {
                             2.0
                         } else if variants.iter().any(|v| rest.contains(v.as_str())) {
                             1.0
-                        } else if variants.iter().any(|v| v.len() >= 4 && (id.contains(&v[..4]) || title.contains(&v[..4]))) {
+                        } else if variants.iter().any(|v| {
+                            v.len() >= 4 && (id.contains(&v[..4]) || title.contains(&v[..4]))
+                        }) {
                             0.5
                         } else {
                             0.0
@@ -1666,6 +1678,38 @@ async fn watch_notifications(
     focus_changed.notify_waiters();
 }
 
+/// A query word and the words it may be written as in a command (plural, synonyms).
+fn search_variants(term: &str) -> Vec<String> {
+    let mut out = vec![term.to_owned()];
+    if term.len() > 3 && term.ends_with('s') {
+        out.push(term[..term.len() - 1].to_owned());
+    }
+    let synonyms: &[(&str, &[&str])] = &[
+        ("colour", &["color"]),
+        ("color", &["colour", "fill"]),
+        ("reorder", &["move", "order"]),
+        ("remove", &["delete"]),
+        ("erase", &["delete"]),
+        ("copy", &["duplicate"]),
+        ("enter", &["edit"]),
+        ("change", &["set", "edit"]),
+        ("modify", &["set", "edit"]),
+        ("replace", &["set"]),
+        ("values", &["data", "series"]),
+        ("value", &["data", "series"]),
+        ("resize", &["size", "bounds"]),
+        ("position", &["move", "bounds"]),
+        ("typeface", &["font"]),
+        ("bigger", &["grow", "size"]),
+    ];
+    for (word, alts) in synonyms {
+        if term == *word {
+            out.extend(alts.iter().map(|a| (*a).to_owned()));
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1683,24 +1727,4 @@ mod tests {
         );
         assert_eq!(split_document_id("sx::a"), (Target::Headless, "sx::a"));
     }
-}
-
-/// A query word and the words it may be written as in a command (plural, synonyms).
-fn search_variants(term: &str) -> Vec<String> {
-    let mut out = vec![term.to_owned()];
-    if term.len() > 3 && term.ends_with('s') {
-        out.push(term[..term.len() - 1].to_owned());
-    }
-    let synonyms: &[(&str, &[&str])] = &[
-        ("colour", &["color"]), ("color", &["colour", "fill"]), ("reorder", &["move", "order"]), ("remove", &["delete"]),
-        ("erase", &["delete"]), ("copy", &["duplicate"]), ("enter", &["edit"]), ("change", &["set", "edit"]),
-        ("modify", &["set", "edit"]), ("replace", &["set"]), ("values", &["data", "series"]), ("value", &["data", "series"]),
-        ("resize", &["size", "bounds"]), ("position", &["move", "bounds"]), ("typeface", &["font"]), ("bigger", &["grow", "size"]),
-    ];
-    for (word, alts) in synonyms {
-        if term == *word {
-            out.extend(alts.iter().map(|a| (*a).to_owned()));
-        }
-    }
-    out
 }

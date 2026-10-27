@@ -142,21 +142,32 @@ pub fn unified() -> bool {
 /// The kit and action of a unified tool call (`kit_run` on `report.xlsx` is Sheet's run).
 fn unified_route(name: &str, input: &Value) -> Option<(&'static KitDefinition, Action)> {
     let suffix = name.strip_prefix("kit_")?;
-    let action = Action::ALL.into_iter().find(|action| action.suffix() == suffix)?;
+    let action = Action::ALL
+        .into_iter()
+        .find(|action| action.suffix() == suffix)?;
     let path = input.get("path")?.as_str()?;
     let extension = path.trim().rsplit_once('.')?.1.to_ascii_lowercase();
-    let kit = KITS.iter().find(|kit| kit.extensions.contains(&extension.as_str()))?;
+    let kit = KITS
+        .iter()
+        .find(|kit| kit.extensions.contains(&extension.as_str()))?;
     Some((kit, action))
 }
 
 /// The unified tool set: one kit's tools, worded for all the installed kits.
 fn unified_specs(on: &[&'static KitDefinition]) -> Vec<KitToolSpec> {
     let first = on[0];
-    let formats = on.iter().map(|kit| format!("{}: {}", kit.name, kit.agent.formats)).collect::<Vec<_>>().join("; ");
+    let formats = on
+        .iter()
+        .map(|kit| format!("{}: {}", kit.name, kit.agent.formats))
+        .collect::<Vec<_>>()
+        .join("; ");
     let words = |text: &str| {
         text.replace(first.agent.formats, &formats)
             .replace(first.agent.reports, "its structure")
-            .replace(&format!(" in {}", first.name), " in the kit for its file type")
+            .replace(
+                &format!(" in {}", first.name),
+                " in the kit for its file type",
+            )
             .replace(first.agent.noun, "file")
     };
     specs_of(first)
@@ -164,7 +175,8 @@ fn unified_specs(on: &[&'static KitDefinition]) -> Vec<KitToolSpec> {
         .map(|spec| KitToolSpec {
             name: spec.name,
             description: words(&spec.description),
-            input_schema: serde_json::from_str(&words(&spec.input_schema.to_string())).unwrap_or(spec.input_schema),
+            input_schema: serde_json::from_str(&words(&spec.input_schema.to_string()))
+                .unwrap_or(spec.input_schema),
             writes: spec.writes,
         })
         .collect()
@@ -332,7 +344,10 @@ pub fn installed(kits: &KitManager) -> Vec<KitToolSpec> {
         .map(|kit| kit.id)
         .collect();
     if unified() {
-        let on: Vec<&'static KitDefinition> = KITS.iter().filter(|kit| installed.contains(&kit.id)).collect();
+        let on: Vec<&'static KitDefinition> = KITS
+            .iter()
+            .filter(|kit| installed.contains(&kit.id))
+            .collect();
         if !on.is_empty() {
             return unified_specs(&on);
         }
@@ -348,7 +363,9 @@ pub fn label(name: &str) -> Option<String> {
     let Some((kit, action)) = parse(name) else {
         // A unified tool (`kit_<action>`): one for every kit.
         let suffix = name.strip_prefix("kit_")?;
-        let action = Action::ALL.into_iter().find(|action| action.suffix() == suffix)?;
+        let action = Action::ALL
+            .into_iter()
+            .find(|action| action.suffix() == suffix)?;
         return Some(
             match action {
                 Action::Inspect => "Inspect a file",
@@ -498,11 +515,19 @@ async fn part_preview(
     params.insert("slide".into(), json!(part - 1));
     params.insert("scale".into(), json!(1));
     let executed = kits
-        .execute(Caller::Agent, view.kit_id, &view.document_id, "file.render", params)
+        .execute(
+            Caller::Agent,
+            view.kit_id,
+            &view.document_id,
+            "file.render",
+            params,
+        )
         .await
         .ok()?;
     let data = executed.result?.get("png")?.as_str()?.to_owned();
-    let png = base64::engine::general_purpose::STANDARD.decode(data).ok()?;
+    let png = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .ok()?;
     Some(vec![Preview {
         caption: format!(
             "Preview of part {part} of `{}` from {}.",
@@ -521,10 +546,17 @@ async fn part_preview(
 /// without them, and for a slide or page target (listed as objects).
 async fn part_content(kits: &KitManager, view: &DocumentView, input: &Value) -> Option<Value> {
     let target = input.get("target");
-    if target.and_then(|t| t.get("slide").or_else(|| t.get("page"))).is_some() {
+    if target
+        .and_then(|t| t.get("slide").or_else(|| t.get("page")))
+        .is_some()
+    {
         return None;
     }
-    let text = |t: Option<&Value>, key: &str| t.and_then(|t| t.get(key)).and_then(Value::as_str).map(str::to_owned);
+    let text = |t: Option<&Value>, key: &str| {
+        t.and_then(|t| t.get(key))
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+    };
     let mut params = Map::new();
     let asked = text(target, "range");
     if let Some(range) = &asked {
@@ -533,20 +565,46 @@ async fn part_content(kits: &KitManager, view: &DocumentView, input: &Value) -> 
     if let Some(sheet) = text(target, "sheet") {
         params.insert("sheet".into(), json!(sheet));
     }
-    if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "sheet.read", params).await {
-        if let Some(result) = executed.result {
-            return Some(sheet_content(&result, asked.is_some()));
-        }
+    if let Ok(executed) = kits
+        .execute(
+            Caller::Agent,
+            view.kit_id,
+            &view.document_id,
+            "sheet.read",
+            params,
+        )
+        .await
+        && let Some(result) = executed.result
+    {
+        return Some(sheet_content(&result, asked.is_some()));
     }
     let mut params = Map::new();
     params.insert("text".into(), json!(true));
-    if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "document.inspect", params).await {
-        if let Some(blocks) = executed.result.as_ref().and_then(|r| r.get("blocks")).and_then(Value::as_array) {
-            let span = target.and_then(|t| t.get("paragraphs")).and_then(Value::as_array).map(|a| {
-                (a.first().and_then(Value::as_u64).unwrap_or(0) as usize, a.get(1).and_then(Value::as_u64).map(|n| n as usize))
+    if let Ok(executed) = kits
+        .execute(
+            Caller::Agent,
+            view.kit_id,
+            &view.document_id,
+            "document.inspect",
+            params,
+        )
+        .await
+        && let Some(blocks) = executed
+            .result
+            .as_ref()
+            .and_then(|r| r.get("blocks"))
+            .and_then(Value::as_array)
+    {
+        let span = target
+            .and_then(|t| t.get("paragraphs"))
+            .and_then(Value::as_array)
+            .map(|a| {
+                (
+                    a.first().and_then(Value::as_u64).unwrap_or(0) as usize,
+                    a.get(1).and_then(Value::as_u64).map(|n| n as usize),
+                )
             });
-            return Some(document_content(blocks, span));
-        }
+        return Some(document_content(blocks, span));
     }
     None
 }
@@ -566,9 +624,14 @@ fn cut(text: &str, max: usize) -> String {
 fn sheet_content(read: &Value, asked: bool) -> Value {
     let range = read["range"].as_str().unwrap_or("A1");
     let start = range.split(':').next().unwrap_or("A1");
-    let letters: String = start.chars().take_while(char::is_ascii_alphabetic).collect();
+    let letters: String = start
+        .chars()
+        .take_while(char::is_ascii_alphabetic)
+        .collect();
     let first_row: usize = start[letters.len()..].parse().unwrap_or(1);
-    let first_col = letters.chars().fold(0usize, |n, c| n * 26 + (c.to_ascii_uppercase() as usize - 'A' as usize + 1));
+    let first_col = letters.chars().fold(0usize, |n, c| {
+        n * 26 + (c.to_ascii_uppercase() as usize - 'A' as usize + 1)
+    });
     let column = |mut n: usize| {
         let mut out = String::new();
         while n > 0 {
@@ -578,8 +641,17 @@ fn sheet_content(read: &Value, asked: bool) -> Value {
         out
     };
     let values = read["values"].as_array().cloned().unwrap_or_default();
-    let width = values.iter().filter_map(Value::as_array).map(Vec::len).max().unwrap_or(0);
-    let shown = if asked { values.len() } else { values.len().min(CONTENT_ROWS) };
+    let width = values
+        .iter()
+        .filter_map(Value::as_array)
+        .map(Vec::len)
+        .max()
+        .unwrap_or(0);
+    let shown = if asked {
+        values.len()
+    } else {
+        values.len().min(CONTENT_ROWS)
+    };
     let rows: Vec<Value> = values
         .iter()
         .take(shown)
@@ -604,7 +676,11 @@ fn sheet_content(read: &Value, asked: bool) -> Value {
     if shown < values.len() {
         content["more"] = json!(format!(
             "rows {}–{} of {} shown; pass target {{\"range\": \"{}{}:...\"}} for the rest",
-            first_row, first_row + shown - 1, first_row + values.len() - 1, letters, first_row + shown
+            first_row,
+            first_row + shown - 1,
+            first_row + values.len() - 1,
+            letters,
+            first_row + shown
         ));
     }
     content
@@ -613,7 +689,10 @@ fn sheet_content(read: &Value, asked: bool) -> Value {
 /// `document.inspect`'s blocks as paragraphs: index, style, kind and text.
 fn document_content(blocks: &[Value], span: Option<(usize, Option<usize>)>) -> Value {
     let (from, to) = span.unwrap_or((0, None));
-    let to = to.map_or_else(|| blocks.len().min(from + CONTENT_BLOCKS), |t| (t + 1).min(blocks.len()));
+    let to = to.map_or_else(
+        || blocks.len().min(from + CONTENT_BLOCKS),
+        |t| (t + 1).min(blocks.len()),
+    );
     let paragraphs: Vec<Value> = blocks
         .iter()
         .skip(from)
@@ -622,7 +701,12 @@ fn document_content(blocks: &[Value], span: Option<(usize, Option<usize>)>) -> V
         .collect();
     let mut content = json!({ "paragraphs": paragraphs, "total": blocks.len() });
     if to < blocks.len() {
-        content["more"] = json!(format!("paragraphs {from}–{} of {} shown; pass target {{\"paragraphs\": [{to}, {}]}} for the rest", to - 1, blocks.len(), blocks.len() - 1));
+        content["more"] = json!(format!(
+            "paragraphs {from}–{} of {} shown; pass target {{\"paragraphs\": [{to}, {}]}} for the rest",
+            to - 1,
+            blocks.len(),
+            blocks.len() - 1
+        ));
     }
     content
 }
@@ -641,9 +725,30 @@ async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> S
             words.push(ch);
         }
     }
-    match kits.commands(Caller::Agent, view.kit_id, Some(&view.document_id), Some(&words)).await {
+    match kits
+        .commands(
+            Caller::Agent,
+            view.kit_id,
+            Some(&view.document_id),
+            Some(&words),
+        )
+        .await
+    {
         Ok(found) if !found.is_empty() => {
-            let near: Vec<String> = found.iter().take(5).map(|c| format!("{} {}", c.id, c.description.as_deref().unwrap_or_default().trim_start_matches("Params: "))).collect();
+            let near: Vec<String> = found
+                .iter()
+                .take(5)
+                .map(|c| {
+                    format!(
+                        "{} {}",
+                        c.id,
+                        c.description
+                            .as_deref()
+                            .unwrap_or_default()
+                            .trim_start_matches("Params: ")
+                    )
+                })
+                .collect();
             format!(" — nearest commands: {}", near.join("; "))
         }
         _ => String::new(),
@@ -657,7 +762,13 @@ async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Option
         let mut params = Map::new();
         params.insert("index".into(), json!(part - 1));
         if let Ok(executed) = kits
-            .execute(Caller::Agent, view.kit_id, &view.document_id, command, params)
+            .execute(
+                Caller::Agent,
+                view.kit_id,
+                &view.document_id,
+                command,
+                params,
+            )
             .await
         {
             return Some(executed.document);
@@ -672,12 +783,17 @@ async fn part_objects(kits: &KitManager, view: &DocumentView, part: u64) -> Opti
         let mut params = Map::new();
         params.insert("index".into(), json!(part - 1));
         if let Ok(executed) = kits
-            .execute(Caller::Agent, view.kit_id, &view.document_id, command, params)
+            .execute(
+                Caller::Agent,
+                view.kit_id,
+                &view.document_id,
+                command,
+                params,
+            )
             .await
+            && let Some(result) = executed.result
         {
-            if let Some(result) = executed.result {
-                return Some(result);
-            }
+            return Some(result);
         }
     }
     None
@@ -1147,10 +1263,10 @@ async fn inspect(
         });
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
-    if let Some(part) = target_part(input) {
-        if let Some(moved) = go_to_part(kits, &view, part).await {
-            view = moved;
-        }
+    if let Some(part) = target_part(input)
+        && let Some(moved) = go_to_part(kits, &view, part).await
+    {
+        view = moved;
     }
     let previews = if !wants_preview {
         Vec::new()
@@ -1166,28 +1282,25 @@ async fn inspect(
     if let Some(content) = part_content(kits, &view, input).await {
         answer["content"] = content;
     }
-    if let Some(part) = target_part(input) {
-        if let Some(objects) = part_objects(kits, &view, part).await {
-            // The part, not the whole document's outline again.
-            answer = document_summary_json(&view);
-            answer["part"] = objects;
-            lean_objects(&mut answer["part"]);
-            answer["edit"] = json!(format!(
-                "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting. \
+    if let Some(part) = target_part(input)
+        && let Some(objects) = part_objects(kits, &view, part).await
+    {
+        // The part, not the whole document's outline again.
+        answer = document_summary_json(&view);
+        answer["part"] = objects;
+        lean_objects(&mut answer["part"]);
+        answer["edit"] = json!(format!(
+            "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting. \
                  The kit is now on this part; to come back to it later, pass the same `target` to the run tool. \
                  Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}. The query and batch tools take these ids too.",
-                tool_name(kit, Action::Run),
-                tool_name(kit, Action::Commands),
-                part - 1
-            ));
-        }
+            tool_name(kit, Action::Run),
+            tool_name(kit, Action::Commands),
+            part - 1
+        ));
     }
     Ok(KitToolOutput {
         previews,
-        ..KitToolOutput::new(
-            format!("Opened `{path}`: {}", view.summary),
-            answer,
-        )
+        ..KitToolOutput::new(format!("Opened `{path}`: {}", view.summary), answer)
     })
 }
 
@@ -1322,19 +1435,28 @@ fn compact_command(command: Value) -> Value {
     let notation = schema["description"]
         .as_str()
         .map(str::to_owned)
-        .or_else(|| command["description"].as_str().map(|d| d.trim_start_matches("Params: ").to_owned()))
+        .or_else(|| {
+            command["description"]
+                .as_str()
+                .map(|d| d.trim_start_matches("Params: ").to_owned())
+        })
         .unwrap_or_default();
     let mut notes = Vec::new();
     if let Some(properties) = schema["properties"].as_object() {
         for (name, property) in properties {
-            if let Some(note) = property["description"].as_str() {
-                if note.len() <= 60 && !notation.contains(note) {
-                    notes.push(format!("{name}: {note}"));
-                }
+            if let Some(note) = property["description"].as_str()
+                && note.len() <= 60
+                && !notation.contains(note)
+            {
+                notes.push(format!("{name}: {note}"));
             }
         }
     }
-    let params = if notes.is_empty() { notation } else { format!("{notation} [{}]", notes.join("; ")) };
+    let params = if notes.is_empty() {
+        notation
+    } else {
+        format!("{notation} [{}]", notes.join("; "))
+    };
     let mut out = json!({ "id": command["id"], "title": command["title"], "params": params });
     if command["enabled"] == Value::Bool(false) {
         out["enabled"] = Value::Bool(false);
@@ -1369,7 +1491,11 @@ fn lean_shape(shape: &mut Value) {
 /// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
 fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
     let total = found.len();
-    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
+    let listed: Vec<Value> = found
+        .into_iter()
+        .take(MAX_COMMANDS)
+        .map(compact_command)
+        .collect();
     let summary = if total > listed.len() {
         format!(
             "{total} commands match `{query}`; showing {}. Use more specific keywords.",
@@ -1424,7 +1550,9 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
     let mut view = kits.open(Caller::Agent, &path).await?;
     if let Some(part) = target_part(input) {
         view = go_to_part(kits, &view, part).await.ok_or_else(|| {
-            KitToolError::invalid(format!("cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)"))
+            KitToolError::invalid(format!(
+                "cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)"
+            ))
         })?;
     }
     let mut done = Vec::new();
@@ -1457,7 +1585,9 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             Err(error) => {
                 let mut failure = KitToolError::from(error);
                 if matches!(failure.code, ErrorCode::UnknownCommand) {
-                    failure.message.push_str(&nearest_commands(kits, &view, &command).await);
+                    failure
+                        .message
+                        .push_str(&nearest_commands(kits, &view, &command).await);
                 }
                 if !matches!(
                     failure.code,
@@ -1468,7 +1598,9 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
                 return Err(failure
                     .context(&format!("step {index} (`{command}`) failed: "))
                     .at(Some(index))
-                    .with_output(json!({ "completed": done, "document": document_summary_json(&view) })));
+                    .with_output(
+                        json!({ "completed": done, "document": document_summary_json(&view) }),
+                    ));
             }
         }
     }

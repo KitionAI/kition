@@ -137,7 +137,7 @@ pub async fn read(kits: &KitManager, uri: &str) -> Result<Vec<Value>, KitToolErr
     let query = tools::tool_name(kit, Action::Query);
     let (arguments, pick): (Value, fn(Value) -> Option<Value>) = match &resource {
         KitResource::Describe { .. } => (
-            json!({ "path": path, "limit": 1, "describe": true, "draft": false }),
+            json!({ "path": path, "limit": 1, "describe": "*", "draft": false }),
             |output| {
                 Some(
                     json!({ "describe": output.get("describe")?, "schema": output.get("schema")? }),

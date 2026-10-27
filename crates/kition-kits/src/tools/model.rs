@@ -208,7 +208,7 @@ pub fn query_spec(kit: &'static KitDefinition, described: Option<&Value>) -> Kit
                 "follow": { "type": "string", "description": "A field path from the first object (the root by default): field names, and list or tree positions, joined with dots. Reads the objects it ends at." },
                 "fields": string_list("Only these fields of each object. Defaults to all.", &fields),
                 "limit": { "type": "integer", "minimum": 1, "maximum": MAX_LIMIT, "description": format!("At most this many objects. Defaults to {DEFAULT_LIMIT}.") },
-                "describe": { "type": ["boolean", "string"], "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full." },
+                "describe": { "type": ["boolean", "string"], "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full; \"*\": every type in full and their JSON Schema." },
                 "draft": draft_property()
             },
             "required": ["path"]
@@ -571,19 +571,46 @@ pub(super) async fn query(
         output["truncated"] = Value::Bool(true);
     }
     // `describe: true`: the types and their fields, one line each; `describe: "Paragraph,Run"`:
-    // those types in full. (The whole description is too large to read: 117K characters for Word.)
+    // those types in full; `describe: "*"`: the whole description and its JSON Schema, which the
+    // `kit://<document>/describe` resource serves. (The whole description is too large for an
+    // agent to read: 117K characters for Word.)
     match input.get("describe") {
         Some(Value::Bool(true)) => {
-            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
+            let described = target
+                .describe(kits, kit)
+                .await
+                .map_err(|error| unsupported(kit, error))?;
             output["types"] = json!(type_listing(&described));
-            output["describe_more"] = json!("pass describe: \"<Type>[,<Type>]\" for those types in full");
+            output["describe_more"] =
+                json!("pass describe: \"<Type>[,<Type>]\" for those types in full");
+        }
+        Some(Value::String(wanted)) if wanted.trim() == "*" => {
+            let described = target
+                .describe(kits, kit)
+                .await
+                .map_err(|error| unsupported(kit, error))?;
+            output["schema"] = describe_schema(&described);
+            output["describe"] = described;
         }
         Some(Value::String(wanted)) => {
-            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
-            let names: Vec<&str> = wanted.split(',').map(str::trim).filter(|n| !n.is_empty()).collect();
+            let described = target
+                .describe(kits, kit)
+                .await
+                .map_err(|error| unsupported(kit, error))?;
+            let names: Vec<&str> = wanted
+                .split(',')
+                .map(str::trim)
+                .filter(|n| !n.is_empty())
+                .collect();
             let picked: Map<String, Value> = described["types"]
                 .as_object()
-                .map(|types| types.iter().filter(|(name, _)| names.contains(&name.as_str())).map(|(n, t)| (n.clone(), t.clone())).collect())
+                .map(|types| {
+                    types
+                        .iter()
+                        .filter(|(name, _)| names.contains(&name.as_str()))
+                        .map(|(n, t)| (n.clone(), t.clone()))
+                        .collect()
+                })
                 .unwrap_or_default();
             output["describe"] = json!({ "root": described["root"], "types": picked });
         }
@@ -624,7 +651,12 @@ async fn with_refs(kits: &KitManager, view: &DocumentView, mut request: Value) -
         Some(Value::String(s)) => !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()),
         _ => false,
     };
-    let any = ["ops", "load"].iter().any(|key| request.get(*key).and_then(Value::as_array).is_some_and(|items| items.iter().any(numeric)));
+    let any = ["ops", "load"].iter().any(|key| {
+        request
+            .get(*key)
+            .and_then(Value::as_array)
+            .is_some_and(|items| items.iter().any(numeric))
+    });
     if !any {
         return request;
     }
@@ -632,13 +664,18 @@ async fn with_refs(kits: &KitManager, view: &DocumentView, mut request: Value) -
     let mut refs = std::collections::HashMap::new();
     for command in ["slide.inspect", "page.inspect"] {
         if let Ok(executed) = kits
-            .execute(Caller::Agent, view.kit_id, &view.document_id, command, Map::new())
+            .execute(
+                Caller::Agent,
+                view.kit_id,
+                &view.document_id,
+                command,
+                Map::new(),
+            )
             .await
+            && let Some(result) = executed.result
         {
-            if let Some(result) = executed.result {
-                collect_refs(&result["shapes"], &mut refs);
-                break;
-            }
+            collect_refs(&result["shapes"], &mut refs);
+            break;
         }
     }
     for key in ["ops", "load"] {
@@ -663,7 +700,15 @@ pub(super) async fn warm(kits: &KitManager, view: &DocumentView) {
     let mut params = Map::new();
     params.insert("ops".into(), json!([]));
     params.insert("load".into(), json!([]));
-    let _ = kits.model(Caller::Agent, view.kit_id, &view.document_id, "model.batch", params).await;
+    let _ = kits
+        .model(
+            Caller::Agent,
+            view.kit_id,
+            &view.document_id,
+            "model.batch",
+            params,
+        )
+        .await;
 }
 
 fn collect_refs(shapes: &Value, refs: &mut std::collections::HashMap<String, String>) {
@@ -676,11 +721,17 @@ fn collect_refs(shapes: &Value, refs: &mut std::collections::HashMap<String, Str
 }
 
 fn numeric_target(request: &Value) -> Option<String> {
-    request.get("ops")?.as_array()?.iter().find_map(|op| match op.get("target")? {
-        Value::Number(n) => Some(n.to_string()),
-        Value::String(s) if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) => Some(s.clone()),
-        _ => None,
-    })
+    request
+        .get("ops")?
+        .as_array()?
+        .iter()
+        .find_map(|op| match op.get("target")? {
+            Value::Number(n) => Some(n.to_string()),
+            Value::String(s) if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) => {
+                Some(s.clone())
+            }
+            _ => None,
+        })
 }
 
 pub(super) async fn batch(

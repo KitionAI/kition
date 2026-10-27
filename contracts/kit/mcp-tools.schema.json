@@ -399,7 +399,7 @@
               "boolean",
               "string"
             ],
-            "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full."
+            "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full; \"*\": every type in full and their JSON Schema."
           },
           "draft": {
             "type": "boolean",

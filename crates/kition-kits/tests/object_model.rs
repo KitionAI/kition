@@ -85,7 +85,7 @@ async fn queries_and_batches_the_headless_kit() {
     let read = call(
         kits,
         "vector_query",
-        json!({ "path": path, "describe": true }),
+        json!({ "path": path, "describe": "*" }),
     )
     .await
     .unwrap_or_else(|err| panic!("{err}"));

@@ -194,10 +194,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
             result["structuredContent"]["objects"][0]["id"].is_string(),
             "{result}"
         );
-        assert!(
-            result["structuredContent"]["describe"]["types"].is_object(),
-            "{result}"
-        );
+        assert!(result["structuredContent"]["types"].is_string(), "{result}");
     }
     // Diagnostics of the real kit, or a clear `unsupported` when its build predates `document.check`.
     let (_, checked) = post(&app, json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": { "name": "vector_check", "arguments": { "path": "art/Drawing.kvector" } } })).await;
