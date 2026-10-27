@@ -1,7 +1,1 @@
-[
-  "src/features/emailProviders/EmailProvidersPane.tsx|aria-label|Email providers",
-  "src/features/emailProviders/EmailProvidersPane.tsx|aria-label|Search email providers",
-  "src/features/emailProviders/EmailProvidersPane.tsx|text|Account credentials",
-  "src/features/emailProviders/EmailProvidersPane.tsx|text|Email account",
-  "src/features/emailProviders/EmailProvidersPane.tsx|text|Email address or account"
-]
+[]

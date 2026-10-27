@@ -28,7 +28,7 @@ use crate::{Step, TableClient, table_info};
 const ORIGIN: &str = "system:scenario";
 /// At most this many bytes per uploaded file.
 const MAX_ATTACHMENT_BYTES: usize = 50 << 20;
-const VIEW_TYPES: [&str; 5] = ["grid", "form", "kanban", "calendar", "gallery"];
+const VIEW_TYPES: [&str; 4] = ["grid", "kanban", "calendar", "gallery"];
 
 #[derive(Clone)]
 pub struct ScenarioState {
@@ -103,7 +103,7 @@ Each field object has:
 
 Each view object has:
   name   (string, required)
-  kind   (string, required \u{2014} one of: grid, calendar, kanban, gallery, form)
+  kind   (string, required \u{2014} one of: grid, calendar, kanban, gallery)
   config (object, optional \u{2014} view-kind-specific config, e.g.
           {\"startField\": \"Date\"} for a calendar view)
 

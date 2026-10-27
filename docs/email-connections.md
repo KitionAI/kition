@@ -1,11 +1,8 @@
 # Email Connections
 
-Kition workflows send email through reusable SMTP connections. Create and test
-the connection first, then select it in the workflow's **Send email** action.
-
-Open **Settings > Email Providers**, choose a provider, and enter the account
-address plus the provider credential. They are stored once per provider and
-reused by the provider's SMTP connection.
+Kition workflows send email through reusable SMTP connections. Create one from
+the workflow's **Send email** action (**New connection**): choose a provider,
+enter the account address and the provider credential, and **Test & Save**.
 
 ## Built-In Providers
 
@@ -73,5 +70,4 @@ Using port `465` with `STARTTLS` is invalid for this setup and commonly returns
 4. Enable the workflow when its configuration status is valid.
 
 The **Fix** action opens the Send email properties so an existing connection
-can be selected. Use **New connection** only when another SMTP connection is
-required.
+can be selected, or a new one created with **New connection**.

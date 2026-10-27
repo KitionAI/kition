@@ -5,7 +5,6 @@
  */
 import type { i18n as I18n, TFunction } from 'i18next'
 
-import { emailProviderCatalog } from '@/features/emailProviders/public'
 import {
   advancedSettingsSections,
   primarySettingsSections,
@@ -39,11 +38,6 @@ export function buildSettingsSearchIndex(t: TFunction, i18n: Pick<I18n, 'languag
     if (section.key === 'models') {
       for (const provider of desktopProviderCatalog) {
         parts.push(provider.label, provider.sublabel, provider.descriptor, provider.badge, provider.authLabel)
-      }
-    }
-    if (section.key === 'connections') {
-      for (const provider of emailProviderCatalog) {
-        parts.push(provider.label, provider.credentialLabel, provider.credentialHint)
       }
     }
     map.set(section.key, parts.join(' ').toLowerCase())

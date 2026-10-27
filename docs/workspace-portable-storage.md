@@ -32,8 +32,6 @@ references, but never secret values.
     workflows/<workflow-id>/runs/<run-id>.jsonl
     agents/<session-id>/session.json
     agents/<session-id>/session-events.jsonl
-    sync/email/
-    sync/forms/
     journal/
   Documents/
   Tables/

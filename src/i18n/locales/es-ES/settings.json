@@ -16,10 +16,6 @@
       "label": "Modelos de IA",
       "title": "Modelos de IA"
     },
-    "connections": {
-      "label": "Conexiones",
-      "title": "Conexiones"
-    },
     "mcp": {
       "label": "MCP",
       "title": "Servidores MCP"

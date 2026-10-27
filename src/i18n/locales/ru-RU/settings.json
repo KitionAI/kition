@@ -16,10 +16,6 @@
       "label": "AI-модели",
       "title": "AI-модели"
     },
-    "connections": {
-      "label": "Подключения",
-      "title": "Подключения"
-    },
     "mcp": {
       "label": "MCP",
       "title": "Серверы MCP"

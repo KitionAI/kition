@@ -98,7 +98,6 @@
   "types src/features/agent/lib/paneEmptyState.ts AgentEmptySuggestion",
   "types src/features/analytics/lib/productAnalytics.ts ProductAnalyticsBuildIdentity",
   "types src/features/analytics/lib/productAnalytics.ts ProductAnalyticsResult",
-  "types src/features/emailProviders/emailProviderCatalog.ts EmailTransportPreset",
   "types src/features/media-generation/lib/imagePromptTemplates.ts ImagePromptOperation",
   "types src/features/media-generation/lib/imagePromptTemplates.ts ImagePromptTemplateCategory",
   "types src/features/media-generation/lib/imagePromptTemplates.ts ImagePromptTemplateSource",

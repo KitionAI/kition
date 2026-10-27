@@ -6,7 +6,6 @@ describe('resolveSettingsSection', () => {
   it('keeps legacy provider links pointed at the models pane', () => {
     expect(resolveSettingsSection('providers')).toBe('models')
     expect(resolveSettingsSection('ai-providers')).toBe('models')
-    expect(resolveSettingsSection('email-providers')).toBe('connections')
   })
 
   it('keeps old demo and advanced links pointed at their new parent panes', () => {

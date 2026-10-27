@@ -2,7 +2,7 @@
 
 # Welcome to Kition
 
-Kition brings Markdown documents, structured tables, visual workflows, forms, and AI Chat together in one focused workspace. This welcome document and the ready-to-open examples are grouped inside **Getting Started**.
+Kition brings Markdown documents, structured tables, visual workflows, and AI Chat together in one focused workspace. This welcome document and the ready-to-open examples are grouped inside **Getting Started**.
 
 > [!tip] Everything here is editable
 > This page is a plain Markdown file. Keep the sections that help, rewrite them for your team, or delete the page after you are comfortable with the workspace.
@@ -12,7 +12,6 @@ Kition brings Markdown documents, structured tables, visual workflows, forms, an
 - **Write**: edit this document, add a checklist item, or create an `[[internal link]]`.
 - **Organize**: create a folder and move related documents or tables into it.
 - **Use a template**: open **Template Center** and choose a starting structure.
-- **Collect data**: add a form view to a table and publish it when remote submissions are needed.
 - **Ask**: open AI Chat and ask Kition to summarize the active document or table.
 
 ## How Kition fits together
@@ -21,9 +20,7 @@ Kition brings Markdown documents, structured tables, visual workflows, forms, an
 flowchart LR
     You([You]) --> Docs[Markdown documents]
     You --> Tables[Structured tables]
-    You --> Forms[Published forms]
     You --> Chat[AI Chat]
-    Forms --> Tables
     Chat --> Docs
     Chat --> Tables
     Tables --> Workflows[Visual workflows]
@@ -31,7 +28,7 @@ flowchart LR
     Tables --> Workspace
 ```
 
-Documents remain portable files. Tables keep typed fields, views, records, forms, and workflow configuration together. Published forms can collect submissions remotely and synchronize them back into the matching table.
+Documents remain portable files. Tables keep typed fields, views, records, and workflow configuration together.
 
 ## What makes Kition useful
 
@@ -39,7 +36,7 @@ Documents remain portable files. Tables keep typed fields, views, records, forms
 | --- | --- | --- |
 | Portable documents | Notes remain readable `.md` files. | Edit this page and inspect it outside Kition. |
 | Structured data | Related records and field types stay together. | Create a table from Template Center. |
-| Multiple views | One table can use grid, kanban, calendar, gallery, or form views. | Add a second view to a table. |
+| Multiple views | One table can use grid, kanban, calendar, or gallery views. | Add a second view to a table. |
 | Published forms | A configured form can collect remote submissions. | Publish a form and submit one test response. |
 | Visual workflows | Record events can trigger repeatable actions. | Inspect the workflow area of a template. |
 | AI fields and chat | AI can work with selected fields or active workspace context. | Ask for a summary before requesting changes. |
@@ -54,7 +51,7 @@ The built-in templates cover different kinds of work:
 | --- | --- | --- |
 | [[Getting Started/Projects & Planning/Task Tracker.ktable]] | Delivery planning and ownership | Status, priority, assignee, and due-date views |
 | [[Getting Started/Sales & Customer/Simple Client CRM.ktable]] | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
-| [[Getting Started/Sales & Customer/Leads Landing Page.ktable]] | Capturing and qualifying inbound leads | Form, pipeline, source, and estimated-value fields |
+| [[Getting Started/Sales & Customer/Leads Landing Page.ktable]] | Capturing and qualifying inbound leads | Pipeline, source, and estimated-value fields |
 | [[Getting Started/Sales & Customer/SDR Cold Call Manager.ktable]] | Prioritizing outbound calls and follow-up | Call stages, attempts, calendar, and ownership |
 | [[Getting Started/Projects & Planning/Product Launch Website.ktable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
 | [[Getting Started/Projects & Planning/Project Gantt Planner.ktable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
@@ -62,7 +59,7 @@ The built-in templates cover different kinds of work:
 | [[Getting Started/AI & Creative/Receipt OCR Table.ktable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
 | [[Getting Started/AI & Creative/YouTube & TikTok Thumbnail Generator.ktable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
 | [[Getting Started/AI & Creative/Batch Product Designer.ktable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
-| [[Getting Started/Operations & Analytics/Restaurant Operations.ktable]] | Reservations, guest preferences, and private events | Calendar, kanban, and form views |
+| [[Getting Started/Operations & Analytics/Restaurant Operations.ktable]] | Reservations, guest preferences, and private events | Calendar and kanban views |
 
 > [!note] Template copies are independent
 > If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
@@ -122,20 +119,6 @@ $$
 V_5 = 100(1.08)^5 \approx 146.93
 $$
 
-## Configure and publish a form
-
-Form views let you choose which table fields are visible, required, or read-only for respondents.
-
-1. Open a `.ktable` file and select the target table.
-2. Add or open a **Form** view.
-3. Set the title, description, field order, visibility, and required fields.
-4. Preview the form and submit a local test response.
-5. Publish the form to Kition Cloud when a public or remote link is needed.
-6. Confirm that the response appears in the source table.
-
-> [!note] The table remains the source of truth
-> A published form is an input surface for one table. New submissions should synchronize into that table instead of creating a disconnected dataset.
-
 ## Work with workflows
 
 Use a workflow when a record change should trigger deterministic follow-up, such as normalizing text, assigning a status, copying a record, or sending data to an approved integration.
@@ -190,7 +173,7 @@ Open **Settings > Onboarding Guides** when you want a larger, guided example. Im
 - [ ] Edit this page and save it.
 - [ ] Open two templates from this folder and compare their views.
 - [ ] Rename the template copy you want to use for a real project.
-- [ ] Add or preview a form view.
+- [ ] Add a kanban or calendar view to a table.
 - [ ] Ask AI Chat to summarize one active file.
 - [ ] Remove unused template copies after testing.
 

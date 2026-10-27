@@ -20,7 +20,6 @@ const settingsSectionKeys: SettingsSectionKey[] = [
   'general',
   'account',
   'models',
-  'connections',
   'display',
   'brand',
   'network',
@@ -35,7 +34,6 @@ const settingsSectionKeys: SettingsSectionKey[] = [
 const settingsSectionAliases: Record<string, SettingsSectionKey> = {
   providers: 'models',
   'ai-providers': 'models',
-  'email-providers': 'connections',
   demos: 'general',
   advanced: 'developer',
 }

@@ -18,7 +18,7 @@ The workflow is off by default. You can inspect the trigger, action, subject, an
 
 Use the action preview for a side-effect-free render. Configure an email connection only when you are ready to send a real test or enable the workflow.
 
-Set up email delivery under **Settings > Email Providers**: save the provider account, then add its SMTP connection.
+Before sending for real, select the email action and create its SMTP connection with **New connection**.
 
 ## Adapt it
 

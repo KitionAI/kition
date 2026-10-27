@@ -16,10 +16,6 @@
       "label": "AI 模型",
       "title": "AI 模型"
     },
-    "connections": {
-      "label": "连接",
-      "title": "连接"
-    },
     "mcp": {
       "label": "MCP",
       "title": "MCP 服务器"

@@ -10,10 +10,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const updateStateMock = vi.hoisted(() => vi.fn<() => any>(() => ({ phase: 'idle' })))
 
-vi.mock('@/features/emailProviders/EmailProvidersPane', () => ({
-  EmailProvidersPane: () => <div data-testid="mock-email-providers-pane">Email providers pane</div>,
-}))
-
 vi.mock('@/features/account/components/KitionAccountPanel', () => ({
   KitionAccountPanel: () => <div data-testid="mock-account-panel">Account panel</div>,
 }))
@@ -65,7 +61,7 @@ afterEach(() => {
   container.remove()
 })
 
-async function renderSettings(initialSection: 'general' | 'connections' | 'account' | 'about' = 'connections') {
+async function renderSettings(initialSection: 'general' | 'account' | 'about' = 'general') {
   const { DesktopSettingsPage } = await import('./DesktopSettingsPage')
   await act(async () => {
     root = createRoot(container)
@@ -81,12 +77,6 @@ function clickButton(label: string) {
 }
 
 describe('DesktopSettingsPage information architecture', () => {
-  it('renders Email Providers as a dedicated settings destination', async () => {
-    await renderSettings()
-    expect(container.textContent).toContain('Email Providers')
-    expect(container.querySelector('[data-testid="mock-email-providers-pane"]')?.textContent).toContain('Email providers pane')
-  })
-
   it('keeps common destinations primary and technical panes inside Advanced', async () => {
     await renderSettings()
 

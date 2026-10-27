@@ -3,7 +3,7 @@ import { CircleAlertIcon as AlertCircle, ChevronLeftIcon as ChevronLeft, FileTex
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
-import { ConnectionModal, formFromConnection } from '@/features/connections/ConnectionsSettingsPanel'
+import { ConnectionModal, formFromConnection } from '@/features/connections/public'
 import { listChannels, listConnections, type ChannelSchema, type ConnectionView } from '@/api/connections'
 import {
   createWorkflow,

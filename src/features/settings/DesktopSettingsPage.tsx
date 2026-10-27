@@ -2,7 +2,6 @@ import './settings-modal.css'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useDialogFocus } from '@kition/tessera-ui'
-import { EmailProvidersPane } from '@/features/emailProviders/public'
 import { AiModelsPane } from '@/features/settings/AiModelsPane'
 import { NetworkSettings } from '@/features/settings/NetworkSettings'
 import { SettingsSidebarHeader } from '@/features/settings/primitives'
@@ -170,7 +169,6 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
             {activeSection === 'general' ? <GeneralSettings /> : null}
             {activeSection === 'account' ? <AccountSettings /> : null}
             {activeSection === 'models' ? <AiModelsPane /> : null}
-            {activeSection === 'connections' ? <EmailProvidersPane /> : null}
             {activeSection === 'display' ? <DisplaySettings /> : null}
             {activeSection === 'brand' ? <BrandSettings /> : null}
             {activeSection === 'network' ? <NetworkSettings /> : null}

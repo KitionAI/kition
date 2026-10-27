@@ -1,11 +1,10 @@
-import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MailIcon as Mail, MonitorIcon as Monitor, NetworkIcon as Network, PaletteIcon as Palette, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera-icons/react'
+import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MonitorIcon as Monitor, NetworkIcon as Network, PaletteIcon as Palette, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera-icons/react'
 
 /** The settings sections in sidebar order, with where each one's searchable copy lives. */
 export const settingsSections = [
   { key: 'general', icon: Settings, group: 'primary' },
   { key: 'account', icon: CircleUserRound, group: 'primary' },
   { key: 'models', icon: Bot, group: 'primary' },
-  { key: 'connections', icon: Mail, group: 'primary' },
   { key: 'display', icon: Monitor, group: 'primary' },
   { key: 'brand', icon: Palette, group: 'primary' },
   { key: 'network', icon: Network, group: 'advanced' },
@@ -24,13 +23,11 @@ export type SettingsSectionDefinition = typeof settingsSections[number]
 
 // Where each section's searchable field labels/descriptions live in the i18n
 // resources. Most panes read from the same-named path under the `settings`
-// namespace, but some pull in extra subtrees (general also renders `language`,
-// namespace, while connections has its own top-level namespace.
+// namespace, but some pull in extra subtrees (general also renders `language`).
 export const settingsSectionContentSources: Record<SettingsSectionKey, Array<{ ns: string; path?: string }>> = {
   general: [{ ns: 'settings', path: 'general' }, { ns: 'settings', path: 'language' }],
   account: [{ ns: 'settings', path: 'account' }],
   models: [{ ns: 'settings', path: 'models' }],
-  connections: [{ ns: 'connections' }],
   display: [{ ns: 'settings', path: 'display' }],
   brand: [{ ns: 'settings', path: 'brand' }],
   network: [{ ns: 'settings', path: 'network' }],

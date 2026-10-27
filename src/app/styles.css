@@ -4486,18 +4486,6 @@
     @apply min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground;
   }
 
-  .email-provider-row {
-    @apply flex min-w-0 items-center gap-2 rounded-md pr-2 transition-colors hover:bg-muted/60;
-  }
-
-  .email-provider-row.is-active {
-    @apply bg-accent;
-  }
-
-  .email-provider-select {
-    @apply flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left;
-  }
-
   .settings-provider-editor-head {
     @apply mb-4;
   }

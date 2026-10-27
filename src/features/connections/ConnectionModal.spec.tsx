@@ -9,7 +9,7 @@ import {
   testConnection,
   updateConnection,
 } from '@/api/connections'
-import { ConnectionModal, ConnectionsSettingsPanel } from './ConnectionsSettingsPanel'
+import { ConnectionModal } from './ConnectionModal'
 
 vi.mock('@/api/connections', () => ({
   listChannels: vi.fn(),
@@ -88,32 +88,7 @@ function selectValue(testId: string, value: string) {
   select.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
-describe('ConnectionsSettingsPanel', () => {
-  it('renders an empty connections state from real API shape', async () => {
-    await mount(createElement(ConnectionsSettingsPanel))
-    expect(container.querySelector('[data-testid="connections-settings-panel"]')?.textContent).toContain('No delivery accounts yet')
-  })
-
-  it('treats malformed list responses as empty instead of crashing settings', async () => {
-    const listChannelsMock = listChannels as unknown as ReturnType<typeof vi.fn>
-    const listConnectionsMock = listConnections as unknown as ReturnType<typeof vi.fn>
-    listChannelsMock.mockResolvedValueOnce({})
-    listConnectionsMock.mockResolvedValueOnce(null)
-
-    await mount(createElement(ConnectionsSettingsPanel))
-
-    expect(container.querySelector('[data-testid="connections-settings-panel"]')?.textContent).toContain('No delivery accounts yet')
-  })
-
-  it('renders a provider connection editor inline without a second dialog', async () => {
-    await mount(createElement(ConnectionsSettingsPanel, { embedded: true, providerId: '163' }))
-
-    expect(container.querySelector('[role="dialog"]')).toBeNull()
-    expect(container.textContent).toContain('163 Mail')
-    expect(input('connection-username')).not.toBeNull()
-    expect(container.querySelector('[data-testid="connection-provider"]')).toBeNull()
-  })
-
+describe('ConnectionModal', () => {
   it('submits secrets on create without expecting them in the response', async () => {
     vi.useFakeTimers()
     const onSaved = vi.fn()

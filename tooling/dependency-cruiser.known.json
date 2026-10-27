@@ -370,75 +370,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/connections/ConnectionsSettingsPanel.tsx",
-    "to": "src/features/emailProviders/emailProviderAccount.ts",
-    "unresolvedTo": "@/features/emailProviders/emailProviderAccount",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/connections/ConnectionsSettingsPanel.tsx",
-    "to": "src/features/emailProviders/emailProviderCatalog.ts",
-    "unresolvedTo": "@/features/emailProviders/emailProviderCatalog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/emailProviders/EmailProvidersPane.tsx",
-    "to": "src/features/connections/ConnectionsSettingsPanel.tsx",
-    "unresolvedTo": "@/features/connections/ConnectionsSettingsPanel",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/emailProviders/EmailProvidersPane.tsx",
-    "to": "src/features/settings/primitives.tsx",
-    "unresolvedTo": "@/features/settings/primitives",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/onboarding/components/FirstRunActivationPanel.tsx",
     "to": "src/features/account/hooks/useKitionAccount.ts",
     "unresolvedTo": "@/features/account/hooks/useKitionAccount",
@@ -699,23 +630,6 @@
     "from": "src/features/workflow/hooks/useWorkflowSendTest.ts",
     "to": "src/features/analytics/lib/productAnalytics.ts",
     "unresolvedTo": "@/features/analytics/lib/productAnalytics",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/pages/WorkflowHomePage.tsx",
-    "to": "src/features/connections/ConnectionsSettingsPanel.tsx",
-    "unresolvedTo": "@/features/connections/ConnectionsSettingsPanel",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

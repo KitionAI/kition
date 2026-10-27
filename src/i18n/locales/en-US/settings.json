@@ -16,10 +16,6 @@
       "label": "AI Providers",
       "title": "AI Providers"
     },
-    "connections": {
-      "label": "Email Providers",
-      "title": "Email Providers"
-    },
     "mcp": {
       "label": "MCP",
       "title": "MCP Servers"

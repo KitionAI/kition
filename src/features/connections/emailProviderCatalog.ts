@@ -14,7 +14,7 @@ export type EmailProviderId =
   | 'proton-bridge'
   | 'custom'
 
-export type EmailTransportPreset = {
+type EmailTransportPreset = {
   host: string
   port: number
   tlsMode: 'tls' | 'starttls' | 'plain'
