@@ -3,11 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/features/workspace/components/WorkspaceEditorContent', () => ({ WorkspaceEditorContent: () => null }))
 vi.mock('@/features/workspace/components/WorkspaceEditorPane', () => ({ WorkspaceEditorPane: () => null }))
 
-import type { AgentSession } from '@/api/agent'
-
 import { buildWorkspaceEditorContentProps, type WorkspaceScreenEditorInput } from './WorkspaceScreenEditor'
-
-const session = { id: 5, title: 'Chat' } as AgentSession
 
 function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
   const agentPanel = { open: false, setOpen: vi.fn(), setHistoryOpen: vi.fn() }
@@ -20,9 +16,6 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     activeWorkspaceTabId: '',
     galleryPanelProps: null,
     agentPanel,
-    activeAgentSession: session,
-    stopAgentMessage: vi.fn(),
-    design: { available: true, onBridgeChange: vi.fn(), onGenerateImage: undefined },
     templateDialogs,
     workflows: { openTableFileWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
     onCreateTable,
@@ -32,17 +25,6 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
 }
 
 describe('buildWorkspaceEditorContentProps', () => {
-  it('stops the agent’s design work in the active session, and offers no stop without one', () => {
-    const { input } = buildInput()
-    const props = buildWorkspaceEditorContentProps(input)
-    expect(props.onCancelDesignAgent).toBeDefined()
-    props.onCancelDesignAgent!()
-    expect(input.stopAgentMessage).toHaveBeenCalledWith(5)
-
-    const idle = buildWorkspaceEditorContentProps(buildInput({ activeAgentSession: null }).input)
-    expect(idle.onCancelDesignAgent).toBeUndefined()
-  })
-
   it('opens the Agent panel and focuses the composer', () => {
     const { input, agentPanel } = buildInput()
     const props = buildWorkspaceEditorContentProps(input)

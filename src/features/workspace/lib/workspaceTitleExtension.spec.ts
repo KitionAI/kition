@@ -9,7 +9,7 @@ describe('getWorkspaceItemTitle', () => {
     ['Notes.markdown', 'Notes'],
     ['Leads.ktable', 'Leads'],
     ['Plan.kboard', 'Plan'],
-    ['Poster.kidesign', 'Poster'],
+    ['Poster.kdesign', 'Poster'],
     ['Report.docx', 'Report'],
     ['Budget.xlsx', 'Budget'],
     ['Deck.pptx', 'Deck'],

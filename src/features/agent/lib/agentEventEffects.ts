@@ -1,11 +1,9 @@
 /**
  * What the workspace must do when a live session event or stream frame
- * arrives: reload modified documents, refresh the tree, announce
- * connections, and preview or cancel canvas patches. Pure: the hook runs
- * the returned effects. Each function takes the session view as it was
+ * arrives: reload modified documents, refresh the tree, and announce
+ * connections. Pure: the hook runs the returned effects. Each function takes the session view as it was
  * before the input is applied, so replayed input yields no effects.
  */
-import type { AgentDesignPatch } from '@/api/generated/agent-design'
 import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
 import type { AgentStreamNotification } from '@/api/generated/agent-stream'
 import {
@@ -13,7 +11,6 @@ import {
   applySessionEvent,
   applyStatus,
   isGap,
-  type AgentAssistantStreamFrame,
   type AgentSessionView,
   readField as field,
   type AgentToolRun,
@@ -26,43 +23,6 @@ export type AgentEffect =
     type: 'connections-changed'
     detail: { source: 'configure_smtp_connection'; connectionId: string; workflowId: string; workflowAttached: boolean }
   }
-  | { type: 'design-patch'; patch: AgentDesignPatch; provisional: boolean }
-  | { type: 'design-patch-cancelled' }
-
-/** Canvas patch tools: tool name, patch `type`, and the effect it drives. */
-const PATCH_TOOLS = [
-  { tool: 'design_propose_patch', kind: 'design.patch', effect: 'design-patch' },
-] as const
-
-type PatchTool = (typeof PATCH_TOOLS)[number]
-
-function patchToolOf(name: string | undefined): PatchTool | undefined {
-  return PATCH_TOOLS.find((entry) => entry.tool === name)
-}
-
-function isPatch(value: unknown, kind: PatchTool['kind']) {
-  return field(value, 'type') === kind
-}
-
-function patchEffect(_tool: PatchTool, patch: unknown, provisional: boolean): AgentEffect {
-  return { type: 'design-patch', patch: patch as AgentDesignPatch, provisional }
-}
-
-function cancelled(tools: Iterable<PatchTool>): AgentEffect[] {
-  const names = new Set([...tools].map((tool) => tool.tool))
-  return PATCH_TOOLS
-    .filter((tool) => names.has(tool.tool))
-    .map((tool) => ({ type: `${tool.effect}-cancelled` }) as AgentEffect)
-}
-
-function parsedPatch(tool: PatchTool, args: string): unknown {
-  try {
-    const patch = JSON.parse(args) as unknown
-    return isPatch(patch, tool.kind) ? patch : undefined
-  } catch {
-    return undefined
-  }
-}
 
 /** Workspace documents a completed run changed (the former `getAgentModifiedDocumentPaths`). */
 function modifiedPaths(run: AgentToolRun): string[] {
@@ -107,38 +67,11 @@ function completedRunEffects(run: AgentToolRun): AgentEffect[] {
       },
     })
   }
-  for (const tool of PATCH_TOOLS) {
-    const patch = field(run.meta, 'patch')
-    if (field(run.meta, 'kind') === tool.kind && isPatch(patch, tool.kind)) effects.push(patchEffect(tool, patch, false))
-  }
   return effects
 }
 
 function runEffects(run: AgentToolRun | undefined): AgentEffect[] {
-  if (!run) return []
-  if (run.status === 'failed') {
-    const tool = patchToolOf(run.name)
-    return tool ? cancelled([tool]) : []
-  }
-  return run.status === 'completed' ? completedRunEffects(run) : []
-}
-
-/** Patch tools of the open turn that were called and have no result yet. */
-function runningPatches(view: AgentSessionView): PatchTool[] {
-  return (view.turns.at(-1)?.toolRuns ?? [])
-    .filter((run) => run.status === 'running')
-    .map((run) => patchToolOf(run.name))
-    .filter((tool): tool is PatchTool => Boolean(tool))
-}
-
-/** Patches the live attempt previewed from its streamed arguments. */
-function streamedPatches(view: AgentSessionView): PatchTool[] {
-  return Object.values(view.live?.toolArgs ?? {})
-    .map((entry) => {
-      const tool = patchToolOf(entry.name)
-      return tool && parsedPatch(tool, entry.args) !== undefined ? tool : undefined
-    })
-    .filter((tool): tool is PatchTool => Boolean(tool))
+  return run?.status === 'completed' ? completedRunEffects(run) : []
 }
 
 /** Effects of one session event received live; `view` is the view before it. */
@@ -147,8 +80,6 @@ export function effectsOfEvent(event: AgentSessionEventsSessionEvent, view: Agen
   switch (event.type) {
     case 'deliverables/presented':
       return event.files.length ? [{ type: 'deliverables-saved', paths: event.files.map((file) => file.path) }] : []
-    case 'turn/end':
-      return event.reason === 'completed' ? [] : cancelled([...runningPatches(view), ...streamedPatches(view)])
     case 'tool/result': {
       const runs = applySessionEvent(view, event).turns.at(-1)?.toolRuns ?? []
       return runEffects([...runs].reverse().find((run) => run.callId === event.callId))
@@ -156,25 +87,6 @@ export function effectsOfEvent(event: AgentSessionEventsSessionEvent, view: Agen
     default:
       return []
   }
-}
-
-/** Effects of one assistant-stream frame; `view` is the view before it. */
-export function effectsOfStream(frame: AgentAssistantStreamFrame, view: AgentSessionView): AgentEffect[] {
-  const live = view.live
-  if (frame.type === 'start' || live?.attemptId !== frame.attemptId) return []
-  if (frame.type === 'end') {
-    const withoutMessage = frame.outcome.kind === 'abandoned' || frame.outcome.eventType === 'assistant/attempt'
-    return withoutMessage ? cancelled(streamedPatches(view)) : []
-  }
-  if (frame.chunk.type !== 'tool-call-delta') return []
-  const before = live.toolArgs[frame.chunk.id]
-  const after = applyAssistantStream(view, frame).live?.toolArgs[frame.chunk.id]
-  const tool = patchToolOf(after?.name)
-  if (!tool || !after) return []
-  // Only the delta that first completes the arguments previews the patch.
-  if (before && parsedPatch(tool, before.args) !== undefined) return []
-  const patch = parsedPatch(tool, after.args)
-  return patch === undefined ? [] : [patchEffect(tool, patch, true)]
 }
 
 /**
@@ -196,7 +108,7 @@ export function stepAgentSession(
       return { view: applyStatus(view, notification.params.status), effects: [], gap: false }
     case 'agent/assistant-stream': {
       const { frame } = notification.params
-      return { view: applyAssistantStream(view, frame), effects: effectsOfStream(frame, view), gap: false }
+      return { view: applyAssistantStream(view, frame), effects: [], gap: false }
     }
   }
 }

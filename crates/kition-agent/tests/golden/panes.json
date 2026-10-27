@@ -41,7 +41,6 @@
     "apply_patch": "cd7f9e00b4ec6237",
     "artifact_write": "4773f957cfc760ec",
     "configure_smtp_connection": "d78f3dc843d93687",
-    "design_propose_patch": "7e249f980703de6e",
     "document_list": "3bdf73906b1f7d42",
     "document_read": "d9bd96b2d2f3624c",
     "document_search": "dfcd1046be742169",
@@ -450,94 +449,6 @@
         "If the user ultimately wants writes, produce the research findings and a recommended write plan first, but do not execute the write.",
         "The user is on the Kition document pane to your left. If a document is open (the skill context will carry an 'Active document the user is reading' block with title / path / description), call document_read on the path before summarising or quoting it — do not invent the document's contents from the title alone. If no document is open yet, ask the user which document they want to work with (or offer document_list / document_search to discover candidates).",
         "This turn only allows research, analysis, context reading, and reading public sources. Do not edit documents, write table records, or save files."
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
-    "design-context": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "design_propose_patch",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_generation",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch",
-        "web_search"
-      ],
-      "prompt": [
-        "Active Kition design context (pane = design):",
-        "After design_propose_patch succeeds, briefly tell the user that the proposed changes are ready for review. Do not call document_write for design edits.",
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Coordinates are artboard pixels from the top-left corner. Layer ids are authoritative, roles are hints, and locked layers must not be edited. Selected ids identify the user's current focus.",
-        "Current execution mode: apply.",
-        "For questions about the design, answer from the attached design context. Do not claim to see layers or text that are not present in it.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "Keep layers inside the artboard, keep text short enough for its box, prefer the brand colors and fonts, and never edit locked layers. New pictures come from image generation, not from this tool.",
-        "The user is on the Kition Design pane to your left, editing one artboard. The skill context contains the artboard size and background, every layer with its bounds, text, style, and a role hint, the selected layer ids, and the workspace brand kit when one exists.",
-        "When the user asks to rewrite copy, restyle, recolor, move, align, add text or shapes, or remove layers, call design_propose_patch. The tool proposes a validated preview; it does not change the file. The user accepts or rejects it in the Design UI.",
-        "{\"type\":\"design.context\",\"schema_version\":1,\"design\":{\"id\":\"d1\",\"path\":\"a.kidesign\",\"title\":\"A\"},\"artboard\":{\"width\":800,\"height\":600,\"background\":\"#ffffff\"},\"selected_layer_ids\":[],\"recent_operations\":[],\"layers\":[{\"id\":\"t1\",\"kind\":\"text\"},{\"id\":\"bg\",\"kind\":\"rectangle\",\"locked\":true}]}"
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
-    "design": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_generation",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch",
-        "web_search"
-      ],
-      "prompt": [
-        "After design_propose_patch succeeds, briefly tell the user that the proposed changes are ready for review. Do not call document_write for design edits.",
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Current execution mode: apply.",
-        "For questions about the design, answer from the attached design context. Do not claim to see layers or text that are not present in it.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "Keep layers inside the artboard, keep text short enough for its box, prefer the brand colors and fonts, and never edit locked layers. New pictures come from image generation, not from this tool.",
-        "The user is on the Kition Design pane to your left, editing one artboard. The skill context contains the artboard size and background, every layer with its bounds, text, style, and a role hint, the selected layer ids, and the workspace brand kit when one exists.",
-        "When the user asks to rewrite copy, restyle, recolor, move, align, add text or shapes, or remove layers, call design_propose_patch. The tool proposes a validated preview; it does not change the file. The user accepts or rejects it in the Design UI."
       ],
       "conversation": [
         {

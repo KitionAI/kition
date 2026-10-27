@@ -1732,25 +1732,6 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         "responses",
         json!({ "pane_context": "document", "execution_mode": "research" }),
     ));
-    scenarios.push(scenario(
-        "design-context",
-        "responses",
-        json!({
-            "pane_context": "design",
-            "design_context": {
-                "type": "design.context", "schema_version": 1,
-                "design": { "id": "d1", "path": "a.kidesign", "title": "A" },
-                "artboard": { "width": 800, "height": 600, "background": "#ffffff" },
-                "selected_layer_ids": [], "recent_operations": [],
-                "layers": [{ "id": "t1", "kind": "text" }, { "id": "bg", "kind": "rectangle", "locked": true }],
-            },
-        }),
-    ));
-    scenarios.push(scenario(
-        "design",
-        "responses",
-        json!({ "pane_context": "design" }),
-    ));
     let plain = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::write(plain.path().join("AGENTS.md"), "Prefer small diffs.")
         .unwrap_or_else(|err| panic!("{err}"));

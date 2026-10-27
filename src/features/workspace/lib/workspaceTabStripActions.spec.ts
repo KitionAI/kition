@@ -6,7 +6,7 @@ import { buildWorkspaceTabStripProps, workspaceTabReference, type WorkspaceTabSt
 
 const tabs: WorkspaceTab[] = [
   { id: 'doc-a', type: 'file-viewer', title: 'A', path: 'a.md', format: 'markdown' },
-  { id: 'doc-b', type: 'design', title: 'B', path: 'b.kidesign' },
+  { id: 'doc-b', type: 'file-viewer', title: 'B', path: 'b.kdesign', format: 'design' },
   { id: 'viewer', type: 'file-viewer', title: 'Photo', path: 'photo.png', format: 'image' },
   { id: 'flow', type: 'workflow', title: 'Flows' },
   { id: 'sites', type: 'gallery', title: 'Images', kind: 'images' },
@@ -43,7 +43,7 @@ describe('buildWorkspaceTabStripProps', () => {
 
     run = build()
     run.props.onCloseReadOnly!()
-    expect(run.closed()).toEqual(['doc-a', 'viewer', 'sites'])
+    expect(run.closed()).toEqual(['doc-a', 'doc-b', 'viewer', 'sites'])
   })
 
   it('closes every tab on close unmodified: a kit asks before it closes with unsaved edits', () => {

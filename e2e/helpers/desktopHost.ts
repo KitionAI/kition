@@ -46,18 +46,18 @@ export type DesktopHost = {
   dispose: () => Promise<void>
 }
 
-const editable = /\.(md|markdown|kidesign)$/i
-const textual = /\.(md|markdown|kidesign|txt|csv|tsv|json|html|htm)$/i
-const supported = /\.(md|markdown|ktable|kboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kfilm|kvector|keffect|kdesign|dxf|kcube|kfig|kslide|mp4|mov|webm|mp3|wav|m4a)$/i
+const editable = /\.(md|markdown)$/i
+const textual = /\.(md|markdown|txt|csv|tsv|json|html|htm)$/i
+const supported = /\.(md|markdown|ktable|kboard|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kfilm|kvector|keffect|kdesign|dxf|kcube|kfig|kslide|mp4|mov|webm|mp3|wav|m4a)$/i
 
 function formatOf(file: string) {
   const extension = path.extname(file).toLowerCase()
   const formats: Record<string, string> = {
-    '.ktable': 'table', '.kboard': 'board', '.kidesign': 'design', '.md': 'markdown', '.markdown': 'markdown',
+    '.ktable': 'table', '.kboard': 'board', '.md': 'markdown', '.markdown': 'markdown',
     '.docx': 'docx', '.xlsx': 'xlsx', '.xls': 'xlsx', '.pptx': 'pptx', '.ppt': 'pptx', '.pdf': 'pdf',
     '.csv': 'csv', '.tsv': 'csv', '.json': 'json', '.txt': 'text', '.html': 'html', '.htm': 'html',
     '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image', '.webp': 'image', '.svg': 'image',
-    '.psd': 'photo', '.psb': 'photo', '.kphoto': 'photo', '.kfilm': 'film', '.kvector': 'vector', '.keffect': 'effect', '.kdesign': 'layout', '.dxf': 'cad', '.kcube': 'cube', '.kfig': 'fig', '.kslide': 'slide',
+    '.psd': 'photo', '.psb': 'photo', '.kphoto': 'photo', '.kfilm': 'film', '.kvector': 'vector', '.keffect': 'effect', '.kdesign': 'design', '.dxf': 'cad', '.kcube': 'cube', '.kfig': 'fig', '.kslide': 'slide',
     '.mp4': 'video', '.mov': 'video', '.webm': 'video', '.mp3': 'audio', '.wav': 'audio', '.m4a': 'audio',
   }
   return formats[extension] || 'binary'

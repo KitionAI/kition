@@ -25,7 +25,6 @@ export function WorkspaceSidebar({
   onPasteFiles,
   onRefresh,
   onOpenWorkflows,
-  onCreateDesign,
   kitCreations,
   onToggleSidebar,
   onOpenSearch,
@@ -50,7 +49,6 @@ export function WorkspaceSidebar({
    *  entry point survives without taking a row in the tree. */
   onOpenWorkflows?: () => void
   /** Creates a durable native SVG Board file in the active workspace folder. */
-  onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
   onToggleSidebar?: () => void
@@ -231,7 +229,6 @@ export function WorkspaceSidebar({
                   variant={createMenuVariant ?? 'workspace'}
                   anchorEl={headerCreateAnchor}
                   onCreateFolder={onCreateFolder}
-                  onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
                 />
               </span>

@@ -14,7 +14,6 @@ export const SUPPORTED_NAMESPACES = [
   'workflow',
   'connections',
   'imageGeneration',
-  'design',
   'history',
 ] as const
 

@@ -10,7 +10,6 @@ fn extension(path: &str) -> String {
 
 pub fn infer_format(path: &str) -> &'static str {
     match extension(path).as_str() {
-        ".kidesign" => "design",
         ".md" | ".markdown" => "markdown",
         ".docx" => "docx",
         ".xlsx" | ".xls" => "xlsx",
@@ -30,7 +29,7 @@ pub fn infer_format(path: &str) -> &'static str {
         // Motion-graphics projects, edited in the Effect kit.
         ".keffect" => "effect",
         // Page layouts, edited in the Design kit.
-        ".kdesign" => "layout",
+        ".kdesign" => "design",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
         // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
@@ -55,15 +54,13 @@ fn has_extension(path: &str, allowed: &[&str]) -> bool {
 }
 
 pub fn is_editable(path: &str) -> bool {
-    has_extension(path, &["md", "markdown", "kidesign"])
+    has_extension(path, &["md", "markdown"])
 }
 
 pub fn is_text(path: &str) -> bool {
     has_extension(
         path,
-        &[
-            "md", "markdown", "kidesign", "txt", "csv", "tsv", "json", "html", "htm",
-        ],
+        &["md", "markdown", "txt", "csv", "tsv", "json", "html", "htm"],
     )
 }
 
@@ -71,10 +68,10 @@ pub fn is_supported(path: &str) -> bool {
     has_extension(
         path,
         &[
-            "md", "markdown", "kidesign", "txt", "csv", "tsv", "json", "html", "htm", "pdf",
-            "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg",
-            "psd", "psb", "kphoto", "kfilm", "kvector", "keffect", "kdesign", "dxf", "kslide",
-            "ktable", "kboard", "kcube", "kfig", "mp4", "mov", "webm", "mp3", "wav", "m4a",
+            "md", "markdown", "txt", "csv", "tsv", "json", "html", "htm", "pdf", "docx", "xlsx",
+            "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg", "psd", "psb",
+            "kphoto", "kfilm", "kvector", "keffect", "kdesign", "dxf", "kslide", "ktable",
+            "kboard", "kcube", "kfig", "mp4", "mov", "webm", "mp3", "wav", "m4a",
         ],
     )
 }
@@ -86,7 +83,6 @@ mod tests {
     #[test]
     fn classifies_workspace_files() {
         assert_eq!(infer_format("notes/Plan.MD"), "markdown");
-        assert_eq!(infer_format("poster.kidesign"), "design");
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
@@ -96,7 +92,7 @@ mod tests {
         assert!(is_supported("art/Logo.kvector"));
         assert_eq!(infer_format("motion/Intro.keffect"), "effect");
         assert!(is_supported("motion/Intro.keffect"));
-        assert_eq!(infer_format("print/Flyer.kdesign"), "layout");
+        assert_eq!(infer_format("print/Flyer.kdesign"), "design");
         assert!(is_supported("print/Flyer.kdesign"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
@@ -118,7 +114,7 @@ mod tests {
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");
-        assert!(is_editable("a/b.kidesign"));
+        assert!(is_editable("a/b.md"));
         assert!(!is_editable("a/b.txt"));
         assert!(is_text("a/b.json"));
         assert!(!is_supported("a/b.kitable"));

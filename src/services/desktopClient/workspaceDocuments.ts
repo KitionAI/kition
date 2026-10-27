@@ -1,7 +1,6 @@
 /**
  * Workspace documents and folders: listing, reading, writing, creating, moving, and deleting, with the browser-only localStorage workspace used by the web preview.
  */
-import { flushWorkspaceEditSessions } from '../workspaceEditSessions'
 import { getCurrentLocale } from '@/i18n'
 import { type WorkspaceDocument, type WorkspaceDocumentCreateRequest, type WorkspaceDocumentExternalChange, type WorkspaceDocumentFormat, type WorkspaceDocumentListResponse, type WorkspaceDocumentMoveRequest, type WorkspaceDocumentTreeItem, type WorkspaceFolderCreateRequest, type WorkspaceFolderCreateResponse, type WorkspaceFolderMoveRequest, type WorkspaceFolderMoveResponse, getDesktopBridge } from './bridge'
 
@@ -17,7 +16,6 @@ function inferWorkspaceDocumentFormat(path: string): WorkspaceDocumentFormat {
   const lower = path.toLowerCase()
   if (lower.endsWith('.ktable')) return 'table'
   if (lower.endsWith('.kboard')) return 'board'
-  if (lower.endsWith('.kidesign')) return 'design'
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
   if (lower.endsWith('.docx')) return 'docx'
   if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'xlsx'
@@ -390,19 +388,15 @@ export async function statWorkspaceDocument(
   return null
 }
 
-/**
- * Writes a workspace document. With `guard`, the write is refused (`DESIGN_SAVE_CONFLICT`) unless the workspace
- * is still `expected_root` and the file holds `expected_content`; `expected_missing` requires that there is no file.
- */
-export async function writeWorkspaceDocument(path: string, content: string, guard?: { expected_root: string; expected_content: string | null; expected_missing?: boolean }): Promise<WorkspaceDocument> {
+/** Writes a workspace document. */
+export async function writeWorkspaceDocument(path: string, content: string): Promise<WorkspaceDocument> {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.WriteWorkspaceDocument) {
-    return bridge.WriteWorkspaceDocument({ path: normalizedPath, content, ...guard })
+    return bridge.WriteWorkspaceDocument({ path: normalizedPath, content })
   }
 
   const records = loadBrowserWorkspaceDocuments()
-  if (guard && (guard.expected_root !== 'browser-local-workspace' || (records[normalizedPath]?.content ?? null) !== guard.expected_content)) throw new Error('DESIGN_SAVE_CONFLICT')
   const updated_at = new Date().toISOString()
   records[normalizedPath] = { content, updated_at }
   saveBrowserWorkspaceDocuments(records)
@@ -516,7 +510,6 @@ export async function createWorkspaceFolder(request: WorkspaceFolderCreateReques
 }
 
 export async function moveWorkspaceDocument(request: WorkspaceDocumentMoveRequest): Promise<WorkspaceDocument> {
-  await flushWorkspaceEditSessions(request.path)
   const normalizedPath = normalizeWorkspaceDocumentPath(request.path)
   const sourceParent = getBrowserWorkspaceParentPath(normalizedPath)
   const targetFolder = request.target_folder === undefined
@@ -579,7 +572,6 @@ export async function moveWorkspaceDocument(request: WorkspaceDocumentMoveReques
 }
 
 export async function moveWorkspaceFolder(request: WorkspaceFolderMoveRequest): Promise<WorkspaceFolderMoveResponse> {
-  await flushWorkspaceEditSessions(request.path)
   const normalizedPath = normalizeWorkspaceDocumentPath(request.path)
   const sourceParent = getBrowserWorkspaceParentPath(normalizedPath)
   const sourceName = normalizedPath.split('/').pop() || normalizedPath
@@ -647,7 +639,6 @@ export async function moveWorkspaceFolder(request: WorkspaceFolderMoveRequest): 
 }
 
 export async function deleteWorkspaceDocument(path: string): Promise<WorkspaceDocumentListResponse> {
-  await flushWorkspaceEditSessions(path)
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.DeleteWorkspaceDocument) {
@@ -673,7 +664,6 @@ export async function deleteWorkspaceDocument(path: string): Promise<WorkspaceDo
 }
 
 export async function deleteWorkspaceFolder(path: string): Promise<WorkspaceDocumentListResponse> {
-  await flushWorkspaceEditSessions(path)
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   if (!normalizedPath) {
     throw new Error('the workspace root cannot be deleted')

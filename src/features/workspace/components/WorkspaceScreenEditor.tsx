@@ -1,6 +1,5 @@
 import type { ComponentProps } from 'react'
 
-import type { AgentSession } from '@/api/agent'
 import type { WorkspaceAgentPanelState } from '@/features/workspace/components/WorkspaceAgentChrome'
 import { WorkspaceEditorContent } from '@/features/workspace/components/WorkspaceEditorContent'
 import { WorkspaceEditorPane } from '@/features/workspace/components/WorkspaceEditorPane'
@@ -16,13 +15,6 @@ export type WorkspaceScreenEditorInput = {
   activeWorkspaceTabId: string
   galleryPanelProps: WorkspaceEditorContentProps['galleryPanelProps']
   agentPanel: Pick<WorkspaceAgentPanelState, 'open' | 'setOpen' | 'setHistoryOpen'>
-  activeAgentSession: AgentSession | null
-  stopAgentMessage: (sessionId: number) => void
-  design: {
-    available: boolean
-    onBridgeChange: WorkspaceEditorContentProps['onDesignAgentBridgeChange']
-    onGenerateImage: WorkspaceEditorContentProps['onGenerateDesignImage']
-  }
   templateDialogs: Pick<ReturnType<typeof useWorkspaceTemplateDialogs>, 'openDocumentTemplateDialog'>
   workflows: {
     /** The workflows of one table file. */
@@ -34,20 +26,15 @@ export type WorkspaceScreenEditorInput = {
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { agentPanel, activeAgentSession, design, templateDialogs, workflows } = input
+  const { agentPanel, templateDialogs, workflows } = input
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
     agentPanel.setHistoryOpen(false)
   }
   return {
-    designRoot: input.rootPath,
     activeWorkspaceTab: input.activeWorkspaceTab,
     activeWorkspaceTabId: input.activeWorkspaceTabId,
     galleryPanelProps: input.galleryPanelProps,
-    designAgentAvailable: design.available,
-    onDesignAgentBridgeChange: design.onBridgeChange,
-    onGenerateDesignImage: design.available ? design.onGenerateImage : undefined,
-    onCancelDesignAgent: activeAgentSession ? () => input.stopAgentMessage(activeAgentSession.id) : undefined,
     onOpenWorkflow: workflows.openTableFileWorkflow,
     onOpenGlobalWorkflow: workflows.openWorkspaceWorkflow,
     onOpenWorkflows: () => workflows.openWorkspaceWorkflow(),

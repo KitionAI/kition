@@ -6,9 +6,6 @@ import { getDesktopBackendStatus } from '@/services/desktop'
 import { AGENT_IMAGE_GENERATION_CHAT_CAPABILITY, type AgentImageTarget } from '@/types/imageGeneration'
 
 export function captureWorkspaceImageTarget(context?: AgentTurnContext): AgentImageTarget | undefined {
-  if (context?.paneContext === 'design' && context.activeDesignPath) {
-    return { type: 'image.target.design', design_path: context.activeDesignPath }
-  }
   if (context?.paneContext === 'document' && context.activeDocumentPath) {
     return { type: 'image.target.document', document_path: context.activeDocumentPath }
   }

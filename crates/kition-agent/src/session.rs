@@ -17,7 +17,7 @@ use crate::run::{Agent, BUSY, Run, TurnGuard};
 use crate::sources::{self, LocalSourceInput};
 use crate::store::{self, AgentSession};
 use crate::stream::{Emitter, TurnStream};
-use crate::tools::{canvas, documents, exec, images};
+use crate::tools::{documents, exec, images};
 use crate::{attachments, log, prompts, turn};
 
 /// The user's answer to the command approval of the tool call `call_id`
@@ -43,7 +43,6 @@ pub struct StreamRequest {
     /// How the agent edits kit documents: `live` (the default) or `draft` (standard 2.0 A12).
     pub kit_edit_mode: String,
     pub image_generation_intent: Option<Value>,
-    pub design_context: Option<Value>,
     pub shell_approval: Option<ShellApprovalInput>,
     pub model_id: String,
     pub runtime_model: Option<RuntimeModel>,
@@ -53,7 +52,7 @@ pub struct StreamRequest {
 
 fn pane(value: &str) -> String {
     match value.trim().to_lowercase().as_str() {
-        pane @ ("workflow" | "gallery" | "design") => pane.to_owned(),
+        pane @ ("workflow" | "gallery") => pane.to_owned(),
         _ => "document".to_owned(),
     }
 }
@@ -150,15 +149,6 @@ pub async fn prepare(
         }
         None => None,
     };
-    let pane_name = pane(&request.pane_context);
-    if let Some(context) = &request.design_context {
-        if pane_name != "design" {
-            return Err(AppError::bad_request(
-                "design context requires pane_context=design",
-            ));
-        }
-        canvas::validate_design_context(context).map_err(AppError::bad_request)?;
-    }
     let content = request.content.trim().to_owned();
     if content.is_empty() {
         return Err(AppError::bad_request("Message content cannot be empty"));
@@ -297,7 +287,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         execution_mode: execution_mode(&request.execution_mode),
         kit_edit_mode: kit_edit_mode(&request.kit_edit_mode),
         pane: pane(&request.pane_context),
-        design: request.design_context.clone(),
         model: request.runtime_model.clone().unwrap_or_default(),
         provider_route: request
             .runtime_model
@@ -382,7 +371,7 @@ mod tests {
 
     #[test]
     fn normalizes_modes() {
-        assert_eq!(pane("Design"), "design");
+        assert_eq!(pane("Design"), "document");
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(kit_edit_mode("Draft"), "draft");

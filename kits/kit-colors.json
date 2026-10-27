@@ -31,11 +31,6 @@
     "dark": "#ff9a55"
   },
   "design": {
-    "kitId": null,
-    "light": "#e0244d",
-    "dark": "#ff7d97"
-  },
-  "layout": {
     "kitId": "kit.design",
     "light": "#d32f8d",
     "dark": "#f57bbd"

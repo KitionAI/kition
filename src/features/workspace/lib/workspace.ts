@@ -21,7 +21,6 @@ export type WorkspaceTab =
       format: WorkspaceDocumentFormat
     }
   | { id: string; type: 'gallery'; title: string; kind: WorkspaceMediaKind }
-  | { id: string; type: 'design'; title: string; path: string }
   | {
       id: string
       type: 'workflow'
@@ -55,10 +54,10 @@ export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', 
 /**
  * Formats Kition's own editors (and `inferWorkspaceItemFormat` below) already know, with no kit
  * registry entry: aliases a kit's preview understands but never creates (`pptx`, `xls`, `ppt`,
- * `psb`, `kphoto`), and the native `.kidesign`/Markdown/media formats.
+ * `psb`, `kphoto`), and the native Markdown and media formats.
  */
 const workspaceNonKitExtensions = [
-  'md', 'markdown', 'kidesign',
+  'md', 'markdown',
   'pptx', 'xls', 'ppt', 'psb', 'kphoto',
   'csv', 'tsv', 'json', 'txt', 'html', 'htm',
   'png', 'jpe?g', 'gif', 'webp', 'svg',
@@ -74,7 +73,7 @@ const workspaceTitleExtensionPattern = new RegExp(
   `\\.(${[...new Set([...workspaceNonKitExtensions, ...kitCreateExtensions()])].join('|')})$`,
   'i',
 )
-const workspaceEditableExtensionPattern = /\.(md|markdown|kboard|kidesign)$/i
+const workspaceEditableExtensionPattern = /\.(md|markdown|kboard)$/i
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -127,7 +126,6 @@ function formatRelativeDateTime(value?: ApiTimestamp | null) {
 export function inferWorkspaceItemFormat(path: string, content?: string): WorkspaceDocumentFormat {
   if (path.toLowerCase().endsWith('.ktable')) return 'table'
   if (path.toLowerCase().endsWith('.kboard')) return 'board'
-  if (path.toLowerCase().endsWith('.kidesign')) return 'design'
   if (path.toLowerCase().endsWith('.docx')) {
     return 'docx'
   }
@@ -168,7 +166,7 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
     return 'effect'
   }
   if (/\.kdesign$/i.test(path)) {
-    return 'layout'
+    return 'design'
   }
   if (/\.dxf$/i.test(path)) {
     return 'cad'
@@ -255,7 +253,6 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
       return 'slide'
     case 'pdf':
     case 'design':
-    case 'layout':
     case 'board':
     case 'photo':
     case 'film':
@@ -280,8 +277,6 @@ export function getWorkspaceTabKit(tab: WorkspaceTab): KitIconId | null {
       return getWorkspaceItemKitIcon(tab.format)
     case 'workflow':
       return tab.tablePath ? 'table' : null
-    case 'design':
-      return tab.type
   }
 }
 
@@ -327,14 +322,13 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'film':
     case 'vector':
     case 'effect':
-    case 'layout':
+    case 'design':
     case 'cad':
     case 'cube':
     case 'fig':
       return 'text-violet-500'
     case 'slide':
       return 'text-orange-500'
-    case 'design':
     case 'board':
       return 'text-violet-500'
     case 'video':
@@ -365,7 +359,6 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     film: 'Film',
     vector: 'Vector',
     effect: 'Effect',
-    layout: 'Design',
     cad: 'CAD',
     cube: 'Cube',
     fig: 'Fig',
@@ -421,7 +414,7 @@ export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return isEditableWorkspaceFormat(format) || format === 'html' || format === 'board' || format === 'design'
+  return isEditableWorkspaceFormat(format) || format === 'html' || format === 'board'
 }
 
 /**
@@ -429,7 +422,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * would keep the original's KDM document id.
  */
 export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return isEditableWorkspaceFormat(format) || format === 'design'
+  return isEditableWorkspaceFormat(format)
 }
 
 /**
@@ -437,7 +430,7 @@ export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'cube' || format === 'fig' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
+  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'design' || format === 'cad' || format === 'cube' || format === 'fig' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

@@ -1,5 +1,3 @@
-import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
-import { loadDesignLib } from '@/features/design/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
@@ -168,7 +166,7 @@ export function useWorkspaceTreeNodeActions({
       )
       filterWorkspaceTabs(
         (tab) => (
-          (tab.type !== 'file-viewer' && tab.type !== 'design')
+          tab.type !== 'file-viewer'
           || (tab.path !== node.path && !tab.path.startsWith(childPrefix))
         ),
       )
@@ -383,16 +381,7 @@ export function useWorkspaceTreeNodeActions({
     setFeedback('')
 
     try {
-      await flushWorkspaceEditSessions(node.path)
       const source = await readWorkspaceDocument(node.path)
-      if (node.path.toLowerCase().endsWith('.kidesign')) {
-        const { createDesignFile, parseDesign } = await loadDesignLib()
-        const design = parseDesign(source.content)
-        const created = await createDesignFile(rootPath, parentFolder, { ...design, title: `${stem} copy` })
-        await refreshWorkspaceDocuments(undefined, { treeOnly: true })
-        window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: created.path } }))
-        return
-      }
       const created = await writeWorkspaceDocument(copyPath, source.content)
       if (/\.(md|markdown)$/i.test(created.path)) {
         // The copy is a new document: it gets its own identity when first opened.

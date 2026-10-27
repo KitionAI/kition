@@ -1,6 +1,5 @@
-import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CopyIcon as Copy, PaintbrushIcon as Paintbrush, ExternalLinkIcon as ExternalLink, FileTextIcon as FileText, FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
+import { CopyIcon as Copy, ExternalLinkIcon as ExternalLink, FileTextIcon as FileText, FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import { ContextMenu, MenuItem } from '@kition/tessera-ui'
 import { cn } from '@/lib/cn'
@@ -133,11 +132,6 @@ function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneP
           </div>
         </div>
       )}
-      {format === 'image' ? <div className="flex justify-end border-b border-border p-2">
-        <button type="button" className="workspace-file-viewer__action" onClick={() => requestUseImageInDesign(path, true)}>
-          <Paintbrush className="size-4" /><span>{t('design:fromImage')}</span>
-        </button>
-      </div> : null}
       <div className="workspace-file-viewer__body">
         {format === 'image' ? (
           <div className="workspace-file-viewer__image">

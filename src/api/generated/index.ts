@@ -5,7 +5,6 @@
  * Regenerate with: pnpm run contracts:generate
  */
 
-export * from './agent-design'
 export * from './agent-image-generation'
 export * from './agent-local-sources'
 export * from './agent-session-events'

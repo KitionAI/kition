@@ -299,7 +299,6 @@ fn validate_target(surface: &str, placement: &str, target: &Map<String, Value>) 
             "cursor_offset",
             "selected_image_path",
         ],
-        "image.target.design" => &["design_path", "artboard", "replace_layer_id"],
         _ => return false,
     };
     for (key, value) in target {
@@ -328,22 +327,6 @@ fn validate_target(surface: &str, placement: &str, target: &Map<String, Value>) 
         "chat" => kind == "image.target.chat" && placement == "review",
         "document" => {
             kind == "image.target.document" && workspace_path(target_text(target, "document_path"))
-        }
-        "design" => {
-            let replace = target_text(target, "replace_layer_id");
-            let artboard_ok = match target.get("artboard") {
-                None => true,
-                Some(board) => ["width", "height"].iter().all(|axis| {
-                    board
-                        .get(*axis)
-                        .and_then(Value::as_f64)
-                        .is_some_and(|n| (1.0..=1e5).contains(&n))
-                }),
-            };
-            kind == "image.target.design"
-                && workspace_path(target_text(target, "design_path"))
-                && (replace.is_empty() || identifier(replace))
-                && artboard_ok
         }
         _ => false,
     }

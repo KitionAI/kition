@@ -73,13 +73,6 @@ pub fn pane(pane: &str) -> &'static [&'static str] {
         "gallery" => &[
             "The user is on the Kition media gallery pane to your left. Unlike the workflow / document panes, the skill context carries no manifest of which assets exist \u{2014} call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen.",
         ],
-        "design" => &[
-            "The user is on the Kition Design pane to your left, editing one artboard. The skill context contains the artboard size and background, every layer with its bounds, text, style, and a role hint, the selected layer ids, and the workspace brand kit when one exists.",
-            "For questions about the design, answer from the attached design context. Do not claim to see layers or text that are not present in it.",
-            "When the user asks to rewrite copy, restyle, recolor, move, align, add text or shapes, or remove layers, call design_propose_patch. The tool proposes a validated preview; it does not change the file. The user accepts or rejects it in the Design UI.",
-            "Keep layers inside the artboard, keep text short enough for its box, prefer the brand colors and fonts, and never edit locked layers. New pictures come from image generation, not from this tool.",
-            "After design_propose_patch succeeds, briefly tell the user that the proposed changes are ready for review. Do not call document_write for design edits.",
-        ],
         _ => &[
             "The user is on the Kition document pane to your left. If a document is open (the skill context will carry an 'Active document the user is reading' block with title / path / description), call document_read on the path before summarising or quoting it \u{2014} do not invent the document's contents from the title alone. If no document is open yet, ask the user which document they want to work with (or offer document_list / document_search to discover candidates).",
         ],

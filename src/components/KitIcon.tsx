@@ -4,7 +4,7 @@ import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import { cn } from '@/lib/cn'
 
 export const KIT_ICON_IDS = [
-  'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
+  'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design',
   'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'html', 'cube', 'fig',
 ] as const
 

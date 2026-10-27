@@ -52,7 +52,7 @@ class MarkTests(unittest.TestCase):
 class KitIconTests(unittest.TestCase):
     def test_kits_in_spec_order(self):
         self.assertEqual([k.id for k in kit_icons.KITS], [
-            'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design', 'layout',
+            'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design',
             'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'html', 'cube', 'fig'])
 
     def test_each_icon_is_a_flat_soft_tile(self):
@@ -76,8 +76,7 @@ class KitIconTests(unittest.TestCase):
 
     def test_colors_json_names_each_kit(self):
         palette = json.loads(kit_icons.colors_json())
-        self.assertEqual(palette['layout']['kitId'], 'kit.design')
-        self.assertIsNone(palette['design']['kitId'])
+        self.assertEqual(palette['design']['kitId'], 'kit.design')
         self.assertEqual(palette['photo'], {'kitId': 'kit.photo', 'light': '#087fa1', 'dark': '#4ccbf0'})
 
     def test_small_icons_are_flat_and_bold(self):

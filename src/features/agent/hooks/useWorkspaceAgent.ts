@@ -74,7 +74,6 @@ import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
 import { retryWhileSessionBusy } from '@/features/agent/lib/agentSendRetry'
-import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
 
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
@@ -89,7 +88,6 @@ type WorkspaceAgentTurnContext = {
    *  compact trigger/action summary into the skill
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
-  designContext?: AgentDesignContext
 }
 
 type UseWorkspaceAgentOptions = {
@@ -102,13 +100,6 @@ type UseWorkspaceAgentOptions = {
   onSettingsSaved?: (settings: DesktopSettingsState) => void
   onWorkspaceArtifactsSaved?: (sessionId: number) => Promise<void>
   onWorkspaceDocumentsModified?: (paths: string[], sessionId: number) => void | Promise<void>
-  onDesignPatch?: (input: {
-    designPath: string
-    patch: AgentDesignPatch
-    provisional: boolean
-    sessionId: number
-  }) => void
-  onDesignPatchCancelled?: (input: { designPath: string; sessionId: number }) => void
   prepareActiveDocument?: () => Promise<boolean>
   silentInitialSessionLoad?: boolean
   getTurnContext?: () =>
@@ -151,8 +142,6 @@ export function useWorkspaceAgent({
   onSettingsSaved,
   onWorkspaceArtifactsSaved,
   onWorkspaceDocumentsModified,
-    onDesignPatch,
-  onDesignPatchCancelled,
   prepareActiveDocument,
   silentInitialSessionLoad = !isDesktopRuntime(),
   getTurnContext,
@@ -627,10 +616,6 @@ export function useWorkspaceAgent({
     const abortController = new AbortController()
     agentAbortControllers.current[sessionId] = abortController
     let documentsChanged = false
-    let designPathForTurn = ''
-    // Whether a provisional preview is on the canvas. A final patch waits
-    // for Accept, so a failed or stopped stream cancels only a preview.
-    let designPreviewOpen = false
 
     const runEffect = (effect: AgentEffect) => {
       switch (effect.type) {
@@ -647,16 +632,6 @@ export function useWorkspaceAgent({
         case 'connections-changed':
           // The workflow drawer refreshes its connection list on this signal.
           window.dispatchEvent(new CustomEvent('kition:connections:changed', { detail: effect.detail }))
-          return
-        case 'design-patch':
-          designPreviewOpen = effect.provisional
-          if (designPathForTurn) {
-            onDesignPatch?.({ designPath: designPathForTurn, patch: effect.patch, provisional: effect.provisional, sessionId })
-          }
-          return
-        case 'design-patch-cancelled':
-          designPreviewOpen = false
-          if (designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
       }
     }
 
@@ -679,7 +654,6 @@ export function useWorkspaceAgent({
 
     try {
       const turnContext = (await getTurnContext?.()) || undefined
-      designPathForTurn = String(turnContext?.designContext?.design.path || '').trim()
       const automaticActiveDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
       const documentContextPaths = resolveAgentDocumentContextPaths(
         agentDocumentContextsRef.current,
@@ -760,7 +734,6 @@ export function useWorkspaceAgent({
         activeDocumentPath: requestActiveDocumentPath,
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
-        designContext: turnContext?.designContext,
         taskMode: turnContext?.taskMode,
         imageGenerationIntent: followup?.imageGenerationIntent,
         executionMode: followup?.executionMode,
@@ -784,8 +757,6 @@ export function useWorkspaceAgent({
       if (delivered) onFeedback(`Agent saved an artifact: ${delivered.path}`)
       trackProductEventOnce('agent_first_request_completed', { result: 'success' })
     } catch (requestError: any) {
-      // A preview whose turn never settled must not stay on the canvas.
-      if (designPreviewOpen && designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
       const canceled = requestError?.name === 'AbortError'
       const view = agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView()
       commitSessionView(sessionId, canceled || requestError instanceof AgentStreamInterruptedError
@@ -823,8 +794,6 @@ export function useWorkspaceAgent({
     onError,
     onFeedback,
     onWorkspaceArtifactsSaved,
-          onDesignPatch,
-    onDesignPatchCancelled,
     prepareActiveDocument,
     refreshAgentSessions,
     refreshMentionableDocuments,

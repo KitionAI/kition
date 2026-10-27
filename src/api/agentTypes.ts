@@ -24,7 +24,6 @@ export type AgentPaneContext =
   | 'document'
   | 'workflow'
   | 'gallery'
-  | 'design'
 
 export type AgentSession = {
   id: number

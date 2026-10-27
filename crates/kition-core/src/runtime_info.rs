@@ -9,9 +9,8 @@ use serde::Serialize;
 pub const DEFAULT_PROTOCOL_VERSION: i64 = 2;
 
 /// Capability flags advertised by `/desktop/runtime`.
-pub const CAPABILITIES: [&str; 8] = [
+pub const CAPABILITIES: [&str; 7] = [
     "agent",
-    "agent_design_v1",
     "agent_image_generation_v1",
     "agent_image_generation_chat_v1",
     "documents",

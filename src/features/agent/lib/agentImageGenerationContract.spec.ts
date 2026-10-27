@@ -38,7 +38,6 @@ describe('Agent image-generation public boundary', () => {
     )
     expect(schema.$defs.intent.properties.surface.enum).toEqual([
       'document',
-      'design',
       'chat',
     ])
     expect(schema.$defs.variantMeta.properties.kind.const).toBe('image_generation.variant')
@@ -62,7 +61,7 @@ describe('Agent image-generation public boundary', () => {
 
   it('requires the explicit runtime capability', () => {
     expect(runtimeSupportsAgentImageGeneration()).toBe(false)
-    expect(runtimeSupportsAgentImageGeneration(['documents', 'agent_design_v1'])).toBe(false)
+    expect(runtimeSupportsAgentImageGeneration(['documents', 'tables'])).toBe(false)
     expect(runtimeSupportsAgentImageGeneration([
       'documents',
       AGENT_IMAGE_GENERATION_CAPABILITY,

@@ -73,7 +73,7 @@ const KIT_FILE_KINDS = [
   { format: 'film', extensions: /\.kfilm$/i, prefix: 'film', kit: 'Film', one: 'a video project', many: 'video projects', data: 'project data' },
   { format: 'vector', extensions: /\.kvector$/i, prefix: 'vector', kit: 'Vector', one: 'a vector drawing', many: 'vector drawings', data: 'drawing data' },
   { format: 'effect', extensions: /\.keffect$/i, prefix: 'effect', kit: 'Effect', one: 'a motion graphics project', many: 'motion graphics projects', data: 'project data' },
-  { format: 'layout', extensions: /\.kdesign$/i, prefix: 'design', kit: 'Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
+  { format: 'design', extensions: /\.kdesign$/i, prefix: 'design', kit: 'Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
   { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
   { format: 'cube', extensions: /\.kcube$/i, prefix: 'cube', kit: 'Cube', one: 'a 3D scene', many: '3D scenes', data: 'scene data' },
   { format: 'fig', extensions: /\.kfig$/i, prefix: 'fig', kit: 'Fig', one: 'an interface design', many: 'interface designs', data: 'design data' },

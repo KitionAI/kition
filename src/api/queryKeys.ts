@@ -21,7 +21,6 @@ export const queryKeys = {
 
   /** Bundled assets shipped with the client; independent of workspace and runtime. */
   designTemplates: () => ['bundled', 'design-templates'] as const,
-  brandKit: (root: string) => ['workspace', root, 'brand-kit'] as const,
 
   runtime: ['runtime'] as const,
   workflows: () => ['runtime', 'workflows'] as const,

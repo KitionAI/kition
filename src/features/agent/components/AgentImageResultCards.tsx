@@ -1,4 +1,3 @@
-import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@kition/tessera-ui'
 import { resolveAgentImageURL } from '@/services/workspaceFiles'
@@ -11,10 +10,9 @@ export type AgentImageResultActions = {
   onEdit?: (artifact: AgentImageArtifact) => void
   onRetry?: (requestId: string) => void
   canRetry?: (requestId: string) => boolean
-  headlineFor?: (requestId: string) => string | undefined
 }
 /** The result card of one image composer request. */
-export function AgentImageResultCards({ job, busy, onOpen, onEdit, onRetry, canRetry, headlineFor }: AgentImageResultActions & {
+export function AgentImageResultCards({ job, busy, onOpen, onEdit, onRetry, canRetry }: AgentImageResultActions & {
   job: AgentImageJob
   busy: boolean
   onOpen: (path: string) => void
@@ -42,7 +40,6 @@ export function AgentImageResultCards({ job, busy, onOpen, onEdit, onRetry, canR
             })}</span> : null}
             {artifact.provenance.model_id ? <span className="block">{artifact.provenance.model_id}</span> : null}
           </figcaption>
-          <Button variant="subtle" size="sm" onClick={() => requestUseImageInDesign(artifact.path, false, headlineFor?.(job.requestId))}>{t('design:useImage')}</Button>
           {onEdit ? <Button variant="subtle" size="sm" disabled={busy} onClick={() => onEdit(artifact)}>{t('chat.edit')}</Button> : null}
         </figure>)}
       </div>

@@ -26,7 +26,6 @@ export const PANE_SUGGESTIONS: Record<AgentPaneContext, readonly string[]> = {
   document: ['summarize', 'launchPlan', 'checklist'],
   workflow: ['emailOnRecord', 'remindOnDate', 'refine'],
   gallery: ['describeEach', 'groupByTopic', 'pickHero'],
-  design: ['headline', 'palette', 'background'],
 }
 
 export function emptyStateForPane(

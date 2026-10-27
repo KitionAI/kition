@@ -3,7 +3,6 @@
 //! kit.
 
 mod core;
-mod design;
 mod document;
 mod gallery;
 mod images;
@@ -17,7 +16,7 @@ use std::sync::Arc;
 use kition_ai::engine::ToolSpec;
 use kition_harness::provider::Provider;
 use kition_harness::tool::{ToolBuilder, ToolDef};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::catalog::SkillDef;
 use crate::run::Run;
@@ -69,10 +68,8 @@ pub type ToolFactory = Arc<dyn Fn(&ToolSpec, &ToolShape) -> Option<ToolDef> + Se
 
 /// Tools a provider other than `CoreProvider` offers.
 pub fn owned_elsewhere(name: &str) -> bool {
-    matches!(
-        name,
-        "document_write" | "image_search" | "design_propose_patch"
-    ) || crate::sources::CORE_TOOLS.contains(&name)
+    matches!(name, "document_write" | "image_search")
+        || crate::sources::CORE_TOOLS.contains(&name)
         || crate::sources::GIT_TOOLS.contains(&name)
         || crate::tools::kits::tool_defs()
             .iter()
@@ -93,7 +90,6 @@ pub async fn providers(
         Arc::new(images::ImagesProvider::new(facts, factory)),
         Arc::new(workflow::WorkflowProvider::new(run, facts)),
         Arc::new(gallery::GalleryProvider),
-        Arc::new(design::DesignProvider::new(run, factory)),
         Arc::new(sources::LocalSourcesProvider::new(run, factory)),
         Arc::new(kits::KitsProvider::new(run, factory)),
         Arc::new(mcp::McpProvider::new(run, factory)),
@@ -128,35 +124,6 @@ fn offer_shaped<'a>(
         .filter_map(catalog_spec)
         .filter_map(|spec| factory(&spec, shape))
         .collect()
-}
-
-/// The shape of a canvas patch tool (`design.patch`):
-/// the log keeps only the envelope and counts (the patch text can be long
-/// and holds user content), and the result carries the proposed patch for
-/// display. A successful call means the runtime accepted the patch as
-/// sent, so the arguments are the validated patch.
-fn patch_shape(kind: &'static str) -> ToolShape {
-    ToolShape {
-        log_arguments: Some(Arc::new(|input: &Value| {
-            json!({
-                "type": input["type"],
-                "schema_version": input["schema_version"],
-                "summary_chars": input["summary"].as_str().unwrap_or_default().chars().count(),
-                "operation_count": input["operations"].as_array().map_or(0, Vec::len),
-            })
-        })),
-        presentation_meta: Some(Arc::new(move |input: &Value, _value: &Value| {
-            json!({
-                "kind": kind,
-                "patch": {
-                    "type": input["type"],
-                    "schema_version": input["schema_version"],
-                    "summary": input["summary"],
-                    "operations": input["operations"],
-                },
-            })
-        })),
-    }
 }
 
 /// A finished tool list as the provider seam's future.
@@ -218,7 +185,6 @@ pub(crate) mod testing {
             execution_mode: "apply".into(),
             kit_edit_mode: "live".into(),
             pane: pane.into(),
-            design: None,
             model: RuntimeModel::default(),
             provider_route: String::new(),
             prompt: "hi".into(),
@@ -274,7 +240,6 @@ mod tests {
         for name in [
             "document_write",
             "image_search",
-            "design_propose_patch",
             "source_read",
             "source_git_log",
         ] {

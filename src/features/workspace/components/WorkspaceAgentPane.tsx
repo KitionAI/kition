@@ -24,7 +24,6 @@ export type WorkspaceAgentPaneProps = {
   activeWorkspaceDocumentPath: string
   documentContextPaths: string[]
   /** The design editor supplies its own empty-state copy for the chat. */
-  designEmptyState?: PanelProps['emptyStateOverride']
   kitionAccount: ReturnType<typeof useKitionAccount>
   kitionAccountLinks: ReturnType<typeof getKitionAccountLinks>
   onOpenSettingsSection?: (section: 'models') => void
@@ -53,7 +52,6 @@ export function WorkspaceAgentPane({
   activeWorkspaceTab,
   activeWorkspaceDocumentPath,
   documentContextPaths,
-  designEmptyState,
   kitionAccount,
   kitionAccountLinks,
   onOpenSettingsSection,
@@ -100,7 +98,6 @@ export function WorkspaceAgentPane({
       // Same mapping as the Agent's system prompt so the empty-state copy
       // matches the pane the user is looking at before the first message.
       paneContext: deriveAgentPaneContext(activeWorkspaceTab),
-      emptyStateOverride: activeWorkspaceTab?.type === 'design' ? designEmptyState : undefined,
     }
     : null
 

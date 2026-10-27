@@ -130,9 +130,9 @@ describe('createTauriBridge', () => {
   })
 
   it('turns native error strings into errors the renderer can match', async () => {
-    const bridge = createTauriBridge(globals, vi.fn().mockRejectedValue('DESIGN_SAVE_CONFLICT'))
+    const bridge = createTauriBridge(globals, vi.fn().mockRejectedValue('WORKSPACE_SAVE_CONFLICT'))
 
-    await expect(bridge.WriteWorkspaceDocument({ path: 'a.kidesign' })).rejects.toThrow('DESIGN_SAVE_CONFLICT')
+    await expect(bridge.WriteWorkspaceDocument({ path: 'a.md' })).rejects.toThrow('WORKSPACE_SAVE_CONFLICT')
   })
 
   it('delivers event payloads and stops after unsubscribe, even before listen resolves', async () => {

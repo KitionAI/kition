@@ -15,7 +15,6 @@ import { DeveloperSettings } from '@/features/settings/sections/DeveloperSetting
 import { DisplaySettings } from '@/features/settings/sections/DisplaySettings'
 import { GeneralSettings } from '@/features/settings/sections/GeneralSettings'
 import { RuntimeSettings } from '@/features/settings/sections/RuntimeSettings'
-import { BrandSettings } from '@/features/settings/sections/BrandSettings'
 import { CollabSettings } from '@/features/settings/sections/CollabSettings'
 import { ExtensionsSettings } from '@/features/settings/sections/ExtensionsSettings'
 
@@ -170,7 +169,6 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
             {activeSection === 'account' ? <AccountSettings /> : null}
             {activeSection === 'models' ? <AiModelsPane /> : null}
             {activeSection === 'display' ? <DisplaySettings /> : null}
-            {activeSection === 'brand' ? <BrandSettings /> : null}
             {activeSection === 'network' ? <NetworkSettings /> : null}
             {activeSection === 'collab' ? <CollabSettings /> : null}
             {activeSection === 'extensions' ? <ExtensionsSettings /> : null}

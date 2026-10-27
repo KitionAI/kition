@@ -23,8 +23,7 @@ KITS = [
     Kit('sheet', 'Sheet', '#1f9d4c', '#1a8641', '#4fd17b'),
     Kit('board', 'Board', '#f2b200', '#966e00', '#ffd04d'),
     Kit('slide', 'Slide', '#f0701a', '#c0550d', '#ff9a55'),
-    Kit('design', 'Design Studio', '#e5486a', '#e0244d', '#ff7d97'),
-    Kit('layout', 'Design', '#d63e95', '#d32f8d', '#f57bbd'),
+    Kit('design', 'Design', '#d63e95', '#d32f8d', '#f57bbd'),
     Kit('vector', 'Vector', '#6fa313', '#58810f', '#a6d64a'),
     Kit('photo', 'Photo', '#0aa3cf', '#087fa1', '#4ccbf0'),
     Kit('effect', 'Effect', '#b03fd6', '#b03fd6', '#d27cf0'),
@@ -36,8 +35,8 @@ KITS = [
     Kit('fig', 'Fig', '#00a676', '#00875f', '#02da96'),
 ]
 
-# The kit that declares each palette entry as its `ui.brand`; Design Studio is Kition's own.
-KIT_IDS = {kit.id: f'kit.{kit.id}' for kit in KITS} | {'layout': 'kit.design', 'design': None}
+# The kit that declares each palette entry as its `ui.brand`.
+KIT_IDS = {kit.id: f'kit.{kit.id}' for kit in KITS}
 
 _WHITE = '#fff'
 
@@ -93,11 +92,6 @@ def glyph(kit):
                 + _line('M56 120H124', ac, 12) + f'<rect x="56" y="140" width="68" height="40" rx="8" fill="{ac}" opacity=".45"/>'
                 + f'<circle cx="164" cy="156" r="24" fill="{ac}" opacity=".7"/>')
     if kit.id == 'design':
-        g = f'<rect x="56" y="56" width="128" height="128" rx="10" fill="{fg}" fill-opacity=".18" stroke="{fg}" stroke-width="8"/>'
-        for x, y in [(56, 56), (184, 56), (56, 184), (184, 184)]:
-            g += f'<rect x="{x - 12}" y="{y - 12}" width="24" height="24" rx="5" {full}/>'
-        return g + f'<path d="M150 142L214 168L184 178L174 208Z" fill="{fg}" stroke="{ac}" stroke-width="5" stroke-linejoin="round"/>'
-    if kit.id == 'layout':
         return (f'<rect x="56" y="36" width="144" height="184" rx="14" {full}/>'
                 + f'<rect x="70" y="50" width="116" height="156" fill="none" stroke="{ac}" stroke-width="2.5" stroke-dasharray="6 6" opacity=".6"/>'
                 + f'<rect x="78" y="60" width="100" height="46" rx="8" fill="{ac}" opacity=".55"/>'
@@ -191,7 +185,7 @@ def small_glyph(kit):
         return page + _p('M4 7H5.4L6 10.2L6.9 7H8.1L9 10.2L9.6 7H11L9.7 12H8.4L7.5 9L6.6 12H5.3Z', w)
     if kit.id == 'pdf':
         return page + _r(4, 8, 8, 4, w) + _r(5, 9, 6, 2, d)
-    if kit.id == 'layout':
+    if kit.id == 'design':
         # A laid-out page: a headline, a picture across the top, and two columns of text.
         return (page + _r(4, 3, 5, 1, w) + _r(4, 6, 8, 3, w)
                 + _r(4, 10, 3, 1, w) + _r(9, 10, 3, 1, w) + _r(4, 12, 3, 1, w) + _r(9, 12, 3, 1, w))
@@ -207,9 +201,6 @@ def small_glyph(kit):
     if kit.id == 'slide':
         return (_r(1, 2, 14, 9, c, rx=1.5) + _r(3, 4, 5, 2, w) + _r(10, 6, 3, 3, w)
                 + _r(7, 11, 2, 3, c) + _r(4, 14, 8, 1, c))
-    if kit.id == 'design':
-        return (_r(4, 4, 8, 8, c, '.3') + _r(3, 3, 10, 1, c) + _r(3, 12, 10, 1, c) + _r(3, 3, 1, 10, c)
-                + _r(12, 3, 1, 10, c) + _r(1, 1, 4, 4, c) + _r(11, 1, 4, 4, c) + _r(1, 11, 4, 4, c) + _r(11, 11, 4, 4, c))
     if kit.id == 'vector':
         return (_p('M2.8 12.4C4.2 5.6 9.4 10.4 12.2 3.2L14.8 4.3C11 14 5.8 9.4 5.4 13.4Z', c) + _r(1, 11, 4, 4, c)
                 + _r(11, 1, 4, 4, w) + _p('M11 1H15V5H11ZM12 2V4H14V2Z', c))

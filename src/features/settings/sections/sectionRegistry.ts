@@ -1,4 +1,4 @@
-import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MonitorIcon as Monitor, NetworkIcon as Network, PaletteIcon as Palette, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera-icons/react'
+import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MonitorIcon as Monitor, NetworkIcon as Network, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera-icons/react'
 
 /** The settings sections in sidebar order, with where each one's searchable copy lives. */
 export const settingsSections = [
@@ -6,7 +6,6 @@ export const settingsSections = [
   { key: 'account', icon: CircleUserRound, group: 'primary' },
   { key: 'models', icon: Bot, group: 'primary' },
   { key: 'display', icon: Monitor, group: 'primary' },
-  { key: 'brand', icon: Palette, group: 'primary' },
   { key: 'network', icon: Network, group: 'advanced' },
   { key: 'collab', icon: Users, group: 'advanced' },
   { key: 'extensions', icon: Puzzle, group: 'advanced' },
@@ -29,7 +28,6 @@ export const settingsSectionContentSources: Record<SettingsSectionKey, Array<{ n
   account: [{ ns: 'settings', path: 'account' }],
   models: [{ ns: 'settings', path: 'models' }],
   display: [{ ns: 'settings', path: 'display' }],
-  brand: [{ ns: 'settings', path: 'brand' }],
   network: [{ ns: 'settings', path: 'network' }],
   collab: [{ ns: 'settings', path: 'collab' }],
   extensions: [{ ns: 'settings', path: 'extensions' }],

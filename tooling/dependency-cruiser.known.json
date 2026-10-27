@@ -731,23 +731,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/design/components/DesignEditorPane.tsx",
-    "unresolvedTo": "@/features/design/components/DesignEditorPane",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
     "to": "src/features/workflow/lib/openWorkflowRoute.ts",
     "unresolvedTo": "@/features/workflow/lib/openWorkflowRoute",
     "dependencyTypes": [

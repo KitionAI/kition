@@ -269,7 +269,6 @@ pub struct Run {
     /// `live` or `draft`: whether kit tools edit the open document or a draft of it by default.
     pub kit_edit_mode: String,
     pub pane: String,
-    pub design: Option<Value>,
     pub model: RuntimeModel,
     /// The provider route the model is reached through: logged as the
     /// provider of each reply and retry.

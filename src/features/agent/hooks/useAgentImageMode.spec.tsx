@@ -58,7 +58,6 @@ describe('Agent image composer', () => {
   it.each([
     { type: 'image.target.chat' as const },
     { type: 'image.target.document' as const, document_path: 'Notes.md' },
-    { type: 'image.target.design' as const, design_path: 'Poster.kidesign' },
   ])('sends freeform review intents for $type without a catalog request', async (target) => {
     await setup({ target })
     await act(async () => mode.send())
@@ -189,7 +188,7 @@ describe('Agent image composer', () => {
   })
 
   it('keeps an edit sendable after its editor closes and clears the source on session changes', async () => {
-    await setup({ target: { type: 'image.target.design', design_path: 'Poster.kidesign' } })
+    await setup({ target: { type: 'image.target.document', document_path: 'Notes.md' } })
     await act(async () => mode.edit({ path: 'Agent/generated.png' } as AgentImageArtifact))
     props = { ...props, target: undefined }
     await render()

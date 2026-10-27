@@ -71,25 +71,6 @@ export function listTableRecords({ path, tableId }: TableRef, options?: { limit?
   })
 }
 
-/** Creates a record, or updates `recordId`, from values keyed by field id, name, or title, as `system:<feature>`. */
-export function writeTableRecord(ref: TableRef & { recordId?: string }, values: Record<string, unknown>, feature?: string) {
-  return request.post<KitTablesWriteRecordResult>('/v1/kit-tables/records', { ...ref, values, ...(feature ? { feature } : {}) })
-}
-
-/** Stores a file in the table file; answers the attachment value a file field holds. */
-export async function putTableAttachment(ref: TableRef, file: Blob & { name?: string }, feature?: string) {
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  let binary = ''
-  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000))
-  return request.post<KitTablesAttachment>('/v1/kit-tables/attachments', {
-    ...ref,
-    name: file.name || 'attachment',
-    mime: file.type || 'application/octet-stream',
-    data: btoa(binary),
-    ...(feature ? { feature } : {}),
-  })
-}
-
 /** Tells the host features that name a table file (or a folder of them) that it moved. */
 export function reportTableFileRenamed(from: string, to: string) {
   return request.post<KitTablesRenamedResult>('/v1/kit-tables/renamed', { from, to }, { suppressErrorMessage: true })

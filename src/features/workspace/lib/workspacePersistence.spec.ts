@@ -9,11 +9,11 @@ import {
 const ROOT_A = '/Users/alice/vault-a'
 const ROOT_B = '/Users/alice/vault-b'
 
-const designTab = {
-  id: 'design:plan.kidesign',
-  type: 'design' as const,
+const workflowTab = {
+  id: 'workflow:plan.ktable',
+  type: 'workflow' as const,
   title: 'plan',
-  path: 'plan.kidesign',
+  tablePath: 'plan.ktable',
 }
 
 describe('workspacePersistence tabs', () => {
@@ -26,37 +26,37 @@ describe('workspacePersistence tabs', () => {
       [ROOT_A]: [
         { id: 'browser:generic-web:example.com', type: 'browser', title: 'Example', provider: 'generic-web' },
         { id: 'browser-sites', type: 'browser-sites', title: 'Sites' },
-        designTab,
+        workflowTab,
       ],
     }))
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
   })
 
   it('keeps each workspace tab list isolated under its own rootPath', () => {
-    writeWorkspaceTabs(ROOT_A, [designTab])
+    writeWorkspaceTabs(ROOT_A, [workflowTab])
     writeWorkspaceTabs(ROOT_B, [
       {
-        id: 'design:notes.kidesign',
-        type: 'design',
+        id: 'workflow:notes.ktable',
+        type: 'workflow',
         title: 'notes',
-        path: 'notes.kidesign',
+        tablePath: 'notes.ktable',
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
     expect(readWorkspaceTabs(ROOT_B)).toEqual([
       {
-        id: 'design:notes.kidesign',
-        type: 'design',
+        id: 'workflow:notes.ktable',
+        type: 'workflow',
         title: 'notes',
-        path: 'notes.kidesign',
+        tablePath: 'notes.ktable',
       },
     ])
   })
 
   it('returns no tabs and does not write when rootPath is empty', () => {
-    writeWorkspaceTabs(ROOT_A, [designTab])
+    writeWorkspaceTabs(ROOT_A, [workflowTab])
 
     expect(readWorkspaceTabs('')).toEqual([])
 
@@ -70,11 +70,11 @@ describe('workspacePersistence tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
   })
 
   it('writing an empty list removes that workspace’s slot', () => {
-    writeWorkspaceTabs(ROOT_A, [designTab])
+    writeWorkspaceTabs(ROOT_A, [workflowTab])
     writeWorkspaceTabs(ROOT_A, [])
 
     expect(readWorkspaceTabs(ROOT_A)).toEqual([])
@@ -86,10 +86,10 @@ describe('workspacePersistence tabs', () => {
   it('migrates legacy v1 array into the first rootPath that reads it', () => {
     window.localStorage.setItem(
       'kition.document.workspace-tabs.v1',
-      JSON.stringify([designTab]),
+      JSON.stringify([workflowTab]),
     )
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(designTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
     // Legacy key gets cleaned up.
     expect(window.localStorage.getItem('kition.document.workspace-tabs.v1')).toBeNull()
     // Subsequent reads from other workspaces do not see the migrated data.

@@ -2,7 +2,6 @@
 //! the result the model sees next. The driver logs the call and its result.
 
 pub mod apply_patch;
-pub mod canvas;
 pub mod documents;
 pub mod exec;
 pub mod files;
@@ -130,7 +129,6 @@ async fn dispatch(run: &Arc<Run>, name: &str, input: &Value) -> ToolResult {
         "image_search" => images::image_search(run, input).await,
         "save_image_asset" => images::save_image_asset(run, input).await,
         "exec_command" => exec::exec_command(run, input).await,
-        "design_propose_patch" => canvas::propose_design_patch(run, input).await,
         "configure_smtp_connection" => configure_smtp(run, input).await,
         other => crate::mcp::call(run, other, input).await,
     }

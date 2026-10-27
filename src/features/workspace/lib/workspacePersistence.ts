@@ -338,20 +338,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         ...(workflowId ? { workflowId } : {}),
       }]
     }
-    if (
-      item.type === 'design'
-      && typeof item.id === 'string'
-      && typeof item.title === 'string'
-      && typeof item.path === 'string'
-      && item.path.toLowerCase().endsWith('.kidesign')
-    ) {
-      return [{
-        id: `design:${item.path}`,
-        type: 'design',
-        title: item.title,
-        path: item.path,
-      }]
-    }
     return []
   })
   const indexById = new Map<string, number>()

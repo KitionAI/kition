@@ -16,7 +16,6 @@ import {
 
 const doc = (path: string, extra: Partial<Extract<WorkspaceTab, { type: 'file-viewer' }>> = {}): WorkspaceTab =>
   ({ id: `file-viewer:${path}`, type: 'file-viewer', title: path, path, format: 'markdown', ...extra })
-const design = (path: string): WorkspaceTab => ({ id: `design:${path}`, type: 'design', title: path, path })
 const workflow = (tablePath: string, workflowId?: string): WorkspaceTab =>
   ({ id: `workflow:${tablePath}`, type: 'workflow', title: 'W', tablePath, workflowId })
 
@@ -94,12 +93,12 @@ describe('filterTabs', () => {
 })
 
 describe('remapTabPaths', () => {
-  it('moves file and design tabs under the renamed folder', () => {
-    const start = state([doc('old/a.md'), design('old/b.kidesign'), doc('other/c.md')], 'design:old/b.kidesign')
+  it('moves file tabs under the renamed folder', () => {
+    const start = state([doc('old/a.md'), doc('old/b.kdesign', { format: 'design' }), doc('other/c.md')], 'file-viewer:old/b.kdesign')
     const next = remapTabPaths(start, 'old', 'new')
-    expect(ids(next)).toEqual(['file-viewer:new/a.md', 'design:new/b.kidesign', 'file-viewer:other/c.md'])
-    expect(next.tabs[1]).toMatchObject({ path: 'new/b.kidesign', title: 'b' })
-    expect(next.activeTabId).toBe('design:new/b.kidesign')
+    expect(ids(next)).toEqual(['file-viewer:new/a.md', 'file-viewer:new/b.kdesign', 'file-viewer:other/c.md'])
+    expect(next.tabs[1]).toMatchObject({ path: 'new/b.kdesign', title: 'b' })
+    expect(next.activeTabId).toBe('file-viewer:new/b.kdesign')
     expect(remapTabPaths(start, 'x', 'x')).toBe(start)
   })
 })

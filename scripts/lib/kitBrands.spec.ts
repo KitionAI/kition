@@ -5,8 +5,7 @@ import { kitBrandProblems } from './kitBrands.mjs'
 const palette = {
   $comment: 'generated',
   photo: { kitId: 'kit.photo', light: '#087fa1', dark: '#4ccbf0' },
-  layout: { kitId: 'kit.design', light: '#d32f8d', dark: '#f57bbd' },
-  design: { kitId: null, light: '#e0244d', dark: '#ff7d97' },
+  design: { kitId: 'kit.design', light: '#d32f8d', dark: '#f57bbd' },
 }
 
 describe('kitBrandProblems', () => {
@@ -18,7 +17,7 @@ describe('kitBrandProblems', () => {
     expect(kitBrandProblems(palette, [{ source: 'photo-ui', kitId: 'kit.photo', brand: { light: '#087FA1', dark: '#4CCBF0' } }])).toEqual([])
   })
 
-  it('finds a kit by its kit id, not its palette id', () => {
+  it('finds a kit by its kit id', () => {
     expect(kitBrandProblems(palette, [{ source: 'design-ui', kitId: 'kit.design', brand: { light: '#d32f8d', dark: '#f57bbd' } }])).toEqual([])
   })
 

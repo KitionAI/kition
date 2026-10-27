@@ -132,8 +132,7 @@ export function useAgentImageMode(input: {
         ...options,
         ...(template ? { template_id: template.id, template_version: template.version, template_variables: variables } : {}),
         reference_paths: referencePaths,
-        surface: target.type === 'image.target.design' ? 'design'
-          : target.type === 'image.target.chat' ? 'chat' : 'document',
+        surface: target.type === 'image.target.chat' ? 'chat' : 'document',
         target,
         placement_preference: 'review',
       }
@@ -188,8 +187,6 @@ export function useAgentImageMode(input: {
     },
     error, preparing, blockedReason, referencePaths, instruction, send, edit, retry,
     canRetry: (id: string) => requests.current.has(id),
-    /** The exact text a request asked for, so a placed image keeps it editable. */
-    headlineFor: (id: string) => requests.current.get(id)?.intent.exact_text,
   }
 }
 export type AgentImageMode = ReturnType<typeof useAgentImageMode>

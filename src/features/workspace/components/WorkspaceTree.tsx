@@ -59,7 +59,6 @@ export function WorkspaceTree({
   createMenuVariant,
   onCloseCreateMenu,
   onCreateFolder,
-  onCreateDesign,
   kitCreations,
   depth = 0,
 }: {
@@ -96,7 +95,6 @@ export function WorkspaceTree({
   createMenuVariant?: 'workspace' | 'tableFile'
   onCloseCreateMenu?: () => void
   onCreateFolder?: () => void
-  onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
   depth?: number
@@ -467,7 +465,6 @@ export function WorkspaceTree({
                             variant={createMenuVariant ?? 'workspace'}
                             anchorEl={createMenuAnchorEl}
                             onCreateFolder={onCreateFolder ?? (() => undefined)}
-                            onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
                           />
@@ -697,7 +694,6 @@ export function WorkspaceTree({
                 createMenuVariant={createMenuVariant}
                 onCloseCreateMenu={onCloseCreateMenu}
                 onCreateFolder={onCreateFolder}
-                            onCreateDesign={onCreateDesign}
                             kitCreations={kitCreations}
                 depth={depth + 1}
               />

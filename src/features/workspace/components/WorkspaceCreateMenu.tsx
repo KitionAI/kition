@@ -21,7 +21,7 @@ const ESTIMATED_GROUPED_MENU_HEIGHT = 440
 const CREATE_GROUPS: readonly KitCreateGroup[] = ['documents', 'data', 'visual', 'media']
 /** Item order within the groups. Kition's own file types and the kits mix
  *  freely; a kit not listed here goes last in its group. */
-const CREATE_ORDER: readonly string[] = ['note', 'doc', 'pdf', 'design', 'html', 'table', 'sheet', 'slide', 'board', 'design-studio', 'fig', 'vector', 'photo', 'cad', 'cube', 'film', 'effect']
+const CREATE_ORDER: readonly string[] = ['note', 'doc', 'pdf', 'design', 'html', 'table', 'sheet', 'slide', 'board', 'fig', 'vector', 'photo', 'cad', 'cube', 'film', 'effect']
 
 type CreateItem = {
   id: string
@@ -40,7 +40,6 @@ export function WorkspaceCreateMenu({
   placement = 'bottom',
   anchorEl,
   onCreateFolder,
-  onCreateDesign,
   kitCreations,
   onCreateWorkflow,
 }: {
@@ -53,7 +52,6 @@ export function WorkspaceCreateMenu({
    *  legacy callers keep working unchanged. */
   anchorEl?: HTMLElement | null
   onCreateFolder: () => void
-  onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
   /** Table file variant only: a workflow for one of the file's tables. */
@@ -67,18 +65,15 @@ export function WorkspaceCreateMenu({
     return null
   }
 
-  const createItems: CreateItem[] = [
-    ...(onCreateDesign ? [{ id: 'design-studio', group: 'visual', label: t('design:suite'), icon: <KitIcon kit="design" small className="size-4" />, testId: 'workspace-create-design-studio', onClick: onCreateDesign } satisfies CreateItem] : []),
-    ...(kitCreations ?? []).map<CreateItem>((kit) => ({
-      id: kit.id,
-      group: kit.group,
-      label: t(kit.label),
-      icon: <KitIcon kit={kit.kit} small className="size-4" />,
-      extension: portableExtension(kit.extension),
-      testId: `workspace-create-${kit.id}`,
-      onClick: kit.onCreate,
-    })),
-  ].sort((a, b) => createRank(a.id) - createRank(b.id))
+  const createItems: CreateItem[] = (kitCreations ?? []).map<CreateItem>((kit) => ({
+    id: kit.id,
+    group: kit.group,
+    label: t(kit.label),
+    icon: <KitIcon kit={kit.kit} small className="size-4" />,
+    extension: portableExtension(kit.extension),
+    testId: `workspace-create-${kit.id}`,
+    onClick: kit.onCreate,
+  })).sort((a, b) => createRank(a.id) - createRank(b.id))
 
   const content: ReactNode = variant === 'tableFile' ? (
     // On a table file the inline `+` menu adds a workflow for its tables.

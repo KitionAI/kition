@@ -193,25 +193,10 @@ License: MIT
 Homepage: https://floating-ui.com
 License text: 19
 
-@fontsource-variable/bricolage-grotesque 5.3.0
-License: OFL-1.1
-Homepage: https://fontsource.org/fonts/bricolage-grotesque
-License text: 20
-
 @fontsource-variable/inter 5.3.0
 License: OFL-1.1
 Homepage: https://fontsource.org/fonts/inter
-License text: 21
-
-@fontsource-variable/jetbrains-mono 5.3.0
-License: OFL-1.1
-Homepage: https://fontsource.org/fonts/jetbrains-mono
-License text: 22
-
-@fontsource-variable/lora 5.3.0
-License: OFL-1.1
-Homepage: https://fontsource.org/fonts/lora
-License text: 23
+License text: 20
 
 @humanwhocodes/config-array 0.13.0
 License: Apache-2.0
@@ -226,84 +211,84 @@ License text: 13
 @humanwhocodes/object-schema 2.0.3
 License: BSD-3-Clause
 Homepage: https://github.com/humanwhocodes/object-schema#readme
-License text: 24
+License text: 21
 
 @iconify/types 2.0.0
 License: MIT
 Homepage: https://github.com/iconify/iconify
-License text: 25
+License text: 22
 
 @iconify/utils 3.1.3
 License: MIT
 Homepage: https://iconify.design/docs/libraries/utils/
-License text: 26
+License text: 23
 
 @jridgewell/gen-mapping 0.3.13
 License: MIT
 Homepage: https://github.com/jridgewell/sourcemaps/tree/main/packages/gen-mapping
-License text: 27
+License text: 24
 
 @jridgewell/resolve-uri 3.1.2
 License: MIT
 Homepage: https://github.com/jridgewell/resolve-uri#readme
-License text: 28
+License text: 25
 
 @jridgewell/sourcemap-codec 1.5.5
 License: MIT
 Homepage: https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec
-License text: 27
+License text: 24
 
 @jridgewell/trace-mapping 0.3.31
 License: MIT
 Homepage: https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping
-License text: 27
+License text: 24
 
 @kition/tessera-icons 0.1.0
 License: Apache-2.0
-License text: 29, 30, 31
+License text: 26, 27, 28
 
 @kition/tessera-tokens 0.1.0
 License: Apache-2.0
-License text: 29
+License text: 26
 
 @kition/tessera-ui 0.1.0
 License: Apache-2.0
-License text: 29
+License text: 26
 
 @mermaid-js/parser 1.2.0
 License: MIT
 Homepage: https://github.com/mermaid-js/mermaid/tree/develop/packages/mermaid/parser/#readme
-License text: 32
+License text: 29
 
 @nodelib/fs.scandir 2.1.5
 License: MIT
 Homepage: https://github.com/nodelib/nodelib/tree/master#readme
-License text: 33
+License text: 30
 
 @nodelib/fs.stat 2.0.5
 License: MIT
 Homepage: https://github.com/nodelib/nodelib/tree/master#readme
-License text: 33
+License text: 30
 
 @nodelib/fs.walk 1.2.8
 License: MIT
 Homepage: https://github.com/nodelib/nodelib/tree/master#readme
-License text: 33
+License text: 30
 
 @orama/orama 3.1.18
 License: Apache-2.0
 Homepage: https://github.com/oramasearch/orama#readme
-License text: 34
+License text: 31
 
 @oxc-project/types 0.139.0, 0.150.0
 License: MIT
 Homepage: https://oxc.rs
-License text: 35
+License text: 32
 
 @playwright/test 1.59.1
 License: Apache-2.0
 Homepage: https://playwright.dev
-License text: 36, 37
+License text: 33, 34
 
 @radix-ui/number 1.1.1
 License: MIT
@@ -313,52 +298,52 @@ License text: not present in the installed package
 @radix-ui/primitive 1.1.3
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-accessible-icon 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-accordion 1.2.12
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-alert-dialog 1.1.15
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-arrow 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-aspect-ratio 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-avatar 1.1.10
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-checkbox 1.3.3
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-collapsible 1.1.12
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-collection 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-compose-refs 1.1.2
 License: MIT
@@ -373,12 +358,12 @@ License text: not present in the installed package
 @radix-ui/react-context-menu 2.2.16
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-dialog 1.1.15
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-direction 1.1.1
 License: MIT
@@ -388,32 +373,32 @@ License text: not present in the installed package
 @radix-ui/react-dismissable-layer 1.1.11
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-dropdown-menu 2.1.16
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-focus-guards 1.1.3
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-focus-scope 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-form 0.1.8
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-hover-card 1.1.15
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-id 1.1.1
 License: MIT
@@ -423,132 +408,132 @@ License text: not present in the installed package
 @radix-ui/react-label 2.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-menu 2.1.16
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-menubar 1.1.16
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-navigation-menu 1.2.14
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-one-time-password-field 0.1.8
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-password-toggle-field 0.1.3
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-popover 1.1.15
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-popper 1.2.8
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-portal 1.1.9
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-presence 1.1.5
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-primitive 2.1.3, 2.1.4
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-progress 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-radio-group 1.3.8
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-roving-focus 1.1.11
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-scroll-area 1.2.10
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-select 2.2.6
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-separator 1.1.7
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-slider 1.3.6
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-slot 1.2.3, 1.2.4
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-switch 1.2.6
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-tabs 1.1.13
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-toast 1.2.15
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-toggle 1.1.10
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-toggle-group 1.1.11
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-toolbar 1.1.11
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-tooltip 1.2.8
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-use-callback-ref 1.1.1
 License: MIT
@@ -558,12 +543,12 @@ License text: not present in the installed package
 @radix-ui/react-use-controllable-state 1.2.2
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-use-effect-event 0.0.2
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-use-escape-keydown 1.1.1
 License: MIT
@@ -573,7 +558,7 @@ License text: not present in the installed package
 @radix-ui/react-use-is-hydrated 0.1.0
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/react-use-layout-effect 1.1.1
 License: MIT
@@ -598,7 +583,7 @@ License text: not present in the installed package
 @radix-ui/react-visually-hidden 1.2.3
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 @radix-ui/rect 1.1.1
 License: MIT
@@ -608,362 +593,362 @@ License text: not present in the installed package
 @rolldown/pluginutils 1.0.0-rc.7, 1.0.1
 License: MIT
 Homepage: https://github.com/rolldown/plugins/tree/main/packages/pluginutils#readme
-License text: 39, 40
+License text: 36, 37
 
 @standard-schema/spec 1.1.0
 License: MIT
 Homepage: https://standardschema.dev
-License text: 41
+License text: 38
 
 @tanstack/query-core 5.104.0
 License: MIT
 Homepage: https://tanstack.com/query
-License text: 42
+License text: 39
 
 @tanstack/react-query 5.104.0
 License: MIT
 Homepage: https://tanstack.com/query
-License text: 42
+License text: 39
 
 @tauri-apps/api 2.12.2
 License: Apache-2.0 OR MIT
 Homepage: https://github.com/tauri-apps/tauri#readme
-License text: 29, 43, 44
+License text: 26, 40, 41
 
 @tauri-apps/cli 2.12.1
 License: Apache-2.0 OR MIT
 Homepage: https://github.com/tauri-apps/tauri#readme
-License text: 29, 43
+License text: 26, 40
 
 @types/chai 5.2.3
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/chai
-License text: 45
+License text: 42
 
 @types/d3 7.4.3
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3
-License text: 45
+License text: 42
 
 @types/d3-array 3.2.2
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-array
-License text: 45
+License text: 42
 
 @types/d3-axis 3.0.6
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-axis
-License text: 45
+License text: 42
 
 @types/d3-brush 3.0.6
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-brush
-License text: 45
+License text: 42
 
 @types/d3-chord 3.0.6
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-chord
-License text: 45
+License text: 42
 
 @types/d3-color 3.1.3
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-color
-License text: 45
+License text: 42
 
 @types/d3-contour 3.0.6
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-contour
-License text: 45
+License text: 42
 
 @types/d3-delaunay 6.0.4
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-delaunay
-License text: 45
+License text: 42
 
 @types/d3-dispatch 3.0.7
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-dispatch
-License text: 45
+License text: 42
 
 @types/d3-drag 3.0.7
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-drag
-License text: 45
+License text: 42
 
 @types/d3-dsv 3.0.7
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-dsv
-License text: 45
+License text: 42
 
 @types/d3-ease 3.0.2
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-ease
-License text: 45
+License text: 42
 
 @types/d3-fetch 3.0.7
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-fetch
-License text: 45
+License text: 42
 
 @types/d3-force 3.0.10
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-force
-License text: 45
+License text: 42
 
 @types/d3-format 3.0.4
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-format
-License text: 45
+License text: 42
 
 @types/d3-geo 3.1.0
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-geo
-License text: 45
+License text: 42
 
 @types/d3-hierarchy 3.1.7
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-hierarchy
-License text: 45
+License text: 42
 
 @types/d3-interpolate 3.0.4
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-interpolate
-License text: 45
+License text: 42
 
 @types/d3-path 3.1.1
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-path
-License text: 45
+License text: 42
 
 @types/d3-polygon 3.0.2
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-polygon
-License text: 45
+License text: 42
 
 @types/d3-quadtree 3.0.6
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-quadtree
-License text: 45
+License text: 42
 
 @types/d3-random 3.0.3
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-random
-License text: 45
+License text: 42
 
 @types/d3-scale 4.0.9
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-scale
-License text: 45
+License text: 42
 
 @types/d3-scale-chromatic 3.1.0
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-scale-chromatic
-License text: 45
+License text: 42
 
 @types/d3-selection 3.0.11
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-selection
-License text: 45
+License text: 42
 
 @types/d3-shape 3.1.8
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-shape
-License text: 45
+License text: 42
 
 @types/d3-time 3.0.4
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-time
-License text: 45
+License text: 42
 
 @types/d3-time-format 4.0.3
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-time-format
-License text: 45
+License text: 42
 
 @types/d3-timer 3.0.2
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-timer
-License text: 45
+License text: 42
 
 @types/d3-transition 3.0.9
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-transition
-License text: 45
+License text: 42
 
 @types/d3-zoom 3.0.8
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-zoom
-License text: 45
+License text: 42
 
 @types/deep-eql 4.0.2
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/deep-eql
-License text: 45
+License text: 42
 
 @types/estree 1.0.8
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/estree
-License text: 45
+License text: 42
 
 @types/geojson 7946.0.16
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/geojson
-License text: 45
+License text: 42
 
 @types/node 22.20.1
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node
-License text: 45
+License text: 42
 
 @types/react 19.2.14
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react
-License text: 45
+License text: 42
 
 @types/react-dom 19.2.3
 License: MIT
 Homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom
-License text: 45
+License text: 42
 
 @typescript-eslint/eslint-plugin 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io/packages/eslint-plugin
-License text: 46
+License text: 43
 
 @typescript-eslint/parser 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io/packages/parser
-License text: 46
+License text: 43
 
 @typescript-eslint/project-service 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io
-License text: 47
+License text: 44
 
 @typescript-eslint/scope-manager 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io/packages/scope-manager
-License text: 46
+License text: 43
 
 @typescript-eslint/tsconfig-utils 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io
-License text: 47
+License text: 44
 
 @typescript-eslint/type-utils 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io
-License text: 48
+License text: 45
 
 @typescript-eslint/types 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io
-License text: 46
+License text: 43
 
 @typescript-eslint/typescript-estree 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io/packages/typescript-estree
-License text: 46
+License text: 43
 
 @typescript-eslint/utils 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io/packages/utils
-License text: 46
+License text: 43
 
 @typescript-eslint/visitor-keys 8.61.0
 License: MIT
 Homepage: https://typescript-eslint.io
-License text: 46
+License text: 43
 
 @ungap/structured-clone 1.3.0
 License: ISC
 Homepage: https://github.com/ungap/structured-clone#readme
-License text: 49
+License text: 46
 
 @upsetjs/venn.js 2.0.0
 License: MIT
 Homepage: https://github.com/upsetjs/venn.js
-License text: 50
+License text: 47
 
 @vitejs/plugin-react 6.0.1
 License: MIT
 Homepage: https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme
-License text: 51
+License text: 48
 
 @vitest/coverage-v8 4.1.10
 License: MIT
 Homepage: https://vitest.dev/guide/coverage
-License text: 52
+License text: 49
 
 @vitest/expect 4.1.10
 License: MIT
 Homepage: https://vitest.dev/api/expect
-License text: 52
+License text: 49
 
 @vitest/mocker 4.1.10
 License: MIT
 Homepage: https://github.com/vitest-dev/vitest/tree/main/packages/mocker
-License text: 52
+License text: 49
 
 @vitest/pretty-format 4.1.10
 License: MIT
 Homepage: https://github.com/vitest-dev/vitest/tree/main/packages/pretty-format
-License text: 52
+License text: 49
 
 @vitest/runner 4.1.10
 License: MIT
 Homepage: https://vitest.dev/api/advanced/runner
-License text: 52
+License text: 49
 
 @vitest/snapshot 4.1.10
 License: MIT
 Homepage: https://vitest.dev/guide/snapshot
-License text: 52
+License text: 49
 
 @vitest/spy 4.1.10
 License: MIT
 Homepage: https://vitest.dev/api/mock
-License text: 52
+License text: 49
 
 @vitest/utils 4.1.10
 License: MIT
 Homepage: https://github.com/vitest-dev/vitest/tree/main/packages/utils
-License text: 52
+License text: 49
 
 acorn 8.16.0, 8.18.0
 License: MIT
 Homepage: https://github.com/acornjs/acorn
-License text: 53
+License text: 50
 
 acorn-jsx 5.3.2
 License: MIT
 Homepage: https://github.com/acornjs/acorn-jsx
-License text: 54
+License text: 51
 
 acorn-jsx-walk 2.0.0
 License: MIT
 Homepage: https://github.com/sderosiaux/acorn-jsx-walk#readme
-License text: 55
+License text: 52
 
 acorn-loose 8.5.2
 License: MIT
 Homepage: https://github.com/acornjs/acorn
-License text: 56
+License text: 53
 
 acorn-walk 8.3.5
 License: MIT
 Homepage: https://github.com/acornjs/acorn
-License text: 56
+License text: 53
 
 ajv 6.14.0, 8.20.0
 License: MIT
 Homepage: https://ajv.js.org
-License text: 57, 58
+License text: 54, 55
 
 ajv-formats 3.0.1
 License: MIT
 Homepage: https://github.com/ajv-validator/ajv-formats#readme
-License text: 59
+License text: 56
 
 ansi-regex 5.0.1
 License: MIT
@@ -978,102 +963,102 @@ License text: 1
 any-promise 1.3.0
 License: MIT
 Homepage: http://github.com/kevinbeaty/any-promise
-License text: 60
+License text: 57
 
 anymatch 3.1.3
 License: ISC
 Homepage: https://github.com/micromatch/anymatch
-License text: 61
+License text: 58
 
 arg 5.0.2
 License: MIT
 Homepage: https://github.com/vercel/arg#readme
-License text: 62
+License text: 59
 
 argparse 2.0.1
 License: Python-2.0
 Homepage: https://github.com/nodeca/argparse#readme
-License text: 63
+License text: 60
 
 aria-hidden 1.2.6
 License: MIT
 Homepage: https://github.com/theKashey/aria-hidden#readme
-License text: 64
+License text: 61
 
 aria-query 5.3.2
 License: Apache-2.0
 Homepage: https://github.com/A11yance/aria-query#readme
-License text: 65
+License text: 62
 
 array-buffer-byte-length 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/array-buffer-byte-length#readme
-License text: 66
+License text: 63
 
 array-includes 3.1.9
 License: MIT
 Homepage: https://github.com/es-shims/array-includes#readme
-License text: 67
+License text: 64
 
 array.prototype.flat 1.3.3
 License: MIT
 Homepage: https://github.com/es-shims/Array.prototype.flat#readme
-License text: 68
+License text: 65
 
 array.prototype.flatmap 1.3.3
 License: MIT
 Homepage: https://github.com/es-shims/Array.prototype.flatMap#readme
-License text: 68
+License text: 65
 
 arraybuffer.prototype.slice 1.0.4
 License: MIT
 Homepage: https://github.com/es-shims/ArrayBuffer.prototype.slice#readme
-License text: 69
+License text: 66
 
 assertion-error 2.0.1
 License: MIT
 Homepage: https://github.com/chaijs/assertion-error#readme
-License text: 70
+License text: 67
 
 ast-types-flow 0.0.8
 License: MIT
 Homepage: https://github.com/kyldvs/ast-types-flow#readme
-License text: 71
+License text: 68
 
 ast-v8-to-istanbul 1.0.7
 License: MIT
 Homepage: https://github.com/AriPerkkio/ast-v8-to-istanbul
-License text: 72
+License text: 69
 
 async-function 1.0.0
 License: MIT
 Homepage: https://github.com/ljharb/async-function#readme
-License text: 73
+License text: 70
 
 autoprefixer 10.5.0
 License: MIT
 Homepage: https://github.com/postcss/autoprefixer#readme
-License text: 74
+License text: 71
 
 available-typed-arrays 1.0.7
 License: MIT
 Homepage: https://github.com/inspect-js/available-typed-arrays#readme
-License text: 75
+License text: 72
 
 axe-core 4.12.1
 License: MPL-2.0
 Homepage: https://www.deque.com/axe/
-License text: 76, 77
+License text: 73, 74
 
 axobject-query 4.1.0
 License: Apache-2.0
 Homepage: https://github.com/A11yance/axobject-query#readme
-License text: 65
+License text: 62
 
 balanced-match 4.0.4
 License: MIT
 Homepage: https://github.com/juliangruber/balanced-match#readme
-License text: 78
+License text: 75
 
 baseline-browser-mapping 2.11.21
 License: Apache-2.0
@@ -1083,42 +1068,42 @@ License text: 13
 bidi-js 1.0.3
 License: MIT
 Homepage: https://github.com/lojjic/bidi-js#readme
-License text: 79
+License text: 76
 
 binary-extensions 2.3.0
 License: MIT
 Homepage: https://github.com/sindresorhus/binary-extensions#readme
-License text: 80
+License text: 77
 
 brace-expansion 5.0.11
 License: MIT
 Homepage: https://github.com/juliangruber/brace-expansion#readme
-License text: 81
+License text: 78
 
 braces 3.0.3
 License: MIT
 Homepage: https://github.com/micromatch/braces
-License text: 82
+License text: 79
 
 browserslist 4.28.7
 License: MIT
 Homepage: https://github.com/browserslist/browserslist#readme
-License text: 83
+License text: 80
 
 call-bind 1.0.9
 License: MIT
 Homepage: https://github.com/ljharb/call-bind#readme
-License text: 84
+License text: 81
 
 call-bind-apply-helpers 1.0.2
 License: MIT
 Homepage: https://github.com/ljharb/call-bind-apply-helpers#readme
-License text: 85
+License text: 82
 
 call-bound 1.0.4
 License: MIT
 Homepage: https://github.com/ljharb/call-bound#readme
-License text: 85
+License text: 82
 
 callsites 3.1.0
 License: MIT
@@ -1128,17 +1113,17 @@ License text: 1
 camelcase-css 2.0.1
 License: MIT
 Homepage: https://github.com/stevenvachon/camelcase-css#readme
-License text: 86
+License text: 83
 
 caniuse-lite 1.0.30001791, 1.0.30001810
 License: CC-BY-4.0
 Homepage: https://github.com/browserslist/caniuse-lite#readme
-License text: 87
+License text: 84
 
 chai 6.2.2
 License: MIT
 Homepage: http://chaijs.com
-License text: 88
+License text: 85
 
 chalk 4.1.2
 License: MIT
@@ -1148,337 +1133,337 @@ License text: 1
 chokidar 3.6.0
 License: MIT
 Homepage: https://github.com/paulmillr/chokidar
-License text: 89
+License text: 86
 
 clsx 2.1.1
 License: MIT
 Homepage: https://github.com/lukeed/clsx#readme
-License text: 90
+License text: 87
 
 cmdk 1.1.1
 License: MIT
 Homepage: https://github.com/pacocoursey/cmdk#readme
-License text: 91
+License text: 88
 
 color-convert 2.0.1
 License: MIT
 Homepage: https://github.com/Qix-/color-convert#readme
-License text: 92
+License text: 89
 
 color-name 1.1.4
 License: MIT
 Homepage: https://github.com/colorjs/color-name
-License text: 93
+License text: 90
 
 commander 4.1.1, 7.2.0, 8.3.0, 15.0.0
 License: MIT
 Homepage: https://github.com/tj/commander.js#readme
-License text: 94
+License text: 91
 
 convert-source-map 2.0.0
 License: MIT
 Homepage: https://github.com/thlorenz/convert-source-map
-License text: 95
+License text: 92
 
 cose-base 1.0.3, 2.2.0
 License: MIT
 Homepage: https://github.com/iVis-at-Bilkent/cose-base#readme
-License text: 96
+License text: 93
 
 cross-spawn 7.0.6
 License: MIT
 Homepage: https://github.com/moxystudio/node-cross-spawn
-License text: 97
+License text: 94
 
 css-tree 3.2.1
 License: MIT
 Homepage: https://github.com/csstree/csstree#readme
-License text: 98
+License text: 95
 
 cssesc 3.0.0
 License: MIT
 Homepage: https://mths.be/cssesc
-License text: 99
+License text: 96
 
 csstype 3.2.3
 License: MIT
 Homepage: https://github.com/frenic/csstype#readme
-License text: 100
+License text: 97
 
 cytoscape 3.34.0
 License: MIT
 Homepage: http://js.cytoscape.org
-License text: 101, 102
+License text: 98, 99
 
 cytoscape-cose-bilkent 4.1.0
 License: MIT
 Homepage: https://github.com/cytoscape/cytoscape.js-cose-bilkent
-License text: 103
+License text: 100
 
 cytoscape-fcose 2.2.0
 License: MIT
 Homepage: https://github.com/iVis-at-Bilkent/cytoscape.js-fcose
-License text: 104
+License text: 101
 
 d3 7.9.0
 License: ISC
 Homepage: https://d3js.org
-License text: 105
+License text: 102
 
 d3-array 2.12.1
 License: BSD-3-Clause
 Homepage: https://d3js.org/d3-array/
-License text: 106
+License text: 103
 
 d3-array 3.2.4
 License: ISC
 Homepage: https://d3js.org/d3-array/
-License text: 105
+License text: 102
 
 d3-axis 3.0.0
 License: ISC
 Homepage: https://d3js.org/d3-axis/
-License text: 107
+License text: 104
 
 d3-brush 3.0.0
 License: ISC
 Homepage: https://d3js.org/d3-brush/
-License text: 107
+License text: 104
 
 d3-chord 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-chord/
-License text: 107
+License text: 104
 
 d3-color 3.1.0
 License: ISC
 Homepage: https://d3js.org/d3-color/
-License text: 108
+License text: 105
 
 d3-contour 4.0.2
 License: ISC
 Homepage: https://d3js.org/d3-contour/
-License text: 109
+License text: 106
 
 d3-delaunay 6.0.4
 License: ISC
 Homepage: https://github.com/d3/d3-delaunay
-License text: 110
+License text: 107
 
 d3-dispatch 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-dispatch/
-License text: 107
+License text: 104
 
 d3-drag 3.0.0
 License: ISC
 Homepage: https://d3js.org/d3-drag/
-License text: 107
+License text: 104
 
 d3-dsv 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-dsv/
-License text: 111
+License text: 108
 
 d3-ease 3.0.1
 License: BSD-3-Clause
 Homepage: https://d3js.org/d3-ease/
-License text: 112
+License text: 109
 
 d3-fetch 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-fetch/
-License text: 113
+License text: 110
 
 d3-force 3.0.0
 License: ISC
 Homepage: https://d3js.org/d3-force/
-License text: 107
+License text: 104
 
 d3-format 3.1.2
 License: ISC
 Homepage: https://d3js.org/d3-format/
-License text: 114
+License text: 111
 
 d3-geo 3.1.1
 License: ISC
 Homepage: https://d3js.org/d3-geo/
-License text: 115
+License text: 112
 
 d3-hierarchy 3.1.2
 License: ISC
 Homepage: https://d3js.org/d3-hierarchy/
-License text: 107
+License text: 104
 
 d3-interpolate 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-interpolate/
-License text: 107
+License text: 104
 
 d3-path 1.0.9
 License: BSD-3-Clause
 Homepage: https://d3js.org/d3-path/
-License text: 116
+License text: 113
 
 d3-path 3.1.0
 License: ISC
 Homepage: https://d3js.org/d3-path/
-License text: 117
+License text: 114
 
 d3-polygon 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-polygon/
-License text: 107
+License text: 104
 
 d3-quadtree 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-quadtree/
-License text: 107
+License text: 104
 
 d3-random 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-random/
-License text: 107
+License text: 104
 
 d3-sankey 0.12.3
 License: BSD-3-Clause
 Homepage: https://github.com/d3/d3-sankey
-License text: 118
+License text: 115
 
 d3-scale 4.0.2
 License: ISC
 Homepage: https://d3js.org/d3-scale/
-License text: 107
+License text: 104
 
 d3-scale-chromatic 3.1.0
 License: ISC
 Homepage: https://d3js.org/d3-scale-chromatic/
-License text: 119
+License text: 116
 
 d3-selection 3.0.0
 License: ISC
 Homepage: https://d3js.org/d3-selection/
-License text: 107
+License text: 104
 
 d3-shape 1.3.7
 License: BSD-3-Clause
 Homepage: https://d3js.org/d3-shape/
-License text: 120
+License text: 117
 
 d3-shape 3.2.0
 License: ISC
 Homepage: https://d3js.org/d3-shape/
-License text: 108
+License text: 105
 
 d3-time 3.1.0
 License: ISC
 Homepage: https://d3js.org/d3-time/
-License text: 108
+License text: 105
 
 d3-time-format 4.1.0
 License: ISC
 Homepage: https://d3js.org/d3-time-format/
-License text: 107
+License text: 104
 
 d3-timer 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-timer/
-License text: 107
+License text: 104
 
 d3-transition 3.0.1
 License: ISC
 Homepage: https://d3js.org/d3-transition/
-License text: 107
+License text: 104
 
 d3-zoom 3.0.0
 License: ISC
 Homepage: https://d3js.org/d3-zoom/
-License text: 107
+License text: 104
 
 dagre-d3-es 7.0.14
 License: MIT
 Homepage: https://github.com/tbo47/dagre-es#readme
-License text: 121
+License text: 118
 
 damerau-levenshtein 1.0.8
 License: BSD-2-Clause
 Homepage: https://github.com/tad-lispy/node-damerau-levenshtein#readme
-License text: 122
+License text: 119
 
 data-urls 7.0.0
 License: MIT
 Homepage: https://github.com/jsdom/data-urls#readme
-License text: 123
+License text: 120
 
 data-view-buffer 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/data-view-buffer#readme
-License text: 124
+License text: 121
 
 data-view-byte-length 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/data-view-byte-length#readme
-License text: 85
+License text: 82
 
 data-view-byte-offset 1.0.1
 License: MIT
 Homepage: https://github.com/inspect-js/data-view-byte-offset#readme
-License text: 85
+License text: 82
 
 dayjs 1.11.20
 License: MIT
 Homepage: https://day.js.org
-License text: 125
+License text: 122
 
 debug 4.4.3
 License: MIT
 Homepage: https://github.com/debug-js/debug#readme
-License text: 126
+License text: 123
 
 decimal.js 10.6.0
 License: MIT
 Homepage: https://github.com/MikeMcl/decimal.js#readme
-License text: 127
+License text: 124
 
 deep-is 0.1.4
 License: MIT
 Homepage: https://github.com/thlorenz/deep-is#readme
-License text: 128
+License text: 125
 
 define-data-property 1.1.4
 License: MIT
 Homepage: https://github.com/ljharb/define-data-property#readme
-License text: 124
+License text: 121
 
 define-properties 1.2.1
 License: MIT
 Homepage: https://github.com/ljharb/define-properties#readme
-License text: 67
+License text: 64
 
 delaunator 5.1.0
 License: ISC
 Homepage: https://github.com/mapbox/delaunator#readme
-License text: 129
+License text: 126
 
 dependency-cruiser 18.4.0
 License: MIT
 Homepage: https://github.com/sverweij/dependency-cruiser
-License text: 130
+License text: 127
 
 detect-libc 2.1.2
 License: Apache-2.0
 Homepage: https://github.com/lovell/detect-libc#readme
-License text: 131
+License text: 128
 
 detect-node-es 1.1.0
 License: MIT
 Homepage: https://github.com/thekashey/detect-node
-License text: 132
+License text: 129
 
 didyoumean 1.2.2
 License: Apache-2.0
 Homepage: https://github.com/dcporter/didyoumean.js
-License text: 133
+License text: 130
 
 dlv 1.1.3
 License: MIT
@@ -1488,92 +1473,92 @@ License text: not present in the installed package
 doctrine 3.0.0
 License: Apache-2.0
 Homepage: https://github.com/eslint/doctrine
-License text: 13, 134, 135
+License text: 13, 131, 132
 
 dompurify 3.4.13
 License: (MPL-2.0 OR Apache-2.0)
 Homepage: https://github.com/cure53/DOMPurify
-License text: 13, 136
+License text: 13, 133
 
 dunder-proto 1.0.1
 License: MIT
 Homepage: https://github.com/es-shims/dunder-proto#readme
-License text: 137
+License text: 134
 
 electron-to-chromium 1.5.423
 License: ISC
 Homepage: https://github.com/Kilian/electron-to-chromium#readme
-License text: 138
+License text: 135
 
 emoji-regex 9.2.2
 License: MIT
 Homepage: https://mths.be/emoji-regex
-License text: 99
+License text: 96
 
 enhanced-resolve 5.25.1
 License: MIT
 Homepage: https://github.com/webpack/enhanced-resolve#readme
-License text: 139
+License text: 136
 
 entities 8.0.0
 License: BSD-2-Clause
 Homepage: https://github.com/fb55/entities#readme
-License text: 140
+License text: 137
 
 es-abstract 1.24.2
 License: MIT
 Homepage: https://github.com/ljharb/es-abstract#readme
-License text: 67
+License text: 64
 
 es-define-property 1.0.1
 License: MIT
 Homepage: https://github.com/ljharb/es-define-property#readme
-License text: 85
+License text: 82
 
 es-errors 1.3.0
 License: MIT
 Homepage: https://github.com/ljharb/es-errors#readme
-License text: 85
+License text: 82
 
 es-module-lexer 2.3.1
 License: MIT
 Homepage: https://github.com/guybedford/es-module-lexer#readme
-License text: 141
+License text: 138
 
 es-object-atoms 1.1.1, 1.1.2
 License: MIT
 Homepage: https://github.com/ljharb/es-object-atoms#readme
-License text: 85
+License text: 82
 
 es-set-tostringtag 2.1.0
 License: MIT
 Homepage: https://github.com/es-shims/es-set-tostringtag#readme
-License text: 142
+License text: 139
 
 es-shim-unscopables 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/es-shim-unscopables#readme
-License text: 143
+License text: 140
 
 es-to-primitive 1.3.0
 License: MIT
 Homepage: https://github.com/ljharb/es-to-primitive#readme
-License text: 144
+License text: 141
 
 es-toolkit 1.47.0
 License: MIT
 Homepage: https://es-toolkit.dev
-License text: 145
+License text: 142
 
 escalade 3.2.0
 License: MIT
 Homepage: https://github.com/lukeed/escalade#readme
-License text: 90
+License text: 87
 
 escape-string-regexp 4.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/escape-string-regexp#readme
-License text: 146
+License text: 143
 
 eslint 8.57.1
 License: MIT
@@ -1583,37 +1568,37 @@ License text: 17
 eslint-plugin-jsx-a11y 6.10.2
 License: MIT
 Homepage: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y#readme
-License text: 147
+License text: 144
 
 eslint-plugin-react-hooks 4.6.2
 License: MIT
 Homepage: https://reactjs.org/
-License text: 148
+License text: 145
 
 eslint-plugin-sonarjs 1.0.4
 License: LGPL-3.0-only
 Homepage: https://github.com/SonarSource/eslint-plugin-sonarjs
-License text: 149
+License text: 146
 
 eslint-scope 7.2.2
 License: BSD-2-Clause
 Homepage: http://github.com/eslint/eslint-scope
-License text: 150
+License text: 147
 
 eslint-visitor-keys 3.4.3, 5.0.1
 License: Apache-2.0
 Homepage: https://github.com/eslint/js/blob/main/packages/eslint-visitor-keys/README.md
-License text: 151
+License text: 148
 
 espree 9.6.1
 License: BSD-2-Clause
 Homepage: https://github.com/eslint/espree
-License text: 152
+License text: 149
 
 esquery 1.7.0
 License: BSD-3-Clause
 Homepage: https://github.com/estools/esquery/
-License text: 153
+License text: 150
 
 esrecurse 4.3.0
 License: BSD-2-Clause
@@ -1623,207 +1608,207 @@ License text: not present in the installed package
 estraverse 5.3.0
 License: BSD-2-Clause
 Homepage: https://github.com/estools/estraverse
-License text: 135
+License text: 132
 
 estree-walker 3.0.3
 License: MIT
 Homepage: https://github.com/Rich-Harris/estree-walker#readme
-License text: 154
+License text: 151
 
 esutils 2.0.3
 License: BSD-2-Clause
 Homepage: https://github.com/estools/esutils
-License text: 135
+License text: 132
 
 expect-type 1.4.0
 License: Apache-2.0
 Homepage: https://github.com/mmkal/expect-type#readme
-License text: 155
+License text: 152
 
 fake-indexeddb 6.2.5
 License: Apache-2.0
 Homepage: https://github.com/dumbmatter/fakeIndexedDB
-License text: 156
+License text: 153
 
 fast-deep-equal 3.1.3
 License: MIT
 Homepage: https://github.com/epoberezkin/fast-deep-equal#readme
-License text: 157
+License text: 154
 
 fast-glob 3.3.3
 License: MIT
 Homepage: https://github.com/mrmlnc/fast-glob#readme
-License text: 33
+License text: 30
 
 fast-json-stable-stringify 2.1.0
 License: MIT
 Homepage: https://github.com/epoberezkin/fast-json-stable-stringify
-License text: 158
+License text: 155
 
 fast-levenshtein 2.0.6
 License: MIT
 Homepage: https://github.com/hiddentao/fast-levenshtein#readme
-License text: 159
+License text: 156
 
 fast-uri 3.1.7
 License: BSD-3-Clause
 Homepage: https://github.com/fastify/fast-uri
-License text: 160
+License text: 157
 
 fastq 1.20.1
 License: ISC
 Homepage: https://github.com/mcollina/fastq#readme
-License text: 161
+License text: 158
 
 fd-package-json 2.0.0
 License: MIT
 Homepage: https://github.com/es-tooling/fd-package-json#readme
-License text: 162
+License text: 159
 
 fdir 6.5.0
 License: MIT
 Homepage: https://github.com/thecodrr/fdir#readme
-License text: 163
+License text: 160
 
 file-entry-cache 6.0.1
 License: MIT
 Homepage: https://github.com/royriojas/file-entry-cache#readme
-License text: 164
+License text: 161
 
 fill-range 7.1.1
 License: MIT
 Homepage: https://github.com/jonschlinkert/fill-range
-License text: 82
+License text: 79
 
 find-up 5.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/find-up#readme
-License text: 146
+License text: 143
 
 flat-cache 3.2.0
 License: MIT
 Homepage: https://github.com/jaredwray/flat-cache#readme
-License text: 165
+License text: 162
 
 flatted 3.4.2
 License: ISC
 Homepage: https://github.com/WebReflection/flatted#readme
-License text: 166
+License text: 163
 
 for-each 0.3.5
 License: MIT
 Homepage: https://github.com/Raynos/for-each
-License text: 167
+License text: 164
 
 formatly 0.7.1
 License: MIT
 Homepage: https://github.com/JoshuaKGoldberg/formatly#readme
-License text: 168
+License text: 165
 
 fraction.js 5.3.4
 License: MIT
 Homepage: https://raw.org/article/rational-numbers-in-javascript/
-License text: 169
+License text: 166
 
 fs.realpath 1.0.0
 License: ISC
 Homepage: https://github.com/isaacs/fs.realpath#readme
-License text: 170
+License text: 167
 
 function-bind 1.1.2
 License: MIT
 Homepage: https://github.com/Raynos/function-bind
-License text: 171
+License text: 168
 
 function.prototype.name 1.2.0
 License: MIT
 Homepage: https://github.com/es-shims/Function.prototype.name#readme
-License text: 172
+License text: 169
 
 functions-have-names 1.2.3
 License: MIT
 Homepage: https://github.com/inspect-js/functions-have-names#readme
-License text: 173
+License text: 170
 
 generator-function 2.0.1
 License: MIT
 Homepage: https://github.com/TimothyGu/generator-function#readme
-License text: 174
+License text: 171
 
 get-intrinsic 1.3.0
 License: MIT
 Homepage: https://github.com/ljharb/get-intrinsic#readme
-License text: 84
+License text: 81
 
 get-nonce 1.0.1
 License: MIT
 Homepage: https://github.com/theKashey/get-nonce
-License text: 175
+License text: 172
 
 get-proto 1.0.1
 License: MIT
 Homepage: https://github.com/ljharb/get-proto#readme
-License text: 176
+License text: 173
 
 get-symbol-description 1.1.0
 License: MIT
 Homepage: https://github.com/inspect-js/get-symbol-description#readme
-License text: 177
+License text: 174
 
 get-tsconfig 4.14.3
 License: MIT
 Homepage: https://github.com/privatenumber/get-tsconfig#readme
-License text: 178
+License text: 175
 
 glob 7.2.3
 License: ISC
 Homepage: https://github.com/isaacs/node-glob#readme
-License text: 179
+License text: 176
 
 glob-parent 5.1.2, 6.0.2
 License: ISC
 Homepage: https://github.com/gulpjs/glob-parent#readme
-License text: 180, 181
+License text: 177, 178
 
 global-directory 4.0.1
 License: MIT
 Homepage: https://github.com/sindresorhus/global-directory#readme
-License text: 146
+License text: 143
 
 globals 13.24.0
 License: MIT
 Homepage: https://github.com/sindresorhus/globals#readme
-License text: 146
+License text: 143
 
 globalthis 1.0.4
 License: MIT
 Homepage: https://github.com/ljharb/System.global#readme
-License text: 172
+License text: 169
 
 gopd 1.2.0
 License: MIT
 Homepage: https://github.com/ljharb/gopd#readme
-License text: 143
+License text: 140
 
 graceful-fs 4.2.11
 License: ISC
 Homepage: https://github.com/isaacs/node-graceful-fs#readme
-License text: 182
+License text: 179
 
 graphemer 1.4.0
 License: MIT
 Homepage: https://github.com/flmnt/graphemer
-License text: 183
+License text: 180
 
 hachure-fill 0.5.2
 License: MIT
 Homepage: https://github.com/pshihn/hachure-fill#readme
-License text: 184
+License text: 181
 
 has-bigints 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/has-bigints#readme
-License text: 173
+License text: 170
 
 has-flag 4.0.0
 License: MIT
@@ -1833,37 +1818,37 @@ License text: 1
 has-property-descriptors 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/has-property-descriptors#readme
-License text: 185
+License text: 182
 
 has-proto 1.2.0
 License: MIT
 Homepage: https://github.com/inspect-js/has-proto#readme
-License text: 185
+License text: 182
 
 has-symbols 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/has-symbols#readme
-License text: 186
+License text: 183
 
 has-tostringtag 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/has-tostringtag#readme
-License text: 177
+License text: 174
 
 hasown 2.0.3, 2.0.4
 License: MIT
 Homepage: https://github.com/inspect-js/hasOwn#readme
-License text: 187
+License text: 184
 
 html-encoding-sniffer 6.0.0
 License: MIT
 Homepage: https://github.com/jsdom/html-encoding-sniffer#readme
-License text: 123
+License text: 120
 
 html-escaper 2.0.2
 License: MIT
 Homepage: https://github.com/WebReflection/html-escaper
-License text: 188
+License text: 185
 
 html-parse-stringify 3.0.1
 License: MIT
@@ -1873,32 +1858,32 @@ License text: not present in the installed package
 i18next 26.3.1
 License: MIT
 Homepage: https://www.i18next.com
-License text: 189
+License text: 186
 
 iconv-lite 0.6.3
 License: MIT
 Homepage: https://github.com/ashtuchkin/iconv-lite
-License text: 190
+License text: 187
 
 idb 8.0.3
 License: ISC
 Homepage: https://github.com/jakearchibald/idb#readme
-License text: 191
+License text: 188
 
 ignore 5.3.2, 7.0.5, 7.0.9
 License: MIT
 Homepage: https://github.com/kaelzhang/node-ignore#readme
-License text: 192
+License text: 189
 
 import-fresh 3.3.1
 License: MIT
 Homepage: https://github.com/sindresorhus/import-fresh#readme
-License text: 146
+License text: 143
 
 import-meta-resolve 4.2.0
 License: MIT
 Homepage: https://github.com/wooorm/import-meta-resolve#readme
-License text: 193
+License text: 190
 
 imurmurhash 0.1.4
 License: MIT
@@ -1908,257 +1893,257 @@ License text: not present in the installed package
 inflight 1.0.6
 License: ISC
 Homepage: https://github.com/isaacs/inflight
-License text: 194
+License text: 191
 
 inherits 2.0.4
 License: ISC
 Homepage: https://github.com/isaacs/inherits#readme
-License text: 195
+License text: 192
 
 ini 4.1.1
 License: ISC
 Homepage: https://github.com/npm/ini#readme
-License text: 196
+License text: 193
 
 internal-slot 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/internal-slot#readme
-License text: 173
+License text: 170
 
 internmap 1.0.1, 2.0.3
 License: ISC
 Homepage: https://github.com/mbostock/internmap/
-License text: 197
+License text: 194
 
 interpret 3.1.1
 License: MIT
 Homepage: https://github.com/gulpjs/interpret#readme
-License text: 198
+License text: 195
 
 is-array-buffer 3.0.5
 License: MIT
 Homepage: https://github.com/inspect-js/is-array-buffer#readme
-License text: 199
+License text: 196
 
 is-async-function 2.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-async-function#readme
-License text: 200
+License text: 197
 
 is-bigint 1.1.0
 License: MIT
 Homepage: https://github.com/inspect-js/is-bigint#readme
-License text: 201
+License text: 198
 
 is-binary-path 2.1.0
 License: MIT
 Homepage: https://github.com/sindresorhus/is-binary-path#readme
-License text: 202
+License text: 199
 
 is-boolean-object 1.2.2
 License: MIT
 Homepage: https://github.com/inspect-js/is-boolean-object#readme
-License text: 144
+License text: 141
 
 is-callable 1.2.7
 License: MIT
 Homepage: https://github.com/inspect-js/is-callable#readme
-License text: 144
+License text: 141
 
 is-core-module 2.16.2
 License: MIT
 Homepage: https://github.com/inspect-js/is-core-module
-License text: 203
+License text: 200
 
 is-data-view 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/is-data-view#readme
-License text: 204
+License text: 201
 
 is-date-object 1.1.0
 License: MIT
 Homepage: https://github.com/inspect-js/is-date-object#readme
-License text: 144
+License text: 141
 
 is-document.all 1.0.0
 License: MIT
 Homepage: https://github.com/inspect-js/is-document.all#readme
-License text: 205
+License text: 202
 
 is-extglob 2.1.1
 License: MIT
 Homepage: https://github.com/jonschlinkert/is-extglob
-License text: 206
+License text: 203
 
 is-finalizationregistry 1.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-finalizationregistry#readme
-License text: 75
+License text: 72
 
 is-generator-function 1.1.2
 License: MIT
 Homepage: https://github.com/inspect-js/is-generator-function#readme
-License text: 207
+License text: 204
 
 is-glob 4.0.3
 License: MIT
 Homepage: https://github.com/micromatch/is-glob
-License text: 208
+License text: 205
 
 is-installed-globally 1.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/is-installed-globally#readme
-License text: 146
+License text: 143
 
 is-map 2.0.3
 License: MIT
 Homepage: https://github.com/inspect-js/is-map#readme
-License text: 209
+License text: 206
 
 is-negative-zero 2.0.3
 License: MIT
 Homepage: https://github.com/inspect-js/is-negative-zero
-License text: 207
+License text: 204
 
 is-number 7.0.0
 License: MIT
 Homepage: https://github.com/jonschlinkert/is-number
-License text: 82
+License text: 79
 
 is-number-object 1.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-number-object#readme
-License text: 144
+License text: 141
 
 is-path-inside 3.0.3, 4.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/is-path-inside#readme
-License text: 146, 1
+License text: 143, 1
 
 is-potential-custom-element-name 1.0.1
 License: MIT
 Homepage: https://github.com/mathiasbynens/is-potential-custom-element-name
-License text: 99
+License text: 96
 
 is-regex 1.2.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-regex
-License text: 207
+License text: 204
 
 is-set 2.0.3
 License: MIT
 Homepage: https://github.com/inspect-js/is-set#readme
-License text: 209
+License text: 206
 
 is-shared-array-buffer 1.0.4
 License: MIT
 Homepage: https://github.com/inspect-js/is-shared-array-buffer#readme
-License text: 177
+License text: 174
 
 is-string 1.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-string#readme
-License text: 144
+License text: 141
 
 is-symbol 1.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-symbol#readme
-License text: 144
+License text: 141
 
 is-typed-array 1.1.15
 License: MIT
 Homepage: https://github.com/inspect-js/is-typed-array#readme
-License text: 144
+License text: 141
 
 is-weakmap 2.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/is-weakmap#readme
-License text: 209
+License text: 206
 
 is-weakref 1.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/is-weakref#readme
-License text: 75
+License text: 72
 
 is-weakset 2.0.4
 License: MIT
 Homepage: https://github.com/inspect-js/is-weakset#readme
-License text: 209
+License text: 206
 
 isarray 2.0.5
 License: MIT
 Homepage: https://github.com/juliangruber/isarray
-License text: 210
+License text: 207
 
 isexe 2.0.0
 License: ISC
 Homepage: https://github.com/isaacs/isexe#readme
-License text: 196
+License text: 193
 
 istanbul-lib-coverage 3.2.2
 License: BSD-3-Clause
 Homepage: https://istanbul.js.org/
-License text: 211
+License text: 208
 
 istanbul-lib-report 3.0.1
 License: BSD-3-Clause
 Homepage: https://istanbul.js.org/
-License text: 211
+License text: 208
 
 istanbul-reports 3.2.0
 License: BSD-3-Clause
 Homepage: https://istanbul.js.org/
-License text: 211
+License text: 208
 
 jiti 1.21.7, 2.7.0
 License: MIT
 Homepage: https://github.com/unjs/jiti#readme
-License text: 212
+License text: 209
 
 js-tokens 10.0.0
 License: MIT
 Homepage: https://github.com/lydell/js-tokens#readme
-License text: 213
+License text: 210
 
 js-yaml 4.3.2
 License: MIT
 Homepage: https://github.com/nodeca/js-yaml#readme
-License text: 214
+License text: 211
 
 jsdom 29.1.1
 License: MIT
 Homepage: https://github.com/jsdom/jsdom#readme
-License text: 215
+License text: 212
 
 json-buffer 3.0.1
 License: MIT
 Homepage: https://github.com/dominictarr/json-buffer
-License text: 216
+License text: 213
 
 json-schema-traverse 0.4.1, 1.0.0
 License: MIT
 Homepage: https://github.com/epoberezkin/json-schema-traverse#readme
-License text: 157
+License text: 154
 
 json-stable-stringify-without-jsonify 1.0.1
 License: MIT
 Homepage: https://github.com/samn/json-stable-stringify
-License text: 217
+License text: 214
 
 json5 2.2.3
 License: MIT
 Homepage: http://json5.org/
-License text: 218
+License text: 215
 
 jsx-ast-utils 3.3.5
 License: MIT
 Homepage: https://github.com/jsx-eslint/jsx-ast-utils#readme
-License text: 147
+License text: 144
 
 katex 0.16.45, 0.17.0
 License: MIT
 Homepage: https://katex.org
-License text: 219
+License text: 216
 
 keyv 4.5.4
 License: MIT
@@ -2168,17 +2153,17 @@ License text: not present in the installed package
 khroma 2.1.0
 License: Unknown
 Homepage: https://github.com/fabiospampinato/khroma#readme
-License text: 220
+License text: 217
 
 kleur 3.0.3
 License: MIT
 Homepage: https://github.com/lukeed/kleur#readme
-License text: 221
+License text: 218
 
 knip 6.38.0
 License: ISC
 Homepage: https://knip.dev
-License text: 222
+License text: 219
 
 language-subtag-registry 0.3.23
 License: CC0-1.0
@@ -2193,127 +2178,127 @@ License text: not present in the installed package
 layout-base 1.0.2, 2.0.1
 License: MIT
 Homepage: https://github.com/iVis-at-Bilkent/layout-base#readme
-License text: 223
+License text: 220
 
 levn 0.4.1
 License: MIT
 Homepage: https://github.com/gkz/levn
-License text: 224
+License text: 221
 
 lightningcss 1.32.0
 License: MPL-2.0
 Homepage: https://github.com/parcel-bundler/lightningcss#readme
-License text: 225
+License text: 222
 
 lilconfig 3.1.3
 License: MIT
 Homepage: https://github.com/antonk52/lilconfig#readme
-License text: 226
+License text: 223
 
 lines-and-columns 1.2.4
 License: MIT
 Homepage: https://github.com/eventualbuddha/lines-and-columns#readme
-License text: 227
+License text: 224
 
 locate-path 6.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/locate-path#readme
-License text: 146
+License text: 143
 
 lodash-es 4.18.1
 License: MIT
 Homepage: https://lodash.com/custom-builds
-License text: 228
+License text: 225
 
 lodash.merge 4.6.2
 License: MIT
 Homepage: https://lodash.com/
-License text: 228
+License text: 225
 
 loro-crdt 1.16.4
 License: MIT
 Homepage: https://loro.dev
-License text: 229
+License text: 226
 
 lru-cache 11.5.2
 License: BlueOak-1.0.0
 Homepage: https://github.com/isaacs/node-lru-cache#readme
-License text: 230
+License text: 227
 
 magic-string 0.30.21
 License: MIT
 Homepage: https://github.com/Rich-Harris/magic-string#readme
-License text: 231
+License text: 228
 
 magicast 0.5.5
 License: MIT
 Homepage: https://github.com/unjs/magicast#readme
-License text: 232
+License text: 229
 
 make-dir 4.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/make-dir#readme
-License text: 146
+License text: 143
 
 marked 12.0.2, 16.4.2
 License: MIT
 Homepage: https://marked.js.org
-License text: 233
+License text: 230
 
 math-intrinsics 1.1.0
 License: MIT
 Homepage: https://github.com/es-shims/math-intrinsics#readme
-License text: 137
+License text: 134
 
 mdn-data 2.27.1
 License: CC0-1.0
 Homepage: https://developer.mozilla.org
-License text: 234
+License text: 231
 
 merge2 1.4.1
 License: MIT
 Homepage: https://github.com/teambition/merge2
-License text: 235
+License text: 232
 
 mermaid 11.16.1
 License: MIT
 Homepage: https://github.com/mermaid-js/mermaid#readme
-License text: 236
+License text: 233
 
 micromatch 4.0.8
 License: MIT
 Homepage: https://github.com/micromatch/micromatch
-License text: 82
+License text: 79
 
 minimatch 10.2.5
 License: BlueOak-1.0.0
 Homepage: https://github.com/isaacs/minimatch#readme
-License text: 237
+License text: 234
 
 minimatch 3.1.5
 License: ISC
 Homepage: https://github.com/isaacs/minimatch#readme
-License text: 196
+License text: 193
 
 minimist 1.2.8
 License: MIT
 Homepage: https://github.com/minimistjs/minimist
-License text: 217
+License text: 214
 
 ms 2.1.3
 License: MIT
 Homepage: https://github.com/vercel/ms#readme
-License text: 238
+License text: 235
 
 mz 2.7.0
 License: MIT
 Homepage: https://github.com/normalize/mz#readme
-License text: 239
+License text: 236
 
 nanoid 3.3.18
 License: MIT
 Homepage: https://github.com/ai/nanoid#readme
-License text: 240
+License text: 237
 
 natural-compare 1.4.0
 License: MIT
@@ -2323,92 +2308,92 @@ License text: not present in the installed package
 node-releases 2.0.54
 License: MIT
 Homepage: https://github.com/chicoxyzzy/node-releases#readme
-License text: 241
+License text: 238
 
 normalize-path 3.0.0
 License: MIT
 Homepage: https://github.com/jonschlinkert/normalize-path
-License text: 242
+License text: 239
 
 object-assign 4.1.1
 License: MIT
 Homepage: https://github.com/sindresorhus/object-assign#readme
-License text: 243
+License text: 240
 
 object-hash 3.0.0
 License: MIT
 Homepage: https://github.com/puleos/object-hash
-License text: 244
+License text: 241
 
 object-inspect 1.13.4
 License: MIT
 Homepage: https://github.com/inspect-js/object-inspect
-License text: 245
+License text: 242
 
 object-keys 1.1.1
 License: MIT
 Homepage: https://github.com/ljharb/object-keys#readme
-License text: 246
+License text: 243
 
 object.assign 4.1.7
 License: MIT
 Homepage: https://github.com/ljharb/object.assign#readme
-License text: 247
+License text: 244
 
 object.fromentries 2.0.8
 License: MIT
 Homepage: https://github.com/es-shims/Object.fromEntries#readme
-License text: 201
+License text: 198
 
 object.values 1.2.1
 License: MIT
 Homepage: https://github.com/es-shims/Object.values#readme
-License text: 144
+License text: 141
 
 obug 2.1.4
 License: MIT
 Homepage: https://github.com/sxzz/obug#readme
-License text: 248
+License text: 245
 
 once 1.4.0
 License: ISC
 Homepage: https://github.com/isaacs/once#readme
-License text: 196
+License text: 193
 
 optionator 0.9.4
 License: MIT
 Homepage: https://github.com/gkz/optionator
-License text: 224
+License text: 221
 
 own-keys 1.0.1
 License: MIT
 Homepage: https://github.com/ljharb/own-keys#readme
-License text: 85
+License text: 82
 
 oxc-parser 0.150.0
 License: MIT
 Homepage: https://oxc.rs/docs/guide/usage/parser
-License text: 35
+License text: 32
 
 oxc-resolver 11.24.2
 License: MIT
 Homepage: https://oxc.rs
-License text: 35
+License text: 32
 
 p-limit 3.1.0
 License: MIT
 Homepage: https://github.com/sindresorhus/p-limit#readme
-License text: 146
+License text: 143
 
 p-locate 5.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/p-locate#readme
-License text: 146
+License text: 143
 
 package-manager-detector 1.6.0, 1.8.0
 License: MIT
 Homepage: https://github.com/antfu-collective/package-manager-detector#readme
-License text: 249
+License text: 246
 
 parent-module 1.0.1
 License: MIT
@@ -2418,12 +2403,12 @@ License text: 1
 parse5 8.0.1
 License: MIT
 Homepage: https://parse5.js.org
-License text: 250
+License text: 247
 
 path-data-parser 0.1.0
 License: MIT
 Homepage: https://github.com/pshihn/path-data-parser#readme
-License text: 251
+License text: 248
 
 path-exists 4.0.0
 License: MIT
@@ -2433,7 +2418,7 @@ License text: 1
 path-is-absolute 1.0.1
 License: MIT
 Homepage: https://github.com/sindresorhus/path-is-absolute#readme
-License text: 243
+License text: 240
 
 path-key 3.1.1
 License: MIT
@@ -2443,137 +2428,137 @@ License text: 1
 path-parse 1.0.7
 License: MIT
 Homepage: https://github.com/jbgutierrez/path-parse#readme
-License text: 252
+License text: 249
 
 pathe 2.0.3
 License: MIT
 Homepage: https://github.com/unjs/pathe#readme
-License text: 253
+License text: 250
 
 picocolors 1.1.1
 License: ISC
 Homepage: https://github.com/alexeyraspopov/picocolors#readme
-License text: 254
+License text: 251
 
 picomatch 2.3.2, 4.0.4, 4.0.5, 4.0.7
 License: MIT
 Homepage: https://github.com/micromatch/picomatch
-License text: 255
+License text: 252
 
 pify 2.3.0
 License: MIT
 Homepage: https://github.com/sindresorhus/pify#readme
-License text: 243
+License text: 240
 
 pirates 4.0.7
 License: MIT
 Homepage: https://github.com/danez/pirates#readme
-License text: 256
+License text: 253
 
 playwright 1.59.1
 License: Apache-2.0
 Homepage: https://playwright.dev
-License text: 36, 37
+License text: 33, 34
 
 playwright-core 1.59.1
 License: Apache-2.0
 Homepage: https://playwright.dev
-License text: 36, 37
+License text: 33, 34
 
 points-on-curve 0.2.0
 License: MIT
 Homepage: https://github.com/pshihn/bezier-points#readme
-License text: 251
+License text: 248
 
 points-on-path 0.2.1
 License: MIT
 Homepage: https://github.com/pshihn/points-on-path#readme
-License text: 257
+License text: 254
 
 possible-typed-array-names 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/possible-typed-array-names#readme
-License text: 85
+License text: 82
 
 postcss 8.5.26
 License: MIT
 Homepage: https://postcss.org/
-License text: 74
+License text: 71
 
 postcss-import 15.1.0
 License: MIT
 Homepage: https://github.com/postcss/postcss-import#readme
-License text: 258
+License text: 255
 
 postcss-js 4.1.0
 License: MIT
 Homepage: https://github.com/postcss/postcss-js#readme
-License text: 259
+License text: 256
 
 postcss-load-config 6.0.1
 License: MIT
 Homepage: https://github.com/postcss/postcss-load-config#readme
-License text: 260
+License text: 257
 
 postcss-nested 6.2.0
 License: MIT
 Homepage: https://github.com/postcss/postcss-nested#readme
-License text: 261
+License text: 258
 
 postcss-selector-parser 6.1.4
 License: MIT
 Homepage: https://github.com/postcss/postcss-selector-parser
-License text: 262
+License text: 259
 
 postcss-value-parser 4.2.0
 License: MIT
 Homepage: https://github.com/TrySound/postcss-value-parser
-License text: 263
+License text: 260
 
 prelude-ls 1.2.1
 License: MIT
 Homepage: http://preludels.com
-License text: 224
+License text: 221
 
 prompts 2.4.2
 License: MIT
 Homepage: https://github.com/terkelg/prompts#readme
-License text: 264
+License text: 261
 
 punycode 2.3.1
 License: MIT
 Homepage: https://mths.be/punycode
-License text: 99
+License text: 96
 
 queue-microtask 1.2.3
 License: MIT
 Homepage: https://github.com/feross/queue-microtask
-License text: 265
+License text: 262
 
 radix-ui 1.4.3
 License: MIT
 Homepage: https://radix-ui.com/primitives
-License text: 38
+License text: 35
 
 react 19.2.5
 License: MIT
 Homepage: https://react.dev/
-License text: 266
+License text: 263
 
 react-dom 19.2.5
 License: MIT
 Homepage: https://react.dev/
-License text: 266
+License text: 263
 
 react-i18next 17.0.8
 License: MIT
 Homepage: https://github.com/i18next/react-i18next
-License text: 267
+License text: 264
 
 react-remove-scroll 2.7.2
 License: MIT
 Homepage: https://github.com/theKashey/react-remove-scroll#readme
-License text: 64
+License text: 61
 
 react-remove-scroll-bar 2.3.8
 License: MIT
@@ -2583,47 +2568,47 @@ License text: not present in the installed package
 react-style-singleton 2.2.3
 License: MIT
 Homepage: https://github.com/theKashey/react-style-singleton#readme
-License text: 64
+License text: 61
 
 read-cache 1.0.0
 License: MIT
 Homepage: https://github.com/TrySound/read-cache#readme
-License text: 268
+License text: 265
 
 readdirp 3.6.0
 License: MIT
 Homepage: https://github.com/paulmillr/readdirp
-License text: 269
+License text: 266
 
 rechoir 0.8.0
 License: MIT
 Homepage: https://github.com/gulpjs/rechoir#readme
-License text: 270
+License text: 267
 
 reflect.getprototypeof 1.0.10
 License: MIT
 Homepage: https://github.com/es-shims/Reflect.getPrototypeOf
-License text: 271
+License text: 268
 
 regexp-tree 0.1.27
 License: MIT
 Homepage: https://github.com/DmitrySoshnikov/regexp-tree
-License text: 272
+License text: 269
 
 regexp.prototype.flags 1.5.4
 License: MIT
 Homepage: https://github.com/es-shims/RegExp.prototype.flags#readme
-License text: 273
+License text: 270
 
 require-from-string 2.0.2
 License: MIT
 Homepage: https://github.com/floatdrop/require-from-string#readme
-License text: 274
+License text: 271
 
 resolve 1.22.12
 License: MIT
 Homepage: https://github.com/browserify/resolve#readme
-License text: 275
+License text: 272
 
 resolve-from 4.0.0
 License: MIT
@@ -2633,67 +2618,67 @@ License text: 1
 resolve-pkg-maps 1.0.0
 License: MIT
 Homepage: https://github.com/privatenumber/resolve-pkg-maps#readme
-License text: 178
+License text: 175
 
 reusify 1.1.0
 License: MIT
 Homepage: https://github.com/mcollina/reusify#readme
-License text: 276
+License text: 273
 
 rimraf 3.0.2
 License: ISC
 Homepage: https://github.com/isaacs/rimraf#readme
-License text: 196
+License text: 193
 
 robust-predicates 3.0.3
 License: Unlicense
 Homepage: https://github.com/mourner/robust-predicates#readme
-License text: 277
+License text: 274
 
 rolldown 1.1.5
 License: MIT
 Homepage: https://rolldown.rs/
-License text: 39
+License text: 36
 
 roughjs 4.6.6
 License: MIT
 Homepage: https://roughjs.com
-License text: 278
+License text: 275
 
 run-parallel 1.2.0
 License: MIT
 Homepage: https://github.com/feross/run-parallel
-License text: 265
+License text: 262
 
 rw 1.3.3
 License: BSD-3-Clause
 Homepage: https://github.com/mbostock/rw
-License text: 279
+License text: 276
 
 safe-array-concat 1.1.4
 License: MIT
 Homepage: https://github.com/ljharb/safe-array-concat#readme
-License text: 124
+License text: 121
 
 safe-push-apply 1.0.0
 License: MIT
 Homepage: https://github.com/ljharb/safe-push-apply#readme
-License text: 85
+License text: 82
 
 safe-regex 2.1.1
 License: MIT
 Homepage: https://github.com/davisjam/safe-regex
-License text: 280
+License text: 277
 
 safe-regex-test 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/safe-regex-test#readme
-License text: 143
+License text: 140
 
 safer-buffer 2.1.2
 License: MIT
 Homepage: https://github.com/ChALkeR/safer-buffer#readme
-License text: 281
+License text: 278
 
 saxes 6.0.0
 License: ISC
@@ -2703,32 +2688,32 @@ License text: not present in the installed package
 scheduler 0.27.0
 License: MIT
 Homepage: https://react.dev/
-License text: 266
+License text: 263
 
 semver 7.7.4, 7.8.5
 License: ISC
 Homepage: https://github.com/npm/node-semver#readme
-License text: 196
+License text: 193
 
 set-function-length 1.2.2
 License: MIT
 Homepage: https://github.com/ljharb/set-function-length#readme
-License text: 187
+License text: 184
 
 set-function-name 2.0.2
 License: MIT
 Homepage: https://github.com/ljharb/set-function-name#readme
-License text: 187
+License text: 184
 
 set-proto 1.0.0
 License: MIT
 Homepage: https://github.com/ljharb/set-proto#readme
-License text: 85
+License text: 82
 
 shebang-command 2.0.0
 License: MIT
 Homepage: https://github.com/kevva/shebang-command#readme
-License text: 282
+License text: 279
 
 shebang-regex 3.0.0
 License: MIT
@@ -2738,42 +2723,42 @@ License text: 1
 side-channel 1.1.1
 License: MIT
 Homepage: https://github.com/ljharb/side-channel#readme
-License text: 173
+License text: 170
 
 side-channel-list 1.0.1
 License: MIT
 Homepage: https://github.com/ljharb/side-channel-list#readme
-License text: 85
+License text: 82
 
 side-channel-map 1.0.1
 License: MIT
 Homepage: https://github.com/ljharb/side-channel-map#readme
-License text: 85
+License text: 82
 
 side-channel-weakmap 1.0.2
 License: MIT
 Homepage: https://github.com/ljharb/side-channel-weakmap#readme
-License text: 173
+License text: 170
 
 siginfo 2.0.0
 License: ISC
 Homepage: https://github.com/emilbayes/siginfo#readme
-License text: 283
+License text: 280
 
 sisteransi 1.0.5
 License: MIT
 Homepage: https://github.com/terkelg/sisteransi#readme
-License text: 264
+License text: 261
 
 smol-toml 1.9.0
 License: BSD-3-Clause
 Homepage: https://github.com/squirrelchat/smol-toml#readme
-License text: 284
+License text: 281
 
 source-map-js 1.2.2
 License: BSD-3-Clause
 Homepage: https://github.com/7rulnik/source-map-js
-License text: 285
+License text: 282
 
 stackback 0.0.2
 License: MIT
@@ -2783,32 +2768,32 @@ License text: not present in the installed package
 std-env 4.2.0
 License: MIT
 Homepage: https://github.com/unjs/std-env#readme
-License text: 212
+License text: 209
 
 stop-iteration-iterator 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/stop-iteration-iterator#readme
-License text: 124
+License text: 121
 
 string.prototype.includes 2.0.1
 License: MIT
 Homepage: https://mths.be/includes
-License text: 99
+License text: 96
 
 string.prototype.trim 1.2.11
 License: MIT
 Homepage: https://github.com/es-shims/String.prototype.trim#readme
-License text: 144
+License text: 141
 
 string.prototype.trimend 1.0.10
 License: MIT
 Homepage: https://github.com/es-shims/String.prototype.trimEnd#readme
-License text: 286
+License text: 283
 
 string.prototype.trimstart 1.0.8
 License: MIT
 Homepage: https://github.com/es-shims/String.prototype.trimStart#readme
-License text: 286
+License text: 283
 
 strip-ansi 6.0.1
 License: MIT
@@ -2818,22 +2803,22 @@ License text: 1
 strip-bom 3.0.0
 License: MIT
 Homepage: https://github.com/sindresorhus/strip-bom#readme
-License text: 243
+License text: 240
 
 strip-json-comments 3.1.1, 5.0.3
 License: MIT
 Homepage: https://github.com/sindresorhus/strip-json-comments#readme
-License text: 146
+License text: 143
 
 stylis 4.4.0
 License: MIT
 Homepage: https://github.com/thysultan/stylis.js
-License text: 287
+License text: 284
 
 sucrase 3.35.1
 License: MIT
 Homepage: https://github.com/alangpierce/sucrase#readme
-License text: 288
+License text: 285
 
 supports-color 7.2.0
 License: MIT
@@ -2843,326 +2828,326 @@ License text: 1
 supports-preserve-symlinks-flag 1.0.0
 License: MIT
 Homepage: https://github.com/inspect-js/node-supports-preserve-symlinks-flag#readme
-License text: 185
+License text: 182
 
 symbol-tree 3.2.4
 License: MIT
 Homepage: https://github.com/jsdom/js-symbol-tree#symbol-tree
-License text: 289
+License text: 286
 
 tailwind-merge 3.5.0
 License: MIT
 Homepage: https://github.com/dcastil/tailwind-merge
-License text: 290
+License text: 287
 
 tailwindcss 3.4.19
 License: MIT
 Homepage: https://tailwindcss.com
-License text: 291
+License text: 288
 
 tailwindcss-animate 1.0.7
 License: MIT
-License text: 292
+License text: 289
 
 tapable 2.3.3
 License: MIT
 Homepage: https://github.com/webpack/tapable
-License text: 293
+License text: 290
 
 text-table 0.2.0
 License: MIT
 Homepage: https://github.com/substack/text-table
-License text: 217
+License text: 214
 
 thenify 3.3.1
 License: MIT
 Homepage: https://github.com/thenables/thenify#readme
-License text: 294
+License text: 291
 
 thenify-all 1.6.0
 License: MIT
 Homepage: https://github.com/thenables/thenify-all#readme
-License text: 295
+License text: 292
 
 tinybench 2.9.0
 License: MIT
 Homepage: https://github.com/tinylibs/tinybench#readme
-License text: 296
+License text: 293
 
 tinyexec 1.2.4
 License: MIT
 Homepage: https://github.com/tinylibs/tinyexec#readme
-License text: 297
+License text: 294
 
 tinyglobby 0.2.16, 0.2.17
 License: MIT
 Homepage: https://superchupu.dev/tinyglobby
-License text: 298
+License text: 295
 
 tinyrainbow 3.1.0, 3.1.1
 License: MIT
 Homepage: https://github.com/tinylibs/tinyrainbow#readme
-License text: 296
+License text: 293
 
 tldts 7.4.9
 License: MIT
 Homepage: https://github.com/remusao/tldts#readme
-License text: 299
+License text: 296
 
 tldts-core 7.4.9
 License: MIT
 Homepage: https://github.com/remusao/tldts#readme
-License text: 299
+License text: 296
 
 to-regex-range 5.0.1
 License: MIT
 Homepage: https://github.com/micromatch/to-regex-range
-License text: 300
+License text: 297
 
 tough-cookie 6.0.2
 License: BSD-3-Clause
 Homepage: https://github.com/salesforce/tough-cookie
-License text: 301
+License text: 298
 
 tr46 6.0.0
 License: MIT
 Homepage: https://github.com/jsdom/tr46#readme
-License text: 302
+License text: 299
 
 ts-api-utils 2.5.0
 License: MIT
 Homepage: https://github.com/JoshuaKGoldberg/ts-api-utils#readme
-License text: 168
+License text: 165
 
 ts-dedent 2.2.0
 License: MIT
 Homepage: https://github.com/tamino-martinius/node-ts-dedent#readme
-License text: 303
+License text: 300
 
 ts-interface-checker 0.1.13
 License: Apache-2.0
 Homepage: https://github.com/gristlabs/ts-interface-checker#readme
-License text: 131
+License text: 128
 
 tsconfig-paths 4.2.0
 License: MIT
 Homepage: https://github.com/dividab/tsconfig-paths#readme
-License text: 304
+License text: 301
 
 tsconfig-paths-webpack-plugin 4.2.0
 License: MIT
 Homepage: https://github.com/dividab/tsconfig-paths-webpack-plugin#readme
-License text: 304
+License text: 301
 
 tslib 2.8.1
 License: 0BSD
 Homepage: https://www.typescriptlang.org/
-License text: 305
+License text: 302
 
 type-check 0.4.0
 License: MIT
 Homepage: https://github.com/gkz/type-check
-License text: 224
+License text: 221
 
 type-fest 0.20.2
 License: (MIT OR CC0-1.0)
 Homepage: https://github.com/sindresorhus/type-fest#readme
-License text: 306
+License text: 303
 
 typed-array-buffer 1.0.3
 License: MIT
 Homepage: https://github.com/inspect-js/typed-array-buffer#readme
-License text: 124
+License text: 121
 
 typed-array-byte-length 1.0.3
 License: MIT
 Homepage: https://github.com/inspect-js/typed-array-byte-length#readme
-License text: 75
+License text: 72
 
 typed-array-byte-offset 1.0.4
 License: MIT
 Homepage: https://github.com/inspect-js/typed-array-byte-offset#readme
-License text: 75
+License text: 72
 
 typed-array-length 1.0.8
 License: MIT
 Homepage: https://github.com/inspect-js/typed-array-length#readme
-License text: 75
+License text: 72
 
 typescript 6.0.3
 License: Apache-2.0
 Homepage: https://www.typescriptlang.org/
-License text: 307
+License text: 304
 
 unbash 4.0.11
 License: ISC
 Homepage: https://github.com/webpro-nl/unbash#readme
-License text: 308
+License text: 305
 
 unbox-primitive 1.1.0
 License: MIT
 Homepage: https://github.com/ljharb/unbox-primitive#readme
-License text: 173
+License text: 170
 
 undici 7.29.1
 License: MIT
 Homepage: https://undici.nodejs.org
-License text: 309
+License text: 306
 
 undici-types 6.21.0
 License: MIT
 Homepage: https://undici.nodejs.org
-License text: 309
+License text: 306
 
 update-browserslist-db 1.2.3
 License: MIT
 Homepage: https://github.com/browserslist/update-db#readme
-License text: 310
+License text: 307
 
 uri-js 4.4.1
 License: BSD-2-Clause
 Homepage: https://github.com/garycourt/uri-js
-License text: 311
+License text: 308
 
 use-callback-ref 1.3.3
 License: MIT
 Homepage: https://github.com/theKashey/use-callback-ref#readme
-License text: 64
+License text: 61
 
 use-sidecar 1.1.3
 License: MIT
 Homepage: https://github.com/theKashey/use-sidecar
-License text: 64
+License text: 61
 
 use-sync-external-store 1.6.0
 License: MIT
 Homepage: https://github.com/facebook/react#readme
-License text: 266
+License text: 263
 
 util-deprecate 1.0.2
 License: MIT
 Homepage: https://github.com/TooTallNate/util-deprecate
-License text: 312
+License text: 309
 
 uuid 14.0.0
 License: MIT
 Homepage: https://github.com/uuidjs/uuid#readme
-License text: 313
+License text: 310
 
 vite 8.1.5
 License: MIT
 Homepage: https://vite.dev
-License text: 314
+License text: 311
 
 vite-plugin-wasm 3.6.0
 License: MIT
 Homepage: https://github.com/Menci/vite-plugin-wasm#readme
-License text: 315
+License text: 312
 
 vitest 4.1.10
 License: MIT
 Homepage: https://vitest.dev
-License text: 316
+License text: 313
 
 void-elements 3.1.0
 License: MIT
 Homepage: https://github.com/jadejs/void-elements
-License text: 317
+License text: 314
 
 w3c-xmlserializer 5.0.0
 License: MIT
 Homepage: https://github.com/jsdom/w3c-xmlserializer#readme
-License text: 318
+License text: 315
 
 walk-up-path 4.0.0
 License: ISC
 Homepage: https://github.com/isaacs/walk-up-path#readme
-License text: 319
+License text: 316
 
 watskeburt 6.0.0
 License: MIT
 Homepage: https://github.com/sverweij/watskeburt
-License text: 320
+License text: 317
 
 webidl-conversions 8.0.1
 License: BSD-2-Clause
 Homepage: https://github.com/jsdom/webidl-conversions#readme
-License text: 321
+License text: 318
 
 whatwg-mimetype 5.0.0
 License: MIT
 Homepage: https://github.com/jsdom/whatwg-mimetype#readme
-License text: 123
+License text: 120
 
 whatwg-url 16.0.1
 License: MIT
 Homepage: https://github.com/jsdom/whatwg-url#readme
-License text: 322
+License text: 319
 
 which 2.0.2
 License: ISC
 Homepage: https://github.com/isaacs/node-which#readme
-License text: 196
+License text: 193
 
 which-boxed-primitive 1.1.1
 License: MIT
 Homepage: https://github.com/inspect-js/which-boxed-primitive#readme
-License text: 173
+License text: 170
 
 which-builtin-type 1.2.1
 License: MIT
 Homepage: https://github.com/inspect-js/which-builtin-type#readme
-License text: 323
+License text: 320
 
 which-collection 1.0.2
 License: MIT
 Homepage: https://github.com/inspect-js/which-collection#readme
-License text: 209
+License text: 206
 
 which-typed-array 1.1.22
 License: MIT
 Homepage: https://github.com/inspect-js/which-typed-array#readme
-License text: 144
+License text: 141
 
 why-is-node-running 2.3.0
 License: MIT
 Homepage: https://github.com/mafintosh/why-is-node-running
-License text: 324
+License text: 321
 
 word-wrap 1.2.5
 License: MIT
 Homepage: https://github.com/jonschlinkert/word-wrap
-License text: 206
+License text: 203
 
 wrappy 1.0.2
 License: ISC
 Homepage: https://github.com/npm/wrappy
-License text: 196
+License text: 193
 
 xml-name-validator 5.0.0
 License: Apache-2.0
 Homepage: https://github.com/jsdom/xml-name-validator#readme
-License text: 29
+License text: 26
 
 xmlchars 2.2.0
 License: MIT
 Homepage: https://github.com/lddubeau/xmlchars#readme
-License text: 325
+License text: 322
 
 yaml 2.9.1
 License: ISC
 Homepage: https://eemeli.org/yaml/
-License text: 326
+License text: 323
 
 yocto-queue 0.1.0
 License: MIT
 Homepage: https://github.com/sindresorhus/yocto-queue#readme
-License text: 146
+License text: 143
 
 zod 4.1.13, 4.6.5
 License: MIT
 Homepage: https://zod.dev
-License text: 327
+License text: 324
 
 ================================================================================
 
@@ -3834,105 +3819,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ================================================================================
 
 License text 20
-Packages: @fontsource-variable/bricolage-grotesque 5.3.0
-
-Copyright 2022 The Bricolage Grotesque Project Authors (https://github.com/ateliertriay/bricolage)
-
-This Font Software is licensed under the SIL Open Font License, Version 1.1.
-This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
-
-
------------------------------------------------------------
-SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
------------------------------------------------------------
-
-PREAMBLE
-The goals of the Open Font License (OFL) are to stimulate worldwide
-development of collaborative font projects, to support the font creation
-efforts of academic and linguistic communities, and to provide a free and
-open framework in which fonts may be shared and improved in partnership
-with others.
-
-The OFL allows the licensed fonts to be used, studied, modified and
-redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
-redistributed and/or sold with any software provided that any reserved
-names are not used by derivative works. The fonts and derivatives,
-however, cannot be released under any other type of license. The
-requirement for fonts to remain under this license does not apply
-to any document created using the fonts or their derivatives.
-
-DEFINITIONS
-"Font Software" refers to the set of files released by the Copyright
-Holder(s) under this license and clearly marked as such. This may
-include source files, build scripts and documentation.
-
-"Reserved Font Name" refers to any names specified as such after the
-copyright statement(s).
-
-"Original Version" refers to the collection of Font Software components as
-distributed by the Copyright Holder(s).
-
-"Modified Version" refers to any derivative made by adding to, deleting,
-or substituting -- in part or in whole -- any of the components of the
-Original Version, by changing formats or by porting the Font Software to a
-new environment.
-
-"Author" refers to any designer, engineer, programmer, technical
-writer or other person who contributed to the Font Software.
-
-PERMISSION & CONDITIONS
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of the Font Software, to use, study, copy, merge, embed, modify,
-redistribute, and sell modified and unmodified copies of the Font
-Software, subject to the following conditions:
-
-1) Neither the Font Software nor any of its individual components,
-in Original or Modified Versions, may be sold by itself.
-
-2) Original or Modified Versions of the Font Software may be bundled,
-redistributed and/or sold with any software, provided that each copy
-contains the above copyright notice and this license. These can be
-included either as stand-alone text files, human-readable headers or
-in the appropriate machine-readable metadata fields within text or
-binary files as long as those fields can be easily viewed by the user.
-
-3) No Modified Version of the Font Software may use the Reserved Font
-Name(s) unless explicit written permission is granted by the corresponding
-Copyright Holder. This restriction only applies to the primary font name as
-presented to the users.
-
-4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
-Software shall not be used to promote, endorse or advertise any
-Modified Version, except to acknowledge the contribution(s) of the
-Copyright Holder(s) and the Author(s) or with their explicit written
-permission.
-
-5) The Font Software, modified or unmodified, in part or in whole,
-must be distributed entirely under this license, and must not be
-distributed under any other license. The requirement for fonts to
-remain under this license does not apply to any document created
-using the Font Software.
-
-TERMINATION
-This license becomes null and void if any of the above conditions are
-not met.
-
-DISCLAIMER
-THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
-OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
-COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
-DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
-OTHER DEALINGS IN THE FONT SOFTWARE.
-
-================================================================================
-
-License text 21
 Packages: @fontsource-variable/inter 5.3.0
 
 Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
@@ -4031,205 +3917,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ================================================================================
 
-License text 22
-Packages: @fontsource-variable/jetbrains-mono 5.3.0
-
-Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono) JetBrainsMono-Italic[wght].ttf: Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
-
-This Font Software is licensed under the SIL Open Font License, Version 1.1.
-This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
-
-
------------------------------------------------------------
-SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
------------------------------------------------------------
-
-PREAMBLE
-The goals of the Open Font License (OFL) are to stimulate worldwide
-development of collaborative font projects, to support the font creation
-efforts of academic and linguistic communities, and to provide a free and
-open framework in which fonts may be shared and improved in partnership
-with others.
-
-The OFL allows the licensed fonts to be used, studied, modified and
-redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
-redistributed and/or sold with any software provided that any reserved
-names are not used by derivative works. The fonts and derivatives,
-however, cannot be released under any other type of license. The
-requirement for fonts to remain under this license does not apply
-to any document created using the fonts or their derivatives.
-
-DEFINITIONS
-"Font Software" refers to the set of files released by the Copyright
-Holder(s) under this license and clearly marked as such. This may
-include source files, build scripts and documentation.
-
-"Reserved Font Name" refers to any names specified as such after the
-copyright statement(s).
-
-"Original Version" refers to the collection of Font Software components as
-distributed by the Copyright Holder(s).
-
-"Modified Version" refers to any derivative made by adding to, deleting,
-or substituting -- in part or in whole -- any of the components of the
-Original Version, by changing formats or by porting the Font Software to a
-new environment.
-
-"Author" refers to any designer, engineer, programmer, technical
-writer or other person who contributed to the Font Software.
-
-PERMISSION & CONDITIONS
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of the Font Software, to use, study, copy, merge, embed, modify,
-redistribute, and sell modified and unmodified copies of the Font
-Software, subject to the following conditions:
-
-1) Neither the Font Software nor any of its individual components,
-in Original or Modified Versions, may be sold by itself.
-
-2) Original or Modified Versions of the Font Software may be bundled,
-redistributed and/or sold with any software, provided that each copy
-contains the above copyright notice and this license. These can be
-included either as stand-alone text files, human-readable headers or
-in the appropriate machine-readable metadata fields within text or
-binary files as long as those fields can be easily viewed by the user.
-
-3) No Modified Version of the Font Software may use the Reserved Font
-Name(s) unless explicit written permission is granted by the corresponding
-Copyright Holder. This restriction only applies to the primary font name as
-presented to the users.
-
-4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
-Software shall not be used to promote, endorse or advertise any
-Modified Version, except to acknowledge the contribution(s) of the
-Copyright Holder(s) and the Author(s) or with their explicit written
-permission.
-
-5) The Font Software, modified or unmodified, in part or in whole,
-must be distributed entirely under this license, and must not be
-distributed under any other license. The requirement for fonts to
-remain under this license does not apply to any document created
-using the Font Software.
-
-TERMINATION
-This license becomes null and void if any of the above conditions are
-not met.
-
-DISCLAIMER
-THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
-OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
-COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
-DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
-OTHER DEALINGS IN THE FONT SOFTWARE.
-
-================================================================================
-
-License text 23
-Packages: @fontsource-variable/lora 5.3.0
-
-Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name "Lora". Lora-Italic[wght].ttf: Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name "Lora".
-
-This Font Software is licensed under the SIL Open Font License, Version 1.1.
-This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
-
-
------------------------------------------------------------
-SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
------------------------------------------------------------
-
-PREAMBLE
-The goals of the Open Font License (OFL) are to stimulate worldwide
-development of collaborative font projects, to support the font creation
-efforts of academic and linguistic communities, and to provide a free and
-open framework in which fonts may be shared and improved in partnership
-with others.
-
-The OFL allows the licensed fonts to be used, studied, modified and
-redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
-redistributed and/or sold with any software provided that any reserved
-names are not used by derivative works. The fonts and derivatives,
-however, cannot be released under any other type of license. The
-requirement for fonts to remain under this license does not apply
-to any document created using the fonts or their derivatives.
-
-DEFINITIONS
-"Font Software" refers to the set of files released by the Copyright
-Holder(s) under this license and clearly marked as such. This may
-include source files, build scripts and documentation.
-
-"Reserved Font Name" refers to any names specified as such after the
-copyright statement(s).
-
-"Original Version" refers to the collection of Font Software components as
-distributed by the Copyright Holder(s).
-
-"Modified Version" refers to any derivative made by adding to, deleting,
-or substituting -- in part or in whole -- any of the components of the
-Original Version, by changing formats or by porting the Font Software to a
-new environment.
-
-"Author" refers to any designer, engineer, programmer, technical
-writer or other person who contributed to the Font Software.
-
-PERMISSION & CONDITIONS
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of the Font Software, to use, study, copy, merge, embed, modify,
-redistribute, and sell modified and unmodified copies of the Font
-Software, subject to the following conditions:
-
-1) Neither the Font Software nor any of its individual components,
-in Original or Modified Versions, may be sold by itself.
-
-2) Original or Modified Versions of the Font Software may be bundled,
-redistributed and/or sold with any software, provided that each copy
-contains the above copyright notice and this license. These can be
-included either as stand-alone text files, human-readable headers or
-in the appropriate machine-readable metadata fields within text or
-binary files as long as those fields can be easily viewed by the user.
-
-3) No Modified Version of the Font Software may use the Reserved Font
-Name(s) unless explicit written permission is granted by the corresponding
-Copyright Holder. This restriction only applies to the primary font name as
-presented to the users.
-
-4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
-Software shall not be used to promote, endorse or advertise any
-Modified Version, except to acknowledge the contribution(s) of the
-Copyright Holder(s) and the Author(s) or with their explicit written
-permission.
-
-5) The Font Software, modified or unmodified, in part or in whole,
-must be distributed entirely under this license, and must not be
-distributed under any other license. The requirement for fonts to
-remain under this license does not apply to any document created
-using the Font Software.
-
-TERMINATION
-This license becomes null and void if any of the above conditions are
-not met.
-
-DISCLAIMER
-THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
-OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
-COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
-DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
-OTHER DEALINGS IN THE FONT SOFTWARE.
-
-================================================================================
-
-License text 24
+License text 21
 Packages: @humanwhocodes/object-schema 2.0.3
 
 BSD 3-Clause License
@@ -4264,7 +3952,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 25
+License text 22
 Packages: @iconify/types 2.0.0
 
 MIT License
@@ -4291,7 +3979,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 26
+License text 23
 Packages: @iconify/utils 3.1.3
 
 MIT License
@@ -4318,7 +4006,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 27
+License text 24
 Packages: @jridgewell/gen-mapping 0.3.13; @jridgewell/sourcemap-codec 1.5.5; @jridgewell/trace-mapping 0.3.31
 
 Copyright 2024 Justin Ridgewell <justin@ridgewell.name>
@@ -4343,7 +4031,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 28
+License text 25
 Packages: @jridgewell/resolve-uri 3.1.2
 
 Copyright 2019 Justin Ridgewell <jridgewell@google.com>
@@ -4368,7 +4056,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 29
+License text 26
 Packages: @kition/tessera-icons 0.1.0; @kition/tessera-tokens 0.1.0; @kition/tessera-ui 0.1.0; @tauri-apps/api 2.12.2; @tauri-apps/cli 2.12.1; xml-name-validator 5.0.0
 
 Apache License
@@ -4550,7 +4238,7 @@ Apache License
 
 ================================================================================
 
-License text 30
+License text 27
 Packages: @kition/tessera-icons 0.1.0
 
 ISC License
@@ -4599,7 +4287,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 31
+License text 28
 Packages: @kition/tessera-icons 0.1.0
 
 Tessera Icons
@@ -4615,7 +4303,7 @@ The kit icons in kit/ are Kition's (kition `public/kit-icons/`, generated by kit
 
 ================================================================================
 
-License text 32
+License text 29
 Packages: @mermaid-js/parser 1.2.0
 
 The MIT License (MIT)
@@ -4642,7 +4330,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 33
+License text 30
 Packages: @nodelib/fs.scandir 2.1.5; @nodelib/fs.stat 2.0.5; @nodelib/fs.walk 1.2.8; fast-glob 3.3.3
 
 The MIT License (MIT)
@@ -4669,7 +4357,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 34
+License text 31
 Packages: @orama/orama 3.1.18
 
 Copyright 2023 OramaSearch Inc
@@ -4688,7 +4376,7 @@ limitations under the License.
 
 ================================================================================
 
-License text 35
+License text 32
 Packages: @oxc-project/types 0.139.0, 0.150.0; oxc-parser 0.150.0; oxc-resolver 11.24.2
 
 MIT License
@@ -4716,7 +4404,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 36
+License text 33
 Packages: @playwright/test 1.59.1; playwright 1.59.1; playwright-core 1.59.1
 
 Apache License
@@ -4924,7 +4612,7 @@ Apache License
 
 ================================================================================
 
-License text 37
+License text 34
 Packages: @playwright/test 1.59.1; playwright 1.59.1; playwright-core 1.59.1
 
 Playwright
@@ -4935,7 +4623,7 @@ available under the Apache 2.0 license (https://github.com/puppeteer/puppeteer/b
 
 ================================================================================
 
-License text 38
+License text 35
 Packages: @radix-ui/primitive 1.1.3; @radix-ui/react-accessible-icon 1.1.7; @radix-ui/react-accordion 1.2.12; @radix-ui/react-alert-dialog 1.1.15; @radix-ui/react-arrow 1.1.7; @radix-ui/react-aspect-ratio 1.1.7; @radix-ui/react-avatar 1.1.10; @radix-ui/react-checkbox 1.3.3; @radix-ui/react-collapsible 1.1.12; @radix-ui/react-collection 1.1.7; @radix-ui/react-context-menu 2.2.16; @radix-ui/react-dialog 1.1.15; @radix-ui/react-dismissable-layer 1.1.11; @radix-ui/react-dropdown-menu 2.1.16; @radix-ui/react-focus-guards 1.1.3; @radix-ui/react-focus-scope 1.1.7; @radix-ui/react-form 0.1.8; @radix-ui/react-hover-card 1.1.15; @radix-ui/react-label 2.1.7; @radix-ui/react-menu 2.1.16; @radix-ui/react-menubar 1.1.16; @radix-ui/react-navigation-menu 1.2.14; @radix-ui/react-one-time-password-field 0.1.8; @radix-ui/react-password-toggle-field 0.1.3; @radix-ui/react-popover 1.1.15; @radix-ui/react-popper 1.2.8; @radix-ui/react-portal 1.1.9; @radix-ui/react-presence 1.1.5; @radix-ui/react-primitive 2.1.3, 2.1.4; @radix-ui/react-progress 1.1.7; @radix-ui/react-radio-group 1.3.8; @radix-ui/react-roving-focus 1.1.11; @radix-ui/react-scroll-area 1.2.10; @radix-ui/react-select 2.2.6; @radix-ui/react-separator 1.1.7; @radix-ui/react-slider 1.3.6; @radix-ui/react-slot 1.2.3, 1.2.4; @radix-ui/react-switch 1.2.6; @radix-ui/react-tabs 1.1.13; @radix-ui/react-toast 1.2.15; @radix-ui/react-toggle 1.1.10; @radix-ui/react-toggle-group 1.1.11; @radix-ui/react-toolbar 1.1.11; @radix-ui/react-tooltip 1.2.8; @radix-ui/react-use-controllable-state 1.2.2; @radix-ui/react-use-effect-event 0.0.2; @radix-ui/react-use-is-hydrated 0.1.0; @radix-ui/react-visually-hidden 1.2.3; radix-ui 1.4.3
 
 MIT License
@@ -4962,7 +4650,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 39
+License text 36
 Packages: @rolldown/pluginutils 1.0.0-rc.7, 1.0.1; rolldown 1.1.5
 
 MIT License
@@ -4993,7 +4681,7 @@ The licenses of externally maintained libraries from which parts of the Software
 
 ================================================================================
 
-License text 40
+License text 37
 Packages: @rolldown/pluginutils 1.0.0-rc.7, 1.0.1
 
 MIT License
@@ -5020,7 +4708,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 41
+License text 38
 Packages: @standard-schema/spec 1.1.0
 
 MIT License
@@ -5047,7 +4735,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 42
+License text 39
 Packages: @tanstack/query-core 5.104.0; @tanstack/react-query 5.104.0
 
 MIT License
@@ -5074,7 +4762,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 43
+License text 40
 Packages: @tauri-apps/api 2.12.2; @tauri-apps/cli 2.12.1
 
 MIT License
@@ -5101,7 +4789,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 44
+License text 41
 Packages: @tauri-apps/api 2.12.2
 
 SPDXVersion: SPDX-2.1
@@ -5127,7 +4815,7 @@ Creator: Person: Daniel Thompson-Yvetot
 
 ================================================================================
 
-License text 45
+License text 42
 Packages: @types/chai 5.2.3; @types/d3 7.4.3; @types/d3-array 3.2.2; @types/d3-axis 3.0.6; @types/d3-brush 3.0.6; @types/d3-chord 3.0.6; @types/d3-color 3.1.3; @types/d3-contour 3.0.6; @types/d3-delaunay 6.0.4; @types/d3-dispatch 3.0.7; @types/d3-drag 3.0.7; @types/d3-dsv 3.0.7; @types/d3-ease 3.0.2; @types/d3-fetch 3.0.7; @types/d3-force 3.0.10; @types/d3-format 3.0.4; @types/d3-geo 3.1.0; @types/d3-hierarchy 3.1.7; @types/d3-interpolate 3.0.4; @types/d3-path 3.1.1; @types/d3-polygon 3.0.2; @types/d3-quadtree 3.0.6; @types/d3-random 3.0.3; @types/d3-scale 4.0.9; @types/d3-scale-chromatic 3.1.0; @types/d3-selection 3.0.11; @types/d3-shape 3.1.8; @types/d3-time 3.0.4; @types/d3-time-format 4.0.3; @types/d3-timer 3.0.2; @types/d3-transition 3.0.9; @types/d3-zoom 3.0.8; @types/deep-eql 4.0.2; @types/estree 1.0.8; @types/geojson 7946.0.16; @types/node 22.20.1; @types/react 19.2.14; @types/react-dom 19.2.3
 
 MIT License
@@ -5154,7 +4842,7 @@ MIT License
 
 ================================================================================
 
-License text 46
+License text 43
 Packages: @typescript-eslint/eslint-plugin 8.61.0; @typescript-eslint/parser 8.61.0; @typescript-eslint/scope-manager 8.61.0; @typescript-eslint/types 8.61.0; @typescript-eslint/typescript-estree 8.61.0; @typescript-eslint/utils 8.61.0; @typescript-eslint/visitor-keys 8.61.0
 
 MIT License
@@ -5181,7 +4869,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 47
+License text 44
 Packages: @typescript-eslint/project-service 8.61.0; @typescript-eslint/tsconfig-utils 8.61.0
 
 MIT License
@@ -5208,7 +4896,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 48
+License text 45
 Packages: @typescript-eslint/type-utils 8.61.0
 
 MIT License
@@ -5235,7 +4923,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 49
+License text 46
 Packages: @ungap/structured-clone 1.3.0
 
 ISC License
@@ -5256,7 +4944,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 50
+License text 47
 Packages: @upsetjs/venn.js 2.0.0
 
 MIT License
@@ -5284,7 +4972,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 51
+License text 48
 Packages: @vitejs/plugin-react 6.0.1
 
 MIT License
@@ -5311,7 +4999,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 52
+License text 49
 Packages: @vitest/coverage-v8 4.1.10; @vitest/expect 4.1.10; @vitest/mocker 4.1.10; @vitest/pretty-format 4.1.10; @vitest/runner 4.1.10; @vitest/snapshot 4.1.10; @vitest/spy 4.1.10; @vitest/utils 4.1.10
 
 MIT License
@@ -5338,7 +5026,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 53
+License text 50
 Packages: acorn 8.16.0, 8.18.0
 
 MIT License
@@ -5365,7 +5053,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 54
+License text 51
 Packages: acorn-jsx 5.3.2
 
 Copyright (C) 2012-2017 by Ingvar Stepanyan
@@ -5390,7 +5078,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 55
+License text 52
 Packages: acorn-jsx-walk 2.0.0
 
 The MIT License (MIT)
@@ -5417,7 +5105,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 56
+License text 53
 Packages: acorn-loose 8.5.2; acorn-walk 8.3.5
 
 MIT License
@@ -5444,7 +5132,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 57
+License text 54
 Packages: ajv 6.14.0, 8.20.0
 
 The MIT License (MIT)
@@ -5471,7 +5159,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 58
+License text 55
 Packages: ajv 6.14.0, 8.20.0
 
 The MIT License (MIT)
@@ -5498,7 +5186,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 59
+License text 56
 Packages: ajv-formats 3.0.1
 
 MIT License
@@ -5525,7 +5213,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 60
+License text 57
 Packages: any-promise 1.3.0
 
 Copyright (C) 2014-2016 Kevin Beaty
@@ -5550,7 +5238,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 61
+License text 58
 Packages: anymatch 3.1.3
 
 The ISC License
@@ -5571,7 +5259,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 62
+License text 59
 Packages: arg 5.0.2
 
 The MIT License (MIT)
@@ -5598,7 +5286,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 63
+License text 60
 Packages: argparse 2.0.1
 
 A. HISTORY OF THE SOFTWARE
@@ -5858,7 +5546,7 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 64
+License text 61
 Packages: aria-hidden 1.2.6; react-remove-scroll 2.7.2; react-style-singleton 2.2.3; use-callback-ref 1.3.3; use-sidecar 1.1.3
 
 MIT License
@@ -5885,7 +5573,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 65
+License text 62
 Packages: aria-query 5.3.2; axobject-query 4.1.0
 
 Apache License
@@ -6092,7 +5780,7 @@ limitations under the License.
 
 ================================================================================
 
-License text 66
+License text 63
 Packages: array-buffer-byte-length 1.0.2
 
 MIT License
@@ -6119,7 +5807,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 67
+License text 64
 Packages: array-includes 3.1.9; define-properties 1.2.1; es-abstract 1.24.2
 
 The MIT License (MIT)
@@ -6146,7 +5834,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 68
+License text 65
 Packages: array.prototype.flat 1.3.3; array.prototype.flatmap 1.3.3
 
 MIT License
@@ -6173,7 +5861,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 69
+License text 66
 Packages: arraybuffer.prototype.slice 1.0.4
 
 MIT License
@@ -6200,7 +5888,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 70
+License text 67
 Packages: assertion-error 2.0.1
 
 MIT License
@@ -6227,7 +5915,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 71
+License text 68
 Packages: ast-types-flow 0.0.8
 
 MIT License
@@ -6254,7 +5942,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 72
+License text 69
 Packages: ast-v8-to-istanbul 1.0.7
 
 MIT License
@@ -6281,7 +5969,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 73
+License text 70
 Packages: async-function 1.0.0
 
 MIT License
@@ -6308,7 +5996,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 74
+License text 71
 Packages: autoprefixer 10.5.0; postcss 8.5.26
 
 The MIT License (MIT)
@@ -6334,7 +6022,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 75
+License text 72
 Packages: available-typed-arrays 1.0.7; is-finalizationregistry 1.1.1; is-weakref 1.1.1; typed-array-byte-length 1.0.3; typed-array-byte-offset 1.0.4; typed-array-length 1.0.8
 
 MIT License
@@ -6361,7 +6049,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 76
+License text 73
 Packages: axe-core 4.12.1
 
 -----------------------------------------------------------------------------
@@ -6433,7 +6121,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 77
+License text 74
 Packages: axe-core 4.12.1
 
 Mozilla Public License, version 2.0
@@ -6801,7 +6489,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 ================================================================================
 
-License text 78
+License text 75
 Packages: balanced-match 4.0.4
 
 (MIT)
@@ -6830,7 +6518,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 79
+License text 76
 Packages: bidi-js 1.0.3
 
 Copyright (c) 2021 Jason Johnston
@@ -6858,7 +6546,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 80
+License text 77
 Packages: binary-extensions 2.3.0
 
 MIT License
@@ -6874,7 +6562,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 81
+License text 78
 Packages: brace-expansion 5.0.11
 
 MIT License
@@ -6903,7 +6591,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 82
+License text 79
 Packages: braces 3.0.3; fill-range 7.1.1; is-number 7.0.0; micromatch 4.0.8
 
 The MIT License (MIT)
@@ -6930,7 +6618,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 83
+License text 80
 Packages: browserslist 4.28.7
 
 The MIT License (MIT)
@@ -6956,7 +6644,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 84
+License text 81
 Packages: call-bind 1.0.9; get-intrinsic 1.3.0
 
 MIT License
@@ -6983,7 +6671,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 85
+License text 82
 Packages: call-bind-apply-helpers 1.0.2; call-bound 1.0.4; data-view-byte-length 1.0.2; data-view-byte-offset 1.0.1; es-define-property 1.0.1; es-errors 1.3.0; es-object-atoms 1.1.1, 1.1.2; own-keys 1.0.1; possible-typed-array-names 1.1.0; safe-push-apply 1.0.0; set-proto 1.0.0; side-channel-list 1.0.1; side-channel-map 1.0.1
 
 MIT License
@@ -7010,7 +6698,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 86
+License text 83
 Packages: camelcase-css 2.0.1
 
 The MIT License (MIT)
@@ -7037,7 +6725,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 87
+License text 84
 Packages: caniuse-lite 1.0.30001791, 1.0.30001810
 
 Attribution 4.0 International
@@ -7438,7 +7126,7 @@ Creative Commons may be contacted at creativecommons.org.
 
 ================================================================================
 
-License text 88
+License text 85
 Packages: chai 6.2.2
 
 MIT License
@@ -7465,7 +7153,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 89
+License text 86
 Packages: chokidar 3.6.0
 
 The MIT License (MIT)
@@ -7492,7 +7180,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 90
+License text 87
 Packages: clsx 2.1.1; escalade 3.2.0
 
 MIT License
@@ -7507,7 +7195,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 91
+License text 88
 Packages: cmdk 1.1.1
 
 MIT License
@@ -7534,7 +7222,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 92
+License text 89
 Packages: color-convert 2.0.1
 
 Copyright (c) 2011-2016 Heather Arthur <fayearthur@gmail.com>
@@ -7560,7 +7248,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 93
+License text 90
 Packages: color-name 1.1.4
 
 The MIT License (MIT)
@@ -7574,7 +7262,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 94
+License text 91
 Packages: commander 4.1.1, 7.2.0, 8.3.0, 15.0.0
 
 (The MIT License)
@@ -7602,7 +7290,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 95
+License text 92
 Packages: convert-source-map 2.0.0
 
 Copyright 2013 Thorsten Lorenz.
@@ -7631,7 +7319,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 96
+License text 93
 Packages: cose-base 1.0.3, 2.2.0
 
 MIT License
@@ -7658,7 +7346,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 97
+License text 94
 Packages: cross-spawn 7.0.6
 
 The MIT License (MIT)
@@ -7685,7 +7373,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 98
+License text 95
 Packages: css-tree 3.2.1
 
 Copyright (C) 2016-2026 by Roman Dvornov
@@ -7710,7 +7398,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 99
+License text 96
 Packages: cssesc 3.0.0; emoji-regex 9.2.2; is-potential-custom-element-name 1.0.1; punycode 2.3.1; string.prototype.includes 2.0.1
 
 Copyright Mathias Bynens <https://mathiasbynens.be/>
@@ -7736,7 +7424,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 100
+License text 97
 Packages: csstype 3.2.3
 
 Copyright (c) 2017-2018 Fredrik Nicol
@@ -7761,7 +7449,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 101
+License text 98
 Packages: cytoscape 3.34.0
 
 Copyright (c) 2016-2026, The Cytoscape Consortium.
@@ -7786,7 +7474,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 102
+License text 99
 Packages: cytoscape 3.34.0
 
 import fs from 'fs';
@@ -7824,7 +7512,7 @@ fs.writeFileSync(path.join(__dirname, 'LICENSE'), license);
 
 ================================================================================
 
-License text 103
+License text 100
 Packages: cytoscape-cose-bilkent 4.1.0
 
 Copyright (c) 2016-2018, The Cytoscape Consortium.
@@ -7849,7 +7537,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 104
+License text 101
 Packages: cytoscape-fcose 2.2.0
 
 Copyright (c) 2018 - present, iVis-at-Bilkent.
@@ -7874,7 +7562,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 105
+License text 102
 Packages: d3 7.9.0; d3-array 3.2.4
 
 Copyright 2010-2023 Mike Bostock
@@ -7893,7 +7581,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 106
+License text 103
 Packages: d3-array 2.12.1
 
 Copyright 2010-2020 Mike Bostock
@@ -7926,7 +7614,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 107
+License text 104
 Packages: d3-axis 3.0.0; d3-brush 3.0.0; d3-chord 3.0.1; d3-dispatch 3.0.1; d3-drag 3.0.0; d3-force 3.0.0; d3-hierarchy 3.1.2; d3-interpolate 3.0.1; d3-polygon 3.0.1; d3-quadtree 3.0.1; d3-random 3.0.1; d3-scale 4.0.2; d3-selection 3.0.0; d3-time-format 4.1.0; d3-timer 3.0.1; d3-transition 3.0.1; d3-zoom 3.0.0
 
 Copyright 2010-2021 Mike Bostock
@@ -7945,7 +7633,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 108
+License text 105
 Packages: d3-color 3.1.0; d3-shape 3.2.0; d3-time 3.1.0
 
 Copyright 2010-2022 Mike Bostock
@@ -7964,7 +7652,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 109
+License text 106
 Packages: d3-contour 4.0.2
 
 Copyright 2012-2023 Mike Bostock
@@ -7983,7 +7671,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 110
+License text 107
 Packages: d3-delaunay 6.0.4
 
 Copyright 2018-2021 Observable, Inc.
@@ -8003,7 +7691,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 111
+License text 108
 Packages: d3-dsv 3.0.1
 
 Copyright 2013-2021 Mike Bostock
@@ -8022,7 +7710,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 112
+License text 109
 Packages: d3-ease 3.0.1
 
 Copyright 2010-2021 Mike Bostock
@@ -8056,7 +7744,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 113
+License text 110
 Packages: d3-fetch 3.0.1
 
 Copyright 2016-2021 Mike Bostock
@@ -8075,7 +7763,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 114
+License text 111
 Packages: d3-format 3.1.2
 
 Copyright 2010-2026 Mike Bostock
@@ -8094,7 +7782,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 115
+License text 112
 Packages: d3-geo 3.1.1
 
 Copyright 2010-2024 Mike Bostock
@@ -8134,7 +7822,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 116
+License text 113
 Packages: d3-path 1.0.9
 
 Copyright 2015-2016 Mike Bostock
@@ -8167,7 +7855,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 117
+License text 114
 Packages: d3-path 3.1.0
 
 Copyright 2015-2022 Mike Bostock
@@ -8186,7 +7874,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 118
+License text 115
 Packages: d3-sankey 0.12.3
 
 Copyright 2015, Mike Bostock
@@ -8219,7 +7907,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 119
+License text 116
 Packages: d3-scale-chromatic 3.1.0
 
 Copyright 2010-2024 Mike Bostock
@@ -8253,7 +7941,7 @@ specific language governing permissions and limitations under the License.
 
 ================================================================================
 
-License text 120
+License text 117
 Packages: d3-shape 1.3.7
 
 Copyright 2010-2015 Mike Bostock
@@ -8286,7 +7974,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 121
+License text 118
 Packages: dagre-d3-es 7.0.14
 
 Original dagre-d3 copyright: Copyright (c) 2013 Chris Pettitt
@@ -8315,7 +8003,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 122
+License text 119
 Packages: damerau-levenshtein 1.0.8
 
 BSD 2-Clause License
@@ -8346,7 +8034,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 123
+License text 120
 Packages: data-urls 7.0.0; html-encoding-sniffer 6.0.0; whatwg-mimetype 5.0.0
 
 Copyright © Domenic Denicola <d@domenic.me>
@@ -8359,7 +8047,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 124
+License text 121
 Packages: data-view-buffer 1.0.2; define-data-property 1.1.4; safe-array-concat 1.1.4; stop-iteration-iterator 1.1.0; typed-array-buffer 1.0.3
 
 MIT License
@@ -8386,7 +8074,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 125
+License text 122
 Packages: dayjs 1.11.20
 
 MIT License
@@ -8413,7 +8101,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 126
+License text 123
 Packages: debug 4.4.3
 
 (The MIT License)
@@ -8438,7 +8126,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 127
+License text 124
 Packages: decimal.js 10.6.0
 
 The MIT Licence.
@@ -8466,7 +8154,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 128
+License text 125
 Packages: deep-is 0.1.4
 
 Copyright (c) 2012, 2013 Thorsten Lorenz <thlorenz@gmx.de>
@@ -8494,7 +8182,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 129
+License text 126
 Packages: delaunator 5.1.0
 
 ISC License
@@ -8515,7 +8203,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 130
+License text 127
 Packages: dependency-cruiser 18.4.0
 
 The MIT License (MIT)
@@ -8542,7 +8230,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 131
+License text 128
 Packages: detect-libc 2.1.2; ts-interface-checker 0.1.13
 
 Apache License
@@ -8749,7 +8437,7 @@ Apache License
 
 ================================================================================
 
-License text 132
+License text 129
 Packages: detect-node-es 1.1.0
 
 MIT License
@@ -8776,7 +8464,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 133
+License text 130
 Packages: didyoumean 1.2.2
 
 ## License
@@ -8796,7 +8484,7 @@ limitations under the License.
 
 ================================================================================
 
-License text 134
+License text 131
 Packages: doctrine 3.0.0
 
 Apache License
@@ -8978,7 +8666,7 @@ END OF TERMS AND CONDITIONS
 
 ================================================================================
 
-License text 135
+License text 132
 Packages: doctrine 3.0.0; estraverse 5.3.0; esutils 2.0.3
 
 Redistribution and use in source and binary forms, with or without
@@ -9003,7 +8691,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 136
+License text 133
 Packages: dompurify 3.4.13
 
 Mozilla Public License Version 2.0
@@ -9382,7 +9070,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 ================================================================================
 
-License text 137
+License text 134
 Packages: dunder-proto 1.0.1; math-intrinsics 1.1.0
 
 MIT License
@@ -9409,7 +9097,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 138
+License text 135
 Packages: electron-to-chromium 1.5.423
 
 Copyright 2018 Kilian Valkhof
@@ -9420,7 +9108,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ================================================================================
 
-License text 139
+License text 136
 Packages: enhanced-resolve 5.25.1
 
 Copyright JS Foundation and other contributors
@@ -9446,7 +9134,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 140
+License text 137
 Packages: entities 8.0.0
 
 Copyright (c) Felix Böhm
@@ -9463,7 +9151,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 141
+License text 138
 Packages: es-module-lexer 2.3.1
 
 MIT License
@@ -9479,7 +9167,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 142
+License text 139
 Packages: es-set-tostringtag 2.1.0
 
 MIT License
@@ -9506,7 +9194,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 143
+License text 140
 Packages: es-shim-unscopables 1.1.0; gopd 1.2.0; safe-regex-test 1.1.0
 
 MIT License
@@ -9533,7 +9221,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 144
+License text 141
 Packages: es-to-primitive 1.3.0; is-boolean-object 1.2.2; is-callable 1.2.7; is-date-object 1.1.0; is-number-object 1.1.1; is-string 1.1.1; is-symbol 1.1.1; is-typed-array 1.1.15; object.values 1.2.1; string.prototype.trim 1.2.11; which-typed-array 1.1.22
 
 The MIT License (MIT)
@@ -9560,7 +9248,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 145
+License text 142
 Packages: es-toolkit 1.47.0
 
 MIT License
@@ -9591,7 +9279,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 146
+License text 143
 Packages: escape-string-regexp 4.0.0; find-up 5.0.0; global-directory 4.0.1; globals 13.24.0; import-fresh 3.3.1; is-installed-globally 1.0.0; is-path-inside 3.0.3, 4.0.0; locate-path 6.0.0; make-dir 4.0.0; p-limit 3.1.0; p-locate 5.0.0; strip-json-comments 3.1.1, 5.0.3; yocto-queue 0.1.0
 
 MIT License
@@ -9606,7 +9294,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 147
+License text 144
 Packages: eslint-plugin-jsx-a11y 6.10.2; jsx-ast-utils 3.3.5
 
 The MIT License (MIT)
@@ -9620,7 +9308,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 148
+License text 145
 Packages: eslint-plugin-react-hooks 4.6.2
 
 MIT License
@@ -9647,7 +9335,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 149
+License text 146
 Packages: eslint-plugin-sonarjs 1.0.4
 
 GNU LESSER GENERAL PUBLIC LICENSE
@@ -9818,7 +9506,7 @@ Library.
 
 ================================================================================
 
-License text 150
+License text 147
 Packages: eslint-scope 7.2.2
 
 Copyright JS Foundation and other contributors, https://js.foundation
@@ -9846,7 +9534,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 151
+License text 148
 Packages: eslint-visitor-keys 3.4.3, 5.0.1
 
 Apache License
@@ -10053,7 +9741,7 @@ Apache License
 
 ================================================================================
 
-License text 152
+License text 149
 Packages: espree 9.6.1
 
 BSD 2-Clause License
@@ -10084,7 +9772,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 153
+License text 150
 Packages: esquery 1.7.0
 
 Copyright (c) 2013, Joel Feenstra
@@ -10114,7 +9802,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 154
+License text 151
 Packages: estree-walker 3.0.3
 
 Copyright (c) 2015-20 [these people](https://github.com/Rich-Harris/estree-walker/graphs/contributors)
@@ -10127,7 +9815,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 155
+License text 152
 Packages: expect-type 1.4.0
 
 Copyright 2024 Misha Kaletsky
@@ -10324,7 +10012,7 @@ Copyright 2024 Misha Kaletsky
 
 ================================================================================
 
-License text 156
+License text 153
 Packages: fake-indexeddb 6.2.5
 
 Apache License
@@ -10538,7 +10226,7 @@ APPENDIX: How to apply the Apache License to your work
 
 ================================================================================
 
-License text 157
+License text 154
 Packages: fast-deep-equal 3.1.3; json-schema-traverse 0.4.1, 1.0.0
 
 MIT License
@@ -10565,7 +10253,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 158
+License text 155
 Packages: fast-json-stable-stringify 2.1.0
 
 This software is released under the MIT license:
@@ -10592,7 +10280,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 159
+License text 156
 Packages: fast-levenshtein 2.0.6
 
 (MIT License)
@@ -10622,7 +10310,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 160
+License text 157
 Packages: fast-uri 3.1.7
 
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
@@ -10658,7 +10346,7 @@ The complete list of contributors can be found at:
 
 ================================================================================
 
-License text 161
+License text 158
 Packages: fastq 1.20.1
 
 Copyright (c) 2015-2020, Matteo Collina <matteo.collina@gmail.com>
@@ -10677,7 +10365,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 162
+License text 159
 Packages: fd-package-json 2.0.0
 
 MIT License
@@ -10704,7 +10392,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 163
+License text 160
 Packages: fdir 6.5.0
 
 Copyright 2023 Abdullah Atta
@@ -10717,7 +10405,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 164
+License text 161
 Packages: file-entry-cache 6.0.1
 
 The MIT License (MIT)
@@ -10744,7 +10432,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 165
+License text 162
 Packages: flat-cache 3.2.0
 
 The MIT License (MIT)
@@ -10771,7 +10459,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 166
+License text 163
 Packages: flatted 3.4.2
 
 ISC License
@@ -10792,7 +10480,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 167
+License text 164
 Packages: for-each 0.3.5
 
 The MIT License (MIT)
@@ -10819,7 +10507,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 168
+License text 165
 Packages: formatly 0.7.1; ts-api-utils 2.5.0
 
 # MIT License
@@ -10845,7 +10533,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 169
+License text 166
 Packages: fraction.js 5.3.4
 
 MIT License
@@ -10872,7 +10560,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 170
+License text 167
 Packages: fs.realpath 1.0.0
 
 The ISC License
@@ -10921,7 +10609,7 @@ the licensed code:
 
 ================================================================================
 
-License text 171
+License text 168
 Packages: function-bind 1.1.2
 
 Copyright (c) 2013 Raynos.
@@ -10946,7 +10634,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 172
+License text 169
 Packages: function.prototype.name 1.2.0; globalthis 1.0.4
 
 The MIT License (MIT)
@@ -10973,7 +10661,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 173
+License text 170
 Packages: functions-have-names 1.2.3; has-bigints 1.1.0; internal-slot 1.1.0; side-channel 1.1.1; side-channel-weakmap 1.0.2; unbox-primitive 1.1.0; which-boxed-primitive 1.1.1
 
 MIT License
@@ -11000,7 +10688,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 174
+License text 171
 Packages: generator-function 2.0.1
 
 Copyright (c) 2015 Tiancheng “Timothy” Gu
@@ -11013,7 +10701,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 175
+License text 172
 Packages: get-nonce 1.0.1
 
 MIT License
@@ -11040,7 +10728,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 176
+License text 173
 Packages: get-proto 1.0.1
 
 MIT License
@@ -11067,7 +10755,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 177
+License text 174
 Packages: get-symbol-description 1.1.0; has-tostringtag 1.0.2; is-shared-array-buffer 1.0.4
 
 MIT License
@@ -11094,7 +10782,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 178
+License text 175
 Packages: get-tsconfig 4.14.3; resolve-pkg-maps 1.0.0
 
 MIT License
@@ -11121,7 +10809,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 179
+License text 176
 Packages: glob 7.2.3
 
 The ISC License
@@ -11148,7 +10836,7 @@ https://creativecommons.org/licenses/by-sa/4.0/
 
 ================================================================================
 
-License text 180
+License text 177
 Packages: glob-parent 5.1.2, 6.0.2
 
 The ISC License
@@ -11169,7 +10857,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 181
+License text 178
 Packages: glob-parent 5.1.2, 6.0.2
 
 The ISC License
@@ -11190,7 +10878,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 182
+License text 179
 Packages: graceful-fs 4.2.11
 
 The ISC License
@@ -11211,7 +10899,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 183
+License text 180
 Packages: graphemer 1.4.0
 
 Copyright 2020 Filament (Anomalous Technologies Limited)
@@ -11235,7 +10923,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 184
+License text 181
 Packages: hachure-fill 0.5.2
 
 MIT License
@@ -11262,7 +10950,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 185
+License text 182
 Packages: has-property-descriptors 1.0.2; has-proto 1.2.0; supports-preserve-symlinks-flag 1.0.0
 
 MIT License
@@ -11289,7 +10977,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 186
+License text 183
 Packages: has-symbols 1.1.0
 
 MIT License
@@ -11316,7 +11004,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 187
+License text 184
 Packages: hasown 2.0.3, 2.0.4; set-function-length 1.2.2; set-function-name 2.0.2
 
 MIT License
@@ -11343,7 +11031,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 188
+License text 185
 Packages: html-escaper 2.0.2
 
 Copyright (C) 2017-present by Andrea Giammarchi - @WebReflection
@@ -11368,7 +11056,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 189
+License text 186
 Packages: i18next 26.3.1
 
 The MIT License (MIT)
@@ -11395,7 +11083,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 190
+License text 187
 Packages: iconv-lite 0.6.3
 
 Copyright (c) 2011 Alexander Shtuchkin
@@ -11421,7 +11109,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 191
+License text 188
 Packages: idb 8.0.3
 
 ISC License (ISC)
@@ -11433,7 +11121,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ================================================================================
 
-License text 192
+License text 189
 Packages: ignore 5.3.2, 7.0.5, 7.0.9
 
 Copyright (c) 2013 Kael Zhang <i@kael.me>, contributors
@@ -11460,7 +11148,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 193
+License text 190
 Packages: import-meta-resolve 4.2.0
 
 (The MIT License)
@@ -11540,7 +11228,7 @@ IN THE SOFTWARE.
 
 ================================================================================
 
-License text 194
+License text 191
 Packages: inflight 1.0.6
 
 The ISC License
@@ -11561,7 +11249,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 195
+License text 192
 Packages: inherits 2.0.4
 
 The ISC License
@@ -11582,7 +11270,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 196
+License text 193
 Packages: ini 4.1.1; isexe 2.0.0; minimatch 3.1.5; once 1.4.0; rimraf 3.0.2; semver 7.7.4, 7.8.5; which 2.0.2; wrappy 1.0.2
 
 The ISC License
@@ -11603,7 +11291,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 197
+License text 194
 Packages: internmap 1.0.1, 2.0.3
 
 Copyright 2021 Mike Bostock
@@ -11622,7 +11310,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 198
+License text 195
 Packages: interpret 3.1.1
 
 The MIT License (MIT)
@@ -11649,7 +11337,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 199
+License text 196
 Packages: is-array-buffer 3.0.5
 
 MIT License
@@ -11676,7 +11364,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 200
+License text 197
 Packages: is-async-function 2.1.1
 
 The MIT License (MIT)
@@ -11702,7 +11390,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 201
+License text 198
 Packages: is-bigint 1.1.0; object.fromentries 2.0.8
 
 MIT License
@@ -11729,7 +11417,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 202
+License text 199
 Packages: is-binary-path 2.1.0
 
 MIT License
@@ -11744,7 +11432,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 203
+License text 200
 Packages: is-core-module 2.16.2
 
 The MIT License (MIT)
@@ -11770,7 +11458,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 204
+License text 201
 Packages: is-data-view 1.0.2
 
 MIT License
@@ -11797,7 +11485,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 205
+License text 202
 Packages: is-document.all 1.0.0
 
 MIT License
@@ -11824,7 +11512,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 206
+License text 203
 Packages: is-extglob 2.1.1; word-wrap 1.2.5
 
 The MIT License (MIT)
@@ -11851,7 +11539,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 207
+License text 204
 Packages: is-generator-function 1.1.2; is-negative-zero 2.0.3; is-regex 1.2.1
 
 The MIT License (MIT)
@@ -11877,7 +11565,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 208
+License text 205
 Packages: is-glob 4.0.3
 
 The MIT License (MIT)
@@ -11904,7 +11592,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 209
+License text 206
 Packages: is-map 2.0.3; is-set 2.0.3; is-weakmap 2.0.2; is-weakset 2.0.4; which-collection 1.0.2
 
 MIT License
@@ -11931,7 +11619,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 210
+License text 207
 Packages: isarray 2.0.5
 
 MIT License
@@ -11958,7 +11646,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 211
+License text 208
 Packages: istanbul-lib-coverage 3.2.2; istanbul-lib-report 3.0.1; istanbul-reports 3.2.0
 
 Copyright 2012-2015 Yahoo! Inc.
@@ -11988,7 +11676,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 212
+License text 209
 Packages: jiti 1.21.7, 2.7.0; std-env 4.2.0
 
 MIT License
@@ -12015,7 +11703,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 213
+License text 210
 Packages: js-tokens 10.0.0
 
 The MIT License (MIT)
@@ -12042,7 +11730,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 214
+License text 211
 Packages: js-yaml 4.3.2
 
 (The MIT License)
@@ -12069,7 +11757,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 215
+License text 212
 Packages: jsdom 29.1.1
 
 Copyright (c) 2010 Elijah Insua
@@ -12097,7 +11785,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 216
+License text 213
 Packages: json-buffer 3.0.1
 
 Copyright (c) 2013 Dominic Tarr
@@ -12125,7 +11813,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 217
+License text 214
 Packages: json-stable-stringify-without-jsonify 1.0.1; minimist 1.2.8; text-table 0.2.0
 
 This software is released under the MIT license:
@@ -12149,7 +11837,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 218
+License text 215
 Packages: json5 2.2.3
 
 MIT License
@@ -12178,7 +11866,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 219
+License text 216
 Packages: katex 0.16.45, 0.17.0
 
 The MIT License (MIT)
@@ -12205,7 +11893,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 220
+License text 217
 Packages: khroma 2.1.0
 
 The MIT License (MIT)
@@ -12232,7 +11920,7 @@ DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 221
+License text 218
 Packages: kleur 3.0.3
 
 The MIT License (MIT)
@@ -12259,7 +11947,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 222
+License text 219
 Packages: knip 6.38.0
 
 ISC License (ISC)
@@ -12280,7 +11968,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 223
+License text 220
 Packages: layout-base 1.0.2, 2.0.1
 
 MIT License
@@ -12307,7 +11995,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 224
+License text 221
 Packages: levn 0.4.1; optionator 0.9.4; prelude-ls 1.2.1; type-check 0.4.0
 
 Copyright (c) George Zahariev
@@ -12335,7 +12023,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 225
+License text 222
 Packages: lightningcss 1.32.0
 
 Mozilla Public License Version 2.0
@@ -12714,7 +12402,7 @@ defined by the Mozilla Public License, v. 2.0.
 
 ================================================================================
 
-License text 226
+License text 223
 Packages: lilconfig 3.1.3
 
 MIT License
@@ -12741,7 +12429,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 227
+License text 224
 Packages: lines-and-columns 1.2.4
 
 The MIT License (MIT)
@@ -12768,7 +12456,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 228
+License text 225
 Packages: lodash-es 4.18.1; lodash.merge 4.6.2
 
 Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
@@ -12821,7 +12509,7 @@ terms above.
 
 ================================================================================
 
-License text 229
+License text 226
 Packages: loro-crdt 1.16.4
 
 MIT License
@@ -12847,7 +12535,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 230
+License text 227
 Packages: lru-cache 11.5.2
 
 # Blue Oak Model License
@@ -12908,7 +12596,7 @@ software or this license, under any kind of legal claim.***
 
 ================================================================================
 
-License text 231
+License text 228
 Packages: magic-string 0.30.21
 
 Copyright 2018 Rich Harris
@@ -12921,7 +12609,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 232
+License text 229
 Packages: magicast 0.5.5
 
 MIT License
@@ -12948,7 +12636,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 233
+License text 230
 Packages: marked 12.0.2, 16.4.2
 
 # License information
@@ -12998,7 +12686,7 @@ This software is provided by the copyright holders and contributors “as is” 
 
 ================================================================================
 
-License text 234
+License text 231
 Packages: mdn-data 2.27.1
 
 CC0 1.0 Universal
@@ -13120,7 +12808,7 @@ For more information, please see
 
 ================================================================================
 
-License text 235
+License text 232
 Packages: merge2 1.4.1
 
 The MIT License (MIT)
@@ -13147,7 +12835,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 236
+License text 233
 Packages: mermaid 11.16.1
 
 The MIT License (MIT)
@@ -13174,7 +12862,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 237
+License text 234
 Packages: minimatch 10.2.5
 
 # Blue Oak Model License
@@ -13235,7 +12923,7 @@ software or this license, under any kind of legal claim._**
 
 ================================================================================
 
-License text 238
+License text 235
 Packages: ms 2.1.3
 
 The MIT License (MIT)
@@ -13262,7 +12950,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 239
+License text 236
 Packages: mz 2.7.0
 
 The MIT License (MIT)
@@ -13289,7 +12977,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 240
+License text 237
 Packages: nanoid 3.3.18
 
 The MIT License (MIT)
@@ -13315,7 +13003,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 241
+License text 238
 Packages: node-releases 2.0.54
 
 The MIT License
@@ -13342,7 +13030,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 242
+License text 239
 Packages: normalize-path 3.0.0
 
 The MIT License (MIT)
@@ -13369,7 +13057,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 243
+License text 240
 Packages: object-assign 4.1.1; path-is-absolute 1.0.1; pify 2.3.0; strip-bom 3.0.0
 
 The MIT License (MIT)
@@ -13396,7 +13084,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 244
+License text 241
 Packages: object-hash 3.0.0
 
 The MIT License (MIT)
@@ -13423,7 +13111,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 245
+License text 242
 Packages: object-inspect 1.13.4
 
 MIT License
@@ -13450,7 +13138,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 246
+License text 243
 Packages: object-keys 1.1.1
 
 The MIT License (MIT)
@@ -13477,7 +13165,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 247
+License text 244
 Packages: object.assign 4.1.7
 
 The MIT License (MIT)
@@ -13504,7 +13192,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 248
+License text 245
 Packages: obug 2.1.4
 
 The MIT License (MIT)
@@ -13533,7 +13221,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 249
+License text 246
 Packages: package-manager-detector 1.6.0, 1.8.0
 
 MIT License
@@ -13560,7 +13248,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 250
+License text 247
 Packages: parse5 8.0.1
 
 Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
@@ -13585,7 +13273,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 251
+License text 248
 Packages: path-data-parser 0.1.0; points-on-curve 0.2.0
 
 MIT License
@@ -13612,7 +13300,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 252
+License text 249
 Packages: path-parse 1.0.7
 
 The MIT License (MIT)
@@ -13639,7 +13327,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 253
+License text 250
 Packages: pathe 2.0.3
 
 MIT License
@@ -13715,7 +13403,7 @@ DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 254
+License text 251
 Packages: picocolors 1.1.1
 
 ISC License
@@ -13736,7 +13424,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 255
+License text 252
 Packages: picomatch 2.3.2, 4.0.4, 4.0.5, 4.0.7
 
 The MIT License (MIT)
@@ -13763,7 +13451,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 256
+License text 253
 Packages: pirates 4.0.7
 
 MIT License
@@ -13790,7 +13478,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 257
+License text 254
 Packages: points-on-path 0.2.1
 
 MIT License
@@ -13817,7 +13505,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 258
+License text 255
 Packages: postcss-import 15.1.0
 
 The MIT License (MIT)
@@ -13843,7 +13531,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 259
+License text 256
 Packages: postcss-js 4.1.0
 
 The MIT License (MIT)
@@ -13869,7 +13557,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 260
+License text 257
 Packages: postcss-load-config 6.0.1
 
 The MIT License (MIT)
@@ -13895,7 +13583,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 261
+License text 258
 Packages: postcss-nested 6.2.0
 
 The MIT License (MIT)
@@ -13921,7 +13609,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 262
+License text 259
 Packages: postcss-selector-parser 6.1.4
 
 Copyright (c) Ben Briggs <beneb.info@gmail.com> (http://beneb.info)
@@ -13949,7 +13637,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 263
+License text 260
 Packages: postcss-value-parser 4.2.0
 
 Copyright (c) Bogdan Chadkin <trysound@yandex.ru>
@@ -13977,7 +13665,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 264
+License text 261
 Packages: prompts 2.4.2; sisteransi 1.0.5
 
 MIT License
@@ -14004,7 +13692,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 265
+License text 262
 Packages: queue-microtask 1.2.3; run-parallel 1.2.0
 
 The MIT License (MIT)
@@ -14030,7 +13718,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 266
+License text 263
 Packages: react 19.2.5; react-dom 19.2.5; scheduler 0.27.0; use-sync-external-store 1.6.0
 
 MIT License
@@ -14057,7 +13745,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 267
+License text 264
 Packages: react-i18next 17.0.8
 
 The MIT License (MIT)
@@ -14084,7 +13772,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 268
+License text 265
 Packages: read-cache 1.0.0
 
 The MIT License (MIT)
@@ -14110,7 +13798,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 269
+License text 266
 Packages: readdirp 3.6.0
 
 MIT License
@@ -14137,7 +13825,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 270
+License text 267
 Packages: rechoir 0.8.0
 
 The MIT License (MIT)
@@ -14164,7 +13852,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 271
+License text 268
 Packages: reflect.getprototypeof 1.0.10
 
 MIT License
@@ -14191,7 +13879,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 272
+License text 269
 Packages: regexp-tree 0.1.27
 
 MIT License
@@ -14218,7 +13906,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 273
+License text 270
 Packages: regexp.prototype.flags 1.5.4
 
 The MIT License (MIT)
@@ -14245,7 +13933,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 274
+License text 271
 Packages: require-from-string 2.0.2
 
 The MIT License (MIT)
@@ -14272,7 +13960,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 275
+License text 272
 Packages: resolve 1.22.12
 
 MIT License
@@ -14299,7 +13987,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 276
+License text 273
 Packages: reusify 1.1.0
 
 The MIT License (MIT)
@@ -14326,7 +14014,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 277
+License text 274
 Packages: robust-predicates 3.0.3
 
 This is free and unencumbered software released into the public domain.
@@ -14356,7 +14044,7 @@ For more information, please refer to <http://unlicense.org>
 
 ================================================================================
 
-License text 278
+License text 275
 Packages: roughjs 4.6.6
 
 MIT License
@@ -14383,7 +14071,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 279
+License text 276
 Packages: rw 1.3.3
 
 Copyright (c) 2014-2016, Michael Bostock
@@ -14415,7 +14103,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 280
+License text 277
 Packages: safe-regex 2.1.1
 
 Copyright 2019-present is held by the authors of the safe-regex module.
@@ -14444,7 +14132,7 @@ Maintainer: James C. (Jamie) Davis @davisjam
 
 ================================================================================
 
-License text 281
+License text 278
 Packages: safer-buffer 2.1.2
 
 MIT License
@@ -14471,7 +14159,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 282
+License text 279
 Packages: shebang-command 2.0.0
 
 MIT License
@@ -14486,7 +14174,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 283
+License text 280
 Packages: siginfo 2.0.0
 
 Copyright (c) 2017, Emil Bay <github@tixz.dk>
@@ -14505,7 +14193,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 284
+License text 281
 Packages: smol-toml 1.9.0
 
 Copyright (c) Squirrel Chat et al., All rights reserved.
@@ -14535,7 +14223,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 285
+License text 282
 Packages: source-map-js 1.2.2
 
 Copyright (c) 2009-2011, Mozilla Foundation and contributors
@@ -14568,7 +14256,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-License text 286
+License text 283
 Packages: string.prototype.trimend 1.0.10; string.prototype.trimstart 1.0.8
 
 MIT License
@@ -14595,7 +14283,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 287
+License text 284
 Packages: stylis 4.4.0
 
 MIT License
@@ -14622,7 +14310,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 288
+License text 285
 Packages: sucrase 3.35.1
 
 The MIT License (MIT)
@@ -14649,7 +14337,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 289
+License text 286
 Packages: symbol-tree 3.2.4
 
 The MIT License (MIT)
@@ -14676,7 +14364,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 290
+License text 287
 Packages: tailwind-merge 3.5.0
 
 MIT License
@@ -14703,7 +14391,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 291
+License text 288
 Packages: tailwindcss 3.4.19
 
 MIT License
@@ -14730,7 +14418,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 292
+License text 289
 Packages: tailwindcss-animate 1.0.7
 
 MIT License
@@ -14757,7 +14445,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 293
+License text 290
 Packages: tapable 2.3.3
 
 The MIT License
@@ -14784,7 +14472,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 294
+License text 291
 Packages: thenify 3.3.1
 
 The MIT License (MIT)
@@ -14811,7 +14499,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 295
+License text 292
 Packages: thenify-all 1.6.0
 
 The MIT License (MIT)
@@ -14838,7 +14526,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 296
+License text 293
 Packages: tinybench 2.9.0; tinyrainbow 3.1.0, 3.1.1
 
 MIT License
@@ -14865,7 +14553,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 297
+License text 294
 Packages: tinyexec 1.2.4
 
 MIT License
@@ -14892,7 +14580,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 298
+License text 295
 Packages: tinyglobby 0.2.16, 0.2.17
 
 MIT License
@@ -14919,7 +14607,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 299
+License text 296
 Packages: tldts 7.4.9; tldts-core 7.4.9
 
 Copyright (c) 2017 Thomas Parisot, 2018 Rémi Berson
@@ -14938,7 +14626,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTH
 
 ================================================================================
 
-License text 300
+License text 297
 Packages: to-regex-range 5.0.1
 
 The MIT License (MIT)
@@ -14965,7 +14653,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 301
+License text 298
 Packages: tough-cookie 6.0.2
 
 Copyright (c) 2015, Salesforce.com, Inc.
@@ -14983,7 +14671,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ================================================================================
 
-License text 302
+License text 299
 Packages: tr46 6.0.0
 
 The MIT License (MIT)
@@ -15010,7 +14698,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 303
+License text 300
 Packages: ts-dedent 2.2.0
 
 MIT License
@@ -15037,7 +14725,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 304
+License text 301
 Packages: tsconfig-paths 4.2.0; tsconfig-paths-webpack-plugin 4.2.0
 
 The MIT License (MIT)
@@ -15064,7 +14752,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 305
+License text 302
 Packages: tslib 2.8.1
 
 Copyright (c) Microsoft Corporation.
@@ -15082,7 +14770,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 306
+License text 303
 Packages: type-fest 0.20.2
 
 MIT License
@@ -15097,7 +14785,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 307
+License text 304
 Packages: typescript 6.0.3
 
 Apache License
@@ -15158,7 +14846,7 @@ END OF TERMS AND CONDITIONS
 
 ================================================================================
 
-License text 308
+License text 305
 Packages: unbash 4.0.11
 
 ISC License
@@ -15179,7 +14867,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 309
+License text 306
 Packages: undici 7.29.1; undici-types 6.21.0
 
 MIT License
@@ -15206,7 +14894,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 310
+License text 307
 Packages: update-browserslist-db 1.2.3
 
 The MIT License (MIT)
@@ -15232,7 +14920,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 311
+License text 308
 Packages: uri-js 4.4.1
 
 Copyright 2011 Gary Court. All rights reserved.
@@ -15249,7 +14937,7 @@ The views and conclusions contained in the software and documentation are those 
 
 ================================================================================
 
-License text 312
+License text 309
 Packages: util-deprecate 1.0.2
 
 (The MIT License)
@@ -15279,7 +14967,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 313
+License text 310
 Packages: uuid 14.0.0
 
 The MIT License (MIT)
@@ -15294,7 +14982,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ================================================================================
 
-License text 314
+License text 311
 Packages: vite 8.1.5
 
 # Vite core license
@@ -17587,7 +17275,7 @@ Repository: https://github.com/websockets/ws
 
 ================================================================================
 
-License text 315
+License text 312
 Packages: vite-plugin-wasm 3.6.0
 
 MIT License
@@ -17614,7 +17302,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 316
+License text 313
 Packages: vitest 4.1.10
 
 # Vitest core license
@@ -18431,7 +18119,7 @@ Repository: git+https://github.com/websockets/ws.git
 
 ================================================================================
 
-License text 317
+License text 314
 Packages: void-elements 3.1.0
 
 (The MIT License)
@@ -18459,7 +18147,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 318
+License text 315
 Packages: w3c-xmlserializer 5.0.0
 
 The MIT License (MIT)
@@ -18490,7 +18178,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 319
+License text 316
 Packages: walk-up-path 4.0.0
 
 The ISC License
@@ -18511,7 +18199,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
 
-License text 320
+License text 317
 Packages: watskeburt 6.0.0
 
 The MIT License (MIT)
@@ -18538,7 +18226,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 321
+License text 318
 Packages: webidl-conversions 8.0.1
 
 # The BSD 2-Clause License
@@ -18556,7 +18244,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ================================================================================
 
-License text 322
+License text 319
 Packages: whatwg-url 16.0.1
 
 The MIT License (MIT)
@@ -18583,7 +18271,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 323
+License text 320
 Packages: which-builtin-type 1.2.1
 
 MIT License
@@ -18610,7 +18298,7 @@ SOFTWARE.
 
 ================================================================================
 
-License text 324
+License text 321
 Packages: why-is-node-running 2.3.0
 
 The MIT License (MIT)
@@ -18637,7 +18325,7 @@ THE SOFTWARE.
 
 ================================================================================
 
-License text 325
+License text 322
 Packages: xmlchars 2.2.0
 
 Copyright Louis-Dominique Dubeau and contributors to xmlchars
@@ -18661,7 +18349,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-License text 326
+License text 323
 Packages: yaml 2.9.1
 
 Copyright Eemeli Aro <eemeli@gmail.com>
@@ -18680,7 +18368,7 @@ THIS SOFTWARE.
 
 ================================================================================
 
-License text 327
+License text 324
 Packages: zod 4.1.13, 4.6.5
 
 MIT License

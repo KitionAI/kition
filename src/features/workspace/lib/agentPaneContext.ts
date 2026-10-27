@@ -44,8 +44,6 @@ export function deriveAgentPaneContext(
       }
     case 'workflow':
       return 'workflow'
-    case 'design':
-      return 'design'
     case 'gallery':
       return 'gallery'
     default: {
@@ -74,8 +72,6 @@ export function resolveAgentActiveDocument(
         path: tab.tablePath || '',
         format: tab.tablePath ? 'table' : undefined,
       }
-    // Design placement uses completed images; no Design target is sent to older runtimes.
-    case 'design':
     case 'gallery':
       return { path: '' }
     default: {

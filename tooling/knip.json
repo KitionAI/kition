@@ -13,8 +13,6 @@
     "e2e/helpers/**/*.ts",
     "src/features/kits/host/*.ts",
     "src/lib/kdm/*.ts",
-    "src/lib/kit-engine/*.ts",
-    "src/lib/convergence/*.ts",
     "src/lib/sync/*.ts",
     "src/lib/sdk/*.ts",
     "src/lib/sdk/kits/*.ts",
@@ -36,6 +34,7 @@
     "src/api/generated/**"
   ],
   "ignoreDependencies": [
+    "@fontsource-variable/inter",
     "@tauri-apps/cli",
     "tailwindcss-animate",
     "autoprefixer",

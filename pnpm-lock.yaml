@@ -32,18 +32,6 @@ importers:
 
   .:
     dependencies:
-      '@fontsource-variable/bricolage-grotesque':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource-variable/inter':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource-variable/jetbrains-mono':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource-variable/lora':
-        specifier: 5.3.0
-        version: 5.3.0
       '@kition/tessera-icons':
         specifier: github:KitionAI/kition-tessera#8459465cc74c3bb4530e75eaeb01eec09c7fbf4d&path:/packages/icons
         version: https://codeload.github.com/KitionAI/kition-tessera/tar.gz/8459465cc74c3bb4530e75eaeb01eec09c7fbf4d#path:/packages/icons(react@19.2.5)
@@ -54,6 +42,9 @@ importers:
         specifier: 1.16.4
         version: 1.16.4
     devDependencies:
+      '@fontsource-variable/inter':
+        specifier: 5.3.0
+        version: 5.3.0
       '@orama/orama':
         specifier: ^3.1.18
         version: 3.1.18
@@ -333,17 +324,8 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@fontsource-variable/bricolage-grotesque@5.3.0':
-    resolution: {integrity: sha512-TLi9Q4hJjS2UvoTMRSS2nHu6c4R56lAw60NR9QYtVRCHn0XtsFpiEhNffZ8Glsoxu6wEEwLKBP8lb94J52PNBA==}
-
   '@fontsource-variable/inter@5.3.0':
     resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
-
-  '@fontsource-variable/jetbrains-mono@5.3.0':
-    resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
-
-  '@fontsource-variable/lora@5.3.0':
-    resolution: {integrity: sha512-2ph8KiZ8Bn141hWuC3ErtpJ+Ui8p2MJQn8TJNRSRmLmnCIOCtHfiBM9R7WLRPeUG/q6hXyHOxWQ8DvRSX+ixvQ==}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -4142,13 +4124,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@fontsource-variable/bricolage-grotesque@5.3.0': {}
-
   '@fontsource-variable/inter@5.3.0': {}
-
-  '@fontsource-variable/jetbrains-mono@5.3.0': {}
-
-  '@fontsource-variable/lora@5.3.0': {}
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:

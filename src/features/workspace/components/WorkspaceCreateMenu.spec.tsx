@@ -82,7 +82,6 @@ describe('WorkspaceCreateMenu', () => {
       root.render(createElement(WorkspaceCreateMenu, {
         open: true,
         onCreateFolder: vi.fn(),
-        onCreateDesign: vi.fn(),
         kitCreations: [
           { id: 'note', label: 'createMenu.format.note', kit: 'note', group: 'documents', extension: 'md', onCreate: vi.fn() },
           { id: 'table', label: 'createMenu.format.table', kit: 'table', group: 'data', extension: 'ktable', onCreate: vi.fn() },
@@ -94,7 +93,7 @@ describe('WorkspaceCreateMenu', () => {
 
     const kits = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.dataset.kitIcon)
-    expect(kits).toEqual(['note', 'table', 'board', 'design', 'film'])
+    expect(kits).toEqual(['note', 'table', 'board', 'film'])
     const sources = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.getAttribute('src'))
     expect(sources.every((src) => src?.endsWith('-small.svg'))).toBe(true)

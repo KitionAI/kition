@@ -3,7 +3,6 @@ import { resolveApiURL } from '@/services/desktop'
 import { readAgentMessageStream, type AgentStreamNotification } from './agentStream'
 import type { RuntimeWritingModel } from '@/types'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
-import type { AgentDesignContext } from '@/types/designAgent'
 import type { AgentSessionEventsPage } from './generated/agent-session-events'
 import type {
   AgentCapabilities,
@@ -153,7 +152,7 @@ export async function streamAgentMessage(options: {
    *  workflow context is injected. */
   activeWorkflowId?: string
   /** Mirrors the workbench tab type the user has open ("document" /
-   *  "workflow" / "gallery" / "design"). The backend uses
+   *  "workflow" / "gallery"). The backend uses
    *  this to add pane-specific guidance to the system prompt so the
    *  agent's behaviour matches what the user is actually looking at.
    *  Empty string / undefined defaults to "document". */
@@ -163,7 +162,6 @@ export async function streamAgentMessage(options: {
   /** How kit tools edit open kit documents: live (the default) or as drafts to review. */
   kitEditMode?: AgentKitEditMode
   imageGenerationIntent?: AgentImageGenerationIntent
-  designContext?: AgentDesignContext
   shellApproval?: AgentShellApprovalResponse
   modelId?: string
   runtimeModel?: RuntimeWritingModel
@@ -191,7 +189,6 @@ export async function streamAgentMessage(options: {
       task_mode: options.taskMode || 'auto',
       kit_edit_mode: options.kitEditMode || 'live',
       image_generation_intent: options.imageGenerationIntent || undefined,
-      design_context: options.designContext || undefined,
       shell_approval: options.shellApproval || undefined,
       model_id: options.modelId || '',
       runtime_model: options.runtimeModel || undefined,

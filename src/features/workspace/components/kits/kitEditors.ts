@@ -66,7 +66,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'photo', extension: KIT_CREATE_EXTENSION.photo, baseName: 'Untitled photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.photo', group: 'visual' } }),
   kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: KIT_CREATE_EXTENSION.vector, baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
   // US Letter, in points.
-  kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'design', extension: KIT_CREATE_EXTENSION.design, baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
+  kit('design', 'DesignDocument', { format: 'design', icon: 'design', create: { id: 'design', extension: KIT_CREATE_EXTENSION.design, baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.design', group: 'documents' } }),
   kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'film', extension: KIT_CREATE_EXTENSION.film, baseName: 'Untitled film', size: { width: 1920, height: 1080 }, label: 'createMenu.format.film', group: 'media' } }),
   kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'effect', extension: KIT_CREATE_EXTENSION.effect, baseName: 'Untitled effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.effect', group: 'media' } }),
   // A3 in millimetres; the engine starts a metric drawing with those limits.

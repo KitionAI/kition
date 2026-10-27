@@ -2,12 +2,6 @@
 
 Status: in progress
 
-Related work: [Native Design Suite Plan](native-design-suite-plan.md) proposes
-editable `.kidesign` poster documents built natively in Kition. Design consumes
-reviewed image artifacts and adds editable text, shapes, and layouts. Generation
-continues in Agent chat; Design's later editing scope extends beyond the initial
-release non-goals below without introducing another image-generation Studio.
-
 Research date: 2026-09-05
 
 ## Implementation progress

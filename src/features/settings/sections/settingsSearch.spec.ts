@@ -32,7 +32,7 @@ describe('settings search', () => {
 
   it('shows every section without a query and keeps About separate from the main list', () => {
     const visible = filterSettingsSections('', index, 'Advanced')
-    expect(visible.main.map((section) => section.key)).toEqual(['general', 'account', 'models', 'display', 'brand'])
+    expect(visible.main.map((section) => section.key)).toEqual(['general', 'account', 'models', 'display'])
     expect(visible.about?.key).toBe('about')
     expect(visible.advanced.map((section) => section.key)).toEqual(['network', 'collab', 'extensions', 'runtime', 'developer'])
   })

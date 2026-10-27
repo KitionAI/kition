@@ -7,8 +7,6 @@ import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEm
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/cn'
-import type { DesignAgentBridge } from '@/features/design/public'
-import type { ImageStudioRequest, ImageStudioStartResult } from '@/features/media-generation/public'
 
 const WorkspaceMediaPanel = lazy(() =>
   import('@/features/workspace/components/WorkspaceMediaPanel').then((module) => ({ default: module.WorkspaceMediaPanel })),
@@ -16,7 +14,6 @@ const WorkspaceMediaPanel = lazy(() =>
 const WorkspaceFileViewerPane = lazy(() =>
   import('@/features/workspace/components/WorkspaceFileViewerPane').then((module) => ({ default: module.WorkspaceFileViewerPane })),
 )
-const DesignEditorPane = lazy(() => import('@/features/design/components/DesignEditorPane').then(module => ({ default: module.DesignEditorPane })))
 const WorkflowHomePage = lazy(() =>
   import('@/features/workflow/pages/WorkflowHomePage').then((module) => ({ default: module.WorkflowHomePage })),
 )
@@ -69,17 +66,12 @@ type WorkspaceEditorContentProps = {
   activeWorkspaceTab: WorkspaceTab | undefined
   activeWorkspaceTabId: string
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
-  designAgentAvailable?: boolean
-  onDesignAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
-  onCancelDesignAgent?: () => void
-  onGenerateDesignImage?: (request: ImageStudioRequest) => Promise<ImageStudioStartResult>
   onOpenWorkflow?: (tablePath: string, workflowId: string) => void
   onOpenGlobalWorkflow?: (workflowId: string) => void
   onOpenWorkflows: () => void
   onCreateDocument: () => void
   onCreateTable: () => void
   onOpenAgent: () => void
-  designRoot?: string
   workspaceTabs: WorkspaceTab[]
   /** Active workspace root. Forwarded to mounted workbench panes that
    *  need to scope their data fetches to this workspace — without it
@@ -92,17 +84,12 @@ export function WorkspaceEditorContent({
   activeWorkspaceTab,
   activeWorkspaceTabId,
   galleryPanelProps,
-  designAgentAvailable = false,
-  onDesignAgentBridgeChange,
-  onCancelDesignAgent,
-  onGenerateDesignImage,
   onOpenWorkflow,
   onOpenGlobalWorkflow,
   onOpenWorkflows,
   onCreateDocument,
   onCreateTable,
   onOpenAgent,
-  designRoot,
   workspaceTabs,
   rootPath,
 }: WorkspaceEditorContentProps) {
@@ -192,13 +179,6 @@ export function WorkspaceEditorContent({
             </EditorPaneBoundary>
           </div>
         ))}
-      {workspaceTabs.filter((tab): tab is Extract<WorkspaceTab, { type: 'design' }> => tab.type === 'design').map(tab => (
-        <div key={`${designRoot}:${tab.id}`} className={cn('document-editor-view', activeWorkspaceTabId === tab.id && 'is-active')}>
-          <EditorPaneBoundary>
-            <DesignEditorPane root={designRoot || 'browser-local-workspace'} path={tab.path} title={tab.title} active={activeWorkspaceTabId === tab.id} agentAvailable={designAgentAvailable} onAgentBridgeChange={onDesignAgentBridgeChange} onCancelAgent={onCancelDesignAgent} onGenerateImage={onGenerateDesignImage} />
-          </EditorPaneBoundary>
-        </div>
-      ))}
     </>
   )
 }

@@ -1,7 +1,6 @@
 /**
  * Workspace roots: choosing and revealing folders, the vault registry, and opening workspace windows.
  */
-import { flushWorkspaceEditSessions } from '../workspaceEditSessions'
 import type { AgentLocalSource } from '@/types/agentLocalSource'
 import { type ChooseDirectoryResponse, type OpenWorkspaceWindowResponse, type SetActiveVaultResponse, type VaultAddRequest, type VaultListResponse, type VaultMutationResponse, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
@@ -15,7 +14,6 @@ export async function revealWorkspaceFolder(path?: string) {
 }
 
 export async function chooseWorkspaceFolder() {
-  await flushWorkspaceEditSessions()
   const bridge = getDesktopBridge()
   if (bridge?.ChooseWorkspaceFolder) {
     return bridge.ChooseWorkspaceFolder()
@@ -24,7 +22,6 @@ export async function chooseWorkspaceFolder() {
 }
 
 export async function setWorkspaceFolder(path: string) {
-  await flushWorkspaceEditSessions()
   const bridge = getDesktopBridge()
   if (bridge?.SetWorkspaceFolder) {
     return bridge.SetWorkspaceFolder({ path })
@@ -75,7 +72,6 @@ export async function renameVault(path: string, name: string): Promise<VaultMuta
 }
 
 export async function setActiveVault(path: string): Promise<SetActiveVaultResponse> {
-  await flushWorkspaceEditSessions()
   const bridge = getDesktopBridge()
   if (!bridge?.SetActiveVault) {
     throw new Error('desktop vault registry is unavailable')

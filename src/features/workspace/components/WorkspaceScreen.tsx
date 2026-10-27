@@ -1,11 +1,10 @@
 /**
  * Composition root for the workspace window: sidebar tree, tab strip, editor
  * panes, and the Agent sidebar. It owns tab state, create
- * flows, and the bridges that feed document, table, and design context to
+ * flows, and the bridges that feed document and table context to
  * the Agent. It is intentionally being split into focused hooks; do not add
  * new responsibilities here (see docs/superpowers/plans, Task 1.4).
  */
-import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,7 +34,6 @@ import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspace
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
-import { useWorkspaceDesignAgentBridge } from '@/features/workspace/hooks/useWorkspaceDesignAgentBridge'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
 import { useWorkspaceOpeners } from '@/features/workspace/hooks/useWorkspaceOpeners'
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
@@ -51,8 +49,6 @@ import { useKitCreations } from '@/features/workspace/hooks/useKitCreations'
 import { onShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
-import { useAgentImageGeneration } from '@/features/workspace/hooks/useAgentImageGeneration'
-import { buildDesignImageAgentInstruction } from '@/features/design/public'
 import { inferWorkspaceItemFormat, isEditableWorkspaceFormat, isImageWorkspaceFormat, isVideoWorkspaceFormat } from '@/features/workspace/lib/workspace'
 import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
 import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTurnUpdate'
@@ -155,10 +151,7 @@ export function WorkspaceScreen({
     clearModifiedPath: (_path: string) => {},
     modifiedPaths: new Set<string>(),
   })
-  const designBridge = useWorkspaceDesignAgentBridge({ rootPath })
-  const agentTurn = useWorkspaceAgentTurnContext({
-    buildDesignContext: designBridge.buildActiveContext,
-  })
+  const agentTurn = useWorkspaceAgentTurnContext()
   const agentTurnContextRef = agentTurn.turnContextRef
   const getAgentTurnContext = agentTurn.getTurnContext
   const {
@@ -189,8 +182,6 @@ export function WorkspaceScreen({
     onWorkspaceDocumentsModified: async () => {
       await refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true })
     },
-    onDesignPatch: designBridge.receivePatch,
-    onDesignPatchCancelled: designBridge.cancelPreview,
     getTurnContext: getAgentTurnContext,
   })
   const {
@@ -258,18 +249,6 @@ export function WorkspaceScreen({
     workflowOpen,
     onCloseWorkflow,
   })
-  const design = useWorkspaceDesign({
-    root: rootPath,
-    activeTab: activeWorkspaceTab,
-    upsert: upsertWorkspaceTab,
-    refresh: (...args) => refreshWorkspaceDocumentsRef.current(...args),
-    closeCreateMenu: () => workspaceTree.setCreateMenuOpen(false),
-    expandFolder: workspaceTree.expandFolders,
-    beforeOpen: () => {
-      if (workflowOpen) onCloseWorkflow?.()
-    },
-  })
-
   const { handleCloseWorkspaceTabById, openFileViewerTab } = useWorkspaceTabControllers({
     workspaceTabs,
     activeWorkspaceTab,
@@ -279,13 +258,11 @@ export function WorkspaceScreen({
     setActiveResourcePath,
     workflowOpen,
     onCloseWorkflow,
-    openDesign: design.open,
     openDocument,
   })
 
   // The table file the workflow workbench is scoped to, when its tab names one.
   const activeTableFilePath = activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.tablePath ?? '' : ''
-  designBridge.setActiveDesignPath(activeWorkspaceTab?.type === 'design' ? activeWorkspaceTab.path : '')
   agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({ activeWorkspaceTab }))
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
   const agentPanel = useWorkspaceAgentPanel({
@@ -307,18 +284,6 @@ export function WorkspaceScreen({
     setActiveSessionId: setActiveWorkspaceAgentSessionId,
     activeSession: activeWorkspaceAgentSession,
   } = agentPanel
-  const handleGenerateDesignImage = useAgentImageGeneration({
-    activeSessionId: activeWorkspaceAgentSessionId,
-    agentBusySessions,
-    agentSessionViews,
-    available: designBridge.available,
-    bridgesRef: designBridge.bridgesRef,
-    buildInstruction: buildDesignImageAgentInstruction,
-    createAgentChat: createNewAgentChat,
-    modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
-    sendAgentAction: sendAgentContextAction,
-    setActiveSessionId: setActiveWorkspaceAgentSessionId,
-  })
   const activeAgentDocumentContextPaths = activeWorkspaceAgentSession
     ? resolveAgentDocumentContexts(
       activeWorkspaceAgentSession.id,
@@ -449,7 +414,6 @@ export function WorkspaceScreen({
       activeWorkspaceTab={activeWorkspaceTab}
       activeWorkspaceDocumentPath={activeWorkspaceDocumentPath}
       documentContextPaths={activeAgentDocumentContextPaths}
-      designEmptyState={design.chatEmptyState}
       kitionAccount={kitionAccount}
       kitionAccountLinks={kitionAccountLinks}
       onOpenSettingsSection={onOpenSettingsSection}
@@ -465,7 +429,6 @@ export function WorkspaceScreen({
     workflowOpen,
     onCloseWorkflow,
     onCloseProfile,
-    openDesign: design.open,
     openWorkflows: (tablePath) => (tablePath ? openTableFileWorkflow(tablePath) : openWorkspaceWorkflow()),
     openDocument,
   })
@@ -491,7 +454,6 @@ export function WorkspaceScreen({
     expandPrivateSection: () => setSidebarSectionsExpanded((current) => ({ ...current, private: true })),
     createDocumentInside,
     openDocumentTemplateDialog,
-    createDesign: design.create,
     kitCreations,
     openWorkspaceWorkflow,
     openTableFileWorkflow,
@@ -567,13 +529,6 @@ export function WorkspaceScreen({
               activeWorkspaceTabId,
               galleryPanelProps,
               agentPanel,
-              activeAgentSession: activeWorkspaceAgentSession,
-              stopAgentMessage,
-              design: {
-                available: designBridge.available,
-                onBridgeChange: designBridge.handleBridgeChange,
-                onGenerateImage: handleGenerateDesignImage,
-              },
               templateDialogs,
               workflows: {
                 openTableFileWorkflow,

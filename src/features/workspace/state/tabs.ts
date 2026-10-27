@@ -72,12 +72,12 @@ export function filterTabs(state: TabsState, predicate: (tab: WorkspaceTab) => b
   return { tabs, activeTabId }
 }
 
-/** After a move or folder rename, point file and design tabs at the new path. */
+/** After a move or folder rename, point file tabs at the new path. */
 export function remapTabPaths(state: TabsState, sourcePath: string, targetPath: string): TabsState {
   if (!sourcePath || !targetPath || sourcePath === targetPath) return state
   let changed = false
   const tabs = state.tabs.map((tab) => {
-    if (tab.type === 'file-viewer' || tab.type === 'design') {
+    if (tab.type === 'file-viewer') {
       const nextPath = remapWorkspaceBranchPath(tab.path, sourcePath, targetPath)
       if (nextPath === tab.path) return tab
       changed = true
@@ -91,8 +91,8 @@ export function remapTabPaths(state: TabsState, sourcePath: string, targetPath: 
 }
 
 function remapPathTabId(tabId: string, sourcePath: string, targetPath: string) {
-  const prefix = (['design:', 'file-viewer:'] as const).find((candidate) => tabId.startsWith(candidate))
-  if (!prefix) return tabId
+  const prefix = 'file-viewer:'
+  if (!tabId.startsWith(prefix)) return tabId
   const path = tabId.slice(prefix.length)
   const nextPath = remapWorkspaceBranchPath(path, sourcePath, targetPath)
   return nextPath === path ? tabId : `${prefix}${nextPath}`

@@ -18,7 +18,6 @@ type UseWorkspaceCreateMenuOptions = {
   expandPrivateSection: () => void
   createDocumentInside: TreeActions['createDocumentInside']
   openDocumentTemplateDialog: (folder?: string) => void
-  createDesign: (folder?: string) => Promise<unknown> | void
   /** Kit items (Image, Video project), each making a file in a folder. */
   kitCreations: readonly KitCreationSource[]
   openWorkspaceWorkflow: () => void
@@ -29,8 +28,8 @@ type UseWorkspaceCreateMenuOptions = {
 
 /**
  * Handlers behind the sidebar's create menu. The menu opens either for the
- * workspace (a folder) or for a table file, where it makes a form or a
- * workflow for the file's tables. Returned as one object so the sidebar props
+ * workspace (a folder) or for a table file, where it makes a workflow for
+ * the file's tables. Returned as one object so the sidebar props
  * can spread it.
  */
 export function useWorkspaceCreateMenu({
@@ -41,7 +40,6 @@ export function useWorkspaceCreateMenu({
   expandPrivateSection,
   createDocumentInside,
   openDocumentTemplateDialog,
-  createDesign,
   kitCreations,
   openWorkspaceWorkflow,
   openTableFileWorkflow,
@@ -85,10 +83,6 @@ export function useWorkspaceCreateMenu({
       onCloseProfile?.()
       openWorkspaceWorkflow()
     },
-    onCreateDesign: () => {
-      onCloseProfile?.()
-      void createDesign(createMenuFolder)
-    },
     kitCreations: kitCreations.map<KitCreationItem>((kit) => ({
       id: kit.id,
       label: kit.label,
@@ -103,7 +97,6 @@ export function useWorkspaceCreateMenu({
     })),
   }), [
     closeCreateMenu,
-    createDesign,
     kitCreations,
     createDocumentInside,
     createFlows,

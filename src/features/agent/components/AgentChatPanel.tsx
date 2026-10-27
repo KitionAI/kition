@@ -262,7 +262,6 @@ export function AgentChatPanel({
           <AgentConversation
             imageActions={imageGeneration ? {
               onEdit: imageMode.edit, onRetry: imageMode.retry, canRetry: imageMode.canRetry,
-              headlineFor: imageMode.headlineFor,
             } : undefined}
             view={view}
             pendingUserText={pendingUserText}

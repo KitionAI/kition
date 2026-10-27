@@ -1,5 +1,6 @@
-//! Compare-and-write for documents the design editor saves: a write only
-//! lands when the file still holds what the editor last read.
+//! Compare-and-write for workspace documents: writes to one file run one at a
+//! time, and a write that names the content it expects only lands when the
+//! file still holds it.
 
 use std::collections::HashMap;
 use std::fs;
@@ -7,7 +8,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-pub const SAVE_CONFLICT: &str = "DESIGN_SAVE_CONFLICT";
+pub const SAVE_CONFLICT: &str = "WORKSPACE_SAVE_CONFLICT";
 
 #[derive(Default)]
 pub struct GuardedWrites {
@@ -85,7 +86,7 @@ mod tests {
     #[test]
     fn rejects_stale_writes() {
         let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
-        let file = dir.path().join("a.kidesign");
+        let file = dir.path().join("a.md");
         fs::write(&file, "v1").unwrap_or_else(|err| panic!("{err}"));
         let writes = GuardedWrites::default();
         let ok = writes.write(&file, Some("v1"), || fs::write(&file, "v2"));
@@ -96,7 +97,7 @@ mod tests {
             .map(|err| err.to_string());
         assert_eq!(stale.as_deref(), Some(SAVE_CONFLICT));
         assert!(writes.write(&file, None, || fs::write(&file, "v4")).is_ok());
-        let missing = dir.path().join("missing.kidesign");
+        let missing = dir.path().join("missing.md");
         assert!(writes.write(&missing, Some(""), || Ok(())).is_err());
         let present = writes
             .write_missing(&file, || fs::write(&file, "v5"))

@@ -76,14 +76,14 @@ async function mountHarness(initialRootPath: string): Promise<Harness> {
   }
 }
 
-/** A design tab: the tabs a workspace keeps across windows (a kit's file tab reopens from the tree). */
+/** A table file's workflow tab: the tabs a workspace keeps across windows (a kit's file tab reopens from the tree). */
 function docTab(path: string): WorkspaceTab {
-  const design = path.replace(/\.md$/, '.kidesign')
+  const tablePath = path.replace(/\.md$/, '.ktable')
   return {
-    id: `design:${design}`,
-    type: 'design',
-    title: design.split('/').pop() || design,
-    path: design,
+    id: `workflow:${tablePath}`,
+    type: 'workflow',
+    title: tablePath.split('/').pop() || tablePath,
+    tablePath,
   }
 }
 
@@ -102,46 +102,48 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
       ref.current.upsertWorkspaceTab(docTab('A-home.md'), { activate: true })
       await Promise.resolve()
     })
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['design:A-home.kidesign'])
-    expect(ref.current.activeWorkspaceTabId).toBe('design:A-home.kidesign')
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:A-home.ktable'])
+    expect(ref.current.activeWorkspaceTabId).toBe('workflow:A-home.ktable')
 
     await setRootPath('/B')
 
     expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual([
-      'design:B-home.kidesign',
-      'design:B-notes.kidesign',
+      'workflow:B-home.ktable',
+      'workflow:B-notes.ktable',
     ])
-    expect(ref.current.activeWorkspaceTabId).toBe('design:B-home.kidesign')
+    expect(ref.current.activeWorkspaceTabId).toBe('workflow:B-home.ktable')
   })
 
-  it('remaps durable Design paths and keeps a valid active tab after deletion', async () => {
+  it('remaps file tab paths and keeps a valid active tab after deletion', async () => {
     const { ref } = await mountHarness('/A')
 
     await act(async () => {
       ref.current.upsertWorkspaceTab({ id: 'file-viewer:Home.md', type: 'file-viewer', title: 'Home', path: 'Home.md', format: 'markdown' }, { activate: false })
       ref.current.upsertWorkspaceTab({
-        id: 'design:Planning.kidesign',
-        type: 'design',
+        id: 'file-viewer:Planning.kdesign',
+        type: 'file-viewer',
         title: 'Planning',
-        path: 'Planning.kidesign',
+        path: 'Planning.kdesign',
+        format: 'design',
       }, { activate: true })
       await Promise.resolve()
     })
 
     await act(async () => {
-      ref.current.remapWorkspaceTabPaths('Planning.kidesign', 'Roadmap.kidesign')
+      ref.current.remapWorkspaceTabPaths('Planning.kdesign', 'Roadmap.kdesign')
       await Promise.resolve()
     })
     expect(ref.current.workspaceTabs[1]).toEqual({
-      id: 'design:Roadmap.kidesign',
-      type: 'design',
+      id: 'file-viewer:Roadmap.kdesign',
+      type: 'file-viewer',
       title: 'Roadmap',
-      path: 'Roadmap.kidesign',
+      path: 'Roadmap.kdesign',
+      format: 'design',
     })
-    expect(ref.current.activeWorkspaceTabId).toBe('design:Roadmap.kidesign')
+    expect(ref.current.activeWorkspaceTabId).toBe('file-viewer:Roadmap.kdesign')
 
     await act(async () => {
-      ref.current.filterWorkspaceTabs((tab) => tab.type !== 'design')
+      ref.current.filterWorkspaceTabs((tab) => tab.type !== 'file-viewer' || tab.path !== 'Roadmap.kdesign')
       await Promise.resolve()
     })
     expect(ref.current.workspaceTabs.map((tab) => tab.id)).toEqual(['file-viewer:Home.md'])
@@ -160,8 +162,8 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
 
     await setRootPath('/A')
 
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['design:A-home.kidesign'])
-    expect(ref.current.activeWorkspaceTabId).toBe('design:A-home.kidesign')
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:A-home.ktable'])
+    expect(ref.current.activeWorkspaceTabId).toBe('workflow:A-home.ktable')
   })
 
   it('persists tabs under the new rootPath only after the switch settles', async () => {
@@ -180,8 +182,8 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
     })
 
     const stored = JSON.parse(window.localStorage.getItem('kition.document.workspace-tabs.v2') || '{}')
-    expect(stored['/A'].map((t: any) => t.id)).toEqual(['design:A-home.kidesign'])
-    expect(stored['/B'].map((t: any) => t.id)).toEqual(['design:B-home.kidesign'])
+    expect(stored['/A'].map((t: any) => t.id)).toEqual(['workflow:A-home.ktable'])
+    expect(stored['/B'].map((t: any) => t.id)).toEqual(['workflow:B-home.ktable'])
   })
 
   it('production flow: setRootPath then async upsertWorkspaceTab in one batch', async () => {
@@ -191,7 +193,7 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
       ref.current.upsertWorkspaceTab(docTab('A-home.md'), { activate: true })
       await Promise.resolve()
     })
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['design:A-home.kidesign'])
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:A-home.ktable'])
 
     // Emulate refreshWorkspaceDocuments() landing on the new vault. The real
     // sequence is: setRootPath(B); await readWorkspaceDocument; applyWorkspaceDocument(B-home).
@@ -204,7 +206,7 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
       await Promise.resolve()
     })
 
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['design:B-home.kidesign'])
-    expect(ref.current.activeWorkspaceTabId).toBe('design:B-home.kidesign')
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:B-home.ktable'])
+    expect(ref.current.activeWorkspaceTabId).toBe('workflow:B-home.ktable')
   })
 })

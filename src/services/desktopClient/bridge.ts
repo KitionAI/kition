@@ -124,7 +124,6 @@ export type WorkspaceDocumentFormat =
   | 'film'
   | 'vector'
   | 'effect'
-  | 'layout'
   | 'cad'
   | 'cube'
   | 'fig'

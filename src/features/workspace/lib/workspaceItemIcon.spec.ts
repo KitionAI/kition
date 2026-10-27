@@ -15,7 +15,6 @@ describe('getWorkspaceItemKitIcon', () => {
     ['slide', 'slide'],
     ['pdf', 'pdf'],
     ['design', 'design'],
-    ['layout', 'layout'],
     ['board', 'board'],
     ['photo', 'photo'],
     ['film', 'film'],

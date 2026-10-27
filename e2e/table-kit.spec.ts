@@ -9,7 +9,7 @@ import { canReadBlobBodies } from './helpers/requestBody'
  * covers what Kition adds around the kit: creating a table file, saving through Kition's file API,
  * a host feature's write arriving live in an open editor without joining the person's undo, the
  * person's models answering AI fields and selection rewrites (`host/generate`), and the host actions a table asks for
- * (`host/action`: `workflow.run`, `design.fromRecord`), and a table file's tables and dashboards
+ * (`host/action`: `workflow.run`), and a table file's tables and dashboards
  * in the workspace tree, which open the file in the kit at the one clicked (`document.view`, then
  * `document/reveal`). The editor's own behavior is tested in the kit's repository.
  */
@@ -203,7 +203,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
   }
 })
 
-test('a table’s button runs a Kition workflow, and a record starts a design (host/action)', async ({ page, baseURL }) => {
+test('a table’s button runs a Kition workflow (host/action)', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
   const { bytes, tableId } = await leadsFixture()
   const runs: Array<{ url: string; body: Record<string, unknown> }> = []
@@ -214,12 +214,6 @@ test('a table’s button runs a Kition workflow, and a record starts a design (h
       await fulfillJson(route, { code: 200, message: 'success', data: { ok: true } })
     })
   }
-  await page.addInitScript(() => {
-    const designs: unknown[] = []
-    ;(window as unknown as { __designRequests: unknown[] }).__designRequests = designs
-    window.addEventListener('kition:design:from-record', (event) => designs.push((event as CustomEvent).detail))
-  })
-
   const { host, kit } = await openInKitFrame(page, baseURL!, 'Leads.ktable', bytes, {}, { routes })
   try {
     await expect(records(kit)).toContainText('1 record', { timeout: 60_000 })
@@ -233,13 +227,9 @@ test('a table’s button runs a Kition workflow, and a record starts a design (h
     expect(runs[0].body).toEqual({ documentPath: 'Leads.ktable', tableId: String(tableId), recordId: expect.any(String) })
     await page.keyboard.press('Escape')
 
-    // A record's values start a design in Kition.
+    // Kition serves no design action, so the record menu offers none.
     await recordMenu(kit)
-    await kit.getByRole('button', { name: 'Create design from record' }).click()
-    await expect.poll(() => page.evaluate(() => (window as unknown as { __designRequests: unknown[] }).__designRequests.length), { timeout: 30_000 }).toBe(1)
-    const [design] = await page.evaluate(() => (window as unknown as { __designRequests: Array<{ title: string; fields: Record<string, unknown> }> }).__designRequests)
-    expect(design.title).toMatch(/^Design /)
-    expect(design.fields).toMatchObject({ title: 'Ada' })
+    await expect(kit.getByRole('button', { name: 'Create design from record' })).toHaveCount(0)
   } finally {
     await host.dispose()
   }
