@@ -13,6 +13,9 @@ workspace = true
 
 [dependencies]
 loro = "=1.16.2"
+# Loro exposes internal types; 1.17 is not source-compatible with the 1.16 facade.
+# A library consumer does not inherit this workspace's Cargo.lock.
+loro-internal = "=1.16.2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "0.10"

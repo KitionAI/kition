@@ -3437,6 +3437,7 @@ name = "kition-kdm"
 version = "0.0.0"
 dependencies = [
  "loro",
+ "loro-internal",
  "serde",
  "serde_json",
  "sha2",

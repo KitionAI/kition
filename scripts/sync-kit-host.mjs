@@ -234,4 +234,4 @@ for (const file of files) {
   }
 }
 if (stale) process.exit(1)
-if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), engine contract, convergence suite, sync client, object model, and extension host copies match kition-sdk')
+if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), sync client, object model, and extension host copies match kition-sdk')
