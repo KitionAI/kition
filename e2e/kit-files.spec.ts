@@ -27,7 +27,9 @@ async function fromKit(page: Page, method: string, params: Record<string, unknow
         const answer = (event: MessageEvent) => {
           if (event.data?.id !== id) return
           port.removeEventListener('message', answer)
-          resolve(event.data)
+          // Bytes the host answers (`files/read`) as text: an ArrayBuffer does not leave the frame.
+          const bytes = event.data.result?.bytes
+          resolve(bytes ? { ...event.data, result: { ...event.data.result, bytes: undefined, text: new TextDecoder().decode(bytes) } } : event.data)
         }
         port.addEventListener('message', answer)
         const body = bytes === undefined ? params : { ...params, bytes: new TextEncoder().encode(bytes).buffer }
@@ -122,4 +124,51 @@ test('files/pick opens the workspace picker: save into a chosen folder, a replac
   expect((await cancelling).result).toEqual({ files: [] })
   await expect(picker).toHaveCount(0)
   expect(existsSync(path.join(host.root, 'Never.pdf'))).toBe(false)
+})
+
+test('files/pick opens a workspace file or lists a folder for a kit whose manifest reads them', async ({ page, baseURL }) => {
+  await page.addInitScript(() => {
+    window.addEventListener('message', (event) => {
+      if ((event.data as { kitionKitUi?: number } | null)?.kitionKitUi === 1 && event.ports[0]) (window as unknown as { __e2eKitPort?: MessagePort }).__e2eKitPort = event.ports[0]
+    })
+  })
+  // The note's manifest as a kit that reads text files and folders would declare it (K15).
+  await page.route('**/kits/note-ui/kit.json', async (route) => {
+    const manifest = await (await route.fetch()).json()
+    await route.fulfill({ json: { ...manifest, files: { ...manifest.files, read: ['txt'], folders: true } } })
+  })
+  const others = { 'Data/a.txt': Buffer.from('alpha'), 'Data/b.txt': Buffer.from('beta'), 'Data/c.md': Buffer.from('# c'), '.kition/hidden.txt': Buffer.from('x') }
+  const { kit } = await openNote(page, baseURL!, 'Plan.md', '# Plan\n\nGoals.\n', others)
+  const picker = page.getByTestId('kit-file-picker')
+
+  // Open: only the files the kit may read, never a hidden one; the kit reads the chosen one by its handle.
+  await gesture(kit)
+  const opening = fromKit(page, 'files/pick', { purpose: 'insert', mode: 'open', accept: ['txt'] })
+  await expect(picker).toHaveAttribute('data-mode', 'open')
+  await expect(picker.getByTestId('kit-file-picker-entry')).toHaveCount(2)
+  await page.getByTestId('kit-file-picker-search').fill('b.txt')
+  await picker.getByTestId('kit-file-picker-entry').click()
+  await page.getByTestId('kit-file-picker-confirm').click()
+  const opened = await opening
+  expect(opened.result!.files).toEqual([expect.objectContaining({ name: 'b.txt', kind: 'file', rights: ['read'] })])
+  expect(JSON.stringify(opened.result)).not.toContain('Data')
+  const read = await fromKit(page, 'files/read', { handle: opened.result!.files[0].handle })
+  expect(read.error).toBeUndefined()
+  expect(read.result!.text).toBe('beta')
+
+  // Folder: the kit lists the files in it it may read.
+  await gesture(kit)
+  const choosing = fromKit(page, 'files/pick', { purpose: 'import', mode: 'folder', accept: ['txt'] })
+  await expect(picker).toHaveAttribute('data-mode', 'folder')
+  await expect(picker.getByTestId('kit-file-picker-entry')).toHaveText(['Data'])
+  await picker.getByTestId('kit-file-picker-entry').dblclick()
+  const folder = await choosing
+  expect(folder.result!.files).toEqual([expect.objectContaining({ name: 'Data', kind: 'folder' })])
+  const listed = await fromKit(page, 'files/list', { handle: folder.result!.files[0].handle })
+  expect(listed.result!.files.map((file: { name: string }) => file.name)).toEqual(['a.txt', 'b.txt'])
+
+  // A type the manifest does not read is refused before any picker opens.
+  await gesture(kit)
+  expect((await fromKit(page, 'files/pick', { purpose: 'insert', mode: 'open', accept: ['md'] })).error?.data?.reason).toBe('not-allowed')
+  await expect(picker).toHaveCount(0)
 })
