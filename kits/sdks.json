@@ -217,8 +217,14 @@
         "elements": [
           {
             "kind": "shape",
-            "position": { "x": 40, "y": 40 },
-            "size": { "w": 160, "h": 100 }
+            "position": {
+              "x": 40,
+              "y": 40
+            },
+            "size": {
+              "w": 160,
+              "h": 100
+            }
           }
         ]
       }
@@ -233,7 +239,24 @@
     "text": true,
     "edit": {
       "command": "text.insert",
-      "params": { "at": 0, "text": "# Notes\n" }
+      "params": {
+        "at": 0,
+        "text": "# Notes\n"
+      }
+    }
+  },
+  "html": {
+    "repository": "KitionAI/kition-html",
+    "crate": "kition-html-sdk",
+    "module": "kition_html_sdk",
+    "class": "HtmlDocument",
+    "name": "Page.html",
+    "optional": true,
+    "edit": {
+      "command": "html.setSource",
+      "params": {
+        "source": "<!doctype html><html><body style=\"margin:0;background:#5645d4\">Hello</body></html>"
+      }
     }
   }
 }

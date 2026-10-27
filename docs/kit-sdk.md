@@ -450,6 +450,29 @@ the Kit UI view `{ "path": "tables/<id>" }` or `{ "path": "dashboards/<id>" }`
 (`e2e/table-kit.spec.ts`) covers what Kition adds around the kit; the
 editor's own behavior is tested in the kit's repository.
 
+### The HTML kit
+
+`kit.html` (`KitionAI/kition-html`, package `public/kits/html-ui`) edits `.html`
+and `.htm` source with an HTML/CSS/JavaScript Rust/WASM preview. New > HTML creates
+`Untitled HTML.html` through the Worker engine and the kit file API. Its source
+editor and diagnostics live in the kit repository; Kition hosts it in `KitFrame`.
+JavaScript runs in the shared Boa engine with DOM events, timers, and supplied
+script/module resources. Preview clicks preserve live state; saves retain source
+HTML. Missing resources and script errors are reported. Canvas 2D supports
+paths, images, and solid text; selected option labels and live form values also
+render. Shadow DOM, select popups, preview keyboard input, and complete browser
+API compatibility remain unsupported. The Chrome comparison corpus documents
+incomplete CSS/rendering fidelity.
+
+Build locally with `scripts/build-kit-ui.sh html`; `make kit-dev` includes its
+headless executable for the `html_*` agent tools. `e2e/html-embedded.spec.ts`
+covers creation, editing, host saves, reopening, `.HTM`, resource isolation,
+large source files, disk conflicts, read-only sessions, timers, preview clicks,
+Canvas images/text, selected options, and event cancellation in Chromium and WebKit.
+The SDK registry marks HTML optional until its first package is published and
+pinned. It uses engine contract 1; no KDM collaboration or agent drafts are
+claimed. The editor uses the shared session's file-change and read-only rules.
+
 ### The Board kit
 
 `kit.board` (`KitionAI/kition-board`, package `public/kits/board-ui`) is a

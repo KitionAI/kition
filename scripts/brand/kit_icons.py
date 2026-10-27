@@ -31,6 +31,7 @@ KITS = [
     Kit('film', 'Film', '#2d2f3a', '#2d2f3a', '#a3a7b8'),
     Kit('pdf', 'PDF', '#dc3b2e', '#db3527', '#ff7a6b'),
     Kit('cad', 'CAD', '#4f6d8a', '#4f6d8a', '#8eabc8'),
+    Kit('html', 'HTML', '#c65b32', '#b64b22', '#ff986b'),
 ]
 
 # The kit that declares each palette entry as its `ui.brand`; Design Studio is Kition's own.
@@ -129,6 +130,8 @@ def glyph(kit):
         letters, end = outline('PDF', 58, 183, 34, fg)
         return (_page(fg) + f'<rect x="44" y="140" width="{end - 58 + 28:.1f}" height="52" rx="12" fill="{ac}" stroke="{fg}" stroke-width="5"/>'
                 + letters + _line('M92 100H160M92 120H140', ac, 9, .55))
+    if kit.id == 'html':
+        return (_page(fg) + _line('M102 108L78 132L102 156M154 108L178 132L154 156M140 100L116 164', ac, 10))
     if kit.id == 'cad':
         return (f'<path d="M56 60V200H196Z" {full}/><path d="M84 132V172H124Z" fill="{ac}" opacity=".5"/>'
                 + _line('M76 220H200', fg, 6) + _line('M76 212V228M200 212V228', fg, 6)
@@ -199,6 +202,8 @@ def small_glyph(kit):
     if kit.id == 'film':
         return (_r(1, 6, 14, 9, c, rx=1.5) + _p('M1 2H15V5H1Z', c) + _p('M4 2H6L5 5H3ZM9 2H11L10 5H8Z', w)
                 + _p('M6 8L11 10.5L6 13Z', w))
+    if kit.id == 'html':
+        return _p('M4 1H11L14 4V15H2V1Z', c) + _line('M6 6L4 8L6 10M10 6L12 8L10 10M9 5L7 11', w, 1.2)
     if kit.id == 'cad':
         return _p('M2 1V15H16Z', c) + _p('M4 7V13H10Z', w)
     raise ValueError(f'unknown kit {kit.id}')

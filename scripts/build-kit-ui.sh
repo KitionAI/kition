@@ -50,7 +50,8 @@ if [[ -n "$schema" ]]; then
   mkdir -p "$out/model"
   cp "$kit_repo/$schema" "$out/model/schema.json"
 fi
-commit="$(git -C "$kit_repo" rev-parse HEAD)"
+# An initial local prototype may not have a commit yet. Publishing still builds a pushed commit.
+commit="$(git -C "$kit_repo" rev-parse --verify HEAD 2>/dev/null || echo uncommitted)"
 # The package's identity, and its brand color for scripts/check-kit-brands.mjs.
 node -e '
 const fs = require("fs")

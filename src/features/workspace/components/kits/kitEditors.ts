@@ -62,6 +62,7 @@ function kit(name: string, documentClass: string, entry: Omit<KitEditorEntry, 'e
 
 // The create menu orders its items itself (`CREATE_ORDER` in `WorkspaceCreateMenu`).
 const KIT_EDITORS: readonly KitEditorEntry[] = [
+  kit('html', 'HtmlDocument', { format: 'html', icon: 'html', create: { id: 'html', extension: KIT_CREATE_EXTENSION.html, baseName: 'Untitled HTML', size: { width: 640, height: 480 }, label: 'createMenu.format.html', group: 'documents' } }),
   kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'photo', extension: KIT_CREATE_EXTENSION.photo, baseName: 'Untitled photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.photo', group: 'visual' } }),
   kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: KIT_CREATE_EXTENSION.vector, baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
   // US Letter, in points.

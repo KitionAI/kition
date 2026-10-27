@@ -73,7 +73,7 @@ describe('theme token parity', () => {
       Array.from(themeBlock(selector).matchAll(/--([a-zA-Z0-9-]+)\s*:/g), (match) => match[1]),
     )
     // Geometry tokens are theme-independent and live only in :root.
-    const geometry = new Set(['radius'])
+    const geometry = new Set(['radius', 'workspace-status-height'])
     const light = tokens(':root')
     const dark = tokens('.dark')
     expect([...light].filter((token) => !dark.has(token) && !geometry.has(token))).toEqual([])

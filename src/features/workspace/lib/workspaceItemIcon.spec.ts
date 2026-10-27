@@ -22,11 +22,12 @@ describe('getWorkspaceItemKitIcon', () => {
     ['vector', 'vector'],
     ['effect', 'effect'],
     ['cad', 'cad'],
+    ['html', 'html'],
   ] as const)('maps %s to the %s kit', (format, kit) => {
     expect(getWorkspaceItemKitIcon(format)).toBe(kit)
   })
 
-  it.each(['image', 'video', 'audio', 'json', 'text', 'html', 'binary', undefined] as const)(
+  it.each(['image', 'video', 'audio', 'json', 'text', 'binary', undefined] as const)(
     'leaves %s without a kit',
     (format) => {
       expect(getWorkspaceItemKitIcon(format)).toBeNull()

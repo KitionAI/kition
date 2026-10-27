@@ -21,6 +21,13 @@ struct Case {
 
 const CASES: &[Case] = &[
     Case {
+        kit: "kit.html",
+        fixture: "Page.html",
+        command: "html.setSource",
+        params: || json!({ "source": "<!doctype html><body style=\"background:#5645d4\"><h1>Edited HTML</h1></body>" }),
+        file_command: ("document.save", || json!({ "path": "elsewhere.html" })),
+    },
+    Case {
         kit: "kit.vector",
         fixture: "Drawing.kvector",
         command: "shape.ellipse",

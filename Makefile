@@ -22,8 +22,9 @@ KIT_PDF_REPO ?= $(REPO_ROOT)/../kition-pdf
 KIT_TABLE_REPO ?= $(REPO_ROOT)/../kition-table
 KIT_BOARD_REPO ?= $(REPO_ROOT)/../kition-board
 KIT_NOTE_REPO ?= $(REPO_ROOT)/../kition-note
+KIT_HTML_REPO ?= $(REPO_ROOT)/../kition-html
 # Each kit's package (its own editor and its engine, Kit UI protocol), built into public/kits/<kit>-ui.
-KIT_UIS := photo film vector effect design cad slide doc sheet pdf table board note
+KIT_UIS := photo film vector effect design cad slide doc sheet pdf table board note html
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -31,10 +32,10 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-KIT_E2E := e2e/slide-embedded.spec.ts e2e/doc-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/note-embedded.spec.ts e2e/note-history.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kdm-smoke.spec.ts
+KIT_E2E := e2e/html-embedded.spec.ts e2e/slide-embedded.spec.ts e2e/doc-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/note-embedded.spec.ts e2e/note-history.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kdm-smoke.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
-SDK_KITS := film vector effect design cad slide doc sheet pdf table board note
+SDK_KITS := film vector effect design cad slide doc sheet pdf table board note html
 kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kit-$(1)
 SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).

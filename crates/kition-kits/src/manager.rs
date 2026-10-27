@@ -78,6 +78,25 @@ pub struct KitAgent {
 
 pub const KITS: &[KitDefinition] = &[
     KitDefinition {
+        id: "kit.html",
+        name: "HTML",
+        binary_env: "KITION_KIT_HTML_BINARY",
+        extensions: &["html", "htm"],
+        creates: &[("html", "html")],
+        base_name: "Untitled HTML",
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "html",
+            noun: "HTML document",
+            formats: "HTML (.html or .htm)",
+            reports: "its HTML source, viewport, and undo state",
+            covers: "HTML source replacement and undo/redo; HTML/CSS rendering and bounded JavaScript with supplied resources",
+            queries: "`Replace HTML` or `Undo`",
+            command: "html.setSource",
+        },
+    },
+    KitDefinition {
         id: "kit.photo",
         name: "Photo",
         binary_env: "KITION_KIT_PHOTO_BINARY",

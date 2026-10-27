@@ -69,5 +69,10 @@
     "kitId": "kit.cad",
     "light": "#4f6d8a",
     "dark": "#8eabc8"
+  },
+  "html": {
+    "kitId": "kit.html",
+    "light": "#b64b22",
+    "dark": "#ff986b"
   }
 }

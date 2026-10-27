@@ -13,7 +13,8 @@
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "html": "HTML"
     },
     "folder": "文件夹",
     "newWorkflow": "新建工作流",
@@ -488,5 +489,9 @@
         "description": "明确交接的产品、设计、工程和发布所有权。"
       }
     }
+  },
+  "htmlKit": {
+    "unavailableTitle": "HTML 编辑器不可用",
+    "unavailableBody": "请构建 HTML Kit 包，以便在此开发版本中编辑 HTML 文件。"
   }
 }

@@ -9,6 +9,11 @@ import { canReadBlobBodies } from './helpers/requestBody'
 type NodeEffectDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
 const engine = kitEngine<{ EffectDocument: { create(name: string, width: number, height: number): NodeEffectDocument } }>('effect', 'kition_effect_sdk')
 
+test.beforeAll(() => {
+  expect(engine.built, 'Build or fetch public/kits/effect-ui before running the Effect gate').toBe(true)
+  expect(kitPackageHasReplicaInfo('effect', 'kition_effect_sdk'), 'The Effect package must support replica/info').toBe(true)
+})
+
 /** A real project made by the same engine the page runs: a 2-second composition with a fading solid. */
 async function introFixture() {
   const sdk = await engine.load()
@@ -25,7 +30,6 @@ async function introFixture() {
 }
 
 test('opens a motion project in the Effect kit’s own editor, animates it, and renders through Kition', async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!engine.built, 'the Effect kit editor is not built into public/kits/effect-ui')
   test.setTimeout(180_000)
   const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Intro.keffect', await introFixture())
   try {
@@ -57,8 +61,6 @@ test('opens a motion project in the Effect kit’s own editor, animates it, and 
 })
 
 test('keeps a motion project’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
-  test.skip(!engine.built, 'the Effect kit editor is not built into public/kits/effect-ui')
-  test.skip(!kitPackageHasReplicaInfo('effect', 'kition_effect_sdk'), 'the Effect kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh effect')
   test.setTimeout(180_000)
   // A flat name: the document tree's own folder-expand toggle (clicked again on each reopen)
   // would otherwise collapse a folder a previous open already expanded.

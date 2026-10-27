@@ -256,6 +256,7 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
     case 'vector':
     case 'effect':
     case 'cad':
+    case 'html':
       return format
     default:
       return null
@@ -404,11 +405,11 @@ export function filterWorkspaceTreeItems(
 }
 
 export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'markdown' || format === 'html'
+  return format === 'markdown'
 }
 
 export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return isEditableWorkspaceFormat(format) || format === 'board' || format === 'design'
+  return isEditableWorkspaceFormat(format) || format === 'html' || format === 'board' || format === 'design'
 }
 
 /**
@@ -424,7 +425,7 @@ export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
+  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

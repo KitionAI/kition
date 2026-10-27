@@ -55,6 +55,8 @@
   },
   "ignoreBinaries": [
     "cargo",
+    "ffmpeg",
+    "ffprobe",
     "magick",
     "rustc",
     "xvfb-run"

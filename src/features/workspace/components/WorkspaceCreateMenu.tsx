@@ -21,7 +21,7 @@ const ESTIMATED_GROUPED_MENU_HEIGHT = 440
 const CREATE_GROUPS: readonly KitCreateGroup[] = ['documents', 'data', 'visual', 'media']
 /** Item order within the groups. Kition's own file types and the kits mix
  *  freely; a kit not listed here goes last in its group. */
-const CREATE_ORDER: readonly string[] = ['note', 'doc', 'pdf', 'design', 'table', 'sheet', 'slide', 'board', 'design-studio', 'vector', 'photo', 'cad', 'film', 'effect']
+const CREATE_ORDER: readonly string[] = ['note', 'doc', 'pdf', 'design', 'html', 'table', 'sheet', 'slide', 'board', 'design-studio', 'vector', 'photo', 'cad', 'film', 'effect']
 
 type CreateItem = {
   id: string
@@ -176,7 +176,7 @@ function createRank(id: string) {
 
 /** Formats other applications open. Kition's own (`.kslide`, `.kdesign`, …) say nothing to a
  *  reader; portable ones (`.docx`, `.psd`) tell Doc from Note. */
-const PORTABLE_EXTENSIONS = new Set(['md', 'docx', 'xlsx', 'pptx', 'pdf', 'psd', 'dxf'])
+const PORTABLE_EXTENSIONS = new Set(['md', 'docx', 'xlsx', 'pptx', 'pdf', 'psd', 'dxf', 'html'])
 
 function portableExtension(extension: string) {
   return PORTABLE_EXTENSIONS.has(extension) ? extension : undefined

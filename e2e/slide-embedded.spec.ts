@@ -90,12 +90,12 @@ test('opens slides in the Slide kit’s own editor, edits it there, and saves it
     // The slide list goes to slide 2; a new slide and Undo work in the kit.
     await kit.getByTestId('slides-slide-1').click()
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 2 of 2')
-    await kit.getByTestId('slides-add-slide').click()
+    await kit.locator('.slides-slides-list').press('Enter')
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 3 of 3')
     await expect(kit.getByTestId('slides-unsaved')).toBeVisible()
     await kit.getByRole('button', { name: 'Undo' }).click()
     await expect(kit.getByTestId('slides-status')).toHaveText(/of 2$/)
-    await kit.getByTestId('slides-add-slide').click()
+    await kit.locator('.slides-slides-list').press('Enter')
     await expect(kit.getByTestId('slides-status')).toHaveText(/of 3$/)
     await page.screenshot({ path: testInfo.outputPath('slide-embedded.png') })
 
@@ -127,7 +127,7 @@ test('keeps a slide file’s replica across a save and a reopen, and opens a fil
   }
   try {
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
-    await kit.getByTestId('slides-add-slide').click()
+    await kit.locator('.slides-slides-list').press('Enter')
     await expect(kit.getByTestId('slides-status')).toHaveText(/of 3$/)
     await kit.getByTestId('slides-save').click()
     await expect(kit.getByTestId('slides-unsaved')).toHaveCount(0, { timeout: 30_000 })

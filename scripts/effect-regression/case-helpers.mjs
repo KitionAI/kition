@@ -1,0 +1,8 @@
+export const command = (command, params = {}, error = false) => ({ command, params, ...(error ? { error } : {}) })
+export const solid = (name = 'Red', color = '#ff0000', size = {}) => command('layer.newSolid', { name, color, ...size })
+export const prop = (path, value, layer = '#1') => command('prop.set', { layer, path: `transform/${path}`, value })
+export const checkpoint = (label, time = 0, queries = []) => ({ checkpoint: label, time, queries })
+export const query = (path, layer = '#1') => ({ layer, path: `transform/${path}` })
+export const key = (path, time, value) => command('prop.addKey', { layer: '#1', path: `transform/${path}`, time, value })
+export const sample = (times, path) => times.map(time => checkpoint(`time-${time}`, time, [query(path)]))
+export const scenario = (id, purpose, steps) => ({ id, purpose, width: 64, height: 36, steps })

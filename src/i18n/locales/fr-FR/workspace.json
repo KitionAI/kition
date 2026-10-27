@@ -13,7 +13,8 @@
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "html": "HTML"
     },
     "folder": "Dossier",
     "newWorkflow": "Nouveau flux de travail",
@@ -488,5 +489,9 @@
         "description": "Clarify product, design, engineering, and launch ownership across handoffs."
       }
     }
+  },
+  "htmlKit": {
+    "unavailableTitle": "Éditeur HTML indisponible",
+    "unavailableBody": "Compilez le paquet HTML Kit pour modifier des fichiers HTML dans cette version de développement."
   }
 }

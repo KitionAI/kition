@@ -19,6 +19,7 @@ export const KIT_CREATE_EXTENSION = {
   pdf: 'pdf',
   table: 'ktable',
   board: 'kboard',
+  html: 'html',
   note: 'md',
 } as const
 

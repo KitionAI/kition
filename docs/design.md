@@ -844,6 +844,7 @@ Each entry has:
 | `film` | Film | `#2d2f3a` | `#2d2f3a` | `#a3a7b8` |
 | `pdf` | PDF | `#dc3b2e` | `#db3527` | `#ff7a6b` |
 | `cad` | CAD | `#4f6d8a` | `#4f6d8a` | `#8eabc8` |
+| `html` | HTML | `#c65b32` | `#b64b22` | `#ff986b` |
 
 Brand purple belongs to Kition; only Document, Kition's home format, shares it.
 
