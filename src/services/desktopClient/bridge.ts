@@ -126,7 +126,7 @@ export type WorkspaceDocumentFormat =
   | 'effect'
   | 'layout'
   | 'cad'
-  | 'scene'
+  | 'cube'
   | 'slide'
   | 'video'
   | 'audio'

@@ -54,7 +54,7 @@ function referenceIcon(document: AgentDocumentReference) {
   if (document.kind === 'folder') return Folder
   const extension = document.path.split('.').pop()?.toLowerCase()
   if (extension === 'kboard') return PenTool
-  if (extension === 'kscene') return Box
+  if (extension === 'kcube') return Box
   if (extension === 'sql') return Database
   if (/^(ktable|csv|xlsx?|tsv)$/.test(extension || '')) return FileSpreadsheet
   if (/^(png|jpe?g|webp|gif|svg|avif)$/.test(extension || '')) return FileImage

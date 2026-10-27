@@ -10,7 +10,7 @@
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
-      "scene": "Escena",
+      "cube": "Cubo",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -267,9 +267,9 @@
     "unavailableTitle": "La edición de CAD no está disponible en esta versión",
     "unavailableBody": "Los archivos de CAD se abren en Kition cuando se incluye el motor CAD."
   },
-  "sceneKit": {
-    "unavailableTitle": "La edición de escenas no está disponible en esta versión",
-    "unavailableBody": "Las escenas se abren en Kition cuando se incluye el motor de Scene."
+  "cubeKit": {
+    "unavailableTitle": "La edición de Cubo no está disponible en esta versión",
+    "unavailableBody": "Los archivos de Cubo se abren en Kition cuando se incluye el motor de Cube."
   },
   "slideKit": {
     "unavailableTitle": "La edición de Slide no está disponible en esta versión",
@@ -380,7 +380,7 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "scene": "Escena",
+      "cube": "Cubo",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

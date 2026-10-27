@@ -39,8 +39,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".ktable" => "table",
         // Boards, edited in the Board kit.
         ".kboard" => "board",
-        // 3D scenes, edited in the Scene kit.
-        ".kscene" => "scene",
+        // 3D scenes, edited in the Cube kit.
+        ".kcube" => "cube",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -72,7 +72,7 @@ pub fn is_supported(path: &str) -> bool {
             "md", "markdown", "kidesign", "txt", "csv", "tsv", "json", "html", "htm", "pdf",
             "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg",
             "psd", "psb", "kphoto", "kfilm", "kvector", "keffect", "kdesign", "dxf", "kslide",
-            "ktable", "kboard", "kscene", "mp4", "mov", "webm", "mp3", "wav", "m4a",
+            "ktable", "kboard", "kcube", "mp4", "mov", "webm", "mp3", "wav", "m4a",
         ],
     )
 }
@@ -107,9 +107,9 @@ mod tests {
         assert!(is_supported("plans/Roadmap.kboard"));
         assert!(!is_text("plans/Roadmap.kboard"));
         assert!(!is_editable("plans/Roadmap.kboard"));
-        assert_eq!(infer_format("models/Room.kscene"), "scene");
-        assert!(is_supported("models/Room.KSCENE"));
-        assert!(!is_text("models/Room.kscene"));
+        assert_eq!(infer_format("models/Room.kcube"), "cube");
+        assert!(is_supported("models/Room.KCUBE"));
+        assert!(!is_text("models/Room.kcube"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");

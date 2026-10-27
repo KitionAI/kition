@@ -236,12 +236,12 @@
       "params": { "at": 0, "text": "# Notes\n" }
     }
   },
-  "scene": {
-    "repository": "KitionAI/kition-scene",
-    "crate": "kition-scene-sdk",
-    "module": "kition_scene_sdk",
-    "class": "SceneDocument",
-    "name": "Room.kscene",
+  "cube": {
+    "repository": "KitionAI/kition-cube",
+    "crate": "kition-cube-sdk",
+    "module": "kition_cube_sdk",
+    "class": "CubeDocument",
+    "name": "Room.kcube",
     "edit": {
       "command": "add.uvSphere",
       "params": { "location": [2, 0, 1], "radius": 0.5 }

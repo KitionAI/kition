@@ -105,11 +105,11 @@ const CASES: &[Case] = &[
         file_command: ("document.save", || json!({ "path": "elsewhere.md" })),
     },
     Case {
-        kit: "kit.scene",
-        fixture: "Room.kscene",
+        kit: "kit.cube",
+        fixture: "Room.kcube",
         command: "add.uvSphere",
         params: || json!({ "location": [2, 0, 1], "radius": 0.5 }),
-        file_command: ("document.save", || json!({ "path": "elsewhere.kscene" })),
+        file_command: ("document.save", || json!({ "path": "elsewhere.kcube" })),
     },
 ];
 

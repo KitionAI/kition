@@ -10,7 +10,7 @@
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
-      "scene": "场景",
+      "cube": "3D 立方",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -267,9 +267,9 @@
     "unavailableTitle": "此版本不支持 CAD 编辑",
     "unavailableBody": "包含 CAD 引擎时，CAD 文件会在 Kition 中打开。"
   },
-  "sceneKit": {
-    "unavailableTitle": "此版本不支持编辑场景",
-    "unavailableBody": "包含场景引擎时，场景文件会在 Kition 中打开。"
+  "cubeKit": {
+    "unavailableTitle": "此版本不支持编辑 3D 立方",
+    "unavailableBody": "包含 3D 立方引擎时，3D 立方文件会在 Kition 中打开。"
   },
   "slideKit": {
     "unavailableTitle": "此版本不支持 Slide 编辑",
@@ -380,7 +380,7 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "scene": "场景",
+      "cube": "3D 立方",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

@@ -10,7 +10,7 @@
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
-      "scene": "Scene",
+      "cube": "Cube",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -267,9 +267,9 @@
     "unavailableTitle": "CAD editing is not available in this build",
     "unavailableBody": "CAD files open in Kition when the CAD engine is included."
   },
-  "sceneKit": {
-    "unavailableTitle": "Scene editing is not available in this build",
-    "unavailableBody": "Scene files open in Kition when the Scene engine is included."
+  "cubeKit": {
+    "unavailableTitle": "Cube editing is not available in this build",
+    "unavailableBody": "Cube files open in Kition when the Cube engine is included."
   },
   "slideKit": {
     "unavailableTitle": "Slide editing is not available in this build",
@@ -380,7 +380,7 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "scene": "Scene",
+      "cube": "Cube",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

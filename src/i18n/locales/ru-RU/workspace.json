@@ -10,7 +10,7 @@
       "effect": "Effect",
       "layout": "Design",
       "cad": "CAD",
-      "scene": "Сцена",
+      "cube": "Куб",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -267,9 +267,9 @@
     "unavailableTitle": "Редактирование CAD недоступно в этой сборке",
     "unavailableBody": "Файлы CAD открываются в Kition, когда в сборку включён движок CAD."
   },
-  "sceneKit": {
-    "unavailableTitle": "Редактирование сцен недоступно в этой сборке",
-    "unavailableBody": "Сцены открываются в Kition, когда в сборку включён движок Scene."
+  "cubeKit": {
+    "unavailableTitle": "Редактирование Куба недоступно в этой сборке",
+    "unavailableBody": "Файлы Куба открываются в Kition, когда в сборку включён движок Cube."
   },
   "slideKit": {
     "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
@@ -380,7 +380,7 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "scene": "Сцена",
+      "cube": "Куб",
       "design": "Design",
       "document": "Document",
       "effect": "Effect",

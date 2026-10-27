@@ -176,8 +176,8 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.kslide$/i.test(path)) {
     return 'slide'
   }
-  if (/\.kscene$/i.test(path)) {
-    return 'scene'
+  if (/\.kcube$/i.test(path)) {
+    return 'cube'
   }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
@@ -259,7 +259,7 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
     case 'vector':
     case 'effect':
     case 'cad':
-    case 'scene':
+    case 'cube':
       return format
     default:
       return null
@@ -324,7 +324,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'effect':
     case 'layout':
     case 'cad':
-    case 'scene':
+    case 'cube':
       return 'text-violet-500'
     case 'slide':
       return 'text-orange-500'
@@ -361,7 +361,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     effect: 'Effect',
     layout: 'Design',
     cad: 'CAD',
-    scene: 'Scene',
+    cube: 'Cube',
     slide: 'Slide',
     video: 'Video',
     audio: 'Audio',
@@ -430,7 +430,7 @@ export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'scene' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
+  return format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'cube' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {
