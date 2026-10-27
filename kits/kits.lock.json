@@ -80,12 +80,12 @@
   },
   "note": {
     "repository": "KitionAI/kition-note",
-    "version": "0.2.35",
-    "tag": "package-v0.2.35",
-    "asset": "kition-note-0.2.35.tgz",
-    "size": 12020726,
-    "sha256": "258f2713a40fa207c8738065d98cdf0aa82606d3afba647bb9584b81e86a0b95",
-    "commit": "ab379712bdde82e8a8d008ea5db2e9958625269c",
+    "version": "0.2.36",
+    "tag": "package-v0.2.36",
+    "asset": "kition-note-0.2.36.tgz",
+    "size": 11548645,
+    "sha256": "f56a3dc4794c83988daa2dc5a6bf06498463c88e23f7504048c258b588b11f49",
+    "commit": "403147889cbe789e8340d26d25e3c2d08d6989f3",
     "sdkCommit": "f48848ca090d5dbc33af345453b9380c9af0a323",
     "tesseraCommit": "313165abba9e078eaa7c8834a3ee29208d1dc637",
     "fontsCommit": "7c594d2b4cde74f0548a357331baef045d12d2ce"
