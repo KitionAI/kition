@@ -3,9 +3,11 @@
 //! Protocol to the kit's own headless executable (`kit-<kit>`, from `kition-headless`).
 //!
 //! Each kit is tested when its executable is found: `KITION_KIT_<KIT>_BINARY`, or a debug build
-//! in the sibling kit checkout (`../kition-<kit>/target/debug/kit-<kit>`). Otherwise it is skipped.
+//! in the sibling kit checkout (`../kition-<kit>/target/debug/kit-<kit>`). Otherwise it is skipped,
+//! and so is a sibling build older than its fixture: the fixture changed with the kit Kition pins,
+//! and a build from before may not read it.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use kition_kits::{Caller, KITS, KitManager};
 use serde_json::{Map, Value, json};
@@ -127,9 +129,17 @@ const CASES: &[Case] = &[
     },
 ];
 
-fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {
+/// A kit's executable to test, or why there is none.
+enum Executable {
+    Found(PathBuf),
+    Missing,
+    /// A sibling debug build made before its fixture last changed.
+    Stale(PathBuf),
+}
+
+fn binary(kit: &kition_kits::KitDefinition, fixture: &Path) -> Executable {
     if let Some(path) = std::env::var_os(kit.binary_env).filter(|value| !value.is_empty()) {
-        return Some(PathBuf::from(path));
+        return Executable::Found(PathBuf::from(path));
     }
     let name = kit.id.trim_start_matches("kit.");
     let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -138,7 +148,19 @@ fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {
             "kition-{name}/target/debug/kit-{name}{}",
             std::env::consts::EXE_SUFFIX
         ));
-    sibling.is_file().then_some(sibling)
+    if !sibling.is_file() {
+        Executable::Missing
+    } else if older(&sibling, fixture) {
+        Executable::Stale(sibling)
+    } else {
+        Executable::Found(sibling)
+    }
+}
+
+/// Whether `executable` was built before `fixture` last changed in this checkout.
+fn older(executable: &Path, fixture: &Path) -> bool {
+    let modified = |path: &Path| std::fs::metadata(path).and_then(|meta| meta.modified());
+    matches!((modified(executable), modified(fixture)), (Ok(built), Ok(changed)) if built < changed)
 }
 
 fn object(value: Value) -> Map<String, Value> {
@@ -155,20 +177,33 @@ async fn the_agent_edits_files_of_every_sdk_kit_through_its_headless_executable(
         let Some(kit) = KITS.iter().find(|kit| kit.id == case.kit) else {
             panic!("{} is not a kit", case.kit)
         };
-        let Some(executable) = binary(kit) else {
-            eprintln!(
-                "skipped {}: build it (cargo build -p kit-{} in its repository) or set {}",
-                kit.id,
-                kit.id.trim_start_matches("kit."),
-                kit.binary_env
-            );
-            continue;
-        };
-        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
-        std::fs::create_dir_all(dir.path().join("work")).unwrap_or_else(|err| panic!("{err}"));
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures")
             .join(case.fixture);
+        let executable = match binary(kit, &fixture) {
+            Executable::Found(executable) => executable,
+            Executable::Missing => {
+                eprintln!(
+                    "skipped {}: build it (cargo build -p kit-{} in its repository) or set {}",
+                    kit.id,
+                    kit.id.trim_start_matches("kit."),
+                    kit.binary_env
+                );
+                continue;
+            }
+            Executable::Stale(executable) => {
+                eprintln!(
+                    "skipped {}: {} is older than its fixture; rebuild it (cargo build -p kit-{}) or set {}",
+                    kit.id,
+                    executable.display(),
+                    kit.id.trim_start_matches("kit."),
+                    kit.binary_env
+                );
+                continue;
+            }
+        };
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        std::fs::create_dir_all(dir.path().join("work")).unwrap_or_else(|err| panic!("{err}"));
         let original =
             std::fs::read(&fixture).unwrap_or_else(|err| panic!("{}: {err}", fixture.display()));
         std::fs::write(dir.path().join("work").join(case.fixture), &original)
