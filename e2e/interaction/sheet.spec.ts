@@ -42,9 +42,11 @@ async function read<T>(bytes: Buffer, work: (doc: NodeSheetDocument) => T) {
 const cellOf = (bytes: Buffer, cell: string) => read(bytes, (doc) => JSON.parse(doc.execute('cell.get', JSON.stringify({ cell }))) as { input?: string; value?: unknown })
 const sheetsOf = (bytes: Buffer) => read(bytes, (doc) => (JSON.parse(doc.inspect()) as { sheets: string[] }).sheets.length)
 
+/** Selects `cell` through the name box, and waits until the grid has moved there. */
 async function goTo(kit: FrameLocator, cell: string) {
   await kit.getByTestId('sheet-name-box').fill(cell)
   await kit.getByTestId('sheet-name-box').press('Enter')
+  await expect(kit.getByTestId('sheet-status')).toHaveText(new RegExp(` · ${cell}$`))
 }
 
 /** Gives the keyboard to the grid, as a click on the selected cell does. */
