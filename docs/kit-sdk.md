@@ -669,8 +669,16 @@ Kition runtime and desktop:
    mirror it in the renderer's `src/features/workspace/lib/workspace.ts` and
    the `WorkspaceDocumentFormat` type.
 6. Give the definition its `agent: KitAgent` (prefix from `kit.json`, the
-   noun, formats, what inspect reports, example queries and command). The
-   three agent tools, their labels, and the linked-file prompt follow from it
+   noun, formats, what inspect reports, example queries and command). A kit
+   whose engine renders previews itself (KHP A39: `{slide?, target?, scale?,
+   maxSize?}` answers `{png}`) names that command in `render`: inspect then
+   previews a part, a diagnostic's `target`, or a `scale` with it. A kit that
+   exports for the agent (KHP A41) describes its `kit.json` `exports` command
+   in `export` (`KitExport`: the command, its formats, which answer field holds
+   the base64 file, and the fixed parameters that make the open editor and
+   the headless kit export the same thing, A26), lists the formats in
+   `exports`, and gets `<prefix>_export`, which writes new files only. The
+   agent tools, their labels, and the linked-file prompt follow from it
    (`crates/kition-agent/src/tools/kits.rs`); add the kit to
    `KIT_FILE_KINDS` in `src/features/agent/lib/documentMentions.ts` and a case
    to `crates/kition-kits/tests/sdk_kits.rs` with a small fixture.

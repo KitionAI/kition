@@ -74,6 +74,27 @@ pub struct KitAgent {
     pub queries: &'static str,
     /// One command id, as an example.
     pub command: &'static str,
+    /// The engine command that renders a preview of one part of a document or of a diagnostic's
+    /// target (KHP A39): `{slide?, target?, scale?, maxSize?}` answers `{png}`, base64. `None`
+    /// when the kit has none, and its previews are `view.screenshot`'s.
+    pub render: Option<&'static str>,
+    /// How `<prefix>_export` writes the document to a new file (KHP A41); `None` when the agent
+    /// cannot export through the kit.
+    pub export: Option<KitExport>,
+}
+
+/// How `<prefix>_export` writes a new file through the kit's engine (`kit.json` `exports`).
+#[derive(Debug)]
+pub struct KitExport {
+    /// The command every format runs (`exports[].command`), with `format` set to the extension.
+    pub command: &'static str,
+    /// The formats it writes (`exports[].extension`); each is also in [`KitDefinition::exports`].
+    pub formats: &'static [&'static str],
+    /// The field of the command's answer that holds the file, base64.
+    pub data: &'static str,
+    /// Parameters every export passes, a JSON object, so the open editor and the headless kit
+    /// export the same thing (KHP A26) whatever the person has selected.
+    pub params: &'static str,
 }
 
 pub const KITS: &[KitDefinition] = &[
@@ -94,6 +115,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "HTML source replacement and undo/redo; HTML/CSS rendering and bounded JavaScript with supplied resources",
             queries: "`Replace HTML` or `Undo`",
             command: "html.setSource",
+            render: None,
+            export: None,
         },
     },
     KitDefinition {
@@ -113,6 +136,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "layers, adjustments, filters, selections, transforms, type, and more",
             queries: "`brightness`, `gaussian blur`, or `new layer`",
             command: "layer.new.layer",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; `kit-film` serves the agent.
@@ -133,6 +158,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "clips, the timeline, trimming, transitions, titles, audio, and more",
             queries: "`split`, `place clip`, or `color matte`",
             command: "timeline.place",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK.
@@ -153,6 +180,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "shapes, paths, paint, type, alignment, effects, artboards, and more",
             queries: "`rectangle`, `align`, or `stroke`",
             command: "shape.rectangle",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; renders are new MP4 files.
@@ -173,6 +202,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "compositions, layers, keyframes, effects, masks, text, and more",
             queries: "`new solid`, `add keyframe`, or `gaussian blur`",
             command: "layer.newSolid",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK.
@@ -193,6 +224,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "pages, frames, text, styles, swatches, tables, and more",
             queries: "`text frame`, `paragraph style`, or `insert page`",
             command: "frame.create",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK.
@@ -213,6 +246,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "drawing, modifying, dimensions, layers, blocks, and AutoCAD-style commands; `commandLine` runs any command-line entry",
             queries: "`circle`, `layer`, or `dimension`",
             command: "circle",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; PowerPoint files too.
@@ -233,6 +268,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "slides, layouts, text, shapes, pictures, tables, charts, transitions, animations, and more",
             queries: "`new slide`, `text box`, or `transition`",
             command: "shape.insert",
+            render: Some("file.render"),
+            export: None,
         },
     },
     // Edited in the page through its SDK.
@@ -253,6 +290,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "typing, styles, fonts, paragraphs, lists, tables, pictures, headers and footers, references, review, and more",
             queries: "`bold`, `heading`, or `insert table`",
             command: "text.insert",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK.
@@ -273,6 +312,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "cells, formulas, formatting, sorting, filtering, tables, charts, PivotTables, and more; `cell.set` enters a value or formula",
             queries: "`cell`, `sort`, or `format`",
             command: "cell.set",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK.
@@ -293,6 +334,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "pages, text, comments, forms, bookmarks, links, watermarks, redaction, measuring, accessibility, and more",
             queries: "`rotate`, `comment`, or `watermark`",
             command: "page_rotate",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; `kit-table` serves the agent and the host table client
@@ -314,6 +357,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `table.records.create` adds a record",
             queries: "`records`, `fields`, or `views`",
             command: "table.records.create",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; `kit-board` serves the agent for files no editor has open.
@@ -334,6 +379,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "shapes, sticky notes, text, connectors, frames, mind maps, templates, layout, pages, and more; `element.create` adds elements",
             queries: "`connector`, `frame`, or `mindmap`",
             command: "element.create",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; `kit-note` serves the agent for notes no editor has open.
@@ -354,6 +401,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "text, headings, lists, tasks, tables, properties, links, comments, templates, and more; `text.insert` adds text",
             queries: "`table`, `property`, or `comment`",
             command: "text.insert",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; `kit-cube` serves the agent.
@@ -374,6 +423,8 @@ pub const KITS: &[KitDefinition] = &[
             covers: "adding primitives, curves, and text, transforms, parenting, edit-mode modeling (extrude, inset, bevel, loop cut, knife, dissolve, bridge, bisect, spin), sculpting (sculpt.stroke), modifiers, seams and UV unwrapping, image and normal-map textures, materials, lights, cameras, armatures, skinning, constraints and IK, shape keys, keyframe animation, fast and path-traced rendering, glTF/FBX/USD (usda, usdc, usdz)/OBJ/STL import and export, and .blend import; rotations are in degrees and Z is up",
             queries: "`cube`, `extrude`, or `modifier`",
             command: "add.cube",
+            render: None,
+            export: None,
         },
     },
     // Edited in the page through its SDK; `kit-fig` serves the agent.
@@ -385,7 +436,7 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[("kfig", "fig")],
         base_name: "Untitled fig",
         embeds: false,
-        exports: &[],
+        exports: &["png", "jpg", "svg", "pdf"],
         agent: KitAgent {
             prefix: "fig",
             noun: "interface design",
@@ -394,6 +445,14 @@ pub const KITS: &[KitDefinition] = &[
             covers: "frames, shapes, text, auto layout, components, styles, variables, prototyping, and more",
             queries: "`rectangle`, `auto layout`, or `component`",
             command: "shape.rectangle",
+            render: Some("file.render"),
+            export: Some(KitExport {
+                command: "file.export",
+                formats: &["png", "jpg", "svg", "pdf"],
+                data: "data",
+                // The current page's top-level layers, never the person's selection.
+                params: r#"{"ids": []}"#,
+            }),
         },
     },
 ];

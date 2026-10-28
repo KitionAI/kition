@@ -300,3 +300,210 @@ async fn the_agent_edits_files_of_every_sdk_kit_through_its_headless_executable(
     }
     eprintln!("tested: {tested:?}");
 }
+
+/// A PNG's width and height, from its header.
+fn png_size(png: &[u8]) -> (u32, u32) {
+    assert_eq!(png.get(1..4), Some(&b"PNG"[..]), "a PNG");
+    let word = |at: usize| {
+        let bytes: [u8; 4] = png
+            .get(at..at + 4)
+            .and_then(|bytes| bytes.try_into().ok())
+            .unwrap_or_default();
+        u32::from_be_bytes(bytes)
+    };
+    (word(16), word(20))
+}
+
+/// The codes of a kit's check catalogue (`agent/checks.json`, KHP K17) in its package, when the
+/// package is built (`scripts/build-kit-ui.sh <kit>`).
+fn catalogue(kit: &str) -> Option<Vec<String>> {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../public/kits")
+        .join(format!("{kit}-ui/agent/checks.json"));
+    let entries: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
+    Some(
+        entries
+            .iter()
+            .filter_map(|entry| entry["code"].as_str().map(str::to_owned))
+            .collect(),
+    )
+}
+
+/// Fig is Agent-ready (KHP A38, A39, A41) through the agent's tools on its headless executable:
+/// the check answers codes of its catalogue, inspect previews a diagnostic's target and a page
+/// with the kit's own `file.render`, and export writes PNG, JPEG, SVG, and PDF files as new files
+/// without changing or saving the design, however the kit reports the commands' view revision.
+/// Cases: kition.agent.kit-export/fig-formats, kition.agent.kit-preview/fig-target.
+#[tokio::test]
+async fn the_agent_checks_previews_and_exports_a_fig_design() {
+    let Some(kit) = KITS.iter().find(|kit| kit.id == "kit.fig") else {
+        panic!("kit.fig is a kit")
+    };
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/Screen.kfig");
+    let executable = match binary(kit, &fixture) {
+        Executable::Found(executable) => executable,
+        Executable::Missing | Executable::Stale(_) => {
+            eprintln!(
+                "skipped kit.fig: build kit-fig (cargo build -p kit-fig in kition-fig) or set {}",
+                kit.binary_env
+            );
+            return;
+        }
+    };
+    let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::create_dir_all(dir.path().join("work")).unwrap_or_else(|err| panic!("{err}"));
+    let original = std::fs::read(&fixture).unwrap_or_else(|err| panic!("{err}"));
+    let file = dir.path().join("work/Screen.kfig");
+    std::fs::write(&file, &original).unwrap_or_else(|err| panic!("{err}"));
+    let kits = KitManager::new(
+        Some(dir.path().to_path_buf()),
+        vec![(kit, Some(executable))],
+    );
+    let call = |name: &'static str, input: Value| {
+        let kits = &kits;
+        async move {
+            kition_kits::tools::call(kits, name, &input)
+                .await
+                .unwrap_or_else(|| panic!("{name} is a kit tool"))
+                .unwrap_or_else(|err| panic!("{name}: {}", err.message))
+        }
+    };
+    let offered: Vec<String> = kition_kits::tools::installed(&kits)
+        .into_iter()
+        .map(|spec| spec.name)
+        .collect();
+    assert!(
+        offered.iter().any(|name| name == "fig_export"),
+        "{offered:?}"
+    );
+
+    // A layer off whole pixels: the check reports it with the layer as its target.
+    call(
+        "fig_run",
+        json!({ "path": "work/Screen.kfig", "steps": [{ "command": "shape.rectangle", "params": { "x": 10.5, "y": 10.5, "width": 40, "height": 40 } }] }),
+    )
+    .await;
+    let edited = std::fs::read(&file).unwrap_or_else(|err| panic!("{err}"));
+    let checked = call("fig_check", json!({ "path": "work/Screen.kfig" })).await;
+    let diagnostics = checked.output["diagnostics"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let codes: Vec<&str> = diagnostics
+        .iter()
+        .filter_map(|diagnostic| diagnostic["code"].as_str())
+        .collect();
+    assert!(codes.contains(&"fig.off-pixel"), "{codes:?}");
+    match catalogue("fig") {
+        Some(known) => assert!(
+            codes
+                .iter()
+                .all(|code| known.iter().any(|known| known == code)),
+            "every code is in the catalogue: {codes:?}"
+        ),
+        None => eprintln!("no fig package: the catalogue codes were not compared"),
+    }
+    let target = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic["code"] == "fig.off-pixel")
+        .map(|diagnostic| diagnostic["target"].clone())
+        .unwrap_or_default();
+    assert!(
+        target["path"]
+            .as_str()
+            .is_some_and(|path| path.starts_with("layer:")),
+        "{target}"
+    );
+
+    // The diagnostic's layer, drawn by the kit on whole pixels, then twice the size.
+    let layer = call(
+        "fig_inspect",
+        json!({ "path": "work/Screen.kfig", "target": target }),
+    )
+    .await;
+    let [preview] = layer.previews.as_slice() else {
+        panic!("one preview: {}", layer.previews.len())
+    };
+    assert_eq!(png_size(&preview.png), (41, 41), "{}", preview.caption);
+    assert!(preview.caption.contains("layer:"), "{}", preview.caption);
+    let doubled = call(
+        "fig_inspect",
+        json!({ "path": "work/Screen.kfig", "target": target, "scale": 2 }),
+    )
+    .await;
+    assert_eq!(png_size(&doubled.previews[0].png), (82, 82));
+    let page = call(
+        "fig_inspect",
+        json!({ "path": "work/Screen.kfig", "target": { "page": 1 }, "maxSize": 64 }),
+    )
+    .await;
+    let (width, height) = png_size(&page.previews[0].png);
+    assert!(width.max(height) <= 64, "{width} x {height}");
+    assert!(page.previews[0].caption.contains("part 1"));
+
+    // Every format the kit exports, as a new file; the design is neither changed nor saved.
+    let magic: [(&str, &[u8]); 4] = [
+        ("png", b"\x89PNG"),
+        ("jpg", b"\xff\xd8\xff"),
+        ("svg", b"<svg"),
+        ("pdf", b"%PDF"),
+    ];
+    for (format, start) in magic {
+        let to = format!("exports/Screen.{format}");
+        let exported = call(
+            "fig_export",
+            json!({ "path": "work/Screen.kfig", "to": to }),
+        )
+        .await;
+        assert_eq!(exported.output["files"][0]["path"], to);
+        assert_eq!(exported.output["files"][0]["created"], true);
+        let bytes = std::fs::read(dir.path().join(&to)).unwrap_or_else(|err| panic!("{err}"));
+        let head = String::from_utf8_lossy(&bytes[..bytes.len().min(512)]).into_owned();
+        assert!(
+            bytes.starts_with(start) || (format == "svg" && head.contains("<svg")),
+            "{format}: {head:?}"
+        );
+        assert_eq!(exported.output["bytes"], bytes.len());
+    }
+    let again = call(
+        "fig_export",
+        json!({ "path": "work/Screen.kfig", "to": "exports/Screen.png", "options": { "scale": 2 } }),
+    )
+    .await;
+    assert_eq!(
+        again.output["files"][0]["path"], "exports/Screen 2.png",
+        "an existing file is never replaced"
+    );
+    let first = std::fs::read(dir.path().join("exports/Screen.png")).unwrap_or_default();
+    let second = std::fs::read(dir.path().join("exports/Screen 2.png")).unwrap_or_default();
+    assert_eq!(
+        png_size(&second).0,
+        png_size(&first).0 * 2,
+        "options reach the kit"
+    );
+    let refused = kition_kits::tools::call(
+        &kits,
+        "fig_export",
+        &json!({ "path": "work/Screen.kfig", "to": "exports/Screen.gif" }),
+    )
+    .await
+    .and_then(Result::err)
+    .map(|err| err.message)
+    .unwrap_or_default();
+    assert!(refused.contains("png, jpg, svg, or pdf"), "{refused}");
+    let after = call(
+        "fig_inspect",
+        json!({ "path": "work/Screen.kfig", "preview": false }),
+    )
+    .await;
+    assert_eq!(
+        after.output["dirty"], false,
+        "renders and exports are not edits"
+    );
+    assert_eq!(
+        std::fs::read(&file).unwrap_or_default(),
+        edited,
+        "and the design on disk is as it was saved"
+    );
+    kits.shutdown().await;
+}

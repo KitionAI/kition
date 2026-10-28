@@ -1,0 +1,27 @@
+format: 1
+id: kition.agent.kit-export/fig-formats
+feature: kition.agent.kit-export
+intent: >-
+  fig_export writes a Fig design as PNG, JPEG, SVG and PDF through the kit's file.export, reading the
+  file from the answer's base64 `data`, always as a new file (the next free name when the target
+  exists), and leaves the design neither changed nor saved, whatever view revision the kit reports.
+layer: golden
+direction: ai
+source:
+  kind: synthetic
+  from: crates/kition-kits/tests/fixtures/Screen.kfig
+  licence: owned
+input:
+  - repo:crates/kition-kits/tests/fixtures/Screen.kfig
+steps:
+  - cargo-test:
+      package: kition-kits
+      test: sdk_kits
+      filter: the_agent_checks_previews_and_exports_a_fig_design
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+tags: [headless]
+requires: [kit-fig]
+since: "2026-10-28"

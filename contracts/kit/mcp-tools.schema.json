@@ -19,7 +19,7 @@
           },
           "target": {
             "type": "object",
-            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
+            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
             "properties": {
               "slide": {
                 "type": "integer",
@@ -28,6 +28,12 @@
               "page": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "path": {
+                "type": "string"
+              },
+              "objectId": {
+                "type": "string"
               },
               "range": {
                 "type": "string"
@@ -42,6 +48,18 @@
                 }
               }
             }
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 2,
+            "description": "Preview pixels per document unit, up to 2 (default 1), for kits that render previews themselves."
+          },
+          "maxSize": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 4096,
+            "description": "The most preview pixels on the longer side."
           },
           "draft": {
             "type": "boolean",
@@ -640,6 +658,90 @@
         },
         "required": [
           "diagnostics"
+        ]
+      }
+    },
+    "<prefix>_export": {
+      "description": "Export a document from <Kit> to a new file, as the kit's engine draws it. The file is always new: when `to` exists the next free name is used. Lists the file it wrote; changes nothing in the document.",
+      "writes": true,
+      "input": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path to a <formats> file."
+          },
+          "to": {
+            "type": "string",
+            "description": "Workspace-relative path of the new file, for example `exports/Screen.png`."
+          },
+          "format": {
+            "type": "string",
+            "description": "The format, a file extension; defaults to the extension of `to`."
+          },
+          "options": {
+            "type": "object",
+            "description": "Parameters for the kit's export command, as <prefix>_commands documents it."
+          },
+          "draft": {
+            "type": "boolean",
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
+          }
+        },
+        "required": [
+          "path",
+          "to"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "The new file's workspace path."
+                },
+                "version": {
+                  "type": "string",
+                  "description": "The SHA-256 of the file written."
+                },
+                "created": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "path",
+                "version",
+                "created"
+              ]
+            },
+            "description": "The files written (KHP A30)."
+          },
+          "format": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "live": {
+            "type": "boolean",
+            "description": "Edited or read in the file's open editor."
+          },
+          "draft": {
+            "type": "boolean",
+            "description": "Edited or read the agent's draft, not the file."
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          }
+        },
+        "required": [
+          "files"
         ]
       }
     }

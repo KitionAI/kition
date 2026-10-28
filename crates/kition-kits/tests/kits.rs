@@ -33,6 +33,8 @@ static MOCK: KitDefinition = KitDefinition {
         covers: "text edits",
         queries: "`append`",
         command: "text.append",
+        render: None,
+        export: None,
     },
 };
 
@@ -349,6 +351,8 @@ static OTHER: KitDefinition = KitDefinition {
         covers: "nothing",
         queries: "nothing",
         command: "picture.noop",
+        render: None,
+        export: None,
     },
 };
 

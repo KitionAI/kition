@@ -17,6 +17,6 @@ pub mod tools;
 pub use bridge::{Bridge, LiveChange, LiveDocument};
 pub use manager::{
     Caller, DocumentView, ExecuteView, FileWrite, KITS, KitAgent, KitDefinition, KitError,
-    KitManager, SavedFile,
+    KitExport, KitManager, SavedFile,
 };
 pub use routes::{KitsState, router};

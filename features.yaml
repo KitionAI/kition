@@ -3,6 +3,32 @@ kit: kition
 updated: "2026-10-28"
 golden_budget_s: 600
 features:
+  - id: kition.agent.kit-export
+    title: The agent exports a kit document to a new file (KHP A41)
+    direction: [ai, function]
+    priority: P1
+    status: partial
+    commands: [file.export]
+    paths:
+      - crates/kition-kits/src/tools/export.rs
+      - crates/kition-kits/src/tools.rs
+      - crates/kition-kits/src/manager.rs
+    gap: Only Fig declares an agent export so far; Cube and the other kits with exports do not offer `<prefix>_export` yet.
+    cases:
+      - kition.agent.kit-export/fig-formats
+    since: "2026-10-28"
+  - id: kition.agent.kit-preview
+    title: The agent previews a part or a diagnostic's target with the kit's own render command (KHP A39)
+    direction: [ai]
+    priority: P1
+    status: has
+    commands: [file.render]
+    paths:
+      - crates/kition-kits/src/tools.rs
+      - crates/kition-kits/src/manager.rs
+    cases:
+      - kition.agent.kit-preview/fig-target
+    since: "2026-10-28"
   - id: kition.kit-protocol.command-output
     title: A kit command may declare the shape of its result (`output`, KHP A1)
     direction: [function]

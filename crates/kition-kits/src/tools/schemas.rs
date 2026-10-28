@@ -29,6 +29,8 @@ static GENERIC: KitDefinition = KitDefinition {
         covers: "the kit's commands",
         queries: "`<keywords>`",
         command: "<command>",
+        render: None,
+        export: None,
     },
 };
 
@@ -195,6 +197,26 @@ pub fn output_schema(action: Action) -> Value {
                 "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" }, "description": "Errors first." }
             }),
             &["diagnostics"],
+        ),
+        Action::Export => object(
+            json!({
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "path": { "type": "string", "description": "The new file's workspace path." },
+                            "version": { "type": "string", "description": "The SHA-256 of the file written." },
+                            "created": { "type": "boolean" }
+                        },
+                        "required": ["path", "version", "created"]
+                    },
+                    "description": "The files written (KHP A30)."
+                },
+                "format": { "type": "string" },
+                "bytes": { "type": "integer", "minimum": 0 }
+            }),
+            &["files"],
         ),
     }
 }

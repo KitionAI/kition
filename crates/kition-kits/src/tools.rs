@@ -15,6 +15,7 @@
 //! executable on its `agent` connection, so the kit enforces the workspace and the agent role.
 
 mod errors;
+mod export;
 pub mod model;
 pub mod schemas;
 
@@ -47,10 +48,12 @@ pub enum Action {
     Batch,
     /// The kit's diagnostics on the document (standard 2.0 A22).
     Check,
+    /// Write the document to a new file in a format the kit exports (KHP A41).
+    Export,
 }
 
 impl Action {
-    pub const ALL: [Action; 8] = [
+    pub const ALL: [Action; 9] = [
         Action::Inspect,
         Action::Commands,
         Action::Run,
@@ -59,6 +62,7 @@ impl Action {
         Action::Query,
         Action::Batch,
         Action::Check,
+        Action::Export,
     ];
 
     fn suffix(self) -> &'static str {
@@ -71,12 +75,13 @@ impl Action {
             Action::Query => "query",
             Action::Batch => "batch",
             Action::Check => "check",
+            Action::Export => "export",
         }
     }
 
-    /// Whether the tool changes files.
+    /// Whether the tool changes files: edits, or a new file (an export).
     pub fn writes(self) -> bool {
-        matches!(self, Action::Run | Action::Batch)
+        matches!(self, Action::Run | Action::Batch | Action::Export)
     }
 }
 
@@ -95,7 +100,7 @@ pub struct KitToolSpec {
     pub description: String,
     /// JSON Schema for the arguments.
     pub input_schema: Value,
-    /// Whether the tool changes files (`<prefix>_run`, `<prefix>_batch`).
+    /// Whether the tool changes files (`<prefix>_run`, `<prefix>_batch`, `<prefix>_export`).
     pub writes: bool,
 }
 
@@ -204,13 +209,13 @@ pub(crate) fn draft_property() -> Value {
     json!({ "type": "boolean", "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode." })
 }
 
-fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 8] {
+fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 9] {
     specs_described(kit, None)
 }
 
 /// The kit's tools, with the object-model tools' arguments generated from `described` (what the
 /// kit's `model.describe` answered) when it is known.
-fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 8] {
+fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 9] {
     let agent = &kit.agent;
     let (name, noun) = (kit.name, agent.noun);
     let commands = tool_name(kit, Action::Commands);
@@ -228,7 +233,9 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
                 "properties": {
                     "path": path_property(kit),
                     "preview": { "type": "boolean", "description": "Attach a rendered preview image. Defaults to true." },
-                    "target": { "type": "object", "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 }, "range": { "type": "string" }, "sheet": { "type": "string" }, "paragraphs": { "type": "array", "items": { "type": "integer" } } } },
+                    "target": { "type": "object", "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 }, "path": { "type": "string" }, "objectId": { "type": "string" }, "range": { "type": "string" }, "sheet": { "type": "string" }, "paragraphs": { "type": "array", "items": { "type": "integer" } } } },
+                    "scale": { "type": "number", "exclusiveMinimum": 0, "maximum": 2, "description": "Preview pixels per document unit, up to 2 (default 1), for kits that render previews themselves." },
+                    "maxSize": { "type": "integer", "minimum": 16, "maximum": 4096, "description": "The most preview pixels on the longer side." },
                     "draft": draft_property()
                 },
                 "required": ["path"]
@@ -323,6 +330,29 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
             }),
             writes: false,
         },
+        KitToolSpec {
+            name: tool_name(kit, Action::Export),
+            description: format!(
+                "Export a {noun} from {name} to a new file{}, as the kit's engine draws it. The file is always new: when `to` exists the next free name is used. Lists the file it wrote; changes nothing in the {noun}.",
+                kit.agent
+                    .export
+                    .as_ref()
+                    .map(|export| format!(" ({})", export::listed(export)))
+                    .unwrap_or_default()
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": path_property(kit),
+                    "to": { "type": "string", "description": "Workspace-relative path of the new file, for example `exports/Screen.png`." },
+                    "format": { "type": "string", "description": "The format, a file extension; defaults to the extension of `to`." },
+                    "options": { "type": "object", "description": format!("Parameters for the kit's export command, as {commands} documents it.") },
+                    "draft": draft_property()
+                },
+                "required": ["path", "to"]
+            }),
+            writes: true,
+        },
     ]
 }
 
@@ -349,13 +379,35 @@ pub fn installed(kits: &KitManager) -> Vec<KitToolSpec> {
             .filter(|kit| installed.contains(&kit.id))
             .collect();
         if !on.is_empty() {
-            return unified_specs(&on);
+            let exports = on.iter().any(|kit| kit.agent.export.is_some());
+            return unified_specs(&on)
+                .into_iter()
+                .filter(|spec| exports || parse_unified(&spec.name) != Some(Action::Export))
+                .collect();
         }
     }
     KITS.iter()
         .filter(|kit| installed.contains(&kit.id))
-        .flat_map(|kit| specs_described(kit, kits.described(kit.id).as_ref()))
+        .flat_map(|kit| {
+            specs_described(kit, kits.described(kit.id).as_ref())
+                .into_iter()
+                .filter(|spec| offers(kit, &spec.name))
+        })
         .collect()
+}
+
+/// Whether `kit` offers the tool `name` once installed: `<prefix>_export` only when it exports
+/// for the agent (KHP A41); every other tool always.
+fn offers(kit: &KitDefinition, name: &str) -> bool {
+    kit.agent.export.is_some() || name != tool_name(kit, Action::Export)
+}
+
+/// The action of a unified tool name (`kit_export`).
+fn parse_unified(name: &str) -> Option<Action> {
+    let suffix = name.strip_prefix("kit_")?;
+    Action::ALL
+        .into_iter()
+        .find(|action| action.suffix() == suffix)
 }
 
 /// The activity label of a kit tool, for example `Edit layered image in Photo`.
@@ -376,6 +428,7 @@ pub fn label(name: &str) -> Option<String> {
                 Action::Query => "Read a file's objects",
                 Action::Batch => "Edit a file's objects",
                 Action::Check => "Check a file",
+                Action::Export => "Export a file",
             }
             .to_owned(),
         );
@@ -390,6 +443,7 @@ pub fn label(name: &str) -> Option<String> {
         Action::Query => format!("Read {noun} objects in {kit_name}"),
         Action::Batch => format!("Edit {noun} objects in {kit_name}"),
         Action::Check => format!("Check {noun} in {kit_name}"),
+        Action::Export => format!("Export {noun} from {kit_name}"),
     })
 }
 
@@ -500,42 +554,106 @@ fn target_part(input: &Value) -> Option<u64> {
         .filter(|n| *n >= 1)
 }
 
-/// A preview of one slide or page, through the kit's `file.render` query when it has one
-/// (`{slide, scale}` → `{png}`). None when the kit has no such command or it fails, so the caller
-/// falls back to the whole document. A region parameter on `view.screenshot` would make this
-/// work for every kit; until the Kit Host Protocol has one, this covers kits that can render a part.
-async fn part_preview(
+/// What the kit's render command ([`KitAgent::render`]) draws for an inspect call: a diagnostic's
+/// target (`target.path` or `target.objectId`, passed on as the kit reported it), else one slide
+/// or page (`slide`, counted from 0), else, when `scale` or `maxSize` is given, the document; at
+/// `scale` (1 unless given) and within `maxSize`. `None` when the call asks for none of these, and
+/// the preview is the kit's screenshot.
+///
+/// [`KitAgent::render`]: crate::KitAgent::render
+fn render_params(input: &Value) -> Option<Map<String, Value>> {
+    let mut params = Map::new();
+    let target = input.get("target").filter(|target| {
+        target
+            .get("path")
+            .or_else(|| target.get("objectId"))
+            .is_some()
+    });
+    if let Some(target) = target {
+        params.insert("target".into(), target.clone());
+    } else if let Some(part) = target_part(input) {
+        params.insert("slide".into(), json!(part - 1));
+    } else if input.get("scale").is_none() && input.get("maxSize").is_none() {
+        return None;
+    }
+    let scale = input.get("scale").filter(|scale| scale.is_number());
+    params.insert("scale".into(), scale.cloned().unwrap_or(json!(1)));
+    if let Some(size) = input.get("maxSize").filter(|size| size.is_u64()) {
+        params.insert("maxSize".into(), size.clone());
+    }
+    Some(params)
+}
+
+/// What a rendered preview shows, for its caption: `part 2 of `a.kfig``, `layer:12 of `a.kfig``.
+fn rendered_caption(kit: &KitDefinition, params: &Map<String, Value>, file: &str) -> String {
+    let what = if let Some(target) = params.get("target") {
+        let named = target
+            .get("path")
+            .or_else(|| target.get("objectId"))
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        format!("Preview of {named} in `{file}`")
+    } else if let Some(slide) = params.get("slide").and_then(Value::as_u64) {
+        format!("Preview of part {} of `{file}`", slide + 1)
+    } else {
+        format!("Preview of `{file}`")
+    };
+    format!("{what} from {}.", kit.name)
+}
+
+/// The base64 PNG a render command answered (`{png}`), decoded.
+fn rendered_png(answer: Option<&Value>) -> Option<Vec<u8>> {
+    use base64::Engine as _;
+    let data = answer?.get("png")?.as_str()?;
+    base64::engine::general_purpose::STANDARD.decode(data).ok()
+}
+
+/// A preview drawn by the kit's own render command (KHP A39): one part, a diagnostic's target,
+/// or the document at a scale. `None` when the kit has no render command or it fails, so the
+/// caller falls back to the kit's screenshot. An inspect is never an edit, whatever the kit
+/// reports about the command having changed its view.
+async fn rendered_preview(
     kits: &KitManager,
     kit: &KitDefinition,
     view: &DocumentView,
-    part: u64,
+    params: Map<String, Value>,
 ) -> Option<Vec<Preview>> {
-    use base64::Engine as _;
-    let mut params = Map::new();
-    params.insert("slide".into(), json!(part - 1));
-    params.insert("scale".into(), json!(1));
+    let command = kit.agent.render?;
+    let caption = rendered_caption(kit, &params, view.path.as_deref().unwrap_or(&view.title));
     let executed = kits
         .execute(
             Caller::Agent,
             view.kit_id,
             &view.document_id,
-            "file.render",
+            command,
             params,
         )
         .await
         .ok()?;
-    let data = executed.result?.get("png")?.as_str()?.to_owned();
-    let png = base64::engine::general_purpose::STANDARD
-        .decode(data)
+    let png = rendered_png(executed.result.as_ref())?;
+    Some(vec![Preview { caption, png }])
+}
+
+/// [`rendered_preview`] from the file's open editor (A7), through its `ai/run`, never saved.
+async fn live_rendered_preview(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    document: &LiveDocument,
+    params: Map<String, Value>,
+) -> Option<Vec<Preview>> {
+    let command = kit.agent.render?;
+    let caption = rendered_caption(kit, &params, &document.path);
+    let answer = kits
+        .bridge()
+        .call(
+            document,
+            "run",
+            json!({ "steps": [{ "command": command, "params": params }], "save": false }),
+        )
+        .await
         .ok()?;
-    Some(vec![Preview {
-        caption: format!(
-            "Preview of part {part} of `{}` from {}.",
-            view.path.as_deref().unwrap_or(&view.title),
-            kit.name
-        ),
-        png,
-    }])
+    let png = rendered_png(export::first_result(&answer))?;
+    Some(vec![Preview { caption, png }])
 }
 
 /// The objects of one slide or page, through the kit's `slide.inspect` or `page.inspect` query
@@ -876,6 +994,7 @@ pub async fn call_with(
         Action::Query => model::query(kits, kit, input, draft).await,
         Action::Batch => model::batch(kits, kit, input, draft).await,
         Action::Check => check(kits, kit, input, draft).await,
+        Action::Export => export::export(kits, kit, input, draft).await,
     })
 }
 
@@ -1241,10 +1360,16 @@ async fn inspect(
     }
     if let Some(document) = open {
         let mut answer = kits.bridge().call(&document, "inspect", json!({})).await?;
-        let previews = if wants_preview {
-            live_preview(kits, kit, &document).await
-        } else {
-            Vec::new()
+        let rendered = match render_params(input) {
+            Some(params) if wants_preview => {
+                live_rendered_preview(kits, kit, &document, params).await
+            }
+            _ => None,
+        };
+        let previews = match rendered {
+            Some(previews) => previews,
+            None if wants_preview => live_preview(kits, kit, &document).await,
+            None => Vec::new(),
         };
         let summary = answer["document"]["summary"]
             .as_str()
@@ -1268,15 +1393,14 @@ async fn inspect(
     {
         view = moved;
     }
-    let previews = if !wants_preview {
-        Vec::new()
-    } else if let Some(part) = target_part(input) {
-        match part_preview(kits, kit, &view, part).await {
-            Some(previews) => previews,
-            None => preview(kits, kit, &view).await,
-        }
-    } else {
-        preview(kits, kit, &view).await
+    let rendered = match render_params(input) {
+        Some(params) if wants_preview => rendered_preview(kits, kit, &view, params).await,
+        _ => None,
+    };
+    let previews = match rendered {
+        Some(previews) => previews,
+        None if wants_preview => preview(kits, kit, &view).await,
+        None => Vec::new(),
     };
     let mut answer = document_json(&view);
     if let Some(content) = part_content(kits, &view, input).await {
