@@ -102,6 +102,8 @@
     "workflowsTitle": "Flujos de trabajo",
     "unsavedTitle": "“{{name}}” tiene cambios sin guardar",
     "unsavedMessage": "¿Guardarlos antes de cerrar la pestaña? Los cambios que no guardes se perderán.",
+    "unsavedTitleMany": "Cambios sin guardar en {{count}} documentos",
+    "unsavedWindowMessage": "¿Guardarlos primero? Los cambios que no guardes se perderán.",
     "unsavedSave": "Guardar",
     "unsavedDiscard": "No guardar",
     "unsavedCancel": "Cancelar"

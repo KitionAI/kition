@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { createTauriBridge, installTauriBridge, isWindowDragTarget } from './tauriBridge'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onCloseRequested: vi.fn().mockResolvedValue(() => undefined) }) }))
 
 const globals = { shell: 'tauri' as const, backendOrigin: 'http://127.0.0.1:18101', platform: 'darwin' }
 

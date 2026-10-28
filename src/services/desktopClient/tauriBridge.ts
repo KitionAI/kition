@@ -6,6 +6,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { LEAVE_MENU_ACTIONS, mayLeaveDesktop } from '@/services/desktopLeave'
 
 const DESKTOP_MENU_EVENT = 'desktop:menu'
 const DESKTOP_UPDATES_EVENT = 'desktop:updates:state'
@@ -177,6 +178,24 @@ function installDevtoolsShortcut(bridge: ReturnType<typeof createTauriBridge>) {
   })
 }
 
+/**
+ * Asks before the window leaves (`@/services/desktopLeave`): its close button, and the menu's Quit
+ * and Reload, which the shell sends here instead of acting on them. The window closes, quits, or
+ * reloads only once the guard lets it.
+ */
+function installLeaveGuard(bridge: ReturnType<typeof createTauriBridge>) {
+  void getCurrentWindow()
+    .onCloseRequested(async (event) => {
+      if (!(await mayLeaveDesktop('close'))) event.preventDefault()
+    })
+    .catch((error: unknown) => console.warn('[desktop] could not watch the window closing', error))
+  bridge.EventsOn(bridge.menuEvent, (payload: { action?: string } | null) => {
+    const leave = LEAVE_MENU_ACTIONS[payload?.action ?? '']
+    if (!leave) return
+    void mayLeaveDesktop(leave).then((may) => (may ? bridge.WindowAction(leave) : undefined))
+  })
+}
+
 export function installTauriBridge() {
   if (typeof window === 'undefined' || window.kitionDesktop) return
   const globals = window.__KITION_DESKTOP__
@@ -185,6 +204,7 @@ export function installTauriBridge() {
   window.kitionDesktop = bridge
   installWindowDragging()
   installDevtoolsShortcut(bridge)
+  installLeaveGuard(bridge)
 }
 
 installTauriBridge()

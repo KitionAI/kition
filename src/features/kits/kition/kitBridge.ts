@@ -163,6 +163,11 @@ export function openWithUnsavedEdits(path: string) {
   return editors.get(normalize(path))?.dirty() ?? false
 }
 
+/** The workspace files open in a kit editor here with unsaved edits. */
+export function openFilesWithUnsavedEdits() {
+  return [...editors.values()].filter((editor) => editor.dirty()).map((editor) => editor.path)
+}
+
 /**
  * Saves the kit editor of `path`, as the person asked before closing its tab: whether it saved;
  * `null` when no editor of it that saves is open here (a read-only one).

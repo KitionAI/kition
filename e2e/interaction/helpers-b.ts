@@ -6,7 +6,7 @@
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
+import { expect, test, type FrameLocator, type Locator, type Page } from '@playwright/test'
 import type { DesktopHost } from '../helpers/desktopHost'
 import { kitEngine, openInKitFrame, openKitWorkspace, openTreeFile, type KitModes } from '../helpers/embeddedKit'
 import { dismissFirstRunActivation } from '../helpers/onboarding'
@@ -58,10 +58,18 @@ export type KitCase = {
   measure: (bytes: Buffer) => Promise<number>
   /** The measure of `fixture`, of `fixture` after one `edit`, and of `variant`. */
   counts: { fixture: number; edited: number; variant: number }
-  /** Waits until the editor shows a document whose measure is `count`. */
-  shows: (page: Page, kit: FrameLocator, count: number) => Promise<void>
+  /** Waits until the editor showing the workspace file `name` shows a document whose measure is `count`. */
+  shows: (page: Page, kit: FrameLocator, count: number, name: string) => Promise<void>
   /** Makes one edit through the editor's own UI (the measure goes from `fixture` to `edited`). */
   edit: (page: Page, kit: FrameLocator) => Promise<void>
+  /** Saves, undoes, and redoes through the editor; kit-editor's own buttons (`<kit>-save`) by default. */
+  save?: (page: Page, kit: FrameLocator) => Promise<void>
+  undo?: (page: Page, kit: FrameLocator) => Promise<void>
+  redo?: (page: Page, kit: FrameLocator) => Promise<void>
+  /** The editor's unsaved-edits mark; kit-editor's `<kit>-unsaved` by default. */
+  unsaved?: (kit: FrameLocator) => Locator
+  /** Puts the keyboard where the kit's shortcuts are read, after an edit (CAD's command line keeps it). */
+  focusForKeys?: (page: Page, kit: FrameLocator) => Promise<void>
   /** Kit editor display modes to pin (`{ 'kit.cad': 'classic' }`). */
   modes?: KitModes
   viewport?: { width: number; height: number }
@@ -74,6 +82,14 @@ export type KitCase = {
 
 const ACTIVE_FRAME = '[data-testid="kit-frame"][data-active="true"]'
 const activeKit = (page: Page) => page.frameLocator(`${ACTIVE_FRAME} [data-testid="kit-frame-window"]`)
+
+/**
+ * The live document of the kit editor showing `name`, as the Kit AI bridge's `inspect` answers it
+ * (Kition's development test hook), for a kit whose editor draws its counts on a canvas.
+ */
+export async function liveDocument(page: Page, name: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__?.inspect ? window.__KITION_KIT_TEST__.inspect(wanted).catch(() => null) : null), name)
+}
 
 /** Reloads Kition and opens `name` again from the tree, as a person reopening the workspace would. */
 async function reopen(page: Page, name: string) {
@@ -108,6 +124,10 @@ export function hostMatrix(c: KitCase) {
   const others = async () => (c.others ? await c.others() : {})
   const options = (persist: boolean) => ({ persist, modes: c.modes ?? {} })
   const skipped = (row: HostRow) => c.skip?.[row]
+  const unsaved = (kit: FrameLocator) => (c.unsaved ? c.unsaved(kit) : kit.getByTestId(`${c.kit}-unsaved`))
+  const save = (page: Page, kit: FrameLocator) => (c.save ? c.save(page, kit) : kit.getByTestId(`${c.kit}-save`).click())
+  const undo = (page: Page, kit: FrameLocator) => (c.undo ? c.undo(page, kit) : kit.getByTestId(`${c.kit}-undo`).click())
+  const redo = (page: Page, kit: FrameLocator) => (c.redo ? c.redo(page, kit) : kit.getByTestId(`${c.kit}-redo`).click())
   // The mocked desktop's own noise: kit pages' CSP meta tags, and the mock API's answer to the
   // runtime bridge's event stream.
   const ignore = [/frame-ancestors' is ignored when delivered via a <meta> element/, /EventSource's response has a MIME type/, ...(c.ignoreErrors ?? [])]
@@ -141,20 +161,20 @@ export function hostMatrix(c: KitCase) {
       const errors = collectErrors(page, ignore)
       const { host, saves, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(true))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await expect(page.getByTestId('kit-opening')).toHaveCount(0)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
-        await expect(kit.getByTestId(`${c.kit}-unsaved`)).toBeVisible()
-        await kit.getByTestId(`${c.kit}-save`).click()
-        await expect(kit.getByTestId(`${c.kit}-unsaved`)).toHaveCount(0, { timeout: 30_000 })
+        await c.shows(page, kit, c.counts.edited, c.file)
+        await expect(unsaved(kit)).toBeVisible()
+        await save(page, kit)
+        await expect(unsaved(kit)).toHaveCount(0, { timeout: 30_000 })
         await expect.poll(() => saves.some((save) => save.path === c.file), { timeout: 30_000 }).toBe(true)
         expect(await c.measure(lastSave(saves, c.file)!)).toBe(c.counts.edited)
         expect(await c.measure(await fs.readFile(path.join(host.root, c.file)))).toBe(c.counts.edited)
 
         const again = await reopen(page, c.file)
-        await c.shows(page, again, c.counts.edited)
-        await expect(again.getByTestId(`${c.kit}-unsaved`)).toHaveCount(0)
+        await c.shows(page, again, c.counts.edited, c.file)
+        await expect(unsaved(again)).toHaveCount(0)
         await errors.expectNone()
       } finally {
         await host.dispose()
@@ -165,15 +185,15 @@ export function hostMatrix(c: KitCase) {
       test.skip(Boolean(skipped('H4')), skipped('H4'))
       const { host, saves, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(false))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
-        await kit.getByTestId(`${c.kit}-undo`).click()
-        await c.shows(page, kit, c.counts.fixture)
-        await kit.getByTestId(`${c.kit}-redo`).click()
-        await c.shows(page, kit, c.counts.edited)
+        await c.shows(page, kit, c.counts.edited, c.file)
+        await undo(page, kit)
+        await c.shows(page, kit, c.counts.fixture, c.file)
+        await redo(page, kit)
+        await c.shows(page, kit, c.counts.edited, c.file)
         // Undo and redo leave a document that saves as what it shows.
-        await kit.getByTestId(`${c.kit}-save`).click()
+        await save(page, kit)
         await expect.poll(() => saves.some((save) => save.path === c.file), { timeout: 30_000 }).toBe(true)
         expect(await c.measure(lastSave(saves, c.file)!)).toBe(c.counts.edited)
       } finally {
@@ -184,10 +204,10 @@ export function hostMatrix(c: KitCase) {
     test(`H5: a ${c.kit} file changed on disk shows at once without unsaved edits`, tags(c.kit, ['H5'], true), async ({ page, baseURL }) => {
       const { host, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(true))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await writeOutside(host, c.file, await c.variant())
-        await c.shows(page, kit, c.counts.variant)
-        await expect(kit.getByTestId(`${c.kit}-unsaved`)).toHaveCount(0)
+        await c.shows(page, kit, c.counts.variant, c.file)
+        await expect(unsaved(kit)).toHaveCount(0)
       } finally {
         await host.dispose()
       }
@@ -196,21 +216,21 @@ export function hostMatrix(c: KitCase) {
     test(`H5: a ${c.kit} file changed on disk never replaces unsaved edits, and a save never overwrites the change unasked`, tags(c.kit, ['H5'], true), async ({ page, baseURL }) => {
       const { host, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(true))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
+        await c.shows(page, kit, c.counts.edited, c.file)
         const outside = await c.variant()
         await writeOutside(host, c.file, outside)
         // Past the kit's own file check: the unsaved edit is still there.
         await page.waitForTimeout(4_000)
-        await c.shows(page, kit, c.counts.edited)
-        await expect(kit.getByTestId(`${c.kit}-unsaved`)).toBeVisible()
+        await c.shows(page, kit, c.counts.edited, c.file)
+        await expect(unsaved(kit)).toBeVisible()
         // Saving now must not silently replace what the other program wrote.
-        await kit.getByTestId(`${c.kit}-save`).click()
+        await save(page, kit)
         await page.waitForTimeout(3_000)
         const onDisk = await fs.readFile(path.join(host.root, c.file))
         expect(onDisk.equals(outside), 'the save replaced the file changed on disk without asking').toBe(true)
-        await c.shows(page, kit, c.counts.edited)
+        await c.shows(page, kit, c.counts.edited, c.file)
       } finally {
         await host.dispose()
       }
@@ -219,10 +239,10 @@ export function hostMatrix(c: KitCase) {
     test(`H6: closing a ${c.kit} tab with unsaved edits asks first: cancel keeps it, save saves and closes`, tags(c.kit, ['H6'], true), async ({ page, baseURL }) => {
       const { host, saves, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(true))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
-        await expect(kit.getByTestId(`${c.kit}-unsaved`)).toBeVisible()
+        await c.shows(page, kit, c.counts.edited, c.file)
+        await expect(unsaved(kit)).toBeVisible()
         const close = page.locator('.document-tab.is-active .document-tab-close')
         const question = page.getByTestId('unsaved-close')
 
@@ -231,8 +251,8 @@ export function hostMatrix(c: KitCase) {
         await expect(question).toBeVisible()
         await page.getByTestId('unsaved-close-cancel').click()
         await expect(question).toHaveCount(0)
-        await c.shows(page, activeKit(page), c.counts.edited)
-        await expect(activeKit(page).getByTestId(`${c.kit}-unsaved`)).toBeVisible()
+        await c.shows(page, activeKit(page), c.counts.edited, c.file)
+        await expect(unsaved(activeKit(page))).toBeVisible()
 
         // Save: the edits are saved, then the tab closes; reopened, the file has them.
         await close.click()
@@ -240,8 +260,8 @@ export function hostMatrix(c: KitCase) {
         await expect(page.locator(ACTIVE_FRAME)).toHaveCount(0, { timeout: 30_000 })
         expect(await c.measure(lastSave(saves, c.file)!)).toBe(c.counts.edited)
         const again = await openTreeFile(page, c.file)
-        await c.shows(page, again, c.counts.edited)
-        await expect(again.getByTestId(`${c.kit}-unsaved`)).toHaveCount(0)
+        await c.shows(page, again, c.counts.edited, c.file)
+        await expect(unsaved(again)).toHaveCount(0)
       } finally {
         await host.dispose()
       }
@@ -250,9 +270,9 @@ export function hostMatrix(c: KitCase) {
     test(`H6: closing a ${c.kit} tab with unsaved edits and choosing not to save drops them`, tags(c.kit, ['H6']), async ({ page, baseURL }) => {
       const { host, saves, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(true))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
+        await c.shows(page, kit, c.counts.edited, c.file)
         await page.keyboard.press(`${await commandKey(kit)}+w`).catch(() => undefined)
         // The kit may keep Cmd+W; the tab's close button asks the same question.
         if (!(await page.getByTestId('unsaved-close').isVisible())) await page.locator('.document-tab.is-active .document-tab-close').click()
@@ -260,7 +280,7 @@ export function hostMatrix(c: KitCase) {
         await expect(page.locator(ACTIVE_FRAME)).toHaveCount(0)
         expect(saves.filter((save) => save.path === c.file)).toEqual([])
         const again = await openTreeFile(page, c.file)
-        await c.shows(page, again, c.counts.fixture)
+        await c.shows(page, again, c.counts.fixture, c.file)
       } finally {
         await host.dispose()
       }
@@ -271,20 +291,20 @@ export function hostMatrix(c: KitCase) {
       const files = { ...(await others()), [second]: await c.fixture() }
       const { host, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), files, options(false))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
+        await c.shows(page, kit, c.counts.edited, c.file)
         const other = await openTreeFile(page, second)
-        await c.shows(page, other, c.counts.fixture)
+        await c.shows(page, other, c.counts.fixture, second)
         await page.locator('.document-tab', { hasText: path.basename(c.file, path.extname(c.file)) }).first().click()
         const back = activeKit(page)
-        await c.shows(page, back, c.counts.edited)
-        await expect(back.getByTestId(`${c.kit}-unsaved`)).toBeVisible()
+        await c.shows(page, back, c.counts.edited, c.file)
+        await expect(unsaved(back)).toBeVisible()
         // A narrower window, then the full one again: the document is still what it was.
         const size = page.viewportSize()!
         await page.setViewportSize({ width: Math.max(900, Math.round(size.width * 0.6)), height: size.height })
         await page.setViewportSize(size)
-        await c.shows(page, back, c.counts.edited)
+        await c.shows(page, back, c.counts.edited, c.file)
       } finally {
         await host.dispose()
       }
@@ -305,7 +325,7 @@ export function hostMatrix(c: KitCase) {
         expect((await fs.readFile(path.join(host.root, broken))).toString('latin1')).toBe('this is not a real file\u0000\u0001\u0002')
         // Another file still opens.
         const kit = await openTreeFile(page, c.file)
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
       } finally {
         await host.dispose()
       }
@@ -315,15 +335,16 @@ export function hostMatrix(c: KitCase) {
       test.skip(Boolean(skipped('H15')), skipped('H15'))
       const { host, saves, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(false))
       try {
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         await c.edit(page, kit)
-        await c.shows(page, kit, c.counts.edited)
+        await c.shows(page, kit, c.counts.edited, c.file)
+        await c.focusForKeys?.(page, kit)
         const mod = await commandKey(kit)
         await page.keyboard.press(`${mod}+s`)
         await expect.poll(() => saves.some((save) => save.path === c.file), { timeout: 30_000 }).toBe(true)
         expect(await c.measure(lastSave(saves, c.file)!)).toBe(c.counts.edited)
         await page.keyboard.press(`${mod}+z`)
-        await c.shows(page, kit, c.counts.fixture)
+        await c.shows(page, kit, c.counts.fixture, c.file)
         // Kition's own tab stays open: the kit's keys never close or switch it.
         await expect(page.locator(ACTIVE_FRAME)).toBeVisible()
       } finally {

@@ -6,6 +6,11 @@ use tauri::{AppHandle, Emitter, Runtime};
 pub const MENU_EVENT: &str = "desktop:menu";
 const NAVIGATE_SETTINGS: &str = "navigate-settings";
 const WINDOW_ACTION_PREFIX: &str = "window:";
+/// Quit and Reload drop the edits that live only in the page (a kit document's unsaved edits),
+/// so they go to the renderer, which asks first and then quits or reloads through
+/// `window_action` (`src/services/desktopLeave.ts`).
+pub const QUIT: &str = "quit";
+const RELOAD_WINDOW: &str = "reload-window";
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Option<Menu<R>>> {
     if cfg!(windows) {
@@ -34,7 +39,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Option<Menu<R>>> {
                 .hide_others()
                 .show_all()
                 .separator()
-                .quit()
+                .item(
+                    &MenuItemBuilder::with_id(QUIT, "Quit Kition Desktop")
+                        .accelerator("CmdOrCtrl+Q")
+                        .build(app)?,
+                )
                 .build()?,
         )?;
     }
@@ -66,7 +75,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Option<Menu<R>>> {
         &SubmenuBuilder::new(app, "Window")
             .item(&MenuItemBuilder::with_id("window:center", "Center Window").build(app)?)
             .item(&MenuItemBuilder::with_id("window:fullscreen", "Toggle Full Screen").build(app)?)
-            .item(&MenuItemBuilder::with_id("window:reload", "Reload Current Page").build(app)?)
+            .item(&MenuItemBuilder::with_id(RELOAD_WINDOW, "Reload Current Page").build(app)?)
             .item(&devtools)
             .item(&minimize.build(app)?)
             .build()?,
@@ -85,6 +94,12 @@ pub fn action(event: &MenuEvent) -> Option<MenuAction> {
     let id = event.id().as_ref();
     if id == NAVIGATE_SETTINGS {
         return Some(MenuAction::Renderer(NAVIGATE_SETTINGS));
+    }
+    if id == QUIT {
+        return Some(MenuAction::Renderer(QUIT));
+    }
+    if id == RELOAD_WINDOW {
+        return Some(MenuAction::Renderer(RELOAD_WINDOW));
     }
     id.strip_prefix(WINDOW_ACTION_PREFIX)
         .map(|action| MenuAction::Window(action.to_owned()))

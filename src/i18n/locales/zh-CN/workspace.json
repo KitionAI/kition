@@ -102,6 +102,8 @@
     "workflowsTitle": "工作流",
     "unsavedTitle": "“{{name}}”有未保存的更改",
     "unsavedMessage": "关闭标签页前要保存吗？未保存的更改将会丢失。",
+    "unsavedTitleMany": "{{count}} 个文档有未保存的更改",
+    "unsavedWindowMessage": "要先保存吗？未保存的更改将会丢失。",
     "unsavedSave": "保存",
     "unsavedDiscard": "不保存",
     "unsavedCancel": "取消"

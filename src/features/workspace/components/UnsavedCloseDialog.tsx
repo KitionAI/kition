@@ -2,15 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
 
-/** What the person chose for a tab closed with unsaved edits. */
+/** What the person chose for a tab or the window closed with unsaved edits. */
 export type UnsavedCloseChoice = 'save' | 'discard' | 'cancel'
 
-type Asking = { title: string; resolve: (choice: UnsavedCloseChoice) => void }
+/** What is closing: one tab (`names` its document), or the window with every open document. */
+export type UnsavedCloseScope = { kind: 'tab'; names: [string] } | { kind: 'window'; names: string[] }
+
+type Asking = { scope: UnsavedCloseScope; resolve: (choice: UnsavedCloseChoice) => void }
 
 /**
- * Asks before a tab with unsaved edits closes: save them, close without them, or keep the tab.
- * `ask(title)` resolves with the choice; `dialog` is rendered once by the screen that closes tabs.
- * Escape, an outside press, and a second ask while one is open count as cancel.
+ * Asks before a tab or the window with unsaved edits closes: save them, close without them, or
+ * keep it open. `ask(scope)` resolves with the choice; `dialog` is rendered once by the screen
+ * that closes them. Escape, an outside press, and a second ask while one is open count as cancel.
  */
 export function useUnsavedCloseQuestion() {
   const [asking, setAsking] = useState<Asking | null>(null)
@@ -23,15 +26,15 @@ export function useUnsavedCloseQuestion() {
     open?.resolve(choice)
   }, [])
 
-  const ask = useCallback((title: string) => {
+  const ask = useCallback((scope: UnsavedCloseScope) => {
     if (current.current) return Promise.resolve<UnsavedCloseChoice>('cancel')
     return new Promise<UnsavedCloseChoice>((resolve) => {
-      current.current = { title, resolve }
+      current.current = { scope, resolve }
       setAsking(current.current)
     })
   }, [])
 
-  // A screen that unmounts with the question open keeps its tab.
+  // A screen that unmounts with the question open keeps what was closing.
   useEffect(() => () => current.current?.resolve('cancel'), [])
 
   return { ask, dialog: <UnsavedCloseDialog asking={asking} onSettle={settle} /> }
@@ -39,12 +42,15 @@ export function useUnsavedCloseQuestion() {
 
 function UnsavedCloseDialog({ asking, onSettle }: { asking: Asking | null; onSettle: (choice: UnsavedCloseChoice) => void }) {
   const { t } = useTranslation('workspace')
+  const names = asking?.scope.names ?? []
+  const title = names.length === 1 ? t('tabs.unsavedTitle', { name: names[0] }) : t('tabs.unsavedTitleMany', { count: names.length })
+  const message = asking?.scope.kind === 'window' ? t('tabs.unsavedWindowMessage') : t('tabs.unsavedMessage')
   return (
     <Modal open={asking !== null} onOpenChange={(open) => (open ? undefined : onSettle('cancel'))}>
       <ModalContent hideClose size="sm" data-testid="unsaved-close">
         <ModalHeader>
-          <ModalTitle>{t('tabs.unsavedTitle', { name: asking?.title ?? '' })}</ModalTitle>
-          <ModalDescription>{t('tabs.unsavedMessage')}</ModalDescription>
+          <ModalTitle>{title}</ModalTitle>
+          <ModalDescription>{message}</ModalDescription>
         </ModalHeader>
         <ModalFooter>
           <Button variant="secondary" size="md" onClick={() => onSettle('discard')} data-testid="unsaved-close-discard">

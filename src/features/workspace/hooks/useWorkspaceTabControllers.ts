@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 
 import { openWithUnsavedEdits, saveOpenEditor } from '@/features/kits/public'
-import type { UnsavedCloseChoice } from '@/features/workspace/components/UnsavedCloseDialog'
+import type { UnsavedCloseChoice, UnsavedCloseScope } from '@/features/workspace/components/UnsavedCloseDialog'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
 import { useShortcut } from '@/lib/useShortcut'
@@ -18,7 +18,7 @@ type UseWorkspaceTabControllersOptions = {
   onCloseWorkflow?: () => void
   openDocument: (path: string) => Promise<void>
   /** Asks the person what to do with a tab's unsaved edits before it closes (`useUnsavedCloseQuestion`). */
-  askUnsavedClose: (title: string) => Promise<UnsavedCloseChoice>
+  askUnsavedClose: (scope: UnsavedCloseScope) => Promise<UnsavedCloseChoice>
 }
 
 /**
@@ -48,7 +48,7 @@ export function useWorkspaceTabControllers({
     if (!closing) return
     // A kit document's unsaved edits live only in its editor: closing the tab would lose them.
     if (closing.type === 'file-viewer' && openWithUnsavedEdits(closing.path)) {
-      const choice = await askUnsavedClose(closing.title)
+      const choice = await askUnsavedClose({ kind: 'tab', names: [closing.title] })
       if (choice === 'cancel') return
       // A save that fails (the file changed on disk, a refused write) keeps the tab; the kit says why.
       if (choice === 'save' && (await saveOpenEditor(closing.path).catch(() => false)) !== true) return

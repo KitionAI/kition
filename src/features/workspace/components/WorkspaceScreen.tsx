@@ -42,6 +42,7 @@ import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceA
 import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/useWorkspaceAgentChatEntryPoints'
 import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorkspaceTabControllers'
 import { useUnsavedCloseQuestion } from '@/features/workspace/components/UnsavedCloseDialog'
+import { useUnsavedLeaveGuard } from '@/features/workspace/hooks/useUnsavedLeaveGuard'
 import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialogs'
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
@@ -251,6 +252,7 @@ export function WorkspaceScreen({
     onCloseWorkflow,
   })
   const unsavedClose = useUnsavedCloseQuestion()
+  useUnsavedLeaveGuard(unsavedClose.ask)
   const { handleCloseWorkspaceTabById, openFileViewerTab } = useWorkspaceTabControllers({
     workspaceTabs,
     activeWorkspaceTab,

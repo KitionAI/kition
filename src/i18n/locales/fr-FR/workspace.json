@@ -102,6 +102,8 @@
     "workflowsTitle": "Workflows",
     "unsavedTitle": "« {{name}} » contient des modifications non enregistrées",
     "unsavedMessage": "Les enregistrer avant de fermer l’onglet ? Les modifications non enregistrées seront perdues.",
+    "unsavedTitleMany": "Modifications non enregistrées dans {{count}} documents",
+    "unsavedWindowMessage": "Les enregistrer d’abord ? Les modifications non enregistrées seront perdues.",
     "unsavedSave": "Enregistrer",
     "unsavedDiscard": "Ne pas enregistrer",
     "unsavedCancel": "Annuler"

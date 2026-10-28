@@ -102,6 +102,8 @@
     "workflowsTitle": "Fluxos de trabalho",
     "unsavedTitle": "“{{name}}” tem alterações não salvas",
     "unsavedMessage": "Salvá-las antes de fechar a aba? As alterações não salvas serão perdidas.",
+    "unsavedTitleMany": "Alterações não salvas em {{count}} documentos",
+    "unsavedWindowMessage": "Salvá-las primeiro? As alterações não salvas serão perdidas.",
     "unsavedSave": "Salvar",
     "unsavedDiscard": "Não salvar",
     "unsavedCancel": "Cancelar"

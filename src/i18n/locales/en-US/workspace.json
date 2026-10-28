@@ -102,6 +102,8 @@
     "workflowsTitle": "Workflows",
     "unsavedTitle": "“{{name}}” has unsaved changes",
     "unsavedMessage": "Save them before the tab closes? Changes you don’t save are lost.",
+    "unsavedTitleMany": "Unsaved changes in {{count}} documents",
+    "unsavedWindowMessage": "Save them first? Changes you don’t save are lost.",
     "unsavedSave": "Save",
     "unsavedDiscard": "Don’t save",
     "unsavedCancel": "Cancel"

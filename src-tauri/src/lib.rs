@@ -54,6 +54,12 @@ fn on_second_instance(app: &AppHandle, argv: Vec<String>) {
 
 fn on_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
     match menu::action(&event) {
+        // Quit with no window open has no page to ask: it quits at once.
+        Some(menu::MenuAction::Renderer(menu::QUIT))
+            if app.get_webview_window(MAIN_WINDOW).is_none() =>
+        {
+            app.exit(0)
+        }
         Some(menu::MenuAction::Renderer(action)) => menu::emit_renderer_action(app, action),
         Some(menu::MenuAction::Window(action)) => {
             if let Err(error) = window::window_action(app, &action) {

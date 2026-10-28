@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { UnsavedCloseChoice } from '@/features/workspace/components/UnsavedCloseDialog'
+import type { UnsavedCloseChoice, UnsavedCloseScope } from '@/features/workspace/components/UnsavedCloseDialog'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { useWorkspaceTabControllers } from './useWorkspaceTabControllers'
 
@@ -29,7 +29,7 @@ function Surface({ tabs, closeWorkspaceTab, onCloseWorkflow, askUnsavedClose }: 
   tabs: WorkspaceTab[]
   closeWorkspaceTab: (tabId: string) => void
   onCloseWorkflow: () => void
-  askUnsavedClose: (title: string) => Promise<UnsavedCloseChoice>
+  askUnsavedClose: (scope: UnsavedCloseScope) => Promise<UnsavedCloseChoice>
 }) {
   api = useWorkspaceTabControllers({
     workspaceTabs: tabs,
@@ -95,7 +95,7 @@ describe('useWorkspaceTabControllers', () => {
     kits.unsaved.add(FILE.path)
     const { closeWorkspaceTab, askUnsavedClose } = await mount([FILE], 'cancel')
     await act(async () => api!.handleCloseWorkspaceTabById(FILE.id))
-    expect(askUnsavedClose).toHaveBeenCalledWith('Notes')
+    expect(askUnsavedClose).toHaveBeenCalledWith({ kind: 'tab', names: ['Notes'] })
     expect(kits.saves).toEqual([])
     expect(closeWorkspaceTab).not.toHaveBeenCalled()
   })
