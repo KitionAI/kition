@@ -41,6 +41,7 @@ import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspace
 import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
 import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/useWorkspaceAgentChatEntryPoints'
 import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorkspaceTabControllers'
+import { useUnsavedCloseQuestion } from '@/features/workspace/components/UnsavedCloseDialog'
 import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialogs'
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
@@ -249,6 +250,7 @@ export function WorkspaceScreen({
     workflowOpen,
     onCloseWorkflow,
   })
+  const unsavedClose = useUnsavedCloseQuestion()
   const { handleCloseWorkspaceTabById, openFileViewerTab } = useWorkspaceTabControllers({
     workspaceTabs,
     activeWorkspaceTab,
@@ -259,6 +261,7 @@ export function WorkspaceScreen({
     workflowOpen,
     onCloseWorkflow,
     openDocument,
+    askUnsavedClose: unsavedClose.ask,
   })
 
   // The table file the workflow workbench is scoped to, when its tab names one.
@@ -476,6 +479,7 @@ export function WorkspaceScreen({
         onCloseProfile={onCloseProfile}
       />
       <WorkspaceAgentChrome portal={topbarActionsPortal} panel={agentPanel} sessions={agentSessions} />
+      {unsavedClose.dialog}
       <WorkspaceDialogs
         saving={saving}
         createFlows={createFlows}

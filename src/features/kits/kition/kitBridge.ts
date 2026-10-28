@@ -163,6 +163,15 @@ export function openWithUnsavedEdits(path: string) {
   return editors.get(normalize(path))?.dirty() ?? false
 }
 
+/**
+ * Saves the kit editor of `path`, as the person asked before closing its tab: whether it saved;
+ * `null` when no editor of it that saves is open here (a read-only one).
+ */
+export async function saveOpenEditor(path: string) {
+  const editor = editors.get(normalize(path))
+  return editor?.save ? editor.save() : null
+}
+
 /** Tells the agent a live document changed (A8 `kit.changed`), and who changed it. */
 export function reportBridgeChange(change: KitsBridgeChanged) {
   runtimeBridge.notify('kit.changed', { ...change, path: normalize(change.path) })

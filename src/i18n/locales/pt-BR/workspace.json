@@ -99,7 +99,12 @@
     "closeRight": "Fechar abas à direita",
     "closeReadOnly": "Fechar todas as abas somente leitura",
     "copyReference": "Copiar caminho/referência",
-    "workflowsTitle": "Fluxos de trabalho"
+    "workflowsTitle": "Fluxos de trabalho",
+    "unsavedTitle": "“{{name}}” tem alterações não salvas",
+    "unsavedMessage": "Salvá-las antes de fechar a aba? As alterações não salvas serão perdidas.",
+    "unsavedSave": "Salvar",
+    "unsavedDiscard": "Não salvar",
+    "unsavedCancel": "Cancelar"
   },
   "agentTabs": {
     "history": {

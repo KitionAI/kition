@@ -99,7 +99,12 @@
     "closeRight": "Close tabs to the right",
     "closeReadOnly": "Close all read-only tabs",
     "copyReference": "Copy path/reference",
-    "workflowsTitle": "Workflows"
+    "workflowsTitle": "Workflows",
+    "unsavedTitle": "“{{name}}” has unsaved changes",
+    "unsavedMessage": "Save them before the tab closes? Changes you don’t save are lost.",
+    "unsavedSave": "Save",
+    "unsavedDiscard": "Don’t save",
+    "unsavedCancel": "Cancel"
   },
   "agentTabs": {
     "history": {

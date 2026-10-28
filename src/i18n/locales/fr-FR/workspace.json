@@ -99,7 +99,12 @@
     "closeRight": "Fermer les onglets à droite",
     "closeReadOnly": "Fermer tous les onglets en lecture seule",
     "copyReference": "Copier le chemin/la référence",
-    "workflowsTitle": "Workflows"
+    "workflowsTitle": "Workflows",
+    "unsavedTitle": "« {{name}} » contient des modifications non enregistrées",
+    "unsavedMessage": "Les enregistrer avant de fermer l’onglet ? Les modifications non enregistrées seront perdues.",
+    "unsavedSave": "Enregistrer",
+    "unsavedDiscard": "Ne pas enregistrer",
+    "unsavedCancel": "Annuler"
   },
   "agentTabs": {
     "history": {

@@ -99,7 +99,12 @@
     "closeRight": "Cerrar pestañas a la derecha",
     "closeReadOnly": "Cerrar todas las pestañas de solo lectura",
     "copyReference": "Copiar ruta/referencia",
-    "workflowsTitle": "Flujos de trabajo"
+    "workflowsTitle": "Flujos de trabajo",
+    "unsavedTitle": "“{{name}}” tiene cambios sin guardar",
+    "unsavedMessage": "¿Guardarlos antes de cerrar la pestaña? Los cambios que no guardes se perderán.",
+    "unsavedSave": "Guardar",
+    "unsavedDiscard": "No guardar",
+    "unsavedCancel": "Cancelar"
   },
   "agentTabs": {
     "history": {

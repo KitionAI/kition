@@ -99,7 +99,12 @@
     "closeRight": "关闭右侧标签页",
     "closeReadOnly": "关闭所有只读标签页",
     "copyReference": "复制路径/引用",
-    "workflowsTitle": "工作流"
+    "workflowsTitle": "工作流",
+    "unsavedTitle": "“{{name}}”有未保存的更改",
+    "unsavedMessage": "关闭标签页前要保存吗？未保存的更改将会丢失。",
+    "unsavedSave": "保存",
+    "unsavedDiscard": "不保存",
+    "unsavedCancel": "取消"
   },
   "agentTabs": {
     "history": {
