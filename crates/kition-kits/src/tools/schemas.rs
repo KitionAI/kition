@@ -199,6 +199,27 @@ pub fn output_schema(action: Action) -> Value {
     }
 }
 
+/// The MCP `outputSchema` of the kit tool `name` (`<prefix>_<action>` or a unified
+/// `kit_<action>`): what a call answers as structured content, self-contained with its `$defs`.
+/// It accepts the success result and, beside it, a failure's (`error`, with what was done), as
+/// KHP A18 asks; `None` for a name that is no kit tool.
+pub fn tool_output_schema(name: &str) -> Option<Value> {
+    let action = Action::ALL.into_iter().find(|action| {
+        name.strip_suffix(action.suffix())
+            .is_some_and(|rest| rest.ends_with('_'))
+    })?;
+    let failed = json!({ "type": "object", "properties": { "error": { "$ref": "#/$defs/error" } }, "required": ["error"] });
+    Some(json!({
+        "type": "object",
+        "anyOf": [output_schema(action), failed],
+        "$defs": {
+            "error": error_schema(),
+            "document": document_schema(),
+            "diagnostic": diagnostic_schema(),
+        }
+    }))
+}
+
 /// Every kit tool's arguments and results, by tool name with `<prefix>` for the kit's prefix.
 pub fn tool_schemas() -> Value {
     let specs = specs_described(&GENERIC, None);
@@ -271,5 +292,32 @@ mod tests {
             assert_eq!(tool["input"]["properties"]["path"]["type"], "string");
             assert_eq!(tool["output"]["type"], "object");
         }
+    }
+
+    #[test]
+    fn every_tool_lists_an_output_schema_that_takes_its_result_or_a_failure() {
+        for action in Action::ALL {
+            for name in [
+                format!("vector_{}", action.suffix()),
+                format!("kit_{}", action.suffix()),
+            ] {
+                let schema = tool_output_schema(&name)
+                    .unwrap_or_else(|| panic!("{name} has no output schema"));
+                assert_eq!(schema["type"], "object", "MCP output schemas are objects");
+                let validator = jsonschema::validator_for(&schema)
+                    .unwrap_or_else(|err| panic!("{name}: {err}"));
+                let failed = json!({ "error": { "code": "unsupported", "message": "no" } });
+                assert!(validator.is_valid(&failed), "{name} takes a failure");
+            }
+        }
+        let check = tool_output_schema("vector_check").unwrap_or_default();
+        let validator = jsonschema::validator_for(&check).unwrap_or_else(|err| panic!("{err}"));
+        assert!(validator.is_valid(&json!({ "diagnostics": [] })));
+        assert!(
+            !validator.is_valid(&json!({})),
+            "a check answers diagnostics or an error"
+        );
+        assert!(tool_output_schema("vector_merge").is_none());
+        assert!(tool_output_schema("inspect").is_none());
     }
 }

@@ -64,6 +64,14 @@ pnpm --dir "$scratch/kition-sdk" install --frozen-lockfile
 CARGO_TARGET_DIR="$kit_repo/target" KIT_REPO="$kit_dir" "$repo_root/scripts/build-kit-ui.sh" "$kit"
 
 version="$(node -p "require('$kit_dir/kit.json').version")"
+# A package claims only the tier its files back (KHP K17, K19): Agent-ready ships agent/checks.json,
+# Agent-ready complete also agent/guide.md.
+package="$repo_root/public/kits/$kit-ui"
+level="$(node -p "require('$package/kit.json').level ?? 'basic'")"
+if [[ "$level" == agent-ready* && ! -f "$package/agent/checks.json" ]] || [[ "$level" == agent-ready-complete && ! -f "$package/agent/guide.md" ]]; then
+  echo "$kit claims level $level without the agent files it needs (agent/checks.json, and agent/guide.md at agent-ready-complete); add them to the kit or lower its level" >&2
+  exit 1
+fi
 tag="package-v$version"
 asset="kition-$kit-$version.tgz"
 # Without build-kit-ui.sh's local-build stamp: the package's own files only.

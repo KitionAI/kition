@@ -39,13 +39,18 @@ fn tool_list(kits: &KitManager) -> Value {
     let tools: Vec<Value> = tools::installed(kits)
         .into_iter()
         .map(|spec| {
-            json!({
+            let mut tool = json!({
                 "name": spec.name,
                 "title": tools::label(&spec.name),
                 "description": spec.description,
                 "inputSchema": spec.input_schema,
                 "annotations": { "readOnlyHint": !spec.writes, "destructiveHint": false, "openWorldHint": false },
-            })
+            });
+            // What the tool answers as structured content (KHP A1, A18).
+            if let Some(output) = tools::schemas::tool_output_schema(&spec.name) {
+                tool["outputSchema"] = output;
+            }
+            tool
         })
         .collect();
     json!({ "tools": tools })

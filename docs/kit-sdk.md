@@ -122,7 +122,8 @@ kit repository (for example KitionAI/kition-photo, standalone, private)
 Kition (this repository)
   kits/sdks.json                  every kit engine: crate, module, class, and its contract-check edit
   public/kits/<kit>-ui/           the kit package: editor, engine/, fonts/, kit-ui.json,
-                                  model/schema.json (the KDM schema, when kit.json names one)
+                                  model/schema.json (the KDM schema, when kit.json names one),
+                                  agent/checks.json and agent/guide.md (KHP K17, when the kit has them)
                                   (not committed; scripts/build-kit-ui.sh <kit>, make kit-uis)
   src/features/kits/kition/       KitFrame (the kit's editor in an iframe), the workspace
                                   host, and the Kit AI bridge
@@ -287,7 +288,11 @@ items with `primary`.
   `model/schema.json`: the schema its engine was built with. `@kition/embed`
   reads it for draft review and the agent's object-model calls, and
   `@kition/sdk`'s `openKitPackage` opens documents with it, before the
-  schemas bundled in `@kition/sdk/kits`. kition-sdk's
+  schemas bundled in `@kition/sdk/kits`. The kit's `agent/checks.json` (its
+  check catalogue) and `agent/guide.md` (its guide for models) travel the
+  same way (KHP K17). A local build warns when the kit's `level` claims
+  Agent-ready without them, and `scripts/publish-kit.sh` refuses to publish
+  it. kition-sdk's
   `packages/sdk/scripts/sync-kits.mjs` regenerates those bundled kits from
   the packages pinned in `kits/kits.lock.json`, and `--check` reports drift.
 - Release builds use the published packages pinned in `kits/kits.lock.json`

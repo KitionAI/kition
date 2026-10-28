@@ -50,6 +50,19 @@ if [[ -n "$schema" ]]; then
   mkdir -p "$out/model"
   cp "$kit_repo/$schema" "$out/model/schema.json"
 fi
+# The kit's agent files (KHP K17) travel with the package beside kit.json: its check catalogue,
+# agent/checks.json, required for a kit that claims Agent-ready, and its guide for models,
+# agent/guide.md, required at Agent-ready complete. Hosts serve them as khp://kits/<id>/agent/*.
+# A local build only warns of a missing one; publish-kit.sh refuses the package.
+level="$(node -p "require('$kit_repo/kit.json').level ?? 'basic'")"
+for file in checks.json guide.md; do
+  if [[ -f "$kit_repo/agent/$file" ]]; then
+    mkdir -p "$out/agent"
+    cp "$kit_repo/agent/$file" "$out/agent/$file"
+  elif [[ "$file" == checks.json && "$level" == agent-ready* ]] || [[ "$file" == guide.md && "$level" == agent-ready-complete ]]; then
+    echo "warning: $kit_repo/kit.json claims level $level, which needs agent/$file (KHP K17)" >&2
+  fi
+done
 # An initial local prototype may not have a commit yet. Publishing still builds a pushed commit.
 commit="$(git -C "$kit_repo" rev-parse --verify HEAD 2>/dev/null || echo uncommitted)"
 # The package's identity, and its brand color for scripts/check-kit-brands.mjs.

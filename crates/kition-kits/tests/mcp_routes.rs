@@ -101,6 +101,27 @@ fn vector_binary() -> Option<PathBuf> {
     sibling.is_file().then_some(sibling)
 }
 
+/// Whether a call's structured content is what the tool's `outputSchema` in `tools/list` says
+/// (KHP A1, A18), a failure's included.
+fn conforms(listed: &Value, name: &str, result: &Value) {
+    let schema = listed["result"]["tools"]
+        .as_array()
+        .and_then(|tools| tools.iter().find(|tool| tool["name"] == name))
+        .map(|tool| tool["outputSchema"].clone())
+        .unwrap_or_default();
+    assert_eq!(schema["type"], "object", "{name} lists an output schema");
+    let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
+    let content = &result["structuredContent"];
+    let errors: Vec<String> = validator
+        .iter_errors(content)
+        .map(|error| error.to_string())
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "{name}'s result does not match its output schema: {errors:?}\n{content}"
+    );
+}
+
 #[tokio::test]
 async fn calls_a_real_kit_and_returns_its_preview() {
     let (Some(binary), Some(kit)) = (
@@ -166,6 +187,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
     let (_, inspected) = post(&app, json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "art/Drawing.kvector" } } })).await;
     let result = &inspected["result"];
     assert_eq!(result["isError"], false, "{result}");
+    conforms(&listed, "vector_inspect", result);
     assert_eq!(result["structuredContent"]["path"], "art/Drawing.kvector");
     let image = result["content"]
         .as_array()
@@ -176,6 +198,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
 
     let (_, refused) = post(&app, json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "../outside.kvector" } } })).await;
     assert_eq!(refused["result"]["isError"], true);
+    conforms(&listed, "vector_inspect", &refused["result"]);
     assert!(
         refused["result"]["structuredContent"]["error"]["code"].is_string(),
         "{refused}"
@@ -184,6 +207,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
     // The object model of the real kit: read, or a clear `unsupported` when its build serves none.
     let (_, queried) = post(&app, json!({ "jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": { "name": "vector_query", "arguments": { "path": "art/Drawing.kvector", "describe": true } } })).await;
     let result = &queried["result"];
+    conforms(&listed, "vector_query", result);
     if result["isError"] == true {
         assert_eq!(
             result["structuredContent"]["error"]["code"], "unsupported",
@@ -199,6 +223,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
     // Diagnostics of the real kit, or a clear `unsupported` when its build predates `document.check`.
     let (_, checked) = post(&app, json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": { "name": "vector_check", "arguments": { "path": "art/Drawing.kvector" } } })).await;
     let result = &checked["result"];
+    conforms(&listed, "vector_check", result);
     if result["isError"] == true {
         assert_eq!(
             result["structuredContent"]["error"]["code"], "unsupported",
