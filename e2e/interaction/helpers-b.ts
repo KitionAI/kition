@@ -274,8 +274,10 @@ export function hostMatrix(c: KitCase) {
         await c.edit(page, kit)
         await c.shows(page, kit, c.counts.edited, c.file)
         await page.keyboard.press(`${await commandKey(kit)}+w`).catch(() => undefined)
-        // The kit may keep Cmd+W; the tab's close button asks the same question.
-        if (!(await page.getByTestId('unsaved-close').isVisible())) await page.locator('.document-tab.is-active .document-tab-close').click()
+        // The kit may keep Cmd+W; the tab's close button asks the same question. The question may
+        // take a moment to open, and its overlay then covers the close button.
+        const asked = await page.getByTestId('unsaved-close').waitFor({ timeout: 3_000 }).then(() => true, () => false)
+        if (!asked) await page.locator('.document-tab.is-active .document-tab-close').click()
         await page.getByTestId('unsaved-close-discard').click()
         await expect(page.locator(ACTIVE_FRAME)).toHaveCount(0)
         expect(saves.filter((save) => save.path === c.file)).toEqual([])
