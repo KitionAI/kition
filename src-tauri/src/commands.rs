@@ -259,7 +259,7 @@ pub async fn save_pdf_file(
     Ok(path.to_string_lossy().into_owned())
 }
 
-/// Prints the PDF in the request's raw body with the system's print panel
+/// Prints the PDF in the request's raw body with the system's print dialog
 /// (KitFiles `files/print`); the `kition-print-title` header names the job,
 /// percent-encoded. Answers whether the person printed.
 #[tauri::command]

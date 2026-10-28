@@ -66,13 +66,9 @@ export function createTauriBridge(
     SaveBinaryFile: request('save_binary_file'),
     SavePdfFile: request('save_pdf_file'),
     CopyImage: request('copy_image'),
-    // Only macOS's shell prints a PDF (PDFKit); elsewhere the bridge has no printing.
-    ...(globals.platform === 'darwin'
-      ? {
-          PrintPdf: (bytes: Uint8Array, title: string) =>
-            call('print_pdf', bytes, { headers: { 'kition-print-title': encodeURIComponent(title) } }).then((printed) => printed === true, (error: unknown) => { throw asError(error) }),
-        }
-      : {}),
+    // The PDF as the raw body; its title in a header.
+    PrintPdf: (bytes: Uint8Array, title: string) =>
+      call('print_pdf', bytes, { headers: { 'kition-print-title': encodeURIComponent(title) } }).then((printed) => printed === true, (error: unknown) => { throw asError(error) }),
     SubmitFeedback: request('submit_feedback'),
     ListWorkspaceDocuments: () => command('list_workspace_documents'),
     ReadWorkspaceImage: request('read_workspace_image'),

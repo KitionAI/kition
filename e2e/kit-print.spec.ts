@@ -4,9 +4,10 @@ import { openNote } from './helpers/noteKit'
 
 /**
  * Kition prints a PDF a kit hands over (KitFiles `files/print`, capability `print`): the Note
- * kit's manifest may print. On macOS the desktop shell prints it with the system's print panel
- * (`print_pdf`, PDFKit), which the desktop host records here; the panel itself is checked by hand
- * in the desktop app. Elsewhere Kition offers no printing yet.
+ * kit's manifest may print. On every platform the desktop shell prints it with the system's print
+ * dialog (`print_pdf`: PDFKit on macOS, GTK on Linux, Windows.Data.Pdf and `PrintDlgEx` on
+ * Windows), which the desktop host records here; the dialogs themselves are checked by hand in the
+ * desktop app. A kit whose manifest does not ask to print is offered no printing.
  */
 test.setTimeout(180_000)
 
@@ -31,39 +32,43 @@ async function keepCapabilities(page: Page) {
   })
 }
 
-test('on macOS a kit’s PDF prints with the system’s print panel, which answers whether the person printed', async ({ page, baseURL }) => {
-  await keepKitChannels(page)
-  const { kit, host } = await openNote(page, baseURL!, 'Plan.md', '# Plan\n\nGoals.\n', {}, { desktop: { platform: 'darwin' } })
-
-  await gesture(kit)
-  const printed = await fromKit(page, 'files/print', { mime: 'application/pdf', title: 'Plan' }, PDF)
-  expect(printed.error).toBeUndefined()
-  expect(printed.result).toEqual({ printed: true })
-  expect(host.prints).toHaveLength(1)
-  expect(host.prints[0].title).toBe('Plan')
-  expect(host.prints[0].bytes.toString('utf8')).toBe(PDF)
-
-  // The person cancels the panel: nothing printed, and the kit learns no more than that (FA11).
-  host.printAnswer = false
-  await gesture(kit)
-  expect((await fromKit(page, 'files/print', { mime: 'application/pdf', title: 'Plan' }, PDF)).result).toEqual({ printed: false })
-
-  // Only a PDF prints.
-  await gesture(kit)
-  expect((await fromKit(page, 'files/print', { mime: 'text/html', title: 'Plan' }, '<p>x</p>')).error?.code).toBe(-32602)
-  expect(host.prints).toHaveLength(2)
-})
-
-for (const platform of ['win32', 'linux'] as const) {
-  test(`on ${platform} Kition offers no printing: the kit is told the host does not print`, async ({ page, baseURL }) => {
+for (const platform of ['darwin', 'win32', 'linux'] as const) {
+  test(`on ${platform} a kit’s PDF prints with the system’s print dialog, which answers whether the person printed`, async ({ page, baseURL }) => {
     await keepKitChannels(page)
-    await keepCapabilities(page)
     const { kit, host } = await openNote(page, baseURL!, 'Plan.md', '# Plan\n\nGoals.\n', {}, { desktop: { platform } })
 
-    expect(await offered(page)).toContain('files')
-    expect(await offered(page)).not.toContain('print')
     await gesture(kit)
-    expect((await fromKit(page, 'files/print', { mime: 'application/pdf', title: 'Plan' }, PDF)).error?.data?.reason).toBe('unsupported')
-    expect(host.prints).toHaveLength(0)
+    const printed = await fromKit(page, 'files/print', { mime: 'application/pdf', title: 'Plan' }, PDF)
+    expect(printed.error).toBeUndefined()
+    expect(printed.result).toEqual({ printed: true })
+    expect(host.prints).toHaveLength(1)
+    expect(host.prints[0].title).toBe('Plan')
+    expect(host.prints[0].bytes.toString('utf8')).toBe(PDF)
+
+    // The person cancels the dialog: nothing printed, and the kit learns no more than that (FA11).
+    host.printAnswer = false
+    await gesture(kit)
+    expect((await fromKit(page, 'files/print', { mime: 'application/pdf', title: 'Plan' }, PDF)).result).toEqual({ printed: false })
+
+    // Only a PDF prints.
+    await gesture(kit)
+    expect((await fromKit(page, 'files/print', { mime: 'text/html', title: 'Plan' }, '<p>x</p>')).error?.code).toBe(-32602)
+    expect(host.prints).toHaveLength(2)
   })
 }
+
+test('a kit whose manifest does not ask to print is offered no printing', async ({ page, baseURL }) => {
+  await keepKitChannels(page)
+  await keepCapabilities(page)
+  await page.route('**/kits/note-ui/kit.json', async (route) => {
+    const manifest = await (await route.fetch()).json()
+    await route.fulfill({ json: { ...manifest, files: { ...manifest.files, print: false } } })
+  })
+  const { kit, host } = await openNote(page, baseURL!, 'Plan.md', '# Plan\n\nGoals.\n')
+
+  expect(await offered(page)).toContain('files')
+  expect(await offered(page)).not.toContain('print')
+  await gesture(kit)
+  expect((await fromKit(page, 'files/print', { mime: 'application/pdf', title: 'Plan' }, PDF)).error?.data?.reason).toBe('unsupported')
+  expect(host.prints).toHaveLength(0)
+})

@@ -13,8 +13,12 @@ use tokio::sync::oneshot;
 
 use crate::request::Request;
 
+#[cfg(target_os = "linux")]
+mod dialog_linux;
 #[cfg(target_os = "macos")]
 mod dialog_macos;
+#[cfg(windows)]
+mod dialog_windows;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]
@@ -268,10 +272,11 @@ async fn render_job<R: Runtime>(
 type Done = oneshot::Sender<Result<(), String>>;
 
 /// Prints the PDF `bytes` a kit hands over (KitFiles `files/print`) with the
-/// system's print panel on `window`; answers whether the person printed. Only
-/// macOS prints for now (PDFKit): Windows needs WebView2's print dialog on a
-/// loaded PDF, and Linux's web view cannot show one, so the renderer offers
-/// kits no printing there.
+/// system's print dialog over `window`; answers whether the person printed.
+/// Each platform prints the PDF its own way: macOS with PDFKit, Linux by
+/// sending the file through GTK's print dialog, Windows by rendering its pages
+/// with Windows.Data.Pdf into the printer `PrintDlgEx` chose. The dialog stays
+/// open as long as the person wants it: no timeout.
 #[cfg(target_os = "macos")]
 pub async fn print_with_dialog<R: Runtime>(
     window: &tauri::WebviewWindow<R>,
@@ -282,18 +287,61 @@ pub async fn print_with_dialog<R: Runtime>(
     window
         .with_webview(move |webview| dialog_macos::print(&webview, &bytes, &title, done_sender))
         .map_err(|error| error.to_string())?;
-    // The panel stays open as long as the person wants it: no timeout.
     done.await
         .map_err(|_| "printing was cancelled".to_owned())?
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 pub async fn print_with_dialog<R: Runtime>(
-    _window: &tauri::WebviewWindow<R>,
-    _bytes: Vec<u8>,
-    _title: String,
+    window: &tauri::WebviewWindow<R>,
+    bytes: Vec<u8>,
+    title: String,
 ) -> Result<bool, String> {
-    Err("printing a PDF is not supported on this platform".into())
+    use gtk::prelude::*;
+
+    let (done_sender, done) = oneshot::channel();
+    window
+        .with_webview(move |webview| {
+            let parent = webview
+                .inner()
+                .toplevel()
+                .and_then(|widget| widget.downcast::<gtk::Window>().ok());
+            dialog_linux::print(parent, &bytes, &title, done_sender);
+        })
+        .map_err(|error| error.to_string())?;
+    done.await
+        .map_err(|_| "printing was cancelled".to_owned())?
+}
+
+#[cfg(windows)]
+pub async fn print_with_dialog<R: Runtime>(
+    window: &tauri::WebviewWindow<R>,
+    bytes: Vec<u8>,
+    title: String,
+) -> Result<bool, String> {
+    let bytes = std::sync::Arc::new(bytes);
+    let counted = bytes.clone();
+    let pages = tokio::task::spawn_blocking(move || dialog_windows::page_count(&counted))
+        .await
+        .map_err(|error| error.to_string())??;
+    let owner = window.hwnd().map_err(|error| error.to_string())?.0 as isize;
+    let (chosen_sender, chosen) = oneshot::channel();
+    window
+        .app_handle()
+        .run_on_main_thread(move || {
+            let _ = chosen_sender.send(dialog_windows::ask(owner, pages));
+        })
+        .map_err(|error| error.to_string())?;
+    let Some(choice) = chosen
+        .await
+        .map_err(|_| "printing was cancelled".to_owned())??
+    else {
+        return Ok(false);
+    };
+    tokio::task::spawn_blocking(move || dialog_windows::print(choice, &bytes, &title))
+        .await
+        .map_err(|error| error.to_string())??;
+    Ok(true)
 }
 
 #[cfg(target_os = "macos")]

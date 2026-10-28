@@ -65,7 +65,7 @@ objc2-web-kit = { version = "0.3", features = ["WKWebView", "objc2-app-kit"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 webview2-com = "0.39"
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com"] }
+windows = { version = "0.62", features = ["Data_Pdf", "Foundation", "Security_Cryptography", "Storage_Streams", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Storage_Xps", "Win32_System_Com", "Win32_System_Memory", "Win32_UI_Controls_Dialogs"] }
 windows-core = "0.62"
 
 [target.'cfg(target_os = "linux")'.dependencies]
