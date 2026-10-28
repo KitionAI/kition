@@ -1,0 +1,25 @@
+format: 1
+id: kition.kit-collab.fig/live-and-offline
+feature: kition.kit-collab.fig
+intent: >-
+  Two windows co-edit one shared .kfig through Kition Server: each one's rectangle reaches the other
+  replica within a second, and rectangles drawn while one window is offline merge on reconnect into
+  the same replica with every layer in both.
+layer: golden
+direction: collab
+source:
+  kind: synthetic
+  from: e2e/collab-fig.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/collab-fig.spec.ts, -g, co-edits]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser]
+requires: [chromium, kition-pro]
+timeout_s: 60
+since: "2026-10-28"

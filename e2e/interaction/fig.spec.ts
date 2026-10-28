@@ -9,7 +9,7 @@
  * Host matrix rows not covered here:
  * - H9 (worker crash): the kit's engine Worker lives inside the kit's frame, out of the test's reach.
  * - H10-H12 (history, print, agent) are covered by note-history, kit-print and headless-draft specs.
- * - H13 (co-editing): Kition has no collab-fig spec yet; noted in the suite's report.
+ * - H13 (co-editing): covered by e2e/collab-fig.spec.ts.
  * - H14 (theme and language): kit-editor follows Kition's theme through kitionTheme; not kit-specific.
  */
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'

@@ -4,6 +4,7 @@ import { BotIcon as Bot, CheckIcon as Check, FileDiffIcon as FileDiff, LoaderCir
 import { Button, Sheet } from '@kition/tessera-ui'
 import { notify } from '@/lib/notify'
 import type { DraftComparison, DraftInfo, DraftOrigin, DraftSummary, KitConnection } from '../host/mountKit'
+import { kitSchema } from './kitBridgeModel'
 import { useKitDraft } from './kitDrafts'
 
 /** How many objects of each list the review shows before "and N more". */
@@ -196,12 +197,6 @@ function KitDraftReviewSheet({
 
 /** How a merged draft is recorded: the agent's edit, on behalf of the person in this window (A11). */
 const DRAFT_MERGE_ORIGIN: DraftOrigin = { kind: 'agent', principal: 'user:local', label: "Merged the agent's draft" }
-
-/** The kit's KDM schema, which a kit whose engine does not describe its own needs to merge a draft. */
-async function kitSchema(kitId: string) {
-  const [{ kitDescriptor }] = await Promise.all([import('@/lib/sdk/kits'), import('@/lib/sdk/kits/index')])
-  return kitDescriptor(kitId)?.schema
-}
 
 /**
  * The agent's draft of the kit document open in `connection`: the banner above the kit, and the

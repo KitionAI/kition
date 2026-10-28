@@ -413,10 +413,14 @@ items with `primary`.
   theme tokens, and a channel to the extension's worker; Kition's
   `frame-src` keeps it on its page. `src/lib/sdk/kits/` registers the schema
   of every kit with an object model (Doc, Slide, Sheet, Photo, Vector,
-  Effect, CAD, PDF), generated in kition-sdk from each kit's
+  Effect, CAD, PDF, Table, Film, Board, Note, Cube, Fig), generated in kition-sdk from each kit's
   `model/schema.json` at its pinned commit. `e2e/extensions.spec.ts`
   installs the example extension, runs its command and its panel, and runs
-  scripts on Slide, Doc, and Sheet documents.
+  scripts on Slide, Doc, Sheet, and Fig documents. Kition sends the
+  registered schema with the agent's object-model calls to an open editor
+  (`kitBridgeModel.ts`) and with draft review, since kit-editor answers the
+  object model of an engine that does not describe its own schema only with
+  one.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
   folder of linked media. It is also the reference for other hosts.
@@ -516,12 +520,23 @@ interface design and prototyping kit: `.kfig` files open in its own editor in
 worker. The engine also imports `.fig` and `.sketch` files; Kition opens only
 `.kfig` in the kit. The create menu's Fig item makes `Untitled fig.kfig`
 (one 1440 x 1024 frame) with the engine in the page, and the agent's `fig_*`
-tools run on the headless `kit-fig` (`view.describe`, `document.check`).
-`e2e/fig-embedded.spec.ts` (in `make kit-e2e`) covers opening, editing,
-saving, and creating a design through Kition. Build it locally with
-`scripts/build-kit-ui.sh fig`; the SDK registry marks Fig optional until its
-first package is published and pinned. It uses engine contract 1; no KDM
-collaboration or agent drafts are claimed.
+tools run on the headless `kit-fig` (`view.describe`, `document.check`, and
+the object model's `model.*`). Fig is on engine contract 2: a design is a
+KDM replica of schema `kit.fig` v1 (kition-fig `docs/kdm.md`), carried inside
+the `.kfig` file under `kdm/`, so people co-edit a shared design and the
+editor lists the `replica` capability (its replica also goes to Kition's
+store, below). Its object model (namespace `Fig`, registered in
+`src/lib/sdk/kits/fig.ts`) serves `fig_query` and `fig_batch`, in the open
+editor through the Kit AI bridge and headless; workspace scripts use it too.
+Fig claims no agent drafts. Through the headless kit a batch's model
+operations reach the engine as a collaborator's changes (kition-sdk
+`session::model::Exchange`), so the agent's undo takes back its commands but
+not those. `e2e/fig-embedded.spec.ts` (in `make kit-e2e`) covers opening,
+editing, saving, and creating a design through Kition, and
+`e2e/collab-fig.spec.ts` (in `pnpm test:collab:e2e`) co-editing, the
+agent's object model in the open editor, and undo by scope. Build it locally
+with `scripts/build-kit-ui.sh fig`; the SDK registry marks Fig optional until
+its first package is published and pinned.
 
 ### The Note kit
 
@@ -1010,6 +1025,7 @@ or the adapter's `large()` fixture. Run it from the kit repository with
 | Slide | 354, 167 KB | 6.0 ms | 2.5 s (an import re-reads only the slides it touched) | 4.8 / 6.0 ms (one slide shown, as in the editor) | 4.1 MB |
 | Sheet | 369, 141 KB | 2.4 ms | 3.5 s | 5.7 / 6.0 ms | 1.5 MB |
 | Vector | 153, 67 KB | 2.5 ms | 4.1 s | 22.2 / 35.3 ms | 1.5 MB |
+| Fig | 285, 160 KB | 9.2 ms | 2.4 s | 4.4 / 6.0 ms (a 1440 × 900 view) | 3.4 MB |
 
 Doc is over the remote-change budget only while other builds load the
 machine. A kit over

@@ -10,11 +10,12 @@ import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
-import { mountKit, type KitConnection, type KitHostHandlers, type KitOpenParams, type KitOpenResult, type ModelBatchParams } from '../host/mountKit'
+import { mountKit, type KitConnection, type KitHostHandlers, type KitOpenParams, type KitOpenResult } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
-import { registerBridgeEditor, reportBridgeChange, type BridgeEditor } from './kitBridge'
+import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
+import { bridgeModel } from './kitBridgeModel'
 import { setKitDraft } from './kitDrafts'
 import { kitionActions } from './kitActions'
 import { kitionGenerate } from './kitGenerate'
@@ -129,23 +130,6 @@ async function writeForKit(path: string, readOnly: boolean, { path: wanted, byte
   // Kition's own table pickers (workflows) read the saved tables.
   if (isTableFilePath(target)) notifyTableFilesChanged(target)
   return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
-}
-
-/**
- * The kit's object model for the agent's query and batch tools (Kit UI protocol section 7a), when
- * it lists `model`. Only a kit that also lists `draft-model` runs them on the agent's draft.
- */
-function bridgeModel(connection: KitConnection): BridgeEditor['model'] {
-  if (!connection.capabilities.includes('model')) return undefined
-  return {
-    // A draft has the document's schema.
-    describe: () => connection.model.describe(),
-    batch: async (request, options) => {
-      const params: ModelBatchParams = options?.draft ? { ...request, draft: true } : request
-      return (await connection.model.batch(params)) as Record<string, unknown>
-    },
-    onDraft: connection.capabilities.includes('draft') && connection.capabilities.includes('draft-model'),
-  }
 }
 
 /** Who comments in the kit and how (Kit UI protocol `document.comments`), as the kit opens. */
@@ -404,7 +388,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           preview: async (maxSize, options) => (await mounted!.ai.preview(maxSize, options)).png,
           // The agent's drafts (Kit UI protocol section 7d): it may ask for review or take one back.
           draft: mounted.capabilities.includes('draft') ? { ready: () => mounted!.draft.ready(), reopen: () => mounted!.draft.reopen() } : undefined,
-          model: bridgeModel(mounted),
+          model: bridgeModel(mounted, kit.kitId),
           save: openedReadOnly ? undefined : async () => (await mounted!.save()).saved,
           // Diagnostics (Kit Standard 2.0 A21): only from a kit that lists `check`, so an older one is refused, not "fine".
           check: mounted.capabilities.includes('check') ? (options) => mounted!.check(options) : undefined,

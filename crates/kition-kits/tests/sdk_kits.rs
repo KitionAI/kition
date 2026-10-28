@@ -507,3 +507,172 @@ async fn the_agent_checks_previews_and_exports_a_fig_design() {
     );
     kits.shutdown().await;
 }
+
+/// The names of a Fig design's layers, in tree order, as `fig_query` reads them from the object
+/// model, with their object ids.
+async fn fig_layers(kits: &KitManager, path: &str) -> Vec<(String, String)> {
+    let read = kition_kits::tools::call(
+        kits,
+        "fig_query",
+        &json!({ "path": path, "follow": "nodes", "fields": ["name"] }),
+    )
+    .await
+    .unwrap_or_else(|| panic!("fig_query is a kit tool"))
+    .unwrap_or_else(|err| panic!("fig_query: {}", err.message));
+    read.output["objects"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|object| {
+            (
+                object["id"].as_str().unwrap_or_default().to_owned(),
+                object["fields"]["name"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned(),
+            )
+        })
+        .collect()
+}
+
+/// Fig on engine contract 2 serves its object model (schema `kit.fig`, namespace `Fig`) to the
+/// agent through its headless executable: `fig_query` describes the schema and reads the layer
+/// tree, `fig_batch` renames a layer and runs a command in one call and saves it (a failing op keeps
+/// nothing of its batch), the agent's undo and redo take the command back and forward, and the
+/// saved file carries its replica,
+/// so the layers keep their object ids when the design is opened again.
+/// Cases: kition.agent.kit-object-model/fig-headless.
+#[tokio::test]
+async fn the_agent_reads_and_edits_a_fig_design_through_its_object_model() {
+    let Some(kit) = KITS.iter().find(|kit| kit.id == "kit.fig") else {
+        panic!("kit.fig is a kit")
+    };
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/Screen.kfig");
+    let executable = match binary(kit, &fixture) {
+        Executable::Found(executable) => executable,
+        Executable::Missing | Executable::Stale(_) => {
+            eprintln!(
+                "skipped kit.fig: build kit-fig (cargo build -p kit-fig in kition-fig) or set {}",
+                kit.binary_env
+            );
+            return;
+        }
+    };
+    let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::create_dir_all(dir.path().join("work")).unwrap_or_else(|err| panic!("{err}"));
+    let file = dir.path().join("work/Screen.kfig");
+    std::fs::copy(&fixture, &file).unwrap_or_else(|err| panic!("{err}"));
+    let path = "work/Screen.kfig";
+    let kits = KitManager::new(
+        Some(dir.path().to_path_buf()),
+        vec![(kit, Some(executable.clone()))],
+    );
+    let call = |name: &'static str, input: Value| {
+        let kits = &kits;
+        async move {
+            kition_kits::tools::call(kits, name, &input)
+                .await
+                .unwrap_or_else(|| panic!("{name} is a kit tool"))
+        }
+    };
+
+    // The schema: the root `Fig`, its layer tree of `Node` objects.
+    let described = call("fig_query", json!({ "path": path, "describe": true }))
+        .await
+        .unwrap_or_else(|err| panic!("fig_query: {}", err.message));
+    assert_eq!(described.output["objects"][0]["id"], "fig");
+    assert_eq!(described.output["objects"][0]["type"], "Fig");
+    let types = described.output["types"].as_str().unwrap_or_default();
+    assert!(
+        types.contains("Fig (root)") && types.contains("nodes: tree of Node"),
+        "{types}"
+    );
+    assert_eq!(
+        kits.described("kit.fig")
+            .map(|schema| schema["kit"].clone()),
+        Some(json!("kit.fig")),
+        "the kit's schema is kept for the tools' argument enums"
+    );
+    let before = fig_layers(&kits, path).await;
+    let names: Vec<&str> = before.iter().map(|(_, name)| name.as_str()).collect();
+    assert_eq!(names, ["Page 1", "Frame 1", "Rectangle"]);
+    let rectangle = before[2].0.clone();
+
+    // One batch: rename the rectangle and draw another one with a command; saved.
+    let batch = call(
+        "fig_batch",
+        json!({ "path": path, "ops": [
+            { "op": "set", "target": rectangle, "field": "name", "value": "Hero card" },
+            { "op": "command", "id": "shape.rectangle", "params": { "x": 600, "y": 120, "width": 200, "height": 120 } }
+        ], "load": [{ "target": rectangle, "fields": ["name"] }] }),
+    )
+    .await
+    .unwrap_or_else(|err| panic!("fig_batch: {}", err.message));
+    assert_eq!(
+        batch.output["loaded"][0]["fields"]["name"], "Hero card",
+        "{}",
+        batch.output
+    );
+    let edited = fig_layers(&kits, path).await;
+    assert_eq!(edited.len(), 4, "{edited:?}");
+    assert!(edited.contains(&(rectangle.clone(), "Hero card".to_owned())));
+    let saved = std::fs::read(&file).unwrap_or_else(|err| panic!("{err}"));
+    assert!(
+        saved.windows(13).any(|window| window == b"kdm/meta.json"),
+        "the saved design carries its replica"
+    );
+
+    // A failing op changes nothing and names itself.
+    let refused = call(
+        "fig_batch",
+        json!({ "path": path, "ops": [
+            { "op": "set", "target": rectangle, "field": "name", "value": "Never" },
+            { "op": "set", "target": "no-such-object", "field": "name", "value": "x" }
+        ] }),
+    )
+    .await
+    .err()
+    .unwrap_or_else(|| panic!("a batch with a missing target fails"));
+    assert_eq!(refused.code.as_str(), "not-found", "{}", refused.message);
+    assert_eq!(refused.index, Some(1), "the failing op is named");
+    assert_eq!(
+        fig_layers(&kits, path).await,
+        edited,
+        "nothing of the batch was kept"
+    );
+
+    // The agent's undo takes back the batch's command, its own step; the rename stays, since the
+    // headless object model hands model ops to the engine as a collaborator's changes (kition-sdk
+    // `session::model::Exchange`), outside the undo history. Its redo brings the command back.
+    call(
+        "fig_run",
+        json!({ "path": path, "steps": [{ "command": "edit.undo" }], "save": false }),
+    )
+    .await
+    .unwrap_or_else(|err| panic!("fig_run edit.undo: {}", err.message));
+    let undone = fig_layers(&kits, path).await;
+    let names: Vec<&str> = undone.iter().map(|(_, name)| name.as_str()).collect();
+    assert_eq!(
+        names,
+        ["Page 1", "Frame 1", "Hero card"],
+        "undo takes the command back"
+    );
+    assert_eq!(undone[2].0, rectangle);
+    call(
+        "fig_run",
+        json!({ "path": path, "steps": [{ "command": "edit.redo" }], "save": false }),
+    )
+    .await
+    .unwrap_or_else(|err| panic!("fig_run edit.redo: {}", err.message));
+    assert_eq!(fig_layers(&kits, path).await, edited, "redo brings it back");
+    kits.shutdown().await;
+
+    // Opened again, the design is its saved replica: the same objects, the rename kept.
+    let again = KitManager::new(
+        Some(dir.path().to_path_buf()),
+        vec![(kit, Some(executable))],
+    );
+    assert_eq!(fig_layers(&again, path).await, edited);
+    again.shutdown().await;
+}

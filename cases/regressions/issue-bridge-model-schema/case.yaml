@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-bridge-model-schema
+feature: kition.agent.kit-object-model
+intent: >-
+  The agent's describe and batch on an open kit editor must carry the kit's registered KDM schema:
+  kit-editor answers the object model of an engine that does not describe its own schema (Fig,
+  Vector) only with one, so without it every fig_query and fig_batch on an open design failed with
+  "the kit's engine does not describe its schema".
+layer: golden
+source:
+  kind: issue
+  from: src/features/kits/kition/kitBridgeModel.spec.ts
+  licence: owned
+  note: Found while integrating Fig on engine contract 2 (e2e/collab-fig.spec.ts); KitDraftReview already sent the schema for draft compare and merge.
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/kits/kition/kitBridgeModel.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-28"

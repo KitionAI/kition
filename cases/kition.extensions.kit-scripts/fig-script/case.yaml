@@ -1,0 +1,24 @@
+format: 1
+id: kition.extensions.kit-scripts/fig-script
+feature: kition.extensions.kit-scripts
+intent: >-
+  A workspace script run from the palette on an open Fig design reads its layer tree, renames the
+  page and adds a rectangle with a kit command through the kit.fig object model Kition registers,
+  answers what it read, and the editor shows both edits unsaved.
+layer: golden
+source:
+  kind: synthetic
+  from: e2e/extensions.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/extensions.spec.ts, -g, Fig design]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser]
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-28"

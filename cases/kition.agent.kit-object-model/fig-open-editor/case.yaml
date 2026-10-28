@@ -1,0 +1,27 @@
+format: 1
+id: kition.agent.kit-object-model/fig-open-editor
+feature: kition.agent.kit-object-model
+intent: >-
+  With a Fig design open in its editor, the agent's describe and batch over the Kit AI bridge read
+  the kit.fig schema and layer tree and rename a page, which the editor shows; the person's Undo
+  takes back the person's rectangle and not the agent's newer text layer, the agent's undo (scope
+  agent) takes back only that text, and the saved file and Kition's replica store (.kition/docs/)
+  hold the result.
+layer: golden
+direction: ai
+source:
+  kind: synthetic
+  from: e2e/collab-fig.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/collab-fig.spec.ts, -g, object model]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser]
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-28"

@@ -10,6 +10,7 @@ type SlideSdk = { SlideDocument: { create(name: string, width: number, height: n
 const slides = kitEngine<SlideSdk>('slide', 'kition_slide_sdk')
 const words = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): EngineDocument } }>('doc', 'kition_doc_sdk')
 const sheets = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): EngineDocument } }>('sheet', 'kition_sheet_sdk')
+const figs = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): EngineDocument } }>('fig', 'kition_fig_sdk')
 const EXAMPLE = path.join(process.cwd(), 'e2e', 'fixtures', 'extensions', 'title-case')
 const EXTENSION = 'com.kition.examples.title-case'
 const READ_ONLY = 'com.kition.examples.title-case-read-only'
@@ -339,6 +340,55 @@ export default async function (ctx) {
     await expect(page.getByText('Ran sheet.mjs')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText('{"kit":"kit.sheet","sheet":"Totals","b3":2400}')).toBeVisible()
     await expect(budgetKit.getByTestId('sheet-status')).toHaveText(/^Totals · /)
+  } finally {
+    await host.dispose()
+  }
+})
+
+// Case: kition.extensions.kit-scripts/fig-script.
+test('runs a workspace script on a Fig design through its object model', async ({ page, baseURL }) => {
+  test.skip(!figs.built, 'the Fig kit editor is not built into public/kits/fig-ui')
+  test.setTimeout(180_000)
+  const fig = (await figs.load()).FigDocument.create('Screen.kfig', 1440, 1024)
+  fig.execute('shape.rectangle', JSON.stringify({ x: 120, y: 120, width: 320, height: 200 }))
+  const screen = Buffer.from(fig.save())
+  fig.free()
+  const script = `// Renames the first page, adds a rectangle with a kit command, and reads the page's layers back.
+export default async function (ctx) {
+  return ctx.document.run(async (context) => {
+    const nodes = context.root.nodes.load()
+    await context.sync()
+    const first = nodes.children()[0]
+    first.name = 'Cover'
+    context.commands.run('shape.rectangle', { x: 600, y: 120, width: 200, height: 120 })
+    await context.sync()
+    nodes.load()
+    await context.sync()
+    const layers = nodes.children(first)
+    first.load(['name'])
+    for (const layer of layers) layer.load(['name'])
+    await context.sync()
+    return { kit: ctx.document.kitId, page: first.name, layers: layers.map((layer) => layer.name) }
+  })
+}
+`
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Screen.kfig', screen, { 'scripts/fig.mjs': Buffer.from(script) })
+  try {
+    await expect(kit.getByTestId('fig-toolbar')).toBeVisible({ timeout: 60_000 })
+    await runPaletteCommand(page, 'run-script')
+    await page.getByTestId('run-script-path').fill('scripts/fig.mjs')
+    await page.getByTestId('run-script-run').click()
+    await expect(page.getByText('Ran fig.mjs')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('{"kit":"kit.fig","page":"Cover","layers":["Frame 1","Rectangle","Rectangle"]}')).toBeVisible()
+    // The editor shows the script's edits, unsaved.
+    await expect
+      .poll(async () => {
+        const live = await page.evaluate(async () => window.__KITION_KIT_TEST__?.inspect('Screen.kfig').catch(() => null) ?? null)
+        const details = (live?.details ?? {}) as { layers?: number; pages?: Array<{ name: string }> }
+        return { layers: details.layers, pages: (details.pages ?? []).map((entry) => entry.name) }
+      }, { timeout: 15_000 })
+      .toEqual({ layers: 3, pages: ['Cover'] })
+    await expect(kit.locator('[data-testid="fig-save"]:not([disabled])')).toBeVisible()
   } finally {
     await host.dispose()
   }

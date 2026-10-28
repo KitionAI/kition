@@ -1,0 +1,28 @@
+format: 1
+id: kition.agent.kit-object-model/fig-headless
+feature: kition.agent.kit-object-model
+intent: >-
+  On Fig's headless kit (engine contract 2, schema kit.fig v1), fig_query describes the schema and
+  reads the layer tree, fig_batch renames a layer and runs a command and saves (a batch with a
+  failing op keeps nothing and names the op), the agent's undo and redo take its command back and
+  forward, and the saved .kfig carries its replica, so the layers keep their object ids when opened again.
+layer: golden
+direction: ai
+source:
+  kind: synthetic
+  from: crates/kition-kits/tests/fixtures/Screen.kfig
+  licence: owned
+input:
+  - repo:crates/kition-kits/tests/fixtures/Screen.kfig
+steps:
+  - cargo-test:
+      package: kition-kits
+      test: sdk_kits
+      filter: the_agent_reads_and_edits_a_fig_design_through_its_object_model
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+tags: [headless]
+requires: [kit-fig]
+since: "2026-10-28"

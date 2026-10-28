@@ -40,3 +40,44 @@ features:
     cases:
       - regressions/issue-command-output
     since: "2026-10-28"
+  - id: kition.agent.kit-object-model
+    title: The agent reads and edits a kit document through its object model (`<prefix>_query`, `<prefix>_batch`), headless and in the open editor
+    direction: [ai, function]
+    priority: P1
+    status: has
+    commands: [model.describe, model.batch]
+    paths:
+      - crates/kition-kits/src/tools/model.rs
+      - crates/kition-kits/src/manager.rs
+      - src/features/kits/kition/kitBridgeModel.ts
+      - src/features/kits/kition/kitBridge.ts
+    gap: Through the headless kit a Fig batch's model ops arrive as a collaborator's changes (kition-sdk `session::model::Exchange`), so the agent's undo takes back only its commands, not its renames.
+    cases:
+      - kition.agent.kit-object-model/fig-headless
+      - kition.agent.kit-object-model/fig-open-editor
+      - regressions/issue-bridge-model-schema
+    since: "2026-10-28"
+  - id: kition.kit-collab.fig
+    title: People co-edit a Fig design live and across going offline (engine contract 2), and its replica is kept in Kition's store
+    direction: [collab]
+    priority: P1
+    status: has
+    paths:
+      - e2e/collab-fig.spec.ts
+      - src/features/kits/kition/KitFrame.tsx
+      - src/lib/sync/*.ts
+    cases:
+      - kition.kit-collab.fig/live-and-offline
+    since: "2026-10-28"
+  - id: kition.extensions.kit-scripts
+    title: A workspace script edits the open kit document through the object model of the kit's registered schema (`src/lib/sdk/kits/`)
+    direction: [function]
+    priority: P1
+    status: has
+    paths:
+      - src/lib/sdk/kits/*.ts
+      - src/lib/extensions/*.ts
+      - e2e/extensions.spec.ts
+    cases:
+      - kition.extensions.kit-scripts/fig-script
+    since: "2026-10-28"
