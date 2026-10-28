@@ -371,7 +371,7 @@ pub const KITS: &[KitDefinition] = &[
             noun: "3D scene",
             formats: ".kcube",
             reports: "its objects (meshes, curves, texts, armatures, lights, cameras, empties) with transforms, materials, modifiers, constraints, and animation, the images, the frame, the mode, and the selection",
-            covers: "adding primitives, curves, and text, transforms, parenting, edit-mode modeling (extrude, inset, bevel, loop cut, knife, dissolve, bridge, bisect, spin), sculpting (sculpt.stroke), modifiers, seams and UV unwrapping, image and normal-map textures, materials, lights, cameras, armatures, skinning, constraints and IK, shape keys, keyframe animation, fast and path-traced rendering, glTF/FBX/USD (usda, usdc, usdz)/OBJ/STL import and export, and .blend import; rotations are in degrees and Z is up",
+            covers: "adding primitives, curves, and text, transforms, parenting, edit-mode modeling (extrude, inset, bevel, loop cut, knife, dissolve, bridge, bisect, spin), sculpting (sculpt.stroke), modifiers, seams and UV unwrapping, image and normal-map textures, materials, lights, cameras, armatures, skinning, constraints and IK, shape keys, keyframe animation, rigid body and cloth physics, particles and hair, Geometry Nodes (nodes.*), fast and path-traced rendering, glTF/FBX/USD (usda, usdc, usdz)/OBJ/STL import and export, and .blend import; rotations are in degrees and Z is up",
             queries: "`cube`, `extrude`, or `modifier`",
             command: "add.cube",
         },
