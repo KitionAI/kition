@@ -8,8 +8,12 @@ import { tags } from './support'
  * own interactions (pages, layers). The count the matrix follows is the layout's pages.
  *
  * Rows not covered here: H10 (version history): the Design kit keeps no replica, which Kition's
- * version history needs; H11 (printing): the Design kit's manifest does not ask to print; H13
- * (co-editing): Kition has no co-editing spec for the Design kit yet.
+ * version history needs; H11 (printing): the Design kit's manifest does not ask to print.
+ *
+ * H13 (co-editing): the Design kit's editor does not offer its replica yet. Turned on for a trial,
+ * an edit made in each window while one was offline merged into duplicated pages: both windows
+ * converged on 8 pages, numbered 1 to 4 twice, where 5 were made. Co-editing stays off until the
+ * kit's merge keeps each page once.
  */
 
 type NodeDesignDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }

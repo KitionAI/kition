@@ -10,8 +10,11 @@ import { tags } from './support'
  * `pnpm test:ktable:e2e`) and the kit's own repository cover the grid in depth.
  *
  * Rows not covered here: H10 (version history): the Table kit keeps no replica, which Kition's
- * version history needs; H11 (printing): the Table kit's manifest does not ask to print; H13
- * (co-editing): Kition has no co-editing spec for the Table kit yet.
+ * version history needs; H11 (printing): the Table kit's manifest does not ask to print.
+ *
+ * H13 (co-editing): the Table kit's editor does not offer its replica yet. Turned on for a trial,
+ * a shared table could not be opened (`kition_table_sdk cannot open a replica`), so co-editing
+ * stays off until its engine opens a replica.
  */
 
 type NodeTableDocument = { call(method: string, params: string): string; save(): Uint8Array; markSaved(): void; free(): void }
