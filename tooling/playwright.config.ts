@@ -28,11 +28,15 @@ const LIVE_SERVICE_SPECS = [
   '**/workflow-onboarding-actions-real.spec.ts',
   '**/readme-assets.spec.ts',
 ]
+// The kit interaction suite (e2e/interaction/) is expensive: it runs only through
+// `pnpm test:interaction:e2e`, when the owner asks for it, never in the sweep.
+const ON_DEMAND_SPECS = ['**/interaction/**']
 const quarantine = JSON.parse(
   readFileSync(resolve(repositoryDir, 'tooling/e2e-quarantine.json'), 'utf8'),
 ) as { quarantined: Array<{ spec: string }> }
 const CI_SWEEP_IGNORE = [
   ...LIVE_SERVICE_SPECS,
+  ...ON_DEMAND_SPECS,
   // Run this benchmark alone after the functional sweep to avoid CPU contention.
   '**/design-performance.spec.ts',
   ...quarantine.quarantined.map((entry) => `**/${entry.spec}`),

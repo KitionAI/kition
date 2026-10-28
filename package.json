@@ -79,6 +79,7 @@
     "capture:readme:assets": "KITION_CAPTURE_README_ASSETS=1 playwright test --config tooling/playwright.config.ts e2e/readme-assets.spec.ts --workers=1 && magick docs/readme/documents.png -quality 88 -define webp:method=6 docs/readme/documents.webp && magick docs/readme/agent.png -quality 88 -define webp:method=6 docs/readme/agent.webp && magick docs/readme/boards.png -quality 88 -define webp:method=6 docs/readme/boards.webp && magick docs/readme/kition-overview.png -quality 88 -define webp:method=6 docs/readme/kition-overview.webp && rm docs/readme/documents.png docs/readme/agent.png docs/readme/boards.png",
     "test:table:e2e": "bash scripts/inspect-table-widget.sh",
     "test:ktable:e2e": "bash scripts/inspect-ktable.sh",
+    "test:interaction:e2e": "playwright test --config tooling/playwright.config.ts e2e/interaction --workers=1",
     "test:effect:regression": "node scripts/effect-regression/run.mjs",
     "test:effect:promo": "node scripts/effect-promo/run.mjs",
     "test:effect:e2e": "bash scripts/inspect-effect.sh",
