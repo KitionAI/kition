@@ -213,6 +213,9 @@ pub struct CommandInfo {
     pub group: String,
     /// JSON Schema (draft 2020-12) for `commands.execute` params.
     pub params: Value,
+    /// JSON Schema (draft 2020-12) for the command's result, when the kit says (KHP A1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<Value>,
     pub mutates: bool,
     pub enabled: bool,
     /// Where the command sits in the kit's menus, for example `["Layer", "New"]`.

@@ -1,0 +1,16 @@
+format: 1
+kit: kition
+updated: "2026-10-28"
+golden_budget_s: 600
+features:
+  - id: kition.kit-protocol.command-output
+    title: A kit command may declare the shape of its result (`output`, KHP A1)
+    direction: [function]
+    priority: P2
+    status: has
+    paths:
+      - contracts/kit/kit-protocol.schema.json
+      - crates/kition-kit-protocol/src/types.rs
+    cases:
+      - regressions/issue-command-output
+    since: "2026-10-28"

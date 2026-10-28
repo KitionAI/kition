@@ -256,6 +256,10 @@
           "type": "object",
           "description": "JSON Schema (draft 2020-12) for commands.execute params."
         },
+        "output": {
+          "type": "object",
+          "description": "Optional JSON Schema (draft 2020-12) for the command's result, from the engine's outputSchema (KHP A1). An MCP binding sends it as the tool's outputSchema."
+        },
         "mutates": { "type": "boolean" },
         "enabled": { "type": "boolean" },
         "menu": {

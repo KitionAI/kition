@@ -591,6 +591,7 @@ impl Kit {
                     "required": ["text"],
                     "properties": { "text": { "type": "string", "minLength": 1 } }
                 }),
+                output: None,
                 mutates: true,
                 enabled: !read_only,
                 menu: Vec::new(),
@@ -602,6 +603,7 @@ impl Kit {
                 description: Some("Removes all text.".to_owned()),
                 group: "text".to_owned(),
                 params: json!({ "type": "object", "additionalProperties": false }),
+                output: None,
                 mutates: true,
                 enabled: !read_only && !empty,
                 menu: Vec::new(),
@@ -614,6 +616,7 @@ impl Kit {
                 group: "edit".to_owned(),
                 // Engine contract 2 E14a: the undo scope, else the origin's.
                 params: json!({ "type": "object", "additionalProperties": false, "properties": { "scope": { "enum": ["person", "agent"] } } }),
+                output: None,
                 mutates: true,
                 enabled: !read_only && can_undo,
                 menu: Vec::new(),

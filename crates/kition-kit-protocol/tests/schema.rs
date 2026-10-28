@@ -202,6 +202,31 @@ fn document_shapes_match_the_schema() {
     );
 }
 
+/// cases/regressions/issue-command-output: a command may say what it answers (`output`, the
+/// engine's `outputSchema` as JSON Schema, KHP A1), as kition-sdk's kit server lists it in
+/// `commands.list`; the host keeps it.
+#[test]
+fn a_command_may_say_what_it_answers() {
+    let listed = json!({
+        "id": "file.render",
+        "title": "Render preview",
+        "group": "file",
+        "params": { "type": "object" },
+        "output": {
+            "type": "object",
+            "properties": { "png": { "type": "string" } },
+            "required": ["png"]
+        },
+        "mutates": false,
+        "enabled": true
+    });
+    check_def("commandInfo", &listed);
+    let command: CommandInfo =
+        serde_json::from_value(listed.clone()).unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(command.output.as_ref(), Some(&listed["output"]));
+    round_trip("commandInfo", &command);
+}
+
 #[test]
 fn command_and_view_shapes_match_the_schema() {
     let command = CommandInfo {
@@ -210,6 +235,7 @@ fn command_and_view_shapes_match_the_schema() {
         description: Some("Adds a curves adjustment layer.".into()),
         group: "adjust".into(),
         params: json!({"type": "object"}),
+        output: None,
         mutates: true,
         enabled: true,
         menu: vec!["Image".into(), "Adjustments".into()],

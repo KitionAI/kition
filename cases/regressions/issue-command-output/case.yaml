@@ -1,0 +1,24 @@
+format: 1
+id: regressions/issue-command-output
+feature: kition.kit-protocol.command-output
+intent: >-
+  A command in commands.list may carry `output`, the JSON Schema of its result, as kition-sdk's kit
+  server sends it (KHP A1); Kition's protocol schema accepted no such member and dropped it, so a
+  kit's declared result shape never reached the host.
+layer: golden
+source:
+  kind: issue
+  from: crates/kition-kit-protocol/tests/schema.rs
+  licence: owned
+  note: Found while wiring Fig's agent-ready surface (kition-fig agent.rs keeps output_schema empty because of it).
+input: []
+steps:
+  - cargo-test:
+      package: kition-kit-protocol
+      test: schema
+      filter: a_command_may_say_what_it_answers
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+since: "2026-10-28"
