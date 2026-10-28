@@ -12,6 +12,8 @@ import {
   isGeneratePurpose,
   isOpenableUrl,
   isReady,
+  linkPathFrom,
+  parseLinksPickParams,
   parseOpenParams,
   parsePresence,
   parseSchemaReport,
@@ -23,6 +25,7 @@ import {
   type KitConflict,
   type KitDocumentInit,
   type KitLease,
+  type KitLinksPickParams,
   type KitNotifications,
   type KitPeerPresence,
   type KitPresence,
@@ -53,8 +56,8 @@ export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams 
 export type { KitActionErrorReason, KitActionParams, KitActionResult, KitDefinedGeneratePurpose, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGeneratePurpose, KitGenerateResult } from './protocol'
 export type { KitView } from './protocol'
 export { parseKitView } from './protocol'
-export type { KitLinkRef, KitOpenErrorReason, KitOpenParams, KitOpenResult } from './protocol'
-export { isOpenableUrl, openErrorReason, parseLinkRef, parseOpenParams, OPEN_ERROR_REASONS, OPEN_URL_SCHEMES } from './protocol'
+export type { KitLinkRef, KitLinksPickParams, KitOpenErrorReason, KitOpenParams, KitOpenResult, KitPickedLink } from './protocol'
+export { isOpenableUrl, linkPathFrom, openErrorReason, parseLinkRef, parseLinksPickParams, parseOpenParams, OPEN_ERROR_REASONS, OPEN_URL_SCHEMES } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
@@ -139,6 +142,53 @@ export type KitHostHandlers = {
    * it: others are refused as `not-allowed` before (OP7).
    */
   openUrl?: (params: Params<'host/openUrl'>) => Result<'host/openUrl'>
+  /**
+   * `links/pick`: the host's chooser of existing workspace files to link (capability `links-pick`,
+   * section 7i; UI-N2 to UI-N4), never copied. The params arrive checked (`parseLinksPickParams`);
+   * the handler answers the chosen files' workspace paths and versions (none when the person
+   * cancels), and `mountKit` turns them into document-relative links, leaving out hidden paths,
+   * the document itself, and files outside `accept`. Not listed, and refused as `read-only`, for
+   * a read-only document. The host serves `host/read` and `host/stamp` of the paths it answers (UI-N3).
+   */
+  pickLinks?: (params: KitLinksPickParams) => PickedWorkspaceFile[] | Promise<PickedWorkspaceFile[]>
+}
+
+/** A file the person chose in the host's `links/pick` chooser: its workspace path and version stamp. */
+export type PickedWorkspaceFile = { path: string; version: string | null }
+
+/** The workspace path `path` names with `.` and `..` resolved; `null` for an absolute path or one above the root. */
+function cleanWorkspacePath(path: string) {
+  if (/^([A-Za-z]:)?[\\/]/.test(path)) return null
+  const parts: string[] = []
+  for (const part of path.replace(/\\/g, '/').split('/')) {
+    if (!part || part === '.') continue
+    if (part === '..') {
+      if (!parts.length) return null
+      parts.pop()
+    } else parts.push(part)
+  }
+  return parts.length ? parts.join('/') : null
+}
+
+/**
+ * The links `links/pick` answers for the files a host's chooser returned (UI-N2): each in the
+ * document-relative form, once, without hidden paths (LR2), the document itself, or a file whose
+ * extension is not in `accept`; only the first unless `multiple`.
+ */
+export function pickedLinks(documentPath: string, params: KitLinksPickParams, chosen: PickedWorkspaceFile[]) {
+  const own = cleanWorkspacePath(documentPath)
+  const links: Array<{ path: string; name: string; version: string | null }> = []
+  for (const file of chosen) {
+    const path = typeof file?.path === 'string' ? cleanWorkspacePath(file.path) : null
+    if (!path || path === own || path.split('/').some((part) => part.startsWith('.'))) continue
+    const name = path.split('/').pop()!
+    const extension = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : ''
+    if (!params.accept.includes(extension)) continue
+    const link = { path: linkPathFrom(documentPath, path), name, version: typeof file.version === 'string' ? file.version : null }
+    if (!links.some((known) => known.path === link.path)) links.push(link)
+    if (!params.multiple) break
+  }
+  return links
 }
 
 export type MountOptions = {
@@ -264,6 +314,8 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   if (handlers.generate) capabilities.push('generate')
   if (handlers.open) capabilities.push('open-file')
   if (handlers.openUrl) capabilities.push('open-url')
+  const readOnly = options.document.readOnly === true
+  if (handlers.pickLinks && !readOnly) capabilities.push('links-pick')
   const actions = Object.entries(handlers.actions ?? {}).filter(([, run]) => typeof run === 'function')
   capabilities.push(...actions.map(([id]) => `${HOST_ACTION_CAPABILITY_PREFIX}${id}`))
   if (options.files) capabilities.push('files', ...(options.files.pick ? ['files-pick'] : []), ...(options.files.print ? ['print'] : []))
@@ -329,7 +381,14 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       const answer = await handlers.openUrl({ url: params.url })
       return { opened: answer?.opened !== false }
     })
-    const files = options.files ? openFileSession({ ...options.files, readOnly: options.document.readOnly === true, revoked: (handles) => peer.notify('files/revoked', { handles }) }) : null
+    peer.handle('links/pick', async (params) => {
+      if (!handlers.pickLinks) unsupported('links/pick')
+      if (readOnly) throw new KitRpcError(-32000, 'a read-only document links no files', { reason: 'read-only' })
+      const checked = parseLinksPickParams(params)
+      if (!checked) throw new KitRpcError(-32602, 'links/pick needs a purpose and at least one extension without the dot')
+      return { links: pickedLinks(options.document.path, checked, (await handlers.pickLinks(checked)) ?? []) }
+    })
+    const files = options.files ? openFileSession({ ...options.files, readOnly, revoked: (handles) => peer.notify('files/revoked', { handles }) }) : null
     if (files) for (const method of FILES_METHODS) peer.handle(method, (params) => files.serve(method, params as never))
     peer.on('document/conflicts', (params) => handlers.conflicts?.(params))
     peer.on('document/schema', (params) => {

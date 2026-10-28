@@ -151,7 +151,7 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`, `links-pick`. */
   capabilities: string[]
   /**
    * The capability sets this host serves (KHP `spec/index.md` section 3.1, minor version 1.5), such as
@@ -463,6 +463,40 @@ export function parseOpenParams(value: unknown): KitOpenParams | null {
   return { link, ...(view ? { view } : {}), placement: value.placement === 'beside' ? 'beside' : 'tab', ...(create ? { create } : {}) }
 }
 
+/**
+ * Picking a file to link (capability `links-pick`, section 7i, minor version 2.5; rules UI-N2 to
+ * UI-N4): the person chooses existing workspace files, which stay where they are. `accept` lists
+ * extensions without the dot (at least one); `multiple` lets the person choose several.
+ */
+export type KitLinksPickParams = { purpose: string; accept: string[]; multiple?: boolean }
+/** A file the person chose to link: `path` relative to the document's folder (HC-P2), `name` its last segment, `version` its stamp. */
+export type KitPickedLink = { path: string; name: string; version: string | null }
+
+/** `links/pick`'s params checked: a purpose, extensions without the dot (lowercased, at least one), and `multiple`; `null` otherwise. */
+export function parseLinksPickParams(value: unknown): KitLinksPickParams | null {
+  if (!isRecord(value) || typeof value.purpose !== 'string' || !Array.isArray(value.accept)) return null
+  const accept: string[] = []
+  for (const item of value.accept) {
+    if (typeof item !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,15}$/.test(item)) return null
+    if (!accept.includes(item.toLowerCase())) accept.push(item.toLowerCase())
+  }
+  if (!accept.length || accept.length > 64) return null
+  return { purpose: value.purpose.slice(0, 200), accept, multiple: value.multiple === true }
+}
+
+/**
+ * Workspace path `to` as the document at `documentPath` links it (HC-P2): relative to the
+ * document's folder, with `../` where `to` is elsewhere (`../libraries/Icons.kfig`).
+ */
+export function linkPathFrom(documentPath: string, to: string) {
+  const parts = (path: string) => path.replace(/\\/g, '/').split('/').filter((part) => part && part !== '.')
+  const from = parts(documentPath).slice(0, -1)
+  const target = parts(to)
+  let shared = 0
+  while (shared < from.length && shared < target.length - 1 && from[shared] === target[shared]) shared += 1
+  return [...from.slice(shared).map(() => '..'), ...target.slice(shared)].join('/')
+}
+
 /** The reason a `host/open` or `host/openUrl` was refused, from the error the host answered; `null` for any other failure. */
 export function openErrorReason(error: unknown): KitOpenErrorReason | null {
   if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
@@ -575,6 +609,8 @@ export type KitToHost = {
   'host/open': [KitOpenParams, KitOpenResult]
   /** Opens a web address in the system's browser or mail client (capability `open-url`, section 7i); only from a person's gesture. */
   'host/openUrl': [{ url: string }, KitOpenResult]
+  /** Asks the person for existing workspace files to link, never copied (capability `links-pick`, section 7i); only from a person's gesture. Empty when the person cancels. */
+  'links/pick': [KitLinksPickParams, { links: KitPickedLink[] }]
 }
 
 /** Notifications the kit sends. */
