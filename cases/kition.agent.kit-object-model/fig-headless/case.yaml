@@ -2,7 +2,7 @@ format: 1
 id: kition.agent.kit-object-model/fig-headless
 feature: kition.agent.kit-object-model
 intent: >-
-  On Fig's headless kit (engine contract 2, schema kit.fig v1), fig_query describes the schema and
+  On Fig's headless kit (engine contract 2, schema kit.fig v3), fig_query describes the schema and
   reads the layer tree, fig_batch renames a layer and runs a command and saves (a batch with a
   failing op keeps nothing and names the op), the agent's undo and redo take its command back and
   forward, and the saved .kfig carries its replica, so the layers keep their object ids when opened again.

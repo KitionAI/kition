@@ -18,7 +18,7 @@ describe('bridgeModel', () => {
     await model.describe()
     await model.batch({ ops: [], load: [{ target: 'root' }] })
     const [described] = kit.describe.mock.calls[0]!
-    expect(described).toMatchObject({ kit: 'kit.fig', schemaVersion: 2, root: 'Fig' })
+    expect(described).toMatchObject({ kit: 'kit.fig', schemaVersion: 3, root: 'Fig' })
     expect(kit.batch.mock.calls[0]![0]).toMatchObject({ ops: [], load: [{ target: 'root' }], schema: { kit: 'kit.fig', root: 'Fig' } })
   })
 
