@@ -7,7 +7,8 @@ import { tags } from './support'
  * The Design kit (`kit.design`) in Kition on the desktop host: the host matrix, then the layout's
  * own interactions (pages, layers). The count the matrix follows is the layout's pages.
  *
- * Rows not covered here: H11 (printing): the Design kit's manifest does not ask to print; H13
+ * Rows not covered here: H10 (version history): the Design kit keeps no replica, which Kition's
+ * version history needs; H11 (printing): the Design kit's manifest does not ask to print; H13
  * (co-editing): Kition has no co-editing spec for the Design kit yet.
  */
 
@@ -56,6 +57,8 @@ hostMatrix({
   shown: async (kit) => Number(/(\d+)/.exec((await kit.getByTestId('design-status').textContent()) ?? '')?.[1] ?? -1),
   saved: async (bytes) => (await inspected(bytes)).pageCount,
   edit: (kit) => kit.getByTestId('design-add-page').click(),
+  // The Design kit keeps no replica, so Kition keeps no version history of its files (H10).
+  history: false,
   focus: (kit) => kit.getByTestId('design-canvas-region').click({ position: { x: 40, y: 40 } }),
   create: { group: 'Documents', name: 'Untitled design.kdesign', count: 1 },
   agent: { command: 'layout.pages.insert', params: {} },

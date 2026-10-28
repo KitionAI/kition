@@ -8,7 +8,8 @@ import { tags } from './support'
  * interactions (source, preview). The count the matrix follows is the page's paragraphs; a person
  * adds one in the source. e2e/html-embedded.spec.ts covers the preview's scripts and canvas.
  *
- * Rows not covered here: H8 (a damaged file): any bytes are HTML source, so there is no damaged
+ * Rows not covered here: H10 (version history): the HTML kit keeps no replica, which Kition's
+ * version history needs; H8 (a damaged file): any bytes are HTML source, so there is no damaged
  * HTML file; H11 (printing): the HTML kit's manifest does not ask to print; H13 (co-editing):
  * Kition has no co-editing spec for the HTML kit yet.
  */
@@ -39,6 +40,8 @@ hostMatrix({
     const value = await source.inputValue()
     await source.fill(value.replace('</body>', `<p>Line ${paragraphs(value) + 1}</p></body>`))
   },
+  // The HTML kit keeps no replica, so Kition keeps no version history of its files (H10).
+  history: false,
   focus: (kit) => kit.getByTestId('html-source').click(),
   conflict: { bar: 'html-conflict', keep: 'html-keep-mine', reload: 'html-reload' },
   create: { group: 'Documents', name: 'Untitled HTML.html', count: 0 },
