@@ -744,6 +744,78 @@
           "files"
         ]
       }
+    },
+    "<prefix>_create": {
+      "description": "Create a new, empty document in <Kit> at `path` () and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
+      "writes": true,
+      "input": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path of the new file, for example `deck.kslide`."
+          },
+          "size": {
+            "type": "object",
+            "description": "The document size in pixels, for example {\"width\": 1920, \"height\": 1080}.",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "The new file's workspace path."
+                },
+                "created": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "path",
+                "created"
+              ]
+            },
+            "description": "The files written (KHP A30)."
+          },
+          "document": {
+            "$ref": "#/$defs/document"
+          },
+          "live": {
+            "type": "boolean",
+            "description": "Edited or read in the file's open editor."
+          },
+          "draft": {
+            "type": "boolean",
+            "description": "Edited or read the agent's draft, not the file."
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          }
+        },
+        "required": [
+          "files"
+        ]
+      }
     }
   },
   "$defs": {

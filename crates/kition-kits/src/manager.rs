@@ -138,7 +138,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Film",
         binary_env: "KITION_KIT_FILM_BINARY",
         extensions: &["kfilm"],
-        creates: &[],
+        creates: &[("kfilm", "film")],
         base_name: "Untitled film",
         exports: &["mp4"],
         agent: KitAgent {
@@ -159,7 +159,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Vector",
         binary_env: "KITION_KIT_VECTOR_BINARY",
         extensions: &["kvector"],
-        creates: &[],
+        creates: &[("kvector", "vector")],
         base_name: "Untitled vector",
         exports: &[],
         agent: KitAgent {
@@ -180,7 +180,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Effect",
         binary_env: "KITION_KIT_EFFECT_BINARY",
         extensions: &["keffect"],
-        creates: &[],
+        creates: &[("keffect", "effect")],
         base_name: "Untitled effect",
         exports: &["mp4"],
         agent: KitAgent {
@@ -192,7 +192,9 @@ pub const KITS: &[KitDefinition] = &[
             queries: "`new solid`, `add keyframe`, or `gaussian blur`",
             command: "layer.newSolid",
             render: None,
-            export: None,
+            // The active composition as MP4 bytes (kit-effect `file.exportMovie`): the Render Queue's
+            // commands name files and are disabled for the agent.
+            export: Some(KitExport { command: "file.exportMovie", formats: &["mp4"], data: "data", params: "{}" }),
         },
     },
     // Edited in the page through its SDK.
@@ -201,7 +203,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Design",
         binary_env: "KITION_KIT_DESIGN_BINARY",
         extensions: &["kdesign"],
-        creates: &[],
+        creates: &[("kdesign", "design")],
         base_name: "Untitled design",
         exports: &[],
         agent: KitAgent {
@@ -222,7 +224,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "CAD",
         binary_env: "KITION_KIT_CAD_BINARY",
         extensions: &["dxf"],
-        creates: &[],
+        creates: &[("dxf", "cad")],
         base_name: "Untitled CAD",
         exports: &[],
         agent: KitAgent {
@@ -243,7 +245,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Kition Slide",
         binary_env: "KITION_KIT_SLIDE_BINARY",
         extensions: &["kslide", "pptx"],
-        creates: &[],
+        creates: &[("kslide", "slide")],
         base_name: "Untitled slide",
         exports: &[],
         agent: KitAgent {
@@ -264,7 +266,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Doc",
         binary_env: "KITION_KIT_DOC_BINARY",
         extensions: &["docx"],
-        creates: &[],
+        creates: &[("docx", "docx")],
         base_name: "Untitled document",
         exports: &[],
         agent: KitAgent {
@@ -285,7 +287,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "Sheet",
         binary_env: "KITION_KIT_SHEET_BINARY",
         extensions: &["xlsx"],
-        creates: &[],
+        creates: &[("xlsx", "xlsx")],
         base_name: "Untitled sheet",
         exports: &[],
         agent: KitAgent {
@@ -306,7 +308,7 @@ pub const KITS: &[KitDefinition] = &[
         name: "PDF",
         binary_env: "KITION_KIT_PDF_BINARY",
         extensions: &["pdf"],
-        creates: &[],
+        creates: &[("pdf", "pdf")],
         base_name: "Untitled PDF",
         exports: &[],
         agent: KitAgent {
@@ -553,6 +555,8 @@ pub struct CommandView {
     pub enabled: bool,
     pub menu: Vec<String>,
     pub shortcut: Option<String>,
+    /// The query matched no command, and this is one of the closest by spelling.
+    pub closest: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1001,7 +1005,20 @@ impl KitManager {
             .ok_or_else(|| {
                 KitError::InvalidPath("too many untitled files in this folder".into())
             })?;
-        let uri = url::Url::from_file_path(&target_path)
+        self.create_file(caller, kit, format, &target_path, options).await
+    }
+
+    /// Opens a new document of `kit` in `format` at `target_path`, saves it so the file exists,
+    /// and answers its view.
+    async fn create_file(
+        &self,
+        caller: Caller,
+        kit: &'static KitDefinition,
+        format: &str,
+        target_path: &Path,
+        options: Map<String, Value>,
+    ) -> Result<DocumentView, KitError> {
+        let uri = url::Url::from_file_path(target_path)
             .map(String::from)
             .map_err(|()| KitError::InvalidPath("the folder is not a local path".into()))?;
         let params = DocumentOpenParams {
@@ -1023,6 +1040,43 @@ impl KitManager {
             .await?;
         let (_, state) = self.state(kit, caller, &saved.document_id).await?;
         self.view(kit, &running, caller, state).await
+    }
+
+    /// The agent's `<prefix>_create` (KHP A41): a new document at `path`, a workspace path whose
+    /// extension the kit `creates`. A new file never replaces one: when `path` exists the next
+    /// free name (`Title 2.kslide`) is used. No hidden segment (A29). Answers its view; its
+    /// `path` is the file written.
+    pub async fn create_at(
+        &self,
+        caller: Caller,
+        path: &str,
+        options: Map<String, Value>,
+    ) -> Result<DocumentView, KitError> {
+        if path.split('/').any(|part| part.starts_with('.') && part != "." && part != "..") {
+            return Err(KitError::InvalidPath(format!("`{path}` has a hidden segment")));
+        }
+        let extension = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
+        let (kit, format) = self
+            .inner
+            .kits
+            .iter()
+            .find_map(|(kit, _)| kit.creates.iter().find(|(known, _)| *known == extension).map(|(_, format)| (*kit, *format)))
+            .ok_or_else(|| KitError::InvalidPath(format!("no kit creates .{extension} files")))?;
+        let wanted = self.resolve(path)?;
+        if !wanted.parent().is_some_and(Path::is_dir) {
+            return Err(KitError::InvalidPath(format!("`{path}` is not in a workspace folder")));
+        }
+        let target = if wanted.exists() {
+            let file = wanted.file_name().and_then(|name| name.to_str()).unwrap_or_default().to_owned();
+            let (stem, extension) = file.rsplit_once('.').unwrap_or((file.as_str(), ""));
+            (2..1000)
+                .map(|n| wanted.with_file_name(if extension.is_empty() { format!("{stem} {n}") } else { format!("{stem} {n}.{extension}") }))
+                .find(|candidate| !candidate.exists())
+                .ok_or_else(|| KitError::InvalidPath(format!("too many files named like `{path}`")))?
+        } else {
+            wanted
+        };
+        self.create_file(caller, kit, format, &target, options).await
     }
 
     pub async fn document(
@@ -1196,8 +1250,19 @@ impl KitManager {
                 (score, command)
             })
             .collect();
-        if !terms.is_empty() && scored.iter().any(|(score, _)| *score > 0.0) {
-            scored.retain(|(score, _)| *score > 0.0);
+        let matched = terms.is_empty() || scored.iter().any(|(score, _)| *score > 0.0);
+        if matched {
+            if !terms.is_empty() {
+                scored.retain(|(score, _)| *score > 0.0);
+            }
+        } else {
+            // No command shares a word with the query: rank by spelling (the share of the query's
+            // three-letter pieces found in the command's id and title), so the answer is the
+            // closest commands, never the list's first ones (search never returns empty).
+            let query = query.unwrap_or_default().to_lowercase();
+            for (score, command) in &mut scored {
+                *score = spelling(&query, &format!("{} {}", command.id, command.title).to_lowercase());
+            }
         }
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         Ok(scored
@@ -1213,6 +1278,7 @@ impl KitManager {
                 enabled: command.enabled,
                 menu: command.menu,
                 shortcut: command.shortcut,
+                closest: !matched,
             })
             .collect())
     }
@@ -1595,6 +1661,26 @@ async fn watch_notifications(host: Arc<KitClient>, versions: Versions) {
     }
 }
 
+/// How much of `query` is spelled in `text`: the share of the query's three-letter pieces
+/// (`mp4` → ` mp`, `mp4`, `p4 `) that occur in `text`, 0 to 1.
+fn spelling(query: &str, text: &str) -> f64 {
+    let pieces = |s: &str| -> Vec<String> {
+        s.split(|c: char| !c.is_alphanumeric())
+            .filter(|word| !word.is_empty())
+            .flat_map(|word| {
+                let padded: Vec<char> = format!(" {word} ").chars().collect();
+                padded.windows(3).map(|w| w.iter().collect::<String>()).collect::<Vec<_>>()
+            })
+            .collect()
+    };
+    let wanted = pieces(query);
+    if wanted.is_empty() {
+        return 0.0;
+    }
+    let have = pieces(text);
+    wanted.iter().filter(|piece| have.contains(piece)).count() as f64 / wanted.len() as f64
+}
+
 /// A query word and the words it may be written as in a command (plural, synonyms).
 fn search_variants(term: &str) -> Vec<String> {
     let mut out = vec![term.to_owned()];
@@ -1625,4 +1711,15 @@ fn search_variants(term: &str) -> Vec<String> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn spelling_ranks_the_commands_a_query_spells_closest() {
+        assert_eq!(super::spelling("mp4", "renderqueue.add add to render queue"), 0.0);
+        assert!(super::spelling("renderqeue", "renderqueue.add add to render queue") > super::spelling("renderqeue", "layer.newtext new text layer"));
+        assert_eq!(super::spelling("", "anything"), 0.0);
+        assert_eq!(super::spelling("text", "layer.newtext text"), 1.0);
+    }
 }

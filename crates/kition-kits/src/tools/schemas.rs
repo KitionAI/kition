@@ -217,6 +217,21 @@ pub fn output_schema(action: Action) -> Value {
             }),
             &["files"],
         ),
+        Action::Create => object(
+            json!({
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": { "path": { "type": "string", "description": "The new file's workspace path." }, "created": { "type": "boolean" } },
+                        "required": ["path", "created"]
+                    },
+                    "description": "The files written (KHP A30)."
+                },
+                "document": { "$ref": "#/$defs/document" }
+            }),
+            &["files"],
+        ),
     }
 }
 

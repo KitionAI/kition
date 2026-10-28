@@ -50,10 +50,12 @@ pub enum Action {
     Check,
     /// Write the document to a new file in a format the kit exports (KHP A41).
     Export,
+    /// A new, empty file of a kind the kit creates (KHP A41).
+    Create,
 }
 
 impl Action {
-    pub const ALL: [Action; 9] = [
+    pub const ALL: [Action; 10] = [
         Action::Inspect,
         Action::Commands,
         Action::Run,
@@ -63,6 +65,7 @@ impl Action {
         Action::Batch,
         Action::Check,
         Action::Export,
+        Action::Create,
     ];
 
     fn suffix(self) -> &'static str {
@@ -76,12 +79,13 @@ impl Action {
             Action::Batch => "batch",
             Action::Check => "check",
             Action::Export => "export",
+            Action::Create => "create",
         }
     }
 
-    /// Whether the tool changes files: edits, or a new file (an export).
+    /// Whether the tool changes files: edits, or a new file (an export, a created file).
     pub fn writes(self) -> bool {
-        matches!(self, Action::Run | Action::Batch | Action::Export)
+        matches!(self, Action::Run | Action::Batch | Action::Export | Action::Create)
     }
 }
 
@@ -209,13 +213,13 @@ pub(crate) fn draft_property() -> Value {
     json!({ "type": "boolean", "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode." })
 }
 
-fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 9] {
+fn specs_of(kit: &'static KitDefinition) -> [KitToolSpec; 10] {
     specs_described(kit, None)
 }
 
 /// The kit's tools, with the object-model tools' arguments generated from `described` (what the
 /// kit's `model.describe` answered) when it is known.
-fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 9] {
+fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [KitToolSpec; 10] {
     let agent = &kit.agent;
     let (name, noun) = (kit.name, agent.noun);
     let commands = tool_name(kit, Action::Commands);
@@ -353,6 +357,22 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
             }),
             writes: true,
         },
+        KitToolSpec {
+            name: tool_name(kit, Action::Create),
+            description: format!(
+                "Create a new, empty {noun} in {name} at `path` ({}) and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
+                kit.creates.iter().map(|(extension, _)| format!(".{extension}")).collect::<Vec<_>>().join(", ")
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Workspace-relative path of the new file, for example `deck.kslide`." },
+                    "size": { "type": "object", "description": "The document size in pixels, for example {\"width\": 1920, \"height\": 1080}.", "properties": { "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 } } }
+                },
+                "required": ["path"]
+            }),
+            writes: true,
+        },
     ]
 }
 
@@ -380,9 +400,11 @@ pub fn installed(kits: &KitManager) -> Vec<KitToolSpec> {
             .collect();
         if !on.is_empty() {
             let exports = on.iter().any(|kit| kit.agent.export.is_some());
+            let creates = on.iter().any(|kit| !kit.creates.is_empty());
             return unified_specs(&on)
                 .into_iter()
                 .filter(|spec| exports || parse_unified(&spec.name) != Some(Action::Export))
+                .filter(|spec| creates || parse_unified(&spec.name) != Some(Action::Create))
                 .collect();
         }
     }
@@ -397,9 +419,10 @@ pub fn installed(kits: &KitManager) -> Vec<KitToolSpec> {
 }
 
 /// Whether `kit` offers the tool `name` once installed: `<prefix>_export` only when it exports
-/// for the agent (KHP A41); every other tool always.
+/// for the agent, `<prefix>_create` only when it creates files (KHP A41); every other tool always.
 fn offers(kit: &KitDefinition, name: &str) -> bool {
-    kit.agent.export.is_some() || name != tool_name(kit, Action::Export)
+    (kit.agent.export.is_some() || name != tool_name(kit, Action::Export))
+        && (!kit.creates.is_empty() || name != tool_name(kit, Action::Create))
 }
 
 /// The action of a unified tool name (`kit_export`).
@@ -429,6 +452,7 @@ pub fn label(name: &str) -> Option<String> {
                 Action::Batch => "Edit a file's objects",
                 Action::Check => "Check a file",
                 Action::Export => "Export a file",
+                Action::Create => "Create a file",
             }
             .to_owned(),
         );
@@ -444,6 +468,7 @@ pub fn label(name: &str) -> Option<String> {
         Action::Batch => format!("Edit {noun} objects in {kit_name}"),
         Action::Check => format!("Check {noun} in {kit_name}"),
         Action::Export => format!("Export {noun} from {kit_name}"),
+        Action::Create => format!("Create {noun} in {kit_name}"),
     })
 }
 
@@ -995,6 +1020,7 @@ pub async fn call_with(
         Action::Batch => model::batch(kits, kit, input, draft).await,
         Action::Check => check(kits, kit, input, draft).await,
         Action::Export => export::export(kits, kit, input, draft).await,
+        Action::Create => create(kits, kit, input).await,
     })
 }
 
@@ -1546,10 +1572,55 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
                 "params": command.params,
                 "enabled": command.enabled,
                 "mutates": command.mutates,
+                "closest": command.closest,
             })
         })
         .collect();
-    Ok(listed_commands(&query, found))
+    let mut answer = listed_commands(&query, found);
+    if let Some(hint) = file_tool_hint(kit, &query) {
+        answer.summary = format!("{hint}\n{}", answer.summary);
+        answer.output["hint"] = json!(hint);
+    }
+    Ok(answer)
+}
+
+/// Points a search for exporting or creating files at `<prefix>_export` and `<prefix>_create`:
+/// those are tools, not commands, and commands that name files are not available to the agent.
+fn file_tool_hint(kit: &KitDefinition, query: &str) -> Option<String> {
+    let words: Vec<String> = query.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_owned).collect();
+    let has = |list: &[&str]| words.iter().any(|w| list.contains(&w.as_str()));
+    if let Some(export) = kit.agent.export.as_ref()
+        && (has(&["export", "render", "encode", "output", "movie", "video", "write"]) || has(export.formats))
+    {
+        return Some(format!("To write the document to a new {} file, use {} (path, to) instead of a command.", export::listed(export), tool_name(kit, Action::Export)));
+    }
+    if !kit.creates.is_empty() && has(&["new", "create", "blank", "empty"]) && has(&["file", "project", "document", "deck", "presentation"]) {
+        return Some(format!("To make a new file, use {} (path).", tool_name(kit, Action::Create)));
+    }
+    None
+}
+
+/// `<prefix>_create`: a new file through the kit (KHP A41); the result lists it (A30).
+async fn create(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
+    let path = kit_path(input, kit)?;
+    let extension = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
+    if !kit.creates.iter().any(|(known, _)| *known == extension) {
+        return Err(KitToolError::invalid(format!(
+            "{} creates {}, not .{extension}",
+            kit.name,
+            kit.creates.iter().map(|(e, _)| format!(".{e}")).collect::<Vec<_>>().join(", ")
+        )));
+    }
+    let mut options = Map::new();
+    if let Some(size) = input.get("size").and_then(Value::as_object) {
+        options.extend(size.iter().filter(|(key, _)| *key == "width" || *key == "height").map(|(key, value)| (key.clone(), value.clone())));
+    }
+    let view = kits.create_at(Caller::Agent, &path, options).await?;
+    let written = view.path.clone().unwrap_or(path);
+    Ok(KitToolOutput::new(
+        format!("Created `{written}`: {}", view.summary),
+        json!({ "files": [{ "path": written, "created": true }], "document": document_summary_json(&view) }),
+    ))
 }
 
 /// A command as the search answers it: id, title, and its params in kit command notation, with
@@ -1614,6 +1685,13 @@ fn lean_shape(shape: &mut Value) {
 
 /// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
 fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
+    if found.first().is_some_and(|command| command["closest"] == true) {
+        let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
+        return KitToolOutput::new(
+            format!("No command matches `{query}`; these are the closest by spelling. Try other words, for example what the command does."),
+            json!({ "commands": listed, "total": 0 }),
+        );
+    }
     let total = found.len();
     let listed: Vec<Value> = found
         .into_iter()
@@ -1794,6 +1872,32 @@ mod tests {
             ),
             "Checked `a.pptx`: 1 error, 2 warnings, no notes."
         );
+    }
+
+    #[test]
+    fn a_search_that_matches_nothing_says_so_and_points_at_export() {
+        let closest = vec![json!({ "id": "renderQueue.add", "title": "Add to Render Queue", "params": {}, "closest": true })];
+        let answer = listed_commands("mp4", closest);
+        assert!(answer.summary.starts_with("No command matches `mp4`"), "{}", answer.summary);
+        assert_eq!(answer.output["total"], 0);
+        let effect = KITS.iter().find(|kit| kit.id == "kit.effect").unwrap();
+        let sheet = KITS.iter().find(|kit| kit.id == "kit.sheet").unwrap();
+        assert!(file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export")));
+        assert!(file_tool_hint(effect, "new project file").is_some_and(|hint| hint.contains("effect_create")));
+        assert!(file_tool_hint(effect, "text layer").is_none());
+        assert!(file_tool_hint(sheet, "export csv").is_none(), "sheet exports nothing for the agent");
+    }
+
+    #[test]
+    fn kits_that_create_offer_create() {
+        let slide = KITS.iter().find(|kit| kit.id == "kit.slide").unwrap();
+        assert!(offers(slide, "slide_create"), "slide creates .kslide");
+        assert!(slide.creates.contains(&("kslide", "slide")));
+        let effect = KITS.iter().find(|kit| kit.id == "kit.effect").unwrap();
+        assert!(offers(effect, "effect_create") && offers(effect, "effect_export"));
+        let create = specs().iter().find(|spec| spec.name == "effect_create").unwrap();
+        assert!(create.writes && create.description.contains(".keffect"));
+        assert_eq!(parse("effect_create").map(|(kit, action)| (kit.id, action)), Some(("kit.effect", Action::Create)));
     }
 
     #[test]
