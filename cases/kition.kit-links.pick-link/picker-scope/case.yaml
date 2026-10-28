@@ -1,0 +1,23 @@
+format: 1
+id: kition.kit-links.pick-link/picker-scope
+feature: kition.kit-links.pick-link
+intent: >-
+  KitFrame serves links/pick only to an editable document (never a read-only one or a preview), and
+  its picker lists only visible workspace files of accept, not the document, with no import, and
+  answers the chosen workspace path without writing anything.
+layer: golden
+direction: security
+source:
+  kind: synthetic
+  from: src/features/kits/kition/KitFrame.spec.tsx
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/kits/kition/KitFrame.spec.tsx]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+timeout_s: 60
+since: "2026-10-28"

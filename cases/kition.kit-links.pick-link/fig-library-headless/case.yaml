@@ -1,0 +1,29 @@
+format: 1
+id: kition.kit-links.pick-link/fig-library-headless
+feature: kition.kit-links.pick-link
+intent: >-
+  Through Fig's headless kit (schema kit.fig v2) the agent reads the design's Library objects with
+  fig_query, and library.list reads the linked file beside the design (never writing it); without
+  the file the engine reports it cannot read the library.
+layer: golden
+direction: function
+source:
+  kind: synthetic
+  from: crates/kition-kits/tests/fixtures/App.kfig
+  licence: owned
+input:
+  - repo:crates/kition-kits/tests/fixtures/App.kfig
+  - repo:crates/kition-kits/tests/fixtures/Design System.kfig
+steps:
+  - cargo-test:
+      package: kition-kits
+      test: sdk_kits
+      filter: the_agent_reads_the_libraries_a_fig_design_links
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+tags: [headless]
+requires: [kit-fig]
+timeout_s: 60
+since: "2026-10-28"

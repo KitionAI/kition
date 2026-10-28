@@ -5,11 +5,17 @@ import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader
 import { cn } from '@/lib/cn'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import { extensionOf, sanitizeFileName } from '../host/files'
-import type { KitFilesPickParams } from '../host/protocol'
+import type { KitFilesPickParams, KitLinksPickParams } from '../host/protocol'
 import { visiblePath } from './kitionFiles'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 
 type Entry = { path: string; name: string; folder: string; kind: 'file' | 'folder' }
+
+/**
+ * What a kit asks the picker for: files, a folder, or a place to save (`files/pick`), or existing
+ * files to link where they are (`links/pick`, mode `link`).
+ */
+export type WorkspacePickRequest = KitFilesPickParams | ({ mode: 'link' } & KitLinksPickParams)
 
 const parentOf = (path: string) => path.split('/').slice(0, -1).join('/')
 
@@ -25,15 +31,20 @@ function flatten(items: WorkspaceDocumentTreeItem[], out: Entry[] = []) {
 /**
  * The workspace picker a kit's `files/pick` opens (KitFiles 1.0 FA6): only the workspace's own
  * files and folders, never hidden ones; "Import from this computer" copies a file into the
- * workspace first, beside the document. Answers the chosen workspace paths; none when cancelled.
+ * workspace first, beside the document. For `links/pick` (mode `link`, Kit UI protocol 2.5
+ * UI-N2) it offers only existing workspace files of `accept`, not the document itself, and no
+ * import: a linked file stays where it is. Answers the chosen workspace paths; none when cancelled.
  */
-function WorkspaceFilePicker({ request, documentPath, onSettle }: { request: KitFilesPickParams; documentPath: string; onSettle: (paths: string[]) => void }) {
+function WorkspaceFilePicker({ request, documentPath, onSettle }: { request: WorkspacePickRequest; documentPath: string; onSettle: (paths: string[]) => void }) {
   const { t } = useTranslation('workspace')
   const [entries, setEntries] = useState<Entry[] | null>(null)
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState<string[]>([])
   const [folder, setFolder] = useState(parentOf(documentPath))
-  const [name, setName] = useState(request.suggestedName ? sanitizeFileName(request.suggestedName) : '')
+  const suggestedName = request.mode === 'link' ? undefined : request.suggestedName
+  const [name, setName] = useState(suggestedName ? sanitizeFileName(suggestedName) : '')
+  const files = request.mode === 'open' || request.mode === 'link'
+  const multiple = files && Boolean(request.multiple)
   const [importing, setImporting] = useState(false)
   const accept = request.accept.map((extension) => extension.toLowerCase())
 
@@ -54,16 +65,17 @@ function WorkspaceFilePicker({ request, documentPath, onSettle }: { request: Kit
   const shown = useMemo(() => {
     const wanted = query.trim().toLowerCase()
     return (entries ?? [])
-      .filter((entry) => (request.mode === 'open' ? entry.kind === 'file' && (!accept.length || accept.includes(extensionOf(entry.name))) : entry.kind === 'folder'))
+      .filter((entry) => (files ? entry.kind === 'file' && (!accept.length || accept.includes(extensionOf(entry.name))) : entry.kind === 'folder'))
+      .filter((entry) => request.mode !== 'link' || entry.path !== documentPath)
       .filter((entry) => !wanted || entry.path.toLowerCase().includes(wanted))
       .sort((a, b) => a.path.localeCompare(b.path))
-  }, [accept, entries, query, request.mode])
+  }, [accept, documentPath, entries, files, query, request.mode])
 
   const choose = (path: string) => {
     if (request.mode === 'save') setFolder(path)
-    else setChosen((current) => (request.mode === 'open' && request.multiple ? (current.includes(path) ? current.filter((item) => item !== path) : [...current, path]) : [path]))
+    else setChosen((current) => (multiple ? (current.includes(path) ? current.filter((item) => item !== path) : [...current, path]) : [path]))
   }
-  const savedName = sanitizeFileName(name || request.suggestedName || '')
+  const savedName = sanitizeFileName(name || suggestedName || '')
   const saveExtension = extensionOf(savedName)
   const canSave = Boolean(name.trim()) && (!accept.length || accept.includes(saveExtension))
   const target = folder ? `${folder}/${savedName}` : savedName
@@ -95,7 +107,7 @@ function WorkspaceFilePicker({ request, documentPath, onSettle }: { request: Kit
           </label>
         ) : null}
         <TextInput size="md" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('kitEditor.filePicker.search')} aria-label={t('kitEditor.filePicker.search')} data-testid="kit-file-picker-search" />
-        <div className="max-h-72 min-h-32 overflow-auto rounded-lg border border-border" role="listbox" aria-label={title} aria-multiselectable={request.mode === 'open' && request.multiple ? true : undefined}>
+        <div className="max-h-72 min-h-32 overflow-auto rounded-lg border border-border" role="listbox" aria-label={title} aria-multiselectable={multiple ? true : undefined}>
           {request.mode === 'save' ? (
             <PickerRow icon={<Folder className="size-4" />} name={t('kitEditor.filePicker.workspaceRoot')} detail="" selected={folder === ''} onSelect={() => setFolder('')} testId="kit-file-picker-root" />
           ) : null}
@@ -164,9 +176,9 @@ function PickerRow({ icon, name, detail, selected, onSelect, onConfirm, testId }
  * The workspace picker a kit editing `documentPath` asks for (`pick` answers the chosen workspace
  * paths, none when cancelled); `dialog` is the picker while one is open.
  */
-export function useWorkspacePicker(documentPath: string): { pick: (request: KitFilesPickParams) => Promise<string[]>; dialog: ReactNode } {
-  const [asked, setAsked] = useState<{ request: KitFilesPickParams; settle: (paths: string[]) => void } | null>(null)
-  const pick = useCallback((request: KitFilesPickParams) => new Promise<string[]>((settle) => setAsked({ request, settle })), [])
+export function useWorkspacePicker(documentPath: string): { pick: (request: WorkspacePickRequest) => Promise<string[]>; dialog: ReactNode } {
+  const [asked, setAsked] = useState<{ request: WorkspacePickRequest; settle: (paths: string[]) => void } | null>(null)
+  const pick = useCallback((request: WorkspacePickRequest) => new Promise<string[]>((settle) => setAsked({ request, settle })), [])
   const dialog = asked ? (
     <WorkspaceFilePicker
       request={asked.request}

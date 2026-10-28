@@ -1,0 +1,24 @@
+format: 1
+id: kition.kit-links.pick-link/fig-library-webkit
+feature: kition.kit-links.pick-link
+intent: >-
+  The same library flow as fig-library in WebKit, the desktop app's engine: pick by link, no copy,
+  the component placed, the update on disk accepted and saved.
+layer: golden
+direction: function
+source:
+  kind: synthetic
+  from: e2e/fig-embedded.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.webkit.config.ts, e2e/fig-embedded.spec.ts, -g, links a library file]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser, platform-macos]
+requires: [webkit]
+timeout_s: 60
+since: "2026-10-28"

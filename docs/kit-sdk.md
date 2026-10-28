@@ -304,7 +304,12 @@ items with `primary`.
   (`host/write` in save mode) only of the frame's own document, new files
   and exports under unused names (a rendered movie arrives as `host/write` in
   export mode), `host/pick` (the person chooses a file, which Kition copies
-  next to the document), Kition's shortcuts forwarded back (`HOST_SHORTCUTS`:
+  next to the document), `links/pick` (Kit UI protocol 2.5, capability
+  `links-pick`: the person chooses existing workspace files in Kition's
+  picker in link mode, which lists only visible files of the request's
+  `accept`, never the document, and offers no import; nothing is copied, and
+  the kit gets each file's path relative to its document's folder; not
+  offered to a preview or a read-only document), Kition's shortcuts forwarded back (`HOST_SHORTCUTS`:
   Cmd+. opens the command palette from inside a kit, whose own Cmd+K stays
   the kit's), and the Kit AI
   bridge forwarded to the frame as `ai/*`. Kition also answers `host/generate`
@@ -340,7 +345,8 @@ items with `primary`.
   (through `/workspace-files/`, wherever it is) and any other workspace file
   whose path has no hidden segment, through `/kit-files/`: the files beside
   the document and those its links name in other folders (film and effect
-  clips, linked pictures). Engines read lent files under the same
+  clips, linked pictures, the files a kit linked with `links/pick`, such as
+  a design's library files). Engines read lent files under the same
   `/kit-files/` root, given to them as a URL signed for that folder only
   (below). The runtime refuses every hidden path there, Kition's
   own store `.kition/` (other documents' replicas and comment threads) among
@@ -522,7 +528,8 @@ worker. The engine also imports `.fig` and `.sketch` files; Kition opens only
 (one 1440 x 1024 frame) with the engine in the page, and the agent's `fig_*`
 tools run on the headless `kit-fig` (`view.describe`, `document.check`, and
 the object model's `model.*`). Fig is on engine contract 2: a design is a
-KDM replica of schema `kit.fig` v1 (kition-fig `docs/kdm.md`), carried inside
+KDM replica of schema `kit.fig` v2 (kition-fig `docs/kdm.md`; v2 adds the
+libraries a design uses, `Library` objects in `Fig.libraries`), carried inside
 the `.kfig` file under `kdm/`, so people co-edit a shared design and the
 editor lists the `replica` capability (its replica also goes to Kition's
 store, below). Its object model (namespace `Fig`, registered in
@@ -534,7 +541,13 @@ operations reach the engine as a collaborator's changes (kition-sdk
 not those. `e2e/fig-embedded.spec.ts` (in `make kit-e2e`) covers opening,
 editing, saving, and creating a design through Kition, and
 `e2e/collab-fig.spec.ts` (in `pnpm test:collab:e2e`) co-editing, the
-agent's object model in the open editor, and undo by scope. Build it locally
+agent's object model in the open editor, and undo by scope. A design uses team
+libraries from other `.kfig` files: "Add library file…" asks Kition for a
+file to link (`links/pick`), the design names it relative to its folder
+(`../libraries/Design System.kfig`), and the editor reads it and watches
+its stamp through `host/read` and `host/stamp`, so a library published again
+on disk shows as an update to accept; `e2e/fig-embedded.spec.ts` covers
+that flow, and `sdk_kits.rs` reads a design's libraries headless. Build it locally
 with `scripts/build-kit-ui.sh fig`; the SDK registry marks Fig optional until
 its first package is published and pinned.
 

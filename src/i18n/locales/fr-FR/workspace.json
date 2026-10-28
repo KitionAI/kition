@@ -256,12 +256,14 @@
       "title": {
         "open": "Choisir un fichier",
         "folder": "Choisir un dossier",
-        "save": "Enregistrer dans l’espace de travail"
+        "save": "Enregistrer dans l’espace de travail",
+        "link": "Lier un fichier"
       },
       "body": {
         "open": "Le document demande un fichier de votre espace de travail.",
         "folder": "Le document demande un dossier de votre espace de travail.",
-        "save": "Nommez le nouveau fichier et choisissez son dossier."
+        "save": "Nommez le nouveau fichier et choisissez son dossier.",
+        "link": "Le document lie un fichier de votre espace de travail. Le fichier reste à sa place, et le document suit ses modifications."
       },
       "name": "Nom du fichier",
       "search": "Rechercher",
@@ -273,7 +275,8 @@
       "confirm": {
         "open": "Ouvrir",
         "folder": "Choisir",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "link": "Lier"
       },
       "cancel": "Annuler"
     }

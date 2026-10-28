@@ -81,3 +81,22 @@ features:
     cases:
       - kition.extensions.kit-scripts/fig-script
     since: "2026-10-28"
+  - id: kition.kit-links.pick-link
+    title: A kit links an existing workspace file where it is (`links/pick`, Kit UI protocol 2.5) and reads it by its document-relative path
+    direction: [function, security]
+    priority: P1
+    status: has
+    paths:
+      - src/features/kits/kition/KitFrame.tsx
+      - src/features/kits/kition/WorkspaceFilePicker.tsx
+      - src/features/kits/host/mountKit.ts
+      - src/features/kits/host/protocol.ts
+      - e2e/fig-embedded.spec.ts
+      - crates/kition-kits/tests/sdk_kits.rs
+    gap: Kition sends no `document/fileChanged`-style notice for a linked file; the kit watches its stamp (Fig every 2 seconds). Only Fig's Libraries view asks for `links/pick` so far.
+    cases:
+      - kition.kit-links.pick-link/fig-library
+      - kition.kit-links.pick-link/fig-library-webkit
+      - kition.kit-links.pick-link/fig-library-headless
+      - kition.kit-links.pick-link/picker-scope
+    since: "2026-10-28"

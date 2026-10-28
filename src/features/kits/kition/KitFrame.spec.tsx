@@ -187,6 +187,18 @@ const external = vi.hoisted(() => ({ opened: [] as string[] }))
 vi.mock('@/services/desktop', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/desktop')>()),
   openExternalURL: vi.fn(async (url: string) => void external.opened.push(url)),
+  // The workspace the picker lists: the document, a file of its kind beside it and one elsewhere, Kition's store, another kind.
+  listWorkspaceDocuments: vi.fn(async () => ({
+    items: [
+      { path: 'Shared', name: 'Shared', type: 'folder', children: [
+        { path: 'Shared/Poster.test', name: 'Poster.test', type: 'file' },
+        { path: 'Shared/Kit.test', name: 'Kit.test', type: 'file' },
+      ] },
+      { path: 'Libraries', name: 'Libraries', type: 'folder', children: [{ path: 'Libraries/Brand.test', name: 'Brand.test', type: 'file' }] },
+      { path: '.kition', name: '.kition', type: 'folder', children: [{ path: '.kition/Copy.test', name: 'Copy.test', type: 'file' }] },
+      { path: 'Notes.md', name: 'Notes.md', type: 'file' },
+    ],
+  })),
 }))
 
 import { setReadOnlyDocuments } from '@/services/documentAccess'
@@ -256,6 +268,36 @@ describe('KitFrame', () => {
     await act(async () => root?.unmount())
     await mount()
     expect(lastHandlers().open).toBeUndefined()
+  })
+
+  it('links workspace files where they are (links/pick): only visible files of accept, not the document, nothing imported or copied', async () => {
+    await mount()
+    const asked = lastHandlers().pickLinks!({ purpose: 'library', accept: ['test'], multiple: false })
+    await settle()
+    const picker = document.querySelector('[data-testid="kit-file-picker"]')
+    expect(picker?.getAttribute('data-mode')).toBe('link')
+    const entries = [...document.querySelectorAll('[data-testid="kit-file-picker-entry"]')]
+    expect(entries.map((entry) => entry.textContent)).toEqual(['Brand.testLibraries', 'Kit.testShared'])
+    expect(document.querySelector('[data-testid="kit-file-picker-import"]')).toBeNull()
+    await act(async () => (entries[0] as HTMLButtonElement).click())
+    await act(async () => (document.querySelector('[data-testid="kit-file-picker-confirm"]') as HTMLButtonElement).click())
+    expect(await asked).toEqual([{ path: 'Libraries/Brand.test', version: 'lent-1' }])
+    expect(writes).toEqual([])
+
+    const cancelled = lastHandlers().pickLinks!({ purpose: 'library', accept: ['test'] })
+    await settle()
+    await act(async () => (document.querySelector('[data-testid="kit-file-picker-cancel"]') as HTMLButtonElement).click())
+    expect(await cancelled).toEqual([])
+  })
+
+  it('offers no links/pick to a read-only document or a preview', async () => {
+    setReadOnlyDocuments([PATH])
+    await mount()
+    expect(lastHandlers().pickLinks).toBeUndefined()
+    await act(async () => root?.unmount())
+    setReadOnlyDocuments([])
+    await mount({ preview: { snapshot: new ArrayBuffer(0), blobs: new ArrayBuffer(0) } })
+    expect(lastHandlers().pickLinks).toBeUndefined()
   })
 
   it('opens a web address in the browser only once the person confirmed it, showing its site', async () => {

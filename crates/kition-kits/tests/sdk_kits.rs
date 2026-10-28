@@ -676,3 +676,121 @@ async fn the_agent_reads_and_edits_a_fig_design_through_its_object_model() {
     assert_eq!(fig_layers(&again, path).await, edited);
     again.shutdown().await;
 }
+
+/// Fig schema `kit.fig` v2 keeps the libraries a design uses as `Library` objects in
+/// `Fig.libraries` (kition-fig `docs/kdm.md`, V9). Through the headless executable the agent reads
+/// them with `fig_query`, each with the library file's path as the design names it, and the
+/// engine reads the linked file beside the design through its host's lent files (`library.list`),
+/// never a copy. The fixtures were made with the Fig package's engine: `Design System.kfig` is a
+/// design published as a library (one component, "Button/Primary"), and `App.kfig` links it
+/// (`library.add` with `Design System.kfig`) and holds one instance of the button.
+/// Cases: kition.kit-links.pick-link/fig-library-headless.
+#[tokio::test]
+async fn the_agent_reads_the_libraries_a_fig_design_links() {
+    let Some(kit) = KITS.iter().find(|kit| kit.id == "kit.fig") else {
+        panic!("kit.fig is a kit")
+    };
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let executable = match binary(kit, &fixtures.join("App.kfig")) {
+        Executable::Found(executable) => executable,
+        Executable::Missing | Executable::Stale(_) => {
+            eprintln!(
+                "skipped kit.fig: build kit-fig (cargo build -p kit-fig in kition-fig) or set {}",
+                kit.binary_env
+            );
+            return;
+        }
+    };
+    let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::create_dir_all(dir.path().join("work")).unwrap_or_else(|err| panic!("{err}"));
+    for name in ["App.kfig", "Design System.kfig"] {
+        std::fs::copy(fixtures.join(name), dir.path().join("work").join(name))
+            .unwrap_or_else(|err| panic!("{err}"));
+    }
+    let path = "work/App.kfig";
+    let kits = KitManager::new(
+        Some(dir.path().to_path_buf()),
+        vec![(kit, Some(executable))],
+    );
+    let call = |name: &'static str, input: Value| {
+        let kits = &kits;
+        async move {
+            kition_kits::tools::call(kits, name, &input)
+                .await
+                .unwrap_or_else(|| panic!("{name} is a kit tool"))
+        }
+    };
+
+    let described = call("fig_query", json!({ "path": path, "describe": true }))
+        .await
+        .unwrap_or_else(|err| panic!("fig_query: {}", err.message));
+    let types = described.output["types"].as_str().unwrap_or_default();
+    assert!(
+        types.contains("libraries: list of Library"),
+        "schema v2 lists the design's libraries: {types}"
+    );
+    let read = call(
+        "fig_query",
+        json!({ "path": path, "follow": "libraries", "fields": ["name", "path", "version"] }),
+    )
+    .await
+    .unwrap_or_else(|err| panic!("fig_query: {}", err.message));
+    let libraries = read.output["objects"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(libraries.len(), 1, "{}", read.output);
+    assert_eq!(libraries[0]["type"], "Library", "{}", read.output);
+    assert_eq!(libraries[0]["fields"]["name"], "Design System");
+    assert_eq!(libraries[0]["fields"]["path"], "Design System.kfig");
+
+    let listed = call(
+        "fig_run",
+        json!({ "path": path, "steps": [{ "command": "library.list" }], "save": false }),
+    )
+    .await
+    .unwrap_or_else(|err| panic!("fig_run library.list: {}", err.message));
+    let listed = &listed.output["completed"][0]["result"]["libraries"][0];
+    assert_eq!(listed["path"], "Design System.kfig", "{listed}");
+    assert_eq!(listed["version"], 1, "{listed}");
+    assert!(
+        listed.get("error").is_none(),
+        "the linked file is read: {listed}"
+    );
+    kits.shutdown().await;
+    let library = std::fs::read(dir.path().join("work/Design System.kfig"))
+        .unwrap_or_else(|err| panic!("{err}"));
+    let fixture =
+        std::fs::read(fixtures.join("Design System.kfig")).unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(library, fixture, "the library file is read, never written");
+
+    // Without the file, the engine says it cannot read the library: it read the linked file.
+    std::fs::remove_file(dir.path().join("work/Design System.kfig"))
+        .unwrap_or_else(|err| panic!("{err}"));
+    let Some(executable) = (match binary(kit, &fixtures.join("App.kfig")) {
+        Executable::Found(executable) => Some(executable),
+        Executable::Missing | Executable::Stale(_) => None,
+    }) else {
+        panic!("the executable is still there")
+    };
+    let again = KitManager::new(
+        Some(dir.path().to_path_buf()),
+        vec![(kit, Some(executable))],
+    );
+    let missing = kition_kits::tools::call(
+        &again,
+        "fig_run",
+        &json!({ "path": path, "steps": [{ "command": "library.list" }], "save": false }),
+    )
+    .await
+    .unwrap_or_else(|| panic!("fig_run is a kit tool"))
+    .unwrap_or_else(|err| panic!("fig_run library.list: {}", err.message));
+    let missing = &missing.output["completed"][0]["result"]["libraries"][0];
+    assert!(
+        missing["error"]
+            .as_str()
+            .is_some_and(|error| error.starts_with("Design System.kfig")),
+        "{missing}"
+    );
+    again.shutdown().await;
+}

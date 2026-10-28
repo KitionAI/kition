@@ -256,12 +256,14 @@
       "title": {
         "open": "Choose a file",
         "folder": "Choose a folder",
-        "save": "Save to the workspace"
+        "save": "Save to the workspace",
+        "link": "Link a file"
       },
       "body": {
         "open": "The document asks for a file from your workspace.",
         "folder": "The document asks for a folder in your workspace.",
-        "save": "Name the new file and choose the folder it goes in."
+        "save": "Name the new file and choose the folder it goes in.",
+        "link": "The document links a file of your workspace. The file stays where it is, and the document follows its changes."
       },
       "name": "File name",
       "search": "Search",
@@ -273,7 +275,8 @@
       "confirm": {
         "open": "Open",
         "folder": "Choose",
-        "save": "Save"
+        "save": "Save",
+        "link": "Link"
       },
       "cancel": "Cancel"
     }

@@ -10,7 +10,7 @@ import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
-import { mountKit, type KitConnection, type KitHostHandlers, type KitOpenParams, type KitOpenResult } from '../host/mountKit'
+import { mountKit, type KitConnection, type KitHostHandlers, type KitLinksPickParams, type KitOpenParams, type KitOpenResult } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
@@ -28,7 +28,7 @@ import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 import { openConfirmedUrl, useOpenUrlConfirmation } from './KitOpenUrlDialog'
 import { kitionFilesOption } from './kitionFiles'
-import { useWorkspacePicker } from './WorkspaceFilePicker'
+import { useWorkspacePicker, type WorkspacePickRequest } from './WorkspaceFilePicker'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
 export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
@@ -220,6 +220,24 @@ async function stampForKit(document: string, { path: wanted }: { path: string })
   return { version: file.own ? await KITION_KIT_HOST.stamp(file.path) : await stampKitFile(file.path) }
 }
 
+/**
+ * `links/pick` (Kit UI protocol 2.5, UI-N2): the person chooses existing workspace files in
+ * Kition's own picker, which offers only `accept`'s visible files and not the document; nothing
+ * is copied. Answers their workspace paths and stamps; `mountKit` names them from the document's
+ * folder. `host/read` and `host/stamp` serve them like the other files a kit may read (UI-N3).
+ */
+async function pickLinkedFiles(pick: (request: WorkspacePickRequest) => Promise<string[]>, document: string, params: KitLinksPickParams) {
+  const paths = await pick({ mode: 'link', ...params })
+  const readable = paths.filter((wanted) => {
+    try {
+      return !readableFile(wanted, document).own
+    } catch {
+      return false
+    }
+  })
+  return Promise.all(readable.map(async (path) => ({ path, version: await stampKitFile(path).catch(() => null) })))
+}
+
 /** `host/notify`: the kit's notice as one of Kition's toasts. */
 function showKitNotice(notice: { level?: string; title: string; description?: string }) {
   const show = notice.level === 'error' ? notify.error : notice.level === 'success' ? notify.success : notice.level === 'warning' ? notify.warning : notify.info
@@ -316,6 +334,9 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
             stamp: (params) => stampForKit(path, params),
             write: (params) => writeForKit(path, openedReadOnly, params),
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
+            // Files the kit links where they are (`links/pick`): not for a preview or a read-only
+            // document, whose kit cannot store the link (UI-N4).
+            pickLinks: preview || openedReadOnly ? undefined : (params) => pickLinkedFiles(picker.pick, path, params),
             // The replica the kit keeps next to its file (a PSD's), in the document store.
             replicaRead: async ({ path: wanted }) => {
               const checked = documentPath(wanted, path)

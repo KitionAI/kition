@@ -256,12 +256,14 @@
       "title": {
         "open": "Elegir un archivo",
         "folder": "Elegir una carpeta",
-        "save": "Guardar en el espacio de trabajo"
+        "save": "Guardar en el espacio de trabajo",
+        "link": "Vincular un archivo"
       },
       "body": {
         "open": "El documento pide un archivo de tu espacio de trabajo.",
         "folder": "El documento pide una carpeta de tu espacio de trabajo.",
-        "save": "Pon nombre al nuevo archivo y elige la carpeta donde irá."
+        "save": "Pon nombre al nuevo archivo y elige la carpeta donde irá.",
+        "link": "El documento vincula un archivo de tu espacio de trabajo. El archivo se queda donde está y el documento sigue sus cambios."
       },
       "name": "Nombre del archivo",
       "search": "Buscar",
@@ -273,7 +275,8 @@
       "confirm": {
         "open": "Abrir",
         "folder": "Elegir",
-        "save": "Guardar"
+        "save": "Guardar",
+        "link": "Vincular"
       },
       "cancel": "Cancelar"
     }

@@ -1,0 +1,26 @@
+format: 1
+id: kition.kit-links.pick-link/fig-library
+feature: kition.kit-links.pick-link
+intent: >-
+  Fig's "Add library file…" in Kition opens Kition's own picker in link mode, which offers only the
+  workspace's .kfig files (not the design, not Kition's store, no import) and copies nothing; the
+  design names the library as ../libraries/Design System.kfig, places its component, and when the
+  library file is published again on disk it shows the update, which accepting puts in the saved design.
+layer: golden
+direction: function
+source:
+  kind: synthetic
+  from: e2e/fig-embedded.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/fig-embedded.spec.ts, -g, links a library file]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser]
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-28"
