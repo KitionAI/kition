@@ -71,3 +71,29 @@ test('makes a new scene with the Cube kit’s engine from the create menu and op
     await host.dispose()
   }
 })
+
+test('path traces a scene with parallel workers inside Kition’s kit frame', async ({ page, baseURL }) => {
+  test.skip(!engine.built, missing)
+  test.setTimeout(180_000)
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Room.kcube', await roomFixture())
+  try {
+    await expect(kit.getByTestId('cube-status')).toContainText('4 objects', { timeout: 60_000 })
+    await kit.getByTestId('cube-render').click()
+    await expect(kit.getByTestId('cube-render-dialog')).toBeVisible()
+    await kit.getByTestId('cube-render-engine-path').click()
+    if ((await kit.getByTestId('cube-render-cancel').count()) === 1) await kit.getByTestId('cube-render-cancel').click()
+    for (const [field, value] of [['cube-render-samples', '2'], ['cube-render-workers', '2']] as const) {
+      const input = kit.getByTestId(field).locator('input')
+      await input.fill(value)
+      await input.press('Enter')
+    }
+    await kit.getByTestId('cube-render-start').click()
+    // The kit frame lets the editor start its tracing workers: two of them render the picture.
+    const progress = kit.getByTestId('cube-render-progress')
+    await expect(progress).toHaveAttribute('data-state', 'done', { timeout: 150_000 })
+    await expect(progress).toHaveAttribute('data-workers', '2')
+    await expect(kit.getByTestId('cube-render-image')).toBeVisible()
+  } finally {
+    await host.dispose()
+  }
+})
