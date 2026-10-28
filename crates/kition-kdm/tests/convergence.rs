@@ -316,3 +316,82 @@ fn the_test_network_reports_bad_input_instead_of_panicking() {
     assert!(net.sync_all().is_ok());
     assert_eq!(Rng::new(1).below(0), 0);
 }
+
+/// The objects a tree names more than once, with how many nodes name each.
+fn named_twice(replica: &kition_kdm::Replica, page: &kition_kdm::ObjectId) -> Vec<(kition_kdm::ObjectId, usize)> {
+    let mut counts: std::collections::BTreeMap<kition_kdm::ObjectId, usize> = std::collections::BTreeMap::new();
+    for entry in replica.tree(page, "outline").unwrap() {
+        *counts.entry(entry.object).or_default() += 1;
+    }
+    counts.into_iter().filter(|(_, count)| *count > 1).collect()
+}
+
+/// A redo that recreates a node another replica's concurrent move kept alive (the engine's redo
+/// of a create makes a new node when the old one is deleted locally): after the merge two nodes
+/// name one object, and `tree_dedupe` (M10b) leaves one on every replica, the same one, with the
+/// other node's children under it.
+#[test]
+fn a_redo_concurrent_with_a_move_names_its_object_once_after_the_repair() {
+    let mut net = network(2, 9);
+    let (page, shape) = page_with_shape(&mut net.replicas[0]);
+    let (frame, child) = net.replicas[0]
+        .transact(&person(), |tx| {
+            let frame = tx.create("Shape", fields(json!({ "kind": "rect", "x": 0, "y": 0 })))?;
+            let child = tx.create("Shape", fields(json!({ "kind": "ellipse", "x": 1, "y": 1 })))?;
+            let node = tx.tree_create(&page, "outline", None, &frame)?;
+            tx.tree_create(&page, "outline", None, &shape)?;
+            tx.tree_create(&page, "outline", Some(&node), &child)?;
+            Ok((frame, child))
+        })
+        .unwrap();
+    // Replica 0's next step: a new node for a new shape, and the child moved under it.
+    let added = net.replicas[0]
+        .transact(&person(), |tx| {
+            let added = tx.create("Shape", fields(json!({ "kind": "rect", "x": 2, "y": 2 })))?;
+            let node = tx.tree_create(&page, "outline", None, &added)?;
+            let entries = tx.tree(&page, "outline")?;
+            let child_node = entries.iter().find(|e| e.object == child).map(|e| e.node.clone()).unwrap();
+            tx.tree_move(&page, "outline", &child_node, Some(&node))?;
+            Ok(added)
+        })
+        .unwrap();
+    net.sync_all().unwrap();
+    // Replica 0 undoes it (its node is deleted); replica 1, not having seen the undo, moves that
+    // node under the frame, after enough writes that its move is the later one.
+    assert!(net.replicas[0].undo().unwrap());
+    for x in 0..4 {
+        net.replicas[1].transact(&person(), |tx| tx.set(&shape, "x", json!(x))).unwrap();
+    }
+    net.replicas[1]
+        .transact(&person(), |tx| {
+            let entries = tx.tree(&page, "outline")?;
+            let node = entries.iter().find(|e| e.object == added).map(|e| e.node.clone()).unwrap();
+            let target = entries.iter().find(|e| e.object == frame).map(|e| e.node.clone()).unwrap();
+            tx.tree_move(&page, "outline", &node, Some(&target))
+        })
+        .unwrap();
+    // Replica 0 redoes: its engine makes a new node for the shape and moves the child under it.
+    assert!(net.replicas[0].redo().unwrap());
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    assert_eq!(named_twice(&net.replicas[0], &page), vec![(added.clone(), 2)], "the merge names the redone shape twice");
+
+    // Both replicas repair the same state concurrently; their repairs agree.
+    for replica in &mut net.replicas {
+        let removed = replica.transact(&kition_kdm::Origin::system("repair"), |tx| tx.tree_dedupe(&page, "outline")).unwrap();
+        assert_eq!(removed, 1);
+    }
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    for replica in &net.replicas {
+        assert!(named_twice(replica, &page).is_empty());
+        let entries = replica.tree(&page, "outline").unwrap();
+        let kept = entries.iter().find(|e| e.object == added).map(|e| e.node.clone()).unwrap();
+        let under = entries.iter().find(|e| e.object == child).and_then(|e| e.parent.clone());
+        assert_eq!(under, Some(kept), "the removed node's child moves under the kept node");
+        assert_eq!(entries.len(), 4);
+    }
+    // A repaired tree needs no repair.
+    let again = net.replicas[0].transact(&kition_kdm::Origin::system("repair"), |tx| tx.tree_dedupe(&page, "outline")).unwrap();
+    assert_eq!(again, 0);
+}

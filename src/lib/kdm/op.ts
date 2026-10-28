@@ -33,6 +33,8 @@ export type Op =
   /** Creates the transaction's `node`-th node. */
   | { op: 'treeCreate'; id: ObjectId; field: string; parent: NodeKey | null; object: ObjectId; node: number }
   | { op: 'treeMove'; id: ObjectId; field: string; node: NodeKey; parent: NodeKey | null }
+  /** Deletes a node that has no children: only `Tx.treeDedupe` makes it (M10b). */
+  | { op: 'treeDelete'; id: ObjectId; field: string; node: NodeKey }
   /** Raises the document's minimum schema version (rule M20); a no-op when it is already at least `version` when applied. */
   | { op: 'raiseSchema'; version: number }
 
@@ -133,6 +135,11 @@ function applyOne(doc: LoroDoc, schema: Schema, op: Op, created: Array<TreeID | 
       const node = nodeId(created, op.node)
       if (node === undefined) throw errors.engine('a staged tree move has no node')
       return engineContainer(doc, op.id, op.field, 'tree').move(node, nodeId(created, op.parent))
+    }
+    case 'treeDelete': {
+      const node = nodeId(created, op.node)
+      if (node === undefined) throw errors.engine('a staged tree delete has no node')
+      return engineContainer(doc, op.id, op.field, 'tree').delete(node)
     }
     case 'raiseSchema': {
       const current = read.minSchemaVersion(doc)

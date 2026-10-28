@@ -446,6 +446,71 @@ impl<'a> Tx<'a> {
         Ok(())
     }
 
+    /// Rule M10b: leaves every object of the tree named by one node. For each object that several
+    /// of the document's nodes name (a redo made a new node for it while another replica's
+    /// concurrent move kept the old one alive), the node kept is the least by engine id (peer,
+    /// then counter) among those with no ancestor naming the same object; every other node naming
+    /// it has its children moved, in order, to the end of the kept node's children, and is then
+    /// deleted. The choice depends on the state alone, so replicas that repair one state
+    /// concurrently make the same moves and deletes. Nodes this transaction created are not
+    /// considered. Answers how many nodes it deleted; 0 writes nothing. Run it in a kit's repair
+    /// (engine contract E14, a `system` transaction) for every tree field.
+    pub fn tree_dedupe(&mut self, id: &ObjectId, field: &str) -> Result<usize> {
+        let name = self.container_field(id, field, FieldKind::Tree)?;
+        let mut deleted = 0;
+        // One node at a time, each chosen on the tree as the earlier ones left it, so a move never
+        // forms a cycle: the kept node has no ancestor naming its object, so it is never under the
+        // node that goes, nor under one of that node's children.
+        while let Some((keep, other)) = self.tree_duplicate(id, name)? {
+            let (kept, node) = (NodeRef::committed(keep), NodeRef::committed(other));
+            let children: Vec<NodeRef> =
+                self.tree(id, name)?.into_iter().filter(|entry| entry.parent.as_ref() == Some(&node)).map(|entry| entry.node).collect();
+            for child in &children {
+                self.tree_move(id, name, child, Some(&kept))?;
+            }
+            // Children that name no object (only a document written outside the KDM has them) go
+            // with the node.
+            let key = NodeKey::Committed(other);
+            let tree = self.tree_mut(id, name)?;
+            tree.parents.remove(&key);
+            tree.deleted.insert(key);
+            self.ops.push(Op::TreeDelete { id: id.clone(), field: name, node: key });
+            deleted += 1;
+        }
+        Ok(deleted)
+    }
+
+    /// The first object in pre-order that several of the document's nodes name (M10b): the node
+    /// to keep and the first other one in pre-order.
+    fn tree_duplicate(&self, id: &ObjectId, name: &str) -> Result<Option<(loro::TreeID, loro::TreeID)>> {
+        let entries = self.tree(id, name)?;
+        let mut by_object: HashMap<&ObjectId, Vec<loro::TreeID>> = HashMap::new();
+        let mut parent_of: HashMap<loro::TreeID, Option<loro::TreeID>> = HashMap::new();
+        let mut first: Option<&ObjectId> = None;
+        for entry in &entries {
+            let Some(node) = entry.node.resolved() else { continue };
+            parent_of.insert(node, entry.parent.as_ref().and_then(NodeRef::resolved));
+            let nodes = by_object.entry(&entry.object).or_default();
+            nodes.push(node);
+            if nodes.len() == 2 && first.is_none() {
+                first = Some(&entry.object);
+            }
+        }
+        let Some(nodes) = first.and_then(|object| by_object.get(object)) else { return Ok(None) };
+        let outermost = |node: loro::TreeID| {
+            let mut at = parent_of.get(&node).copied().flatten();
+            while let Some(parent) = at {
+                if nodes.contains(&parent) {
+                    return false;
+                }
+                at = parent_of.get(&parent).copied().flatten();
+            }
+            true
+        };
+        let Some(keep) = nodes.iter().copied().filter(|node| outermost(*node)).min() else { return Ok(None) };
+        Ok(nodes.iter().copied().find(|node| *node != keep).map(|other| (keep, other)))
+    }
+
     /// The tree's nodes in pre-order as this transaction sees it: the document's nodes plus the
     /// nodes it created, each node it created or moved last among its new siblings, as they will
     /// be once it applies. A node that names no object is skipped with its subtree, as in
@@ -485,6 +550,11 @@ impl<'a> Tx<'a> {
                         children.entry(old).or_default().retain(|child| child != node);
                     }
                     children.entry(*parent).or_default().push(*node);
+                }
+                Op::TreeDelete { id: owner, field: of, node } if owner == id && *of == name => {
+                    if let Some(old) = parent_of.remove(node) {
+                        children.entry(old).or_default().retain(|child| child != node);
+                    }
                 }
                 _ => {}
             }

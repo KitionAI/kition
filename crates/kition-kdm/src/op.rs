@@ -107,6 +107,12 @@ pub(crate) enum Op<'a> {
         node: NodeKey,
         parent: Option<NodeKey>,
     },
+    /// Deletes a node that has no children: only [`crate::Tx::tree_dedupe`] makes it (M10b).
+    TreeDelete {
+        id: ObjectId,
+        field: &'a str,
+        node: NodeKey,
+    },
     /// Raises the document's minimum schema version to `version` (rule M20); a no-op when it is
     /// already at least `version` when applied.
     RaiseSchema {
@@ -131,7 +137,8 @@ impl Op<'_> {
             | Self::MapSet { id, .. }
             | Self::MapDelete { id, .. }
             | Self::TreeCreate { id, .. }
-            | Self::TreeMove { id, .. } => id,
+            | Self::TreeMove { id, .. }
+            | Self::TreeDelete { id, .. } => id,
             Self::RaiseSchema { .. } => return None,
         })
     }
@@ -211,6 +218,7 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
             let parent = parent_id(nodes, parent)?;
             tree.mov(node_id(nodes, node)?, parent).map_err(engine)?;
         }
+        Op::TreeDelete { id, field, node } => tree(doc, &id, field)?.delete(node_id(nodes, node)?).map_err(engine)?,
         Op::RaiseSchema { version } => {
             if read::min_schema_version(doc).is_some_and(|current| current >= u64::from(version)) {
                 return Ok(());

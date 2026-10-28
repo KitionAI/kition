@@ -98,15 +98,20 @@ pub(crate) struct TreeState {
     pub(crate) committed: Option<LoroTree>,
     /// `None` as a value: the node is a root.
     pub(crate) parents: HashMap<NodeKey, Option<NodeKey>>,
+    /// Nodes this transaction deleted (M10b).
+    pub(crate) deleted: HashSet<NodeKey>,
 }
 
 impl TreeState {
     pub(crate) fn new(committed: Option<LoroTree>) -> Self {
-        Self { committed, parents: HashMap::new() }
+        Self { committed, parents: HashMap::new(), deleted: HashSet::new() }
     }
 
     /// The node's parent (`Some(None)`: a root), or `None` if the tree has no such live node.
     pub(crate) fn parent(&self, node: NodeKey) -> Option<Option<NodeKey>> {
+        if self.deleted.contains(&node) {
+            return None;
+        }
         if let Some(parent) = self.parents.get(&node) {
             return Some(*parent);
         }

@@ -186,11 +186,14 @@ export class ListState {
 export class TreeState {
   /** `null` as a value: the node is a root. */
   readonly parents = new Map<NodeKey, NodeKey | null>()
+  /** Nodes this transaction deleted (M10b). */
+  readonly deleted = new Set<NodeKey>()
 
   constructor(readonly committed: LoroTree | null) {}
 
   /** The node's parent (`null`: a root), or `undefined` if the tree has no such live node. */
   parent(node: NodeKey): NodeKey | null | undefined {
+    if (this.deleted.has(node)) return undefined
     if (this.parents.has(node)) return this.parents.get(node)
     if (pendingIndex(node) !== null || !this.committed) return undefined
     const found = this.committed.getNodeByID(treeId(node))

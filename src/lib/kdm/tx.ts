@@ -468,6 +468,67 @@ export class Tx {
   }
 
   /**
+   * Rule M10b: leaves every object of the tree named by one node. For each object that several of
+   * the document's nodes name (a redo made a new node for it while another replica's concurrent
+   * move kept the old one alive), the node kept is the least by engine id (peer, then counter)
+   * among those with no ancestor naming the same object; every other node naming it has its
+   * children moved, in order, to the end of the kept node's children, and is then deleted. The
+   * choice depends on the state alone, so replicas that repair one state concurrently make the
+   * same moves and deletes. Nodes this transaction created are not considered. Answers how many
+   * nodes it deleted; 0 writes nothing. Run it in a kit's repair (engine contract E14, a `system`
+   * transaction) for every tree field.
+   */
+  treeDedupe(id: ObjectId, field: string): number {
+    this.live()
+    checkField(id, field)
+    this.containerField(id, field, 'tree')
+    let deleted = 0
+    // One node at a time, each chosen on the tree as the earlier ones left it, so a move never
+    // forms a cycle: the kept node has no ancestor naming its object.
+    for (let found = this.treeDuplicate(id, field); found; found = this.treeDuplicate(id, field)) {
+      const [keep, other] = found
+      for (const entry of this.tree(id, field)) {
+        if (entry.parent?.id === other.id) this.treeMove(id, field, entry.node, keep)
+      }
+      // Children that name no object (only a document written outside the KDM has them) go with the node.
+      const key = this.nodeKey(other)
+      const tree = this.treeState(id, field)
+      tree.parents.delete(key)
+      tree.deleted.add(key)
+      this.ops.push({ op: 'treeDelete', id, field, node: key })
+      deleted += 1
+    }
+    return deleted
+  }
+
+  /** The first object in pre-order that several of the document's nodes name (M10b): the node to keep and the first other one in pre-order. */
+  private treeDuplicate(id: ObjectId, field: string): [NodeRef, NodeRef] | null {
+    const entries = this.tree(id, field).filter((entry) => entry.node.id !== null)
+    const parentOf = new Map<string, string | null>()
+    const byObject = new Map<ObjectId, NodeRef[]>()
+    let first: ObjectId | null = null
+    for (const entry of entries) {
+      parentOf.set(entry.node.id as string, entry.parent?.id ?? null)
+      const nodes = byObject.get(entry.object) ?? []
+      nodes.push(entry.node)
+      byObject.set(entry.object, nodes)
+      if (nodes.length === 2 && first === null) first = entry.object
+    }
+    const nodes = first === null ? undefined : byObject.get(first)
+    if (!nodes) return null
+    const named = new Set(nodes.map((node) => node.id as string))
+    const outermost = (node: NodeRef) => {
+      for (let at = parentOf.get(node.id as string) ?? null; at !== null; at = parentOf.get(at) ?? null) {
+        if (named.has(at)) return false
+      }
+      return true
+    }
+    const keep = nodes.filter(outermost).sort((a, b) => compareTreeIds(a.id as string, b.id as string))[0]
+    const other = keep && nodes.find((node) => node.id !== keep.id)
+    return keep && other ? [keep, other] : null
+  }
+
+  /**
    * The tree's nodes in pre-order as this transaction sees it: the document's nodes plus the nodes
    * it created, each node it created or moved last among its new siblings, as they will be once it
    * applies. A node that names no object is skipped with its subtree, as in `Replica.tree`. Reads
@@ -506,6 +567,10 @@ export class Tx {
         const old = parentOf.get(op.node)
         if (old !== undefined) children.set(old, (children.get(old) ?? []).filter((child) => child !== op.node))
         add(op.parent, op.node)
+      } else if (op.op === 'treeDelete' && op.id === id && op.field === field) {
+        const old = parentOf.get(op.node)
+        if (old !== undefined) children.set(old, (children.get(old) ?? []).filter((child) => child !== op.node))
+        parentOf.delete(op.node)
       }
     }
     const handle = (key: NodeKey): NodeRef => {
@@ -686,5 +751,17 @@ export class Tx {
   }
 }
 
+
+/** Engine tree ids (`counter@peer`) in the order of the Rust engine's: peer, then counter. */
+function compareTreeIds(a: string, b: string): number {
+  const parse = (id: string): [bigint, number] => {
+    const at = id.indexOf('@')
+    return [BigInt(id.slice(at + 1)), Number(id.slice(0, at))]
+  }
+  const [peerA, counterA] = parse(a)
+  const [peerB, counterB] = parse(b)
+  if (peerA !== peerB) return peerA < peerB ? -1 : 1
+  return counterA - counterB
+}
 
 const splitError = (index: number): KdmError => new KdmError('out-of-range', `index ${index} splits a character`)
