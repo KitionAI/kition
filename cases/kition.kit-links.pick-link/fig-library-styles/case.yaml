@@ -1,0 +1,26 @@
+format: 1
+id: kition.kit-links.pick-link/fig-library-styles
+feature: kition.kit-links.pick-link
+intent: >-
+  A library file Fig links in Kition through links/pick is read for its published styles and
+  variables as well as its components (schema kit.fig v3, styles.libraries): the fill's style
+  picker lists the library's paint style under the library's name ("Design System", the style in
+  its folder "Brand") and its colour variables as "Design System · Theme".
+layer: golden
+direction: function
+source:
+  kind: synthetic
+  from: e2e/fig-embedded.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/fig-embedded.spec.ts, -g, style picker]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser]
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-28"

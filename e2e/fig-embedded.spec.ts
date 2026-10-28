@@ -105,6 +105,28 @@ async function libraryFixtures() {
   return { v1, v2 }
 }
 
+/**
+ * A library file that publishes a component ("Button/Primary"), a paint style ("Brand/Primary")
+ * and a colour variable ("Primary" in the collection "Theme").
+ */
+async function styledLibraryFixture() {
+  const sdk = await engine.load()
+  const doc = sdk.FigDocument.create('Design System.kfig', 1200, 800)
+  const run = (command: string, params: object) => JSON.parse(doc.execute(command, JSON.stringify(params))) as { id?: number | string }
+  const [starter] = (JSON.parse(doc.query('layers', '{}')) as { rows: Array<{ id: number }> }).rows
+  run('edit.delete', { ids: [starter!.id] })
+  const button = run('frame.create', { x: 0, y: 0, width: 160, height: 44, name: 'Button/Primary' }).id!
+  run('node.set', { id: button, props: { fill: '#5645d4', cornerRadius: 8 } })
+  run('style.create', { type: 'paint', name: 'Brand/Primary', from: button })
+  run('component.create', { ids: [button] })
+  const theme = run('variable.createCollection', { name: 'Theme', modes: ['Light', 'Dark'] }).id!
+  run('variable.create', { collection: theme, name: 'Primary', type: 'color', values: { Light: '#ffffff', Dark: '#000000' } })
+  run('library.publish', { description: 'Brand styles.' })
+  const bytes = Buffer.from(doc.save())
+  doc.free()
+  return bytes
+}
+
 /** The library files a saved design names, and the fills of its component instances, as the engine reads them. */
 async function libraryUse(bytes: Buffer) {
   const sdk = await engine.load()
@@ -178,6 +200,43 @@ test('links a library file where it is (links/pick), places its component, and t
     expect(updated.fills[0]).toContain('#E5484D')
     // The library file is the one on disk, untouched by the design.
     expect(Buffer.compare(await fs.readFile(path.join(host.root, 'libraries', 'Design System.kfig')), v2)).toBe(0)
+  } finally {
+    await host.dispose()
+  }
+})
+
+test('lists a linked library file’s styles and colour variables under its name in the style picker', async ({ page, baseURL }) => {
+  // Fails rather than skips without the package: this case is a golden gate.
+  expect(engine.built, missing).toBe(true)
+  test.setTimeout(180_000)
+  const library = await styledLibraryFixture()
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'designs/Home.kfig', await screenFixture(), { 'libraries/Design System.kfig': library })
+  try {
+    await expect(kit.getByTestId('fig-toolbar')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('kit-opening')).toHaveCount(0)
+    await kit.getByTestId('fig-rail-assets').click()
+    await kit.getByTestId('fig-assets-libraries').click()
+    await kit.getByTestId('fig-libraries-add-file').click()
+    const picker = page.getByTestId('kit-file-picker')
+    await picker.getByTestId('kit-file-picker-entry').filter({ hasText: 'Design System.kfig' }).click()
+    await page.getByTestId('kit-file-picker-confirm').click()
+    await expect(kit.getByTestId('fig-library-Design System')).toBeVisible({ timeout: 30_000 })
+
+    // A layer with a fill, then the fill's Styles button: the library's paint style follows under
+    // its name, and its colour variables as "Design System · Theme".
+    await kit.getByTestId('fig-libraries-back').click()
+    const tile = kit.locator('[data-testid^="fig-assets-library-"] [aria-label="Button/Primary"]')
+    await expect(tile).toHaveCount(1, { timeout: 30_000 })
+    await tile.click()
+    await kit.getByTestId('fig-fill-styles').click()
+    await expect(kit.getByTestId('fig-style-picker')).toBeVisible()
+    const section = kit.locator('[data-testid^="fig-style-library-"]:not([data-testid^="fig-style-library-variables-"])')
+    await expect(section).toHaveCount(1, { timeout: 30_000 })
+    await expect(section).toContainText('Design System')
+    await expect(section).toContainText('Brand')
+    // "Brand/Primary" shows as "Primary" in the folder "Brand", as upstream lists a style's path.
+    await expect(section.locator('[data-testid^="fig-library-style-"]')).toHaveText(/Primary/)
+    await expect(kit.locator('[data-testid^="fig-style-library-variables-"]').first()).toContainText('Design System · Theme')
   } finally {
     await host.dispose()
   }

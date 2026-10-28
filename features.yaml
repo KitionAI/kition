@@ -98,5 +98,7 @@ features:
       - kition.kit-links.pick-link/fig-library
       - kition.kit-links.pick-link/fig-library-webkit
       - kition.kit-links.pick-link/fig-library-headless
+      - kition.kit-links.pick-link/fig-library-styles
+      - kition.kit-links.pick-link/fig-library-styles-webkit
       - kition.kit-links.pick-link/picker-scope
     since: "2026-10-28"
