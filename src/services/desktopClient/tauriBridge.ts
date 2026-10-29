@@ -122,10 +122,12 @@ export function createTauriBridge(
     EventsOn: (eventName: string, callback: (payload: any) => void) => {
       let disposed = false
       let unlisten: (() => void) | null = null
-      void subscribe(eventName, (event) => callback(event.payload)).then((stop) => {
-        if (disposed) stop()
-        else unlisten = stop
-      })
+      void subscribe(eventName, (event) => callback(event.payload))
+        .then((stop) => {
+          if (disposed) stop()
+          else unlisten = stop
+        })
+        .catch((error: unknown) => console.warn(`[desktop] could not listen to ${eventName}`, error))
       return () => {
         disposed = true
         unlisten?.()

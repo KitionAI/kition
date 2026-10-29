@@ -13,30 +13,30 @@ import { dismissFirstRunActivation } from '../helpers/onboarding'
 import { collectErrors, tags } from './support'
 
 /** The active tab's kit editor. */
-export function activeKit(page: Page): FrameLocator {
+function activeKit(page: Page): FrameLocator {
   return page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
 }
 
 /** The workspace tab titled `title` in the tab strip. */
-export function tab(page: Page, title: string) {
+function tab(page: Page, title: string) {
   return page.locator(`.document-tab[data-tab-title="${title}"]`)
 }
 
 /** Closes the workspace tab titled `title` with its close button. */
-export async function closeTab(page: Page, title: string) {
+async function closeTab(page: Page, title: string) {
   await tab(page, title).hover()
   await tab(page, title).locator('.document-tab-close').click()
 }
 
 /** Reloads Kition (a restart of the window) and opens `name` from the tree again. */
-export async function reopen(page: Page, name: string) {
+async function reopen(page: Page, name: string) {
   await page.reload({ waitUntil: 'domcontentloaded' })
   await dismissFirstRunActivation(page)
   return openTreeFile(page, name)
 }
 
 /** Another program wrote `bytes` to `name` in the workspace, and the desktop watcher says so. */
-export async function writeOnDisk(host: DesktopHost, name: string, bytes: Buffer | string) {
+async function writeOnDisk(host: DesktopHost, name: string, bytes: Buffer | string) {
   // A later modification time than the file's, so the new stamp differs even within a second.
   const file = path.join(host.root, name)
   await fs.writeFile(file, bytes)
@@ -51,7 +51,7 @@ export function onDisk(host: DesktopHost, name: string) {
 }
 
 /** Waits until the kit's replica stops changing: the keys sent to it have all been applied. */
-export async function settled(read: () => Promise<string>) {
+async function settled(read: () => Promise<string>) {
   let last = '\u0000'
   await expect
     .poll(
@@ -67,7 +67,7 @@ export async function settled(read: () => Promise<string>) {
 }
 
 /** Switches Kition's language as the settings' language control does; open kits follow it. */
-export async function setLocale(page: Page, language: string) {
+async function setLocale(page: Page, language: string) {
   await page.evaluate(async (wanted) => {
     const i18nPath = '/src/i18n/index.ts'
     const { setCurrentLocale } = await import(/* @vite-ignore */ i18nPath)
@@ -76,10 +76,10 @@ export async function setLocale(page: Page, language: string) {
 }
 
 /** Console noise of the mocked desktop host that says nothing about a kit. */
-export const HOST_NOISE = [/frame-ancestors' is ignored when delivered via a <meta> element/, /EventSource's response has a MIME type/, /Failed to load resource: the server responded with a status of 404/]
+const HOST_NOISE = [/frame-ancestors' is ignored when delivered via a <meta> element/, /EventSource's response has a MIME type/, /Failed to load resource: the server responded with a status of 404/]
 
 /** The bar a kit shows when its file changed on disk while it has unsaved edits, and its two answers. */
-export type ConflictBar = { bar: string; keep: string; reload: string }
+type ConflictBar = { bar: string; keep: string; reload: string }
 
 /**
  * What the host matrix needs to know of one kit. Each kit's document has a count the person sees
@@ -128,7 +128,7 @@ export type KitSpec = {
 }
 
 /** The Kit AI bridge requests for `path`, sent once the test lets them through (`release`). */
-export function agentBridge(path: string, kitId: string, step: { command: string; params: Record<string, unknown> }) {
+function agentBridge(path: string, kitId: string, step: { command: string; params: Record<string, unknown> }) {
   let release: () => void = () => {}
   const released = new Promise<void>((resolve) => {
     release = resolve
