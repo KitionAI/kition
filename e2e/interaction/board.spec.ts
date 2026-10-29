@@ -5,11 +5,11 @@
  * Host matrix rows not covered here:
  * - H9 (worker crash): the kit's engine Worker lives inside the kit's frame, out of the test's reach.
  * - H10-H12 (history, print, agent) are covered by note-history, kit-print and headless-draft specs.
- * - H13 (co-editing): Kition has no collab-board spec yet; noted in the suite's report.
  * - H14 (theme and language): kit-editor follows Kition's theme through kitionTheme; not kit-specific.
  */
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { openInKitFrame } from '../helpers/embeddedKit'
+import { coEditing } from './coediting'
 import { hostMatrix, nodeEngine } from './helpers-b'
 import { tags } from './support'
 
@@ -46,6 +46,17 @@ hostMatrix({
   counts: { fixture: 1, edited: 2, variant: 3 },
   shows: (_page, kit, count) => shows(kit, count),
   edit: (page, kit) => drawRectangle(page, kit),
+})
+
+coEditing({
+  kit: 'board',
+  module: 'kition_board_sdk',
+  file: 'Plan.kboard',
+  title: 'Plan',
+  fixture: () => plan(1),
+  count: 1,
+  shows,
+  edit: (page, kit, slot) => drawRectangle(page, kit, 0.15 + slot * 0.18),
 })
 
 test.describe('board details', () => {
