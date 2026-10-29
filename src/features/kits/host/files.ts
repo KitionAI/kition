@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kit-host/src/files.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The host's side of KitFiles 1.0 (kition-sdk `docs/platform/sets/files.md`; Kit UI protocol section
+ * The host's side of KitFiles 1.0 (Kition platform `docs/platform/sets/files.md`; Kit UI protocol section
  * 7g): a session's grant table (handle → session, kit, principal, rights, kind), the `files/*`
  * requests served from it with the host's own storage, staged writes, and names that never
  * replace a file. The host's storage speaks in its own references (`KitFileRef`, such as a

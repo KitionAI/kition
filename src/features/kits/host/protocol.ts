@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kit-protocol/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The Kit UI protocol, `kition-kit-ui/1` (kition-sdk docs/platform/reference/ui-protocol.md): its messages, and JSON-RPC 2.0
+ * The Kit UI protocol, `kition-kit-ui/1` (Kition platform docs/platform/reference/ui-protocol.md): its messages, and JSON-RPC 2.0
  * over a MessagePort for both sides. A host and an embedded kit UI each make one `KitPeer` on
  * their end of the channel. Framework-free; no dependencies.
  */
@@ -154,7 +154,7 @@ export type InitializeParams = {
   /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`, `links-pick`. */
   capabilities: string[]
   /**
-   * The capability sets this host serves (kition-sdk `docs/platform/index.md` section 3, minor version 1.5), such as
+   * The capability sets this host serves (Kition platform `docs/platform/index.md` section 3, minor version 1.5), such as
    * `KitModel 1.0` or `KitCollab 1.0`; absent from older hosts.
    */
   capabilitySets?: string[]
@@ -305,7 +305,7 @@ export type KitDiagnostic = {
 }
 
 /**
- * KitFiles 1.0 (kition-sdk `docs/platform/sets/files.md`; Kit UI protocol section 7g, minor version
+ * KitFiles 1.0 (Kition platform `docs/platform/sets/files.md`; Kit UI protocol section 7g, minor version
  * 1.10): files beyond the open document, reached only through file handles the host grants. A
  * handle is an opaque `fh_…` string bound to one session, one kit, and one principal (FA1, FA5);
  * no path of the host's file system ever reaches the kit (FA-P2, UI-F1).
