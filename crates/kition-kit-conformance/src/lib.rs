@@ -13,7 +13,6 @@ use std::time::Duration;
 use base64::Engine as _;
 use kition_kit_host::{ClientError, KitClient, KitProcess, LaunchOptions};
 use kition_kit_protocol::launch::{SHUTDOWN_TIMEOUT, Surface};
-use kition_kit_protocol::manifest::KitManifest;
 use kition_kit_protocol::methods::{self, RequestMethod};
 use kition_kit_protocol::types::*;
 use kition_kit_protocol::{ErrorReason, PROTOCOL_VERSION, RpcError};
@@ -373,17 +372,15 @@ fn skip_rest(report: &mut Report, reason: &str) {
     }
 }
 
-/// What the suite checks the running kit against, from either kind of `kit.json`.
+/// What the suite checks the running kit against, from its KHP `kit.json`.
 struct ManifestFacts {
     id: String,
     version: String,
-    /// The tool groups commands must belong to, when the manifest declares them.
-    tool_groups: Option<Vec<String>>,
-    /// A KHP manifest's platform levels and notes ([`platform_levels`]).
+    /// The manifest's platform levels and notes ([`platform_levels`]).
     levels: (Vec<&'static str>, Vec<String>),
-    /// A KHP manifest's `headless.features`, which must be exactly what the executable's
+    /// The manifest's `headless.features`, which must be exactly what the executable's
     /// `kit.initialize` answers (platform K9).
-    headless_features: Option<Vec<String>>,
+    headless_features: Vec<String>,
 }
 
 /// What differs between a manifest's `headless.features` and the features `kit.initialize`
@@ -471,54 +468,31 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
     // A KHP manifest (`khp`, the KHP version; KHP `spec/manifest.md` and kition-sdk
     // `docs/platform/kits/manifest.md`): its `headless` section names the executable under test
     // and the protocol it speaks.
-    if value.get("khp").is_some() {
-        schemas.kit(&value)?;
-        let protocol = value["headless"]["protocol"].as_str();
-        if protocol != Some(HEADLESS_PROTOCOL) {
-            return Err(format!(
-                "kit.json `headless.protocol` is {}, expected {HEADLESS_PROTOCOL}",
-                protocol.unwrap_or("missing")
-            ));
-        }
-        let text = |key: &str| value[key].as_str().unwrap_or_default().to_owned();
-        return Ok(ManifestFacts {
-            id: text("id"),
-            version: text("version"),
-            tool_groups: None,
-            levels: platform_levels(&value),
-            headless_features: Some(
-                value["headless"]["features"]
-                    .as_array()
-                    .map(|features| {
-                        features
-                            .iter()
-                            .filter_map(|feature| feature.as_str().map(str::to_owned))
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-            ),
-        });
+    if value.get("khp").is_none() {
+        return Err("kit.json is not a KHP manifest: it has no `khp` version (KHP K2)".to_owned());
     }
-    schemas.manifest(&value)?;
-    let manifest: KitManifest = serde_json::from_value(value).map_err(|error| error.to_string())?;
-    if manifest.kit_protocol != PROTOCOL_VERSION {
+    schemas.kit(&value)?;
+    let protocol = value["headless"]["protocol"].as_str();
+    if protocol != Some(HEADLESS_PROTOCOL) {
         return Err(format!(
-            "kitProtocol is {}, expected {PROTOCOL_VERSION}",
-            manifest.kit_protocol
+            "kit.json `headless.protocol` is {}, expected {HEADLESS_PROTOCOL}",
+            protocol.unwrap_or("missing")
         ));
     }
+    let text = |key: &str| value[key].as_str().unwrap_or_default().to_owned();
     Ok(ManifestFacts {
-        tool_groups: manifest.agent.as_ref().map(|agent| {
-            agent
-                .tool_groups
-                .iter()
-                .map(|group| group.id.clone())
-                .collect()
-        }),
-        id: manifest.id,
-        version: manifest.version,
-        levels: (Vec::new(), Vec::new()),
-        headless_features: None,
+        id: text("id"),
+        version: text("version"),
+        levels: platform_levels(&value),
+        headless_features: value["headless"]["features"]
+            .as_array()
+            .map(|features| {
+                features
+                    .iter()
+                    .filter_map(|feature| feature.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default(),
     })
 }
 
@@ -687,7 +661,7 @@ impl Context<'_> {
         if let Some(declared) = self
             .manifest
             .as_ref()
-            .and_then(|manifest| manifest.headless_features.as_deref())
+            .map(|manifest| manifest.headless_features.as_slice())
             && let Some(mismatch) = feature_mismatch(declared, &result.capabilities.features)
         {
             return Err(mismatch);
@@ -704,12 +678,6 @@ impl Context<'_> {
         let result: CommandsListResult =
             serde_json::from_value(raw).map_err(|error| error.to_string())?;
         let mut seen = std::collections::HashSet::new();
-        let groups: Option<Vec<&str>> = self.manifest.as_ref().and_then(|manifest| {
-            manifest
-                .tool_groups
-                .as_ref()
-                .map(|groups| groups.iter().map(String::as_str).collect())
-        });
         for command in &result.commands {
             if !seen.insert(command.id.as_str()) {
                 return Err(format!("command `{}` is listed twice", command.id));
@@ -720,14 +688,6 @@ impl Context<'_> {
                     command.id
                 )
             })?;
-            if let Some(groups) = &groups
-                && !groups.contains(&command.group.as_str())
-            {
-                return Err(format!(
-                    "command `{}` uses group `{}`, which kit.json does not declare",
-                    command.id, command.group
-                ));
-            }
         }
         let fixture = &self.options.fixture;
         let Some(edit) = result

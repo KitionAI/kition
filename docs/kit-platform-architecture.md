@@ -3,8 +3,9 @@
 Status: proposal, 2026-10-09; revised 2026-10-10 for the in-process Rust
 runtime and for `kit.photo` as the first kit. Partly superseded: kits draw
 their own editors in the page as WebAssembly packages, and Kition ships every
-package inside the app (2026-10-15), so the native surfaces (section 6) and the
-per-platform download flow (section 8) no longer apply to kit editors. See
+package inside the app (2026-10-15), so the native surfaces (section 6) no longer
+apply to kit editors, and the signed kit index and per-platform downloads were removed
+(2026-10-28); kits are pinned in `kits/kits.lock.json`. See
 [kit-sdk.md](kit-sdk.md).
 
 Kition is a workspace for documents, data, media, and an AI agent that works
@@ -165,7 +166,7 @@ composition. The mechanism differs per platform:
 | Windows | `child-window`: the kit creates a child `HWND` parented to the Kition window handle | Supported across processes; input queues must be coordinated |
 | Linux X11 | `child-window`: the kit window is reparented under the Kition window | Supported across processes |
 | Linux Wayland | none | Falls back to `window` |
-| macOS | to be decided by the prototype (section 11) | An `NSView` handle is a process-local pointer and cannot be parented across processes |
+| macOS | to be decided by the prototype (section 10) | An `NSView` handle is a process-local pointer and cannot be parented across processes |
 
 macOS candidates, in prototype order:
 
@@ -297,83 +298,10 @@ GitHub Actions in each kit repository:
    <document> --edit-command <command> --edit-params '<json>'`.
 7. Upload assets to the kit repository's GitHub Release.
 
-## 8. Distribution And Verification
-
-Decisions (2026-10-09):
-
-- Kit assets are hosted on **GitHub Releases only**, the same channel as the
-  runtime. Users behind restrictive networks use the standard proxy variables,
-  as documented in [runtime-development.md](runtime-development.md).
-- The kit index is **signed with Ed25519**. The public key is compiled into
-  Kition; the private key is kept offline and used only by the index release
-  workflow.
-- Users install kits **when opening a file that needs one** (a prompt with a
-  one-click install) and manage them on a **Kits page in Settings** (install,
-  update, uninstall).
-
-Until the index exists (phase 4), the first shipped kit uses a smaller step:
-Kition pins the kit version and the per-target SHA-256 of each asset at build
-time and downloads only those exact assets from the kit repository's Release.
-
-### 8.1 Index
-
-- A dedicated repository, `KitionAI/kits`, publishes `kit-index.json` (see
-  `contracts/kit/kit-index.schema.json`) and `kit-index.json.sig` (a detached
-  Ed25519 signature over the exact file bytes) as assets of an index Release.
-  Each index Release is immutable; the newest one is discovered through the
-  GitHub Releases API, then pinned by tag for the session.
-- The index lists kit identifiers, versions, required kit protocol version, the
-  kit's Release tag, and per-target assets with size and SHA-256. Assets are
-  downloaded from the Release of the kit's own repository.
-- The host refuses an index whose signature does not verify, whose
-  `generatedAt` is older than the cached index (rollback protection), or whose
-  `schemaVersion` it does not understand.
-
-### 8.2 Install flow
-
-1. Opening a file with no installed handler looks up `fileTypes` in the cached
-   index and shows an install prompt naming the kit and download size.
-2. The host downloads the asset for the current target, checks size and
-   SHA-256 against the signed index, and extracts it into a temporary
-   directory.
-3. The host validates the extracted `kit.json` against the manifest schema and
-   checks that `id`, `version`, and `kitProtocol` match the index entry.
-4. On macOS the host verifies the code signature of the executable before the
-   first launch.
-5. The directory is renamed atomically into the cache and the file opens.
-
-### 8.3 Updates and removal
-
-- The Kits page checks the index on open and once per day. Updates download in
-  the background and apply the next time the kit starts; a running kit is never
-  replaced underneath open documents.
-- The previous version is kept until the new one starts successfully, so a
-  failed update rolls back automatically.
-- Uninstall deletes the kit cache directory after its processes exit.
-
-### 8.4 Cache
-
-- The host never resolves a floating `latest` version during a session; it
-  updates the index explicitly and installs exact versions.
-- Installation is atomic into the native Kition cache:
-
-  ```text
-  macOS:   $HOME/Library/Caches/Kition/kits/<kit-id>/<version>/<target>/
-  Windows: %LOCALAPPDATA%/Kition/Cache/kits/<kit-id>/<version>/<target>/
-  Linux:   ${XDG_CACHE_HOME:-$HOME/.cache}/kition/kits/<kit-id>/<version>/<target>/
-  ```
-
-- The host recomputes the executable checksum before every launch.
-- macOS kit executables are signed and notarized with the Kition identity.
-- Development overrides mirror the runtime: `KITION_KIT_<ID>_BINARY` points at
-  a local build and skips download.
-
-## 9. Trust And Permissions
+## 8. Trust And Permissions
 
 Native kits run with the user's privileges. Version 1 therefore accepts only
-first-party kits signed by Kition. The manifest still declares permissions so
-that the host can enforce what it controls and so that a future third-party
-program has a foundation:
+first-party kits signed by Kition:
 
 - Kits receive file access only through URIs the host passes in
   `document.open` and `document.saveAs`. Conformance tests check that kits do
@@ -382,17 +310,17 @@ program has a foundation:
 - Agent-invoked commands that mutate a document follow the same approval
   policy as other agent edits.
 
-## 10. Agent Integration
+## 9. Agent Integration
 
 - On attach, the runtime calls `commands.list` and maps each command to an
   agent tool with the command's JSON Schema parameters.
 - The agent uses `view.screenshot` for visual feedback after edits.
-- Large command catalogs are filtered by the kit's `agent.toolGroups` metadata
-  so that a turn sees only the relevant groups.
+- Large command catalogs are searched by keyword (`<prefix>_commands`) rather than listed in
+  full, so that a turn sees only the relevant commands.
 - When no tab is open for a document, the runtime asks the host for a
   `headless` instance of the kit.
 
-## 11. Phases
+## 10. Phases
 
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
@@ -401,11 +329,11 @@ program has a foundation:
 | 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.kphoto`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override. Then a `window` surface for hands-on editing | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab. The `window` surface remains |
 | 3a | In-page editing with `kit.photo` ([kit-sdk.md](kit-sdk.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
 | 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a |
-| 4 | Distribution: pinned assets first (section 8), then the signed index, updates, and the Kits page | Install from a clean machine, offline relaunch from cache |
+| 4 (dropped) | Distribution: downloaded native kits through a signed index | Superseded: kits ship inside the app, pinned in `kits/kits.lock.json`; the index, its schema and types were removed 2026-10-28 |
 | 5 | Image editing inside documents over the headless engine (crop and adjust) | Image edits round-trip from documents |
 | 6 | Additional kits (`kit.pdf`, video, vector, audio), each built on the Kit SDK template | Each passes conformance, its SDK e2e, and the performance budget in [kit-sdk.md](kit-sdk.md) |
 
-### 11.1 Trying `kit.photo` locally
+### 10.1 Trying `kit.photo` locally
 
 ```bash
 # In the kition-photo repository (needs Rust 1.95 or newer)
@@ -435,7 +363,7 @@ kit now draws its own editor in the page, and Kition ships every kit's
 package inside the app; see [kit-sdk.md](kit-sdk.md). Editor feel (stroke
 latency, scrolling, focus) must still be validated in the real desktop client.
 
-## 12. Risks
+## 11. Risks
 
 | Risk | Mitigation |
 | --- | --- |

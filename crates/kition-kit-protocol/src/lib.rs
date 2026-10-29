@@ -11,10 +11,8 @@
 
 pub mod error;
 pub mod framing;
-pub mod index;
 pub mod jsonrpc;
 pub mod launch;
-pub mod manifest;
 pub mod methods;
 #[cfg(feature = "tokio")]
 pub mod transport;

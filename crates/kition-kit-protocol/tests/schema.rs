@@ -1,20 +1,14 @@
 //! Every type serializes to JSON that the contract schemas accept, and the
 //! schemas' own example shapes deserialize back into the types.
 
-use std::collections::BTreeMap;
-
 use kition_kit_protocol::error::{ErrorData, ErrorReason};
-use kition_kit_protocol::index::{Asset, KitEntry, KitIndex, KitVersion};
 use kition_kit_protocol::launch::Surface;
-use kition_kit_protocol::manifest::KitManifest;
 use kition_kit_protocol::types::*;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
 const PROTOCOL: &str = include_str!("../../../contracts/kit/kit-protocol.schema.json");
-const MANIFEST: &str = include_str!("../../../contracts/kit/kit-manifest.schema.json");
-const INDEX: &str = include_str!("../../../contracts/kit/kit-index.schema.json");
 
 fn parse(schema: &str) -> Value {
     serde_json::from_str(schema).unwrap_or_else(|err| panic!("{err}"))
@@ -393,78 +387,4 @@ fn schema_rejects_what_the_types_must_not_produce() {
     schema["$ref"] = json!("#/$defs/documentState");
     let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
     assert!(!validator.is_valid(&bad));
-}
-
-#[test]
-fn manifest_round_trips_through_the_schema() {
-    let manifest = json!({
-        "schemaVersion": 1,
-        "id": "kit.photo",
-        "name": "Kition Photo",
-        "description": "Layered image editing.",
-        "version": "0.1.0",
-        "publisher": "Kition",
-        "kitProtocol": 1,
-        "license": "MIT OR Apache-2.0",
-        "attribution": [{
-            "name": "Upstream photo editor",
-            "url": "https://example.com/upstream",
-            "license": "MIT OR Apache-2.0",
-            "revision": "abc123"
-        }],
-        "executable": "bin/kit-photo",
-        "fileTypes": [{
-            "format": "psd",
-            "extensions": ["psd", "psb"],
-            "mimeTypes": ["image/vnd.adobe.photoshop"],
-            "roles": ["editor"],
-            "default": true
-        }],
-        "surfaces": ["embedded", "window", "headless"],
-        "embedding": { "macos": ["overlay-window"], "windows": ["child-window"] },
-        "permissions": { "network": false },
-        "agent": { "toolGroups": [{ "id": "layers", "title": "Layers", "description": "Layer commands." }] }
-    });
-    check(&parse(MANIFEST), &manifest);
-    let parsed: KitManifest =
-        serde_json::from_value(manifest.clone()).unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(
-        parsed
-            .file_type_for_extension("PSB")
-            .map(|t| t.format.as_str()),
-        Some("psd")
-    );
-    let back = serde_json::to_value(&parsed).unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(back, manifest);
-}
-
-#[test]
-fn index_round_trips_through_the_schema() {
-    let index = KitIndex {
-        schema_version: 1,
-        generated_at: "2026-10-10T00:00:00Z".into(),
-        kits: vec![KitEntry {
-            id: "kit.photo".into(),
-            name: "Kition Photo".into(),
-            built_in: None,
-            versions: vec![KitVersion {
-                version: "0.1.0".into(),
-                kit_protocol: 1,
-                min_host_version: Some("0.3.0".into()),
-                release_tag: "v0.1.0".into(),
-                assets: BTreeMap::from([(
-                    "darwin-arm64".to_owned(),
-                    Asset {
-                        name: "kit-photo-0.1.0-darwin-arm64.tar.gz".into(),
-                        sha256: "ab".repeat(32),
-                        size: 70_000_000,
-                    },
-                )]),
-            }],
-        }],
-    };
-    let json = serde_json::to_value(&index).unwrap_or_else(|err| panic!("{err}"));
-    check(&parse(INDEX), &json);
-    let back: KitIndex = serde_json::from_value(json).unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(back, index);
 }

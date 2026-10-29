@@ -3,14 +3,12 @@
 use serde_json::Value;
 
 const PROTOCOL: &str = include_str!("../../../contracts/kit/kit-protocol.schema.json");
-const MANIFEST: &str = include_str!("../../../contracts/kit/kit-manifest.schema.json");
 /// The `kit.json` schema (KHP's manifest plus the Kition kit platform's fields), a copy of
 /// `schemas/kit.schema.json` in the kition-sdk repository.
 const KIT: &str = include_str!("../../../contracts/kit/kit.schema.json");
 
 pub struct Schemas {
     protocol: Value,
-    manifest: Value,
     kit: Value,
 }
 
@@ -19,7 +17,6 @@ impl Schemas {
         let parse = |text: &str| serde_json::from_str(text).map_err(|error| error.to_string());
         Ok(Self {
             protocol: parse(PROTOCOL)?,
-            manifest: parse(MANIFEST)?,
             kit: parse(KIT)?,
         })
     }
@@ -32,10 +29,6 @@ impl Schemas {
         let mut schema = self.protocol.clone();
         schema["$ref"] = Value::from(format!("#/$defs/{def}"));
         validate(&schema, instance).map_err(|error| format!("{def}: {error}"))
-    }
-
-    pub fn manifest(&self, instance: &Value) -> Result<(), String> {
-        validate(&self.manifest, instance).map_err(|error| format!("kit.json: {error}"))
     }
 
     /// A KHP manifest (it has a `khp` version).
