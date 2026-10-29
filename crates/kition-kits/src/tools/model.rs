@@ -370,6 +370,19 @@ impl Target {
 }
 
 /// A kit that serves no object model answers "method not found": say so as `unsupported`.
+/// An object id that names nothing: says what object ids are, which an agent otherwise guesses
+/// from the kit's command ids (`layer:27`, `27`, `item/1`, ... all tried in one pilot run).
+fn object_hint(kit: &KitDefinition, mut error: KitToolError) -> KitToolError {
+    if error.code == ErrorCode::NOT_FOUND {
+        error.message.push_str(&format!(
+            ". Object ids are the `id`s {} answers, not command ids such as a layer number: query \
+             without `objects` for the root, and pass `follow` (a field name) to reach its children",
+            tool_name(kit, Action::Query)
+        ));
+    }
+    error
+}
+
 fn unsupported(kit: &KitDefinition, error: KitToolError) -> KitToolError {
     let lower = error.message.to_lowercase();
     if lower.contains("not found") && lower.contains("method")
@@ -565,7 +578,7 @@ pub(super) async fn query(
         .collect();
     let loaded = load(kits, &target, entries)
         .await
-        .map_err(|error| unsupported(kit, error))?;
+        .map_err(|error| object_hint(kit, unsupported(kit, error)))?;
     let mut output = json!({ "objects": loaded, "total": total });
     if total > limit {
         output["truncated"] = Value::Bool(true);
