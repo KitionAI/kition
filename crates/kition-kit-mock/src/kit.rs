@@ -235,7 +235,6 @@ struct State {
 
 pub struct Kit {
     token: String,
-    surface: Surface,
     fault: Fault,
     wrote_fault_output: AtomicBool,
     state: Mutex<State>,
@@ -244,10 +243,9 @@ pub struct Kit {
 type Handled = Result<Value, RpcError>;
 
 impl Kit {
-    pub fn new(token: String, surface: Surface, fault: Fault) -> Self {
+    pub fn new(token: String, fault: Fault) -> Self {
         Self {
             token,
-            surface,
             fault,
             wrote_fault_output: AtomicBool::new(false),
             state: Mutex::new(State::default()),
@@ -362,7 +360,6 @@ impl Kit {
             },
             capabilities: Capabilities {
                 surfaces: vec![Surface::Headless],
-                embedding_mechanisms: Vec::new(),
                 formats: Formats {
                     open: vec![FORMAT.to_owned()],
                     save: vec![FORMAT.to_owned()],
@@ -470,12 +467,6 @@ impl Kit {
                     self.broadcast::<methods::DocumentDidChangeState>(&state, step);
                 }
                 Ok(answer)
-            }
-            methods::SurfaceAttach::NAME if self.surface == Surface::Headless => {
-                Err(RpcError::kit(ErrorReason::SurfaceMechanismUnsupported))
-            }
-            method if method.starts_with("surface.") => {
-                Err(RpcError::kit(ErrorReason::SurfaceNotAttached))
             }
             method => Err(RpcError::method_not_found(method)),
         }

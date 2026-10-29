@@ -20,32 +20,6 @@
         "data": { "type": "string", "contentEncoding": "base64" }
       }
     },
-    "shortcut": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["key", "code", "modifiers"],
-      "properties": {
-        "key": { "type": "string", "minLength": 1 },
-        "code": { "type": "string", "minLength": 1 },
-        "modifiers": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "enum": ["alt", "ctrl", "meta", "shift"] }
-        }
-      }
-    },
-    "bounds": {
-      "description": "Logical pixels. Relative to the host content area for child-window and shared-texture; screen coordinates for overlay-window and top-level.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["x", "y", "width", "height"],
-      "properties": {
-        "x": { "type": "number" },
-        "y": { "type": "number" },
-        "width": { "type": "number", "minimum": 0 },
-        "height": { "type": "number", "minimum": 0 }
-      }
-    },
     "emptyResult": {
       "type": "object",
       "additionalProperties": false
@@ -70,10 +44,6 @@
         },
         "locale": { "type": "string", "minLength": 2 },
         "appearance": { "enum": ["light", "dark"] },
-        "reservedShortcuts": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/shortcut" }
-        },
         "workspaceRoots": {
           "type": "array",
           "items": { "$ref": "#/$defs/uri" }
@@ -105,11 +75,7 @@
       "properties": {
         "surfaces": {
           "type": "array",
-          "items": { "enum": ["embedded", "window", "web", "headless"] }
-        },
-        "embeddingMechanisms": {
-          "type": "array",
-          "items": { "enum": ["child-window", "overlay-window", "shared-texture", "top-level"] }
+          "items": { "enum": ["headless"] }
         },
         "formats": {
           "type": "object",
@@ -326,7 +292,7 @@
       "required": ["documentId", "scope"],
       "properties": {
         "documentId": { "$ref": "#/$defs/documentId" },
-        "scope": { "enum": ["canvas", "surface"] },
+        "scope": { "enum": ["canvas"] },
         "maxSize": { "type": "integer", "minimum": 16 }
       }
     },
@@ -337,54 +303,6 @@
       "properties": {
         "summary": { "type": "string" },
         "state": { "type": "object" }
-      }
-    },
-
-    "surfaceAttachParams": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["mechanism", "bounds", "scaleFactor", "visible"],
-      "properties": {
-        "mechanism": { "enum": ["child-window", "overlay-window", "shared-texture", "top-level"] },
-        "parent": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["platform", "handle"],
-          "properties": {
-            "platform": { "enum": ["macos", "windows", "x11"] },
-            "handle": { "type": "string", "pattern": "^[0-9]+$" }
-          }
-        },
-        "bounds": { "$ref": "#/$defs/bounds" },
-        "scaleFactor": { "type": "number", "exclusiveMinimum": 0 },
-        "visible": { "type": "boolean" }
-      },
-      "if": { "properties": { "mechanism": { "enum": ["child-window", "overlay-window"] } } },
-      "then": { "required": ["parent"] }
-    },
-    "surfaceSetBoundsParams": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["bounds", "scaleFactor"],
-      "properties": {
-        "bounds": { "$ref": "#/$defs/bounds" },
-        "scaleFactor": { "type": "number", "exclusiveMinimum": 0 }
-      }
-    },
-    "surfaceSetVisibleParams": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["visible"],
-      "properties": {
-        "visible": { "type": "boolean" }
-      }
-    },
-    "surfaceFocusExitParams": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["direction"],
-      "properties": {
-        "direction": { "enum": ["next", "previous"] }
       }
     },
 
@@ -426,8 +344,6 @@
             "command_not_found",
             "command_disabled",
             "invalid_params",
-            "surface_mechanism_unsupported",
-            "surface_not_attached",
             "request_cancelled"
           ]
         },

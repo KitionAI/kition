@@ -69,11 +69,6 @@ fn lifecycle_shapes_match_the_schema() {
             },
             locale: Some("zh-CN".into()),
             appearance: Some(Appearance::Light),
-            reserved_shortcuts: vec![Shortcut {
-                key: "k".into(),
-                code: "KeyK".into(),
-                modifiers: vec![Modifier::Meta],
-            }],
             workspace_roots: vec!["file:///tmp/workspace".into()],
         },
     );
@@ -89,7 +84,6 @@ fn lifecycle_shapes_match_the_schema() {
             },
             locale: None,
             appearance: None,
-            reserved_shortcuts: Vec::new(),
             workspace_roots: Vec::new(),
         },
     );
@@ -102,8 +96,7 @@ fn lifecycle_shapes_match_the_schema() {
                 version: "0.1.0".into(),
             },
             capabilities: Capabilities {
-                surfaces: vec![Surface::Window, Surface::Headless],
-                embedding_mechanisms: vec![Mechanism::OverlayWindow],
+                surfaces: vec![Surface::Headless],
                 formats: Formats {
                     open: vec!["psd".into()],
                     save: vec!["psd".into()],
@@ -291,61 +284,7 @@ fn command_and_view_shapes_match_the_schema() {
 }
 
 #[test]
-fn surface_and_notification_shapes_match_the_schema() {
-    let bounds = Bounds {
-        x: 0.0,
-        y: 48.0,
-        width: 800.0,
-        height: 600.0,
-    };
-    round_trip(
-        "surfaceAttachParams",
-        &SurfaceAttachParams {
-            mechanism: Mechanism::OverlayWindow,
-            parent: Some(SurfaceParent {
-                platform: ParentPlatform::Macos,
-                handle: "4182".into(),
-            }),
-            bounds,
-            scale_factor: 2.0,
-            visible: true,
-        },
-    );
-    round_trip(
-        "surfaceAttachParams",
-        &SurfaceAttachParams {
-            mechanism: Mechanism::TopLevel,
-            parent: None,
-            bounds,
-            scale_factor: 1.0,
-            visible: true,
-        },
-    );
-    round_trip(
-        "surfaceSetBoundsParams",
-        &SurfaceSetBoundsParams {
-            bounds,
-            scale_factor: 1.5,
-        },
-    );
-    round_trip(
-        "surfaceSetVisibleParams",
-        &SurfaceSetVisibleParams { visible: false },
-    );
-    round_trip(
-        "surfaceFocusExitParams",
-        &SurfaceFocusExitParams {
-            direction: FocusDirection::Previous,
-        },
-    );
-    round_trip(
-        "shortcut",
-        &Shortcut {
-            key: "Tab".into(),
-            code: "Tab".into(),
-            modifiers: vec![Modifier::Ctrl, Modifier::Shift],
-        },
-    );
+fn notification_shapes_match_the_schema() {
     round_trip(
         "progressParams",
         &ProgressParams {

@@ -34,35 +34,24 @@ pub fn request_timeout(method: &str) -> Option<Duration> {
     }
 }
 
-/// Where a kit renders.
+/// Where a kit runs. Kits run only headless, for the agent; their editors run in the page.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Surface {
-    Embedded,
-    Window,
-    Web,
     Headless,
 }
 
 impl Surface {
-    /// The `KITION_KIT_SURFACE` value. `web` never launches a process.
+    /// The `KITION_KIT_SURFACE` value.
     pub fn as_env(self) -> &'static str {
         match self {
-            Self::Embedded => "embedded",
-            Self::Window => "window",
-            Self::Web => "web",
             Self::Headless => "headless",
         }
     }
 
     /// Parses a `KITION_KIT_SURFACE` value.
     pub fn from_env(value: &str) -> Option<Self> {
-        match value {
-            "embedded" => Some(Self::Embedded),
-            "window" => Some(Self::Window),
-            "headless" => Some(Self::Headless),
-            _ => None,
-        }
+        (value == "headless").then_some(Self::Headless)
     }
 }
 
@@ -147,9 +136,12 @@ mod tests {
 
     #[test]
     fn surface_env_round_trip() {
-        for surface in [Surface::Embedded, Surface::Window, Surface::Headless] {
-            assert_eq!(Surface::from_env(surface.as_env()), Some(surface));
+        assert_eq!(
+            Surface::from_env(Surface::Headless.as_env()),
+            Some(Surface::Headless)
+        );
+        for retired in ["embedded", "window", "web"] {
+            assert_eq!(Surface::from_env(retired), None);
         }
-        assert_eq!(Surface::from_env("web"), None);
     }
 }

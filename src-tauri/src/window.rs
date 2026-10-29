@@ -87,7 +87,6 @@ pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<WebviewWindo
             .on_page_load(|window, payload| {
                 if payload.event() == PageLoadEvent::Finished {
                     let _ = window.show();
-                    crate::kit_host::sync(&window, None);
                 }
             });
     // `tauri dev` serves the renderer from the dev server; packaged builds

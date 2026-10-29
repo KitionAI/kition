@@ -1,27 +1,23 @@
 //! Running kits for the open workspace.
 //!
-//! A kit starts on first use in the `headless` surface with the workspace folder as its only
-//! root; it serves previews, kit tabs in the browser, and the agent. A kit tab in the desktop app
-//! starts its own kit process in the `embedded` surface instead, whose native editor window the
-//! runtime keeps over the tab (`surfaces.rs`). Each kit process gets two connections: the `host`
+//! A kit starts on first use, headless, with the workspace folder as its only root; it serves
+//! previews and the agent (kit editors run in the page, `KitFrame`). Each kit process gets two
+//! connections: the `host`
 //! connection serves people, and an `agent` connection serves agent tools, so the kit itself
 //! enforces the agent's role and URI limits. Kits stop when the manager is dropped, which happens
 //! when the runtime restarts for another workspace.
 
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use kition_kit_host::{ClientError, KitClient, KitProcess, LaunchOptions};
-use kition_kit_protocol::launch::Surface;
 use kition_kit_protocol::methods::{self, NotificationMethod, RequestMethod};
 use kition_kit_protocol::types::*;
 use kition_kit_protocol::{ErrorReason, PROTOCOL_VERSION};
 use serde::Serialize;
 use serde_json::{Map, Value};
-
-use crate::surfaces::SurfaceKit;
 
 /// What [`KitManager::write_file`] may do to its target.
 #[derive(Debug, Clone, Copy)]
@@ -46,8 +42,6 @@ pub struct KitDefinition {
     /// A new document's name before its extension and number (`kit.json` `creates[].baseName`),
     /// for example `Untitled photo`.
     pub base_name: &'static str,
-    /// Whether the kit's own editor can be embedded in a desktop tab.
-    pub embeds: bool,
     /// Extensions the kit's in-page editor writes as new files: its exports (`mp4` from a video
     /// project) and the files it keeps beside its documents (images pasted into a note). They are
     /// only ever new files: `write_file` never replaces an existing one with them.
@@ -105,7 +99,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["html", "htm"],
         creates: &[("html", "html")],
         base_name: "Untitled HTML",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "html",
@@ -126,7 +119,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["psd", "psb", "kphoto"],
         creates: &[("psd", "psd"), ("psb", "psb"), ("kphoto", "kphoto")],
         base_name: "Untitled photo",
-        embeds: true,
         exports: &[],
         agent: KitAgent {
             prefix: "photo",
@@ -148,7 +140,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kfilm"],
         creates: &[],
         base_name: "Untitled film",
-        embeds: false,
         exports: &["mp4"],
         agent: KitAgent {
             prefix: "film",
@@ -170,7 +161,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kvector"],
         creates: &[],
         base_name: "Untitled vector",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "vector",
@@ -192,7 +182,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["keffect"],
         creates: &[],
         base_name: "Untitled effect",
-        embeds: false,
         exports: &["mp4"],
         agent: KitAgent {
             prefix: "effect",
@@ -214,7 +203,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kdesign"],
         creates: &[],
         base_name: "Untitled design",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "design",
@@ -236,7 +224,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["dxf"],
         creates: &[],
         base_name: "Untitled CAD",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "cad",
@@ -258,7 +245,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kslide", "pptx"],
         creates: &[],
         base_name: "Untitled slide",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "slide",
@@ -280,7 +266,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["docx"],
         creates: &[],
         base_name: "Untitled document",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "doc",
@@ -302,7 +287,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["xlsx"],
         creates: &[],
         base_name: "Untitled sheet",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "sheet",
@@ -324,7 +308,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["pdf"],
         creates: &[],
         base_name: "Untitled PDF",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "pdf",
@@ -347,7 +330,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["ktable"],
         creates: &[("ktable", "ktable")],
         base_name: "Untitled table",
-        embeds: false,
         exports: &[],
         agent: KitAgent {
             prefix: "table",
@@ -369,7 +351,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kboard"],
         creates: &[("kboard", "kboard")],
         base_name: "Untitled board",
-        embeds: false,
         exports: &["png", "svg", "pdf"],
         agent: KitAgent {
             prefix: "board",
@@ -391,7 +372,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["md", "markdown"],
         creates: &[("md", "markdown")],
         base_name: "Untitled note",
-        embeds: false,
         exports: &["html", "pdf", "png", "jpg", "gif", "webp", "svg", "avif"],
         agent: KitAgent {
             prefix: "note",
@@ -413,7 +393,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kcube"],
         creates: &[("kcube", "kcube")],
         base_name: "Untitled cube",
-        embeds: false,
         exports: &["glb", "gltf", "obj", "stl", "fbx", "usda", "usdz", "png"],
         agent: KitAgent {
             prefix: "cube",
@@ -435,7 +414,6 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["kfig"],
         creates: &[("kfig", "fig")],
         base_name: "Untitled fig",
-        embeds: false,
         exports: &["png", "jpg", "svg", "pdf"],
         agent: KitAgent {
             prefix: "fig",
@@ -538,8 +516,6 @@ pub struct KitStatus {
     /// Extensions this kit can create new documents in.
     pub creates: Vec<&'static str>,
     pub installed: bool,
-    /// Whether kit tabs can show the kit's own editor here (desktop app on a supported OS).
-    pub embeddable: bool,
     pub binary_env: &'static str,
 }
 
@@ -595,10 +571,6 @@ pub(crate) struct RunningKit {
     pub(crate) host: Arc<KitClient>,
     pub(crate) agent: Arc<KitClient>,
     versions: Versions,
-    /// The kit's own window has keyboard focus (embedded surfaces).
-    pub(crate) focused: Arc<AtomicBool>,
-    /// Woken by focus notifications.
-    pub(crate) focus_changed: Arc<tokio::sync::Notify>,
 }
 
 impl RunningKit {
@@ -631,38 +603,11 @@ impl RunningKit {
     }
 }
 
-/// Which kit process serves a document: the shared headless one or a tab's embedded one.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Target {
-    Headless,
-    Surface(u64),
-}
-
-/// Document ids from embedded surfaces carry their surface: `s<surface>::<kit document id>`.
-pub(crate) fn split_document_id(id: &str) -> (Target, &str) {
-    if let Some(rest) = id.strip_prefix('s')
-        && let Some((surface, inner)) = rest.split_once("::")
-        && let Ok(surface) = surface.parse()
-    {
-        return (Target::Surface(surface), inner);
-    }
-    (Target::Headless, id)
-}
-
-fn external_document_id(target: Target, inner: &str) -> String {
-    match target {
-        Target::Headless => inner.to_owned(),
-        Target::Surface(surface) => format!("s{surface}::{inner}"),
-    }
-}
-
 pub(crate) struct Inner {
     workspace: Option<PathBuf>,
     /// Known kits and their executables, when installed.
     kits: Vec<(&'static KitDefinition, Option<PathBuf>)>,
     running: tokio::sync::Mutex<HashMap<&'static str, Arc<RunningKit>>>,
-    pub(crate) surfaces: tokio::sync::Mutex<HashMap<u64, Arc<SurfaceKit>>>,
-    pub(crate) next_surface: AtomicU64,
     /// Kit editors open in the renderer, for the agent (`bridge.rs`).
     bridge: Arc<crate::bridge::Bridge>,
     /// Each kit's object model as `model.describe` last answered it (the kit's schema, which is
@@ -723,8 +668,6 @@ impl KitManager {
                 workspace,
                 kits,
                 running: tokio::sync::Mutex::new(HashMap::new()),
-                surfaces: tokio::sync::Mutex::new(HashMap::new()),
-                next_surface: AtomicU64::new(1),
                 bridge: Arc::default(),
                 described: Mutex::default(),
                 headless_drafts: AtomicBool::new(false),
@@ -789,7 +732,7 @@ impl KitManager {
         method: &str,
         params: Value,
     ) -> Result<Value, KitError> {
-        let running = self.instance(kit, Target::Headless).await?;
+        let running = self.running(kit).await?;
         running
             .client(caller)
             .request(method, params, None)
@@ -803,7 +746,6 @@ impl KitManager {
     }
 
     pub fn statuses(&self) -> Vec<KitStatus> {
-        let host = crate::host::current();
         self.inner
             .kits
             .iter()
@@ -817,7 +759,6 @@ impl KitManager {
                     .map(|(extension, _)| *extension)
                     .collect(),
                 installed: binary.as_deref().is_some_and(Path::is_file),
-                embeddable: kit.embeds && host.known && crate::surfaces::SUPPORTED,
                 binary_env: kit.binary_env,
             })
             .collect()
@@ -885,16 +826,12 @@ impl KitManager {
             }
             running.remove(kit.id);
         }
-        let started = Arc::new(self.launch(kit, Surface::Headless).await?);
+        let started = Arc::new(self.launch(kit).await?);
         running.insert(kit.id, Arc::clone(&started));
         Ok(started)
     }
 
-    pub(crate) async fn launch(
-        &self,
-        kit: &'static KitDefinition,
-        surface: Surface,
-    ) -> Result<RunningKit, KitError> {
+    async fn launch(&self, kit: &'static KitDefinition) -> Result<RunningKit, KitError> {
         let workspace = self.workspace()?;
         let binary = self
             .inner
@@ -911,7 +848,7 @@ impl KitManager {
             name: kit.name,
             detail,
         };
-        let process = KitProcess::launch(LaunchOptions::new(binary, surface))
+        let process = KitProcess::launch(LaunchOptions::new(binary))
             .await
             .map_err(|error| launch_error(error.to_string()))?;
         let root = url::Url::from_directory_path(workspace)
@@ -927,7 +864,6 @@ impl KitManager {
             },
             locale: (role == Role::Host).then(|| "en-US".to_owned()),
             appearance: (role == Role::Host).then_some(Appearance::Light),
-            reserved_shortcuts: Vec::new(),
             workspace_roots: if role == Role::Host {
                 vec![root.clone()]
             } else {
@@ -958,67 +894,35 @@ impl KitManager {
         let host = connect(Role::Host).await.map_err(launch_error)?;
         let agent = connect(Role::Agent).await.map_err(launch_error)?;
         let versions: Versions = Arc::default();
-        let focused = Arc::new(AtomicBool::new(false));
-        let focus_changed = Arc::new(tokio::sync::Notify::new());
         tokio::spawn(watch_notifications(
             Arc::clone(&host),
             Arc::clone(&versions),
-            Arc::clone(&focused),
-            Arc::clone(&focus_changed),
         ));
         // The agent connection receives the same notifications; drain them.
         let drained = Arc::clone(&agent);
         tokio::spawn(async move { while drained.next_notification().await.is_some() {} });
-        tracing::info!(kit = kit.id, surface = surface.as_env(), pid = ?process.id(), "kit started");
+        tracing::info!(kit = kit.id, pid = ?process.id(), "kit started");
         Ok(RunningKit {
             process: tokio::sync::Mutex::new(process),
             host,
             agent,
             versions,
-            focused,
-            focus_changed,
         })
-    }
-
-    async fn instance(
-        &self,
-        kit: &'static KitDefinition,
-        target: Target,
-    ) -> Result<Arc<RunningKit>, KitError> {
-        match target {
-            Target::Headless => self.running(kit).await,
-            Target::Surface(id) => self
-                .inner
-                .surfaces
-                .lock()
-                .await
-                .get(&id)
-                .map(|surface| Arc::clone(&surface.running))
-                .ok_or(KitError::Stopped { name: kit.name }),
-        }
     }
 
     async fn call<M: RequestMethod>(
         &self,
         kit: &'static KitDefinition,
-        target: Target,
         caller: Caller,
         params: &M::Params,
     ) -> Result<(Arc<RunningKit>, M::Result), KitError> {
-        let running = self.instance(kit, target).await?;
+        let running = self.running(kit).await?;
         match running.client(caller).call::<M>(params).await {
             Ok(result) => Ok((running, result)),
             Err(error) => {
                 let error = KitError::from_client(kit, error);
                 if matches!(error, KitError::Stopped { .. }) {
-                    match target {
-                        Target::Headless => {
-                            self.inner.running.lock().await.remove(kit.id);
-                        }
-                        Target::Surface(id) => {
-                            self.inner.surfaces.lock().await.remove(&id);
-                        }
-                    }
+                    self.inner.running.lock().await.remove(kit.id);
                 }
                 Err(error)
             }
@@ -1035,28 +939,20 @@ impl KitManager {
             .map_err(|()| KitError::InvalidPath(format!("`{path}` is not a local file")))
     }
 
-    /// Opens a workspace file in the kit that handles its extension. The agent works on the
-    /// editor a tab shows for the file, when there is one, so the person sees its edits live.
+    /// Opens a workspace file in the kit that handles its extension.
     pub async fn open(&self, caller: Caller, path: &str) -> Result<DocumentView, KitError> {
         let kit = self
             .kit_for_path(path)
             .ok_or_else(|| KitError::InvalidPath(format!("no kit opens `{path}`")))?;
-        let target = match caller {
-            Caller::Agent => self
-                .surface_for_path(path)
-                .await
-                .map_or(Target::Headless, |surface| Target::Surface(surface.id)),
-            Caller::User => Target::Headless,
-        };
         let params = DocumentOpenParams {
             uri: self.file_uri(path)?,
             read_only: None,
             create: None,
         };
         let (running, state) = self
-            .call::<methods::DocumentOpen>(kit, target, caller, &params)
+            .call::<methods::DocumentOpen>(kit, caller, &params)
             .await?;
-        self.view(kit, target, &running, caller, state).await
+        self.view(kit, &running, caller, state).await
     }
 
     /// Creates a new document in `folder` (workspace-relative, `""` for the root) with an
@@ -1117,19 +1013,16 @@ impl KitManager {
             }),
         };
         let (_, state) = self
-            .call::<methods::DocumentOpen>(kit, Target::Headless, caller, &params)
+            .call::<methods::DocumentOpen>(kit, caller, &params)
             .await?;
         let saved = DocumentRef {
             document_id: state.document_id.clone(),
         };
         let (running, _) = self
-            .call::<methods::DocumentSave>(kit, Target::Headless, caller, &saved)
+            .call::<methods::DocumentSave>(kit, caller, &saved)
             .await?;
-        let (_, state) = self
-            .state(kit, Target::Headless, caller, &saved.document_id)
-            .await?;
-        self.view(kit, Target::Headless, &running, caller, state)
-            .await
+        let (_, state) = self.state(kit, caller, &saved.document_id).await?;
+        self.view(kit, &running, caller, state).await
     }
 
     pub async fn document(
@@ -1139,20 +1032,19 @@ impl KitManager {
         document_id: &str,
     ) -> Result<DocumentView, KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
-        let (running, state) = self.state(kit, target, caller, inner).await?;
-        self.view(kit, target, &running, caller, state).await
+        let inner = document_id;
+        let (running, state) = self.state(kit, caller, inner).await?;
+        self.view(kit, &running, caller, state).await
     }
 
     async fn state(
         &self,
         kit: &'static KitDefinition,
-        target: Target,
         caller: Caller,
         document_id: &str,
     ) -> Result<(Arc<RunningKit>, DocumentState), KitError> {
         let (running, list) = self
-            .call::<methods::DocumentList>(kit, target, caller, &Empty {})
+            .call::<methods::DocumentList>(kit, caller, &Empty {})
             .await?;
         let state = list
             .documents
@@ -1168,7 +1060,6 @@ impl KitManager {
     pub(crate) async fn view(
         &self,
         kit: &'static KitDefinition,
-        target: Target,
         running: &RunningKit,
         caller: Caller,
         state: DocumentState,
@@ -1184,7 +1075,7 @@ impl KitManager {
             kit_id: kit.id,
             version: running.version(&state.document_id),
             path: state.uri.as_deref().and_then(|uri| self.relative(uri)),
-            document_id: external_document_id(target, &state.document_id),
+            document_id: state.document_id.clone(),
             title: state.title,
             format: state.format,
             read_only: state.read_only,
@@ -1196,8 +1087,7 @@ impl KitManager {
         })
     }
 
-    /// A PNG of the document, at most `max_size` pixels on its longer side. An embedded editor
-    /// answers with its window.
+    /// A PNG of the document, at most `max_size` pixels on its longer side.
     pub async fn preview(
         &self,
         kit_id: &str,
@@ -1206,14 +1096,14 @@ impl KitManager {
     ) -> Result<Vec<u8>, KitError> {
         use base64::Engine as _;
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
+        let inner = document_id;
         let params = ViewScreenshotParams {
             document_id: inner.to_owned(),
             scope: ScreenshotScope::Canvas,
             max_size: Some(max_size.clamp(16, 4096)),
         };
         let (_, image) = self
-            .call::<methods::ViewScreenshot>(kit, target, Caller::User, &params)
+            .call::<methods::ViewScreenshot>(kit, Caller::User, &params)
             .await?;
         base64::engine::general_purpose::STANDARD
             .decode(image.data)
@@ -1232,16 +1122,13 @@ impl KitManager {
         query: Option<&str>,
     ) -> Result<Vec<CommandView>, KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = document_id.map_or((Target::Headless, None), |id| {
-            let (target, inner) = split_document_id(id);
-            (target, Some(inner))
-        });
+        let inner = document_id;
         let params = CommandsListParams {
             document_id: inner.map(str::to_owned),
             groups: None,
         };
         let (_, list) = self
-            .call::<methods::CommandsList>(kit, target, caller, &params)
+            .call::<methods::CommandsList>(kit, caller, &params)
             .await?;
         // Ranked, not all-words: each command scores the words of the query it contains (in its
         // id, title, description or menu, with a few synonyms and plurals); the best come first.
@@ -1339,7 +1226,7 @@ impl KitManager {
         params: Map<String, Value>,
     ) -> Result<ExecuteView, KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
+        let inner = document_id;
         let request = CommandsExecuteParams {
             document_id: inner.to_owned(),
             command: command.to_owned(),
@@ -1350,7 +1237,7 @@ impl KitManager {
             },
         };
         let (_, executed) = self
-            .call::<methods::CommandsExecute>(kit, target, caller, &request)
+            .call::<methods::CommandsExecute>(kit, caller, &request)
             .await?;
         let document = self.document(caller, kit_id, document_id).await?;
         Ok(ExecuteView {
@@ -1369,8 +1256,8 @@ impl KitManager {
         document_id: &str,
     ) -> Result<Option<Value>, KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
-        let running = self.instance(kit, target).await?;
+        let inner = document_id;
+        let running = self.running(kit).await?;
         match running
             .client(caller)
             .request(
@@ -1398,9 +1285,9 @@ impl KitManager {
         mut params: Map<String, Value>,
     ) -> Result<Value, KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
+        let inner = document_id;
         params.insert("documentId".into(), Value::String(inner.to_owned()));
-        let running = self.instance(kit, target).await?;
+        let running = self.running(kit).await?;
         match running
             .client(caller)
             .request(method, Value::Object(params), None)
@@ -1436,14 +1323,7 @@ impl KitManager {
             Err(error) => {
                 let error = KitError::from_client(kit, error);
                 if matches!(error, KitError::Stopped { .. }) {
-                    match target {
-                        Target::Headless => {
-                            self.inner.running.lock().await.remove(kit.id);
-                        }
-                        Target::Surface(id) => {
-                            self.inner.surfaces.lock().await.remove(&id);
-                        }
-                    }
+                    self.inner.running.lock().await.remove(kit.id);
                 }
                 Err(error)
             }
@@ -1505,14 +1385,14 @@ impl KitManager {
         document_id: &str,
     ) -> Result<DocumentView, KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
+        let inner = document_id;
         let params = DocumentRef {
             document_id: inner.to_owned(),
         };
-        self.call::<methods::DocumentSave>(kit, target, caller, &params)
+        self.call::<methods::DocumentSave>(kit, caller, &params)
             .await?;
         let view = self.document(caller, kit_id, document_id).await?;
-        if let (Target::Headless, Some(path)) = (target, view.path.clone()) {
+        if let Some(path) = view.path.clone() {
             let _ = self.inner.saves.send(SavedFile {
                 kit_id: view.kit_id,
                 path,
@@ -1534,12 +1414,12 @@ impl KitManager {
         discard_changes: bool,
     ) -> Result<(), KitError> {
         let kit = self.definition(kit_id)?;
-        let (target, inner) = split_document_id(document_id);
+        let inner = document_id;
         let params = DocumentCloseParams {
             document_id: inner.to_owned(),
             discard_changes: Some(discard_changes),
         };
-        self.call::<methods::DocumentClose>(kit, target, Caller::User, &params)
+        self.call::<methods::DocumentClose>(kit, Caller::User, &params)
             .await?;
         Ok(())
     }
@@ -1641,9 +1521,9 @@ impl KitManager {
         })
     }
 
-    /// Asks every running kit, headless and embedded, to exit.
+    /// Asks every running kit to exit.
     pub async fn shutdown(&self) {
-        let mut stopping: Vec<Arc<RunningKit>> = self
+        let stopping: Vec<Arc<RunningKit>> = self
             .inner
             .running
             .lock()
@@ -1651,14 +1531,6 @@ impl KitManager {
             .drain()
             .map(|(_, kit)| kit)
             .collect();
-        stopping.extend(
-            self.inner
-                .surfaces
-                .lock()
-                .await
-                .drain()
-                .map(|(_, surface)| Arc::clone(&surface.running)),
-        );
         for kit in stopping {
             kit.stop().await;
         }
@@ -1702,41 +1574,25 @@ impl KitManager {
     }
 }
 
-async fn watch_notifications(
-    host: Arc<KitClient>,
-    versions: Versions,
-    focused: Arc<AtomicBool>,
-    focus_changed: Arc<tokio::sync::Notify>,
-) {
+async fn watch_notifications(host: Arc<KitClient>, versions: Versions) {
     while let Some(notification) = host.next_notification().await {
-        match notification.method.as_str() {
-            methods::DocumentDidChangeState::NAME => {
-                let Some(id) = notification
-                    .params
-                    .as_ref()
-                    .and_then(|params| params.get("documentId"))
-                    .and_then(Value::as_str)
-                else {
-                    continue;
-                };
-                *versions
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .entry(id.to_owned())
-                    .or_default() += 1;
-            }
-            methods::SurfaceDidFocus::NAME | methods::SurfaceDidBlur::NAME => {
-                focused.store(
-                    notification.method == methods::SurfaceDidFocus::NAME,
-                    Ordering::SeqCst,
-                );
-                focus_changed.notify_waiters();
-            }
-            _ => {}
+        if notification.method != methods::DocumentDidChangeState::NAME {
+            continue;
         }
+        let Some(id) = notification
+            .params
+            .as_ref()
+            .and_then(|params| params.get("documentId"))
+            .and_then(Value::as_str)
+        else {
+            continue;
+        };
+        *versions
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(id.to_owned())
+            .or_default() += 1;
     }
-    // The connection closed: wake surface watchers so they notice.
-    focus_changed.notify_waiters();
 }
 
 /// A query word and the words it may be written as in a command (plural, synonyms).
@@ -1769,23 +1625,4 @@ fn search_variants(term: &str) -> Vec<String> {
         }
     }
     out
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn surface_document_ids_round_trip() {
-        assert_eq!(split_document_id("7"), (Target::Headless, "7"));
-        assert_eq!(
-            split_document_id("s3::art/cover.psd"),
-            (Target::Surface(3), "art/cover.psd")
-        );
-        assert_eq!(
-            external_document_id(Target::Surface(3), "art/cover.psd"),
-            "s3::art/cover.psd"
-        );
-        assert_eq!(split_document_id("sx::a"), (Target::Headless, "sx::a"));
-    }
 }

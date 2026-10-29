@@ -68,11 +68,6 @@ pub fn router(state: KitsState) -> Router {
         .route("/kits/drafts/discard", post(discard_draft))
         .route("/kits/bridge", get(bridge_stream).post(bridge_message))
         .route("/mcp/kits", post(mcp))
-        .route("/kits/surfaces", post(open_surface))
-        .route(
-            "/kits/surfaces/{surface}",
-            axum::routing::put(update_surface).delete(close_surface),
-        )
         .with_state(state)
 }
 
@@ -367,62 +362,6 @@ async fn save(
         .await
         .map_err(app_error)?;
     Ok(ok(view))
-}
-
-#[derive(Deserialize)]
-struct OpenSurfaceBody {
-    path: String,
-    rect: crate::surfaces::Rect,
-    #[serde(default = "default_visible")]
-    visible: bool,
-}
-
-const fn default_visible() -> bool {
-    true
-}
-
-async fn open_surface(
-    State(state): State<KitsState>,
-    _user: CurrentUser,
-    JsonBody(body): JsonBody<OpenSurfaceBody>,
-) -> AppResult<Response> {
-    let view = state
-        .kits
-        .open_surface(&body.path, body.rect, body.visible)
-        .await
-        .map_err(app_error)?;
-    Ok(ok(view))
-}
-
-#[derive(Deserialize)]
-struct UpdateSurfaceBody {
-    #[serde(default)]
-    rect: Option<crate::surfaces::Rect>,
-    #[serde(default)]
-    visible: Option<bool>,
-}
-
-async fn update_surface(
-    State(state): State<KitsState>,
-    _user: CurrentUser,
-    Path(surface): Path<u64>,
-    JsonBody(body): JsonBody<UpdateSurfaceBody>,
-) -> AppResult<Response> {
-    state
-        .kits
-        .update_surface(surface, body.rect, body.visible)
-        .await
-        .map_err(app_error)?;
-    Ok(ok(json!({})))
-}
-
-async fn close_surface(
-    State(state): State<KitsState>,
-    _user: CurrentUser,
-    Path(surface): Path<u64>,
-) -> AppResult<Response> {
-    state.kits.close_surface(surface).await;
-    Ok(ok(json!({})))
 }
 
 /// The largest file an in-page editor may save in one request.

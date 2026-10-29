@@ -66,12 +66,6 @@ requests! {
     CommandsExecute = "commands.execute" (CommandsExecuteParams) -> CommandsExecuteResult;
     ViewScreenshot = "view.screenshot" (ViewScreenshotParams) -> Image;
     ViewDescribe = "view.describe" (DocumentRef) -> ViewDescribeResult;
-    SurfaceAttach = "surface.attach" (SurfaceAttachParams) -> Empty;
-    SurfaceSetBounds = "surface.setBounds" (SurfaceSetBoundsParams) -> Empty;
-    SurfaceSetVisible = "surface.setVisible" (SurfaceSetVisibleParams) -> Empty;
-    SurfaceFocus = "surface.focus" (Empty) -> Empty;
-    SurfaceSnapshot = "surface.snapshot" (Empty) -> Image;
-    SurfaceDetach = "surface.detach" (Empty) -> Empty;
 }
 
 notifications! {
@@ -87,14 +81,6 @@ notifications! {
     DocumentDidSave = "document.didSave" (DocumentDidSaveParams);
     /// Kit to all clients.
     CommandsDidChangeEnabled = "commands.didChangeEnabled" (CommandsDidChangeEnabledParams);
-    /// Kit to host.
-    SurfaceDidFocus = "surface.didFocus" (Empty);
-    /// Kit to host.
-    SurfaceDidBlur = "surface.didBlur" (Empty);
-    /// Kit to host.
-    InputForwardShortcut = "input.forwardShortcut" (Shortcut);
-    /// Kit to host.
-    SurfaceDidRequestFocusExit = "surface.didRequestFocusExit" (SurfaceFocusExitParams);
     /// Kit to all clients.
     Progress = "kit.progress" (ProgressParams);
     /// Kit to all clients.
@@ -103,14 +89,10 @@ notifications! {
 
 /// Whether only the `host` role may send this method (protocol section 1).
 pub fn is_host_only(method: &str) -> bool {
-    method.starts_with("surface.")
-        || matches!(
-            method,
-            "kit.shutdown"
-                | "kit.setPreferences"
-                | "document.activate"
-                | "document.didChangeOnDisk"
-        )
+    matches!(
+        method,
+        "kit.shutdown" | "kit.setPreferences" | "document.activate" | "document.didChangeOnDisk"
+    )
 }
 
 #[cfg(test)]
@@ -119,13 +101,7 @@ mod tests {
 
     #[test]
     fn host_only_methods() {
-        for method in [
-            "kit.shutdown",
-            "kit.setPreferences",
-            "document.activate",
-            "surface.attach",
-            "surface.snapshot",
-        ] {
+        for method in ["kit.shutdown", "kit.setPreferences", "document.activate"] {
             assert!(is_host_only(method), "{method}");
         }
         for method in [

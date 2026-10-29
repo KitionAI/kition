@@ -97,8 +97,8 @@ editor in an overlay window above the tab (`surface: embedded`, plan B). It
 felt like a second program, showed two canvases and extra scroll bars, and
 could not share Kition's menus, dialogs, or focus. Do not build new kits that
 way. The renderer side of plan B (`PhotoKitPane`, `PhotoKitEditor`) was
-removed on 2026-10-15; the runtime's `/v1/kits/surfaces` and document routes
-are next.
+removed on 2026-10-15; the runtime's `/v1/kits/surfaces`, the protocol's
+native surfaces, and the desktop shell's window tracking on 2026-10-28.
 
 Also removed on 2026-10-15: Kition's own editors on a kit's engine
 (`<Kit>WebEditor`, `StandardKitEditor`, `KitEditorFrame`, `KitCanvas`), which

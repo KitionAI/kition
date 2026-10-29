@@ -19,13 +19,11 @@ pub enum ErrorReason {
     CommandNotFound,
     CommandDisabled,
     InvalidParams,
-    SurfaceMechanismUnsupported,
-    SurfaceNotAttached,
     RequestCancelled,
 }
 
 impl ErrorReason {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 13] = [
         Self::Unauthorized,
         Self::NotInitialized,
         Self::RoleForbidden,
@@ -38,8 +36,6 @@ impl ErrorReason {
         Self::CommandNotFound,
         Self::CommandDisabled,
         Self::InvalidParams,
-        Self::SurfaceMechanismUnsupported,
-        Self::SurfaceNotAttached,
         Self::RequestCancelled,
     ];
 
@@ -58,8 +54,6 @@ impl ErrorReason {
             Self::CommandNotFound => -32020,
             Self::CommandDisabled => -32021,
             Self::InvalidParams => -32022,
-            Self::SurfaceMechanismUnsupported => -32030,
-            Self::SurfaceNotAttached => -32031,
             Self::RequestCancelled => -32800,
         }
     }
@@ -82,8 +76,6 @@ impl ErrorReason {
             Self::CommandNotFound => "command not found",
             Self::CommandDisabled => "command disabled",
             Self::InvalidParams => "invalid command parameters",
-            Self::SurfaceMechanismUnsupported => "embedding mechanism not supported",
-            Self::SurfaceNotAttached => "surface not attached",
             Self::RequestCancelled => "request cancelled",
         }
     }

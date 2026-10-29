@@ -3,9 +3,9 @@
 Status: proposal, 2026-10-09; revised 2026-10-10 for the in-process Rust
 runtime and for `kit.photo` as the first kit. Partly superseded: kits draw
 their own editors in the page as WebAssembly packages, and Kition ships every
-package inside the app (2026-10-15), so the native surfaces (section 6) no longer
-apply to kit editors, and the signed kit index and per-platform downloads were removed
-(2026-10-28); kits are pinned in `kits/kits.lock.json`. See
+package inside the app (2026-10-15); native kit surfaces (section 6), the
+signed kit index and per-platform downloads were removed (2026-10-28), so kit
+processes run only headless and kits are pinned in `kits/kits.lock.json`. See
 [kit-sdk.md](kit-sdk.md).
 
 Kition is a workspace for documents, data, media, and an AI agent that works
@@ -80,12 +80,12 @@ the agent; each kit owns one editing domain.
 +------------------------- Kition desktop process --------------------------+
 | Renderer (React)                                                          |
 |   workspace tree, tabs, agent panel, built-in kits (markdown, table, ...) |
-|   kit tab = placeholder region that reports its bounds                    |
+|   kit tab = the kit's own editor in an iframe (KitFrame, Kit UI protocol) |
 |                 | loopback HTTP API                                       |
 | Tauri shell (Rust) = Kit Host       | Runtime (Rust crates, in-process)   |
-|   kit index, install + verify,      |   agent, data, workflows; opens     |
-|   supervisor, surface placement,    |   agent-role connections to kits    |
-|   focus and shortcut routing        |   through kition-kit-host           |
+|   window, menus, updates            |   agent, data, workflows; starts    |
+|                                     |   headless kits through             |
+|                                     |   kition-kit-host                   |
 +-------------+-------------------------------------+-----------------------+
               | Kit Protocol (JSON-RPC 2.0, local socket or named pipe)
               v                                     v
@@ -100,9 +100,9 @@ Responsibilities:
 
 | Component | Owns |
 | --- | --- |
-| Renderer | Tabs, layout, the kit placeholder region, the agent panel, built-in kits |
-| Tauri shell (Kit Host) | Kit index and installation, checksum verification, spawning and supervising kit processes, surface placement, focus and shortcut routing, crash recovery |
-| Kit process | Document model, rendering, its own menus, panels, and dialogs inside its surface, file I/O for the documents it was given |
+| Renderer | Tabs, layout, the agent panel, and each kit's editor in `KitFrame` (the kit's WebAssembly engine in a worker) |
+| Tauri shell | The desktop window; it runs the runtime in-process |
+| Kit process (headless) | Document model, rendering previews, commands, and file I/O for the documents it was given, for the agent |
 | Runtime | Agent turns; it attaches to running kits (or starts headless ones through the host) and exposes kit commands as agent tools |
 
 The runtime is Rust code in this repository (`crates/`) and runs inside the
@@ -116,7 +116,7 @@ other client. Kits depend only on the Kit Protocol.
 | Crate | Purpose |
 | --- | --- |
 | `kition-kit-protocol` | Message types mirroring `contracts/kit/`, error codes, launch constants, line framing, and the socket or named pipe transport. No async runtime unless the `tokio` feature is enabled, so thread-based kits can use it |
-| `kition-kit-host` | Launching a kit with a private endpoint and token, waiting for `ready`, and a request client with timeouts and cancellation. Supervision, installation, and surface placement build on it |
+| `kition-kit-host` | Launching a kit with a private endpoint and token, waiting for `ready`, and a request client with timeouts and cancellation. Kits run only headless |
 | `kition-kit-mock` | A headless kit for `.mocktext` documents, used to test the host and the suite |
 | `kition-kit-conformance` | The conformance suite (protocol section 14), as a library and as the `kition-kit-conformance` command that kit repositories run in CI |
 
@@ -138,74 +138,16 @@ high-fidelity `.docx`, `.xlsx`, and `.pptx` import and export kits running in
 ## 6. Surfaces: How A Kit Appears Inside Kition
 
 > **Decision, 2026-10-10:** kit editors run in the page. The kit's engine is
-> compiled to WebAssembly (its SDK), runs in a worker, and paints into a
-> canvas, while Kition draws all chrome. This is the `web` surface below,
-> promoted to the default editing surface. The `embedded` overlay window was
-> prototyped for `kit.photo` and rejected in the real desktop client: it felt
-> like a separate program, doubled the canvas, and added scroll bars. Native
-> kit processes remain for `headless` agent work. How to build a kit editor:
-> [kit-sdk.md](kit-sdk.md).
-
-A **surface** is where a kit renders. A kit declares the surfaces it supports
-in its manifest; the host picks the best one for the current platform.
-
-| Surface | Inside the Kition window | Native rendering | Use |
-| --- | --- | --- | --- |
-| `embedded` | Yes, in the tab content region | Yes | Default for desktop editing |
-| `window` | No, separate top-level window | Yes | Fallback and "pop out to window" |
-| `web` | Yes, inside the DOM | No (WebAssembly + WebGPU) | Web build, quick previews, thumbnails |
-| `headless` | No user interface | Yes | Agent automation, batch conversion, import and export |
-
-### 6.1 Embedding mechanisms
-
-The kit runs in its own process, so `embedded` requires cross-process window
-composition. The mechanism differs per platform:
-
-| Platform | Mechanism | Notes |
-| --- | --- | --- |
-| Windows | `child-window`: the kit creates a child `HWND` parented to the Kition window handle | Supported across processes; input queues must be coordinated |
-| Linux X11 | `child-window`: the kit window is reparented under the Kition window | Supported across processes |
-| Linux Wayland | none | Falls back to `window` |
-| macOS | to be decided by the prototype (section 10) | An `NSView` handle is a process-local pointer and cannot be parented across processes |
-
-macOS candidates, in prototype order:
-
-1. `overlay-window`: a borderless kit window ordered directly above the Kition
-   window by window number, with the host streaming bounds on every move and
-   resize. Public APIs only; risk of visible lag during window drags and of
-   quirks with Spaces and full screen.
-2. `shared-texture`: the kit renders offscreen into an `IOSurface`, hands it to
-   the host, and the host displays it in a native layer while forwarding input
-   events. Public APIs; adds input translation work and about one frame of
-   latency.
-3. `remote-layer`: cross-process Core Animation layer hosting, as used by
-   Chromium. Best fidelity, but relies on private APIs.
-
-The protocol carries the mechanism name so that each platform can use a
-different one without changing kits' document or command logic.
-
-### 6.2 Airspace rule for Kition UI
-
-A native surface always draws above web content in its region. Therefore:
-
-- No React overlay (menus, popovers, toasts, dialogs, agent bubbles) may overlap
-  an `embedded` kit region.
-- When a modal Kition dialog must cover the region, the host requests a
-  `surface.snapshot`, hides the surface, shows the snapshot image in its place,
-  and restores the surface when the dialog closes.
-- Kits draw their own menus, panels, and dialogs inside their surface.
-
-This rule belongs in `docs/design.md` once the first embedded kit ships.
-
-### 6.3 Focus and shortcuts
-
-- The kit handles keys while its surface has focus, including input method
-  composition.
-- A host-reserved shortcut set (switch tab, command palette, toggle agent
-  panel, quit) is sent to the kit during initialization. The kit must not
-  consume those keys and forwards them with `input.forwardShortcut`.
-- `Mod+S` and other document shortcuts are handled by the kit, which reports
-  results through document notifications.
+> compiled to WebAssembly (its SDK), runs in a worker, and the kit draws its
+> own editor in an iframe (`KitFrame`, Kit UI protocol). The `embedded`
+> overlay window was prototyped for `kit.photo` and rejected in the real
+> desktop client: it felt like a separate program, doubled the canvas, and
+> added scroll bars. How to build a kit editor: [kit-sdk.md](kit-sdk.md).
+>
+> **2026-10-28:** the native surfaces are gone from the protocol and the
+> runtime (`embedded`, `window`, the `surface.*` methods, embedding
+> mechanisms, `/v1/kits/surfaces`). A kit process runs only `headless`, for
+> the agent: `KITION_KIT_SURFACE=headless` is the only value.
 
 ## 7. Upstream Integration Policy
 
@@ -238,8 +180,7 @@ forks. Kition does not send pull requests upstream and expects to diverge.
 ### 7.2 Rules that keep upstream merges cheap
 
 1. **Add, do not edit.** Kition code goes into new crates that upstream never
-   touches: `crates/kition-*` (protocol server, theme, surface attachment,
-   Kition integrations) and `apps/kit-<name>` (the kit executable). Kit
+   touches: `crates/kition-*` (protocol server, theme, Kition integrations) and `apps/kit-<name>` (the kit executable). Kit
    repositories keep their upstream license and do not link the crates of
    this repository: each kit implements the protocol
    in its own `kition-kit-server` crate, and the conformance suite, which runs
@@ -325,10 +266,10 @@ first-party kits signed by Kition:
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
-| 1 | `KitionAI/kition-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
-| 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.kphoto`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override. Then a `window` surface for hands-on editing | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab. The `window` surface remains |
+| 1 | `KitionAI/kition-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks) |
+| 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.kphoto`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab |
 | 3a | In-page editing with `kit.photo` ([kit-sdk.md](kit-sdk.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
-| 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a |
+| 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a; its code removed 2026-10-28 |
 | 4 (dropped) | Distribution: downloaded native kits through a signed index | Superseded: kits ship inside the app, pinned in `kits/kits.lock.json`; the index, its schema and types were removed 2026-10-28 |
 | 5 | Image editing inside documents over the headless engine (crop and adjust) | Image edits round-trip from documents |
 | 6 | Additional kits (`kit.pdf`, video, vector, audio), each built on the Kit SDK template | Each passes conformance, its SDK e2e, and the performance budget in [kit-sdk.md](kit-sdk.md) |
@@ -367,7 +308,6 @@ latency, scrolling, focus) must still be validated in the real desktop client.
 
 | Risk | Mitigation |
 | --- | --- |
-| macOS cross-process embedding quality | Prototype three mechanisms before committing; `window` stays available |
 | Upstream instability (alpha, high churn) | Scheduled sync pull requests gated by tests and conformance; additive Kition changes per section 7.2 |
 | Large command catalogs overwhelm the agent | Tool groups and per-turn filtering |
 | Kit crashes | Process isolation; the host restarts the kit and reopens documents from disk |

@@ -23,7 +23,6 @@ static MOCK: KitDefinition = KitDefinition {
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
     base_name: "Untitled Mock kit",
-    embeds: false,
     exports: &["mockout"],
     agent: KitAgent {
         prefix: "mock",
@@ -341,7 +340,6 @@ static OTHER: KitDefinition = KitDefinition {
     extensions: &["mockpic"],
     creates: &[],
     base_name: "Untitled Other kit",
-    embeds: false,
     exports: &[],
     agent: KitAgent {
         prefix: "other",

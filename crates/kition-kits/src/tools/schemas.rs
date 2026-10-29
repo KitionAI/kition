@@ -19,7 +19,6 @@ static GENERIC: KitDefinition = KitDefinition {
     extensions: &[],
     creates: &[],
     base_name: "Untitled <kit>",
-    embeds: false,
     exports: &[],
     agent: KitAgent {
         prefix: "<prefix>",

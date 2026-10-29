@@ -38,10 +38,10 @@ fn main() -> ExitCode {
         eprintln!("kition-kit-mock: {ENV_TOKEN} is missing or malformed");
         return ExitCode::from(2);
     }
-    let Some(surface) = Surface::from_env(&env(ENV_SURFACE)) else {
-        eprintln!("kition-kit-mock: unsupported {ENV_SURFACE}");
+    if Surface::from_env(&env(ENV_SURFACE)).is_none() {
+        eprintln!("kition-kit-mock: {ENV_SURFACE} must be headless");
         return ExitCode::from(2);
-    };
+    }
     let fault = Fault::from_env(&env("KITION_KIT_MOCK_FAULT"));
     let endpoint = env(ENV_ENDPOINT);
 
@@ -55,7 +55,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    runtime.block_on(serve(endpoint, Kit::new(token, surface, fault)))
+    runtime.block_on(serve(endpoint, Kit::new(token, fault)))
 }
 
 async fn serve(endpoint: String, kit: Kit) -> ExitCode {

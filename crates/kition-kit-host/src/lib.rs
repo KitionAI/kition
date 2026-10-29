@@ -1,6 +1,5 @@
 //! The host side of the Kit Protocol: launching kit executables, private
-//! endpoints, and a request client. Supervision, installation, and surface
-//! placement build on these pieces.
+//! endpoints, and a request client. Kits run only headless.
 
 pub mod client;
 pub mod endpoint;

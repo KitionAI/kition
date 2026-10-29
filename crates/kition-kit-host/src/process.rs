@@ -23,17 +23,15 @@ use crate::new_token;
 #[derive(Clone, Debug)]
 pub struct LaunchOptions {
     pub executable: PathBuf,
-    pub surface: Surface,
     /// Extra environment variables, for example kit-specific diagnostics.
     pub env: Vec<(OsString, OsString)>,
     pub ready_timeout: Duration,
 }
 
 impl LaunchOptions {
-    pub fn new(executable: impl Into<PathBuf>, surface: Surface) -> Self {
+    pub fn new(executable: impl Into<PathBuf>) -> Self {
         Self {
             executable: executable.into(),
-            surface,
             env: Vec::new(),
             ready_timeout: READY_TIMEOUT,
         }
@@ -62,7 +60,6 @@ pub struct KitProcess {
     child: Child,
     endpoint: Endpoint,
     token: String,
-    surface: Surface,
     stdout_after_ready: Arc<AtomicBool>,
     stdout_watch: Option<tokio::task::JoinHandle<()>>,
 }
@@ -78,7 +75,7 @@ impl KitProcess {
             .env(ENV_PROTOCOL, PROTOCOL_VERSION.to_string())
             .env(ENV_ENDPOINT, endpoint.address())
             .env(ENV_TOKEN, &token)
-            .env(ENV_SURFACE, options.surface.as_env())
+            .env(ENV_SURFACE, Surface::Headless.as_env())
             .envs(options.env.iter().map(|(key, value)| (key, value)))
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -116,7 +113,6 @@ impl KitProcess {
             child,
             endpoint,
             token,
-            surface: options.surface,
             stdout_after_ready,
             stdout_watch: Some(stdout_watch),
         })
@@ -129,10 +125,6 @@ impl KitProcess {
 
     pub fn endpoint(&self) -> &str {
         self.endpoint.address()
-    }
-
-    pub fn surface(&self) -> Surface {
-        self.surface
     }
 
     pub fn id(&self) -> Option<u32> {

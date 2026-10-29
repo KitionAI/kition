@@ -255,7 +255,7 @@ pub async fn run(options: &Options) -> Report {
         );
         return report;
     };
-    let mut launch = LaunchOptions::new(&options.executable, Surface::Headless);
+    let mut launch = LaunchOptions::new(&options.executable);
     launch.env.clone_from(&options.env);
     let process = match KitProcess::launch(launch).await {
         Ok(process) => {
@@ -556,7 +556,6 @@ impl Context<'_> {
             client: client_info(),
             locale: (role == Role::Host).then(|| "en-US".to_owned()),
             appearance: (role == Role::Host).then_some(Appearance::Light),
-            reserved_shortcuts: Vec::new(),
             workspace_roots: match role {
                 Role::Host => vec![dir_uri(&self.workspace)?],
                 Role::Agent => Vec::new(),
@@ -857,11 +856,14 @@ impl Context<'_> {
             .map_err(|error| format!("agent kit.initialize: {error}"))?;
         expect_reason(
             agent
-                .call::<methods::SurfaceSetVisible>(&SurfaceSetVisibleParams { visible: false })
+                .call::<methods::SetPreferences>(&SetPreferencesParams {
+                    locale: Some("en-US".into()),
+                    appearance: None,
+                })
                 .await,
             ErrorReason::RoleForbidden,
         )
-        .map_err(|error| format!("surface.setVisible: {error}"))?;
+        .map_err(|error| format!("kit.setPreferences: {error}"))?;
         expect_reason(
             agent.call::<methods::Shutdown>(&Empty {}).await,
             ErrorReason::RoleForbidden,

@@ -26,7 +26,6 @@ static MOCK: KitDefinition = KitDefinition {
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
     base_name: "Untitled Mock kit",
-    embeds: false,
     exports: &[],
     agent: KitAgent {
         prefix: "mock",

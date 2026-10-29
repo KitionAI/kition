@@ -227,12 +227,8 @@ impl From<KitError> for KitToolError {
                     Some(ErrorReason::UriNotGranted | ErrorReason::RoleForbidden) => {
                         ErrorCode::NotAllowed
                     }
-                    Some(
-                        ErrorReason::UnsupportedFormat | ErrorReason::SurfaceMechanismUnsupported,
-                    ) => ErrorCode::Unsupported,
-                    Some(ErrorReason::RequestCancelled | ErrorReason::SurfaceNotAttached) => {
-                        ErrorCode::Unavailable
-                    }
+                    Some(ErrorReason::UnsupportedFormat) => ErrorCode::Unsupported,
+                    Some(ErrorReason::RequestCancelled) => ErrorCode::Unavailable,
                     Some(_) | None => ErrorCode::Failed,
                 },
                 None,

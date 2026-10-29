@@ -28,22 +28,6 @@ pub enum Appearance {
     Dark,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Modifier {
-    Alt,
-    Ctrl,
-    Meta,
-    Shift,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Shortcut {
-    pub key: String,
-    pub code: String,
-    pub modifiers: Vec<Modifier>,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientInfo {
     pub name: String,
@@ -61,8 +45,6 @@ pub struct InitializeParams {
     pub locale: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appearance: Option<Appearance>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub reserved_shortcuts: Vec<Shortcut>,
     /// `file://` URIs that bound agent `document.open` calls.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub workspace_roots: Vec<String>,
@@ -72,15 +54,6 @@ pub struct InitializeParams {
 pub struct KitInfo {
     pub id: String,
     pub version: String,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Mechanism {
-    ChildWindow,
-    OverlayWindow,
-    SharedTexture,
-    TopLevel,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,8 +67,6 @@ pub struct Formats {
 #[serde(rename_all = "camelCase")]
 pub struct Capabilities {
     pub surfaces: Vec<Surface>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub embedding_mechanisms: Vec<Mechanism>,
     pub formats: Formats,
     /// Optional protocol features, for example `view.describe`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -297,7 +268,6 @@ impl Image {
 #[serde(rename_all = "lowercase")]
 pub enum ScreenshotScope {
     Canvas,
-    Surface,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -313,64 +283,6 @@ pub struct ViewScreenshotParams {
 pub struct ViewDescribeResult {
     pub summary: String,
     pub state: Map<String, Value>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Bounds {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ParentPlatform {
-    Macos,
-    Windows,
-    X11,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SurfaceParent {
-    pub platform: ParentPlatform,
-    /// A window handle or window number as a decimal string.
-    pub handle: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SurfaceAttachParams {
-    pub mechanism: Mechanism,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parent: Option<SurfaceParent>,
-    pub bounds: Bounds,
-    pub scale_factor: f64,
-    pub visible: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SurfaceSetBoundsParams {
-    pub bounds: Bounds,
-    pub scale_factor: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SurfaceSetVisibleParams {
-    pub visible: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum FocusDirection {
-    Next,
-    Previous,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SurfaceFocusExitParams {
-    pub direction: FocusDirection,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
