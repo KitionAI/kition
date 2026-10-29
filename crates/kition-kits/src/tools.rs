@@ -27,7 +27,7 @@ pub use errors::{ErrorCode, KitToolError};
 
 use crate::bridge::LiveDocument;
 use crate::drafts::{self, DraftState};
-use crate::manager::{Caller, DocumentView, KITS, KitDefinition, KitManager};
+use crate::manager::{Caller, DocumentView, KITS, KitDefinition, KitError, KitManager};
 
 const PREVIEW_SIZE: u32 = 1024;
 const MAX_COMMANDS: usize = 12;
@@ -569,6 +569,24 @@ fn document_summary_json(view: &DocumentView) -> Value {
     })
 }
 
+/// A `target.slide` or `target.page` that is not a whole number from 1 is an error: dropped, it
+/// left inspect on the whole document and run on whatever part the kit was on.
+fn check_target_part(input: &Value) -> Result<(), KitToolError> {
+    let Some(target) = input.get("target") else {
+        return Ok(());
+    };
+    for key in ["slide", "page"] {
+        if let Some(value) = target.get(key)
+            && value.as_u64().is_none_or(|n| n < 1)
+        {
+            return Err(KitToolError::invalid(format!(
+                "`target.{key}` is {value}: {key}s are counted from 1 here (the first is 1)"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// `target.slide` or `target.page` of a `<prefix>_inspect` call, counted from 1.
 fn target_part(input: &Value) -> Option<u64> {
     let target = input.get("target")?;
@@ -900,11 +918,19 @@ async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> S
 
 /// Goes to one slide or page (`{index}` counted from 0) through the kit's `slide.go` or
 /// `page.go`, so that its commands, which address the part being edited, address this one.
-async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Option<DocumentView> {
-    for command in ["slide.go", "page.go"] {
+/// The first of `commands` the kit has, run with `{index: part - 1}`: `Ok(None)` when it has none
+/// of them, the kit's error when it has one and refuses (a part past the end), so a missing part
+/// is said and never quietly replaced by the whole document or the part the kit was on.
+async fn part_command(
+    kits: &KitManager,
+    view: &DocumentView,
+    commands: [&str; 2],
+    part: u64,
+) -> Result<Option<crate::manager::ExecuteView>, KitToolError> {
+    for command in commands {
         let mut params = Map::new();
         params.insert("index".into(), json!(part - 1));
-        if let Ok(executed) = kits
+        match kits
             .execute(
                 Caller::Agent,
                 view.kit_id,
@@ -914,32 +940,39 @@ async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Option
             )
             .await
         {
-            return Some(executed.document);
+            Ok(executed) => return Ok(Some(executed)),
+            Err(KitError::Kit {
+                reason: Some(kition_kit_protocol::ErrorReason::CommandNotFound),
+                ..
+            }) => {}
+            Err(error) => {
+                return Err(KitToolError::from(error)
+                    .context(&format!("part {part} (counted from 1): ")));
+            }
         }
     }
-    None
+    Ok(None)
 }
 
-async fn part_objects(kits: &KitManager, view: &DocumentView, part: u64) -> Option<Value> {
+async fn go_to_part(
+    kits: &KitManager,
+    view: &DocumentView,
+    part: u64,
+) -> Result<Option<DocumentView>, KitToolError> {
+    Ok(part_command(kits, view, ["slide.go", "page.go"], part)
+        .await?
+        .map(|executed| executed.document))
+}
+
+async fn part_objects(
+    kits: &KitManager,
+    view: &DocumentView,
+    part: u64,
+) -> Result<Option<Value>, KitToolError> {
     model::warm(kits, view).await;
-    for command in ["slide.inspect", "page.inspect"] {
-        let mut params = Map::new();
-        params.insert("index".into(), json!(part - 1));
-        if let Ok(executed) = kits
-            .execute(
-                Caller::Agent,
-                view.kit_id,
-                &view.document_id,
-                command,
-                params,
-            )
-            .await
-            && let Some(result) = executed.result
-        {
-            return Some(result);
-        }
-    }
-    None
+    Ok(part_command(kits, view, ["slide.inspect", "page.inspect"], part)
+        .await?
+        .and_then(|executed| executed.result))
 }
 
 async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) -> Vec<Preview> {
@@ -1010,6 +1043,11 @@ pub async fn call_with(
         .get("draft")
         .and_then(Value::as_bool)
         .unwrap_or(options.draft);
+    if matches!(action, Action::Inspect | Action::Run)
+        && let Err(error) = check_target_part(input)
+    {
+        return Some(Err(error));
+    }
     Some(match action {
         Action::Inspect => inspect(kits, kit, input, draft).await,
         Action::Commands => commands(kits, kit, input).await,
@@ -1433,7 +1471,7 @@ async fn inspect(
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
     if let Some(part) = target_part(input)
-        && let Some(moved) = go_to_part(kits, &view, part).await
+        && let Some(moved) = go_to_part(kits, &view, part).await?
     {
         view = moved;
     }
@@ -1451,7 +1489,7 @@ async fn inspect(
         answer["content"] = content;
     }
     if let Some(part) = target_part(input)
-        && let Some(objects) = part_objects(kits, &view, part).await
+        && let Some(objects) = part_objects(kits, &view, part).await?
     {
         // The part, not the whole document's outline again.
         answer = document_summary_json(&view);
@@ -1770,7 +1808,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
     if let Some(part) = target_part(input) {
-        view = go_to_part(kits, &view, part).await.ok_or_else(|| {
+        view = go_to_part(kits, &view, part).await?.ok_or_else(|| {
             KitToolError::invalid(format!(
                 "cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)"
             ))
@@ -1891,6 +1929,17 @@ mod tests {
             ),
             "Checked `a.pptx`: 1 error, 2 warnings, no notes."
         );
+    }
+
+    #[test]
+    fn a_slide_or_page_target_counts_from_1() {
+        for bad in [json!({"slide": 0}), json!({"page": 0}), json!({"slide": "2"}), json!({"slide": 1.5})] {
+            let error = check_target_part(&json!({ "target": bad })).unwrap_err();
+            assert!(error.message.contains("counted from 1"), "{}", error.message);
+        }
+        for good in [json!({}), json!({"target": {"slide": 1}}), json!({"target": {"path": "layer:12"}})] {
+            assert!(check_target_part(&good).is_ok());
+        }
     }
 
     #[test]
