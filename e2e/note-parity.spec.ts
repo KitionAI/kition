@@ -3,15 +3,15 @@ import { expect, test } from '@playwright/test'
 import { caretAfter, noteText, openNote, pressCommand } from './helpers/noteKit'
 
 /**
- * The Note kit in Kition behaves as Obsidian's live preview (W3-64): a sample of the kit's own
- * parity suite (kition-note web/tests/obsidian.mjs) on the pinned package in KitFrame. Brackets
+ * The Note kit in Kition behaves as its reference editor's live preview (W3-64): a sample of the
+ * kit's own parity suite (kition-note `web/tests/`) on the pinned package in KitFrame. Brackets
  * pair and a closer steps over its pair, Enter continues a list, the command key with L checks a
- * task, Alt+Up takes the caret to its line's start (measured in Obsidian, which does not move the
- * line), the caret blinks, and a right click opens the editor's menu.
+ * task, Alt+Up takes the caret to its line's start (measured in the reference editor, which does
+ * not move the line), the caret blinks, and a right click opens the editor's menu.
  */
 test.setTimeout(180_000)
 
-test('edits a note as Obsidian does', async ({ page, baseURL }) => {
+test('edits a note as the reference editor does', async ({ page, baseURL }) => {
   const text = '# Parity\n\n- [ ] first task\n\nalpha\nbeta\n\nend\n'
   const { kit } = await openNote(page, baseURL!, 'Parity.md', text)
 
@@ -49,7 +49,7 @@ test('edits a note as Obsidian does', async ({ page, baseURL }) => {
   await expect(kit.getByTestId('note-context-menu')).toHaveCount(0)
 })
 
-test("draws front matter as Obsidian's properties block", async ({ page, baseURL }) => {
+test('draws front matter as a properties block', async ({ page, baseURL }) => {
   const text = '---\ntags:\n  - alpha\n  - beta\ndone: true\n---\n\n# Body\n'
   const { kit } = await openNote(page, baseURL!, 'Properties.md', text)
 
@@ -60,7 +60,7 @@ test("draws front matter as Obsidian's properties block", async ({ page, baseURL
   await expect.poll(() => noteText(page)).toContain('done: false')
 })
 
-test('draws a Mermaid block as its diagram, as Obsidian does', async ({ page, baseURL }) => {
+test('draws a Mermaid block as its diagram', async ({ page, baseURL }) => {
   const text = 'Intro\n\n```mermaid\ngraph TD\n  A[Start] --> B[Done]\n```\n\nAfter\n'
   const { kit } = await openNote(page, baseURL!, 'Diagram.md', text)
 
@@ -74,7 +74,7 @@ test('draws a Mermaid block as its diagram, as Obsidian does', async ({ page, ba
   await expect.poll(() => noteText(page)).toContain('```mermaid\n%% edited\ngraph TD')
 })
 
-test('draws an HTML block as its HTML, as Obsidian does', async ({ page, baseURL }) => {
+test('draws an HTML block as its HTML', async ({ page, baseURL }) => {
   const text = 'Intro\n\n<details>\n<summary>More</summary>\n\nHidden body.\n\n</details>\n\nAfter\n'
   const { kit } = await openNote(page, baseURL!, 'Details.md', text)
 
@@ -86,7 +86,7 @@ test('draws an HTML block as its HTML, as Obsidian does', async ({ page, baseURL
   await expect.poll(async () => (await block.boundingBox())!.height).toBeGreaterThan(folded + 10)
 })
 
-test('takes back a run of typing in one Undo, as Obsidian does', async ({ page, baseURL }) => {
+test('takes back a run of typing in one Undo', async ({ page, baseURL }) => {
   const { kit } = await openNote(page, baseURL!, 'Undo.md', '# Undo\n\nstart\n')
   await caretAfter(page, kit, 'start')
   await page.keyboard.type(' hello world')
