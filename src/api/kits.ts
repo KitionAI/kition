@@ -48,7 +48,7 @@ export function writeKitFile(path: string, bytes: Uint8Array, { document }: { do
 }
 
 /*
- * File grants (Kit Standard KitFiles 1.0): a kit's editor reaches files other than its document
+ * File grants (Kition platform KitFiles 1.0): a kit's editor reaches files other than its document
  * only through handles the runtime mints. A grant session is one editor page, bound to its kit and
  * document; the runtime keeps each handle's path, and no answer names one.
  */
@@ -139,7 +139,7 @@ export function postKitBridgeMessage(session: number, message: Record<string, un
 }
 
 /**
- * The drafts an agent keeps beside workspace files over `kition-kits-mcp --drafts` (Kit Standard
+ * The drafts an agent keeps beside workspace files over `kition-kits-mcp --drafts` (KHP
  * A27). Only the person merges or discards them (A14).
  */
 export async function listKitDrafts(): Promise<KitsHeadlessDraft[]> {

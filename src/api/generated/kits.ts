@@ -311,7 +311,7 @@ export type KitsGrantSessionEnd = {
 export type KitsDraftMode = "replica" | "file"
 
 /**
- * A draft an agent keeps beside a workspace file over kition-kits-mcp --drafts (Kit Standard A27), as GET /v1/kits/drafts lists it. Only the person merges or discards it (A14).
+ * A draft an agent keeps beside a workspace file over kition-kits-mcp --drafts (KHP A27), as GET /v1/kits/drafts lists it. Only the person merges or discards it (A14).
  */
 export type KitsHeadlessDraft = {
   version: 1
@@ -372,7 +372,7 @@ export type KitsDraftTextChange = {
 }
 
 /**
- * The object-level difference (Kit Standard A13) between the file as the draft forked from it and the draft.
+ * The object-level difference (KHP A13) between the file as the draft forked from it and the draft.
  */
 export type KitsDraftDiff = {
   created: KitsDraftObjectChange[]
@@ -547,7 +547,7 @@ export type KitsBridgeDocumentsResult = {
 }
 
 /**
- * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (Kit Standard 2.0 A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. `describe` takes {draft?} and answers the kit's model/describe; `batch` takes {origin, ops, load, save?, draft?} and answers the model/batch {refs, results, loaded} with `saved` (Kit UI protocol section 7a; the agent's `<prefix>_query` and `<prefix>_batch`). `check` takes {draft?} and answers the kit's {diagnostics: [{code, severity, target, message, fix?}]} (Kit Standard 2.0 A21; the agent's `<prefix>_check`), refused with `data.code` `unsupported` by an editor whose kit cannot check. A refusal's JSON-RPC error carries `data` ({code, index, message} for the object model). Merging and discarding a draft are the person's, never a bridge call.
+ * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (KHP A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. `describe` takes {draft?} and answers the kit's model/describe; `batch` takes {origin, ops, load, save?, draft?} and answers the model/batch {refs, results, loaded} with `saved` (Kit UI protocol section 7a; the agent's `<prefix>_query` and `<prefix>_batch`). `check` takes {draft?} and answers the kit's {diagnostics: [{code, severity, target, message, fix?}]} (KHP A21; the agent's `<prefix>_check`), refused with `data.code` `unsupported` by an editor whose kit cannot check. A refusal's JSON-RPC error carries `data` ({code, index, message} for the object model). Merging and discarding a draft are the person's, never a bridge call.
  */
 export type KitsBridgeCallParams = {
   path: KitsWorkspacePath
@@ -635,6 +635,6 @@ export type KitsBridgeChanged = {
 }
 
 /**
- * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kit Standard KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason).
+ * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kition platform KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason).
  */
 export type KitsContract = KitsKitList

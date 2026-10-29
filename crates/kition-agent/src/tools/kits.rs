@@ -1,5 +1,5 @@
 //! Kit tools for Kition's agent: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run` for
-//! every kit (Kition Kit Standard A3), its draft tools, and the object-model tools
+//! every kit (KHP A3), its draft tools, and the object-model tools
 //! `<prefix>_query` and `<prefix>_batch`. The tools themselves live in `kition_kits::tools`, shared
 //! with the MCP server other harnesses use; this adapts them to the agent's catalog and turns.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds a kit's own editor (Kition Kit Standard 6.1: the kit's web/ app and its engine) and puts
+# Builds a kit's own editor (Kition platform `docs/platform/kits/ui.md`: the kit's web/ app and its engine) and puts
 # it in public/kits/<kit>-ui, where Kition shows it in an iframe (KitFrame). See docs/kit-sdk.md.
 #
 #   scripts/build-kit-ui.sh slide

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { DraftInfo } from '../host/mountKit'
 
 /**
- * The agent's drafts of the kit documents open in this window (Kit Standard 2.0 A12, Kit UI
+ * The agent's drafts of the kit documents open in this window (KHP A12, Kit UI
  * protocol section 7d), by workspace path, as each kit reports them (`draft/changed`). A draft
  * lives in its kit editor; this is what the tab strip and the editor's banner show.
  */

@@ -13,7 +13,7 @@ const LISTED = 12
 const TEXT_SHOWN = 280
 
 /**
- * Above a kit document the agent edits as a draft (Kit Standard 2.0 A12): the document itself is
+ * Above a kit document the agent edits as a draft (KHP A12): the document itself is
  * untouched until the person merges the draft. Review opens the comparison; Discard drops it.
  */
 function KitDraftBanner({ info, onReview, onDiscard }: { info: DraftInfo; onReview: () => void; onDiscard: () => void }) {

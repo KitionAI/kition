@@ -139,7 +139,7 @@ function kitCommentAccess(path: string, readOnly: boolean) {
 }
 
 /**
- * A kit that draws its own editor (Kition Kit Standard 6.1): its UI in an iframe, driven over the
+ * A kit that draws its own editor (Kition platform `docs/platform/kits/ui.md`): its UI in an iframe, driven over the
  * Kit UI protocol. Kition serves its files, theme, language, and shortcuts, and forwards the Kit
  * AI bridge to it.
  */
@@ -283,7 +283,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
   // Counts the kits opened again from the carried replica, each in a new page (see `Carried`).
   const [reopened, setReopened] = useState(0)
   const src = `/kits/${kit.dir}/${kit.entry ?? 'index.html'}`
-  // A co-edited document a newer kit edited (Kit Standard 2.0 rules M5a and M20): its notice names
+  // A co-edited document a newer kit edited (Kition platform rules M5a and M20): its notice names
   // the kit and the version this Kition ships.
   const schemaNotice = useDocumentSchemaNotice(preview ? undefined : path)
   const kitVersion = useKitPackageVersion(kit.dir, Boolean(schemaNotice))
@@ -411,7 +411,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           draft: mounted.capabilities.includes('draft') ? { ready: () => mounted!.draft.ready(), reopen: () => mounted!.draft.reopen() } : undefined,
           model: bridgeModel(mounted, kit.kitId),
           save: openedReadOnly ? undefined : async () => (await mounted!.save()).saved,
-          // Diagnostics (Kit Standard 2.0 A21): only from a kit that lists `check`, so an older one is refused, not "fine".
+          // Diagnostics (KHP A21): only from a kit that lists `check`, so an older one is refused, not "fine".
           check: mounted.capabilities.includes('check') ? (options) => mounted!.check(options) : undefined,
         })
         const withdrawTest = registerKitTestFrame(path, mounted)

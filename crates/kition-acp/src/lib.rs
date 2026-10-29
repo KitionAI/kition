@@ -1,4 +1,4 @@
-//! Kition's agent over the Agent Client Protocol (ACP, protocol version 1; Kition Kit Standard D3):
+//! Kition's agent over the Agent Client Protocol (ACP, protocol version 1; Kition platform D3):
 //! an editor or any other ACP client launches `kition-acp` and drives the agent of a running
 //! Kition, which keeps its tools, its workspace, and its policies (the kit tools included).
 //!

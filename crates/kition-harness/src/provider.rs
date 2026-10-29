@@ -1,6 +1,6 @@
 //! The provider seam. Every pane and kit contributes to a turn through one
 //! interface: prompt sections and tools. The driver never names a pane or a
-//! kit (Kit Standard section 2, the capability seam model).
+//! kit (Kition platform `docs/platform/index.md`, the capability seam model).
 
 use std::sync::Arc;
 

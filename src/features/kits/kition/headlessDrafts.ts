@@ -4,7 +4,7 @@ import { mountedKitDocument } from './kitConnections'
 import { KITION_KIT_HOST } from './kitionHost'
 
 /**
- * The drafts an agent keeps beside workspace files over `kition-kits-mcp --drafts` (Kit Standard
+ * The drafts an agent keeps beside workspace files over `kition-kits-mcp --drafts` (KHP
  * A27), by workspace path, as the runtime lists them. Unlike a draft in an open kit editor
  * (`kitDrafts.ts`), these live on disk, made by an agent outside Kition; the person reviews,
  * merges, or discards them here (A14). Kition watches the list while the workspace is shown.

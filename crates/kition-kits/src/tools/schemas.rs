@@ -34,7 +34,7 @@ static GENERIC: KitDefinition = KitDefinition {
     },
 };
 
-/// The error a failed call answers (Kit Standard A18).
+/// The error a failed call answers (KHP A18).
 fn error_schema() -> Value {
     let codes: Vec<&str> = ErrorCode::ALL.iter().map(|code| code.as_str()).collect();
     json!({
@@ -259,7 +259,7 @@ pub fn tool_schemas() -> Value {
     }
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "Kition kit tools (Kit Standard KitAgent, `<prefix>_*`)",
+        "title": "Kition kit tools (KHP agent tools, `<prefix>_*`)",
         "description": "The arguments (`input`) and structured results (`output`) of every kit tool, as kition-kits-mcp and Kition's agent offer them, generated from crates/kition-kits (`kition-kits-mcp --schemas`). `<prefix>` is the kit's `kit.json` agent prefix. A failed call answers `isError: true` and `error` in its structured content, beside what it had done. `<prefix>_query` and `<prefix>_batch` arguments name the kit's object types and fields once the server has seen its `model.describe`.",
         "tools": tools,
         "$defs": {

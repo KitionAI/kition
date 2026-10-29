@@ -24,7 +24,7 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
 
 /**
  * Next to a workspace file an agent edited as a draft outside Kition (`kition-kits-mcp --drafts`,
- * Kit Standard A27): opens the review. The file itself is untouched until the person merges.
+ * KHP A27): opens the review. The file itself is untouched until the person merges.
  */
 export function HeadlessDraftBadge({ path }: { path: string }) {
   const { t } = useTranslation('workspace')
@@ -123,7 +123,7 @@ function Comparison({ comparison }: { comparison: KitsDraftComparison }) {
 }
 
 /**
- * The review of a headless draft (Kit Standard A27): the file now and with the draft merged, and
+ * The review of a headless draft (KHP A27): the file now and with the draft merged, and
  * the person's Merge and Discard (A14). A merge the runtime refuses because the file changed since
  * the draft forked asks before replacing those edits; a file open in a kit editor with unsaved
  * edits is never replaced.

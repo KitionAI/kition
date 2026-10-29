@@ -20,7 +20,7 @@
  * state as `{ kit, selection, caret?, viewport? }`, a viewer's too, and the editor hears what the
  * other people in the room share.
  *
- * A change a newer kit made (Kit Standard 2.0 rules M5a and M20, `./schemaWatch`) shows a notice;
+ * A change a newer kit made (Kition platform rules M5a and M20, `./schemaWatch`) shows a notice;
  * one the kit refuses keeps the document read-only until the kit is updated, and the room position
  * is not kept past it, so the change is pulled again then.
  */

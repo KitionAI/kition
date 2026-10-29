@@ -453,7 +453,7 @@ async fn write_file(
     Ok(ok(json!({ "path": query.path, "bytes": body.len() })))
 }
 
-// File grants (Kit Standard `KitFiles 1.0`, `grants.rs`): the renderer serves a kit's `files/*`
+// File grants (Kition platform `KitFiles 1.0`, `grants.rs`): the renderer serves a kit's `files/*`
 // requests through these routes. A grant session is bound to a kit, the person, and the
 // document its editor opened; handles are bound to their session. No answer names a path.
 
@@ -781,7 +781,7 @@ async fn write_chunk(
     }))
 }
 
-// Drafts an agent kept beside workspace files over `kition-kits-mcp --drafts` (Kit Standard A27):
+// Drafts an agent kept beside workspace files over `kition-kits-mcp --drafts` (KHP A27):
 // the person reviews, merges, or discards them here. The agent can do none of these (A14).
 
 /// Maps a refused draft command to a status the renderer can branch on; `data.reason` is the

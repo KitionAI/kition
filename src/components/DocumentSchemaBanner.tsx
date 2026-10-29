@@ -6,7 +6,7 @@ import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { checkForUpdates, downloadUpdate, installUpdate, type UpdateState } from '@/services/desktopUpdates'
 
 /**
- * The notice above a co-edited document a newer kit edited (Kit Standard 2.0 rules M5a and M20,
+ * The notice above a co-edited document a newer kit edited (Kition platform rules M5a and M20,
  * `@/services/documentSchema`): it says so, says whether the document stays read-only meanwhile,
  * names the kit version this Kition ships against the schema the document needs, and offers the
  * update (kits ship inside Kition, so updating Kition updates the kit).

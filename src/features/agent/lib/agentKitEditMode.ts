@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { AgentKitEditMode } from '@/api/agent'
 
 /**
- * How the agent edits kit documents (Kit Standard 2.0 A12): `live` (the default) edits the open
+ * How the agent edits kit documents (KHP A12): `live` (the default) edits the open
  * document, which the person sees change and can undo; `draft` edits a draft the person reviews
  * and merges or discards. Chosen in the composer, sent with each run, kept across sessions.
  */

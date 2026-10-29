@@ -1,4 +1,4 @@
-//! File grants for kits (Kit Standard `KitFiles 1.0`): the runtime's grant table and the files
+//! File grants for kits (Kition platform `KitFiles 1.0`): the runtime's grant table and the files
 //! it serves through them.
 //!
 //! A **session** is one kit editor page (or, later, one headless connection or agent run). It is

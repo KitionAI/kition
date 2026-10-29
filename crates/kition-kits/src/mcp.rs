@@ -1,5 +1,5 @@
 //! Kit tools as a Model Context Protocol server, so any harness can use Kition's kits: DeepSeek
-//! Harness through its `dsh-mcp-client` plugin (Kition Kit Standard D1), and other MCP clients.
+//! Harness through its `dsh-mcp-client` plugin (Kition platform D1), and other MCP clients.
 //! The tools are `kition_kits::tools`, the same ones Kition's agent uses, including live editing
 //! through the Kit AI bridge when the file is open in a kit editor.
 //!

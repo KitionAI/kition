@@ -1,5 +1,5 @@
 //! DeepSeek Harness `ParameterSchemaSpec` and `ValueSchemaSpec` compiled to
-//! JSON Schema, and argument validation (Kit Standard A5).
+//! JSON Schema, and argument validation (KHP A5).
 
 use serde_json::{Map, Value, json};
 

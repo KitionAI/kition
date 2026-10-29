@@ -13,7 +13,7 @@ type Translate = (key: string, options?: Record<string, unknown>) => string
  * conflict object the kit reports, presence: what the person selected goes to the room as their
  * presence (`@/services/documentPresence`), and the kit hears what the others share, and the
  * document's notice when the kit reports that a newer kit edited it (`@/services/documentSchema`,
- * Kit Standard 2.0 rule M5a). `attach` follows the leases and the peers for the opened kit and
+ * Kition platform rule M5a). `attach` follows the leases and the peers for the opened kit and
  * answers its detach, which also releases what the kit still holds (UI-L1), withdraws its
  * presence, and takes back the notice it reported.
  */

@@ -1,4 +1,4 @@
-//! Tools in the DeepSeek Harness `defineTool` shape (Kit Standard A1): a name,
+//! Tools in the DeepSeek Harness `defineTool` shape (KHP A1): a name,
 //! a description, a parameter schema, a canonical output schema with a pure
 //! render, an optional pure presentation projection, and the body.
 
@@ -311,7 +311,7 @@ impl ToolBuilder {
     }
 }
 
-/// A tool name valid in every provider's tool namespace (Kit Standard A2).
+/// A tool name valid in every provider's tool namespace (KHP A2).
 pub fn tool_name(prefix: &str, command: &str) -> String {
     format!("{prefix}_{command}")
         .chars()

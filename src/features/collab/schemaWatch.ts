@@ -1,5 +1,5 @@
 /**
- * Schema evolution in co-edited documents (Kit Standard 2.0 rules M5a and M20): the relay side of
+ * Schema evolution in co-edited documents (Kition platform rules M5a and M20): the relay side of
  * a document, watched for changes a newer kit made.
  *
  * - A change the replica refuses because a newer kit's migration raised the document's minimum

@@ -273,7 +273,7 @@ kition-<kit>/                    one kit repository, the same layout for every k
   bindings/wasm/                 kition-<kit>-sdk: the in-page engine (KitDocument)
   bindings/headless/             kit-<kit>: the agent's headless executable
   web/                           the kit's editor (Kit UI protocol)
-  kit.json                       manifest (Kition Kit Standard)
+  kit.json                       manifest (KHP)
   NOTICE, LICENSE                Apache-2.0 and upstream attribution
 ```
 

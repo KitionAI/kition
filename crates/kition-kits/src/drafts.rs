@@ -1,4 +1,4 @@
-//! Headless drafts (Kit Standard A12 to A15 without an open editor): when `kition-kits-mcp` runs
+//! Headless drafts (KHP A12 to A15 without an open editor): when `kition-kits-mcp` runs
 //! with no Kition, an agent's `draft: true` edits go to a draft the headless kit holds, and the
 //! person reviews it later through the server's `drafts` command (`list`, `compare`, `merge`,
 //! `discard`), never through a tool.

@@ -1,4 +1,4 @@
-//! Headless drafts through `kition-kits-mcp`, as an integrator runs them (Kit Standard A12 to
+//! Headless drafts through `kition-kits-mcp`, as an integrator runs them (KHP A12 to
 //! A15): with `--drafts`, the agent's edits go to a draft in the workspace's `.kition/drafts/`
 //! and leave the file alone; the agent checks the draft and asks for review; the person lists,
 //! compares, and merges it with `kition-kits-mcp drafts`, which is refused while the file changed

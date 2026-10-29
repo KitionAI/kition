@@ -1,4 +1,4 @@
-//! The `/kits/drafts` routes over a headless draft (Kit Standard A27) of a mock kit file: the
+//! The `/kits/drafts` routes over a headless draft (KHP A27) of a mock kit file: the
 //! person lists it, compares it, has a merge refused while the file changed since the draft
 //! forked, merges it anyway, and discards another. The draft is made as `kition-kits-mcp
 //! --drafts` makes a `file` draft: a copy of the file and the edited copy beside it.

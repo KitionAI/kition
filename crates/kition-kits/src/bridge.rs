@@ -1,4 +1,4 @@
-//! The Kit AI bridge (Kition Kit Standard A7 to A10): when a file is open in a kit editor in the
+//! The Kit AI bridge (Kition platform KitAgent A7 to A10): when a file is open in a kit editor in the
 //! renderer, the agent's kit tools act on that live editor instead of a headless copy, so the
 //! person sees the edit at once and it joins the editor's undo history.
 //!

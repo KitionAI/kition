@@ -3,7 +3,7 @@ import { noteAgentEdit } from '@/services/agentPresence'
 import { runtimeBridge, type BridgeChannel } from '@/services/runtimeBridge'
 
 /**
- * This window's end of the Kit AI bridge (Kition Kit Standard A7 to A10):
+ * This window's end of the Kit AI bridge (Kition platform KitAgent A7 to A10):
  * the runtime asks over one event stream which kit documents are open here
  * and runs the agent's kit tools on them; the open editors answer with their
  * live engines, so the person sees each edit at once and it joins the undo
@@ -30,7 +30,7 @@ export type BridgeEditor = {
   /** A PNG of the whole document (or its draft), at most `maxSize` pixels on its longer side, as base64. */
   preview: (maxSize: number, options?: DraftOption) => Promise<string>
   /**
-   * The agent's draft (Kit Standard 2.0 A12), when the kit keeps drafts: the agent may ask for
+   * The agent's draft (KHP A12), when the kit keeps drafts: the agent may ask for
    * review or take a draft back. Merging and discarding are the person's, never the bridge's.
    */
   draft?: { ready: () => Promise<KitsBridgeDraftInfo>; reopen: () => Promise<KitsBridgeDraftInfo> }
@@ -47,7 +47,7 @@ export type BridgeEditor = {
   }
   /** Saves the document (`document/save`); answers whether it is saved. */
   save?: () => Promise<boolean>
-  /** The kit's diagnostics on the document or the agent's draft (`document/check`, Kit Standard 2.0 A21), when the kit lists `check`. */
+  /** The kit's diagnostics on the document or the agent's draft (`document/check`, KHP A21), when the kit lists `check`. */
   check?: (options?: DraftOption) => Promise<unknown[]>
 }
 

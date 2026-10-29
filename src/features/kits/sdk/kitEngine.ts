@@ -26,7 +26,7 @@ export type KitEngineRequest =
   | { method: 'invoke'; name: string; args: unknown[] }
   | { method: 'tool'; name: KitToolMethod; args: unknown[]; settled: boolean }
 
-/** The engine-tools capability's methods (Kition Kit Standard, U3a), each answering JSON. */
+/** The engine-tools capability's methods (Kition platform, U3a), each answering JSON. */
 export type KitToolMethod = 'tools' | 'tool' | 'selectTool' | 'pointer' | 'toolKey' | 'toolText' | 'toolState'
 
 export type KitEngineResponse = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string }

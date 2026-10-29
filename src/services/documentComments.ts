@@ -1,5 +1,5 @@
 /**
- * Who comments on a document here, and how (Kit Standard 2.0 rule M23). Co-editing sets it for the
+ * Who comments on a document here, and how (Kition platform rule M23). Co-editing sets it for the
  * documents it relays (this person's principal and role in the room); every other document is
  * not co-edited now, so comment threads others wrote are read-only history, and this person
  * comments as the identity they last co-edited with (or as the local person).

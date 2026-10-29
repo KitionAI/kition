@@ -1,4 +1,4 @@
-//! `/kits/grants` (Kit Standard `KitFiles 1.0`): sessions, handles, reads, staged writes, and
+//! `/kits/grants` (Kition platform `KitFiles 1.0`): sessions, handles, reads, staged writes, and
 //! releases, and the refusals: rights a handle lacks, expired and foreign handles, files that
 //! exist, paths outside the workspace or hidden, and requests not addressed to a loopback host.
 //! No kit executable is needed.

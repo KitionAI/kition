@@ -1,5 +1,5 @@
 /**
- * Co-edited documents that need a newer kit than this Kition has (Kit Standard 2.0 rules M5a and
+ * Co-edited documents that need a newer kit than this Kition has (Kition platform rules M5a and
  * M20), by workspace path. Co-editing sets them as it relays: a change written under a newer
  * schema than the kit reads makes a notice (`blocked: false`: the kit keeps editing, and only
  * objects of types it does not know refuse edits), and a change the kit refuses because a newer

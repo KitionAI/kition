@@ -1,4 +1,4 @@
-//! Kit tools (Kition Kit Standard A3): for every kit, inspect a file, search its commands, and
+//! Kit tools (KHP A3): for every kit, inspect a file, search its commands, and
 //! edit it by running them: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, named
 //! and worded from the kit's definition (its `kit.json`). The object-model tools `<prefix>_query`
 //! and `<prefix>_batch` (`model.rs`) read and edit the document as typed objects, with argument

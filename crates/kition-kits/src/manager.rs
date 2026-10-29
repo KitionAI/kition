@@ -57,7 +57,7 @@ pub struct KitDefinition {
 }
 
 /// The words the agent's tools for a kit use. The tools are `<prefix>_inspect`,
-/// `<prefix>_commands`, and `<prefix>_run` (Kition Kit Standard A3).
+/// `<prefix>_commands`, and `<prefix>_run` (KHP A3).
 #[derive(Debug)]
 pub struct KitAgent {
     /// `kit.json` `agent.prefix`.
@@ -1360,7 +1360,7 @@ impl KitManager {
         })
     }
 
-    /// The kit's diagnostics on the document (Kit Standard 2.0 A21, `document.check`):
+    /// The kit's diagnostics on the document (KHP A21, `document.check`):
     /// `{ "diagnostics": [...] }`, or `None` when the running kit predates the method.
     pub async fn check(
         &self,
