@@ -164,7 +164,8 @@ async fn calls_a_real_kit_and_returns_its_preview() {
             "vector_draft_reopen",
             "vector_query",
             "vector_batch",
-            "vector_check"
+            "vector_check",
+            "vector_create"
         ]
     );
     assert_eq!(

@@ -85,7 +85,10 @@ impl Action {
 
     /// Whether the tool changes files: edits, or a new file (an export, a created file).
     pub fn writes(self) -> bool {
-        matches!(self, Action::Run | Action::Batch | Action::Export | Action::Create)
+        matches!(
+            self,
+            Action::Run | Action::Batch | Action::Export | Action::Create
+        )
     }
 }
 
@@ -361,7 +364,11 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
             name: tool_name(kit, Action::Create),
             description: format!(
                 "Create a new, empty {noun} in {name} at `path` ({}) and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
-                kit.creates.iter().map(|(extension, _)| format!(".{extension}")).collect::<Vec<_>>().join(", ")
+                kit.creates
+                    .iter()
+                    .map(|(extension, _)| format!(".{extension}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ),
             input_schema: json!({
                 "type": "object",
@@ -946,8 +953,9 @@ async fn part_command(
                 ..
             }) => {}
             Err(error) => {
-                return Err(KitToolError::from(error)
-                    .context(&format!("part {part} (counted from 1): ")));
+                return Err(
+                    KitToolError::from(error).context(&format!("part {part} (counted from 1): "))
+                );
             }
         }
     }
@@ -970,9 +978,11 @@ async fn part_objects(
     part: u64,
 ) -> Result<Option<Value>, KitToolError> {
     model::warm(kits, view).await;
-    Ok(part_command(kits, view, ["slide.inspect", "page.inspect"], part)
-        .await?
-        .and_then(|executed| executed.result))
+    Ok(
+        part_command(kits, view, ["slide.inspect", "page.inspect"], part)
+            .await?
+            .and_then(|executed| executed.result),
+    )
 }
 
 async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) -> Vec<Preview> {
@@ -1643,15 +1653,32 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
 /// Points a search for exporting or creating files at `<prefix>_export` and `<prefix>_create`:
 /// those are tools, not commands, and commands that name files are not available to the agent.
 fn file_tool_hint(kit: &KitDefinition, query: &str) -> Option<String> {
-    let words: Vec<String> = query.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_owned).collect();
+    let words: Vec<String> = query
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_owned)
+        .collect();
     let has = |list: &[&str]| words.iter().any(|w| list.contains(&w.as_str()));
     if let Some(export) = kit.agent.export.as_ref()
-        && (has(&["export", "render", "encode", "output", "movie", "video", "write"]) || has(export.formats))
+        && (has(&[
+            "export", "render", "encode", "output", "movie", "video", "write",
+        ]) || has(export.formats))
     {
-        return Some(format!("To write the document to a new {} file, use {} (path, to) instead of a command.", export::listed(export), tool_name(kit, Action::Export)));
+        return Some(format!(
+            "To write the document to a new {} file, use {} (path, to) instead of a command.",
+            export::listed(export),
+            tool_name(kit, Action::Export)
+        ));
     }
-    if !kit.creates.is_empty() && has(&["new", "create", "blank", "empty"]) && has(&["file", "project", "document", "deck", "presentation"]) {
-        return Some(format!("To make a new file, use {} (path).", tool_name(kit, Action::Create)));
+    if !kit.creates.is_empty()
+        && has(&["new", "create", "blank", "empty"])
+        && has(&["file", "project", "document", "deck", "presentation"])
+    {
+        return Some(format!(
+            "To make a new file, use {} (path).",
+            tool_name(kit, Action::Create)
+        ));
     }
     None
 }
@@ -1659,17 +1686,28 @@ fn file_tool_hint(kit: &KitDefinition, query: &str) -> Option<String> {
 /// `<prefix>_create`: a new file through the kit (KHP A41); the result lists it (A30).
 async fn create(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
     let path = kit_path(input, kit)?;
-    let extension = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
+    let extension = path
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_ascii_lowercase())
+        .unwrap_or_default();
     if !kit.creates.iter().any(|(known, _)| *known == extension) {
         return Err(KitToolError::invalid(format!(
             "{} creates {}, not .{extension}",
             kit.name,
-            kit.creates.iter().map(|(e, _)| format!(".{e}")).collect::<Vec<_>>().join(", ")
+            kit.creates
+                .iter()
+                .map(|(e, _)| format!(".{e}"))
+                .collect::<Vec<_>>()
+                .join(", ")
         )));
     }
     let mut options = Map::new();
     if let Some(size) = input.get("size").and_then(Value::as_object) {
-        options.extend(size.iter().filter(|(key, _)| *key == "width" || *key == "height").map(|(key, value)| (key.clone(), value.clone())));
+        options.extend(
+            size.iter()
+                .filter(|(key, _)| *key == "width" || *key == "height")
+                .map(|(key, value)| (key.clone(), value.clone())),
+        );
     }
     let view = kits.create_at(Caller::Agent, &path, options).await?;
     let written = view.path.clone().unwrap_or(path);
@@ -1741,10 +1779,19 @@ fn lean_shape(shape: &mut Value) {
 
 /// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
 fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
-    if found.first().is_some_and(|command| command["closest"] == true) {
-        let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
+    if found
+        .first()
+        .is_some_and(|command| command["closest"] == true)
+    {
+        let listed: Vec<Value> = found
+            .into_iter()
+            .take(MAX_COMMANDS)
+            .map(compact_command)
+            .collect();
         return KitToolOutput::new(
-            format!("No command matches `{query}`; these are the closest by spelling. Try other words, for example what the command does."),
+            format!(
+                "No command matches `{query}`; these are the closest by spelling. Try other words, for example what the command does."
+            ),
             json!({ "commands": listed, "total": 0 }),
         );
     }
@@ -1894,6 +1941,13 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
 mod tests {
     use super::*;
 
+    fn kit(id: &str) -> &'static KitDefinition {
+        match KITS.iter().find(|kit| kit.id == id) {
+            Some(kit) => kit,
+            None => panic!("{id} is one of the kits"),
+        }
+    }
+
     #[test]
     fn the_agents_undo_and_redo_steps_run_in_its_undo_scope() {
         let steps = vec![
@@ -1933,48 +1987,84 @@ mod tests {
 
     #[test]
     fn a_slide_or_page_target_counts_from_1() {
-        for bad in [json!({"slide": 0}), json!({"page": 0}), json!({"slide": "2"}), json!({"slide": 1.5})] {
-            let error = check_target_part(&json!({ "target": bad })).unwrap_err();
-            assert!(error.message.contains("counted from 1"), "{}", error.message);
+        for bad in [
+            json!({"slide": 0}),
+            json!({"page": 0}),
+            json!({"slide": "2"}),
+            json!({"slide": 1.5}),
+        ] {
+            let Err(error) = check_target_part(&json!({ "target": bad })) else {
+                panic!("{bad} is refused");
+            };
+            assert!(
+                error.message.contains("counted from 1"),
+                "{}",
+                error.message
+            );
         }
-        for good in [json!({}), json!({"target": {"slide": 1}}), json!({"target": {"path": "layer:12"}})] {
+        for good in [
+            json!({}),
+            json!({"target": {"slide": 1}}),
+            json!({"target": {"path": "layer:12"}}),
+        ] {
             assert!(check_target_part(&good).is_ok());
         }
     }
 
     #[test]
     fn run_refuses_the_export_command() {
-        let effect = KITS.iter().find(|kit| kit.id == "kit.effect").unwrap();
+        let effect = kit("kit.effect");
         let steps = [json!({ "command": "file.exportMovie", "params": {} })];
-        let error = refuse_export_command(effect, &steps).unwrap_err();
+        let Err(error) = refuse_export_command(effect, &steps) else {
+            panic!("_run refuses the export command");
+        };
         assert!(error.message.contains("effect_export"), "{}", error.message);
         assert!(refuse_export_command(effect, &[json!({ "command": "layer.newText" })]).is_ok());
     }
 
     #[test]
     fn a_search_that_matches_nothing_says_so_and_points_at_export() {
-        let closest = vec![json!({ "id": "renderQueue.add", "title": "Add to Render Queue", "params": {}, "closest": true })];
+        let closest = vec![
+            json!({ "id": "renderQueue.add", "title": "Add to Render Queue", "params": {}, "closest": true }),
+        ];
         let answer = listed_commands("mp4", closest);
-        assert!(answer.summary.starts_with("No command matches `mp4`"), "{}", answer.summary);
+        assert!(
+            answer.summary.starts_with("No command matches `mp4`"),
+            "{}",
+            answer.summary
+        );
         assert_eq!(answer.output["total"], 0);
-        let effect = KITS.iter().find(|kit| kit.id == "kit.effect").unwrap();
-        let sheet = KITS.iter().find(|kit| kit.id == "kit.sheet").unwrap();
-        assert!(file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export")));
-        assert!(file_tool_hint(effect, "new project file").is_some_and(|hint| hint.contains("effect_create")));
+        let effect = kit("kit.effect");
+        let sheet = kit("kit.sheet");
+        assert!(
+            file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export"))
+        );
+        assert!(
+            file_tool_hint(effect, "new project file")
+                .is_some_and(|hint| hint.contains("effect_create"))
+        );
         assert!(file_tool_hint(effect, "text layer").is_none());
-        assert!(file_tool_hint(sheet, "export csv").is_none(), "sheet exports nothing for the agent");
+        assert!(
+            file_tool_hint(sheet, "export csv").is_none(),
+            "sheet exports nothing for the agent"
+        );
     }
 
     #[test]
     fn kits_that_create_offer_create() {
-        let slide = KITS.iter().find(|kit| kit.id == "kit.slide").unwrap();
+        let slide = kit("kit.slide");
         assert!(offers(slide, "slide_create"), "slide creates .kslide");
         assert!(slide.creates.contains(&("kslide", "slide")));
-        let effect = KITS.iter().find(|kit| kit.id == "kit.effect").unwrap();
+        let effect = kit("kit.effect");
         assert!(offers(effect, "effect_create") && offers(effect, "effect_export"));
-        let create = specs().iter().find(|spec| spec.name == "effect_create").unwrap();
+        let Some(create) = specs().iter().find(|spec| spec.name == "effect_create") else {
+            panic!("effect_create is a tool");
+        };
         assert!(create.writes && create.description.contains(".keffect"));
-        assert_eq!(parse("effect_create").map(|(kit, action)| (kit.id, action)), Some(("kit.effect", Action::Create)));
+        assert_eq!(
+            parse("effect_create").map(|(kit, action)| (kit.id, action)),
+            Some(("kit.effect", Action::Create))
+        );
     }
 
     #[test]

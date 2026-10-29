@@ -194,7 +194,12 @@ pub const KITS: &[KitDefinition] = &[
             render: None,
             // The active composition as MP4 bytes (kit-effect `file.exportMovie`): the Render Queue's
             // commands name files and are disabled for the agent.
-            export: Some(KitExport { command: "file.exportMovie", formats: &["mp4"], data: "data", params: "{}" }),
+            export: Some(KitExport {
+                command: "file.exportMovie",
+                formats: &["mp4"],
+                data: "data",
+                params: "{}",
+            }),
         },
     },
     // Edited in the page through its SDK.
@@ -1005,7 +1010,8 @@ impl KitManager {
             .ok_or_else(|| {
                 KitError::InvalidPath("too many untitled files in this folder".into())
             })?;
-        self.create_file(caller, kit, format, &target_path, options).await
+        self.create_file(caller, kit, format, &target_path, options)
+            .await
     }
 
     /// Opens a new document of `kit` in `format` at `target_path`, saves it so the file exists,
@@ -1052,31 +1058,59 @@ impl KitManager {
         path: &str,
         options: Map<String, Value>,
     ) -> Result<DocumentView, KitError> {
-        if path.split('/').any(|part| part.starts_with('.') && part != "." && part != "..") {
-            return Err(KitError::InvalidPath(format!("`{path}` has a hidden segment")));
+        if path
+            .split('/')
+            .any(|part| part.starts_with('.') && part != "." && part != "..")
+        {
+            return Err(KitError::InvalidPath(format!(
+                "`{path}` has a hidden segment"
+            )));
         }
-        let extension = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
+        let extension = path
+            .rsplit_once('.')
+            .map(|(_, e)| e.to_ascii_lowercase())
+            .unwrap_or_default();
         let (kit, format) = self
             .inner
             .kits
             .iter()
-            .find_map(|(kit, _)| kit.creates.iter().find(|(known, _)| *known == extension).map(|(_, format)| (*kit, *format)))
+            .find_map(|(kit, _)| {
+                kit.creates
+                    .iter()
+                    .find(|(known, _)| *known == extension)
+                    .map(|(_, format)| (*kit, *format))
+            })
             .ok_or_else(|| KitError::InvalidPath(format!("no kit creates .{extension} files")))?;
         let wanted = self.resolve(path)?;
         if !wanted.parent().is_some_and(Path::is_dir) {
-            return Err(KitError::InvalidPath(format!("`{path}` is not in a workspace folder")));
+            return Err(KitError::InvalidPath(format!(
+                "`{path}` is not in a workspace folder"
+            )));
         }
         let target = if wanted.exists() {
-            let file = wanted.file_name().and_then(|name| name.to_str()).unwrap_or_default().to_owned();
+            let file = wanted
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .to_owned();
             let (stem, extension) = file.rsplit_once('.').unwrap_or((file.as_str(), ""));
             (2..1000)
-                .map(|n| wanted.with_file_name(if extension.is_empty() { format!("{stem} {n}") } else { format!("{stem} {n}.{extension}") }))
+                .map(|n| {
+                    wanted.with_file_name(if extension.is_empty() {
+                        format!("{stem} {n}")
+                    } else {
+                        format!("{stem} {n}.{extension}")
+                    })
+                })
                 .find(|candidate| !candidate.exists())
-                .ok_or_else(|| KitError::InvalidPath(format!("too many files named like `{path}`")))?
+                .ok_or_else(|| {
+                    KitError::InvalidPath(format!("too many files named like `{path}`"))
+                })?
         } else {
             wanted
         };
-        self.create_file(caller, kit, format, &target, options).await
+        self.create_file(caller, kit, format, &target, options)
+            .await
     }
 
     pub async fn document(
@@ -1261,7 +1295,10 @@ impl KitManager {
             // closest commands, never the list's first ones (search never returns empty).
             let query = query.unwrap_or_default().to_lowercase();
             for (score, command) in &mut scored {
-                *score = spelling(&query, &format!("{} {}", command.id, command.title).to_lowercase());
+                *score = spelling(
+                    &query,
+                    &format!("{} {}", command.id, command.title).to_lowercase(),
+                );
             }
         }
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
@@ -1669,7 +1706,10 @@ fn spelling(query: &str, text: &str) -> f64 {
             .filter(|word| !word.is_empty())
             .flat_map(|word| {
                 let padded: Vec<char> = format!(" {word} ").chars().collect();
-                padded.windows(3).map(|w| w.iter().collect::<String>()).collect::<Vec<_>>()
+                padded
+                    .windows(3)
+                    .map(|w| w.iter().collect::<String>())
+                    .collect::<Vec<_>>()
             })
             .collect()
     };
@@ -1717,8 +1757,14 @@ fn search_variants(term: &str) -> Vec<String> {
 mod tests {
     #[test]
     fn spelling_ranks_the_commands_a_query_spells_closest() {
-        assert_eq!(super::spelling("mp4", "renderqueue.add add to render queue"), 0.0);
-        assert!(super::spelling("renderqeue", "renderqueue.add add to render queue") > super::spelling("renderqeue", "layer.newtext new text layer"));
+        assert_eq!(
+            super::spelling("mp4", "renderqueue.add add to render queue"),
+            0.0
+        );
+        assert!(
+            super::spelling("renderqeue", "renderqueue.add add to render queue")
+                > super::spelling("renderqeue", "layer.newtext new text layer")
+        );
         assert_eq!(super::spelling("", "anything"), 0.0);
         assert_eq!(super::spelling("text", "layer.newtext text"), 1.0);
     }
