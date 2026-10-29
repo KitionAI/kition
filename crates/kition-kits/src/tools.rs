@@ -1125,6 +1125,23 @@ async fn draft_preview(
     }
 }
 
+/// Refuses a step that runs the kit's export command ([`KitExport`]): it answers the whole file
+/// as base64, which `_run` would hand the agent (megabytes for a movie). `_export` writes it.
+fn refuse_export_command(kit: &KitDefinition, steps: &[Value]) -> Result<(), KitToolError> {
+    let Some(export) = kit.agent.export.as_ref() else {
+        return Ok(());
+    };
+    if steps.iter().any(|step| step["command"] == export.command) {
+        return Err(KitToolError::invalid(format!(
+            "`{}` answers the file's bytes; use {} (path, to) to write a new {} file",
+            export.command,
+            tool_name(kit, Action::Export),
+            export::listed(export)
+        )));
+    }
+    Ok(())
+}
+
 /// The agent's steps with every `edit.undo` and `edit.redo` in the agent's undo scope
 /// (`{"scope":"agent"}`, engine contract 2 E14a, KitModel 1.1 M12a), so an agent's undo or
 /// revert takes back only its own steps and never the person's. A scope the step names stays.
@@ -1169,6 +1186,7 @@ async fn run_on_draft(
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
         .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
+    refuse_export_command(kit, steps)?;
     let steps = &in_agent_scope(steps);
     let document = match draft_at(kits, kit, &path, true).await? {
         DraftAt::Editor(document) => document,
@@ -1716,6 +1734,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
         .ok_or_else(|| KitToolError::invalid("`steps` must be a non-empty array"))?;
+    refuse_export_command(kit, steps)?;
     let steps = &in_agent_scope(steps);
     let save = input.get("save").and_then(Value::as_bool) != Some(false);
     if let Some(document) = live(kits, kit, &path).await {
@@ -1872,6 +1891,15 @@ mod tests {
             ),
             "Checked `a.pptx`: 1 error, 2 warnings, no notes."
         );
+    }
+
+    #[test]
+    fn run_refuses_the_export_command() {
+        let effect = KITS.iter().find(|kit| kit.id == "kit.effect").unwrap();
+        let steps = [json!({ "command": "file.exportMovie", "params": {} })];
+        let error = refuse_export_command(effect, &steps).unwrap_err();
+        assert!(error.message.contains("effect_export"), "{}", error.message);
+        assert!(refuse_export_command(effect, &[json!({ "command": "layer.newText" })]).is_ok());
     }
 
     #[test]
