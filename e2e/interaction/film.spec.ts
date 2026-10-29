@@ -4,8 +4,9 @@
  *
  * Host matrix rows not covered here:
  * - H9 (worker crash): the kit's engine Worker lives inside the kit's frame, out of the test's reach.
- * - H10-H13 (history, print, agent, co-editing) are covered by note-history, kit-print,
- *   headless-draft and collab-film specs; this suite does not repeat them.
+ * - H10, H11 (history, print) are covered by the note-history and kit-print specs.
+ * - H12 (agent): no e2e case for this kit yet; headless-draft.spec.ts drives only kit.sheet.
+ * - H13 (co-editing): covered by e2e/collab-film.spec.ts.
  * - H14 (theme and language): kit-editor follows Kition's theme through kitionTheme; not kit-specific.
  */
 import fs from 'node:fs/promises'

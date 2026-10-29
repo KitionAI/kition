@@ -8,7 +8,8 @@
  *
  * Host matrix rows not covered here:
  * - H9 (worker crash): the kit's engine Worker lives inside the kit's frame, out of the test's reach.
- * - H10-H12 (history, print, agent) are covered by note-history, kit-print and headless-draft specs.
+ * - H10, H11 (history, print) are covered by the note-history and kit-print specs.
+ * - H12 (agent): e2e/collab-fig.spec.ts reads and edits the open design through the Kit AI bridge.
  * - H13 (co-editing): covered by e2e/collab-fig.spec.ts.
  * - H14 (theme and language): kit-editor follows Kition's theme through kitionTheme; not kit-specific.
  */
