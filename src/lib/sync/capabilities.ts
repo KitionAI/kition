@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sync/src/capabilities.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Capability sets in `sync/hello` (Kit Harness Protocol (KHP) `spec/index.md` section 3.1, rule CS2): next to its protocol
+ * Capability sets in `sync/hello` (kition-sdk `docs/platform/index.md` section 3, rule CS2): next to its protocol
  * capabilities (`leases`, `headless`), a server lists the versioned capability sets it serves for
  * the principal, such as `"KitModel 1.0"` and `"KitCollab 1.1"`. A set is `Name major.minor`; a
  * minor version only adds members, so `Name a.b` serves a request for `Name a.c` when `c` is at

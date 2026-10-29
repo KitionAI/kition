@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kit-host/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The host's side of the Kit UI protocol (Kit Harness Protocol (KHP) spec/reference/ui-protocol.md): mount an embedded kit UI in an
+ * The host's side of the Kit UI protocol (kition-sdk docs/platform/reference/ui-protocol.md): mount an embedded kit UI in an
  * iframe, hand it its port, initialize it with the document, theme, and locale, and serve its
  * file calls with the host's own handlers. Framework-free.
  */

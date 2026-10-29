@@ -26,7 +26,7 @@ were removed. See `docs/kit-sdk.md` section 4 for how it works.
 
 | Piece | Location |
 | --- | --- |
-| Standard 1.1, UI protocol | Kit Standard `spec/kits/ui.md`, `spec/reference/ui-protocol.md` |
+| Standard 1.1, UI protocol | kition-sdk `docs/platform/kits/ui.md`, kition-sdk `docs/platform/reference/ui-protocol.md` |
 | Shared editor library | kition-sdk `packages/kit-editor` (`EditorFrame`, `catalogTabs`, `commandMenuTabs`, `ToolRail`, `PanelSection`, `KitDocumentCanvas`, phrases, dialogs) |
 | Host side of the protocol | kition-sdk `packages/kit-host`; Kition's copy in `src/features/kits/host/` (`pnpm check:kit-host`) |
 | Development host | kition-sdk `packages/kit-dev-host` (each kit's `web/dev.html`) |

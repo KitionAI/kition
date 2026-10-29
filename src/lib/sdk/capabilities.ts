@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sdk/src/capabilities.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Capability sets (Kit Harness Protocol (KHP) `spec/index.md` section 3.1): named, versioned groups of APIs a host or a
+ * Capability sets (kition-sdk `docs/platform/index.md` section 3): named, versioned groups of APIs a host or a
  * server advertises and a script tests, never a product or its version. A minor version only adds
  * members, so `Name a.b` satisfies a request for `Name a.c` when `c` is at most `b`.
  */

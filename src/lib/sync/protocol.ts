@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sync/src/protocol.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The open sync protocol, `kition-sync/1` (Kit Harness Protocol (KHP) spec/reference/sync-protocol.md): JSON-RPC 2.0 messages over a
+ * The open sync protocol, `kition-sync/1` (kition-sdk docs/platform/reference/sync-protocol.md): JSON-RPC 2.0 messages over a
  * WebSocket. Binary payloads (KDM change bytes, snapshots, blobs) travel as separate binary
  * frames; see `./framing`. These are the JSON-visible shapes, with binary fields as `Uint8Array`
  * (the wire's `{"$bin": n}` markers are an encoding detail `./framing` and `./client` handle).

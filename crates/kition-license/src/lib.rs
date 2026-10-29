@@ -1,7 +1,7 @@
 // Copied from kition-sdk crates/kition-license/src/lib.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! # kition-license
 //!
-//! Offline licence keys for Kition's kits as an SDK (Kit Harness Protocol (KHP) spec/licence.md). A key is
+//! Offline licence keys for Kition's kits as an SDK (kition-sdk docs/platform/licence.md). A key is
 //! `base64url(payload JSON) "." base64url(Ed25519 signature)`, the signature taken over the ASCII
 //! bytes of the first segment. Kition Console signs keys; this crate verifies them against public
 //! keys pinned in code by key id, with no network, so every delivery form (embed, script,
@@ -40,7 +40,7 @@ pub struct PublicKey {
 
 /// The production signing keys, by key id. A new key is added here (and in `@kition/license`)
 /// before Console signs with it; a retired key stays until every key it signed has expired.
-/// Empty until the owner generates the production key pair (KHP spec/licence.md, section 6).
+/// Empty until the owner generates the production key pair (kition-sdk docs/platform/licence.md, section 6).
 pub const PINNED_KEYS: &[PublicKey] = &[];
 
 /// How the kits are delivered: the licence names the forms it covers.

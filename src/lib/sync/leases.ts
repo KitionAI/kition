@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sync/src/leases.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Leases for coordinated objects (`kition-sync/1` 1.5, Kit Harness Protocol (KHP) spec/reference/sync-protocol.md section 8): a
+ * Leases for coordinated objects (`kition-sync/1` 1.5, kition-sdk docs/platform/reference/sync-protocol.md section 8): a
  * session takes a short lease on a scope (a KDM object id, a kit-named scope, or `*` for the whole
  * document) before an edit that does not merge meaningfully, and hears every room's lease list.
  * `SyncClient.leases` is one of these, wired to the client's connection.

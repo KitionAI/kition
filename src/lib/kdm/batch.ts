@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/kdm/src/batch.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * Object-model batches (`KitObjectModel 1.0`, Kit Harness Protocol (KHP) `spec/sets/object-model.md`): the twin of the Rust
+ * Object-model batches (`KitObjectModel 1.0`, kition-sdk `docs/platform/sets/object-model.md`): the twin of the Rust
  * crate's `batch` module, run on the same fixtures (`crates/kition-kdm/tests/fixtures/batch.json`).
  *
  * A batch is `{ origin?, ops, load? }`. Runs of model operations become one transaction each;
