@@ -1,7 +1,7 @@
 diff --git a/dist/commonjs/index.js b/dist/commonjs/index.js
 --- a/dist/commonjs/index.js
 +++ b/dist/commonjs/index.js
-@@ -317,4 +317,9 @@
+@@ -330,4 +330,11 @@
      }
      return acc;
  }
@@ -9,6 +9,8 @@ diff --git a/dist/commonjs/index.js b/dist/commonjs/index.js
 +    expand,
 +    EXPANSION_MAX: exports.EXPANSION_MAX,
 +    EXPANSION_MAX_LENGTH: exports.EXPANSION_MAX_LENGTH,
++    EXPANSION_MAX_DEPTH: exports.EXPANSION_MAX_DEPTH,
++    EXPANSION_MAX_REWRITES: exports.EXPANSION_MAX_REWRITES,
 +});
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
