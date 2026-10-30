@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/framing.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Newline-delimited JSON framing (protocol section 2): one UTF-8 message per
 //! line, at most [`MAX_MESSAGE_BYTES`] bytes.
 
@@ -63,10 +64,7 @@ fn finish_line(line: &mut Vec<u8>, too_large: bool) -> Result<String, FrameError
 /// Reads the next frame. Returns `Ok(None)` at a clean end of stream. An
 /// oversized line is skipped entirely before `TooLarge` is returned, so the
 /// caller can keep reading.
-pub fn read_frame<R: BufRead>(
-    reader: &mut R,
-    line: &mut Vec<u8>,
-) -> Result<Option<String>, FrameError> {
+pub fn read_frame<R: BufRead>(reader: &mut R, line: &mut Vec<u8>) -> Result<Option<String>, FrameError> {
     line.clear();
     let mut too_large = false;
     let mut started = false;
@@ -102,10 +100,7 @@ mod async_io {
     use super::{FrameError, finish_line, take_line_chunk};
 
     /// The async counterpart of [`super::read_frame`].
-    pub async fn read_frame_async<R: AsyncBufRead + Unpin>(
-        reader: &mut R,
-        line: &mut Vec<u8>,
-    ) -> Result<Option<String>, FrameError> {
+    pub async fn read_frame_async<R: AsyncBufRead + Unpin>(reader: &mut R, line: &mut Vec<u8>) -> Result<Option<String>, FrameError> {
         line.clear();
         let mut too_large = false;
         let mut started = false;
@@ -128,10 +123,7 @@ mod async_io {
     }
 
     /// Writes one encoded frame and flushes it.
-    pub async fn write_frame_async<W: AsyncWrite + Unpin>(
-        writer: &mut W,
-        frame: &[u8],
-    ) -> std::io::Result<()> {
+    pub async fn write_frame_async<W: AsyncWrite + Unpin>(writer: &mut W, frame: &[u8]) -> std::io::Result<()> {
         writer.write_all(frame).await?;
         writer.flush().await
     }
@@ -158,14 +150,7 @@ mod tests {
 
     #[test]
     fn splits_lines_across_buffer_boundaries() {
-        assert_eq!(
-            frames(b"{\"a\":1}\n{\"b\":2}\r\n{\"c\":3}"),
-            vec![
-                Ok("{\"a\":1}".to_owned()),
-                Ok("{\"b\":2}".to_owned()),
-                Ok("{\"c\":3}".to_owned())
-            ]
-        );
+        assert_eq!(frames(b"{\"a\":1}\n{\"b\":2}\r\n{\"c\":3}"), vec![Ok("{\"a\":1}".to_owned()), Ok("{\"b\":2}".to_owned()), Ok("{\"c\":3}".to_owned())]);
         assert!(frames(b"").is_empty());
     }
 
@@ -178,8 +163,7 @@ mod tests {
 
     #[test]
     fn encoded_frames_have_one_trailing_newline() {
-        let bytes =
-            encode(&serde_json::json!({"text": "a\nb"})).unwrap_or_else(|err| panic!("{err}"));
+        let bytes = encode(&serde_json::json!({"text": "a\nb"})).unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(bytes.iter().filter(|byte| **byte == b'\n').count(), 1);
         assert_eq!(bytes.last(), Some(&b'\n'));
     }
@@ -190,13 +174,7 @@ mod tests {
         input.extend_from_slice(b"\n{}\n");
         let mut reader = io::BufReader::new(Cursor::new(input));
         let mut line = Vec::new();
-        assert!(matches!(
-            read_frame(&mut reader, &mut line),
-            Err(FrameError::TooLarge)
-        ));
-        assert_eq!(
-            read_frame(&mut reader, &mut line).ok().flatten(),
-            Some("{}".to_owned())
-        );
+        assert!(matches!(read_frame(&mut reader, &mut line), Err(FrameError::TooLarge)));
+        assert_eq!(read_frame(&mut reader, &mut line).ok().flatten(), Some("{}".to_owned()));
     }
 }

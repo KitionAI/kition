@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use kition_core::events::{DomainEvent, EventBus};
-use kition_kits::{Caller, KITS, KitManager};
+use kition_kits::{Caller, KitManager};
 use kition_tableclient::{TableClient, TriggerWatcher};
 use serde_json::{Map, Value, json};
 
@@ -37,6 +37,15 @@ async fn next_event(
         .ok()
 }
 
+/// The table kit `executable` was built from (its repository's kit.json).
+fn table_kit(executable: &std::path::Path) -> &'static kition_kits::KitDefinition {
+    let Some(manifest) = kition_kits::definitions::manifest_beside(executable) else {
+        panic!("{}: no kit.json above it names it", executable.display())
+    };
+    kition_kits::KitDefinition::from_manifest_text(&manifest)
+        .unwrap_or_else(|error| panic!("{error}"))
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn host_features_write_closed_files_through_the_kit() {
     let Some(executable) = executable() else {
@@ -45,10 +54,7 @@ async fn host_features_write_closed_files_through_the_kit() {
         );
         return;
     };
-    let kit = KITS
-        .iter()
-        .find(|kit| kit.id == "kit.table")
-        .unwrap_or_else(|| panic!("no table kit"));
+    let kit = table_kit(&executable);
     let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let kits = KitManager::new(
         Some(dir.path().to_path_buf()),
@@ -238,10 +244,7 @@ async fn triggers_resume_after_a_restart_without_dropping_or_replaying_edits() {
         eprintln!("skipped: no kit-table executable");
         return;
     };
-    let kit = KITS
-        .iter()
-        .find(|kit| kit.id == "kit.table")
-        .unwrap_or_else(|| panic!("no table kit"));
+    let kit = table_kit(&executable);
     let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let path = "Leads.ktable";
 

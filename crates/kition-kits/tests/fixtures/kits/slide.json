@@ -1,0 +1,172 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.slide",
+  "name": "Slide",
+  "version": "0.6.3",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/deckcraft",
+    "version": "0.5.0",
+    "commit": "a98df49b21632d69a3da994d35df1ea91dab41af"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_slide_sdk",
+    "class": "SlideDocument",
+    "contract": 2,
+    "crate": "kition-slide-sdk"
+  },
+  "formats": [
+    {
+      "id": "slide",
+      "extensions": [
+        "kslide"
+      ],
+      "mime": "application/vnd.kition.slide+zip",
+      "role": "edit"
+    },
+    {
+      "id": "pptx",
+      "extensions": [
+        "pptx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "slide",
+      "extension": "kslide",
+      "baseName": "Untitled slide",
+      "size": {
+        "width": 960,
+        "height": 540
+      }
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "extras": {
+    "renderTheme": {
+      "params": [
+        "name: string",
+        "index: u32",
+        "width: u32"
+      ],
+      "returns": "Uint8Array"
+    },
+    "mediaData": {
+      "params": [
+        "id: u32"
+      ],
+      "returns": "Uint8Array"
+    },
+    "setSingle": {
+      "params": [
+        "single: bool"
+      ],
+      "returns": "void"
+    },
+    "renderSlide": {
+      "params": [
+        "index: u32",
+        "width: u32"
+      ],
+      "returns": "Uint8Array"
+    },
+    "setBackdrop": {
+      "params": [
+        "color: string"
+      ],
+      "returns": "void"
+    }
+  },
+  "ui": {
+    "mode": "embedded",
+    "display": "line",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Home",
+      "Insert",
+      "Design",
+      "Transitions",
+      "Animations",
+      "Slide Show",
+      "Review",
+      "View",
+      "Arrange",
+      "Format",
+      "Shape Format",
+      "Picture Format",
+      "Table Design",
+      "Table Layout",
+      "Chart Design",
+      "Slide Master",
+      "Window"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#c0550d",
+      "dark": "#ff9a55"
+    }
+  },
+  "agent": {
+    "prefix": "slide",
+    "tools": "document",
+    "describe": {
+      "noun": "slide file",
+      "fileTypes": ".kslide and .pptx",
+      "reports": "its slides, the current slide, and the selection",
+      "covers": "slides, layouts, text, shapes, pictures, tables, charts, transitions, animations, and more",
+      "queries": "`new slide`, `text box`, or `transition`",
+      "example": "shape.insert"
+    },
+    "render": "file.render"
+  },
+  "headless": {
+    "executable": "kit-slide",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "model/schema.json",
+    "schemaVersion": 7
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "rich-text",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false,
+    "comments": {
+      "commands": [
+        "comment.add",
+        "comment.reply",
+        "comment.resolve",
+        "comment.delete"
+      ]
+    }
+  },
+  "objectModel": {
+    "namespace": "Slide"
+  }
+}

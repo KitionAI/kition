@@ -1,0 +1,183 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.photo",
+  "name": "Photo",
+  "version": "0.4.20",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/photocraft",
+    "version": "0.5.0",
+    "commit": "9c427a7a2c792d326939f5b27b1d814a7c6321a7"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_photo_sdk",
+    "class": "PhotoDocument",
+    "contract": 2,
+    "crate": "kition-photo-sdk"
+  },
+  "formats": [
+    {
+      "id": "psd",
+      "extensions": [
+        "psd",
+        "psb"
+      ],
+      "mime": "image/vnd.adobe.photoshop",
+      "role": "edit"
+    },
+    {
+      "id": "photo",
+      "extensions": [
+        "kphoto"
+      ],
+      "mime": "application/vnd.kition.photo+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "photo",
+      "extension": "psd",
+      "baseName": "Untitled photo",
+      "size": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "capabilities": [
+    "selection-outline",
+    "kdm"
+  ],
+  "extras": {
+    "selectionOutline": {
+      "params": [
+        "x0: i32",
+        "y0: i32",
+        "x1: i32",
+        "y1: i32",
+        "step: u32"
+      ],
+      "returns": "Int32Array",
+      "description": "The selection's marching-ants segments as flat [ax, ay, bx, by, ...]."
+    },
+    "layerThumbnail": {
+      "params": [
+        "layer: u32",
+        "max: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "A layer's own content laid out on the canvas (pixel, type, shape, and smart-object layers their pixels, fill layers their fill; no opacity, mask, or layer style), the canvas's aspect with its longer side max (1-1024): [width u32 LE][height u32 LE] then width x height straight RGBA. Transparent for groups and adjustment layers, which the panel shows as icons; throws for an unknown layer."
+    },
+    "maskThumbnail": {
+      "params": [
+        "layer: u32",
+        "max: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "A layer's layer mask in gray, encoded like layerThumbnail; throws when the layer has no layer mask."
+    },
+    "channelThumbnails": {
+      "params": [
+        "max: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "The Channels panel's thumbnails from one reduced render of the composite: [count u32 LE], then each encoded like layerThumbnail, in order: the composite in color, each color channel of the document's mode in gray (a CMYK ink dark where it prints), each alpha or spot channel, and the Quick Mask when the document is in Quick Mask mode."
+    },
+    "maskTargetCommands": {
+      "params": [],
+      "returns": "string",
+      "description": "JSON {follows, disabled}: the commands the editor aims at a targeted layer mask with \"target\": \"mask\" (paint, fill, paste, filter, and adjustment commands), and those of them that cannot run so aimed now."
+    },
+    "histogram": {
+      "params": [
+        "channel: string"
+      ],
+      "returns": "Uint32Array",
+      "description": "The composite's 256 histogram bins of channel rgb (mean of R, G, B), red, green, blue, or luminosity, sampled from a render reduced by a whole factor to at most 1024 pixels on its longer side, so the bins sum to the reduced pixel count (fully transparent pixels are not counted). Throws for another channel."
+    },
+    "navigatorImage": {
+      "params": [
+        "max: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "The Navigator panel's image of the whole composite, its longer side max (1-1024) but never more than the image's own, rendered reduced from a downsampled copy where that is faithful: [width u32 LE][height u32 LE] then width x height straight RGBA."
+    },
+    "layerObjectIds": {
+      "params": [],
+      "returns": "string",
+      "description": "Each layer's KDM object id by its local layer id, as JSON {\"<layer>\": \"<objectId>\"}: the same on every replica of the document, so a lease on layer:<objectId> names the same layer to everyone (Kit UI protocol section 7b). Empty before the document has made a replica."
+    }
+  },
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Image",
+      "Layer",
+      "Type",
+      "Select",
+      "Filter",
+      "View",
+      "Window",
+      "Help"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#087fa1",
+      "dark": "#4ccbf0"
+    }
+  },
+  "agent": {
+    "prefix": "photo",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "layered image",
+      "fileTypes": "PSD, PSB, or .kphoto",
+      "reports": "its size, color mode, bit depth, and layers",
+      "covers": "layers, adjustments, filters, selections, transforms, type, and more",
+      "queries": "`brightness`, `gaussian blur`, or `new layer`",
+      "example": "layer.new.layer"
+    }
+  },
+  "headless": {
+    "executable": "kit-photo",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "collaboration": {
+    "merge": [
+      "raster"
+    ],
+    "leases": [
+      "layer:{objectId}"
+    ],
+    "serverValidation": false
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "objectModel": {
+    "namespace": "Photo"
+  }
+}

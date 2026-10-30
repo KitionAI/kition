@@ -28,6 +28,7 @@ kition-kit-protocol = { path = "crates/kition-kit-protocol" }
 kition-kit-host = { path = "crates/kition-kit-host" }
 kition-kit-conformance = { path = "crates/kition-kit-conformance" }
 kition-kits = { path = "crates/kition-kits" }
+kition-kits-http = { path = "crates/kition-kits-http" }
 kition-tableclient = { path = "crates/kition-tableclient" }
 kition-harness = { path = "crates/kition-harness" }
 

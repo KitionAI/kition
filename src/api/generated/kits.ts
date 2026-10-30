@@ -18,10 +18,6 @@ export type KitsKitStatus = {
    */
   creates: string[]
   installed: boolean
-  /**
-   * Environment variable that points at a local build of the kit executable.
-   */
-  binaryEnv: string
 }
 
 export type KitsKitList = {

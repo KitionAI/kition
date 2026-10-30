@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/manager.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Running kits for the open workspace.
 //!
 //! A kit starts on first use, headless, with the workspace folder as its only root; it serves
@@ -19,6 +20,8 @@ use kition_kit_protocol::{ErrorReason, PROTOCOL_VERSION};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
+pub use crate::definitions::{KitAgent, KitDefinition, KitExport, KitSources};
+
 /// What [`KitManager::write_file`] may do to its target.
 #[derive(Debug, Clone, Copy)]
 pub enum FileWrite<'a> {
@@ -27,420 +30,6 @@ pub enum FileWrite<'a> {
     /// Makes a new file (a new document, or an export); an existing file is never replaced.
     New,
 }
-
-/// A kit Kition knows how to use.
-#[derive(Debug)]
-pub struct KitDefinition {
-    pub id: &'static str,
-    pub name: &'static str,
-    /// The environment variable that points at a local build of the kit executable.
-    pub binary_env: &'static str,
-    /// Lowercase extensions, without the dot, that open in this kit.
-    pub extensions: &'static [&'static str],
-    /// Extensions Kition can create new documents in, with the kit's format id for each.
-    pub creates: &'static [(&'static str, &'static str)],
-    /// A new document's name before its extension and number (`kit.json` `creates[].baseName`),
-    /// for example `Untitled photo`.
-    pub base_name: &'static str,
-    /// Extensions the kit's in-page editor writes as new files: its exports (`mp4` from a video
-    /// project) and the files it keeps beside its documents (images pasted into a note). They are
-    /// only ever new files: `write_file` never replaces an existing one with them.
-    pub exports: &'static [&'static str],
-    /// How the agent's tools for this kit read (`kit.json` `agent`).
-    pub agent: KitAgent,
-}
-
-/// The words the agent's tools for a kit use. The tools are `<prefix>_inspect`,
-/// `<prefix>_commands`, and `<prefix>_run` (KHP A3).
-#[derive(Debug)]
-pub struct KitAgent {
-    /// `kit.json` `agent.prefix`.
-    pub prefix: &'static str,
-    /// What one file is, for example `layered image`.
-    pub noun: &'static str,
-    /// The file types as people know them, for example `PSD, PSB, or .kphoto`.
-    pub formats: &'static str,
-    /// What `<prefix>_inspect` reports.
-    pub reports: &'static str,
-    /// What the commands cover.
-    pub covers: &'static str,
-    /// Keywords that find commands, for example `` `brightness` or `new layer` ``.
-    pub queries: &'static str,
-    /// One command id, as an example.
-    pub command: &'static str,
-    /// The engine command that renders a preview of one part of a document or of a diagnostic's
-    /// target (KHP A39): `{slide?, target?, scale?, maxSize?}` answers `{png}`, base64. `None`
-    /// when the kit has none, and its previews are `view.screenshot`'s.
-    pub render: Option<&'static str>,
-    /// How `<prefix>_export` writes the document to a new file (KHP A41); `None` when the agent
-    /// cannot export through the kit.
-    pub export: Option<KitExport>,
-}
-
-/// How `<prefix>_export` writes a new file through the kit's engine (`kit.json` `exports`).
-#[derive(Debug)]
-pub struct KitExport {
-    /// The command every format runs (`exports[].command`), with `format` set to the extension.
-    pub command: &'static str,
-    /// The formats it writes (`exports[].extension`); each is also in [`KitDefinition::exports`].
-    pub formats: &'static [&'static str],
-    /// The field of the command's answer that holds the file, base64.
-    pub data: &'static str,
-    /// Parameters every export passes, a JSON object, so the open editor and the headless kit
-    /// export the same thing (KHP A26) whatever the person has selected.
-    pub params: &'static str,
-}
-
-pub const KITS: &[KitDefinition] = &[
-    KitDefinition {
-        id: "kit.html",
-        name: "HTML",
-        binary_env: "KITION_KIT_HTML_BINARY",
-        extensions: &["html", "htm"],
-        creates: &[("html", "html")],
-        base_name: "Untitled HTML",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "html",
-            noun: "HTML document",
-            formats: "HTML (.html or .htm)",
-            reports: "its HTML source, viewport, and undo state",
-            covers: "HTML source replacement and undo/redo; HTML/CSS rendering and bounded JavaScript with supplied resources",
-            queries: "`Replace HTML` or `Undo`",
-            command: "html.setSource",
-            render: None,
-            export: None,
-        },
-    },
-    KitDefinition {
-        id: "kit.photo",
-        name: "Photo",
-        binary_env: "KITION_KIT_PHOTO_BINARY",
-        extensions: &["psd", "psb", "kphoto"],
-        creates: &[("psd", "psd"), ("psb", "psb"), ("kphoto", "kphoto")],
-        base_name: "Untitled photo",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "photo",
-            noun: "layered image",
-            formats: "PSD, PSB, or .kphoto",
-            reports: "its size, color mode, bit depth, and layers",
-            covers: "layers, adjustments, filters, selections, transforms, type, and more",
-            queries: "`brightness`, `gaussian blur`, or `new layer`",
-            command: "layer.new.layer",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; `kit-film` serves the agent.
-    KitDefinition {
-        id: "kit.film",
-        name: "Film",
-        binary_env: "KITION_KIT_FILM_BINARY",
-        extensions: &["kfilm"],
-        creates: &[("kfilm", "film")],
-        base_name: "Untitled film",
-        exports: &["mp4"],
-        agent: KitAgent {
-            prefix: "film",
-            noun: "video project",
-            formats: ".kfilm",
-            reports: "its sequences, tracks, clips, and playhead",
-            covers: "clips, the timeline, trimming, transitions, titles, audio, and more",
-            queries: "`split`, `place clip`, or `color matte`",
-            command: "timeline.place",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK.
-    KitDefinition {
-        id: "kit.vector",
-        name: "Vector",
-        binary_env: "KITION_KIT_VECTOR_BINARY",
-        extensions: &["kvector"],
-        creates: &[("kvector", "vector")],
-        base_name: "Untitled vector",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "vector",
-            noun: "vector drawing",
-            formats: ".kvector",
-            reports: "its artboards, layers, objects, and selection",
-            covers: "shapes, paths, paint, type, alignment, effects, artboards, and more",
-            queries: "`rectangle`, `align`, or `stroke`",
-            command: "shape.rectangle",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; renders are new MP4 files.
-    KitDefinition {
-        id: "kit.effect",
-        name: "Effect",
-        binary_env: "KITION_KIT_EFFECT_BINARY",
-        extensions: &["keffect"],
-        creates: &[("keffect", "effect")],
-        base_name: "Untitled effect",
-        exports: &["mp4"],
-        agent: KitAgent {
-            prefix: "effect",
-            noun: "motion graphics project",
-            formats: ".keffect",
-            reports: "its active composition, layers, and their keyframe times",
-            covers: "compositions, layers, keyframes, effects, masks, text, and more",
-            queries: "`new solid`, `add keyframe`, or `gaussian blur`",
-            command: "layer.newSolid",
-            render: None,
-            // The active composition as MP4 bytes (kit-effect `file.exportMovie`): the Render Queue's
-            // commands name files and are disabled for the agent.
-            export: Some(KitExport {
-                command: "file.exportMovie",
-                formats: &["mp4"],
-                data: "data",
-                params: "{}",
-            }),
-        },
-    },
-    // Edited in the page through its SDK.
-    KitDefinition {
-        id: "kit.design",
-        name: "Design",
-        binary_env: "KITION_KIT_DESIGN_BINARY",
-        extensions: &["kdesign"],
-        creates: &[("kdesign", "design")],
-        base_name: "Untitled design",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "design",
-            noun: "page layout",
-            formats: ".kdesign",
-            reports: "its pages, spreads, frames, stories, styles, and swatches",
-            covers: "pages, frames, text, styles, swatches, tables, and more",
-            queries: "`text frame`, `paragraph style`, or `insert page`",
-            command: "frame.create",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK.
-    KitDefinition {
-        id: "kit.cad",
-        name: "CAD",
-        binary_env: "KITION_KIT_CAD_BINARY",
-        extensions: &["dxf"],
-        creates: &[("dxf", "cad")],
-        base_name: "Untitled CAD",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "cad",
-            noun: "CAD drawing",
-            formats: ".dxf",
-            reports: "its layers, object count, current layer, and command prompt",
-            covers: "drawing, modifying, dimensions, layers, blocks, and AutoCAD-style commands; `commandLine` runs any command-line entry",
-            queries: "`circle`, `layer`, or `dimension`",
-            command: "circle",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; PowerPoint files too.
-    KitDefinition {
-        id: "kit.slide",
-        name: "Kition Slide",
-        binary_env: "KITION_KIT_SLIDE_BINARY",
-        extensions: &["kslide", "pptx"],
-        creates: &[("kslide", "slide")],
-        base_name: "Untitled slide",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "slide",
-            noun: "slide file",
-            formats: ".kslide and .pptx",
-            reports: "its slides, the current slide, and the selection",
-            covers: "slides, layouts, text, shapes, pictures, tables, charts, transitions, animations, and more",
-            queries: "`new slide`, `text box`, or `transition`",
-            command: "shape.insert",
-            render: Some("file.render"),
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK.
-    KitDefinition {
-        id: "kit.doc",
-        name: "Doc",
-        binary_env: "KITION_KIT_DOC_BINARY",
-        extensions: &["docx"],
-        creates: &[("docx", "docx")],
-        base_name: "Untitled document",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "doc",
-            noun: "doc",
-            formats: ".docx",
-            reports: "its pages, word count, and the selection",
-            covers: "typing, styles, fonts, paragraphs, lists, tables, pictures, headers and footers, references, review, and more",
-            queries: "`bold`, `heading`, or `insert table`",
-            command: "text.insert",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK.
-    KitDefinition {
-        id: "kit.sheet",
-        name: "Sheet",
-        binary_env: "KITION_KIT_SHEET_BINARY",
-        extensions: &["xlsx"],
-        creates: &[("xlsx", "xlsx")],
-        base_name: "Untitled sheet",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "sheet",
-            noun: "spreadsheet",
-            formats: ".xlsx",
-            reports: "its sheets, the used range, the selection, and the active cell",
-            covers: "cells, formulas, formatting, sorting, filtering, tables, charts, PivotTables, and more; `cell.set` enters a value or formula",
-            queries: "`cell`, `sort`, or `format`",
-            command: "cell.set",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK.
-    KitDefinition {
-        id: "kit.pdf",
-        name: "PDF",
-        binary_env: "KITION_KIT_PDF_BINARY",
-        extensions: &["pdf"],
-        creates: &[("pdf", "pdf")],
-        base_name: "Untitled PDF",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "pdf",
-            noun: "PDF",
-            formats: ".pdf",
-            reports: "its pages and labels, whether it can be edited, and its form fields",
-            covers: "pages, text, comments, forms, bookmarks, links, watermarks, redaction, measuring, accessibility, and more",
-            queries: "`rotate`, `comment`, or `watermark`",
-            command: "page_rotate",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; `kit-table` serves the agent and the host table client
-    // (workflows) for files no editor has open.
-    KitDefinition {
-        id: "kit.table",
-        name: "Table",
-        binary_env: "KITION_KIT_TABLE_BINARY",
-        extensions: &["ktable"],
-        creates: &[("ktable", "ktable")],
-        base_name: "Untitled table",
-        exports: &[],
-        agent: KitAgent {
-            prefix: "table",
-            noun: "table file",
-            formats: ".ktable",
-            reports: "its tables, fields, views, and record counts",
-            covers: "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `table.records.create` adds a record",
-            queries: "`records`, `fields`, or `views`",
-            command: "table.records.create",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; `kit-board` serves the agent for files no editor has open.
-    KitDefinition {
-        id: "kit.board",
-        name: "Board",
-        binary_env: "KITION_KIT_BOARD_BINARY",
-        extensions: &["kboard"],
-        creates: &[("kboard", "kboard")],
-        base_name: "Untitled board",
-        exports: &["png", "svg", "pdf"],
-        agent: KitAgent {
-            prefix: "board",
-            noun: "board",
-            formats: ".kboard",
-            reports: "its pages, frames, and element counts",
-            covers: "shapes, sticky notes, text, connectors, frames, mind maps, templates, layout, pages, and more; `element.create` adds elements",
-            queries: "`connector`, `frame`, or `mindmap`",
-            command: "element.create",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; `kit-note` serves the agent for notes no editor has open.
-    KitDefinition {
-        id: "kit.note",
-        name: "Note",
-        binary_env: "KITION_KIT_NOTE_BINARY",
-        extensions: &["md", "markdown"],
-        creates: &[("md", "markdown")],
-        base_name: "Untitled note",
-        exports: &["html", "pdf", "png", "jpg", "gif", "webp", "svg", "avif"],
-        agent: KitAgent {
-            prefix: "note",
-            noun: "note",
-            formats: "Markdown (.md)",
-            reports: "its outline, properties, links, tables, tasks, and comment threads",
-            covers: "text, headings, lists, tasks, tables, properties, links, comments, templates, and more; `text.insert` adds text",
-            queries: "`table`, `property`, or `comment`",
-            command: "text.insert",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; `kit-cube` serves the agent.
-    KitDefinition {
-        id: "kit.cube",
-        name: "Cube",
-        binary_env: "KITION_KIT_CUBE_BINARY",
-        extensions: &["kcube"],
-        creates: &[("kcube", "kcube")],
-        base_name: "Untitled cube",
-        exports: &["glb", "gltf", "obj", "stl", "fbx", "usda", "usdz", "png"],
-        agent: KitAgent {
-            prefix: "cube",
-            noun: "3D scene",
-            formats: ".kcube",
-            reports: "its objects (meshes, curves, texts, lattices, armatures, lights, cameras, empties) with transforms, materials, modifiers, constraints, and animation, the images, the frame, the mode, and the selection",
-            covers: "adding primitives, curves, and text, transforms, parenting, edit-mode modeling (extrude, inset, bevel, loop cut, knife, dissolve, bridge, bisect, spin), sculpting (sculpt.stroke, sculpt.gesture, dynamic topology, multires, face sets), modifiers (including shrinkwrap and lattice), seams and UV unwrapping, image and normal-map textures, materials, lights, cameras, armatures, skinning, constraints and IK, shape keys, keyframe animation with drivers, actions, and keying sets, rigid body and cloth physics with constraints and force fields, particles and hair, Geometry Nodes (nodes.*), fast and path-traced rendering with a compositor (compositor.*), glTF/FBX/USD (usda, usdc, usdz)/OBJ/STL import and export, and .blend import; rotations are in degrees and Z is up",
-            queries: "`cube`, `extrude`, or `modifier`",
-            command: "add.cube",
-            render: None,
-            export: None,
-        },
-    },
-    // Edited in the page through its SDK; `kit-fig` serves the agent.
-    KitDefinition {
-        id: "kit.fig",
-        name: "Fig",
-        binary_env: "KITION_KIT_FIG_BINARY",
-        extensions: &["kfig"],
-        creates: &[("kfig", "fig")],
-        base_name: "Untitled fig",
-        exports: &["png", "jpg", "svg", "pdf"],
-        agent: KitAgent {
-            prefix: "fig",
-            noun: "interface design",
-            formats: ".kfig",
-            reports: "its pages, layer count, selection, tool, and undo state",
-            covers: "frames, shapes, text, auto layout, components, styles, variables, prototyping, and more",
-            queries: "`rectangle`, `auto layout`, or `component`",
-            command: "shape.rectangle",
-            render: Some("file.render"),
-            export: Some(KitExport {
-                command: "file.export",
-                formats: &["png", "jpg", "svg", "pdf"],
-                data: "data",
-                // The current page's top-level layers, never the person's selection.
-                params: r#"{"ids": []}"#,
-            }),
-        },
-    },
-];
 
 /// Who is asking: a person in a kit tab or the agent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -453,17 +42,15 @@ pub enum Caller {
 pub enum KitError {
     #[error("`{0}` is not a known kit")]
     UnknownKit(String),
-    #[error(
-        "{name} is not installed. Set {binary_env} to the kit's headless executable and restart Kition."
-    )]
-    NotInstalled {
-        name: &'static str,
-        binary_env: &'static str,
-    },
+    #[error("{name} is not installed: its headless executable is not with Kition yet.")]
+    NotInstalled { name: &'static str },
     #[error("open a workspace folder first")]
     NoWorkspace,
     #[error("{0}")]
     InvalidPath(String),
+    /// A path the person's or the agent's request may not name (KHP A29).
+    #[error("{0}")]
+    NotAllowed(String),
     #[error("{name} could not start: {detail}")]
     Launch { name: &'static str, detail: String },
     #[error("{name} stopped. Open the file again.")]
@@ -471,45 +58,27 @@ pub enum KitError {
     #[error("{0}")]
     Unavailable(String),
     #[error("{message}")]
-    Kit {
-        reason: Option<ErrorReason>,
-        message: String,
-    },
+    Kit { reason: Option<ErrorReason>, message: String },
     /// An object-model failure (`model.batch`, `model.describe`): the kit's `data.model`, whose
     /// `code` is a `BatchErrorCode` (`invalid-op`, `not-found`, `invalid-value`, `read-only`,
     /// `command-failed`) and `index` the operation that failed.
     #[error("{message}")]
-    Model {
-        code: String,
-        index: Option<usize>,
-        message: String,
-    },
+    Model { code: String, index: Option<usize>, message: String },
 }
 
 impl KitError {
     pub(crate) fn from_client(kit: &'static KitDefinition, error: ClientError) -> Self {
         match error {
             ClientError::Rpc(error) => {
-                let detail = error
-                    .data
-                    .as_ref()
-                    .and_then(|data| data.get("detail"))
-                    .and_then(Value::as_str)
-                    .map(str::to_owned);
+                let detail = error.data.as_ref().and_then(|data| data.get("detail")).and_then(Value::as_str).map(str::to_owned);
                 let message = match detail {
                     Some(detail) if !detail.is_empty() => format!("{}: {detail}", error.message),
                     _ => error.message.clone(),
                 };
-                Self::Kit {
-                    reason: error.reason(),
-                    message,
-                }
+                Self::Kit { reason: error.reason(), message }
             }
             ClientError::Closed | ClientError::Io(_) => Self::Stopped { name: kit.name },
-            other => Self::Kit {
-                reason: None,
-                message: other.to_string(),
-            },
+            other => Self::Kit { reason: None, message: other.to_string() },
         }
     }
 }
@@ -523,7 +92,6 @@ pub struct KitStatus {
     /// Extensions this kit can create new documents in.
     pub creates: Vec<&'static str>,
     pub installed: bool,
-    pub binary_env: &'static str,
 }
 
 /// A document open in a kit, as Kition shows it.
@@ -591,22 +159,13 @@ impl RunningKit {
     }
 
     fn version(&self, document_id: &str) -> u64 {
-        self.versions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(document_id)
-            .copied()
-            .unwrap_or(0)
+        self.versions.lock().unwrap_or_else(PoisonError::into_inner).get(document_id).copied().unwrap_or(0)
     }
 
     pub(crate) async fn stop(&self) {
         let _ = self.host.call::<methods::Shutdown>(&Empty {}).await;
         let mut process = self.process.lock().await;
-        if process
-            .wait_for_exit(kition_kit_protocol::launch::SHUTDOWN_TIMEOUT)
-            .await
-            .is_none()
-        {
+        if process.wait_for_exit(kition_kit_protocol::launch::SHUTDOWN_TIMEOUT).await.is_none() {
             process.kill().await;
         }
     }
@@ -652,24 +211,13 @@ pub struct KitManager {
 }
 
 impl KitManager {
-    /// Kits for `workspace`, with executables from each kit's environment variable.
-    pub fn from_env(workspace: Option<PathBuf>) -> Self {
-        let kits = KITS
-            .iter()
-            .map(|kit| {
-                let binary = std::env::var_os(kit.binary_env)
-                    .filter(|value| !value.is_empty())
-                    .map(PathBuf::from);
-                (kit, binary)
-            })
-            .collect();
-        Self::new(workspace, kits)
+    /// The kits `sources` declare, for `workspace` (`definitions.rs`).
+    pub fn discover(workspace: Option<PathBuf>, sources: &KitSources) -> Self {
+        Self::new(workspace, crate::definitions::discover(sources))
     }
 
-    pub fn new(
-        workspace: Option<PathBuf>,
-        kits: Vec<(&'static KitDefinition, Option<PathBuf>)>,
-    ) -> Self {
+    pub fn new(workspace: Option<PathBuf>, kits: Vec<(&'static KitDefinition, Option<PathBuf>)>) -> Self {
+        crate::definitions::register(kits.iter().map(|(kit, _)| kit));
         let workspace = workspace.map(|dir| std::fs::canonicalize(&dir).unwrap_or(dir));
         Self {
             inner: Arc::new(Inner {
@@ -721,12 +269,7 @@ impl KitManager {
     ) -> Result<Option<String>, crate::grants::FileError> {
         let grants = self.grants();
         let unsaved = match grants.replaces(session, principal, handle) {
-            Some(path) if chunk.last => self
-                .inner
-                .bridge
-                .find(&path)
-                .await
-                .is_some_and(|document| document.dirty),
+            Some(path) if chunk.last => self.inner.bridge.find(&path).await.is_some_and(|document| document.dirty),
             _ => false,
         };
         grants.write(session, principal, handle, chunk, unsaved)
@@ -734,19 +277,9 @@ impl KitManager {
 
     /// A Kit Protocol request to the kit's headless executable that names no document (or names
     /// it in `params`): `model.open`, `model.export`, `model.save`.
-    pub(crate) async fn headless_request(
-        &self,
-        caller: Caller,
-        kit: &'static KitDefinition,
-        method: &str,
-        params: Value,
-    ) -> Result<Value, KitError> {
+    pub(crate) async fn headless_request(&self, caller: Caller, kit: &'static KitDefinition, method: &str, params: Value) -> Result<Value, KitError> {
         let running = self.running(kit).await?;
-        running
-            .client(caller)
-            .request(method, params, None)
-            .await
-            .map_err(|error| KitError::from_client(kit, error))
+        running.client(caller).request(method, params, None).await.map_err(|error| KitError::from_client(kit, error))
     }
 
     /// The Kit AI bridge to the renderer's open kit editors.
@@ -762,26 +295,15 @@ impl KitManager {
                 id: kit.id,
                 name: kit.name,
                 extensions: kit.extensions.to_vec(),
-                creates: kit
-                    .creates
-                    .iter()
-                    .map(|(extension, _)| *extension)
-                    .collect(),
+                creates: kit.creates.iter().map(|(extension, _)| *extension).collect(),
                 installed: binary.as_deref().is_some_and(Path::is_file),
-                binary_env: kit.binary_env,
             })
             .collect()
     }
 
     /// The kit's object model as `model.describe` last answered it, when one was asked for.
     pub fn described(&self, kit_id: &str) -> Option<Value> {
-        self.inner
-            .described
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .iter()
-            .find(|(id, _)| **id == kit_id)
-            .map(|(_, described)| described.clone())
+        self.inner.described.lock().unwrap_or_else(PoisonError::into_inner).iter().find(|(id, _)| **id == kit_id).map(|(_, described)| described.clone())
     }
 
     /// Keeps what `model.describe` answered for `kit_id` (a live editor's or a headless kit's).
@@ -790,11 +312,7 @@ impl KitManager {
             return;
         };
         if described.get("types").is_some_and(Value::is_object) {
-            self.inner
-                .described
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .insert(kit.id, described.clone());
+            self.inner.described.lock().unwrap_or_else(PoisonError::into_inner).insert(kit.id, described.clone());
         }
     }
 
@@ -804,22 +322,13 @@ impl KitManager {
     }
 
     pub(crate) fn definition(&self, id: &str) -> Result<&'static KitDefinition, KitError> {
-        self.inner
-            .kits
-            .iter()
-            .map(|(kit, _)| *kit)
-            .find(|kit| kit.id == id)
-            .ok_or_else(|| KitError::UnknownKit(id.to_owned()))
+        self.inner.kits.iter().map(|(kit, _)| *kit).find(|kit| kit.id == id).ok_or_else(|| KitError::UnknownKit(id.to_owned()))
     }
 
     /// The kit that opens a workspace path, by extension.
     pub fn kit_for_path(&self, path: &str) -> Option<&'static KitDefinition> {
         let extension = path.rsplit_once('.')?.1.to_ascii_lowercase();
-        self.inner
-            .kits
-            .iter()
-            .map(|(kit, _)| *kit)
-            .find(|kit| kit.extensions.contains(&extension.as_str()))
+        self.inner.kits.iter().map(|(kit, _)| *kit).find(|kit| kit.extensions.contains(&extension.as_str()))
     }
 
     fn workspace(&self) -> Result<&Path, KitError> {
@@ -849,53 +358,27 @@ impl KitManager {
             .find(|(known, _)| known.id == kit.id)
             .and_then(|(_, binary)| binary.as_ref())
             .filter(|path| path.is_file())
-            .ok_or(KitError::NotInstalled {
-                name: kit.name,
-                binary_env: kit.binary_env,
-            })?;
-        let launch_error = |detail: String| KitError::Launch {
-            name: kit.name,
-            detail,
-        };
-        let process = KitProcess::launch(LaunchOptions::new(binary))
-            .await
-            .map_err(|error| launch_error(error.to_string()))?;
-        let root = url::Url::from_directory_path(workspace)
-            .map(String::from)
-            .map_err(|()| launch_error("the workspace path is not absolute".into()))?;
+            .ok_or(KitError::NotInstalled { name: kit.name })?;
+        let launch_error = |detail: String| KitError::Launch { name: kit.name, detail };
+        let process = KitProcess::launch(LaunchOptions::new(binary)).await.map_err(|error| launch_error(error.to_string()))?;
+        let root = url::Url::from_directory_path(workspace).map(String::from).map_err(|()| launch_error("the workspace path is not absolute".into()))?;
         let params = |role: Role| InitializeParams {
             protocol_version: PROTOCOL_VERSION,
             token: process.token().to_owned(),
             role,
-            client: ClientInfo {
-                name: "Kition".into(),
-                version: env!("CARGO_PKG_VERSION").into(),
-            },
+            client: ClientInfo { name: "Kition".into(), version: env!("CARGO_PKG_VERSION").into() },
             locale: (role == Role::Host).then(|| "en-US".to_owned()),
             appearance: (role == Role::Host).then_some(Appearance::Light),
-            workspace_roots: if role == Role::Host {
-                vec![root.clone()]
-            } else {
-                Vec::new()
-            },
+            workspace_roots: if role == Role::Host { vec![root.clone()] } else { Vec::new() },
         };
         let connect = |role: Role| {
             let params = params(role);
             let process = &process;
             async move {
-                let client = process
-                    .connect()
-                    .await
-                    .map_err(|error| format!("cannot connect: {error}"))?;
-                let result = client
-                    .initialize(&params)
-                    .await
-                    .map_err(|error| format!("kit.initialize failed: {error}"))?;
+                let client = process.connect().await.map_err(|error| format!("cannot connect: {error}"))?;
+                let result = client.initialize(&params).await.map_err(|error| format!("kit.initialize failed: {error}"))?;
                 if result.kit.id != kit.id {
-                    return Err(format!(
-                        "the executable is `{}`, not `{}`",
-                        result.kit.id, kit.id
-                    ));
+                    return Err(format!("the executable is `{}`, not `{}`", result.kit.id, kit.id));
                 }
                 Ok::<_, String>(Arc::new(client))
             }
@@ -903,28 +386,15 @@ impl KitManager {
         let host = connect(Role::Host).await.map_err(launch_error)?;
         let agent = connect(Role::Agent).await.map_err(launch_error)?;
         let versions: Versions = Arc::default();
-        tokio::spawn(watch_notifications(
-            Arc::clone(&host),
-            Arc::clone(&versions),
-        ));
+        tokio::spawn(watch_notifications(Arc::clone(&host), Arc::clone(&versions)));
         // The agent connection receives the same notifications; drain them.
         let drained = Arc::clone(&agent);
         tokio::spawn(async move { while drained.next_notification().await.is_some() {} });
         tracing::info!(kit = kit.id, pid = ?process.id(), "kit started");
-        Ok(RunningKit {
-            process: tokio::sync::Mutex::new(process),
-            host,
-            agent,
-            versions,
-        })
+        Ok(RunningKit { process: tokio::sync::Mutex::new(process), host, agent, versions })
     }
 
-    async fn call<M: RequestMethod>(
-        &self,
-        kit: &'static KitDefinition,
-        caller: Caller,
-        params: &M::Params,
-    ) -> Result<(Arc<RunningKit>, M::Result), KitError> {
+    async fn call<M: RequestMethod>(&self, kit: &'static KitDefinition, caller: Caller, params: &M::Params) -> Result<(Arc<RunningKit>, M::Result), KitError> {
         let running = self.running(kit).await?;
         match running.client(caller).call::<M>(params).await {
             Ok(result) => Ok((running, result)),
@@ -938,80 +408,55 @@ impl KitManager {
         }
     }
 
-    pub(crate) fn file_uri(&self, path: &str) -> Result<String, KitError> {
-        let absolute = self.resolve(path)?;
+    fn file_uri(&self, path: &str, own: bool) -> Result<String, KitError> {
+        let absolute = self.resolve_in(path, own)?;
         if !absolute.is_file() {
             return Err(KitError::InvalidPath(format!("`{path}` does not exist")));
         }
-        url::Url::from_file_path(&absolute)
-            .map(String::from)
-            .map_err(|()| KitError::InvalidPath(format!("`{path}` is not a local file")))
+        url::Url::from_file_path(&absolute).map(String::from).map_err(|()| KitError::InvalidPath(format!("`{path}` is not a local file")))
     }
 
     /// Opens a workspace file in the kit that handles its extension.
     pub async fn open(&self, caller: Caller, path: &str) -> Result<DocumentView, KitError> {
-        let kit = self
-            .kit_for_path(path)
-            .ok_or_else(|| KitError::InvalidPath(format!("no kit opens `{path}`")))?;
-        let params = DocumentOpenParams {
-            uri: self.file_uri(path)?,
-            read_only: None,
-            create: None,
-        };
-        let (running, state) = self
-            .call::<methods::DocumentOpen>(kit, caller, &params)
-            .await?;
+        self.open_in(caller, path, false).await
+    }
+
+    /// [`KitManager::open`] for a file Kition keeps itself under `.kition/` (a draft's copies).
+    pub(crate) async fn open_own(&self, caller: Caller, path: &str) -> Result<DocumentView, KitError> {
+        self.open_in(caller, path, true).await
+    }
+
+    async fn open_in(&self, caller: Caller, path: &str, own: bool) -> Result<DocumentView, KitError> {
+        let kit = self.kit_for_path(path).ok_or_else(|| KitError::InvalidPath(format!("no kit opens `{path}`")))?;
+        let params = DocumentOpenParams { uri: self.file_uri(path, own)?, read_only: None, create: None };
+        let (running, state) = self.call::<methods::DocumentOpen>(kit, caller, &params).await?;
         self.view(kit, &running, caller, state).await
     }
 
     /// Creates a new document in `folder` (workspace-relative, `""` for the root) with an
     /// unused name from the kit's base name (`Untitled photo`), saves it so it appears in the workspace,
     /// and opens it.
-    pub async fn create(
-        &self,
-        caller: Caller,
-        folder: &str,
-        extension: &str,
-        options: Map<String, Value>,
-    ) -> Result<DocumentView, KitError> {
+    pub async fn create(&self, caller: Caller, folder: &str, extension: &str, options: Map<String, Value>) -> Result<DocumentView, KitError> {
         let extension = extension.trim_start_matches('.').to_ascii_lowercase();
         let (kit, format) = self
             .inner
             .kits
             .iter()
-            .find_map(|(kit, _)| {
-                kit.creates
-                    .iter()
-                    .find(|(known, _)| *known == extension)
-                    .map(|(_, format)| (*kit, *format))
-            })
+            .find_map(|(kit, _)| kit.creates.iter().find(|(known, _)| *known == extension).map(|(_, format)| (*kit, *format)))
             .ok_or_else(|| KitError::InvalidPath(format!("no kit creates .{extension} files")))?;
-        let directory = if folder.trim().trim_matches('/').is_empty() {
-            self.workspace()?.to_path_buf()
-        } else {
-            self.resolve(folder)?
-        };
+        let directory = if folder.trim().trim_matches('/').is_empty() { self.workspace()?.to_path_buf() } else { self.resolve(folder)? };
         if !directory.is_dir() {
-            return Err(KitError::InvalidPath(format!(
-                "`{folder}` is not a workspace folder"
-            )));
+            return Err(KitError::InvalidPath(format!("`{folder}` is not a workspace folder")));
         }
         let base = kit.base_name;
         let target_path = (1..1000)
             .map(|n| {
-                let name = if n == 1 {
-                    format!("{base}.{extension}")
-                } else {
-                    format!("{base} {n}.{extension}")
-                };
+                let name = if n == 1 { format!("{base}.{extension}") } else { format!("{base} {n}.{extension}") };
                 directory.join(name)
             })
             .find(|path| !path.exists())
-            .ok_or_else(|| {
-                KitError::InvalidPath("too many untitled files in this folder".into())
-            })?;
-        self.create_file(caller, kit, format, &target_path, options)
-            .await
+            .ok_or_else(|| KitError::InvalidPath("too many untitled files in this folder".into()))?;
+        self.create_file(caller, kit, format, &target_path, options).await
     }
 
     /// Opens a new document of `kit` in `format` at `target_path`, saves it so the file exists,
@@ -1024,26 +469,11 @@ impl KitManager {
         target_path: &Path,
         options: Map<String, Value>,
     ) -> Result<DocumentView, KitError> {
-        let uri = url::Url::from_file_path(target_path)
-            .map(String::from)
-            .map_err(|()| KitError::InvalidPath("the folder is not a local path".into()))?;
-        let params = DocumentOpenParams {
-            uri,
-            read_only: None,
-            create: Some(CreateDocument {
-                format: format.to_owned(),
-                options: Some(options),
-            }),
-        };
-        let (_, state) = self
-            .call::<methods::DocumentOpen>(kit, caller, &params)
-            .await?;
-        let saved = DocumentRef {
-            document_id: state.document_id.clone(),
-        };
-        let (running, _) = self
-            .call::<methods::DocumentSave>(kit, caller, &saved)
-            .await?;
+        let uri = url::Url::from_file_path(target_path).map(String::from).map_err(|()| KitError::InvalidPath("the folder is not a local path".into()))?;
+        let params = DocumentOpenParams { uri, read_only: None, create: Some(CreateDocument { format: format.to_owned(), options: Some(options) }) };
+        let (_, state) = self.call::<methods::DocumentOpen>(kit, caller, &params).await?;
+        let saved = DocumentRef { document_id: state.document_id.clone() };
+        let (running, _) = self.call::<methods::DocumentSave>(kit, caller, &saved).await?;
         let (_, state) = self.state(kit, caller, &saved.document_id).await?;
         self.view(kit, &running, caller, state).await
     }
@@ -1052,111 +482,52 @@ impl KitManager {
     /// extension the kit `creates`. A new file never replaces one: when `path` exists the next
     /// free name (`Title 2.kslide`) is used. No hidden segment (A29). Answers its view; its
     /// `path` is the file written.
-    pub async fn create_at(
-        &self,
-        caller: Caller,
-        path: &str,
-        options: Map<String, Value>,
-    ) -> Result<DocumentView, KitError> {
-        if path
-            .split('/')
-            .any(|part| part.starts_with('.') && part != "." && part != "..")
-        {
-            return Err(KitError::InvalidPath(format!(
-                "`{path}` has a hidden segment"
-            )));
-        }
-        let extension = path
-            .rsplit_once('.')
-            .map(|(_, e)| e.to_ascii_lowercase())
-            .unwrap_or_default();
+    pub async fn create_at(&self, caller: Caller, path: &str, options: Map<String, Value>) -> Result<DocumentView, KitError> {
+        let extension = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
         let (kit, format) = self
             .inner
             .kits
             .iter()
-            .find_map(|(kit, _)| {
-                kit.creates
-                    .iter()
-                    .find(|(known, _)| *known == extension)
-                    .map(|(_, format)| (*kit, *format))
-            })
+            .find_map(|(kit, _)| kit.creates.iter().find(|(known, _)| *known == extension).map(|(_, format)| (*kit, *format)))
             .ok_or_else(|| KitError::InvalidPath(format!("no kit creates .{extension} files")))?;
         let wanted = self.resolve(path)?;
         if !wanted.parent().is_some_and(Path::is_dir) {
-            return Err(KitError::InvalidPath(format!(
-                "`{path}` is not in a workspace folder"
-            )));
+            return Err(KitError::InvalidPath(format!("`{path}` is not in a workspace folder")));
         }
         let target = if wanted.exists() {
-            let file = wanted
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or_default()
-                .to_owned();
+            let file = wanted.file_name().and_then(|name| name.to_str()).unwrap_or_default().to_owned();
             let (stem, extension) = file.rsplit_once('.').unwrap_or((file.as_str(), ""));
             (2..1000)
-                .map(|n| {
-                    wanted.with_file_name(if extension.is_empty() {
-                        format!("{stem} {n}")
-                    } else {
-                        format!("{stem} {n}.{extension}")
-                    })
-                })
+                .map(|n| wanted.with_file_name(if extension.is_empty() { format!("{stem} {n}") } else { format!("{stem} {n}.{extension}") }))
                 .find(|candidate| !candidate.exists())
-                .ok_or_else(|| {
-                    KitError::InvalidPath(format!("too many files named like `{path}`"))
-                })?
+                .ok_or_else(|| KitError::InvalidPath(format!("too many files named like `{path}`")))?
         } else {
             wanted
         };
-        self.create_file(caller, kit, format, &target, options)
-            .await
+        self.create_file(caller, kit, format, &target, options).await
     }
 
-    pub async fn document(
-        &self,
-        caller: Caller,
-        kit_id: &str,
-        document_id: &str,
-    ) -> Result<DocumentView, KitError> {
+    pub async fn document(&self, caller: Caller, kit_id: &str, document_id: &str) -> Result<DocumentView, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
         let (running, state) = self.state(kit, caller, inner).await?;
         self.view(kit, &running, caller, state).await
     }
 
-    async fn state(
-        &self,
-        kit: &'static KitDefinition,
-        caller: Caller,
-        document_id: &str,
-    ) -> Result<(Arc<RunningKit>, DocumentState), KitError> {
-        let (running, list) = self
-            .call::<methods::DocumentList>(kit, caller, &Empty {})
-            .await?;
+    async fn state(&self, kit: &'static KitDefinition, caller: Caller, document_id: &str) -> Result<(Arc<RunningKit>, DocumentState), KitError> {
+        let (running, list) = self.call::<methods::DocumentList>(kit, caller, &Empty {}).await?;
         let state = list
             .documents
             .into_iter()
             .find(|document| document.document_id == document_id)
-            .ok_or(KitError::Kit {
-                reason: Some(ErrorReason::DocumentNotFound),
-                message: "the document is not open".into(),
-            })?;
+            .ok_or(KitError::Kit { reason: Some(ErrorReason::DocumentNotFound), message: "the document is not open".into() })?;
         Ok((running, state))
     }
 
-    pub(crate) async fn view(
-        &self,
-        kit: &'static KitDefinition,
-        running: &RunningKit,
-        caller: Caller,
-        state: DocumentState,
-    ) -> Result<DocumentView, KitError> {
+    pub(crate) async fn view(&self, kit: &'static KitDefinition, running: &RunningKit, caller: Caller, state: DocumentState) -> Result<DocumentView, KitError> {
         let described = running
             .client(caller)
-            .call::<methods::ViewDescribe>(&DocumentRef {
-                document_id: state.document_id.clone(),
-            })
+            .call::<methods::ViewDescribe>(&DocumentRef { document_id: state.document_id.clone() })
             .await
             .map_err(|error| KitError::from_client(kit, error))?;
         Ok(DocumentView {
@@ -1176,56 +547,27 @@ impl KitManager {
     }
 
     /// A PNG of the document, at most `max_size` pixels on its longer side.
-    pub async fn preview(
-        &self,
-        kit_id: &str,
-        document_id: &str,
-        max_size: u32,
-    ) -> Result<Vec<u8>, KitError> {
+    pub async fn preview(&self, kit_id: &str, document_id: &str, max_size: u32) -> Result<Vec<u8>, KitError> {
         use base64::Engine as _;
         let kit = self.definition(kit_id)?;
         let inner = document_id;
-        let params = ViewScreenshotParams {
-            document_id: inner.to_owned(),
-            scope: ScreenshotScope::Canvas,
-            max_size: Some(max_size.clamp(16, 4096)),
-        };
-        let (_, image) = self
-            .call::<methods::ViewScreenshot>(kit, Caller::User, &params)
-            .await?;
+        let params = ViewScreenshotParams { document_id: inner.to_owned(), scope: ScreenshotScope::Canvas, max_size: Some(max_size.clamp(16, 4096)) };
+        let (_, image) = self.call::<methods::ViewScreenshot>(kit, Caller::User, &params).await?;
         base64::engine::general_purpose::STANDARD
             .decode(image.data)
-            .map_err(|error| KitError::Kit {
-                reason: None,
-                message: format!("the kit sent an unreadable image: {error}"),
-            })
+            .map_err(|error| KitError::Kit { reason: None, message: format!("the kit sent an unreadable image: {error}") })
     }
 
     /// Commands, optionally limited to those whose id, title, or description contains `query`.
-    pub async fn commands(
-        &self,
-        caller: Caller,
-        kit_id: &str,
-        document_id: Option<&str>,
-        query: Option<&str>,
-    ) -> Result<Vec<CommandView>, KitError> {
+    pub async fn commands(&self, caller: Caller, kit_id: &str, document_id: Option<&str>, query: Option<&str>) -> Result<Vec<CommandView>, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
-        let params = CommandsListParams {
-            document_id: inner.map(str::to_owned),
-            groups: None,
-        };
-        let (_, list) = self
-            .call::<methods::CommandsList>(kit, caller, &params)
-            .await?;
+        let params = CommandsListParams { document_id: inner.map(str::to_owned), groups: None };
+        let (_, list) = self.call::<methods::CommandsList>(kit, caller, &params).await?;
         // Ranked, not all-words: each command scores the words of the query it contains (in its
         // id, title, description or menu, with a few synonyms and plurals); the best come first.
         // A query no command shares a word with still answers the closest commands, never none.
-        let terms: Vec<Vec<String>> = query
-            .unwrap_or_default()
-            .split_whitespace()
-            .map(|term| search_variants(&term.to_lowercase()))
-            .collect();
+        let terms: Vec<Vec<String>> = query.unwrap_or_default().split_whitespace().map(|term| search_variants(&term.to_lowercase())).collect();
         let fields: Vec<(String, String, String)> = list
             .commands
             .iter()
@@ -1233,26 +575,16 @@ impl KitManager {
                 (
                     command.id.to_lowercase(),
                     command.title.to_lowercase(),
-                    format!(
-                        "{} {:?}",
-                        command.description.as_deref().unwrap_or_default(),
-                        command.menu
-                    )
-                    .to_lowercase(),
+                    format!("{} {:?}", command.description.as_deref().unwrap_or_default(), command.menu).to_lowercase(),
                 )
             })
             .collect();
-        let has = |(id, title, rest): &(String, String, String), v: &str| {
-            id.contains(v) || title.contains(v) || rest.contains(v)
-        };
+        let has = |(id, title, rest): &(String, String, String), v: &str| id.contains(v) || title.contains(v) || rest.contains(v);
         let n = fields.len() as f64;
         let weights: Vec<f64> = terms
             .iter()
             .map(|variants| {
-                let df = fields
-                    .iter()
-                    .filter(|f| variants.iter().any(|v| has(f, v)))
-                    .count() as f64;
+                let df = fields.iter().filter(|f| variants.iter().any(|v| has(f, v))).count() as f64;
                 ((n + 1.0) / (df + 1.0)).ln() + 0.1
             })
             .collect();
@@ -1271,9 +603,7 @@ impl KitManager {
                             2.0
                         } else if variants.iter().any(|v| rest.contains(v.as_str())) {
                             1.0
-                        } else if variants.iter().any(|v| {
-                            v.len() >= 4 && (id.contains(&v[..4]) || title.contains(&v[..4]))
-                        }) {
+                        } else if variants.iter().any(|v| v.len() >= 4 && (id.contains(&v[..4]) || title.contains(&v[..4]))) {
                             0.5
                         } else {
                             0.0
@@ -1295,10 +625,7 @@ impl KitManager {
             // closest commands, never the list's first ones (search never returns empty).
             let query = query.unwrap_or_default().to_lowercase();
             for (score, command) in &mut scored {
-                *score = spelling(
-                    &query,
-                    &format!("{} {}", command.id, command.title).to_lowercase(),
-                );
+                *score = spelling(&query, &format!("{} {}", command.id, command.title).to_lowercase());
             }
         }
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
@@ -1320,14 +647,7 @@ impl KitManager {
             .collect())
     }
 
-    pub async fn execute(
-        &self,
-        caller: Caller,
-        kit_id: &str,
-        document_id: &str,
-        command: &str,
-        params: Map<String, Value>,
-    ) -> Result<ExecuteView, KitError> {
+    pub async fn execute(&self, caller: Caller, kit_id: &str, document_id: &str, command: &str, params: Map<String, Value>) -> Result<ExecuteView, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
         let request = CommandsExecuteParams {
@@ -1339,37 +659,18 @@ impl KitManager {
                 Caller::Agent => Origin::Agent,
             },
         };
-        let (_, executed) = self
-            .call::<methods::CommandsExecute>(kit, caller, &request)
-            .await?;
+        let (_, executed) = self.call::<methods::CommandsExecute>(kit, caller, &request).await?;
         let document = self.document(caller, kit_id, document_id).await?;
-        Ok(ExecuteView {
-            changed: executed.changed,
-            result: executed.result,
-            document,
-        })
+        Ok(ExecuteView { changed: executed.changed, result: executed.result, document })
     }
 
     /// The kit's diagnostics on the document (KHP A21, `document.check`):
     /// `{ "diagnostics": [...] }`, or `None` when the running kit predates the method.
-    pub async fn check(
-        &self,
-        caller: Caller,
-        kit_id: &str,
-        document_id: &str,
-    ) -> Result<Option<Value>, KitError> {
+    pub async fn check(&self, caller: Caller, kit_id: &str, document_id: &str) -> Result<Option<Value>, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
         let running = self.running(kit).await?;
-        match running
-            .client(caller)
-            .request(
-                "document.check",
-                serde_json::json!({ "documentId": inner }),
-                None,
-            )
-            .await
-        {
+        match running.client(caller).request("document.check", serde_json::json!({ "documentId": inner }), None).await {
             Ok(answer) => Ok(Some(answer)),
             Err(ClientError::Rpc(error)) if error.code == -32601 => Ok(None),
             Err(error) => Err(KitError::from_client(kit, error)),
@@ -1379,48 +680,24 @@ impl KitManager {
     /// An object-model request of the Kit Protocol (`model.describe`, `model.batch`) on an open
     /// document; `params` gets the document's id. A refused batch is [`KitError::Model`]; a kit
     /// that serves no object model answers [`KitError::Kit`] with no reason (method not found).
-    pub async fn model(
-        &self,
-        caller: Caller,
-        kit_id: &str,
-        document_id: &str,
-        method: &str,
-        mut params: Map<String, Value>,
-    ) -> Result<Value, KitError> {
+    pub async fn model(&self, caller: Caller, kit_id: &str, document_id: &str, method: &str, mut params: Map<String, Value>) -> Result<Value, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
         params.insert("documentId".into(), Value::String(inner.to_owned()));
         let running = self.running(kit).await?;
-        match running
-            .client(caller)
-            .request(method, Value::Object(params), None)
-            .await
-        {
+        match running.client(caller).request(method, Value::Object(params), None).await {
             Ok(answer) => {
                 if method == "model.describe" {
                     self.remember_described(kit.id, &answer);
                 }
                 Ok(answer)
             }
-            Err(ClientError::Rpc(error))
-                if error
-                    .data
-                    .as_ref()
-                    .and_then(|data| data.get("model"))
-                    .is_some_and(Value::is_object) =>
-            {
-                let model = &error
-                    .data
-                    .as_ref()
-                    .map_or(Value::Null, |data| data["model"].clone());
+            Err(ClientError::Rpc(error)) if error.data.as_ref().and_then(|data| data.get("model")).is_some_and(Value::is_object) => {
+                let model = &error.data.as_ref().map_or(Value::Null, |data| data["model"].clone());
                 Err(KitError::Model {
                     code: model["code"].as_str().unwrap_or("invalid-op").to_owned(),
-                    index: model["index"]
-                        .as_u64()
-                        .and_then(|index| usize::try_from(index).ok()),
-                    message: model["message"]
-                        .as_str()
-                        .map_or_else(|| error.message.clone(), str::to_owned),
+                    index: model["index"].as_u64().and_then(|index| usize::try_from(index).ok()),
+                    message: model["message"].as_str().map_or_else(|| error.message.clone(), str::to_owned),
                 })
             }
             Err(error) => {
@@ -1436,8 +713,7 @@ impl KitManager {
     /// Closes the running headless kits' documents of the workspace file `path`, dropping their
     /// unsaved changes: the file changed under them.
     pub async fn close_file(&self, path: &str) {
-        let running: Vec<Arc<RunningKit>> =
-            self.inner.running.lock().await.values().cloned().collect();
+        let running: Vec<Arc<RunningKit>> = self.inner.running.lock().await.values().cloned().collect();
         for kit in running {
             let Ok(list) = kit.host.call::<methods::DocumentList>(&Empty {}).await else {
                 continue;
@@ -1445,10 +721,7 @@ impl KitManager {
             for document in list.documents {
                 let here = document.uri.as_deref().and_then(|uri| self.relative(uri));
                 if here.as_deref() == Some(path) {
-                    let params = DocumentCloseParams {
-                        document_id: document.document_id,
-                        discard_changes: Some(true),
-                    };
+                    let params = DocumentCloseParams { document_id: document.document_id, discard_changes: Some(true) };
                     let _ = kit.host.call::<methods::DocumentClose>(&params).await;
                 }
             }
@@ -1457,50 +730,25 @@ impl KitManager {
 
     /// The workspace files open in the running headless kits, as `(kit id, path)`.
     pub async fn open_files(&self) -> Vec<(&'static str, String)> {
-        let running: Vec<(&'static str, Arc<RunningKit>)> = self
-            .inner
-            .running
-            .lock()
-            .await
-            .iter()
-            .map(|(id, kit)| (*id, Arc::clone(kit)))
-            .collect();
+        let running: Vec<(&'static str, Arc<RunningKit>)> = self.inner.running.lock().await.iter().map(|(id, kit)| (*id, Arc::clone(kit))).collect();
         let mut files = Vec::new();
         for (kit_id, kit) in running {
             let Ok(list) = kit.agent.call::<methods::DocumentList>(&Empty {}).await else {
                 continue;
             };
-            files.extend(
-                list.documents
-                    .iter()
-                    .filter_map(|document| document.uri.as_deref())
-                    .filter_map(|uri| self.relative(uri))
-                    .map(|path| (kit_id, path)),
-            );
+            files.extend(list.documents.iter().filter_map(|document| document.uri.as_deref()).filter_map(|uri| self.relative(uri)).map(|path| (kit_id, path)));
         }
         files
     }
 
-    pub async fn save(
-        &self,
-        caller: Caller,
-        kit_id: &str,
-        document_id: &str,
-    ) -> Result<DocumentView, KitError> {
+    pub async fn save(&self, caller: Caller, kit_id: &str, document_id: &str) -> Result<DocumentView, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
-        let params = DocumentRef {
-            document_id: inner.to_owned(),
-        };
-        self.call::<methods::DocumentSave>(kit, caller, &params)
-            .await?;
+        let params = DocumentRef { document_id: inner.to_owned() };
+        self.call::<methods::DocumentSave>(kit, caller, &params).await?;
         let view = self.document(caller, kit_id, document_id).await?;
         if let Some(path) = view.path.clone() {
-            let _ = self.inner.saves.send(SavedFile {
-                kit_id: view.kit_id,
-                path,
-                document_id: document_id.to_owned(),
-            });
+            let _ = self.inner.saves.send(SavedFile { kit_id: view.kit_id, path, document_id: document_id.to_owned() });
         }
         Ok(view)
     }
@@ -1510,20 +758,11 @@ impl KitManager {
         self.inner.saves.subscribe()
     }
 
-    pub async fn close(
-        &self,
-        kit_id: &str,
-        document_id: &str,
-        discard_changes: bool,
-    ) -> Result<(), KitError> {
+    pub async fn close(&self, kit_id: &str, document_id: &str, discard_changes: bool) -> Result<(), KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
-        let params = DocumentCloseParams {
-            document_id: inner.to_owned(),
-            discard_changes: Some(discard_changes),
-        };
-        self.call::<methods::DocumentClose>(kit, Caller::User, &params)
-            .await?;
+        let params = DocumentCloseParams { document_id: inner.to_owned(), discard_changes: Some(discard_changes) };
+        self.call::<methods::DocumentClose>(kit, Caller::User, &params).await?;
         Ok(())
     }
 
@@ -1532,12 +771,7 @@ impl KitManager {
     /// save replaces only the document it names, which some kit edits; any other write makes a new
     /// file and never replaces one (the in-page editors' `host/write` modes, Kit UI protocol). So
     /// one kit's editor never overwrites another file, its own kind or another kit's.
-    pub fn write_file(
-        &self,
-        path: &str,
-        bytes: &[u8],
-        write: FileWrite<'_>,
-    ) -> Result<(), KitError> {
+    pub fn write_file(&self, path: &str, bytes: &[u8], write: FileWrite<'_>) -> Result<(), KitError> {
         let edited = self.kit_for_path(path).is_some();
         let target = self.resolve(path)?;
         match write {
@@ -1546,28 +780,17 @@ impl KitManager {
                     return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
                 }
                 if self.resolve(document)? != target {
-                    return Err(KitError::InvalidPath(format!(
-                        "`{path}` is not `{document}`, the document this save is for"
-                    )));
+                    return Err(KitError::InvalidPath(format!("`{path}` is not `{document}`, the document this save is for")));
                 }
             }
             FileWrite::New => {
-                let extension = path
-                    .rsplit_once('.')
-                    .map(|(_, extension)| extension.to_ascii_lowercase())
-                    .unwrap_or_default();
-                let export = self
-                    .inner
-                    .kits
-                    .iter()
-                    .any(|(kit, _)| kit.exports.contains(&extension.as_str()));
+                let extension = path.rsplit_once('.').map(|(_, extension)| extension.to_ascii_lowercase()).unwrap_or_default();
+                let export = self.inner.kits.iter().any(|(kit, _)| kit.exports.contains(&extension.as_str()));
                 if !edited && !export {
                     return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
                 }
                 if target.exists() {
-                    return Err(KitError::InvalidPath(format!(
-                        "`{path}` exists; a new file never replaces one"
-                    )));
+                    return Err(KitError::InvalidPath(format!("`{path}` exists; a new file never replaces one")));
                 }
             }
         }
@@ -1581,19 +804,12 @@ impl KitManager {
                 FileWrite::Save { .. } => return Err(missing()),
             }
         }
-        let name = target
-            .file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default();
+        let name = target.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
         let temporary = parent.join(format!(".{name}.kition-{}.tmp", std::process::id()));
-        let written =
-            std::fs::write(&temporary, bytes).and_then(|()| std::fs::rename(&temporary, &target));
+        let written = std::fs::write(&temporary, bytes).and_then(|()| std::fs::rename(&temporary, &target));
         if let Err(error) = written {
             let _ = std::fs::remove_file(&temporary);
-            return Err(KitError::Kit {
-                reason: Some(ErrorReason::IoError),
-                message: format!("could not save `{path}`: {}", error.kind()),
-            });
+            return Err(KitError::Kit { reason: Some(ErrorReason::IoError), message: format!("could not save `{path}`: {}", error.kind()) });
         }
         Ok(())
     }
@@ -1612,52 +828,74 @@ impl KitManager {
             return Err(invalid());
         }
         let made = folder.strip_prefix(existing).map_err(|_| invalid())?;
-        if made
-            .components()
-            .any(|part| part.as_os_str().to_string_lossy().starts_with('.'))
-        {
+        if made.components().any(|part| part.as_os_str().to_string_lossy().starts_with('.')) {
             return Err(invalid());
         }
-        std::fs::create_dir_all(real.join(made)).map_err(|error| KitError::Kit {
-            reason: Some(ErrorReason::IoError),
-            message: format!("could not make the folder of `{path}`: {}", error.kind()),
-        })
+        std::fs::create_dir_all(real.join(made))
+            .map_err(|error| KitError::Kit { reason: Some(ErrorReason::IoError), message: format!("could not make the folder of `{path}`: {}", error.kind()) })
     }
 
     /// Asks every running kit to exit.
     pub async fn shutdown(&self) {
-        let stopping: Vec<Arc<RunningKit>> = self
-            .inner
-            .running
-            .lock()
-            .await
-            .drain()
-            .map(|(_, kit)| kit)
-            .collect();
+        let stopping: Vec<Arc<RunningKit>> = self.inner.running.lock().await.drain().map(|(_, kit)| kit).collect();
         for kit in stopping {
             kit.stop().await;
         }
     }
 
     /// Resolves a workspace-relative path without letting it leave the workspace.
+    /// A workspace path from a person or an agent, as a file system path. It is refused, the same
+    /// way whether the file exists or not (KHP A29), when it leaves the workspace (`..`, an
+    /// absolute path, or a symbolic link out) or has a hidden segment (`.git/`, `.env`, Kition's
+    /// own `.kition/`): [`KitError::NotAllowed`].
     pub(crate) fn resolve(&self, path: &str) -> Result<PathBuf, KitError> {
+        self.resolve_in(path, false)
+    }
+
+    /// [`KitManager::resolve`] for a path Kition makes itself, which may be under `.kition/`
+    /// (drafts).
+    pub(crate) fn resolve_own(&self, path: &str) -> Result<PathBuf, KitError> {
+        self.resolve_in(path, true)
+    }
+
+    fn resolve_in(&self, path: &str, own: bool) -> Result<PathBuf, KitError> {
         let workspace = self.workspace()?;
-        let invalid = || KitError::InvalidPath(format!("`{path}` is not a workspace path"));
-        let trimmed = path.trim().trim_start_matches('/');
+        let outside = || KitError::NotAllowed(format!("`{path}` is outside the workspace"));
+        let given = path.trim();
+        // An absolute path is a workspace path only when it lies in the workspace.
+        let relative = if Path::new(given).is_absolute() {
+            let absolute = Path::new(given);
+            let existing = absolute.ancestors().find(|ancestor| ancestor.exists()).ok_or_else(outside)?;
+            let real = std::fs::canonicalize(existing).map_err(|_| outside())?;
+            let rest = absolute.strip_prefix(existing).map_err(|_| outside())?;
+            let inside = real.strip_prefix(workspace).map_err(|_| outside())?.join(rest);
+            inside.to_str().ok_or_else(outside)?.replace(std::path::MAIN_SEPARATOR, "/")
+        } else {
+            given.to_owned()
+        };
+        let trimmed = relative.as_str();
         if trimmed.is_empty() || trimmed.contains('\\') {
-            return Err(invalid());
+            return Err(KitError::InvalidPath(format!("`{path}` is not a workspace path")));
         }
         let mut absolute = workspace.to_path_buf();
         for part in trimmed.split('/') {
             if part.is_empty() || part == "." || part == ".." || Path::new(part).is_absolute() {
-                return Err(invalid());
+                return Err(outside());
+            }
+            if part.starts_with('.') && !own {
+                return Err(KitError::NotAllowed(format!("`{path}` names a hidden file or folder")));
             }
             absolute.push(part);
         }
-        match std::fs::canonicalize(&absolute) {
-            Ok(real) if real.starts_with(workspace) => Ok(real),
-            Ok(_) => Err(invalid()),
-            Err(_) => Ok(absolute),
+        // Where the path really leads: its nearest existing folder, resolved, so a link out of
+        // the workspace is refused for a new file too.
+        let existing = absolute.ancestors().find(|ancestor| ancestor.exists()).unwrap_or(workspace);
+        match std::fs::canonicalize(existing) {
+            Ok(real) if real.starts_with(workspace) => Ok(match std::fs::canonicalize(&absolute) {
+                Ok(real) => real,
+                Err(_) => absolute,
+            }),
+            _ => Err(outside()),
         }
     }
 
@@ -1682,19 +920,10 @@ async fn watch_notifications(host: Arc<KitClient>, versions: Versions) {
         if notification.method != methods::DocumentDidChangeState::NAME {
             continue;
         }
-        let Some(id) = notification
-            .params
-            .as_ref()
-            .and_then(|params| params.get("documentId"))
-            .and_then(Value::as_str)
-        else {
+        let Some(id) = notification.params.as_ref().and_then(|params| params.get("documentId")).and_then(Value::as_str) else {
             continue;
         };
-        *versions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .entry(id.to_owned())
-            .or_default() += 1;
+        *versions.lock().unwrap_or_else(PoisonError::into_inner).entry(id.to_owned()).or_default() += 1;
     }
 }
 
@@ -1706,10 +935,7 @@ fn spelling(query: &str, text: &str) -> f64 {
             .filter(|word| !word.is_empty())
             .flat_map(|word| {
                 let padded: Vec<char> = format!(" {word} ").chars().collect();
-                padded
-                    .windows(3)
-                    .map(|w| w.iter().collect::<String>())
-                    .collect::<Vec<_>>()
+                padded.windows(3).map(|w| w.iter().collect::<String>()).collect::<Vec<_>>()
             })
             .collect()
     };
@@ -1757,14 +983,8 @@ fn search_variants(term: &str) -> Vec<String> {
 mod tests {
     #[test]
     fn spelling_ranks_the_commands_a_query_spells_closest() {
-        assert_eq!(
-            super::spelling("mp4", "renderqueue.add add to render queue"),
-            0.0
-        );
-        assert!(
-            super::spelling("renderqeue", "renderqueue.add add to render queue")
-                > super::spelling("renderqeue", "layer.newtext new text layer")
-        );
+        assert_eq!(super::spelling("mp4", "renderqueue.add add to render queue"), 0.0);
+        assert!(super::spelling("renderqeue", "renderqueue.add add to render queue") > super::spelling("renderqeue", "layer.newtext new text layer"));
         assert_eq!(super::spelling("", "anything"), 0.0);
         assert_eq!(super::spelling("text", "layer.newtext text"), 1.0);
     }

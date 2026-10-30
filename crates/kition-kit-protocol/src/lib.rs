@@ -1,8 +1,9 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/lib.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Kit Protocol, version 1.
 //!
 //! The wire contract between the Kition host and kits, the native executables
 //! that open and edit one family of documents. The Kition platform's
-//! kition-sdk `docs/platform/reference/kit-protocol.md` describes the behavior and `contracts/kit/` holds the schemas these types mirror; when
+//! `docs/platform/reference/kit-protocol.md` describes the behavior and `contracts/kit/kit-protocol.schema.json` is the schema these types mirror; when
 //! they disagree, the schemas win.
 //!
 //! This crate has no async runtime dependency so that kits built on plain

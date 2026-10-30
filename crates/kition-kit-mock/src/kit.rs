@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-mock/src/kit.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Mock kit state and method handlers.
 
 use std::collections::HashMap;
@@ -12,9 +13,7 @@ use kition_kit_protocol::launch::Surface;
 use kition_kit_protocol::methods::{self, NotificationMethod, RequestMethod};
 use kition_kit_protocol::transport::BoxWriter;
 use kition_kit_protocol::types::*;
-use kition_kit_protocol::{
-    ErrorData, ErrorReason, Message, Notification, PROTOCOL_VERSION, Request, Response, RpcError,
-};
+use kition_kit_protocol::{ErrorData, ErrorReason, Message, Notification, PROTOCOL_VERSION, Request, Response, RpcError};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
@@ -47,8 +46,7 @@ const SCHEMA: &str = r#"{
   }
 }"#;
 /// A 1x1 transparent PNG.
-const PIXEL_PNG: &str =
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+const PIXEL_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Fault {
@@ -76,11 +74,7 @@ pub struct Connection {
 impl Connection {
     pub fn new(writer: Writer) -> Self {
         static NEXT: AtomicU64 = AtomicU64::new(1);
-        Self {
-            id: NEXT.fetch_add(1, Ordering::Relaxed),
-            role: None,
-            writer,
-        }
+        Self { id: NEXT.fetch_add(1, Ordering::Relaxed), role: None, writer }
     }
 }
 
@@ -115,11 +109,7 @@ impl BatchTarget for MockTarget<'_> {
         Ok(self.replica)
     }
 
-    fn transact(
-        &mut self,
-        origin: &Origin,
-        write: &mut dyn FnMut(&mut Tx<'_>) -> Result<(), BatchError>,
-    ) -> Result<(), BatchError> {
+    fn transact(&mut self, origin: &Origin, write: &mut dyn FnMut(&mut Tx<'_>) -> Result<(), BatchError>) -> Result<(), BatchError> {
         batch::transact_replica(self.replica, origin, write)
     }
 
@@ -152,23 +142,14 @@ impl Document {
         if self.model.is_none() {
             let schema = Arc::new(Schema::parse(SCHEMA).map_err(internal)?);
             let text = self.text.clone();
-            let (replica, ()) = Replica::create_with(
-                schema,
-                DocId::new(),
-                ActorId::random(),
-                &Origin::system("open"),
-                |tx| {
-                    let root = tx.create("Note", Map::new())?;
-                    tx.text_insert(&root, "text", 0, &text)
-                },
-            )
+            let (replica, ()) = Replica::create_with(schema, DocId::new(), ActorId::random(), &Origin::system("open"), |tx| {
+                let root = tx.create("Note", Map::new())?;
+                tx.text_insert(&root, "text", 0, &text)
+            })
             .map_err(internal)?;
             self.model = Some(replica);
         }
-        let replica = self
-            .model
-            .as_mut()
-            .ok_or_else(|| RpcError::internal("no model"))?;
+        let replica = self.model.as_mut().ok_or_else(|| RpcError::internal("no model"))?;
         let root = batch::root_id(replica).ok_or_else(|| RpcError::internal("no root"))?;
         if replica.text(&root, "text").map_err(internal)? != self.text {
             let text = self.text.clone();
@@ -190,13 +171,9 @@ impl Document {
         let read_only = self.read_only;
         let before = self.text.clone();
         let replica = self.model()?;
-        let answer = batch::run(&mut MockTarget { replica, read_only }, request)
-            .map_err(|error| model_error(&error))?;
-        let root: ObjectId =
-            batch::root_id(replica).ok_or_else(|| RpcError::internal("no root"))?;
-        let text = replica
-            .text(&root, "text")
-            .map_err(|error| RpcError::internal(error.to_string()))?;
+        let answer = batch::run(&mut MockTarget { replica, read_only }, request).map_err(|error| model_error(&error))?;
+        let root: ObjectId = batch::root_id(replica).ok_or_else(|| RpcError::internal("no root"))?;
+        let text = replica.text(&root, "text").map_err(|error| RpcError::internal(error.to_string()))?;
         let writes = request["ops"].as_array().is_some_and(|ops| !ops.is_empty());
         if writes {
             self.history.push(before);
@@ -210,11 +187,7 @@ impl Document {
         DocumentState {
             document_id: self.id.clone(),
             uri: file_uri(&self.path),
-            title: self
-                .path
-                .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-                .unwrap_or_default(),
+            title: self.path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default(),
             format: FORMAT.to_owned(),
             read_only: self.read_only,
             dirty: self.dirty,
@@ -244,12 +217,7 @@ type Handled = Result<Value, RpcError>;
 
 impl Kit {
     pub fn new(token: String, fault: Fault) -> Self {
-        Self {
-            token,
-            fault,
-            wrote_fault_output: AtomicBool::new(false),
-            state: Mutex::new(State::default()),
-        }
+        Self { token, fault, wrote_fault_output: AtomicBool::new(false), state: Mutex::new(State::default()) }
     }
 
     fn state(&self) -> std::sync::MutexGuard<'_, State> {
@@ -265,16 +233,12 @@ impl Kit {
     }
 
     pub fn handle(&self, connection: &mut Connection, message: Message) -> Step {
-        if self.fault == Fault::StdoutAfterReady
-            && !self.wrote_fault_output.swap(true, Ordering::SeqCst)
-        {
+        if self.fault == Fault::StdoutAfterReady && !self.wrote_fault_output.swap(true, Ordering::SeqCst) {
             println!("unexpected output");
         }
         match message {
             Message::Request(request) => self.handle_request(connection, request),
-            Message::Notification(notification) => {
-                self.handle_notification(connection, notification)
-            }
+            Message::Notification(notification) => self.handle_notification(connection, notification),
             Message::Response(_) => Step::default(),
         }
     }
@@ -285,21 +249,14 @@ impl Kit {
         let outcome = match connection.role {
             None if request.method == methods::Initialize::NAME => {
                 let outcome = self.initialize(connection, params);
-                step.close = outcome
-                    .as_ref()
-                    .is_err_and(|error| error.reason() == Some(ErrorReason::Unauthorized));
+                step.close = outcome.as_ref().is_err_and(|error| error.reason() == Some(ErrorReason::Unauthorized));
                 outcome
             }
             None => Err(RpcError::kit(ErrorReason::NotInitialized)),
-            Some(Role::Agent) if methods::is_host_only(&request.method) => {
-                Err(RpcError::kit(ErrorReason::RoleForbidden))
-            }
+            Some(Role::Agent) if methods::is_host_only(&request.method) => Err(RpcError::kit(ErrorReason::RoleForbidden)),
             Some(role) => self.dispatch(role, &request.method, params, &mut step),
         };
-        step.reply = Some(Response {
-            id: Some(request.id),
-            outcome,
-        });
+        step.reply = Some(Response { id: Some(request.id), outcome });
         step
     }
 
@@ -307,8 +264,7 @@ impl Kit {
         let mut step = Step::default();
         if connection.role == Some(Role::Host)
             && notification.method == methods::DocumentDidChangeOnDisk::NAME
-            && let Ok(params) =
-                parse::<DocumentRef>(notification.params.unwrap_or_else(|| json!({})))
+            && let Ok(params) = parse::<DocumentRef>(notification.params.unwrap_or_else(|| json!({})))
         {
             self.reload(&params.document_id, &mut step);
         }
@@ -326,16 +282,10 @@ impl Kit {
         let mut state = self.state();
         match params.role {
             Role::Host if state.host_connected => {
-                return Err(RpcError::kit_detail(
-                    ErrorReason::RoleForbidden,
-                    "a host is already connected",
-                ));
+                return Err(RpcError::kit_detail(ErrorReason::RoleForbidden, "a host is already connected"));
             }
             Role::Agent if !state.host_connected => {
-                return Err(RpcError::kit_detail(
-                    ErrorReason::RoleForbidden,
-                    "the host has not initialized",
-                ));
+                return Err(RpcError::kit_detail(ErrorReason::RoleForbidden, "the host has not initialized"));
             }
             Role::Host => {
                 let mut roots = Vec::new();
@@ -348,28 +298,15 @@ impl Kit {
             }
             Role::Agent => {}
         }
-        state
-            .clients
-            .insert(connection.id, Arc::clone(&connection.writer));
+        state.clients.insert(connection.id, Arc::clone(&connection.writer));
         connection.role = Some(params.role);
         to_value(InitializeResult {
             protocol_version: PROTOCOL_VERSION,
-            kit: KitInfo {
-                id: IDENTITY.0.clone(),
-                version: env!("CARGO_PKG_VERSION").to_owned(),
-            },
+            kit: KitInfo { id: IDENTITY.0.clone(), version: env!("CARGO_PKG_VERSION").to_owned() },
             capabilities: Capabilities {
                 surfaces: vec![Surface::Headless],
-                formats: Formats {
-                    open: vec![FORMAT.to_owned()],
-                    save: vec![FORMAT.to_owned()],
-                    export: vec![FORMAT.to_owned()],
-                },
-                features: vec![
-                    "view.describe".to_owned(),
-                    "model.describe".to_owned(),
-                    "model.batch".to_owned(),
-                ],
+                formats: Formats { open: vec![FORMAT.to_owned()], save: vec![FORMAT.to_owned()], export: vec![FORMAT.to_owned()] },
+                features: vec!["view.describe".to_owned(), "model.describe".to_owned(), "model.batch".to_owned()],
             },
         })
     }
@@ -397,17 +334,12 @@ impl Kit {
             }
             methods::DocumentSaveAs::NAME | methods::DocumentExport::NAME => {
                 let params: DocumentSaveAsParams = parse(params)?;
-                if params
-                    .format
-                    .as_deref()
-                    .is_some_and(|format| format != FORMAT)
-                {
+                if params.format.as_deref().is_some_and(|format| format != FORMAT) {
                     return Err(RpcError::kit(ErrorReason::UnsupportedFormat));
                 }
                 let target = self.granted_path(role, &params.uri)?;
                 if method == methods::DocumentExport::NAME {
-                    let text = self
-                        .with_document(&params.document_id, |document| Ok(document.text.clone()))?;
+                    let text = self.with_document(&params.document_id, |document| Ok(document.text.clone()))?;
                     std::fs::write(&target, text).map_err(io_error)?;
                     return to_value(DocumentUriResult { uri: params.uri });
                 }
@@ -439,14 +371,10 @@ impl Kit {
             }
             methods::ViewDescribe::NAME => {
                 let params: DocumentRef = parse(params)?;
-                let text =
-                    self.with_document(&params.document_id, |document| Ok(document.text.clone()))?;
+                let text = self.with_document(&params.document_id, |document| Ok(document.text.clone()))?;
                 to_value(ViewDescribeResult {
                     summary: format!("{} characters", text.chars().count()),
-                    state: Map::from_iter([
-                        ("text".to_owned(), json!(text)),
-                        ("length".to_owned(), json!(text.chars().count())),
-                    ]),
+                    state: Map::from_iter([("text".to_owned(), json!(text)), ("length".to_owned(), json!(text.chars().count()))]),
                 })
             }
             "model.describe" => {
@@ -460,8 +388,7 @@ impl Kit {
             }
             "model.batch" => {
                 let id = document_param(&params)?;
-                let (changed, answer) =
-                    self.with_document(&id, |document| document.batch(&params))?;
+                let (changed, answer) = self.with_document(&id, |document| document.batch(&params))?;
                 if changed {
                     let state = self.with_document(&id, |document| Ok(document.state()))?;
                     self.broadcast::<methods::DocumentDidChangeState>(&state, step);
@@ -486,20 +413,12 @@ impl Kit {
             return Err(RpcError::kit(ErrorReason::UnsupportedFormat));
         }
         let mut state = self.state();
-        if let Some(document) = state
-            .documents
-            .iter()
-            .find(|document| document.path == path)
-        {
+        if let Some(document) = state.documents.iter().find(|document| document.path == path) {
             return to_value(document.state());
         }
         let text = match std::fs::read_to_string(&path) {
             Ok(text) => text,
-            Err(error)
-                if error.kind() == std::io::ErrorKind::NotFound && params.create.is_some() =>
-            {
-                String::new()
-            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound && params.create.is_some() => String::new(),
             Err(error) => return Err(io_error(error)),
         };
         state.next_document += 1;
@@ -522,10 +441,7 @@ impl Kit {
     fn save(&self, document_id: &str, target: Option<PathBuf>, step: &mut Step) -> Handled {
         let saved = self.with_document(document_id, |document| {
             if document.read_only && target.is_none() {
-                return Err(RpcError::kit_detail(
-                    ErrorReason::IoError,
-                    "the document is read-only",
-                ));
+                return Err(RpcError::kit_detail(ErrorReason::IoError, "the document is read-only"));
             }
             let path = target.clone().unwrap_or_else(|| document.path.clone());
             std::fs::write(&path, &document.text).map_err(io_error)?;
@@ -534,13 +450,7 @@ impl Kit {
             Ok(document.state())
         })?;
         let uri = saved.uri.clone().unwrap_or_default();
-        self.broadcast::<methods::DocumentDidSave>(
-            &DocumentDidSaveParams {
-                document_id: document_id.to_owned(),
-                uri: uri.clone(),
-            },
-            step,
-        );
+        self.broadcast::<methods::DocumentDidSave>(&DocumentDidSaveParams { document_id: document_id.to_owned(), uri: uri.clone() }, step);
         self.broadcast::<methods::DocumentDidChangeState>(&saved, step);
         to_value(DocumentUriResult { uri })
     }
@@ -561,13 +471,7 @@ impl Kit {
 
     fn list_commands(&self, params: &CommandsListParams) -> Handled {
         let (empty, can_undo, read_only) = match &params.document_id {
-            Some(id) => self.with_document(id, |document| {
-                Ok((
-                    document.text.is_empty(),
-                    !document.history.is_empty(),
-                    document.read_only,
-                ))
-            })?,
+            Some(id) => self.with_document(id, |document| Ok((document.text.is_empty(), !document.history.is_empty(), document.read_only)))?,
             None => (true, false, false),
         };
         let commands = [
@@ -614,15 +518,7 @@ impl Kit {
                 shortcut: None,
             },
         ];
-        let commands = commands
-            .into_iter()
-            .filter(|command| {
-                params
-                    .groups
-                    .as_ref()
-                    .is_none_or(|groups| groups.contains(&command.group))
-            })
-            .collect();
+        let commands = commands.into_iter().filter(|command| params.groups.as_ref().is_none_or(|groups| groups.contains(&command.group))).collect();
         to_value(CommandsListResult { commands })
     }
 
@@ -633,12 +529,8 @@ impl Kit {
             "edit.undo" => &["scope"],
             _ => return Err(RpcError::kit(ErrorReason::CommandNotFound)),
         };
-        let unknown: Vec<Value> = params
-            .params
-            .keys()
-            .filter(|key| !allowed.contains(&key.as_str()))
-            .map(|key| json!(format!("unknown parameter `{key}`")))
-            .collect();
+        let unknown: Vec<Value> =
+            params.params.keys().filter(|key| !allowed.contains(&key.as_str())).map(|key| json!(format!("unknown parameter `{key}`"))).collect();
         if !unknown.is_empty() {
             return Err(invalid_command_params(unknown));
         }
@@ -646,9 +538,7 @@ impl Kit {
             "text.append" => match params.params.get("text").and_then(Value::as_str) {
                 Some(text) if !text.is_empty() => Some(text.to_owned()),
                 _ => {
-                    return Err(invalid_command_params(vec![json!(
-                        "`text` must be a non-empty string"
-                    )]));
+                    return Err(invalid_command_params(vec![json!("`text` must be a non-empty string")]));
                 }
             },
             _ => None,
@@ -660,9 +550,7 @@ impl Kit {
             match params.command.as_str() {
                 "text.append" => {
                     document.history.push(document.text.clone());
-                    document
-                        .text
-                        .push_str(appended.as_deref().unwrap_or_default());
+                    document.text.push_str(appended.as_deref().unwrap_or_default());
                 }
                 "text.clear" if !document.text.is_empty() => {
                     document.history.push(std::mem::take(&mut document.text));
@@ -677,23 +565,12 @@ impl Kit {
             Ok(document.state())
         })?;
         self.broadcast::<methods::DocumentDidChangeState>(&state, step);
-        to_value(CommandsExecuteResult {
-            changed: true,
-            result: None,
-        })
+        to_value(CommandsExecuteResult { changed: true, result: None })
     }
 
-    fn with_document<T>(
-        &self,
-        id: &str,
-        action: impl FnOnce(&mut Document) -> Result<T, RpcError>,
-    ) -> Result<T, RpcError> {
+    fn with_document<T>(&self, id: &str, action: impl FnOnce(&mut Document) -> Result<T, RpcError>) -> Result<T, RpcError> {
         let mut state = self.state();
-        let document = state
-            .documents
-            .iter_mut()
-            .find(|document| document.id == id)
-            .ok_or_else(|| RpcError::kit(ErrorReason::DocumentNotFound))?;
+        let document = state.documents.iter_mut().find(|document| document.id == id).ok_or_else(|| RpcError::kit(ErrorReason::DocumentNotFound))?;
         action(document)
     }
 
@@ -705,16 +582,7 @@ impl Kit {
             return Ok(path);
         }
         let resolved = resolve(&path).ok_or_else(|| RpcError::kit(ErrorReason::UriNotGranted))?;
-        if self
-            .state()
-            .roots
-            .iter()
-            .any(|root| resolved.starts_with(root))
-        {
-            Ok(path)
-        } else {
-            Err(RpcError::kit(ErrorReason::UriNotGranted))
-        }
+        if self.state().roots.iter().any(|root| resolved.starts_with(root)) { Ok(path) } else { Err(RpcError::kit(ErrorReason::UriNotGranted)) }
     }
 
     fn broadcast<N: NotificationMethod>(&self, params: &N::Params, step: &mut Step) {
@@ -723,8 +591,7 @@ impl Kit {
         };
         let notification = Notification::new(N::NAME, Some(params)).to_value();
         for writer in self.state().clients.values() {
-            step.broadcast
-                .push((Arc::clone(writer), notification.clone()));
+            step.broadcast.push((Arc::clone(writer), notification.clone()));
         }
     }
 }
@@ -752,10 +619,7 @@ fn file_uri(path: &Path) -> Option<String> {
 
 /// The `documentId` of an object-model request.
 fn document_param(params: &Value) -> Result<String, RpcError> {
-    params["documentId"]
-        .as_str()
-        .map(str::to_owned)
-        .ok_or_else(|| RpcError::invalid_params("`documentId` is a string"))
+    params["documentId"].as_str().map(str::to_owned).ok_or_else(|| RpcError::invalid_params("`documentId` is a string"))
 }
 
 fn parse<T: DeserializeOwned>(params: Value) -> Result<T, RpcError> {
@@ -771,9 +635,5 @@ fn io_error(error: std::io::Error) -> RpcError {
 }
 
 fn invalid_command_params(errors: Vec<Value>) -> RpcError {
-    RpcError::kit_data(ErrorData {
-        reason: ErrorReason::InvalidParams,
-        detail: None,
-        errors: Some(errors),
-    })
+    RpcError::kit_data(ErrorData { reason: ErrorReason::InvalidParams, detail: None, errors: Some(errors) })
 }

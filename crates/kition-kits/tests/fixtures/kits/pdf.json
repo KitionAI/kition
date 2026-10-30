@@ -1,0 +1,133 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.pdf",
+  "name": "PDF",
+  "version": "0.3.18",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/pdfcraft",
+    "version": "0.6.0",
+    "commit": "ae4f5d44f338e54bdbe116117009453639e3e90a"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_pdf_sdk",
+    "class": "PdfDocument",
+    "contract": 2,
+    "crate": "kition-pdf-sdk"
+  },
+  "formats": [
+    {
+      "id": "pdf",
+      "extensions": [
+        "pdf"
+      ],
+      "mime": "application/pdf",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "pdf",
+      "extension": "pdf",
+      "baseName": "Untitled PDF",
+      "size": {
+        "width": 612,
+        "height": 792
+      }
+    }
+  ],
+  "capabilities": [
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "line",
+    "entry": "ui/index.html",
+    "menus": [
+      "Edit",
+      "Document",
+      "Pages",
+      "Text",
+      "Edit PDF",
+      "Comment",
+      "Forms",
+      "Bookmarks",
+      "Links",
+      "Redact",
+      "Measure",
+      "Protect",
+      "Accessibility",
+      "Tools"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#db3527",
+      "dark": "#ff7a6b"
+    }
+  },
+  "agent": {
+    "prefix": "pdf",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": true,
+    "describe": {
+      "noun": "PDF",
+      "fileTypes": ".pdf",
+      "reports": "its pages and labels, whether it can be edited, and its form fields",
+      "covers": "pages, text, comments, forms, bookmarks, links, watermarks, redaction, measuring, accessibility, and more",
+      "queries": "`rotate`, `comment`, or `watermark`",
+      "example": "page_rotate"
+    }
+  },
+  "headless": {
+    "executable": "kit-pdf",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "extras": {
+    "setBackdrop": {
+      "params": [
+        "color: string"
+      ],
+      "returns": "void"
+    },
+    "leaseScope": {
+      "params": [
+        "command: string"
+      ],
+      "returns": "string",
+      "description": "The lease (Kit UI protocol section 7b) to take before running the command: \"*\" (the whole document) when it rewrites the file in full (applying redactions, sanitizing, adding or removing security, converting an encrypted file to PDF/A, or undoing or redoing across one), else empty."
+    }
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 2
+  },
+  "collaboration": {
+    "merge": [
+      "overlay",
+      "binary"
+    ],
+    "leases": [
+      "*"
+    ],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Pdf"
+  }
+}

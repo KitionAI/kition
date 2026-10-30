@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/tools.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Kit tools (KHP A3): for every kit, inspect a file, search its commands, and
 //! edit it by running them: `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, named
 //! and worded from the kit's definition (its `kit.json`). The object-model tools `<prefix>_query`
@@ -19,15 +20,16 @@ mod export;
 pub mod model;
 pub mod schemas;
 
-use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{Map, Value, json};
 
 pub use errors::{ErrorCode, KitToolError};
 
 use crate::bridge::LiveDocument;
+use crate::definitions::known;
 use crate::drafts::{self, DraftState};
-use crate::manager::{Caller, DocumentView, KITS, KitDefinition, KitError, KitManager};
+use crate::manager::{Caller, DocumentView, KitDefinition, KitError, KitManager};
 
 const PREVIEW_SIZE: u32 = 1024;
 const MAX_COMMANDS: usize = 12;
@@ -85,10 +87,7 @@ impl Action {
 
     /// Whether the tool changes files: edits, or a new file (an export, a created file).
     pub fn writes(self) -> bool {
-        matches!(
-            self,
-            Action::Run | Action::Batch | Action::Export | Action::Create
-        )
+        matches!(self, Action::Run | Action::Batch | Action::Export | Action::Create)
     }
 }
 
@@ -128,11 +127,7 @@ pub struct KitToolOutput {
 
 impl KitToolOutput {
     pub(crate) fn new(summary: String, output: Value) -> Self {
-        Self {
-            summary,
-            output,
-            previews: Vec::new(),
-        }
+        Self { summary, output, previews: Vec::new() }
     }
 }
 
@@ -145,41 +140,39 @@ pub fn tool_name(kit: &KitDefinition, action: Action) -> String {
     format!("{}_{}", kit.agent.prefix, action.suffix())
 }
 
-/// One entry point for every kit (`KHP_UNIFIED`): tools named `kit_<action>`, routed by the
-/// extension of the call's `path`, so the tool list does not grow with the number of kits.
+/// One entry point for every kit: tools named `kit_<action>`, routed by the extension of the
+/// call's `path`, so the tool list does not grow with the number of kits (`kition-kits-mcp
+/// --unified`). Off unless a program turns it on, for the whole process.
+static UNIFIED: AtomicBool = AtomicBool::new(false);
+
+/// Turns the unified tool set on or off for this process.
+pub fn set_unified(on: bool) {
+    UNIFIED.store(on, Ordering::Relaxed);
+}
+
+/// Whether the tools are the unified set (`kit_<action>`).
 pub fn unified() -> bool {
-    std::env::var_os("KHP_UNIFIED").is_some()
+    UNIFIED.load(Ordering::Relaxed)
 }
 
 /// The kit and action of a unified tool call (`kit_run` on `report.xlsx` is Sheet's run).
 fn unified_route(name: &str, input: &Value) -> Option<(&'static KitDefinition, Action)> {
     let suffix = name.strip_prefix("kit_")?;
-    let action = Action::ALL
-        .into_iter()
-        .find(|action| action.suffix() == suffix)?;
+    let action = Action::ALL.into_iter().find(|action| action.suffix() == suffix)?;
     let path = input.get("path")?.as_str()?;
     let extension = path.trim().rsplit_once('.')?.1.to_ascii_lowercase();
-    let kit = KITS
-        .iter()
-        .find(|kit| kit.extensions.contains(&extension.as_str()))?;
+    let kit = known().into_iter().find(|kit| kit.extensions.contains(&extension.as_str()))?;
     Some((kit, action))
 }
 
 /// The unified tool set: one kit's tools, worded for all the installed kits.
 fn unified_specs(on: &[&'static KitDefinition]) -> Vec<KitToolSpec> {
     let first = on[0];
-    let formats = on
-        .iter()
-        .map(|kit| format!("{}: {}", kit.name, kit.agent.formats))
-        .collect::<Vec<_>>()
-        .join("; ");
+    let formats = on.iter().map(|kit| format!("{}: {}", kit.name, kit.agent.formats)).collect::<Vec<_>>().join("; ");
     let words = |text: &str| {
         text.replace(first.agent.formats, &formats)
             .replace(first.agent.reports, "its structure")
-            .replace(
-                &format!(" in {}", first.name),
-                " in the kit for its file type",
-            )
+            .replace(&format!(" in {}", first.name), " in the kit for its file type")
             .replace(first.agent.noun, "file")
     };
     specs_of(first)
@@ -187,8 +180,7 @@ fn unified_specs(on: &[&'static KitDefinition]) -> Vec<KitToolSpec> {
         .map(|spec| KitToolSpec {
             name: spec.name,
             description: words(&spec.description),
-            input_schema: serde_json::from_str(&words(&spec.input_schema.to_string()))
-                .unwrap_or(spec.input_schema),
+            input_schema: serde_json::from_str(&words(&spec.input_schema.to_string())).unwrap_or(spec.input_schema),
             writes: spec.writes,
         })
         .collect()
@@ -198,7 +190,7 @@ fn unified_specs(on: &[&'static KitDefinition]) -> Vec<KitToolSpec> {
 pub fn parse(name: &str) -> Option<(&'static KitDefinition, Action)> {
     Action::ALL.into_iter().find_map(|action| {
         let prefix = name.strip_suffix(action.suffix())?.strip_suffix('_')?;
-        let kit = KITS.iter().find(|kit| kit.agent.prefix == prefix)?;
+        let kit = known().into_iter().find(|kit| kit.agent.prefix == prefix)?;
         Some((kit, action))
     })
 }
@@ -310,9 +302,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         },
         KitToolSpec {
             name: tool_name(kit, Action::DraftReopen),
-            description: format!(
-                "Take your draft of a {noun} in {name} back from review to keep editing it (after {ready}); edits with `draft` also do."
-            ),
+            description: format!("Take your draft of a {noun} in {name} back from review to keep editing it (after {ready}); edits with `draft` also do."),
             input_schema: json!({
                 "type": "object",
                 "properties": { "path": path_property(kit) },
@@ -341,11 +331,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
             name: tool_name(kit, Action::Export),
             description: format!(
                 "Export a {noun} from {name} to a new file{}, as the kit's engine draws it. The file is always new: when `to` exists the next free name is used. Lists the file it wrote; changes nothing in the {noun}.",
-                kit.agent
-                    .export
-                    .as_ref()
-                    .map(|export| format!(" ({})", export::listed(export)))
-                    .unwrap_or_default()
+                kit.agent.export.as_ref().map(|export| format!(" ({})", export::listed(export))).unwrap_or_default()
             ),
             input_schema: json!({
                 "type": "object",
@@ -364,11 +350,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
             name: tool_name(kit, Action::Create),
             description: format!(
                 "Create a new, empty {noun} in {name} at `path` ({}) and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
-                kit.creates
-                    .iter()
-                    .map(|(extension, _)| format!(".{extension}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                kit.creates.iter().map(|(extension, _)| format!(".{extension}")).collect::<Vec<_>>().join(", ")
             ),
             input_schema: json!({
                 "type": "object",
@@ -383,61 +365,57 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
     ]
 }
 
-static SPECS: LazyLock<Vec<KitToolSpec>> =
-    LazyLock::new(|| KITS.iter().flat_map(specs_of).collect());
-
-/// Every kit's tools.
-pub fn specs() -> &'static [KitToolSpec] {
-    &SPECS
+/// Every known kit's tools.
+pub fn specs() -> Vec<KitToolSpec> {
+    known().into_iter().flat_map(specs_of).collect()
 }
 
 /// The tools of the kits installed in this runtime. A kit whose object model Kition has seen
 /// (`model.describe`) gets `<prefix>_query` and `<prefix>_batch` arguments generated from it.
 pub fn installed(kits: &KitManager) -> Vec<KitToolSpec> {
-    let installed: Vec<&str> = kits
-        .statuses()
-        .into_iter()
-        .filter(|kit| kit.installed)
-        .map(|kit| kit.id)
-        .collect();
+    let installed: Vec<&str> = kits.statuses().into_iter().filter(|kit| kit.installed).map(|kit| kit.id).collect();
     if unified() {
-        let on: Vec<&'static KitDefinition> = KITS
-            .iter()
-            .filter(|kit| installed.contains(&kit.id))
-            .collect();
+        let on: Vec<&'static KitDefinition> = kits.definitions().filter(|kit| installed.contains(&kit.id)).collect();
         if !on.is_empty() {
             let exports = on.iter().any(|kit| kit.agent.export.is_some());
             let creates = on.iter().any(|kit| !kit.creates.is_empty());
+            let drafts = on.iter().any(|kit| kit.agent.drafts);
+            let models = on.iter().any(|kit| kit.agent.object_model);
             return unified_specs(&on)
                 .into_iter()
-                .filter(|spec| exports || parse_unified(&spec.name) != Some(Action::Export))
-                .filter(|spec| creates || parse_unified(&spec.name) != Some(Action::Create))
+                .filter(|spec| match parse_unified(&spec.name) {
+                    Some(Action::Export) => exports,
+                    Some(Action::Create) => creates,
+                    Some(Action::DraftReady | Action::DraftReopen) => drafts,
+                    Some(Action::Query | Action::Batch) => models,
+                    _ => true,
+                })
                 .collect();
         }
     }
-    KITS.iter()
+    kits.definitions()
         .filter(|kit| installed.contains(&kit.id))
-        .flat_map(|kit| {
-            specs_described(kit, kits.described(kit.id).as_ref())
-                .into_iter()
-                .filter(|spec| offers(kit, &spec.name))
-        })
+        .flat_map(|kit| specs_described(kit, kits.described(kit.id).as_ref()).into_iter().filter(|spec| offers(kit, &spec.name)))
         .collect()
 }
 
-/// Whether `kit` offers the tool `name` once installed: `<prefix>_export` only when it exports
-/// for the agent, `<prefix>_create` only when it creates files (KHP A41); every other tool always.
+/// Whether `kit` offers the tool `name` once installed (KHP A35, A41): `<prefix>_export` only
+/// when it exports for the agent, `<prefix>_create` only when it creates files, the draft tools
+/// only when its manifest declares drafts (`agent.drafts`), and `<prefix>_query` and
+/// `<prefix>_batch` only when it has an object model (`agent.objectModel`); every other tool
+/// always.
 fn offers(kit: &KitDefinition, name: &str) -> bool {
-    (kit.agent.export.is_some() || name != tool_name(kit, Action::Export))
-        && (!kit.creates.is_empty() || name != tool_name(kit, Action::Create))
+    let is = |action: Action| name == tool_name(kit, action);
+    (kit.agent.export.is_some() || !is(Action::Export))
+        && (!kit.creates.is_empty() || !is(Action::Create))
+        && (kit.agent.drafts || !(is(Action::DraftReady) || is(Action::DraftReopen)))
+        && (kit.agent.object_model || !(is(Action::Query) || is(Action::Batch)))
 }
 
 /// The action of a unified tool name (`kit_export`).
 fn parse_unified(name: &str) -> Option<Action> {
     let suffix = name.strip_prefix("kit_")?;
-    Action::ALL
-        .into_iter()
-        .find(|action| action.suffix() == suffix)
+    Action::ALL.into_iter().find(|action| action.suffix() == suffix)
 }
 
 /// The activity label of a kit tool, for example `Edit layered image in Photo`.
@@ -445,9 +423,7 @@ pub fn label(name: &str) -> Option<String> {
     let Some((kit, action)) = parse(name) else {
         // A unified tool (`kit_<action>`): one for every kit.
         let suffix = name.strip_prefix("kit_")?;
-        let action = Action::ALL
-            .into_iter()
-            .find(|action| action.suffix() == suffix)?;
+        let action = Action::ALL.into_iter().find(|action| action.suffix() == suffix)?;
         return Some(
             match action {
                 Action::Inspect => "Inspect a file",
@@ -488,15 +464,9 @@ const PLAIN_TEXT: &[&str] = &["md", "markdown"];
 
 pub fn linked_file_prompt(path: &str) -> Option<String> {
     let extension = path.trim().rsplit_once('.')?.1.to_ascii_lowercase();
-    let kit = KITS
-        .iter()
-        .find(|kit| kit.extensions.contains(&extension.as_str()))?;
-    let (inspect, commands, run, check) = (
-        tool_name(kit, Action::Inspect),
-        tool_name(kit, Action::Commands),
-        tool_name(kit, Action::Run),
-        tool_name(kit, Action::Check),
-    );
+    let kit = known().into_iter().find(|kit| kit.extensions.contains(&extension.as_str()))?;
+    let (inspect, commands, run, check) =
+        (tool_name(kit, Action::Inspect), tool_name(kit, Action::Commands), tool_name(kit, Action::Run), tool_name(kit, Action::Check));
     Some(
         [
             format!("Current linked {}: `{}`, open in {}.", kit.agent.noun, path.trim(), kit.name),
@@ -520,12 +490,7 @@ pub fn linked_file_prompt(path: &str) -> Option<String> {
 }
 
 fn text_field(input: &Value, key: &str) -> String {
-    input
-        .get(key)
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .unwrap_or_default()
-        .to_owned()
+    input.get(key).and_then(Value::as_str).map(str::trim).unwrap_or_default().to_owned()
 }
 
 /// The path from the input, which must be a file of `kit`.
@@ -534,22 +499,16 @@ pub fn kit_path(input: &Value, kit: &KitDefinition) -> Result<String, KitToolErr
     if path.is_empty() {
         return Err(KitToolError::invalid("missing `path`"));
     }
-    let extension = path
-        .rsplit_once('.')
-        .map(|(_, extension)| extension.to_ascii_lowercase())
-        .unwrap_or_default();
+    let extension = path.rsplit_once('.').map(|(_, extension)| extension.to_ascii_lowercase()).unwrap_or_default();
     if kit.extensions.contains(&extension.as_str()) {
         return Ok(path);
     }
-    let hint = KITS
-        .iter()
+    let hint = known()
+        .into_iter()
         .find(|other| other.extensions.contains(&extension.as_str()))
         .map(|other| format!("; use the {}_* tools for it", other.agent.prefix))
         .unwrap_or_default();
-    Err(KitToolError::invalid(format!(
-        "`{path}` is not a {} ({}){hint}",
-        kit.agent.noun, kit.agent.formats
-    )))
+    Err(KitToolError::invalid(format!("`{path}` is not a {} ({}){hint}", kit.agent.noun, kit.agent.formats)))
 }
 
 fn document_json(view: &DocumentView) -> Value {
@@ -586,9 +545,7 @@ fn check_target_part(input: &Value) -> Result<(), KitToolError> {
         if let Some(value) = target.get(key)
             && value.as_u64().is_none_or(|n| n < 1)
         {
-            return Err(KitToolError::invalid(format!(
-                "`target.{key}` is {value}: {key}s are counted from 1 here (the first is 1)"
-            )));
+            return Err(KitToolError::invalid(format!("`target.{key}` is {value}: {key}s are counted from 1 here (the first is 1)")));
         }
     }
     Ok(())
@@ -597,34 +554,23 @@ fn check_target_part(input: &Value) -> Result<(), KitToolError> {
 /// `target.slide` or `target.page` of a `<prefix>_inspect` call, counted from 1.
 fn target_part(input: &Value) -> Option<u64> {
     let target = input.get("target")?;
-    target
-        .get("slide")
-        .or_else(|| target.get("page"))
-        .and_then(Value::as_u64)
-        .filter(|n| *n >= 1)
+    target.get("slide").or_else(|| target.get("page")).and_then(Value::as_u64).filter(|n| *n >= 1)
 }
 
 /// What the kit's render command ([`KitAgent::render`]) draws for an inspect call: a diagnostic's
 /// target (`target.path` or `target.objectId`, passed on as the kit reported it), else one slide
-/// or page (`slide`, counted from 0), else, when `scale` or `maxSize` is given, the document; at
-/// `scale` (1 unless given) and within `maxSize`. `None` when the call asks for none of these, and
-/// the preview is the kit's screenshot.
+/// or page (`slide`, counted from 0), else the document framed to its content (KHP A39); at
+/// `scale` (1 unless given) and within `maxSize`. A kit without a render command previews with
+/// its screenshot instead.
 ///
 /// [`KitAgent::render`]: crate::KitAgent::render
 fn render_params(input: &Value) -> Option<Map<String, Value>> {
     let mut params = Map::new();
-    let target = input.get("target").filter(|target| {
-        target
-            .get("path")
-            .or_else(|| target.get("objectId"))
-            .is_some()
-    });
+    let target = input.get("target").filter(|target| target.get("path").or_else(|| target.get("objectId")).is_some());
     if let Some(target) = target {
         params.insert("target".into(), target.clone());
     } else if let Some(part) = target_part(input) {
         params.insert("slide".into(), json!(part - 1));
-    } else if input.get("scale").is_none() && input.get("maxSize").is_none() {
-        return None;
     }
     let scale = input.get("scale").filter(|scale| scale.is_number());
     params.insert("scale".into(), scale.cloned().unwrap_or(json!(1)));
@@ -637,11 +583,7 @@ fn render_params(input: &Value) -> Option<Map<String, Value>> {
 /// What a rendered preview shows, for its caption: `part 2 of `a.kfig``, `layer:12 of `a.kfig``.
 fn rendered_caption(kit: &KitDefinition, params: &Map<String, Value>, file: &str) -> String {
     let what = if let Some(target) = params.get("target") {
-        let named = target
-            .get("path")
-            .or_else(|| target.get("objectId"))
-            .and_then(Value::as_str)
-            .unwrap_or_default();
+        let named = target.get("path").or_else(|| target.get("objectId")).and_then(Value::as_str).unwrap_or_default();
         format!("Preview of {named} in `{file}`")
     } else if let Some(slide) = params.get("slide").and_then(Value::as_u64) {
         format!("Preview of part {} of `{file}`", slide + 1)
@@ -662,46 +604,19 @@ fn rendered_png(answer: Option<&Value>) -> Option<Vec<u8>> {
 /// or the document at a scale. `None` when the kit has no render command or it fails, so the
 /// caller falls back to the kit's screenshot. An inspect is never an edit, whatever the kit
 /// reports about the command having changed its view.
-async fn rendered_preview(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    view: &DocumentView,
-    params: Map<String, Value>,
-) -> Option<Vec<Preview>> {
+async fn rendered_preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView, params: Map<String, Value>) -> Option<Vec<Preview>> {
     let command = kit.agent.render?;
     let caption = rendered_caption(kit, &params, view.path.as_deref().unwrap_or(&view.title));
-    let executed = kits
-        .execute(
-            Caller::Agent,
-            view.kit_id,
-            &view.document_id,
-            command,
-            params,
-        )
-        .await
-        .ok()?;
+    let executed = kits.execute(Caller::Agent, view.kit_id, &view.document_id, command, params).await.ok()?;
     let png = rendered_png(executed.result.as_ref())?;
     Some(vec![Preview { caption, png }])
 }
 
 /// [`rendered_preview`] from the file's open editor (A7), through its `ai/run`, never saved.
-async fn live_rendered_preview(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    document: &LiveDocument,
-    params: Map<String, Value>,
-) -> Option<Vec<Preview>> {
+async fn live_rendered_preview(kits: &KitManager, kit: &KitDefinition, document: &LiveDocument, params: Map<String, Value>) -> Option<Vec<Preview>> {
     let command = kit.agent.render?;
     let caption = rendered_caption(kit, &params, &document.path);
-    let answer = kits
-        .bridge()
-        .call(
-            document,
-            "run",
-            json!({ "steps": [{ "command": command, "params": params }], "save": false }),
-        )
-        .await
-        .ok()?;
+    let answer = kits.bridge().call(document, "run", json!({ "steps": [{ "command": command, "params": params }], "save": false })).await.ok()?;
     let png = rendered_png(export::first_result(&answer))?;
     Some(vec![Preview { caption, png }])
 }
@@ -714,17 +629,10 @@ async fn live_rendered_preview(
 /// without them, and for a slide or page target (listed as objects).
 async fn part_content(kits: &KitManager, view: &DocumentView, input: &Value) -> Option<Value> {
     let target = input.get("target");
-    if target
-        .and_then(|t| t.get("slide").or_else(|| t.get("page")))
-        .is_some()
-    {
+    if target.and_then(|t| t.get("slide").or_else(|| t.get("page"))).is_some() {
         return None;
     }
-    let text = |t: Option<&Value>, key: &str| {
-        t.and_then(|t| t.get(key))
-            .and_then(Value::as_str)
-            .map(str::to_owned)
-    };
+    let text = |t: Option<&Value>, key: &str| t.and_then(|t| t.get(key)).and_then(Value::as_str).map(str::to_owned);
     let mut params = Map::new();
     let asked = text(target, "range");
     if let Some(range) = &asked {
@@ -733,45 +641,20 @@ async fn part_content(kits: &KitManager, view: &DocumentView, input: &Value) -> 
     if let Some(sheet) = text(target, "sheet") {
         params.insert("sheet".into(), json!(sheet));
     }
-    if let Ok(executed) = kits
-        .execute(
-            Caller::Agent,
-            view.kit_id,
-            &view.document_id,
-            "sheet.read",
-            params,
-        )
-        .await
+    if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "sheet.read", params).await
         && let Some(result) = executed.result
     {
         return Some(sheet_content(&result, asked.is_some()));
     }
     let mut params = Map::new();
     params.insert("text".into(), json!(true));
-    if let Ok(executed) = kits
-        .execute(
-            Caller::Agent,
-            view.kit_id,
-            &view.document_id,
-            "document.inspect",
-            params,
-        )
-        .await
-        && let Some(blocks) = executed
-            .result
-            .as_ref()
-            .and_then(|r| r.get("blocks"))
-            .and_then(Value::as_array)
+    if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "document.inspect", params).await
+        && let Some(blocks) = executed.result.as_ref().and_then(|r| r.get("blocks")).and_then(Value::as_array)
     {
         let span = target
             .and_then(|t| t.get("paragraphs"))
             .and_then(Value::as_array)
-            .map(|a| {
-                (
-                    a.first().and_then(Value::as_u64).unwrap_or(0) as usize,
-                    a.get(1).and_then(Value::as_u64).map(|n| n as usize),
-                )
-            });
+            .map(|a| (a.first().and_then(Value::as_u64).unwrap_or(0) as usize, a.get(1).and_then(Value::as_u64).map(|n| n as usize)));
         return Some(document_content(blocks, span));
     }
     None
@@ -781,25 +664,16 @@ const CONTENT_ROWS: usize = 40;
 const CONTENT_BLOCKS: usize = 80;
 
 fn cut(text: &str, max: usize) -> String {
-    if text.chars().count() <= max {
-        text.to_owned()
-    } else {
-        format!("{}…", text.chars().take(max).collect::<String>())
-    }
+    if text.chars().count() <= max { text.to_owned() } else { format!("{}…", text.chars().take(max).collect::<String>()) }
 }
 
 /// `sheet.read`'s rows as `[row number, values…]` under their column letters.
 fn sheet_content(read: &Value, asked: bool) -> Value {
     let range = read["range"].as_str().unwrap_or("A1");
     let start = range.split(':').next().unwrap_or("A1");
-    let letters: String = start
-        .chars()
-        .take_while(char::is_ascii_alphabetic)
-        .collect();
+    let letters: String = start.chars().take_while(char::is_ascii_alphabetic).collect();
     let first_row: usize = start[letters.len()..].parse().unwrap_or(1);
-    let first_col = letters.chars().fold(0usize, |n, c| {
-        n * 26 + (c.to_ascii_uppercase() as usize - 'A' as usize + 1)
-    });
+    let first_col = letters.chars().fold(0usize, |n, c| n * 26 + (c.to_ascii_uppercase() as usize - 'A' as usize + 1));
     let column = |mut n: usize| {
         let mut out = String::new();
         while n > 0 {
@@ -809,17 +683,8 @@ fn sheet_content(read: &Value, asked: bool) -> Value {
         out
     };
     let values = read["values"].as_array().cloned().unwrap_or_default();
-    let width = values
-        .iter()
-        .filter_map(Value::as_array)
-        .map(Vec::len)
-        .max()
-        .unwrap_or(0);
-    let shown = if asked {
-        values.len()
-    } else {
-        values.len().min(CONTENT_ROWS)
-    };
+    let width = values.iter().filter_map(Value::as_array).map(Vec::len).max().unwrap_or(0);
+    let shown = if asked { values.len() } else { values.len().min(CONTENT_ROWS) };
     let rows: Vec<Value> = values
         .iter()
         .take(shown)
@@ -857,10 +722,7 @@ fn sheet_content(read: &Value, asked: bool) -> Value {
 /// `document.inspect`'s blocks as paragraphs: index, style, kind and text.
 fn document_content(blocks: &[Value], span: Option<(usize, Option<usize>)>) -> Value {
     let (from, to) = span.unwrap_or((0, None));
-    let to = to.map_or_else(
-        || blocks.len().min(from + CONTENT_BLOCKS),
-        |t| (t + 1).min(blocks.len()),
-    );
+    let to = to.map_or_else(|| blocks.len().min(from + CONTENT_BLOCKS), |t| (t + 1).min(blocks.len()));
     let paragraphs: Vec<Value> = blocks
         .iter()
         .skip(from)
@@ -869,12 +731,8 @@ fn document_content(blocks: &[Value], span: Option<(usize, Option<usize>)>) -> V
         .collect();
     let mut content = json!({ "paragraphs": paragraphs, "total": blocks.len() });
     if to < blocks.len() {
-        content["more"] = json!(format!(
-            "paragraphs {from}–{} of {} shown; pass target {{\"paragraphs\": [{to}, {}]}} for the rest",
-            to - 1,
-            blocks.len(),
-            blocks.len() - 1
-        ));
+        content["more"] =
+            json!(format!("paragraphs {from}–{} of {} shown; pass target {{\"paragraphs\": [{to}, {}]}} for the rest", to - 1, blocks.len(), blocks.len() - 1));
     }
     content
 }
@@ -893,30 +751,10 @@ async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> S
             words.push(ch);
         }
     }
-    match kits
-        .commands(
-            Caller::Agent,
-            view.kit_id,
-            Some(&view.document_id),
-            Some(&words),
-        )
-        .await
-    {
+    match kits.commands(Caller::Agent, view.kit_id, Some(&view.document_id), Some(&words)).await {
         Ok(found) if !found.is_empty() => {
-            let near: Vec<String> = found
-                .iter()
-                .take(5)
-                .map(|c| {
-                    format!(
-                        "{} {}",
-                        c.id,
-                        c.description
-                            .as_deref()
-                            .unwrap_or_default()
-                            .trim_start_matches("Params: ")
-                    )
-                })
-                .collect();
+            let near: Vec<String> =
+                found.iter().take(5).map(|c| format!("{} {}", c.id, c.description.as_deref().unwrap_or_default().trim_start_matches("Params: "))).collect();
             format!(" — nearest commands: {}", near.join("; "))
         }
         _ => String::new(),
@@ -928,76 +766,33 @@ async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> S
 /// The first of `commands` the kit has, run with `{index: part - 1}`: `Ok(None)` when it has none
 /// of them, the kit's error when it has one and refuses (a part past the end), so a missing part
 /// is said and never quietly replaced by the whole document or the part the kit was on.
-async fn part_command(
-    kits: &KitManager,
-    view: &DocumentView,
-    commands: [&str; 2],
-    part: u64,
-) -> Result<Option<crate::manager::ExecuteView>, KitToolError> {
+async fn part_command(kits: &KitManager, view: &DocumentView, commands: [&str; 2], part: u64) -> Result<Option<crate::manager::ExecuteView>, KitToolError> {
     for command in commands {
         let mut params = Map::new();
         params.insert("index".into(), json!(part - 1));
-        match kits
-            .execute(
-                Caller::Agent,
-                view.kit_id,
-                &view.document_id,
-                command,
-                params,
-            )
-            .await
-        {
+        match kits.execute(Caller::Agent, view.kit_id, &view.document_id, command, params).await {
             Ok(executed) => return Ok(Some(executed)),
-            Err(KitError::Kit {
-                reason: Some(kition_kit_protocol::ErrorReason::CommandNotFound),
-                ..
-            }) => {}
+            Err(KitError::Kit { reason: Some(kition_kit_protocol::ErrorReason::CommandNotFound), .. }) => {}
             Err(error) => {
-                return Err(
-                    KitToolError::from(error).context(&format!("part {part} (counted from 1): "))
-                );
+                return Err(KitToolError::from(error).context(&format!("part {part} (counted from 1): ")));
             }
         }
     }
     Ok(None)
 }
 
-async fn go_to_part(
-    kits: &KitManager,
-    view: &DocumentView,
-    part: u64,
-) -> Result<Option<DocumentView>, KitToolError> {
-    Ok(part_command(kits, view, ["slide.go", "page.go"], part)
-        .await?
-        .map(|executed| executed.document))
+async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Result<Option<DocumentView>, KitToolError> {
+    Ok(part_command(kits, view, ["slide.go", "page.go"], part).await?.map(|executed| executed.document))
 }
 
-async fn part_objects(
-    kits: &KitManager,
-    view: &DocumentView,
-    part: u64,
-) -> Result<Option<Value>, KitToolError> {
+async fn part_objects(kits: &KitManager, view: &DocumentView, part: u64) -> Result<Option<Value>, KitToolError> {
     model::warm(kits, view).await;
-    Ok(
-        part_command(kits, view, ["slide.inspect", "page.inspect"], part)
-            .await?
-            .and_then(|executed| executed.result),
-    )
+    Ok(part_command(kits, view, ["slide.inspect", "page.inspect"], part).await?.and_then(|executed| executed.result))
 }
 
 async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) -> Vec<Preview> {
-    match kits
-        .preview(view.kit_id, &view.document_id, PREVIEW_SIZE)
-        .await
-    {
-        Ok(png) => vec![Preview {
-            caption: format!(
-                "Preview of `{}` from {}.",
-                view.path.as_deref().unwrap_or(&view.title),
-                kit.name
-            ),
-            png,
-        }],
+    match kits.preview(view.kit_id, &view.document_id, PREVIEW_SIZE).await {
+        Ok(png) => vec![Preview { caption: format!("Preview of `{}` from {}.", view.path.as_deref().unwrap_or(&view.title), kit.name), png }],
         Err(error) => {
             tracing::warn!(error = %error, kit = kit.id, "kit preview failed");
             Vec::new()
@@ -1007,27 +802,13 @@ async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) ->
 
 /// The editor in the renderer that has `path` open, if one does (the Kit AI bridge, A7): the
 /// agent's edits then go to it, so the person sees them and they join its undo history.
-pub(crate) async fn live(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    path: &str,
-) -> Option<LiveDocument> {
-    kits.bridge()
-        .find(path)
-        .await
-        .filter(|document| document.kit == kit.id)
+pub(crate) async fn live(kits: &KitManager, kit: &KitDefinition, path: &str) -> Option<LiveDocument> {
+    kits.bridge().find(path).await.filter(|document| document.kit == kit.id)
 }
 
-async fn live_preview(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    document: &LiveDocument,
-) -> Vec<Preview> {
+async fn live_preview(kits: &KitManager, kit: &KitDefinition, document: &LiveDocument) -> Vec<Preview> {
     match kits.bridge().preview(document, PREVIEW_SIZE).await {
-        Ok(png) => vec![Preview {
-            caption: format!("Preview of `{}` from {}.", document.path, kit.name),
-            png,
-        }],
+        Ok(png) => vec![Preview { caption: format!("Preview of `{}` from {}.", document.path, kit.name), png }],
         Err(error) => {
             tracing::warn!(error = %error, kit = kit.id, "live kit preview failed");
             Vec::new()
@@ -1042,17 +823,9 @@ pub async fn call(kits: &KitManager, name: &str, input: &Value) -> Option<KitToo
 }
 
 /// Runs the kit tool `name` with `input` and the harness's `options`.
-pub async fn call_with(
-    kits: &KitManager,
-    name: &str,
-    input: &Value,
-    options: CallOptions,
-) -> Option<KitToolResult> {
+pub async fn call_with(kits: &KitManager, name: &str, input: &Value, options: CallOptions) -> Option<KitToolResult> {
     let (kit, action) = parse(name).or_else(|| unified_route(name, input))?;
-    let draft = input
-        .get("draft")
-        .and_then(Value::as_bool)
-        .unwrap_or(options.draft);
+    let draft = input.get("draft").and_then(Value::as_bool).unwrap_or(options.draft);
     if matches!(action, Action::Inspect | Action::Run)
         && let Err(error) = check_target_part(input)
     {
@@ -1074,11 +847,7 @@ pub async fn call_with(
 
 /// The open editor of `path`, which a draft needs: drafts live in the person's editor (standard
 /// 2.0 A15), so a file no editor has open has none.
-pub(crate) async fn draft_editor(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    path: &str,
-) -> Result<LiveDocument, KitToolError> {
+pub(crate) async fn draft_editor(kits: &KitManager, kit: &KitDefinition, path: &str) -> Result<LiveDocument, KitToolError> {
     live(kits, kit, path).await.ok_or_else(|| {
         KitToolError::new(ErrorCode::NotOpen, format!(
             "`{path}` is not open in its {} editor, so it has no draft: drafts live in the person's open editor. Ask the person to open it, or edit the file live (`draft: false`).",
@@ -1095,49 +864,25 @@ pub(crate) enum DraftAt {
     Headless(String),
 }
 
-pub(crate) async fn draft_at(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    create: bool,
-) -> Result<DraftAt, KitToolError> {
+pub(crate) async fn draft_at(kits: &KitManager, kit: &'static KitDefinition, path: &str, create: bool) -> Result<DraftAt, KitToolError> {
     if let Some(document) = live(kits, kit, path).await {
         return Ok(DraftAt::Editor(document));
     }
     if kits.headless_drafts() {
-        return drafts::document(kits, kit, path, create)
-            .await
-            .map(DraftAt::Headless);
+        return drafts::document(kits, kit, path, create).await.map(DraftAt::Headless);
     }
     draft_editor(kits, kit, path).await.map(DraftAt::Editor)
 }
 
 /// Whether a read in draft mode goes to a headless draft: no editor has the file open, the
 /// server keeps headless drafts, and the call asks for the draft or one exists.
-async fn reads_headless_draft(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    path: &str,
-    draft: bool,
-    explicit: bool,
-) -> bool {
-    draft
-        && kits.headless_drafts()
-        && (explicit || drafts::exists(kits, path))
-        && live(kits, kit, path).await.is_none()
+async fn reads_headless_draft(kits: &KitManager, kit: &KitDefinition, path: &str, draft: bool, explicit: bool) -> bool {
+    draft && kits.headless_drafts() && (explicit || drafts::exists(kits, path)) && live(kits, kit, path).await.is_none()
 }
 
-async fn headless_draft_preview(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    path: &str,
-    id: &str,
-) -> Vec<Preview> {
+async fn headless_draft_preview(kits: &KitManager, kit: &KitDefinition, path: &str, id: &str) -> Vec<Preview> {
     match kits.preview(kit.id, id, PREVIEW_SIZE).await {
-        Ok(png) => vec![Preview {
-            caption: format!("Preview of your draft of `{path}` from {}.", kit.name),
-            png,
-        }],
+        Ok(png) => vec![Preview { caption: format!("Preview of your draft of `{path}` from {}.", kit.name), png }],
         Err(error) => {
             tracing::warn!(error = %error, kit = kit.id, "draft preview failed");
             Vec::new()
@@ -1153,19 +898,9 @@ fn draft_json(view: &DocumentView, path: &str) -> Value {
     answer
 }
 
-async fn draft_preview(
-    kits: &KitManager,
-    kit: &KitDefinition,
-    document: &LiveDocument,
-) -> Vec<Preview> {
+async fn draft_preview(kits: &KitManager, kit: &KitDefinition, document: &LiveDocument) -> Vec<Preview> {
     match kits.bridge().preview_draft(document, PREVIEW_SIZE).await {
-        Ok(png) => vec![Preview {
-            caption: format!(
-                "Preview of your draft of `{}` from {}.",
-                document.path, kit.name
-            ),
-            png,
-        }],
+        Ok(png) => vec![Preview { caption: format!("Preview of your draft of `{}` from {}.", document.path, kit.name), png }],
         Err(error) => {
             tracing::warn!(error = %error, kit = kit.id, "draft preview failed");
             Vec::new()
@@ -1197,25 +932,18 @@ fn in_agent_scope(steps: &[Value]) -> Vec<Value> {
     steps
         .iter()
         .map(|step| {
-            let command = step
-                .get("command")
-                .and_then(Value::as_str)
-                .unwrap_or_default();
+            let command = step.get("command").and_then(Value::as_str).unwrap_or_default();
             if command != "edit.undo" && command != "edit.redo" {
                 return step.clone();
             }
             let mut step = step.clone();
             if let Some(object) = step.as_object_mut() {
-                let params = object
-                    .entry("params")
-                    .or_insert_with(|| Value::Object(Map::new()));
+                let params = object.entry("params").or_insert_with(|| Value::Object(Map::new()));
                 if !params.is_object() {
                     *params = Value::Object(Map::new());
                 }
                 if let Some(params) = params.as_object_mut() {
-                    params
-                        .entry("scope")
-                        .or_insert_with(|| Value::String("agent".to_owned()));
+                    params.entry("scope").or_insert_with(|| Value::String("agent".to_owned()));
                 }
             }
             step
@@ -1223,11 +951,7 @@ fn in_agent_scope(steps: &[Value]) -> Vec<Value> {
         .collect()
 }
 
-async fn run_on_draft(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    input: &Value,
-) -> KitToolResult {
+async fn run_on_draft(kits: &KitManager, kit: &'static KitDefinition, input: &Value) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let steps = input
         .get("steps")
@@ -1242,16 +966,9 @@ async fn run_on_draft(
     };
     let mut answer = kits
         .bridge()
-        .call(
-            &document,
-            "run",
-            json!({ "steps": steps, "save": false, "draft": true }),
-        )
+        .call(&document, "run", json!({ "steps": steps, "save": false, "draft": true }))
         .await
-        .map_err(|error| {
-            KitToolError::from(error)
-                .context(&format!("on the draft in the open {} editor: ", short(kit)))
-        })?;
+        .map_err(|error| KitToolError::from(error).context(&format!("on the draft in the open {} editor: ", short(kit))))?;
     let previews = draft_preview(kits, kit, &document).await;
     let ran = answer["completed"].as_array().map_or(0, Vec::len);
     answer["live"] = Value::Bool(true);
@@ -1269,50 +986,28 @@ async fn run_on_draft(
 }
 
 /// Runs `steps` on the headless draft `id` of `path` and stores the draft.
-async fn run_on_headless_draft(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    id: &str,
-    steps: &[Value],
-) -> KitToolResult {
+async fn run_on_headless_draft(kits: &KitManager, kit: &'static KitDefinition, path: &str, id: &str, steps: &[Value]) -> KitToolResult {
     let mut view = kits.document(Caller::Agent, kit.id, id).await?;
     let mut done = Vec::new();
     let mut failure = None;
     for (index, step) in steps.iter().enumerate() {
         let command = text_field(step, "command");
         if command.is_empty() {
-            failure = Some(
-                KitToolError::invalid(format!("step {index} has no `command`")).at(Some(index)),
-            );
+            failure = Some(KitToolError::invalid(format!("step {index} has no `command`")).at(Some(index)));
             break;
         }
-        let params = step
-            .get("params")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_else(Map::new);
-        match kits
-            .execute(Caller::Agent, kit.id, id, &command, params)
-            .await
-        {
+        let params = step.get("params").and_then(Value::as_object).cloned().unwrap_or_else(Map::new);
+        match kits.execute(Caller::Agent, kit.id, id, &command, params).await {
             Ok(executed) => {
                 done.push(json!({ "command": command, "changed": executed.changed, "result": executed.result }));
                 view = executed.document;
             }
             Err(error) => {
                 let mut error = KitToolError::from(error);
-                if !matches!(
-                    error.code,
-                    ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable
-                ) {
+                if !matches!(error.code, ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable) {
                     error.code = ErrorCode::COMMAND_FAILED;
                 }
-                failure = Some(
-                    error
-                        .context(&format!("step {index} (`{command}`) failed: "))
-                        .at(Some(index)),
-                );
+                failure = Some(error.context(&format!("step {index} (`{command}`) failed: ")).at(Some(index)));
                 break;
             }
         }
@@ -1322,9 +1017,7 @@ async fn run_on_headless_draft(
         drafts::persist(kits, kit, path, id).await?;
     }
     if let Some(failure) = failure {
-        return Err(failure.with_output(
-            json!({ "completed": done, "draft": true, "document": draft_json(&view, path) }),
-        ));
+        return Err(failure.with_output(json!({ "completed": done, "draft": true, "document": draft_json(&view, path) })));
     }
     let previews = headless_draft_preview(kits, kit, path, id).await;
     Ok(KitToolOutput {
@@ -1340,50 +1033,25 @@ async fn run_on_headless_draft(
     })
 }
 
-async fn draft_state(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    input: &Value,
-    action: Action,
-) -> KitToolResult {
+async fn draft_state(kits: &KitManager, kit: &'static KitDefinition, input: &Value, action: Action) -> KitToolResult {
     let path = kit_path(input, kit)?;
     if kits.headless_drafts() && live(kits, kit, &path).await.is_none() {
-        let state = if action == Action::DraftReady {
-            DraftState::Ready
-        } else {
-            DraftState::Open
-        };
+        let state = if action == Action::DraftReady { DraftState::Ready } else { DraftState::Open };
         drafts::set_state(kits, &path, state)?;
         let summary = if state == DraftState::Ready {
-            format!(
-                "Your draft of `{path}` is ready for review; the person will merge or discard it."
-            )
+            format!("Your draft of `{path}` is ready for review; the person will merge or discard it.")
         } else {
             format!("Your draft of `{path}` is back with you to keep editing.")
         };
-        return Ok(KitToolOutput::new(
-            summary,
-            json!({ "path": path, "state": if state == DraftState::Ready { "ready" } else { "open" } }),
-        ));
+        return Ok(KitToolOutput::new(summary, json!({ "path": path, "state": if state == DraftState::Ready { "ready" } else { "open" } })));
     }
     let document = draft_editor(kits, kit, &path).await?;
-    let answer = kits
-        .bridge()
-        .call(&document, action.suffix(), json!({}))
-        .await
-        .map_err(|error| {
-            let failure = KitToolError::from(error);
-            // A draft that does not exist cannot be made ready: edit with `draft: true` first.
-            let failure = if failure.message.contains("no draft") {
-                KitToolError {
-                    code: ErrorCode::DraftRequired,
-                    ..failure
-                }
-            } else {
-                failure
-            };
-            failure.context(&format!("in the open {} editor: ", short(kit)))
-        })?;
+    let answer = kits.bridge().call(&document, action.suffix(), json!({})).await.map_err(|error| {
+        let failure = KitToolError::from(error);
+        // A draft that does not exist cannot be made ready: edit with `draft: true` first.
+        let failure = if failure.message.contains("no draft") { KitToolError { code: ErrorCode::DraftRequired, ..failure } } else { failure };
+        failure.context(&format!("in the open {} editor: ", short(kit)))
+    })?;
     let summary = if action == Action::DraftReady {
         format!("Your draft of `{path}` is ready for review; the person will merge or discard it.")
     } else {
@@ -1392,12 +1060,7 @@ async fn draft_state(
     Ok(KitToolOutput::new(summary, answer))
 }
 
-async fn inspect(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    input: &Value,
-    draft: bool,
-) -> KitToolResult {
+async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, draft: bool) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let wants_preview = input.get("preview").and_then(Value::as_bool) != Some(false);
     // An explicit `draft: true` needs the editor; the run's default falls back to the file.
@@ -1405,57 +1068,28 @@ async fn inspect(
     if reads_headless_draft(kits, kit, &path, draft, explicit).await {
         let id = drafts::document(kits, kit, &path, false).await?;
         let view = kits.document(Caller::Agent, kit.id, &id).await?;
-        let previews = if wants_preview {
-            headless_draft_preview(kits, kit, &path, &id).await
-        } else {
-            Vec::new()
-        };
-        return Ok(KitToolOutput {
-            previews,
-            ..KitToolOutput::new(
-                format!("Opened your draft of `{path}`: {}", view.summary),
-                draft_json(&view, &path),
-            )
-        });
+        let previews = if wants_preview { headless_draft_preview(kits, kit, &path, &id).await } else { Vec::new() };
+        return Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened your draft of `{path}`: {}", view.summary), draft_json(&view, &path)) });
     }
     let open = live(kits, kit, &path).await;
     if draft && (open.is_some() || explicit) {
         let document = draft_editor(kits, kit, &path).await?;
-        if let Ok(mut answer) = kits
-            .bridge()
-            .call(&document, "inspect", json!({ "draft": true }))
-            .await
-        {
-            let previews = if wants_preview {
-                draft_preview(kits, kit, &document).await
-            } else {
-                Vec::new()
-            };
-            let summary = answer["document"]["summary"]
-                .as_str()
-                .unwrap_or_default()
-                .to_owned();
+        if let Ok(mut answer) = kits.bridge().call(&document, "inspect", json!({ "draft": true })).await {
+            let previews = if wants_preview { draft_preview(kits, kit, &document).await } else { Vec::new() };
+            let summary = answer["document"]["summary"].as_str().unwrap_or_default().to_owned();
             answer["live"] = Value::Bool(true);
             answer["draft"] = Value::Bool(true);
-            return Ok(KitToolOutput {
-                previews,
-                ..KitToolOutput::new(format!("Opened your draft of `{path}`: {summary}"), answer)
-            });
+            return Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened your draft of `{path}`: {summary}"), answer) });
         }
         if explicit {
-            return Err(KitToolError::new(
-                ErrorCode::DraftRequired,
-                format!("`{path}` has no draft yet: edit it with `draft: true` first."),
-            ));
+            return Err(KitToolError::new(ErrorCode::DraftRequired, format!("`{path}` has no draft yet: edit it with `draft: true` first.")));
         }
         // No draft yet: the live document is what a draft would start from.
     }
     if let Some(document) = open {
         let mut answer = kits.bridge().call(&document, "inspect", json!({})).await?;
         let rendered = match render_params(input) {
-            Some(params) if wants_preview => {
-                live_rendered_preview(kits, kit, &document, params).await
-            }
+            Some(params) if wants_preview => live_rendered_preview(kits, kit, &document, params).await,
             _ => None,
         };
         let previews = match rendered {
@@ -1463,21 +1097,9 @@ async fn inspect(
             None if wants_preview => live_preview(kits, kit, &document).await,
             None => Vec::new(),
         };
-        let summary = answer["document"]["summary"]
-            .as_str()
-            .unwrap_or_default()
-            .to_owned();
+        let summary = answer["document"]["summary"].as_str().unwrap_or_default().to_owned();
         answer["live"] = Value::Bool(true);
-        return Ok(KitToolOutput {
-            previews,
-            ..KitToolOutput::new(
-                format!(
-                    "Opened `{path}` in its open {} editor: {summary}",
-                    short(kit)
-                ),
-                answer,
-            )
-        });
+        return Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened `{path}` in its open {} editor: {summary}", short(kit)), answer) });
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
     if let Some(part) = target_part(input)
@@ -1514,20 +1136,12 @@ async fn inspect(
             part - 1
         ));
     }
-    Ok(KitToolOutput {
-        previews,
-        ..KitToolOutput::new(format!("Opened `{path}`: {}", view.summary), answer)
-    })
+    Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened `{path}`: {}", view.summary), answer) })
 }
 
 /// `<prefix>_check` (standard 2.0 A22): the diagnostics of the agent's draft, of the open editor's
 /// document, or of the file through the headless kit, as `<prefix>_inspect` chooses among them.
-async fn check(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    input: &Value,
-    draft: bool,
-) -> KitToolResult {
+async fn check(kits: &KitManager, kit: &'static KitDefinition, input: &Value, draft: bool) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
     let headless_draft = reads_headless_draft(kits, kit, &path, draft, explicit).await;
@@ -1535,10 +1149,7 @@ async fn check(
     let (answer, what) = if headless_draft {
         let id = drafts::document(kits, kit, &path, false).await?;
         let answer = kits.check(Caller::Agent, kit.id, &id).await?.ok_or_else(|| {
-            KitToolError::new(
-                ErrorCode::Unsupported,
-                format!("this version of {} cannot check documents yet; inspect the preview instead", short(kit)),
-            )
+            KitToolError::new(ErrorCode::Unsupported, format!("this version of {} cannot check documents yet; inspect the preview instead", short(kit)))
         })?;
         (answer, format!("your draft of `{path}`"))
     } else if draft && (open.is_some() || explicit) {
@@ -1547,51 +1158,29 @@ async fn check(
             .bridge()
             .call(&document, "check", json!({ "draft": true }))
             .await
-            .map_err(|error| {
-                KitToolError::from(error)
-                    .context(&format!("on the draft in the open {} editor: ", short(kit)))
-            })?;
+            .map_err(|error| KitToolError::from(error).context(&format!("on the draft in the open {} editor: ", short(kit))))?;
         (answer, format!("your draft of `{path}`"))
     } else if let Some(document) = open {
         let answer = kits
             .bridge()
             .call(&document, "check", json!({}))
             .await
-            .map_err(|error| {
-                KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit)))
-            })?;
+            .map_err(|error| KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit))))?;
         (answer, format!("`{path}`"))
     } else {
         let view = kits.open(Caller::Agent, &path).await?;
-        let answer = kits
-            .check(Caller::Agent, view.kit_id, &view.document_id)
-            .await?
-            .ok_or_else(|| {
-                KitToolError::new(
-                    ErrorCode::Unsupported,
-                    format!("this version of {} cannot check documents yet; inspect the preview instead", short(kit)),
-                )
-            })?;
+        let answer = kits.check(Caller::Agent, view.kit_id, &view.document_id).await?.ok_or_else(|| {
+            KitToolError::new(ErrorCode::Unsupported, format!("this version of {} cannot check documents yet; inspect the preview instead", short(kit)))
+        })?;
         (answer, format!("`{path}`"))
     };
-    let diagnostics = answer["diagnostics"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    Ok(KitToolOutput::new(
-        diagnostics_summary(&what, &diagnostics),
-        json!({ "diagnostics": diagnostics }),
-    ))
+    let diagnostics = answer["diagnostics"].as_array().cloned().unwrap_or_default();
+    Ok(KitToolOutput::new(diagnostics_summary(&what, &diagnostics), json!({ "diagnostics": diagnostics })))
 }
 
 /// `Checked `a.pptx`: 1 error, 2 warnings, no notes.`
 fn diagnostics_summary(what: &str, diagnostics: &[Value]) -> String {
-    let count = |severity: &str| {
-        diagnostics
-            .iter()
-            .filter(|diagnostic| diagnostic["severity"] == severity)
-            .count()
-    };
+    let count = |severity: &str| diagnostics.iter().filter(|diagnostic| diagnostic["severity"] == severity).count();
     let plural = |n: usize, one: &str, many: &str| match n {
         0 => format!("no {many}"),
         1 => format!("1 {one}"),
@@ -1612,22 +1201,12 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
     let path = kit_path(input, kit)?;
     let query = text_field(input, "query");
     if let Some(document) = live(kits, kit, &path).await {
-        let answer = kits
-            .bridge()
-            .call(&document, "commands", json!({ "query": query }))
-            .await?;
+        let answer = kits.bridge().call(&document, "commands", json!({ "query": query })).await?;
         let found = answer["commands"].as_array().cloned().unwrap_or_default();
         return Ok(listed_commands(&query, found));
     }
     let view = kits.open(Caller::Agent, &path).await?;
-    let found = kits
-        .commands(
-            Caller::Agent,
-            view.kit_id,
-            Some(&view.document_id),
-            Some(&query),
-        )
-        .await?;
+    let found = kits.commands(Caller::Agent, view.kit_id, Some(&view.document_id), Some(&query)).await?;
     let found = found
         .into_iter()
         .map(|command| {
@@ -1653,17 +1232,10 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
 /// Points a search for exporting or creating files at `<prefix>_export` and `<prefix>_create`:
 /// those are tools, not commands, and commands that name files are not available to the agent.
 fn file_tool_hint(kit: &KitDefinition, query: &str) -> Option<String> {
-    let words: Vec<String> = query
-        .to_lowercase()
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .map(str::to_owned)
-        .collect();
+    let words: Vec<String> = query.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_owned).collect();
     let has = |list: &[&str]| words.iter().any(|w| list.contains(&w.as_str()));
     if let Some(export) = kit.agent.export.as_ref()
-        && (has(&[
-            "export", "render", "encode", "output", "movie", "video", "write",
-        ]) || has(export.formats))
+        && (has(&["export", "render", "encode", "output", "movie", "video", "write"]) || has(export.formats))
     {
         return Some(format!(
             "To write the document to a new {} file, use {} (path, to) instead of a command.",
@@ -1671,14 +1243,8 @@ fn file_tool_hint(kit: &KitDefinition, query: &str) -> Option<String> {
             tool_name(kit, Action::Export)
         ));
     }
-    if !kit.creates.is_empty()
-        && has(&["new", "create", "blank", "empty"])
-        && has(&["file", "project", "document", "deck", "presentation"])
-    {
-        return Some(format!(
-            "To make a new file, use {} (path).",
-            tool_name(kit, Action::Create)
-        ));
+    if !kit.creates.is_empty() && has(&["new", "create", "blank", "empty"]) && has(&["file", "project", "document", "deck", "presentation"]) {
+        return Some(format!("To make a new file, use {} (path).", tool_name(kit, Action::Create)));
     }
     None
 }
@@ -1686,28 +1252,17 @@ fn file_tool_hint(kit: &KitDefinition, query: &str) -> Option<String> {
 /// `<prefix>_create`: a new file through the kit (KHP A41); the result lists it (A30).
 async fn create(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
     let path = kit_path(input, kit)?;
-    let extension = path
-        .rsplit_once('.')
-        .map(|(_, e)| e.to_ascii_lowercase())
-        .unwrap_or_default();
+    let extension = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
     if !kit.creates.iter().any(|(known, _)| *known == extension) {
         return Err(KitToolError::invalid(format!(
             "{} creates {}, not .{extension}",
             kit.name,
-            kit.creates
-                .iter()
-                .map(|(e, _)| format!(".{e}"))
-                .collect::<Vec<_>>()
-                .join(", ")
+            kit.creates.iter().map(|(e, _)| format!(".{e}")).collect::<Vec<_>>().join(", ")
         )));
     }
     let mut options = Map::new();
     if let Some(size) = input.get("size").and_then(Value::as_object) {
-        options.extend(
-            size.iter()
-                .filter(|(key, _)| *key == "width" || *key == "height")
-                .map(|(key, value)| (key.clone(), value.clone())),
-        );
+        options.extend(size.iter().filter(|(key, _)| *key == "width" || *key == "height").map(|(key, value)| (key.clone(), value.clone())));
     }
     let view = kits.create_at(Caller::Agent, &path, options).await?;
     let written = view.path.clone().unwrap_or(path);
@@ -1717,36 +1272,11 @@ async fn create(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToo
     ))
 }
 
-/// A command as the search answers it: id, title, and its params in kit command notation, with
-/// the schema's short notes the notation does not carry (`index: a position counted from 0`).
+/// A command as the search answers it: its id, title, and parameter schema (KHP A5: a
+/// ParameterSchemaSpec in its JSON Schema form, as the kit lists it), and `enabled: false` when it
+/// cannot run now.
 fn compact_command(command: Value) -> Value {
-    let schema = &command["params"];
-    let notation = schema["description"]
-        .as_str()
-        .map(str::to_owned)
-        .or_else(|| {
-            command["description"]
-                .as_str()
-                .map(|d| d.trim_start_matches("Params: ").to_owned())
-        })
-        .unwrap_or_default();
-    let mut notes = Vec::new();
-    if let Some(properties) = schema["properties"].as_object() {
-        for (name, property) in properties {
-            if let Some(note) = property["description"].as_str()
-                && note.len() <= 60
-                && !notation.contains(note)
-            {
-                notes.push(format!("{name}: {note}"));
-            }
-        }
-    }
-    let params = if notes.is_empty() {
-        notation
-    } else {
-        format!("{notation} [{}]", notes.join("; "))
-    };
-    let mut out = json!({ "id": command["id"], "title": command["title"], "params": params });
+    let mut out = json!({ "id": command["id"], "title": command["title"], "params": command["params"] });
     if command["enabled"] == Value::Bool(false) {
         out["enabled"] = Value::Bool(false);
     }
@@ -1779,33 +1309,17 @@ fn lean_shape(shape: &mut Value) {
 
 /// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
 fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
-    if found
-        .first()
-        .is_some_and(|command| command["closest"] == true)
-    {
-        let listed: Vec<Value> = found
-            .into_iter()
-            .take(MAX_COMMANDS)
-            .map(compact_command)
-            .collect();
+    if found.first().is_some_and(|command| command["closest"] == true) {
+        let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
         return KitToolOutput::new(
-            format!(
-                "No command matches `{query}`; these are the closest by spelling. Try other words, for example what the command does."
-            ),
+            format!("No command matches `{query}`; these are the closest by spelling. Try other words, for example what the command does."),
             json!({ "commands": listed, "total": 0 }),
         );
     }
     let total = found.len();
-    let listed: Vec<Value> = found
-        .into_iter()
-        .take(MAX_COMMANDS)
-        .map(compact_command)
-        .collect();
+    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
     let summary = if total > listed.len() {
-        format!(
-            "{total} commands match `{query}`; showing {}. Use more specific keywords.",
-            listed.len()
-        )
+        format!("{total} commands match `{query}`; showing {}. Use more specific keywords.", listed.len())
     } else {
         format!("{total} commands match `{query}`")
     };
@@ -1827,63 +1341,31 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             .bridge()
             .call(&document, "run", json!({ "steps": steps, "save": save }))
             .await
-            .map_err(|error| {
-                KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit)))
-            })?;
+            .map_err(|error| KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit))))?;
         let previews = live_preview(kits, kit, &document).await;
         let ran = answer["completed"].as_array().map_or(0, Vec::len);
-        let saved = if answer["saved"] == true {
-            "saved"
-        } else {
-            "not saved"
-        };
-        let summary = answer["document"]["summary"]
-            .as_str()
-            .unwrap_or_default()
-            .to_owned();
+        let saved = if answer["saved"] == true { "saved" } else { "not saved" };
+        let summary = answer["document"]["summary"].as_str().unwrap_or_default().to_owned();
         answer["live"] = Value::Bool(true);
         return Ok(KitToolOutput {
             previews,
-            ..KitToolOutput::new(
-                format!(
-                    "Ran {ran} commands on `{path}` in its open {} editor ({saved}): {summary}",
-                    short(kit)
-                ),
-                answer,
-            )
+            ..KitToolOutput::new(format!("Ran {ran} commands on `{path}` in its open {} editor ({saved}): {summary}", short(kit)), answer)
         });
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
     if let Some(part) = target_part(input) {
-        view = go_to_part(kits, &view, part).await?.ok_or_else(|| {
-            KitToolError::invalid(format!(
-                "cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)"
-            ))
-        })?;
+        view = go_to_part(kits, &view, part)
+            .await?
+            .ok_or_else(|| KitToolError::invalid(format!("cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)")))?;
     }
     let mut done = Vec::new();
     for (index, step) in steps.iter().enumerate() {
         let command = text_field(step, "command");
         if command.is_empty() {
-            return Err(
-                KitToolError::invalid(format!("step {index} has no `command`")).at(Some(index)),
-            );
+            return Err(KitToolError::invalid(format!("step {index} has no `command`")).at(Some(index)));
         }
-        let params = step
-            .get("params")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_else(Map::new);
-        match kits
-            .execute(
-                Caller::Agent,
-                view.kit_id,
-                &view.document_id,
-                &command,
-                params,
-            )
-            .await
-        {
+        let params = step.get("params").and_then(Value::as_object).cloned().unwrap_or_else(Map::new);
+        match kits.execute(Caller::Agent, view.kit_id, &view.document_id, &command, params).await {
             Ok(executed) => {
                 done.push(json!({ "command": command, "changed": executed.changed, "result": executed.result }));
                 view = executed.document;
@@ -1891,22 +1373,15 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             Err(error) => {
                 let mut failure = KitToolError::from(error);
                 if matches!(failure.code, ErrorCode::UnknownCommand) {
-                    failure
-                        .message
-                        .push_str(&nearest_commands(kits, &view, &command).await);
+                    failure.message.push_str(&nearest_commands(kits, &view, &command).await);
                 }
-                if !matches!(
-                    failure.code,
-                    ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable
-                ) {
+                if !matches!(failure.code, ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable) {
                     failure.code = ErrorCode::COMMAND_FAILED;
                 }
                 return Err(failure
                     .context(&format!("step {index} (`{command}`) failed: "))
                     .at(Some(index))
-                    .with_output(
-                        json!({ "completed": done, "document": document_summary_json(&view) }),
-                    ));
+                    .with_output(json!({ "completed": done, "document": document_summary_json(&view) })));
             }
         }
     }
@@ -1914,24 +1389,14 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         view = kits
             .save(Caller::Agent, view.kit_id, &view.document_id)
             .await
-            .map_err(|error| {
-                KitToolError::from(error).context("the edits were applied but saving failed: ")
-            })?;
+            .map_err(|error| KitToolError::from(error).context("the edits were applied but saving failed: "))?;
     }
-    let previews = if input.get("preview").and_then(Value::as_bool) == Some(true) {
-        preview(kits, kit, &view).await
-    } else {
-        Vec::new()
-    };
+    let previews = if input.get("preview").and_then(Value::as_bool) == Some(true) { preview(kits, kit, &view).await } else { Vec::new() };
     let saved = if save { "saved" } else { "not saved" };
     Ok(KitToolOutput {
         previews,
         ..KitToolOutput::new(
-            format!(
-                "Ran {} commands on `{path}` ({saved}): {}",
-                done.len(),
-                view.summary
-            ),
+            format!("Ran {} commands on `{path}` ({saved}): {}", done.len(), view.summary),
             json!({ "completed": done, "saved": save, "document": document_summary_json(&view) }),
         )
     })
@@ -1942,14 +1407,12 @@ mod tests {
     use super::*;
 
     fn kit(id: &str) -> &'static KitDefinition {
-        match KITS.iter().find(|kit| kit.id == id) {
-            Some(kit) => kit,
-            None => panic!("{id} is one of the kits"),
-        }
+        crate::definitions::fixture_kit(id)
     }
 
     #[test]
     fn the_agents_undo_and_redo_steps_run_in_its_undo_scope() {
+        crate::definitions::fixture_kits();
         let steps = vec![
             json!({ "command": "text.append", "params": { "text": "a" } }),
             json!({ "command": "edit.undo" }),
@@ -1958,61 +1421,36 @@ mod tests {
         ];
         let scoped = in_agent_scope(&steps);
         assert_eq!(scoped[0], steps[0]);
-        assert_eq!(
-            scoped[1],
-            json!({ "command": "edit.undo", "params": { "scope": "agent" } })
-        );
-        assert_eq!(
-            scoped[2],
-            json!({ "command": "edit.redo", "params": { "steps": 2, "scope": "agent" } })
-        );
+        assert_eq!(scoped[1], json!({ "command": "edit.undo", "params": { "scope": "agent" } }));
+        assert_eq!(scoped[2], json!({ "command": "edit.redo", "params": { "steps": 2, "scope": "agent" } }));
         assert_eq!(scoped[3], steps[3]);
     }
 
     #[test]
     fn summarizes_diagnostics_by_severity() {
+        crate::definitions::fixture_kits();
         let found = |severity: &str| json!({ "code": "slide.x", "severity": severity, "target": {}, "message": "x" });
-        assert_eq!(
-            diagnostics_summary("`a.pptx`", &[]),
-            "Checked `a.pptx`: the kit found nothing wrong."
-        );
-        assert_eq!(
-            diagnostics_summary(
-                "`a.pptx`",
-                &[found("error"), found("warning"), found("warning")]
-            ),
-            "Checked `a.pptx`: 1 error, 2 warnings, no notes."
-        );
+        assert_eq!(diagnostics_summary("`a.pptx`", &[]), "Checked `a.pptx`: the kit found nothing wrong.");
+        assert_eq!(diagnostics_summary("`a.pptx`", &[found("error"), found("warning"), found("warning")]), "Checked `a.pptx`: 1 error, 2 warnings, no notes.");
     }
 
     #[test]
     fn a_slide_or_page_target_counts_from_1() {
-        for bad in [
-            json!({"slide": 0}),
-            json!({"page": 0}),
-            json!({"slide": "2"}),
-            json!({"slide": 1.5}),
-        ] {
+        crate::definitions::fixture_kits();
+        for bad in [json!({"slide": 0}), json!({"page": 0}), json!({"slide": "2"}), json!({"slide": 1.5})] {
             let Err(error) = check_target_part(&json!({ "target": bad })) else {
                 panic!("{bad} is refused");
             };
-            assert!(
-                error.message.contains("counted from 1"),
-                "{}",
-                error.message
-            );
+            assert!(error.message.contains("counted from 1"), "{}", error.message);
         }
-        for good in [
-            json!({}),
-            json!({"target": {"slide": 1}}),
-            json!({"target": {"path": "layer:12"}}),
-        ] {
+        for good in [json!({}), json!({"target": {"slide": 1}}), json!({"target": {"path": "layer:12"}})] {
             assert!(check_target_part(&good).is_ok());
         }
     }
 
     #[test]
     fn run_refuses_the_export_command() {
+        crate::definitions::fixture_kits();
         let effect = kit("kit.effect");
         let steps = [json!({ "command": "file.exportMovie", "params": {} })];
         let Err(error) = refuse_export_command(effect, &steps) else {
@@ -2024,67 +1462,90 @@ mod tests {
 
     #[test]
     fn a_search_that_matches_nothing_says_so_and_points_at_export() {
-        let closest = vec![
-            json!({ "id": "renderQueue.add", "title": "Add to Render Queue", "params": {}, "closest": true }),
-        ];
+        crate::definitions::fixture_kits();
+        let closest = vec![json!({ "id": "renderQueue.add", "title": "Add to Render Queue", "params": {}, "closest": true })];
         let answer = listed_commands("mp4", closest);
-        assert!(
-            answer.summary.starts_with("No command matches `mp4`"),
-            "{}",
-            answer.summary
-        );
+        assert!(answer.summary.starts_with("No command matches `mp4`"), "{}", answer.summary);
         assert_eq!(answer.output["total"], 0);
         let effect = kit("kit.effect");
         let sheet = kit("kit.sheet");
-        assert!(
-            file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export"))
-        );
-        assert!(
-            file_tool_hint(effect, "new project file")
-                .is_some_and(|hint| hint.contains("effect_create"))
-        );
+        assert!(file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export")));
+        assert!(file_tool_hint(effect, "new project file").is_some_and(|hint| hint.contains("effect_create")));
         assert!(file_tool_hint(effect, "text layer").is_none());
-        assert!(
-            file_tool_hint(sheet, "export csv").is_none(),
-            "sheet exports nothing for the agent"
-        );
+        assert!(file_tool_hint(sheet, "export csv").is_none(), "sheet exports nothing for the agent");
     }
 
     #[test]
     fn kits_that_create_offer_create() {
+        crate::definitions::fixture_kits();
         let slide = kit("kit.slide");
         assert!(offers(slide, "slide_create"), "slide creates .kslide");
         assert!(slide.creates.contains(&("kslide", "slide")));
         let effect = kit("kit.effect");
         assert!(offers(effect, "effect_create") && offers(effect, "effect_export"));
-        let Some(create) = specs().iter().find(|spec| spec.name == "effect_create") else {
+        let Some(create) = specs().into_iter().find(|spec| spec.name == "effect_create") else {
             panic!("effect_create is a tool");
         };
         assert!(create.writes && create.description.contains(".keffect"));
-        assert_eq!(
-            parse("effect_create").map(|(kit, action)| (kit.id, action)),
-            Some(("kit.effect", Action::Create))
-        );
+        assert_eq!(parse("effect_create").map(|(kit, action)| (kit.id, action)), Some(("kit.effect", Action::Create)));
+    }
+
+    #[test]
+    fn only_kits_that_declare_drafts_or_an_object_model_offer_their_tools() {
+        crate::definitions::fixture_kits();
+        let fig = kit("kit.fig");
+        let film = kit("kit.film");
+        assert!(!fig.agent.drafts && fig.agent.object_model && film.agent.drafts && !film.agent.object_model);
+        for (kit, action, offered) in [
+            (fig, Action::DraftReady, false),
+            (fig, Action::DraftReopen, false),
+            (fig, Action::Query, true),
+            (fig, Action::Batch, true),
+            (film, Action::DraftReady, true),
+            (film, Action::DraftReopen, true),
+            (film, Action::Query, false),
+            (film, Action::Batch, false),
+        ] {
+            assert_eq!(offers(kit, &tool_name(kit, action)), offered, "{} {action:?} (KHP A35)", kit.id);
+        }
+    }
+
+    #[test]
+    fn listed_commands_carry_their_parameter_schemas() {
+        crate::definitions::fixture_kits();
+        let schema = json!({ "type": "object", "properties": { "x": { "type": "integer", "description": "Column, from 0." } }, "required": ["x"] });
+        let listed = compact_command(json!({ "id": "cell.set", "title": "Set Cell", "params": schema, "enabled": true }));
+        assert_eq!(listed["params"], schema, "a schema, never the notation text (KHP A5)");
+        assert!(listed.get("enabled").is_none());
+        let disabled = compact_command(json!({ "id": "edit.undo", "title": "Undo", "params": { "type": "object" }, "enabled": false }));
+        assert_eq!(disabled["enabled"], false);
+    }
+
+    #[test]
+    fn the_default_preview_is_the_kit_s_render_framed_to_the_content() {
+        crate::definitions::fixture_kits();
+        let params = render_params(&json!({ "path": "a.kfig", "preview": true })).unwrap_or_default();
+        assert_eq!(Value::Object(params), json!({ "scale": 1 }), "the document at scale 1 (KHP A39)");
+        let doubled = render_params(&json!({ "path": "a.kfig", "scale": 2 })).unwrap_or_default();
+        assert_eq!(doubled.get("scale"), Some(&json!(2)));
     }
 
     #[test]
     fn every_kit_gets_inspect_commands_and_run() {
-        let mut prefixes: Vec<&str> = KITS.iter().map(|kit| kit.agent.prefix).collect();
+        crate::definitions::fixture_kits();
+        let kits = crate::definitions::fixture_kits();
+        let mut prefixes: Vec<&str> = kits.iter().map(|kit| kit.agent.prefix).collect();
         prefixes.sort_unstable();
         prefixes.dedup();
-        assert_eq!(prefixes.len(), KITS.len(), "prefixes are unique");
-        assert_eq!(specs().len(), KITS.len() * Action::ALL.len());
-        for kit in KITS {
+        assert_eq!(prefixes.len(), kits.len(), "prefixes are unique");
+        for kit in &kits {
+            assert_eq!(specs_of(kit).len(), Action::ALL.len(), "{}", kit.id);
+        }
+        for kit in kits {
             for action in Action::ALL {
                 let name = tool_name(kit, action);
-                let spec = specs()
-                    .iter()
-                    .find(|spec| spec.name == name)
-                    .unwrap_or_else(|| panic!("{name}"));
-                assert_eq!(
-                    parse(&name).map(|(found, action)| (found.id, action)),
-                    Some((kit.id, action))
-                );
+                let spec = specs().into_iter().find(|spec| spec.name == name).unwrap_or_else(|| panic!("{name}"));
+                assert_eq!(parse(&name).map(|(found, action)| (found.id, action)), Some((kit.id, action)));
                 assert!(spec.description.contains(kit.name), "{}", spec.description);
                 assert_eq!(spec.writes, action.writes(), "{name}");
                 assert_eq!(spec.input_schema["required"][0], "path");
@@ -2095,62 +1556,34 @@ mod tests {
             assert!(specs().iter().any(|spec| spec.name == name), "{name}");
         }
         assert!(parse("document_read").is_none() && parse("photo_paint").is_none());
-        assert_eq!(
-            parse("slide_check").map(|(kit, action)| (kit.id, action)),
-            Some(("kit.slide", Action::Check))
-        );
+        assert_eq!(parse("slide_check").map(|(kit, action)| (kit.id, action)), Some(("kit.slide", Action::Check)));
         assert!(!Action::Check.writes());
         // Draft tools: asking for review and reopening; merging and discarding are never tools.
         let slide = |name: &str| parse(name).map(|(kit, action)| (kit.id, action));
-        assert_eq!(
-            slide("slide_draft_ready"),
-            Some(("kit.slide", Action::DraftReady))
-        );
-        assert_eq!(
-            slide("slide_draft_reopen"),
-            Some(("kit.slide", Action::DraftReopen))
-        );
+        assert_eq!(slide("slide_draft_ready"), Some(("kit.slide", Action::DraftReady)));
+        assert_eq!(slide("slide_draft_reopen"), Some(("kit.slide", Action::DraftReopen)));
         assert!(parse("slide_draft_merge").is_none() && parse("slide_draft_discard").is_none());
         assert!(parse("slide_draft").is_none() && parse("_draft_ready").is_none());
-        let run = specs()
-            .iter()
-            .find(|spec| spec.name == "slide_run")
-            .unwrap_or_else(|| panic!("slide_run"));
+        let run = specs().into_iter().find(|spec| spec.name == "slide_run").unwrap_or_else(|| panic!("slide_run"));
         assert_eq!(run.input_schema["properties"]["draft"]["type"], "boolean");
-        assert!(
-            run.description.contains("slide_draft_ready"),
-            "{}",
-            run.description
-        );
+        assert!(run.description.contains("slide_draft_ready"), "{}", run.description);
     }
 
     #[test]
     fn a_kit_file_is_edited_through_its_own_kit() {
-        let prompt = |path: &str| {
-            linked_file_prompt(path).unwrap_or_else(|| panic!("{path} opens in a kit"))
-        };
+        crate::definitions::fixture_kits();
+        let prompt = |path: &str| linked_file_prompt(path).unwrap_or_else(|| panic!("{path} opens in a kit"));
         let vector = prompt("art/Logo.kvector");
-        assert!(
-            vector.contains("vector_inspect")
-                && vector.contains("vector_run")
-                && vector.contains("in Vector"),
-            "{vector}"
-        );
+        assert!(vector.contains("vector_inspect") && vector.contains("vector_run") && vector.contains("in Vector"), "{vector}");
         assert!(prompt("motion/Intro.keffect").contains("effect_commands"));
         assert!(prompt("print/Flyer.kdesign").contains("design_run"));
         assert!(prompt("plans/Floor.dxf").contains("cad_run"));
         assert!(prompt("talks/Launch.pptx").contains("slide_run"));
-        assert!(
-            prompt("talks/Launch.pptx").contains("document_read extracts its text"),
-            "PowerPoint text stays readable"
-        );
+        assert!(prompt("talks/Launch.pptx").contains("document_read extracts its text"), "PowerPoint text stays readable");
         assert!(prompt("talks/Launch.kslide").contains("it is binary data"));
         assert!(prompt("letters/Hello.docx").contains("doc_run"));
         assert!(prompt("money/Budget.xlsx").contains("sheet_run"));
-        assert!(
-            prompt("papers/Report.pdf").contains("pdf_run")
-                && prompt("papers/Report.pdf").contains("document_read extracts its text")
-        );
+        assert!(prompt("papers/Report.pdf").contains("pdf_run") && prompt("papers/Report.pdf").contains("document_read extracts its text"));
         let note = prompt("notes/plan.md");
         assert!(
             note.contains("note_inspect")
@@ -2161,10 +1594,7 @@ mod tests {
             "a note is text the agent may read: {note}"
         );
         assert!(linked_file_prompt("notes/plan.txt").is_none());
-        let vector_kit = KITS
-            .iter()
-            .find(|kit| kit.id == "kit.vector")
-            .unwrap_or_else(|| panic!("kit.vector is a kit"));
+        let vector_kit = kit("kit.vector");
         let wrong = kit_path(&json!({ "path": "art/Cover.psd" }), vector_kit)
             .err()
             .map(|error| (error.code, error.message))
@@ -2172,10 +1602,6 @@ mod tests {
         assert_eq!(wrong.0, ErrorCode::InvalidParams);
         let wrong = wrong.1;
         assert!(wrong.contains("photo_*"), "{wrong}");
-        assert_eq!(
-            kit_path(&json!({ "path": "art/Logo.kvector" }), vector_kit)
-                .unwrap_or_else(|err| panic!("{}", err.message)),
-            "art/Logo.kvector"
-        );
+        assert_eq!(kit_path(&json!({ "path": "art/Logo.kvector" }), vector_kit).unwrap_or_else(|err| panic!("{}", err.message)), "art/Logo.kvector");
     }
 }

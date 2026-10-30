@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/tools/errors.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Structured error codes in kit tool results (architecture section 13): every failure carries
 //! `{ code, message, index?, retryable? }`, so a model can recover without parsing prose. The
 //! object-model codes are `kition_kdm::batch::BatchErrorCode`'s; the others name what the Kit
@@ -112,13 +113,7 @@ pub struct KitToolError {
 
 impl KitToolError {
     pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            index: None,
-            retryable: code.retryable(),
-            output: None,
-        }
+        Self { code, message: message.into(), index: None, retryable: code.retryable(), output: None }
     }
 
     pub fn invalid(message: impl Into<String>) -> Self {
@@ -171,14 +166,8 @@ impl KitToolError {
     /// object-model refusal's `code` and `index`, a refusal's `reason`).
     pub fn from_bridge(failure: BridgeFailure) -> Self {
         let data = failure.data.unwrap_or(Value::Null);
-        let named = ["code", "reason"]
-            .into_iter()
-            .find_map(|key| data.get(key).and_then(Value::as_str))
-            .and_then(ErrorCode::parse);
-        let index = data
-            .get("index")
-            .and_then(Value::as_u64)
-            .and_then(|index| usize::try_from(index).ok());
+        let named = ["code", "reason"].into_iter().find_map(|key| data.get(key).and_then(Value::as_str)).and_then(ErrorCode::parse);
+        let index = data.get("index").and_then(Value::as_u64).and_then(|index| usize::try_from(index).ok());
         let code = named.unwrap_or_else(|| guess(&failure.message));
         Self::new(code, failure.message).at(index)
     }
@@ -209,24 +198,18 @@ impl From<KitError> for KitToolError {
         let message = error.to_string();
         let (code, index) = match &error {
             KitError::UnknownKit(_) | KitError::InvalidPath(_) => (ErrorCode::InvalidParams, None),
-            KitError::NotInstalled { .. }
-            | KitError::NoWorkspace
-            | KitError::Launch { .. }
-            | KitError::Stopped { .. }
-            | KitError::Unavailable(_) => (ErrorCode::Unavailable, None),
-            KitError::Model { code, index, .. } => (
-                ErrorCode::parse(code).unwrap_or(ErrorCode::Batch(BatchErrorCode::InvalidOp)),
-                *index,
-            ),
+            KitError::NotAllowed(_) => (ErrorCode::NotAllowed, None),
+            KitError::NotInstalled { .. } | KitError::NoWorkspace | KitError::Launch { .. } | KitError::Stopped { .. } | KitError::Unavailable(_) => {
+                (ErrorCode::Unavailable, None)
+            }
+            KitError::Model { code, index, .. } => (ErrorCode::parse(code).unwrap_or(ErrorCode::Batch(BatchErrorCode::InvalidOp)), *index),
             KitError::Kit { reason, .. } => (
                 match reason {
                     Some(ErrorReason::CommandNotFound) => ErrorCode::UnknownCommand,
                     Some(ErrorReason::CommandDisabled) => ErrorCode::COMMAND_FAILED,
                     Some(ErrorReason::DocumentNotFound) => ErrorCode::NotOpen,
                     Some(ErrorReason::InvalidParams) => ErrorCode::InvalidParams,
-                    Some(ErrorReason::UriNotGranted | ErrorReason::RoleForbidden) => {
-                        ErrorCode::NotAllowed
-                    }
+                    Some(ErrorReason::UriNotGranted | ErrorReason::RoleForbidden) => ErrorCode::NotAllowed,
                     Some(ErrorReason::UnsupportedFormat) => ErrorCode::Unsupported,
                     Some(ErrorReason::RequestCancelled) => ErrorCode::Unavailable,
                     Some(_) | None => ErrorCode::Failed,
@@ -252,32 +235,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_path_the_call_may_not_name_is_not_allowed() {
+        let refused = KitToolError::from(KitError::NotAllowed("`../a.kvector` is outside the workspace".into()));
+        assert_eq!(refused.code, ErrorCode::NotAllowed, "KHP A29 answers not-allowed (A18)");
+        assert_eq!(ErrorCode::NotAllowed.as_str(), "not-allowed");
+    }
+
+    #[test]
     fn every_code_spells_and_parses_back() {
         for code in ErrorCode::ALL {
-            assert_eq!(
-                ErrorCode::parse(code.as_str()),
-                Some(code),
-                "{}",
-                code.as_str()
-            );
+            assert_eq!(ErrorCode::parse(code.as_str()), Some(code), "{}", code.as_str());
         }
         assert_eq!(ErrorCode::READ_ONLY.as_str(), "read-only");
-        assert_eq!(
-            ErrorCode::parse("command_not_found"),
-            Some(ErrorCode::UnknownCommand)
-        );
-        assert_eq!(
-            ErrorCode::parse("document_not_found"),
-            Some(ErrorCode::NotOpen)
-        );
+        assert_eq!(ErrorCode::parse("command_not_found"), Some(ErrorCode::UnknownCommand));
+        assert_eq!(ErrorCode::parse("document_not_found"), Some(ErrorCode::NotOpen));
         assert_eq!(ErrorCode::parse("no-such-code"), None);
     }
 
     #[test]
     fn failures_answer_a_code_a_message_and_what_was_done() {
-        let failed = KitToolError::new(ErrorCode::COMMAND_FAILED, "step 1 failed")
-            .at(Some(1))
-            .with_output(json!({ "completed": [{ "command": "a" }] }));
+        let failed = KitToolError::new(ErrorCode::COMMAND_FAILED, "step 1 failed").at(Some(1)).with_output(json!({ "completed": [{ "command": "a" }] }));
         assert_eq!(
             failed.structured(),
             json!({
@@ -288,16 +265,9 @@ mod tests {
         let busy = KitToolError::from(KitError::Stopped { name: "Vector" });
         assert_eq!(busy.code, ErrorCode::Unavailable);
         assert_eq!(busy.to_json()["retryable"], true);
-        let unknown = KitToolError::from(KitError::Kit {
-            reason: Some(ErrorReason::CommandNotFound),
-            message: "no command `x`".into(),
-        });
+        let unknown = KitToolError::from(KitError::Kit { reason: Some(ErrorReason::CommandNotFound), message: "no command `x`".into() });
         assert_eq!(unknown.to_json()["code"], "unknown-command");
-        let model = KitToolError::from(KitError::Model {
-            code: "read-only".into(),
-            index: None,
-            message: "the document is read-only".into(),
-        });
+        let model = KitToolError::from(KitError::Model { code: "read-only".into(), index: None, message: "the document is read-only".into() });
         assert_eq!(model.code, ErrorCode::READ_ONLY);
     }
 
@@ -307,20 +277,13 @@ mod tests {
             message: "op 2 failed".into(),
             data: Some(json!({ "code": "not-found", "index": 2, "message": "op 2 failed" })),
         });
-        assert_eq!(
-            (refused.code, refused.index),
-            (ErrorCode::NOT_FOUND, Some(2))
-        );
-        let denied = KitToolError::from_bridge(BridgeFailure {
-            message: "`file.export` is not allowed here".into(),
-            data: Some(json!({ "reason": "not-allowed" })),
-        });
+        assert_eq!((refused.code, refused.index), (ErrorCode::NOT_FOUND, Some(2)));
+        let denied =
+            KitToolError::from_bridge(BridgeFailure { message: "`file.export` is not allowed here".into(), data: Some(json!({ "reason": "not-allowed" })) });
         assert_eq!(denied.code, ErrorCode::NotAllowed);
         let plain = KitToolError::from_bridge("step 0 (`no.such`) failed: unknown command".into());
         assert_eq!(plain.code, ErrorCode::UnknownCommand);
-        let undrafted = KitToolError::from_bridge(
-            "there is no draft of this document: run the agent with `draft: true` first".into(),
-        );
+        let undrafted = KitToolError::from_bridge("there is no draft of this document: run the agent with `draft: true` first".into());
         assert_eq!(undrafted.code, ErrorCode::DraftRequired);
         let late = KitToolError::from_bridge(BridgeFailure {
             message: "the editor did not answer `kit/call` in time".into(),

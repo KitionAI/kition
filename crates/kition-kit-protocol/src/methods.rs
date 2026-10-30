@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/methods.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Typed method descriptors: each request and notification names its wire
 //! method and its parameter and result types.
 
@@ -89,10 +90,7 @@ notifications! {
 
 /// Whether only the `host` role may send this method (protocol section 1).
 pub fn is_host_only(method: &str) -> bool {
-    matches!(
-        method,
-        "kit.shutdown" | "kit.setPreferences" | "document.activate" | "document.didChangeOnDisk"
-    )
+    matches!(method, "kit.shutdown" | "kit.setPreferences" | "document.activate" | "document.didChangeOnDisk")
 }
 
 #[cfg(test)]
@@ -104,12 +102,7 @@ mod tests {
         for method in ["kit.shutdown", "kit.setPreferences", "document.activate"] {
             assert!(is_host_only(method), "{method}");
         }
-        for method in [
-            "kit.ping",
-            "document.open",
-            "commands.execute",
-            "view.screenshot",
-        ] {
+        for method in ["kit.ping", "document.open", "commands.execute", "view.screenshot"] {
             assert!(!is_host_only(method), "{method}");
         }
     }

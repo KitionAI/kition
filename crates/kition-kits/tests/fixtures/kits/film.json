@@ -1,0 +1,381 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.film",
+  "name": "Film",
+  "version": "0.5.4",
+  "license": "Apache-2.0",
+  "upstream": {
+    "repository": "https://github.com/storytold/filmcraft",
+    "version": "0.5.0",
+    "commit": "7bd76212629a067a9d1c5426d751de9faf4664b7"
+  },
+  "engine": {
+    "module": "kition_film_sdk",
+    "class": "FilmDocument",
+    "contract": 1,
+    "crate": "kition-film-sdk"
+  },
+  "formats": [
+    {
+      "id": "film",
+      "extensions": [
+        "kfilm"
+      ],
+      "mime": "application/vnd.kition.film+json",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "film",
+      "extension": "kfilm",
+      "baseName": "Untitled film",
+      "size": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "mp4",
+      "mime": "video/mp4",
+      "command": "file.exportMedia"
+    }
+  ],
+  "imports": [
+    {
+      "extensions": [
+        "mp4",
+        "mov",
+        "webm"
+      ],
+      "action": "project-from-clip"
+    }
+  ],
+  "capabilities": [
+    "lent-files",
+    "audio",
+    "stepped-export",
+    "timeline"
+  ],
+  "extras": {
+    "audioRate": {
+      "params": [],
+      "returns": "u32",
+      "description": "The active sequence's sample rate."
+    },
+    "audio": {
+      "params": [
+        "startSeconds: f64",
+        "frames: u32"
+      ],
+      "returns": "Float32Array",
+      "description": "Interleaved stereo of the sequence mix."
+    },
+    "levelsAt": {
+      "params": [
+        "startSeconds: f64"
+      ],
+      "returns": "string",
+      "description": "The mixer strips' levels in the chunk audio mixed from startSeconds (the page keys a chunk's levels by the time it asked for, and reads them when it is heard), as upstream's meters read them while it plays: per 1/30 s meter window on the absolute sample grid. Reading never drains, so any number of panels read the same chunk; nothing is mixed. null when that chunk is not among the last 64 mixed. Otherwise JSON {sequence, revision, start, frames, rate, window, strips: [{strip, channels, windows: [{start, peaks, db}]}]}: the chunk's sequence and the revision that mixed it (for a stale guard), its first sample and length, the sample rate and window length in samples, and every strip in mixer order (A1..., S1..., Mix) with its channel names (L, R, or L, R, C, LFE, Ls, Rs for 5.1) and per window (start is its first sample; a window cut by the chunk's edge holds the chunk's part) one post-fader peak per channel, linear and in dBFS (-120 for silence). A strip the mix skipped, or a stretch played from a rendered audio preview, reads silence, as upstream's. An error without an open sequence."
+    },
+    "loudnessFeed": {
+      "params": [
+        "samples: Float32Array",
+        "rate: u32",
+        "startSeconds: f64"
+      ],
+      "returns": "void",
+      "description": "Feeds the BS.1770 loudness meter with samples the page played: interleaved stereo at rate (8-384 kHz) from startSeconds of the sequence, at most 480,000 frames a call. Feed what is heard, as it is heard. The meter starts again, as upstream's feed_loudness does, when a chunk starts before the last one's end (a seek back) or more than 1 s after it (a jump), and when the rate changes. An odd count, a sample or time that is not a finite number, or a rate out of range is an error. It changes nothing in the document."
+    },
+    "loudnessRead": {
+      "params": [],
+      "returns": "string",
+      "description": "The loudness of what was fed since the meter last started, as JSON {momentary, shortTerm, integrated} in LUFS and truePeak in dBTP. Each is null until it has a value and at -70 or below (upstream shows a dash there, and a window holding only silence reads far below it)."
+    },
+    "loudnessReset": {
+      "params": [],
+      "returns": "void",
+      "description": "Clears the loudness meter (upstream resets it on a seek back or a jump of more than 1 s)."
+    },
+    "fxResponse": {
+      "params": [
+        "target: string",
+        "points: u32",
+        "drafts: string"
+      ],
+      "returns": "string",
+      "description": "An audio effect's curves as upstream's effect editors draw them, from the effect's own DSP at 48 kHz at the playhead. target is JSON {clip, index} (a clip effect) or {strip, slot} (a mixer insert; strip is A1, S1, Mix, or a track id); drafts is a JSON object of uncommitted values by parameter id (or empty). Answers JSON {effect, frequencies, responseDb, transferInputDb, transferDb}: the response at points (2-2048) frequencies log-spaced from 20 Hz to 20 kHz (responseDb null for an effect without one), and per band the output level at inputs from -60 to 0 dB in 0.5 dB steps (transferDb empty without dynamics; the dynamics rack has one band, the multiband compressor four). An unknown target, an effect without DSP, or a draft for a parameter the effect lacks is an error. It changes nothing."
+    },
+    "itemFrame": {
+      "params": [
+        "item: f64",
+        "seconds: f64",
+        "maxWidth: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "A project item's frame at seconds of its media time, at most maxWidth (1-2048) wide, at most 4,194,304 pixels, and never larger than the item: [width u32 LE][height u32 LE] then RGBA over black. A picture over 4 MP is halved until it fits before it is fitted to maxWidth. A sequence item renders its program; an item without a picture, or an item id that is not a whole number, is an error."
+    },
+    "scopes": {
+      "params": [
+        "seconds: f64",
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "Lumetri Scopes as numbers at seconds of the active sequence (snapped to its frame): the JSON scopes.read answers for params (scopes, waveformType, paradeType, colorSpace, clamp, columns 1-512, peaks, bins, scale), without the command path, so nothing changes. time, frame, and timecode in params are ignored. The render scale defaults to 0.25, the quarter frame upstream's panel reads, unlike scopes.read's 0.5, and is lowered so the frame read is at most 4,194,304 pixels. For numbers on demand, not a read per frame: the Lumetri Scopes panel draws from scopeImages. An error without an open sequence, for a scopes value that is not a list, or for an unknown setting."
+    },
+    "scopeImages": {
+      "params": [
+        "seconds: f64",
+        "params: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "Lumetri Scopes as upstream's panel draws them, at seconds of the active sequence, from the Program picture at a quarter of the sequence size (an eighth for Rec. 2100 scopes of an HDR sequence; at most 4,194,304 pixels, decimated to at most 480 x 270 samples). params, all optional: scopes (waveform, parade, histogram, vectorscopeYuv, vectorscopeHls; default [\"parade\"]), waveformType (rgb, luma, yc, ycNoChroma), paradeType (rgb, yuv, rgbWhite), colorSpace (auto, 601, 709, 2100), clamp (default true), brightness (dimmed, normal, bright), signalScale (8bit, float, hdr), and rows (levels of a waveform, parade, or histogram plot: the plot's height in pixels, a whole number clamped to 64-256, default 256). One read per drawn frame. Answers [headerLength u32 LE][header JSON] then each scope's straight RGBA (transparent where empty, so the graticule goes under it) at its offset after the header. The header: time (ticks), frame, samples [w, h], colorSpace (its label), pq, nits, clamp, nitsAxis ([cd/m2, level] pairs when nits), and scopes [{kind, width, height, offset, type, label, range, dividers, extent, targets {75, 100}, hues, skinToneDeg}] as each kind has them. An error without an open sequence, for a scopes value that is not a list, rows that are not a whole number, or an unknown setting."
+    },
+    "lumetriPresetThumbnails": {
+      "params": [
+        "folder: string",
+        "names: string",
+        "width: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "The Effects panel's Lumetri preset thumbnails (Lumetri on the procedural preview picture): [count u32 LE][width u32 LE][height u32 LE] then each thumbnail's RGBA over black, width 16-640 by width x 9 / 16. names is a JSON array picking presets in that order; empty (or \"[]\") is every preset of folder, and an empty folder is every folder, in lumetri.presets order. An unknown folder or name, a name outside folder, or more than 8 thumbnails in one call is an error (ask for the visible rows in chunks of at most 8). It reads no document."
+    },
+    "itemPeaks": {
+      "params": [
+        "item: f64",
+        "startSeconds: f64",
+        "seconds: f64"
+      ],
+      "returns": "Float32Array",
+      "description": "A project item's waveform peaks from startSeconds for seconds (at most 60): [min, max] per 256 samples at 48 kHz of its first channel, flattened. Empty past its end, without sound, or for a length that is not a finite number; a negative start is 0. An item id that is not a whole number is an error."
+    },
+    "itemAudio": {
+      "params": [
+        "item: f64",
+        "startSeconds: f64",
+        "frames: u32"
+      ],
+      "returns": "Float32Array",
+      "description": "A project item's own sound, interleaved stereo at 48 kHz (mono doubled), at most 10 s; silence past its end; a negative start is 0. An item id that is not a whole number is an error."
+    },
+    "setRenderScale": {
+      "params": [
+        "scale: f32"
+      ],
+      "returns": "void",
+      "description": "Renders the program at scale (1/16 to 1) of the sequence size and scales it up, for the monitor's playback and paused resolution. It is clamped to 1/16 to 1; 0, below 0, or not a number is an error."
+    },
+    "clipEffects": {
+      "params": [
+        "clip: f64"
+      ],
+      "returns": "string",
+      "description": "A clip's effects in the active sequence as JSON, the fixed ones first: the clip's start, duration, sourceIn, speed, and the playhead's mediaTime, then each effect's index, id, name, kind, enabled, intrinsic, and params (id, label, group, animatable, kind and range, value at the playhead, default, keyframes with time in media ticks and interpolation; a LUT reference also has its lutLabel). An unknown clip, or a clip id that is not a whole number, is an error."
+    },
+    "dialogDefaults": {
+      "params": [
+        "command: string"
+      ],
+      "returns": "string",
+      "description": "What upstream's clip dialog for a command opens with, as JSON {params, info}, read from session state inspect() does not show. edit.pasteAttributes and edit.removeAttributes: the intrinsic attributes (motion, opacity, timeRemapping, volume, channelVolume, panner) checked by the kinds of clip copied or selected, every standard effect of those clips in effects (Paste also scaleTimes), and info {video, audio, effects: [[id, name]]}. clip.frameHoldOptions: enabled, holdOn, timecode (the first selected clip's held frame or source In at its media's rate), and holdFilters. clip.fieldOptions: reverseFieldDominance and processing. clip.nest: the next free nested sequence name. clip.makeSubclip: name, startFrame, endFrame of what would be subclipped and restrictTrims, info {fps}. clip.editSubclip: the Project selection's first subclip {item, startFrame, endFrame, restrictTrims, convertToMaster}, info {name, fps}. clip.audioChannels: the first selected item with audio {format, clips}, info {channels, items: true}, else {channels: [0, 1]}, info {channels: 2, items: false}. clip.modifyTimecode: timecode and tapeName. file.newOfflineFile: fileName, name, tapeName, description, video, audio, width, height, fps (the active sequence's), timecode, seconds. clip.editOffline: item, mediaName, tapeName, description, scene, shot, logNote. clip.synchronize and clip.mergeClips: items (the Project selection), name (Merge: \"<first> - Merged\"), method, ignoreHours, marker, offset, track, removeVideoAudio, info {names}. sequence.settings and file.newSequence: the draft {tab, name, newSequence, video, audio, fpsNum, fpsDen, width, height, scaleMotion, dropFrame, mix, sampleRate, maxRenderQuality, workingSpace, wideGamut, autoToneMap} of the active sequence (New Sequence: the default settings, named as file.newSequence names one), info {current (what the dialog compares with, and the name), par, previewCodec, maxBitDepth, audioDisplaySamples, timebases: [{num, den, label, dropFrame}], workingSpaces: [[id, label]]}. sequence.colorSettings: the active sequence's workingSpace, wideGamut, and autoToneMap, info {workingSpaces}. sequence.addTracks: one video and one audio (standard) track after the last ones and no submix (stereo), {video, videoAfter, audio, audioAfter, audioType, submix, submixAfter, submixType}, info {tracks: {video, audio, submix} (the active sequence's track names), current: {videoAfter, audioAfter, submixAfter}}. sequence.simplify: name \"<sequence> (Simplified)\" and the remove options (removeDisabled, removeEmptyTracks, closeGaps, moveClipsDown, removeVideoEffects, removeAudioEffects, removeText) and keep, info {current: {name}}. file.newColorMatte: color #000000, name, width and height (the active sequence's), seconds 5. project.matteColor: the one Color Matte selected in the Project panel {item, color}, info {current: {color}}; anything else selected is the error \"select one Color Matte\". edit.find: scope project, rows (the last project Find's rows, else blank Name/contains rows; at least two), matchAll true, caseSensitive false, in all; info {}. clip.automateToSequence: ordering sort, placement sequentially, method insert, overlapFrames 30, stillFrames 150, videoTransition and audioTransition true, ignoreAudio and ignoreVideo false; info {sequence} (the active sequence's name). file.projectSettings.general and project.ingestSettings: {tab (general or ingest, by the command), renderer, videoDisplay, audioDisplay, captureFormat, titleSafe, actionSafe, ingest {enabled, action, destination, preset}}; info {project (the project's name), ingest, renderers, videoDisplays, current (the same keys without the tab)}. Any other command is an error. Changes nothing."
+    },
+    "itemInfo": {
+      "params": [
+        "item: f64"
+      ],
+      "returns": "string",
+      "description": "What the Info panel shows about a project item as JSON: its name, type, video line (fps, size, and pixel aspect) and codec, audio line (rate, channels, and codec), each null without that stream, and its duration as a timecode at its own rate. An unknown item, or an item id that is not a whole number, is an error."
+    },
+    "graphicLayers": {
+      "params": [],
+      "returns": "string",
+      "description": "The graphic layers in the Program monitor's picture at the playhead as JSON, front-most first: each layer's clip, layer index, kind (text or shape), quad (its box's corners in sequence pixels, the clip's Motion applied), and scale (layer to sequence pixels), and for text its text, size, vertical, and paragraph; for the layer handles each layer also has local (its box [x0, y0, x1, y1] in layer pixels), toSequence (layer to sequence pixels) and canvas (the clip's canvas to sequence pixels, its Motion applied) as [a, b, c, d, e, f], and transform {position, anchor, scale} (position and anchor on the canvas, scale as fractions), and a text layer its box ([width, height], zero for point text) and overflow (paragraph text its box hides; laid out only for the selected graphic's selected layers, null for the others). A disabled track, clip, or layer is left out. target is the first selected graphic clip, while it is under the playhead, with matrix [a, b, c, d, e, f] from its canvas to sequence pixels, or null. selected is the first selected graphic clip and its selected layer indices, or null."
+    },
+    "takeEvents": {
+      "params": [],
+      "returns": "string",
+      "description": "The engine's events since the last call, oldest first, as a JSON array; each call empties the queue. A toast is {kind: \"toast\", message, error}; openSequence, openSource, and revealInProject name the item to show in the Timeline, the Source monitor, or the Project panel ({kind, item})."
+    },
+    "sourceCommands": {
+      "params": [],
+      "returns": "string",
+      "description": "The ids of the commands that act on the Source monitor's clip when it has focus (add target: \"source\"), as a JSON array."
+    },
+    "previewBegin": {
+      "params": [
+        "command: string",
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "Runs a dialog's command with params (JSON) on a scratch copy of the document that shares its project and decoded media (in a media pool of its own), and answers the command's result as JSON. The copy writes no history step, journal entry, file, or replica change, and sends no event; the document is unchanged. The copy stays open for the other preview extras until previewEnd or the next previewBegin, which starts again from the document. Only the commands dialogs run on OK preview; those that write outside the project (Update Metadata, Create Proxies, exports, render previews, saves, and files written to a chosen path or the data directory) are refused with \"previews as a summary\", and a failing command leaves no preview open."
+    },
+    "previewBeginSteps": {
+      "params": [
+        "steps: string"
+      ],
+      "returns": "string",
+      "description": "Runs several dialog commands, a JSON array of {command, params}, on one new scratch copy (the Manage dialogs), as previewBegin does, and answers their results as a JSON array."
+    },
+    "previewSettle": {
+      "params": [
+        "ms: u32"
+      ],
+      "returns": "string",
+      "description": "Advances the preview's own jobs (Scene Edit Detection) for at most ms (up to 1000) and applies what finished to the copy: {pending, progress} as JSON, progress from 0 to 1. The document's jobs.list never shows them. An error when no preview is open."
+    },
+    "previewFrame": {
+      "params": [
+        "seconds: f64",
+        "maxWidth: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "The preview's program at seconds, as the Program monitor renders it at its render scale, at most maxWidth (1-2048) wide and 4,194,304 pixels: [width u32 LE][height u32 LE] then RGBA over black. An error when no preview is open."
+    },
+    "previewAudioRate": {
+      "params": [],
+      "returns": "u32",
+      "description": "The preview's sample rate, as audioRate answers the document's (a Sequence Settings preview may change it). An error when no preview is open."
+    },
+    "previewAudio": {
+      "params": [
+        "startSeconds: f64",
+        "frames: u32"
+      ],
+      "returns": "Float32Array",
+      "description": "Interleaved stereo of the preview's sequence mix at previewAudioRate, as audio mixes the document's, at most 10 s. An error when no preview is open."
+    },
+    "previewLevelsAt": {
+      "params": [
+        "startSeconds: f64"
+      ],
+      "returns": "string",
+      "description": "levelsAt of the open preview's copy, whose own mix previewAudio plays (a dialog heard before OK); a new preview starts with none. An error when no preview is open."
+    },
+    "previewInspect": {
+      "params": [],
+      "returns": "string",
+      "description": "The preview's inspect() as JSON, the same shape as the document's: project, sequence (tracks, clips, playhead, duration), playhead, ticksPerSecond. canUndo and canRedo are the document's, since the preview is never undone. An error when no preview is open."
+    },
+    "previewDiff": {
+      "params": [],
+      "returns": "string",
+      "description": "What the preview changed against the document, as JSON: {project, sequences, tracks, clips, items, bins, markers, captions, selection, projectSelection}. project is {changed: [field]} (name, settings, luts, sourceGraphics, transcripts). Every other part is {added: [entry], removed: [entry], changed: [entry]}; an entry is {id, ...where it is}, and a changed one also has fields: [name] in camelCase (start, duration, sourceIn, speed, effects, track, offline, timecode, name, items, ...). sequences, items, and bins (search bins too) entries are {id}; tracks, clips, and captions are {id, sequence} (clips and captions also track), since a duplicated sequence keeps its ids, and a clip moved to another sequence is removed from one and added to the other; markers are {id, owner, ownerKind: sequence|clip|item, sequence} with start, duration (ticks), name, comment, kind, and color on added and changed ones; selection (timeline clips) and projectSelection (Project panel items) list {id} added and removed. Items the command left alone are skipped after one comparison. An error when no preview is open."
+    },
+    "previewQuery": {
+      "params": [
+        "command: string",
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "Runs a read-only query (a command that writes no journal entry), with params (JSON), on a throwaway copy of the preview's copy and answers its result as JSON: project.items, project.searchBinItems, project.view.get, project.freeform.layout, mixer.inspect, presets.list, and the like. Whatever session state the query sets is dropped with the throwaway copy. A journaled command and one that writes outside the project are refused. An error when no preview is open."
+    },
+    "previewItemFrame": {
+      "params": [
+        "item: f64",
+        "seconds: f64",
+        "maxWidth: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "A project item of the preview's copy at seconds of its media time, as itemFrame draws the document's: [width u32 LE][height u32 LE] then RGBA over black, at most maxWidth (1-2048) wide. For an item only the preview has (a new matte or subclip). An error when no preview is open, for an unknown item, or for an item id that is not a whole number."
+    },
+    "previewEnd": {
+      "params": [],
+      "returns": "void",
+      "description": "Ends the preview: its jobs are cancelled and its copy dropped. Nothing happens when no preview is open. The document also ends it when a command that replaced the document has run, through execute or executeAs, or inside another command (file.open, file.newProject, file.revert, file.closeProject, file.closeAllProjects, and the like)."
+    },
+    "exportStep": {
+      "params": [
+        "job: f64",
+        "budgetMs: u32"
+      ],
+      "returns": "string",
+      "description": "Advances a background export and reports it as JSON. A job id that is not a whole number is an error."
+    },
+    "jobsStep": {
+      "params": [
+        "budgetMs: u32"
+      ],
+      "returns": "string",
+      "description": "Advances the document's background jobs for up to budgetMs (1 to 1000) and applies what finished, as upstream's frame loop does: in WebAssembly, where the host has no threads, Scene Edit Detection runs a step at a time and its result lands here as one history step, recorded in the replica. Answers JSON {pending, revision, job}: whether work is left, the engine's revision, and the newest unfinished job as jobs.list shows it (id, label, progress, etaSeconds, done, total, status), or null. The editor calls it each animation frame while work is left."
+    },
+    "cancelJob": {
+      "params": [
+        "job: f64"
+      ],
+      "returns": "void",
+      "description": "Asks a background job (an export, Scene Edit Detection) to stop. A job id that is not a whole number is an error."
+    },
+    "takeFile": {
+      "params": [
+        "path: string"
+      ],
+      "returns": "Uint8Array | undefined",
+      "description": "A file the engine wrote (an export), taken out of memory."
+    },
+    "prefsVersion": {
+      "params": [],
+      "returns": "f64",
+      "description": "The user preferences' revision: it moves whenever a command or loadPrefs changes them (every preference change goes through the engine's set_prefs), so the editor knows when to store them. It reads no document."
+    },
+    "prefsValue": {
+      "params": [],
+      "returns": "string",
+      "description": "The user preferences as JSON {version, values}: version is prefsVersion, values the whole preferences as prefs.get with no key answers them. It reads no document."
+    },
+    "loadPrefs": {
+      "params": [
+        "json: string",
+        "expected: f64"
+      ],
+      "returns": "string",
+      "description": "Sets the user preferences from stored ones (a JSON object, as prefsValue's values), read as a preferences file is read (migrated, repaired against the schema, clamped), without running a command: no journal entry, history step, or new revision, and the replica is unchanged; an open preview keeps its own copy. Only while prefsVersion is still expected (the revision the editor merged from): a command that changed a preference since is never overwritten. Answers JSON {loaded, version, values}: whether it loaded, and the preferences and their revision as the engine holds them after. JSON that is not an object is an error."
+    }
+  },
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Clip",
+      "Sequence",
+      "Markers",
+      "Graphics and Titles",
+      "View",
+      "Window",
+      "Help"
+    ],
+    "layout": "timeline",
+    "brand": {
+      "light": "#2d2f3a",
+      "dark": "#a3a7b8"
+    }
+  },
+  "agent": {
+    "prefix": "film",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": false,
+    "layout": false,
+    "describe": {
+      "noun": "video project",
+      "fileTypes": ".kfilm",
+      "reports": "its sequences, tracks, clips, and playhead",
+      "covers": "clips, the timeline, trimming, transitions, titles, audio, and more",
+      "queries": "`split`, `place clip`, or `color matte`",
+      "example": "timeline.place"
+    }
+  },
+  "headless": {
+    "executable": "kit-film",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/jsonrpc.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! JSON-RPC 2.0 envelopes.
 
 use serde::{Deserialize, Serialize};
@@ -51,12 +52,7 @@ impl Message {
     /// Parses one frame. A failure carries the error response to send back,
     /// with the request id when it could be recovered.
     pub fn parse(frame: &str) -> Result<Self, Box<Response>> {
-        let value: Value = serde_json::from_str(frame).map_err(|_| {
-            Box::new(Response {
-                id: None,
-                outcome: Err(RpcError::parse_error()),
-            })
-        })?;
+        let value: Value = serde_json::from_str(frame).map_err(|_| Box::new(Response { id: None, outcome: Err(RpcError::parse_error()) }))?;
         Self::from_value(value)
     }
 
@@ -79,10 +75,7 @@ impl Message {
                 return Err(invalid(id, "method must be a string"));
             };
             let params = object.remove("params");
-            if params
-                .as_ref()
-                .is_some_and(|params| !params.is_object() && !params.is_array())
-            {
+            if params.as_ref().is_some_and(|params| !params.is_object() && !params.is_array()) {
                 return Err(invalid(id, "params must be an object or an array"));
             }
             return Ok(match id {
@@ -97,10 +90,7 @@ impl Message {
                 Err(_) => return Err(invalid(id, "error must be a JSON-RPC error object")),
             },
             _ => {
-                return Err(invalid(
-                    id,
-                    "response must have exactly one of result or error",
-                ));
+                return Err(invalid(id, "response must have exactly one of result or error"));
             }
         };
         Ok(Self::Response(Response { id, outcome }))
@@ -116,10 +106,7 @@ impl Message {
 }
 
 fn invalid(id: Option<RequestId>, detail: &str) -> Box<Response> {
-    Box::new(Response {
-        id,
-        outcome: Err(RpcError::invalid_request(detail)),
-    })
+    Box::new(Response { id, outcome: Err(RpcError::invalid_request(detail)) })
 }
 
 fn envelope(fields: impl IntoIterator<Item = (&'static str, Value)>) -> Value {
@@ -143,10 +130,7 @@ impl Request {
 
 impl Notification {
     pub fn new(method: impl Into<String>, params: Option<Value>) -> Self {
-        Self {
-            method: method.into(),
-            params,
-        }
+        Self { method: method.into(), params }
     }
 
     pub fn to_value(&self) -> Value {
@@ -178,40 +162,16 @@ mod tests {
 
     #[test]
     fn classifies_messages() {
-        assert!(matches!(
-            parse(r#"{"jsonrpc":"2.0","id":1,"method":"kit.ping"}"#),
-            Message::Request(Request {
-                id: RequestId::Number(1),
-                ..
-            })
-        ));
-        assert!(matches!(
-            parse(r#"{"jsonrpc":"2.0","method":"kit.initialized"}"#),
-            Message::Notification(_)
-        ));
-        assert!(matches!(
-            parse(r#"{"jsonrpc":"2.0","id":"a","result":{}}"#),
-            Message::Response(Response { outcome: Ok(_), .. })
-        ));
-        assert!(matches!(
-            parse(r#"{"jsonrpc":"2.0","id":2,"error":{"code":-32601,"message":"nope"}}"#),
-            Message::Response(Response {
-                outcome: Err(_),
-                ..
-            })
-        ));
+        assert!(matches!(parse(r#"{"jsonrpc":"2.0","id":1,"method":"kit.ping"}"#), Message::Request(Request { id: RequestId::Number(1), .. })));
+        assert!(matches!(parse(r#"{"jsonrpc":"2.0","method":"kit.initialized"}"#), Message::Notification(_)));
+        assert!(matches!(parse(r#"{"jsonrpc":"2.0","id":"a","result":{}}"#), Message::Response(Response { outcome: Ok(_), .. })));
+        assert!(matches!(parse(r#"{"jsonrpc":"2.0","id":2,"error":{"code":-32601,"message":"nope"}}"#), Message::Response(Response { outcome: Err(_), .. })));
     }
 
     #[test]
     fn null_result_is_a_result() {
         let message = parse(r#"{"jsonrpc":"2.0","id":1,"result":null}"#);
-        assert_eq!(
-            message,
-            Message::Response(Response {
-                id: Some(RequestId::Number(1)),
-                outcome: Ok(Value::Null)
-            })
-        );
+        assert_eq!(message, Message::Response(Response { id: Some(RequestId::Number(1)), outcome: Ok(Value::Null) }));
     }
 
     #[test]
@@ -222,33 +182,17 @@ mod tests {
         };
         assert_eq!(code("not json"), (None, Some(RpcError::PARSE_ERROR)));
         assert_eq!(code("[]"), (None, Some(RpcError::INVALID_REQUEST)));
-        assert_eq!(
-            code(r#"{"id":3,"method":"kit.ping"}"#),
-            (Some(RequestId::Number(3)), Some(RpcError::INVALID_REQUEST))
-        );
-        assert_eq!(
-            code(r#"{"jsonrpc":"2.0","id":4,"method":"kit.ping","params":1}"#),
-            (Some(RequestId::Number(4)), Some(RpcError::INVALID_REQUEST))
-        );
-        assert_eq!(
-            code(r#"{"jsonrpc":"2.0","id":5}"#),
-            (Some(RequestId::Number(5)), Some(RpcError::INVALID_REQUEST))
-        );
+        assert_eq!(code(r#"{"id":3,"method":"kit.ping"}"#), (Some(RequestId::Number(3)), Some(RpcError::INVALID_REQUEST)));
+        assert_eq!(code(r#"{"jsonrpc":"2.0","id":4,"method":"kit.ping","params":1}"#), (Some(RequestId::Number(4)), Some(RpcError::INVALID_REQUEST)));
+        assert_eq!(code(r#"{"jsonrpc":"2.0","id":5}"#), (Some(RequestId::Number(5)), Some(RpcError::INVALID_REQUEST)));
     }
 
     #[test]
     fn serializes_round_trip() {
         let messages = [
-            Message::Request(Request {
-                id: RequestId::String("x".into()),
-                method: "document.list".into(),
-                params: Some(json!({})),
-            }),
+            Message::Request(Request { id: RequestId::String("x".into()), method: "document.list".into(), params: Some(json!({})) }),
             Message::Notification(Notification::new("kit.initialized", None)),
-            Message::Response(Response {
-                id: Some(7.into()),
-                outcome: Err(RpcError::method_not_found("nope")),
-            }),
+            Message::Response(Response { id: Some(7.into()), outcome: Err(RpcError::method_not_found("nope")) }),
         ];
         for message in messages {
             let text = message.to_value().to_string();

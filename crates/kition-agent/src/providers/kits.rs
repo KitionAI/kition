@@ -32,10 +32,11 @@ impl Provider for KitsProvider {
 
     fn tools<'a>(&'a self, _scene: &'a TurnScene) -> BoxFuture<'a, Result<Vec<ToolDef>, String>> {
         let unavailable = kits::unavailable(&self.run);
-        let names = kits::tool_defs()
+        let defs = kits::tool_defs();
+        let names = defs
             .iter()
             .map(|tool| tool.name.as_str())
-            .filter(|name| !unavailable.contains(name));
+            .filter(|name| !unavailable.iter().any(|missing| missing == name));
         ready(offer(&self.factory, names))
     }
 }

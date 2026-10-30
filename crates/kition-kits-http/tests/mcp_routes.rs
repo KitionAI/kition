@@ -8,7 +8,8 @@ use axum::body::Body;
 use http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use kition_http::AuthConfig;
-use kition_kits::{KITS, KitManager, KitsState, router};
+use kition_kits::{KitDefinition, KitManager};
+use kition_kits_http::{KitsState, router};
 use kition_store::Db;
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -90,8 +91,9 @@ async fn speaks_mcp_over_http() {
 /// The Vector kit's executable, when it is built in the sibling kit checkout or named by its
 /// environment variable.
 fn vector_binary() -> Option<PathBuf> {
-    let kit = KITS.iter().find(|kit| kit.id == "kit.vector")?;
-    if let Some(path) = std::env::var_os(kit.binary_env).filter(|value| !value.is_empty()) {
+    if let Some(path) =
+        std::env::var_os("KITION_KIT_VECTOR_BINARY").filter(|value| !value.is_empty())
+    {
         return Some(PathBuf::from(path));
     }
     let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
@@ -124,17 +126,18 @@ fn conforms(listed: &Value, name: &str, result: &Value) {
 
 #[tokio::test]
 async fn calls_a_real_kit_and_returns_its_preview() {
-    let (Some(binary), Some(kit)) = (
-        vector_binary(),
-        KITS.iter().find(|kit| kit.id == "kit.vector"),
-    ) else {
+    let Some((binary, kit)) = vector_binary().and_then(|binary| {
+        let manifest = kition_kits::definitions::manifest_beside(&binary)?;
+        Some((binary, KitDefinition::from_manifest_text(&manifest).ok()?))
+    }) else {
         eprintln!("skipped: build kit-vector (cargo build -p kit-vector in its repository)");
         return;
     };
     let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::create_dir_all(dir.path().join("art")).unwrap_or_else(|err| panic!("{err}"));
     std::fs::copy(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/Drawing.kvector"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../kition-kits/tests/fixtures/Drawing.kvector"),
         dir.path().join("art/Drawing.kvector"),
     )
     .unwrap_or_else(|err| panic!("{err}"));

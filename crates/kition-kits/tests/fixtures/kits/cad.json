@@ -1,0 +1,112 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.cad",
+  "name": "CAD",
+  "version": "0.3.22",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/cadcraft",
+    "version": "0.5.0",
+    "commit": "50ffb767c7277067a959135209a4cfce5af5d5e8"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_cad_sdk",
+    "class": "CadDocument",
+    "contract": 2,
+    "crate": "kition-cad-sdk"
+  },
+  "formats": [
+    {
+      "id": "cad",
+      "extensions": [
+        "dxf"
+      ],
+      "mime": "image/vnd.dxf",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "cad",
+      "extension": "dxf",
+      "baseName": "Untitled CAD",
+      "size": {
+        "width": 420,
+        "height": 297
+      }
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "View",
+      "Insert",
+      "Format",
+      "Tools",
+      "Draw",
+      "Dimension",
+      "Modify"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#4f6d8a",
+      "dark": "#8eabc8"
+    }
+  },
+  "agent": {
+    "prefix": "cad",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "CAD drawing",
+      "fileTypes": ".dxf",
+      "reports": "its layers, object count, current layer, and command prompt",
+      "covers": "drawing, modifying, dimensions, layers, blocks, and AutoCAD-style commands; `commandLine` runs any command-line entry",
+      "queries": "`circle`, `layer`, or `dimension`",
+      "example": "circle"
+    }
+  },
+  "headless": {
+    "executable": "kit-cad",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "overlay"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Cad"
+  }
+}

@@ -1695,6 +1695,8 @@ fn golden_path() -> std::path::PathBuf {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn panes_offer_the_expected_tools_and_prompt() {
+    // The kits Kition ships, as the runtime finds them from their manifests.
+    kition_kits::definitions::fixture_kits();
     let mut scenarios: Vec<Scenario<'_>> = Vec::new();
     for pane in ["document", "workflow", "gallery"] {
         scenarios.push(scenario(pane, "responses", json!({ "pane_context": pane })));

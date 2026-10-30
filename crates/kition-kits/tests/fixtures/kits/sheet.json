@@ -1,0 +1,120 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.sheet",
+  "name": "Sheet",
+  "version": "0.4.37",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/gridcraft",
+    "version": "0.5.0",
+    "commit": "9f896c1249f40d18bf182199dc03042959be5f3f"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_sheet_sdk",
+    "class": "SheetDocument",
+    "contract": 2,
+    "crate": "kition-sheet-sdk"
+  },
+  "formats": [
+    {
+      "id": "xlsx",
+      "extensions": [
+        "xlsx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "sheet",
+      "extension": "xlsx",
+      "baseName": "Untitled sheet",
+      "size": {
+        "width": 1710,
+        "height": 2021
+      }
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "line",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Home",
+      "Insert",
+      "Draw",
+      "Page Layout",
+      "Formulas",
+      "Data",
+      "Review",
+      "View",
+      "Automate",
+      "Format",
+      "Table",
+      "Table Design",
+      "Chart Design",
+      "PivotTable Analyze",
+      "PivotTable Design",
+      "Window"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#1a8641",
+      "dark": "#4fd17b"
+    }
+  },
+  "agent": {
+    "prefix": "sheet",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "spreadsheet",
+      "fileTypes": ".xlsx",
+      "reports": "its sheets, the used range, the selection, and the active cell",
+      "covers": "cells, formulas, formatting, sorting, filtering, tables, charts, PivotTables, and more; `cell.set` enters a value or formula",
+      "queries": "`cell`, `sort`, or `format`",
+      "example": "cell.set"
+    }
+  },
+  "headless": {
+    "executable": "kit-sheet",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 5
+  },
+  "collaboration": {
+    "merge": [
+      "grid"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Sheet"
+  }
+}

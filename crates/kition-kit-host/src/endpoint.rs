@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-host/src/endpoint.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Private per-launch endpoints. On Unix the socket lives in a fresh
 //! directory with mode `0700`; on Windows it is a random local-only pipe name.
 
@@ -33,9 +34,7 @@ impl Endpoint {
     #[cfg(windows)]
     pub fn create_in(_base: &std::path::Path) -> io::Result<Self> {
         let suffix = hex::encode(rand::random::<[u8; 16]>());
-        Ok(Self {
-            address: format!(r"\\.\pipe\kition-kit-{suffix}"),
-        })
+        Ok(Self { address: format!(r"\\.\pipe\kition-kit-{suffix}") })
     }
 
     /// The value of `KITION_KIT_ENDPOINT`.
@@ -60,10 +59,7 @@ mod tests {
     fn unix_endpoint_directory_is_private_and_removed() {
         let endpoint = Endpoint::create().unwrap_or_else(|err| panic!("{err}"));
         let dir = endpoint.dir.clone();
-        let mode = std::fs::metadata(&dir)
-            .unwrap_or_else(|err| panic!("{err}"))
-            .permissions()
-            .mode();
+        let mode = std::fs::metadata(&dir).unwrap_or_else(|err| panic!("{err}")).permissions().mode();
         assert_eq!(mode & 0o777, 0o700);
         assert!(endpoint.address().ends_with("kit.sock"));
         drop(endpoint);

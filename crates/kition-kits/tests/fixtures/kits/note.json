@@ -1,0 +1,225 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.note",
+  "name": "Note",
+  "version": "0.2.62",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_note_sdk",
+    "class": "NoteDocument",
+    "contract": 2,
+    "crate": "kition-note-sdk"
+  },
+  "formats": [
+    {
+      "id": "markdown",
+      "extensions": [
+        "md",
+        "markdown"
+      ],
+      "mime": "text/markdown",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "note",
+      "extension": "md",
+      "baseName": "Untitled note",
+      "size": {
+        "width": 612,
+        "height": 792
+      }
+    }
+  ],
+  "capabilities": [
+    "kdm",
+    "pages",
+    "files",
+    "open-file",
+    "open-url"
+  ],
+  "files": {
+    "create": [
+      "html",
+      "pdf",
+      "png",
+      "jpg",
+      "gif",
+      "webp",
+      "svg",
+      "avif"
+    ],
+    "print": true
+  },
+  "ui": {
+    "mode": "embedded",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Format",
+      "Insert",
+      "View"
+    ],
+    "layout": "pages",
+    "display": "line",
+    "brand": {
+      "light": "#5645d4",
+      "dark": "#8b7ff0"
+    }
+  },
+  "agent": {
+    "prefix": "note",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": true,
+    "exclude": [
+      "links.retarget",
+      "comment.move",
+      "comment.delete",
+      "selection.get",
+      "selection.set",
+      "edit.selectAll",
+      "edit.cut",
+      "table.geometry",
+      "code.blocks",
+      "diagrams.view",
+      "diagram.set",
+      "properties.view",
+      "image.wanted",
+      "image.set",
+      "selection.replace",
+      "view.width",
+      "view.hoverOut",
+      "selection.where",
+      "view.blockAt",
+      "view.foldProperties",
+      "format.math",
+      "format.highlightColor",
+      "format.clear",
+      "selection.controlKey",
+      "format.bold",
+      "format.italic",
+      "format.strike",
+      "format.code",
+      "format.highlight",
+      "format.link",
+      "format.paragraph",
+      "format.heading1",
+      "format.heading2",
+      "format.heading3",
+      "format.heading4",
+      "format.heading5",
+      "format.heading6",
+      "list.bullet",
+      "list.numbered",
+      "list.task",
+      "list.toggleCheckbox",
+      "edit.indent",
+      "edit.outdent",
+      "edit.moveLineUp",
+      "edit.moveLineDown",
+      "edit.deleteParagraph",
+      "format.comment",
+      "format.quote",
+      "format.headingUp",
+      "format.headingDown",
+      "view.fold",
+      "view.foldAll",
+      "view.unfoldAll",
+      "view.foldMore",
+      "view.foldLess",
+      "edit.selectSection",
+      "edit.sortLines",
+      "edit.trimWhitespace",
+      "insert.wikilink",
+      "insert.embed",
+      "insert.image",
+      "insert.tag",
+      "insert.table",
+      "insert.mathBlock",
+      "insert.callout",
+      "insert.footnote",
+      "insert.date",
+      "insert.timestamp",
+      "insert.codeBlock",
+      "insert.rule"
+    ],
+    "describe": {
+      "noun": "note",
+      "fileTypes": "Markdown (.md)",
+      "reports": "its outline, properties, links, tables, tasks, and comment threads",
+      "covers": "text, headings, lists, tasks, tables, properties, links, comments, templates, and more; `text.insert` adds text",
+      "queries": "`table`, `property`, or `comment`",
+      "example": "text.insert"
+    }
+  },
+  "headless": {
+    "executable": "kit-note",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "exports": [
+    {
+      "extension": "html",
+      "mime": "text/html",
+      "command": "file.exportHtml"
+    },
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.exportPdf"
+    }
+  ],
+  "extras": {
+    "mergeFile": {
+      "params": [
+        "bytes: Uint8Array"
+      ],
+      "returns": "string"
+    },
+    "exportHtml": {
+      "params": [
+        "standalone: boolean"
+      ],
+      "returns": "string",
+      "description": "The note as HTML (file.exportHtml's html), without base64."
+    },
+    "exportPdf": {
+      "params": [
+        "pageSize: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "The note as PDF bytes on letter or a4 pages (file.exportPdf without base64)."
+    }
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "rich-text"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Note"
+  }
+}

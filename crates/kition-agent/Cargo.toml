@@ -47,6 +47,7 @@ zip = { workspace = true }
 
 [dev-dependencies]
 http-body-util = { workspace = true }
+kition-kits = { workspace = true, features = ["test-kits"] }
 jsonschema = { workspace = true }
 kition-workspace = { workspace = true }
 tempfile = { workspace = true }

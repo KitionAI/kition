@@ -3,8 +3,6 @@
 //! `<prefix>_query` and `<prefix>_batch`. The tools themselves live in `kition_kits::tools`, shared
 //! with the MCP server other harnesses use; this adapts them to the agent's catalog and turns.
 
-use std::sync::LazyLock;
-
 use base64::Engine as _;
 use kition_ai::engine::MessagePart;
 use kition_kits::KitDefinition;
@@ -16,14 +14,15 @@ use crate::run::{Run, ToolError, ToolOutput, ToolResult};
 
 pub use kit_tools::{Action, label, linked_file_prompt, parse};
 
-static DEFINITIONS: LazyLock<Vec<ToolDef>> = LazyLock::new(|| {
+/// Every known kit's tools (`kition_kits::definitions::known`).
+pub fn tool_defs() -> Vec<ToolDef> {
     kit_tools::specs()
-        .iter()
+        .into_iter()
         .map(|spec| ToolDef {
-            name: spec.name.clone(),
-            description: spec.description.clone(),
+            name: spec.name,
+            description: spec.description,
             category: if spec.writes { "artifact" } else { "context" }.into(),
-            input_schema: Some(spec.input_schema.clone()),
+            input_schema: Some(spec.input_schema),
             permission: if spec.writes {
                 WORKSPACE_WRITE
             } else {
@@ -33,15 +32,10 @@ static DEFINITIONS: LazyLock<Vec<ToolDef>> = LazyLock::new(|| {
             ..ToolDef::default()
         })
         .collect()
-});
-
-/// Every kit's tools.
-pub fn tool_defs() -> &'static [ToolDef] {
-    &DEFINITIONS
 }
 
 /// The kit tools to leave out this turn: those of kits not installed in this runtime.
-pub fn unavailable(run: &Run) -> Vec<&'static str> {
+pub fn unavailable(run: &Run) -> Vec<String> {
     let installed: Vec<String> = run
         .agent
         .kits()
@@ -53,8 +47,8 @@ pub fn unavailable(run: &Run) -> Vec<&'static str> {
         })
         .unwrap_or_default();
     tool_defs()
-        .iter()
-        .map(|tool| tool.name.as_str())
+        .into_iter()
+        .map(|tool| tool.name)
         .filter(|name| !installed.iter().any(|installed| installed == name))
         .collect()
 }

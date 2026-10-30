@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/types.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Parameter and result shapes, one per `$defs` entry in
 //! `contracts/kit/kit-protocol.schema.json`.
 //!
@@ -255,12 +256,7 @@ impl Image {
     pub const PNG: &'static str = "image/png";
 
     pub fn png(width: u32, height: u32, base64_data: String) -> Self {
-        Self {
-            mime_type: Self::PNG.to_owned(),
-            width,
-            height,
-            data: base64_data,
-        }
+        Self { mime_type: Self::PNG.to_owned(), width, height, data: base64_data }
     }
 }
 

@@ -13,7 +13,8 @@ use axum::body::Body;
 use http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use kition_http::AuthConfig;
-use kition_kits::{KitAgent, KitDefinition, KitManager, KitsState, drafts, router};
+use kition_kits::{KitAgent, KitDefinition, KitManager, drafts};
+use kition_kits_http::{KitsState, router};
 use kition_store::Db;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -22,13 +23,17 @@ use tower::ServiceExt;
 static MOCK: KitDefinition = KitDefinition {
     id: "kit.mock",
     name: "Mock kit",
-    binary_env: "KITION_KIT_MOCK_BINARY",
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
     base_name: "Untitled Mock kit",
     exports: &[],
+    executable: None,
+    version: "0.0.0",
+    manifest: "{}",
     agent: KitAgent {
         prefix: "mock",
+        drafts: true,
+        object_model: true,
         noun: "mock document",
         formats: ".mocktext",
         reports: "its text",

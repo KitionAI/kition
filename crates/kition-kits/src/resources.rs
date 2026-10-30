@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/resources.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Kit documents as MCP resources (architecture section 13): a harness reads a document's object
 //! model (`kit://<document>/describe`) and its objects (`kit://<document>/objects/<id>`, `root`
 //! for the root object) without calling a tool. `<document>` is the file's workspace path as one
@@ -65,28 +66,30 @@ impl KitResource {
         if tail == "describe" {
             return Some(Self::Describe { path });
         }
-        let raw = tail
-            .strip_prefix("objects/")
-            .filter(|raw| !raw.contains('/'))?;
+        let raw = tail.strip_prefix("objects/").filter(|raw| !raw.contains('/'))?;
         let id = decode(raw).filter(|id| !id.is_empty())?;
         Some(Self::Object { path, id })
     }
 }
 
-/// The documents open now (in kit editors and in the headless kits): each one's object model and
-/// root object.
+/// The URI of an installed kit's manifest (KHP K20): `khp://kits/<id>/kit.json`.
+pub fn manifest_uri(kit_id: &str) -> String {
+    format!("khp://kits/{kit_id}/kit.json")
+}
+
+/// The manifest of each installed kit (K20), then the documents open now (in kit editors and in
+/// the headless kits): each one's object model and root object.
 pub async fn list(kits: &KitManager) -> Value {
-    let mut open: Vec<String> = kits
-        .bridge()
-        .documents()
-        .await
-        .into_iter()
-        .map(|document| document.path)
-        .collect();
+    let installed: Vec<&str> = kits.statuses().into_iter().filter(|status| status.installed).map(|status| status.id).collect();
+    let manifests = kits.definitions().filter(|kit| installed.contains(&kit.id)).map(|kit| {
+        json!({ "uri": manifest_uri(kit.id), "name": format!("{} kit manifest", kit.name), "description": format!("The KHP manifest of {} (`kit.json`): its formats, what it creates and exports, and its agent tools.", kit.name), "mimeType": MIME })
+    });
+    let mut open: Vec<String> = kits.bridge().documents().await.into_iter().map(|document| document.path).collect();
     open.extend(kits.open_files().await.into_iter().map(|(_, path)| path));
     open.sort_unstable();
     open.dedup();
-    let resources: Vec<Value> = open
+    let resources: Vec<Value> = manifests
+        .chain(open
         .into_iter()
         .filter(|path| kits.kit_for_path(path).is_some())
         .flat_map(|path| {
@@ -99,7 +102,7 @@ pub async fn list(kits: &KitManager) -> Value {
                 json!({ "uri": describe.uri(), "name": format!("{path} object model"), "description": format!("The object types and fields of `{path}` (model.describe)."), "mimeType": MIME }),
                 json!({ "uri": root.uri(), "name": format!("{path} root object"), "description": format!("The root object of `{path}`."), "mimeType": MIME }),
             ]
-        })
+        }))
         .collect();
     json!({ "resources": resources })
 }
@@ -121,43 +124,32 @@ pub fn templates() -> Value {
     ] })
 }
 
-/// The contents of one `kit://` resource.
+/// The contents of one resource: a kit's manifest (`khp://kits/<id>/kit.json`, the text the kit
+/// ships) or a `kit://` document resource.
 pub async fn read(kits: &KitManager, uri: &str) -> Result<Vec<Value>, KitToolError> {
-    let resource = KitResource::parse(uri).ok_or_else(|| {
-        KitToolError::invalid(format!(
-            "`{uri}` is not a kit resource: kit://<document>/describe or kit://<document>/objects/<id>"
-        ))
-    })?;
+    if let Some(rest) = uri.strip_prefix("khp://kits/") {
+        let kit = rest
+            .strip_suffix("/kit.json")
+            .and_then(|id| kits.definitions().find(|kit| kit.id == id))
+            .ok_or_else(|| KitToolError::new(ErrorCode::NOT_FOUND, format!("`{uri}` names no kit this server serves")))?;
+        return Ok(vec![json!({ "uri": uri, "mimeType": MIME, "text": kit.manifest })]);
+    }
+    let resource = KitResource::parse(uri)
+        .ok_or_else(|| KitToolError::invalid(format!("`{uri}` is not a kit resource: kit://<document>/describe or kit://<document>/objects/<id>")))?;
     let path = match &resource {
         KitResource::Describe { path } | KitResource::Object { path, .. } => path.clone(),
     };
-    let kit = kits
-        .kit_for_path(&path)
-        .ok_or_else(|| KitToolError::invalid(format!("no kit opens `{path}`")))?;
+    let kit = kits.kit_for_path(&path).ok_or_else(|| KitToolError::invalid(format!("no kit opens `{path}`")))?;
     let query = tools::tool_name(kit, Action::Query);
     let (arguments, pick): (Value, fn(Value) -> Option<Value>) = match &resource {
-        KitResource::Describe { .. } => (
-            json!({ "path": path, "limit": 1, "describe": "*", "draft": false }),
-            |output| {
-                Some(
-                    json!({ "describe": output.get("describe")?, "schema": output.get("schema")? }),
-                )
-            },
-        ),
-        KitResource::Object { id, .. } => (
-            json!({ "path": path, "objects": [id], "draft": false }),
-            |output| output["objects"].as_array()?.first().cloned(),
-        ),
+        KitResource::Describe { .. } => (json!({ "path": path, "limit": 1, "describe": "*", "draft": false }), |output| {
+            Some(json!({ "describe": output.get("describe")?, "schema": output.get("schema")? }))
+        }),
+        KitResource::Object { id, .. } => (json!({ "path": path, "objects": [id], "draft": false }), |output| output["objects"].as_array()?.first().cloned()),
     };
-    let output = tools::call(kits, &query, &arguments)
-        .await
-        .ok_or_else(|| KitToolError::invalid(format!("`{query}` is not a kit tool")))??
-        .output;
-    let value = pick(output)
-        .ok_or_else(|| KitToolError::new(ErrorCode::NOT_FOUND, format!("`{uri}` names nothing")))?;
-    Ok(vec![
-        json!({ "uri": uri, "mimeType": MIME, "text": value.to_string() }),
-    ])
+    let output = tools::call(kits, &query, &arguments).await.ok_or_else(|| KitToolError::invalid(format!("`{query}` is not a kit tool")))??.output;
+    let value = pick(output).ok_or_else(|| KitToolError::new(ErrorCode::NOT_FOUND, format!("`{uri}` names nothing")))?;
+    Ok(vec![json!({ "uri": uri, "mimeType": MIME, "text": value.to_string() })])
 }
 
 #[cfg(test)]
@@ -166,27 +158,13 @@ mod tests {
 
     #[test]
     fn uris_round_trip() {
-        let object = KitResource::Object {
-            path: "talks/Q3 review.kslide".into(),
-            id: "0193a/x".into(),
-        };
+        let object = KitResource::Object { path: "talks/Q3 review.kslide".into(), id: "0193a/x".into() };
         let uri = object.uri();
         assert_eq!(uri, "kit://talks%2FQ3%20review.kslide/objects/0193a%2Fx");
         assert_eq!(KitResource::parse(&uri), Some(object));
-        assert_eq!(
-            KitResource::parse("kit://a.kvector/describe"),
-            Some(KitResource::Describe {
-                path: "a.kvector".into()
-            })
-        );
-        for bad in [
-            "kit://a.kvector",
-            "kit:///describe",
-            "kit://a.kvector/objects/",
-            "kit://a.kvector/objects/a/b",
-            "file:///a.kvector",
-            "kit://%zz/describe",
-        ] {
+        assert_eq!(KitResource::parse("kit://a.kvector/describe"), Some(KitResource::Describe { path: "a.kvector".into() }));
+        for bad in ["kit://a.kvector", "kit:///describe", "kit://a.kvector/objects/", "kit://a.kvector/objects/a/b", "file:///a.kvector", "kit://%zz/describe"]
+        {
             assert_eq!(KitResource::parse(bad), None, "{bad}");
         }
     }

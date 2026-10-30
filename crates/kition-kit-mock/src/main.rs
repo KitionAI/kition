@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-mock/src/main.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! A minimal kit for plain-text `.mocktext` documents. It implements the
 //! headless parts of Kit Protocol v1 so the host and the conformance suite can
 //! be tested without a real editor.
@@ -12,10 +13,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use kition_kit_protocol::framing::{self, read_frame_async, write_frame_async};
-use kition_kit_protocol::launch::{
-    ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, LAUNCH_ARG, ReadyLine, Surface,
-    is_valid_token,
-};
+use kition_kit_protocol::launch::{ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, LAUNCH_ARG, ReadyLine, Surface, is_valid_token};
 use kition_kit_protocol::transport::{BoxReader, BoxWriter, Listener};
 use kition_kit_protocol::{Message, PROTOCOL_VERSION, Response};
 use serde_json::Value;
@@ -45,10 +43,7 @@ fn main() -> ExitCode {
     let fault = Fault::from_env(&env("KITION_KIT_MOCK_FAULT"));
     let endpoint = env(ENV_ENDPOINT);
 
-    let runtime = match tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-    {
+    let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
         Ok(runtime) => runtime,
         Err(error) => {
             eprintln!("kition-kit-mock: {error}");
@@ -67,11 +62,7 @@ async fn serve(endpoint: String, kit: Kit) -> ExitCode {
         }
     };
     let mut stdout = std::io::stdout().lock();
-    if stdout
-        .write_all(ReadyLine::default().to_line().as_bytes())
-        .and_then(|()| stdout.flush())
-        .is_err()
-    {
+    if stdout.write_all(ReadyLine::default().to_line().as_bytes()).and_then(|()| stdout.flush()).is_err() {
         return ExitCode::FAILURE;
     }
     drop(stdout);
@@ -100,10 +91,7 @@ async fn handle_connection(kit: Arc<Kit>, reader: BoxReader, writer: BoxWriter) 
             Ok(Some(frame)) => frame,
             Ok(None) => break,
             Err(error) if error.is_recoverable() => {
-                let reply = Response {
-                    id: None,
-                    outcome: Err(kition_kit_protocol::RpcError::parse_error()),
-                };
+                let reply = Response { id: None, outcome: Err(kition_kit_protocol::RpcError::parse_error()) };
                 send(&writer, &reply.to_value()).await;
                 continue;
             }

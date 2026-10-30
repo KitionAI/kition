@@ -1,6 +1,7 @@
+# Copied from kition-sdk crates/kition-kit-host/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
 [package]
 name = "kition-kit-host"
-description = "Launches kit processes and talks to them over the Kit Protocol."
+description = "Launches kit processes and talks to them over the Kit Host Protocol."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,15 +12,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-kition-kit-protocol = { workspace = true, features = ["tokio"] }
+kition-kit-protocol = { path = "../kition-kit-protocol", features = ["tokio"] }
 
-hex = { workspace = true }
-rand = { workspace = true }
+hex = "0.4"
+rand = "0.9"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["io-util"] }
-tracing = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true, features = ["io-util"] }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"

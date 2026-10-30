@@ -70,27 +70,13 @@ pub struct Report {
 }
 
 /// Whether `@kition/dsh-kits` registers the kit's tools in DeepSeek Harness (platform D1). The
-/// package mounts Kition's MCP server (`kition-kits-mcp`, `POST /v1/mcp/kits`), which serves the
-/// tools of every kit Kition knows, so a kit is registered when Kition's kit list has its id with
-/// the manifest's agent prefix. Answers the tools' name pattern, or why it is not registered.
+/// package mounts Kition's MCP server (`kition-kits-mcp`, `POST /v1/mcp/kits`), which serves every
+/// kit whose manifest declares one (`kition_kits::definitions`), so a kit is registered when its
+/// manifest does. Answers the tools' name pattern, or why it is not registered.
 fn dsh_registration(manifest: &Value) -> Result<String, String> {
-    let id = manifest["id"].as_str().unwrap_or_default();
-    let prefix = manifest["agent"]["prefix"].as_str().unwrap_or_default();
-    let known = kition_kits::KITS
-        .iter()
-        .find(|kit| kit.id == id)
-        .ok_or_else(|| {
-            format!(
-                "Kition's kit list (kition_kits::KITS), which kition-kits-mcp serves, has no `{id}`"
-            )
-        })?;
-    if known.agent.prefix != prefix {
-        return Err(format!(
-            "Kition serves `{id}` with the agent prefix `{}`, the manifest says `{prefix}`",
-            known.agent.prefix
-        ));
-    }
-    Ok(format!("mcp__kition__{prefix}_*"))
+    let kit = kition_kits::KitDefinition::from_manifest(manifest)
+        .map_err(|error| format!("kition-kits-mcp cannot serve this manifest: {error}"))?;
+    Ok(format!("mcp__kition__{}_*", kit.agent.prefix))
 }
 
 impl Report {
@@ -1088,7 +1074,7 @@ mod tests {
         assert!(
             notes
                 .iter()
-                .any(|note| note.starts_with("L4 needs registration") && note.contains("no ``")),
+                .any(|note| note.starts_with("L4 needs registration") && note.contains("no `id`")),
             "{notes:?}"
         );
         // The KHP version says nothing about the platform: engine contract 1 is what stops L5.
@@ -1107,6 +1093,8 @@ mod tests {
     fn a_kit_kition_serves_over_mcp_reaches_l4_against_the_pinned_harness() {
         let mut manifest = json!({
             "id": "kit.slide",
+            "name": "Slide",
+            "formats": [{ "id": "slide", "extensions": ["kslide"], "role": "edit" }],
             "khp": "1.0",
             "engine": { "contract": 2 },
             "ui": { "mode": "embedded" },
@@ -1127,7 +1115,7 @@ mod tests {
         let (levels, notes) = platform_levels(&manifest);
         assert!(!levels.contains(&"L4"));
         assert!(
-            notes.iter().any(|note| note.contains("`slide`")),
+            notes.iter().any(|note| note.contains("`slide file`")),
             "{notes:?}"
         );
         let report = Report {

@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/bridge.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The Kit AI bridge (Kition platform KitAgent A7 to A10): when a file is open in a kit editor in the
 //! renderer, the agent's kit tools act on that live editor instead of a headless copy, so the
 //! person sees the edit at once and it joins the editor's undo history.
@@ -49,10 +50,7 @@ pub struct BridgeFailure {
 
 impl BridgeFailure {
     fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            data: None,
-        }
+        Self { message: message.into(), data: None }
     }
 }
 
@@ -110,10 +108,7 @@ impl Default for Bridge {
 
 /// Paths as both sides name them: workspace-relative, no leading `./` or `/`.
 pub fn normalize(path: &str) -> String {
-    path.trim()
-        .trim_start_matches("./")
-        .trim_start_matches('/')
-        .to_owned()
+    path.trim().trim_start_matches("./").trim_start_matches('/').to_owned()
 }
 
 impl Bridge {
@@ -121,36 +116,16 @@ impl Bridge {
     pub fn connect(self: &Arc<Self>) -> (u64, mpsc::UnboundedReceiver<Value>) {
         let id = self.next_session.fetch_add(1, Ordering::Relaxed) + 1;
         let (tx, rx) = mpsc::unbounded_channel();
-        let _ = tx.send(
-            json!({ "jsonrpc": "2.0", "method": "bridge.ready", "params": { "session": id } }),
-        );
-        self.sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(
-                id,
-                Arc::new(Session {
-                    tx,
-                    pending: Mutex::new(HashMap::new()),
-                }),
-            );
+        let _ = tx.send(json!({ "jsonrpc": "2.0", "method": "bridge.ready", "params": { "session": id } }));
+        self.sessions.lock().unwrap_or_else(PoisonError::into_inner).insert(id, Arc::new(Session { tx, pending: Mutex::new(HashMap::new()) }));
         (id, rx)
     }
 
     /// The renderer's stream closed: its pending requests fail at once.
     pub fn disconnect(&self, session: u64) {
-        let removed = self
-            .sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(&session);
+        let removed = self.sessions.lock().unwrap_or_else(PoisonError::into_inner).remove(&session);
         if let Some(session) = removed {
-            for (_, waiting) in session
-                .pending
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .drain()
-            {
+            for (_, waiting) in session.pending.lock().unwrap_or_else(PoisonError::into_inner).drain() {
                 let _ = waiting.send(Err("the editor window closed".into()));
             }
         }
@@ -162,37 +137,21 @@ impl Bridge {
     }
 
     pub fn connected(&self) -> bool {
-        !self
-            .sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .is_empty()
+        !self.sessions.lock().unwrap_or_else(PoisonError::into_inner).is_empty()
     }
 
     /// Sends `method` with `params` as a notification (no reply expected) to every connected
     /// renderer window, such as `table/changed`. A window whose stream has gone away silently
     /// drops the message; it reconnects and resyncs on its own.
     pub fn broadcast(&self, method: &str, params: Value) {
-        let sessions: Vec<Arc<Session>> = self
-            .sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .values()
-            .cloned()
-            .collect();
+        let sessions: Vec<Arc<Session>> = self.sessions.lock().unwrap_or_else(PoisonError::into_inner).values().cloned().collect();
         for session in sessions {
-            let _ = session
-                .tx
-                .send(json!({ "jsonrpc": "2.0", "method": method, "params": params }));
+            let _ = session.tx.send(json!({ "jsonrpc": "2.0", "method": method, "params": params }));
         }
     }
 
     fn session(&self, id: u64) -> Option<Arc<Session>> {
-        self.sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(&id)
-            .cloned()
+        self.sessions.lock().unwrap_or_else(PoisonError::into_inner).get(&id).cloned()
     }
 
     /// A message the renderer posted: an answer to a request, or a `kit.changed` notification.
@@ -206,30 +165,15 @@ impl Bridge {
             let by = params["by"].as_str().unwrap_or("person").to_owned();
             let revision = params["revision"].as_u64().unwrap_or_default();
             tracing::debug!(%path, revision, %by, "kit document changed");
-            self.revisions
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .insert(path.clone(), (revision, by.clone()));
+            self.revisions.lock().unwrap_or_else(PoisonError::into_inner).insert(path.clone(), (revision, by.clone()));
             let _ = self.changes.send(LiveChange { path, revision, by });
             return Ok(());
         }
-        let id = message
-            .get("id")
-            .and_then(Value::as_u64)
-            .ok_or("a bridge answer needs a numeric id")?;
-        let waiting = open
-            .pending
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(&id)
-            .ok_or_else(|| format!("no pending request {id}"))?;
+        let id = message.get("id").and_then(Value::as_u64).ok_or("a bridge answer needs a numeric id")?;
+        let waiting = open.pending.lock().unwrap_or_else(PoisonError::into_inner).remove(&id).ok_or_else(|| format!("no pending request {id}"))?;
         let outcome = match message.get("error") {
             Some(error) => Err(BridgeFailure {
-                message: error
-                    .get("message")
-                    .and_then(Value::as_str)
-                    .unwrap_or("the editor failed")
-                    .to_owned(),
+                message: error.get("message").and_then(Value::as_str).unwrap_or("the editor failed").to_owned(),
                 data: error.get("data").filter(|data| !data.is_null()).cloned(),
             }),
             None => Ok(message.get("result").cloned().unwrap_or(Value::Null)),
@@ -238,39 +182,16 @@ impl Bridge {
         Ok(())
     }
 
-    pub(crate) async fn request(
-        &self,
-        session: u64,
-        method: &str,
-        params: Value,
-        timeout: Duration,
-    ) -> Result<Value, String> {
-        self.request_detailed(session, method, params, timeout)
-            .await
-            .map_err(|failure| failure.message)
+    pub(crate) async fn request(&self, session: u64, method: &str, params: Value, timeout: Duration) -> Result<Value, String> {
+        self.request_detailed(session, method, params, timeout).await.map_err(|failure| failure.message)
     }
 
-    async fn request_detailed(
-        &self,
-        session: u64,
-        method: &str,
-        params: Value,
-        timeout: Duration,
-    ) -> Result<Value, BridgeFailure> {
-        let open = self
-            .session(session)
-            .ok_or_else(|| BridgeFailure::new("the editor window closed"))?;
+    async fn request_detailed(&self, session: u64, method: &str, params: Value, timeout: Duration) -> Result<Value, BridgeFailure> {
+        let open = self.session(session).ok_or_else(|| BridgeFailure::new("the editor window closed"))?;
         let id = self.next_request.fetch_add(1, Ordering::Relaxed) + 1;
         let (tx, rx) = oneshot::channel();
-        open.pending
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(id, tx);
-        if open
-            .tx
-            .send(json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params }))
-            .is_err()
-        {
+        open.pending.lock().unwrap_or_else(PoisonError::into_inner).insert(id, tx);
+        if open.tx.send(json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })).is_err() {
             self.disconnect(session);
             return Err(BridgeFailure::new("the editor window closed"));
         }
@@ -278,43 +199,22 @@ impl Bridge {
             Ok(Ok(outcome)) => outcome,
             Ok(Err(_)) => Err(BridgeFailure::new("the editor window closed")),
             Err(_) => {
-                open.pending
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .remove(&id);
-                Err(BridgeFailure {
-                    message: format!("the editor did not answer `{method}` in time"),
-                    data: Some(json!({ "reason": "timeout" })),
-                })
+                open.pending.lock().unwrap_or_else(PoisonError::into_inner).remove(&id);
+                Err(BridgeFailure { message: format!("the editor did not answer `{method}` in time"), data: Some(json!({ "reason": "timeout" })) })
             }
         }
     }
 
     /// The documents open in every connected renderer window.
     pub async fn documents(&self) -> Vec<LiveDocument> {
-        let sessions: Vec<u64> = self
-            .sessions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .keys()
-            .copied()
-            .collect();
+        let sessions: Vec<u64> = self.sessions.lock().unwrap_or_else(PoisonError::into_inner).keys().copied().collect();
         let mut all = Vec::new();
         for session in sessions {
-            let Ok(listed) = self
-                .request(session, "kit/documents", json!({}), DOCUMENTS_TIMEOUT)
-                .await
-            else {
+            let Ok(listed) = self.request(session, "kit/documents", json!({}), DOCUMENTS_TIMEOUT).await else {
                 continue;
             };
-            let documents: Vec<LiveDocument> =
-                serde_json::from_value(listed.get("documents").cloned().unwrap_or(Value::Null))
-                    .unwrap_or_default();
-            all.extend(documents.into_iter().map(|document| LiveDocument {
-                session,
-                path: normalize(&document.path),
-                ..document
-            }));
+            let documents: Vec<LiveDocument> = serde_json::from_value(listed.get("documents").cloned().unwrap_or(Value::Null)).unwrap_or_default();
+            all.extend(documents.into_iter().map(|document| LiveDocument { session, path: normalize(&document.path), ..document }));
         }
         all
     }
@@ -325,23 +225,14 @@ impl Bridge {
             return None;
         }
         let path = normalize(path);
-        self.documents()
-            .await
-            .into_iter()
-            .find(|document| document.path == path)
+        self.documents().await.into_iter().find(|document| document.path == path)
     }
 
     /// Runs one of the kit's document tools (`inspect`, `commands`, `run`, `describe`, `batch`,
     /// `draft_ready`, `draft_reopen`) on the live document; answers the tool's canonical output.
-    pub async fn call(
-        &self,
-        document: &LiveDocument,
-        tool: &str,
-        arguments: Value,
-    ) -> Result<Value, BridgeFailure> {
+    pub async fn call(&self, document: &LiveDocument, tool: &str, arguments: Value) -> Result<Value, BridgeFailure> {
         let params = json!({ "path": document.path, "kit": document.kit, "tool": tool, "arguments": arguments });
-        self.request_detailed(document.session, "kit/call", params, CALL_TIMEOUT)
-            .await
+        self.request_detailed(document.session, "kit/call", params, CALL_TIMEOUT).await
     }
 
     /// A PNG preview of the live document, at most `max_size` pixels on its longer side.
@@ -350,44 +241,24 @@ impl Bridge {
     }
 
     /// A PNG preview of the agent's draft of the live document (standard 2.0 A12).
-    pub async fn preview_draft(
-        &self,
-        document: &LiveDocument,
-        max_size: u32,
-    ) -> Result<Vec<u8>, String> {
+    pub async fn preview_draft(&self, document: &LiveDocument, max_size: u32) -> Result<Vec<u8>, String> {
         self.preview_of(document, max_size, true).await
     }
 
-    async fn preview_of(
-        &self,
-        document: &LiveDocument,
-        max_size: u32,
-        draft: bool,
-    ) -> Result<Vec<u8>, String> {
+    async fn preview_of(&self, document: &LiveDocument, max_size: u32, draft: bool) -> Result<Vec<u8>, String> {
         use base64::Engine as _;
         let mut params = json!({ "path": document.path, "maxSize": max_size });
         if draft {
             params["draft"] = Value::Bool(true);
         }
-        let answer = self
-            .request(document.session, "kit/preview", params, CALL_TIMEOUT)
-            .await?;
-        let encoded = answer
-            .get("png")
-            .and_then(Value::as_str)
-            .ok_or("the preview had no image")?;
-        base64::engine::general_purpose::STANDARD
-            .decode(encoded)
-            .map_err(|error| error.to_string())
+        let answer = self.request(document.session, "kit/preview", params, CALL_TIMEOUT).await?;
+        let encoded = answer.get("png").and_then(Value::as_str).ok_or("the preview had no image")?;
+        base64::engine::general_purpose::STANDARD.decode(encoded).map_err(|error| error.to_string())
     }
 
     /// The last change a live document reported: its revision, and who made it (`person` or `agent`).
     pub fn last_change(&self, path: &str) -> Option<(u64, String)> {
-        self.revisions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(&normalize(path))
-            .cloned()
+        self.revisions.lock().unwrap_or_else(PoisonError::into_inner).get(&normalize(path)).cloned()
     }
 }
 
@@ -414,10 +285,7 @@ mod tests {
                     Some("kit/preview") => json!({ "png": "iVBORw0K" }),
                     _ => continue,
                 };
-                let _ = bridge.receive(
-                    session,
-                    &json!({ "jsonrpc": "2.0", "id": id, "result": result }),
-                );
+                let _ = bridge.receive(session, &json!({ "jsonrpc": "2.0", "id": id, "result": result }));
             }
         });
         session
@@ -426,54 +294,27 @@ mod tests {
     #[tokio::test]
     async fn calls_reach_the_window_that_has_the_file_open() {
         let bridge = Arc::new(Bridge::default());
-        assert!(
-            bridge.find("art/a.kvector").await.is_none(),
-            "no windows: headless"
-        );
+        assert!(bridge.find("art/a.kvector").await.is_none(), "no windows: headless");
         renderer(&bridge, json!([]));
-        let second = renderer(
-            &bridge,
-            json!([{ "path": "/art/a.kvector", "kit": "kit.vector", "dirty": false, "revision": 3 }]),
-        );
-        let live = bridge
-            .find("./art/a.kvector")
-            .await
-            .unwrap_or_else(|| panic!("found"));
-        assert_eq!(
-            (live.session, live.revision, live.path.as_str()),
-            (second, 3, "art/a.kvector")
-        );
-        let answer = bridge
-            .call(&live, "run", json!({ "steps": [] }))
-            .await
-            .unwrap_or_else(|err| panic!("{err}"));
+        let second = renderer(&bridge, json!([{ "path": "/art/a.kvector", "kit": "kit.vector", "dirty": false, "revision": 3 }]));
+        let live = bridge.find("./art/a.kvector").await.unwrap_or_else(|| panic!("found"));
+        assert_eq!((live.session, live.revision, live.path.as_str()), (second, 3, "art/a.kvector"));
+        let answer = bridge.call(&live, "run", json!({ "steps": [] })).await.unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(answer["echo"]["tool"], "run");
         assert_eq!(answer["echo"]["kit"], "kit.vector");
         assert_eq!(
             bridge.call(&live, "fail", json!({})).await,
-            Err(BridgeFailure {
-                message: "refused".into(),
-                data: Some(json!({ "code": "read-only", "index": 0, "message": "refused" })),
-            }),
+            Err(BridgeFailure { message: "refused".into(), data: Some(json!({ "code": "read-only", "index": 0, "message": "refused" })) }),
             "the editor's error data reaches the tools"
         );
-        assert_eq!(
-            bridge.preview(&live, 64).await.unwrap_or_default()[..4],
-            [0x89, b'P', b'N', b'G']
-        );
+        assert_eq!(bridge.preview(&live, 64).await.unwrap_or_default()[..4], [0x89, b'P', b'N', b'G']);
     }
 
     #[tokio::test]
     async fn a_closed_window_fails_its_calls_at_once() {
         let bridge = Arc::new(Bridge::default());
         let (session, rx) = bridge.connect();
-        let live = LiveDocument {
-            path: "a.keffect".into(),
-            kit: "kit.effect".into(),
-            dirty: false,
-            revision: 1,
-            session,
-        };
+        let live = LiveDocument { path: "a.keffect".into(), kit: "kit.effect".into(), dirty: false, revision: 1, session };
         let call = {
             let bridge = bridge.clone();
             let live = live.clone();
@@ -485,11 +326,7 @@ mod tests {
         let outcome = call.await.unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(outcome, Err("the editor window closed".into()));
         assert!(!bridge.connected());
-        assert!(
-            bridge
-                .receive(session, &json!({ "id": 1, "result": {} }))
-                .is_err()
-        );
+        assert!(bridge.receive(session, &json!({ "id": 1, "result": {} })).is_err());
     }
 
     #[tokio::test]
@@ -499,10 +336,7 @@ mod tests {
         bridge
             .receive(session, &json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "a.kdesign", "revision": 7, "by": "agent" } }))
             .unwrap_or_else(|err| panic!("{err}"));
-        assert_eq!(
-            bridge.last_change("/a.kdesign"),
-            Some((7, "agent".to_owned()))
-        );
+        assert_eq!(bridge.last_change("/a.kdesign"), Some((7, "agent".to_owned())));
     }
 
     #[tokio::test]

@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/transport.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The local transport (protocol section 2): a Unix domain socket on macOS
 //! and Linux, a named pipe on Windows. The kit listens; clients connect.
 
@@ -35,10 +36,7 @@ mod platform {
         /// Binds the endpoint. The host already created the private parent
         /// directory; the socket file inherits its protection.
         pub fn bind(endpoint: &str) -> io::Result<Self> {
-            Ok(Self {
-                listener: UnixListener::bind(endpoint)?,
-                path: PathBuf::from(endpoint),
-            })
+            Ok(Self { listener: UnixListener::bind(endpoint)?, path: PathBuf::from(endpoint) })
         }
 
         pub async fn accept(&mut self) -> io::Result<(BoxReader, BoxWriter)> {
@@ -75,12 +73,7 @@ mod platform {
         let client = loop {
             match ClientOptions::new().open(endpoint) {
                 Ok(client) => break client,
-                Err(error)
-                    if matches!(
-                        error.raw_os_error(),
-                        Some(ERROR_PIPE_BUSY | ERROR_FILE_NOT_FOUND)
-                    ) && Instant::now() < deadline =>
-                {
+                Err(error) if matches!(error.raw_os_error(), Some(ERROR_PIPE_BUSY | ERROR_FILE_NOT_FOUND)) && Instant::now() < deadline => {
                     tokio::time::sleep(Duration::from_millis(20)).await;
                 }
                 Err(error) => return Err(error),
@@ -98,21 +91,13 @@ mod platform {
 
     impl Listener {
         pub fn bind(endpoint: &str) -> io::Result<Self> {
-            let next = ServerOptions::new()
-                .first_pipe_instance(true)
-                .reject_remote_clients(true)
-                .create(endpoint)?;
-            Ok(Self {
-                name: endpoint.to_owned(),
-                next,
-            })
+            let next = ServerOptions::new().first_pipe_instance(true).reject_remote_clients(true).create(endpoint)?;
+            Ok(Self { name: endpoint.to_owned(), next })
         }
 
         pub async fn accept(&mut self) -> io::Result<(BoxReader, BoxWriter)> {
             self.next.connect().await?;
-            let fresh = ServerOptions::new()
-                .reject_remote_clients(true)
-                .create(&self.name)?;
+            let fresh = ServerOptions::new().reject_remote_clients(true).create(&self.name)?;
             let connected = std::mem::replace(&mut self.next, fresh);
             let (reader, writer) = tokio::io::split(connected);
             Ok((Box::new(reader), Box::new(writer)))
@@ -122,11 +107,5 @@ mod platform {
 
 /// Whether an I/O error means the peer went away.
 pub fn is_disconnect(error: &io::Error) -> bool {
-    matches!(
-        error.kind(),
-        io::ErrorKind::BrokenPipe
-            | io::ErrorKind::ConnectionReset
-            | io::ErrorKind::ConnectionAborted
-            | io::ErrorKind::UnexpectedEof
-    )
+    matches!(error.kind(), io::ErrorKind::BrokenPipe | io::ErrorKind::ConnectionReset | io::ErrorKind::ConnectionAborted | io::ErrorKind::UnexpectedEof)
 }

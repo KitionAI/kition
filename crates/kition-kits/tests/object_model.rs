@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/tests/object_model.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The object-model tools (`<prefix>_query`, `<prefix>_batch`) and structured error codes,
 //! against the mock kit standing in for Kition Vector (`KITION_KIT_MOCK_AS`): on the headless
 //! kit, and on a live editor through the Kit AI bridge, including drafts and read-only refusals.
@@ -9,9 +10,17 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use kition_kits::KitManager;
 use kition_kits::tools::{self, ErrorCode};
-use kition_kits::{KITS, KitManager};
 use serde_json::{Value, json};
+
+/// The fixture manifest of `kit.<name>` (`tests/fixtures/kits/<name>.json`) as a kit.
+fn fixture_kit(name: &str) -> &'static kition_kits::KitDefinition {
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/fixtures/kits/{name}.json"));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+    let manifest = serde_json::from_str(&text).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+    kition_kits::KitDefinition::from_manifest(&manifest).unwrap_or_else(|error| panic!("{error}"))
+}
 
 fn mock_binary() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
@@ -24,16 +33,9 @@ fn mock_binary() -> Option<PathBuf> {
 fn as_vector(dir: &Path, mock: &Path) -> PathBuf {
     use std::os::unix::fs::PermissionsExt;
     let script = dir.join("kit-vector-mock.sh");
-    std::fs::write(
-        &script,
-        format!(
-            "#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector exec '{}' \"$@\"\n",
-            mock.display()
-        ),
-    )
-    .unwrap_or_else(|err| panic!("{err}"));
-    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+    std::fs::write(&script, format!("#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector exec '{}' \"$@\"\n", mock.display()))
         .unwrap_or_else(|err| panic!("{err}"));
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
     script
 }
 
@@ -51,21 +53,10 @@ fn fixture() -> Option<Fixture> {
     let bin = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::create_dir_all(workspace.path().join("art")).unwrap_or_else(|err| panic!("{err}"));
-    std::fs::write(workspace.path().join("art/Note.kvector"), "hello")
-        .unwrap_or_else(|err| panic!("{err}"));
-    let vector = KITS
-        .iter()
-        .find(|kit| kit.id == "kit.vector")
-        .unwrap_or_else(|| panic!("kit.vector is a kit"));
-    let kits = KitManager::new(
-        Some(workspace.path().to_path_buf()),
-        vec![(vector, Some(as_vector(bin.path(), &mock)))],
-    );
-    Some(Fixture {
-        kits,
-        workspace,
-        _bin: bin,
-    })
+    std::fs::write(workspace.path().join("art/Note.kvector"), "hello").unwrap_or_else(|err| panic!("{err}"));
+    let vector = fixture_kit("vector");
+    let kits = KitManager::new(Some(workspace.path().to_path_buf()), vec![(vector, Some(as_vector(bin.path(), &mock)))]);
+    Some(Fixture { kits, workspace, _bin: bin })
 }
 
 async fn call(kits: &KitManager, name: &str, input: Value) -> Result<Value, Value> {
@@ -82,39 +73,18 @@ async fn queries_and_batches_the_headless_kit() {
     let kits = &f.kits;
     let path = "art/Note.kvector";
 
-    let read = call(
-        kits,
-        "vector_query",
-        json!({ "path": path, "describe": "*" }),
-    )
-    .await
-    .unwrap_or_else(|err| panic!("{err}"));
+    let read = call(kits, "vector_query", json!({ "path": path, "describe": "*" })).await.unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(read["objects"][0]["type"], "Note", "{read}");
     assert_eq!(read["objects"][0]["fields"]["text"], "hello");
     assert_eq!(read["describe"]["root"], "Note");
-    assert_eq!(
-        read["schema"]["$defs"]["Tag"]["properties"]["name"]["type"],
-        "string"
-    );
+    assert_eq!(read["schema"]["$defs"]["Tag"]["properties"]["name"]["type"], "string");
     // The schema the kit described shapes the tools' arguments from now on.
     let installed = tools::installed(kits);
-    let query = installed
-        .iter()
-        .find(|spec| spec.name == "vector_query")
-        .unwrap_or_else(|| panic!("vector_query is offered"));
-    assert_eq!(
-        query.input_schema["properties"]["fields"]["items"]["enum"],
-        json!(["name", "tags", "text"])
-    );
-    let batch_spec = installed
-        .iter()
-        .find(|spec| spec.name == "vector_batch")
-        .unwrap_or_else(|| panic!("vector_batch is offered"));
+    let query = installed.iter().find(|spec| spec.name == "vector_query").unwrap_or_else(|| panic!("vector_query is offered"));
+    assert_eq!(query.input_schema["properties"]["fields"]["items"]["enum"], json!(["name", "tags", "text"]));
+    let batch_spec = installed.iter().find(|spec| spec.name == "vector_batch").unwrap_or_else(|| panic!("vector_batch is offered"));
     assert!(batch_spec.writes);
-    assert_eq!(
-        batch_spec.input_schema["properties"]["ops"]["items"]["properties"]["type"]["enum"],
-        json!(["Note", "Tag"])
-    );
+    assert_eq!(batch_spec.input_schema["properties"]["ops"]["items"]["properties"]["type"]["enum"], json!(["Note", "Tag"]));
 
     let edited = call(
         kits,
@@ -132,36 +102,14 @@ async fn queries_and_batches_the_headless_kit() {
     .unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(edited["saved"], true, "{edited}");
     assert_eq!(edited["loaded"][0]["fields"]["name"], "draft");
-    let tag = edited["refs"]["$tag"]
-        .as_str()
-        .unwrap_or_default()
-        .to_owned();
+    let tag = edited["refs"]["$tag"].as_str().unwrap_or_default().to_owned();
     assert!(!tag.is_empty());
-    assert_eq!(
-        std::fs::read_to_string(f.workspace.path().join(path)).unwrap_or_default(),
-        "hello, world",
-        "the batch was saved"
-    );
+    assert_eq!(std::fs::read_to_string(f.workspace.path().join(path)).unwrap_or_default(), "hello, world", "the batch was saved");
 
     // Following fields from the root, and reading by id.
-    let tags = call(
-        kits,
-        "vector_query",
-        json!({ "path": path, "follow": "tags", "fields": ["name"] }),
-    )
-    .await
-    .unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(
-        tags["objects"],
-        json!([{ "id": tag, "type": "Tag", "fields": { "name": "draft" } }])
-    );
-    let first = call(
-        kits,
-        "vector_query",
-        json!({ "path": path, "follow": "tags.0" }),
-    )
-    .await
-    .unwrap_or_else(|err| panic!("{err}"));
+    let tags = call(kits, "vector_query", json!({ "path": path, "follow": "tags", "fields": ["name"] })).await.unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(tags["objects"], json!([{ "id": tag, "type": "Tag", "fields": { "name": "draft" } }]));
+    let first = call(kits, "vector_query", json!({ "path": path, "follow": "tags.0" })).await.unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(first["objects"][0]["id"], tag);
 
     // Failures answer a code, the failing op's index, and a message.
@@ -178,59 +126,28 @@ async fn queries_and_batches_the_headless_kit() {
     .unwrap_or_else(|| panic!("an op on a missing object fails"));
     assert_eq!(missing["error"]["code"], "not-found", "{missing}");
     assert_eq!(missing["error"]["index"], 1);
-    assert_eq!(
-        std::fs::read_to_string(f.workspace.path().join(path)).unwrap_or_default(),
-        "hello, world",
-        "nothing of a failed batch is kept"
-    );
-    let bad = call(
-        kits,
-        "vector_batch",
-        json!({ "path": path, "ops": [{ "op": "paint" }] }),
-    )
-    .await
-    .err()
-    .unwrap_or_default();
+    assert_eq!(std::fs::read_to_string(f.workspace.path().join(path)).unwrap_or_default(), "hello, world", "nothing of a failed batch is kept");
+    let bad = call(kits, "vector_batch", json!({ "path": path, "ops": [{ "op": "paint" }] })).await.err().unwrap_or_default();
     assert_eq!(bad["error"]["code"], "invalid-op", "{bad}");
-    let command = call(
-        kits,
-        "vector_batch",
-        json!({ "path": path, "ops": [{ "op": "command", "id": "text.append", "params": { "text": "!" } }] }),
-    )
-    .await
-    .err()
-    .unwrap_or_default();
+    let command = call(kits, "vector_batch", json!({ "path": path, "ops": [{ "op": "command", "id": "text.append", "params": { "text": "!" } }] }))
+        .await
+        .err()
+        .unwrap_or_default();
     assert_eq!(command["error"]["code"], "command-failed", "{command}");
-    let unknown = call(
-        kits,
-        "vector_run",
-        json!({ "path": path, "steps": [{ "command": "no.such.command" }] }),
-    )
-    .await
-    .err()
-    .unwrap_or_default();
+    let unknown = call(kits, "vector_run", json!({ "path": path, "steps": [{ "command": "no.such.command" }] })).await.err().unwrap_or_default();
     assert_eq!(unknown["error"]["code"], "unknown-command", "{unknown}");
     assert_eq!(unknown["error"]["index"], 0);
     assert!(unknown["completed"].is_array(), "what was done is kept");
-    let wrong = call(kits, "vector_query", json!({ "path": "art/Cover.psd" }))
-        .await
-        .err()
-        .unwrap_or_default();
+    let wrong = call(kits, "vector_query", json!({ "path": "art/Cover.psd" })).await.err().unwrap_or_default();
     assert_eq!(wrong["error"]["code"], "invalid-params");
     // Drafts live in the person's open editor: a closed file has none.
-    let draft = call(
-        kits,
-        "vector_batch",
-        json!({ "path": path, "draft": true, "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }),
-    )
-    .await
-    .err()
-    .unwrap_or_default();
+    let draft =
+        call(kits, "vector_batch", json!({ "path": path, "draft": true, "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }))
+            .await
+            .err()
+            .unwrap_or_default();
     assert_eq!(draft["error"]["code"], "not-open", "{draft}");
-    let no_draft = call(kits, "vector_query", json!({ "path": path, "draft": true }))
-        .await
-        .err()
-        .unwrap_or_default();
+    let no_draft = call(kits, "vector_query", json!({ "path": path, "draft": true })).await.err().unwrap_or_default();
     assert_eq!(no_draft["error"]["code"], "not-open");
     kits.shutdown().await;
 }
@@ -254,13 +171,9 @@ fn editor(kits: &KitManager, path: &str, read_only: bool) -> Arc<Mutex<Vec<Value
                     json!({ "result": { "documents": [{ "path": path, "kit": "kit.vector", "dirty": false, "revision": 1 }] } })
                 }
                 Some("kit/call") => {
-                    seen.lock()
-                        .unwrap_or_else(|err| panic!("{err}"))
-                        .push(params.clone());
+                    seen.lock().unwrap_or_else(|err| panic!("{err}")).push(params.clone());
                     let arguments = &params["arguments"];
-                    let writes = arguments["ops"]
-                        .as_array()
-                        .is_some_and(|ops| !ops.is_empty());
+                    let writes = arguments["ops"].as_array().is_some_and(|ops| !ops.is_empty());
                     match params["tool"].as_str() {
                         Some("batch") if read_only && writes => {
                             json!({ "error": { "code": -32000, "message": "the document is read-only", "data": { "code": "read-only", "index": null, "message": "the document is read-only" } } })
@@ -290,49 +203,21 @@ fn editor(kits: &KitManager, path: &str, read_only: bool) -> Arc<Mutex<Vec<Value
 
 #[tokio::test]
 async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
-    let vector = KITS
-        .iter()
-        .find(|kit| kit.id == "kit.vector")
-        .unwrap_or_else(|| panic!("kit.vector is a kit"));
+    let vector = fixture_kit("vector");
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let kits = KitManager::new(Some(workspace.path().to_path_buf()), vec![(vector, None)]);
     let calls = editor(&kits, "art/Live.kvector", false);
 
-    let read = call(
-        &kits,
-        "vector_query",
-        json!({ "path": "art/Live.kvector", "describe": true }),
-    )
-    .await
-    .unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(
-        (
-            read["live"].clone(),
-            read["objects"][0]["fields"]["text"].clone()
-        ),
-        (json!(true), json!("live text"))
-    );
-    assert_eq!(
-        kits.described("kit.vector")
-            .map(|described| described["root"].clone()),
-        Some(json!("Note"))
-    );
+    let read = call(&kits, "vector_query", json!({ "path": "art/Live.kvector", "describe": true })).await.unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!((read["live"].clone(), read["objects"][0]["fields"]["text"].clone()), (json!(true), json!("live text")));
+    assert_eq!(kits.described("kit.vector").map(|described| described["root"].clone()), Some(json!("Note")));
 
-    let edited = call(
-        &kits,
-        "vector_batch",
-        json!({ "path": "art/Live.kvector", "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }),
-    )
-    .await
-    .unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(
-        (edited["live"].clone(), edited["saved"].clone()),
-        (json!(true), json!(true))
-    );
-    assert!(
-        edited.get("version").is_none(),
-        "replica versions are not for the model"
-    );
+    let edited =
+        call(&kits, "vector_batch", json!({ "path": "art/Live.kvector", "ops": [{ "op": "text.set", "target": "root", "field": "text", "text": "x" }] }))
+            .await
+            .unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!((edited["live"].clone(), edited["saved"].clone()), (json!(true), json!(true)));
+    assert!(edited.get("version").is_none(), "replica versions are not for the model");
 
     // On the draft: the editor is asked for its draft, and nothing is saved.
     let drafted = call(
@@ -348,14 +233,8 @@ async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
     let sent: Vec<Value> = calls.lock().unwrap_or_else(|err| panic!("{err}")).clone();
     let last = sent.last().cloned().unwrap_or_default();
     assert_eq!(last["arguments"]["draft"], true);
-    assert!(
-        last["arguments"].get("save").is_none(),
-        "a draft is never saved"
-    );
-    assert_eq!(
-        last["arguments"]["origin"]["kind"], "agent",
-        "the agent's batches say so"
-    );
+    assert!(last["arguments"].get("save").is_none(), "a draft is never saved");
+    assert_eq!(last["arguments"]["origin"]["kind"], "agent", "the agent's batches say so");
 
     // A read-only document refuses writes with `read-only`.
     let readonly = KitManager::new(Some(workspace.path().to_path_buf()), vec![(vector, None)]);

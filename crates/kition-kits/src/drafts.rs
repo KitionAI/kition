@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/drafts.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Headless drafts (KHP A12 to A15 without an open editor): when `kition-kits-mcp` runs
 //! with no Kition, an agent's `draft: true` edits go to a draft the headless kit holds, and the
 //! person reviews it later through the server's `drafts` command (`list`, `compare`, `merge`,
@@ -59,41 +60,22 @@ impl DraftState {
 }
 
 fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|elapsed| u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX))
-        .unwrap_or_default()
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|elapsed| u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)).unwrap_or_default()
 }
 
 pub(crate) fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 fn io(path: &str, error: &std::io::Error) -> KitToolError {
-    KitToolError::new(
-        ErrorCode::Failed,
-        format!(
-            "the draft of `{path}` could not be stored: {}",
-            error.kind()
-        ),
-    )
+    KitToolError::new(ErrorCode::Failed, format!("the draft of `{path}` could not be stored: {}", error.kind()))
 }
 
 fn decode(value: &Value, what: &str) -> Result<Vec<u8>, KitToolError> {
-    let text = value
-        .as_str()
-        .ok_or_else(|| KitToolError::new(ErrorCode::Failed, format!("the kit sent no {what}")))?;
+    let text = value.as_str().ok_or_else(|| KitToolError::new(ErrorCode::Failed, format!("the kit sent no {what}")))?;
     base64::engine::general_purpose::STANDARD
         .decode(text)
-        .map_err(|error| {
-            KitToolError::new(
-                ErrorCode::Failed,
-                format!("the kit sent unreadable {what}: {error}"),
-            )
-        })
+        .map_err(|error| KitToolError::new(ErrorCode::Failed, format!("the kit sent unreadable {what}: {error}")))
 }
 
 fn encode(bytes: &[u8]) -> Value {
@@ -116,8 +98,7 @@ fn copy_path(path: &str, side: &str) -> String {
 }
 
 fn workspace(kits: &KitManager) -> Result<&Path, KitToolError> {
-    kits.workspace_dir()
-        .ok_or_else(|| KitToolError::new(ErrorCode::Failed, "drafts need a workspace folder"))
+    kits.workspace_dir().ok_or_else(|| KitToolError::new(ErrorCode::Failed, "drafts need a workspace folder"))
 }
 
 fn read_meta(dir: &Path) -> Option<Value> {
@@ -139,21 +120,13 @@ fn file_name(path: &str) -> &str {
 }
 
 fn draft_required(path: &str) -> KitToolError {
-    KitToolError::new(
-        ErrorCode::DraftRequired,
-        format!("`{path}` has no draft yet: edit it with `draft: true` first."),
-    )
+    KitToolError::new(ErrorCode::DraftRequired, format!("`{path}` has no draft yet: edit it with `draft: true` first."))
 }
 
 /// The draft document the headless kit holds for `path`, opening it from its folder when the
 /// kit does not hold it yet. With `create`, a file without a draft forks one; without, it is
 /// `draft-required`.
-pub(crate) async fn document(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    create: bool,
-) -> Result<String, KitToolError> {
+pub(crate) async fn document(kits: &KitManager, kit: &'static KitDefinition, path: &str, create: bool) -> Result<String, KitToolError> {
     let held = kits.inner.draft_documents.lock().await.get(path).cloned();
     if let Some(id) = held
         && kits.document(Caller::Agent, kit.id, &id).await.is_ok()
@@ -162,11 +135,7 @@ pub(crate) async fn document(
     }
     let dir = folder(workspace(kits)?, path);
     let id = match read_meta(&dir) {
-        Some(meta) if is_file_mode(&meta) => {
-            kits.open(Caller::Agent, &copy_path(path, "draft"))
-                .await?
-                .document_id
-        }
+        Some(meta) if is_file_mode(&meta) => kits.open_own(Caller::Agent, &copy_path(path, "draft")).await?.document_id,
         Some(_) => {
             let snapshot = std::fs::read(dir.join(DRAFT)).map_err(|error| io(path, &error))?;
             let blobs = std::fs::read(dir.join(BLOBS)).ok();
@@ -181,42 +150,22 @@ pub(crate) async fn document(
         }
         None => return Err(draft_required(path)),
     };
-    kits.inner
-        .draft_documents
-        .lock()
-        .await
-        .insert(path.to_owned(), id.clone());
+    kits.inner.draft_documents.lock().await.insert(path.to_owned(), id.clone());
     Ok(id)
 }
 
-async fn open_replica(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    snapshot: &[u8],
-    blobs: Option<&[u8]>,
-) -> Result<String, KitToolError> {
+async fn open_replica(kits: &KitManager, kit: &'static KitDefinition, path: &str, snapshot: &[u8], blobs: Option<&[u8]>) -> Result<String, KitToolError> {
     let mut params = json!({ "name": file_name(path), "snapshot": encode(snapshot) });
     if let Some(blobs) = blobs.filter(|blobs| !blobs.is_empty()) {
         params["blobs"] = encode(blobs);
     }
-    let opened = kits
-        .headless_request(Caller::Agent, kit, "model.open", params)
-        .await?;
-    opened["documentId"]
-        .as_str()
-        .map(str::to_owned)
-        .ok_or_else(|| KitToolError::new(ErrorCode::Failed, "the kit opened no draft"))
+    let opened = kits.headless_request(Caller::Agent, kit, "model.open", params).await?;
+    opened["documentId"].as_str().map(str::to_owned).ok_or_else(|| KitToolError::new(ErrorCode::Failed, "the kit opened no draft"))
 }
 
 /// Forks a draft from the file as it is now: a replica fork when the kit opens replicas, else a
 /// copy of the file.
-async fn fork(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    dir: &Path,
-) -> Result<String, KitToolError> {
+async fn fork(kits: &KitManager, kit: &'static KitDefinition, path: &str, dir: &Path) -> Result<String, KitToolError> {
     let bytes = std::fs::read(kits.resolve(path)?).map_err(|error| io(path, &error))?;
     std::fs::create_dir_all(dir).map_err(|error| io(path, &error))?;
     let replica = fork_replica(kits, kit, path, dir).await;
@@ -224,10 +173,9 @@ async fn fork(
         Ok(id) => ("replica", id),
         Err(_) => {
             for side in ["base", "draft"] {
-                std::fs::write(kits.resolve(&copy_path(path, side))?, &bytes)
-                    .map_err(|error| io(path, &error))?;
+                std::fs::write(kits.resolve_own(&copy_path(path, side))?, &bytes).map_err(|error| io(path, &error))?;
             }
-            let view = kits.open(Caller::Agent, &copy_path(path, "draft")).await?;
+            let view = kits.open_own(Caller::Agent, &copy_path(path, "draft")).await?;
             ("file", view.document_id)
         }
     };
@@ -250,22 +198,9 @@ async fn fork(
 }
 
 /// The file's replica now, stored as the base and as the draft, and opened as the draft.
-async fn fork_replica(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    dir: &Path,
-) -> Result<String, KitToolError> {
+async fn fork_replica(kits: &KitManager, kit: &'static KitDefinition, path: &str, dir: &Path) -> Result<String, KitToolError> {
     let view = kits.open(Caller::Agent, path).await?;
-    let exported = kits
-        .model(
-            Caller::Agent,
-            kit.id,
-            &view.document_id,
-            "model.export",
-            serde_json::Map::new(),
-        )
-        .await?;
+    let exported = kits.model(Caller::Agent, kit.id, &view.document_id, "model.export", serde_json::Map::new()).await?;
     let base = decode(&exported["changes"], "replica")?;
     let blobs = match exported.get("blobs") {
         Some(blobs) if blobs.is_string() => decode(blobs, "blobs")?,
@@ -279,26 +214,13 @@ async fn fork_replica(
 }
 
 /// Stores the draft after an edit, and makes it `open` again (A12).
-pub(crate) async fn persist(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    id: &str,
-) -> Result<(), KitToolError> {
+pub(crate) async fn persist(kits: &KitManager, kit: &'static KitDefinition, path: &str, id: &str) -> Result<(), KitToolError> {
     let dir = folder(workspace(kits)?, path);
     let meta = read_meta(&dir).ok_or_else(|| draft_required(path))?;
     if is_file_mode(&meta) {
         kits.save(Caller::Agent, kit.id, id).await?;
     } else {
-        let exported = kits
-            .model(
-                Caller::Agent,
-                kit.id,
-                id,
-                "model.export",
-                serde_json::Map::new(),
-            )
-            .await?;
+        let exported = kits.model(Caller::Agent, kit.id, id, "model.export", serde_json::Map::new()).await?;
         let draft = decode(&exported["changes"], "replica")?;
         std::fs::write(dir.join(DRAFT), &draft).map_err(|error| io(path, &error))?;
         if let Some(blobs) = exported.get("blobs").filter(|blobs| blobs.is_string()) {
@@ -310,11 +232,7 @@ pub(crate) async fn persist(
 }
 
 /// Marks the draft of `path` `ready` (the agent asks for review) or `open` (takes it back).
-pub(crate) fn set_state(
-    kits: &KitManager,
-    path: &str,
-    state: DraftState,
-) -> Result<(), KitToolError> {
+pub(crate) fn set_state(kits: &KitManager, path: &str, state: DraftState) -> Result<(), KitToolError> {
     let dir = folder(workspace(kits)?, path);
     let mut meta = read_meta(&dir).ok_or_else(|| draft_required(path))?;
     meta["state"] = Value::String(state.as_str().to_owned());
@@ -324,8 +242,7 @@ pub(crate) fn set_state(
 
 /// Whether `path` has a stored draft.
 pub(crate) fn exists(kits: &KitManager, path: &str) -> bool {
-    kits.workspace_dir()
-        .is_some_and(|workspace| folder(workspace, path).join(META).is_file())
+    kits.workspace_dir().is_some_and(|workspace| folder(workspace, path).join(META).is_file())
 }
 
 // The person's side: what `kition-kits-mcp drafts` runs. None of it is a tool (A14).
@@ -372,9 +289,7 @@ pub fn list(workspace: &Path) -> Vec<Value> {
         .filter_map(|entry| read_meta(&entry.path()))
         .map(|mut meta| {
             let path = meta["path"].as_str().unwrap_or_default().to_owned();
-            let current = std::fs::read(workspace.join(&path))
-                .ok()
-                .map(|bytes| sha256(&bytes));
+            let current = std::fs::read(workspace.join(&path)).ok().map(|bytes| sha256(&bytes));
             meta["stale"] = Value::Bool(current.as_deref() != meta["baseSha256"].as_str());
             meta
         })
@@ -385,14 +300,12 @@ pub fn list(workspace: &Path) -> Vec<Value> {
 
 fn stored(kits: &KitManager, path: &str) -> Result<(PathBuf, Value), DraftError> {
     let dir = folder(workspace(kits)?, path);
-    let meta = read_meta(&dir)
-        .ok_or_else(|| DraftError::new("not-found", format!("`{path}` has no draft")))?;
+    let meta = read_meta(&dir).ok_or_else(|| DraftError::new("not-found", format!("`{path}` has no draft")))?;
     Ok((dir, meta))
 }
 
 fn kit_of(kits: &KitManager, path: &str) -> Result<&'static KitDefinition, KitToolError> {
-    kits.kit_for_path(path)
-        .ok_or_else(|| KitToolError::invalid(format!("no kit opens `{path}`")))
+    kits.kit_for_path(path).ok_or_else(|| KitToolError::invalid(format!("no kit opens `{path}`")))
 }
 
 fn is_stale(kits: &KitManager, path: &str, meta: &Value) -> Result<bool, KitToolError> {
@@ -402,15 +315,9 @@ fn is_stale(kits: &KitManager, path: &str, meta: &Value) -> Result<bool, KitTool
 
 /// The canonical state of a stored replica, read with the kit's schema.
 fn state_of(schema: &kition_kdm::Schema, bytes: &[u8]) -> Result<Value, String> {
-    let replica = kition_kdm::Replica::load(
-        std::sync::Arc::new(schema.clone()),
-        bytes,
-        kition_kdm::ActorId::random(),
-    )
-    .map_err(|error| format!("the replica does not read: {error}"))?;
-    replica
-        .state_json()
-        .map_err(|error| format!("the replica's state does not read: {error}"))
+    let replica = kition_kdm::Replica::load(std::sync::Arc::new(schema.clone()), bytes, kition_kdm::ActorId::random())
+        .map_err(|error| format!("the replica does not read: {error}"))?;
+    replica.state_json().map_err(|error| format!("the replica's state does not read: {error}"))
 }
 
 /// The schema's types from the described ones: each field keeps what the schema declares, and
@@ -421,19 +328,11 @@ fn schema_types(described: &Value) -> Value {
     for (name, ty) in described.as_object().into_iter().flatten() {
         let mut fields = serde_json::Map::new();
         for (field, def) in ty["fields"].as_object().into_iter().flatten() {
-            let mut kept: serde_json::Map<String, Value> = FIELD_KEYS
-                .iter()
-                .filter_map(|key| {
-                    def.get(*key)
-                        .map(|value| ((*key).to_owned(), value.clone()))
-                })
-                .collect();
+            let mut kept: serde_json::Map<String, Value> =
+                FIELD_KEYS.iter().filter_map(|key| def.get(*key).map(|value| ((*key).to_owned(), value.clone()))).collect();
             if let Some(marks) = def.get("marks").and_then(Value::as_array) {
-                let marks: serde_json::Map<String, Value> = marks
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .map(|mark| (mark.to_owned(), json!({ "expand": "after" })))
-                    .collect();
+                let marks: serde_json::Map<String, Value> =
+                    marks.iter().filter_map(Value::as_str).map(|mark| (mark.to_owned(), json!({ "expand": "after" }))).collect();
                 kept.insert("marks".into(), Value::Object(marks));
             }
             fields.insert(field.clone(), Value::Object(kept));
@@ -451,27 +350,12 @@ fn schema_types(described: &Value) -> Value {
 
 /// The kit's document schema, from what its `model.describe` answers (`kit`, `schemaVersion`,
 /// `root`, `types`: the schema's own fields).
-async fn schema(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    id: &str,
-) -> Result<kition_kdm::Schema, String> {
+async fn schema(kits: &KitManager, kit: &'static KitDefinition, id: &str) -> Result<kition_kdm::Schema, String> {
     let described = kits
-        .model(
-            Caller::User,
-            kit.id,
-            id,
-            "model.describe",
-            serde_json::Map::new(),
-        )
+        .model(Caller::User, kit.id, id, "model.describe", serde_json::Map::new())
         .await
         .map_err(|error| format!("the kit does not describe its objects: {error}"))?;
-    let field = |name: &str| {
-        described
-            .get(name)
-            .cloned()
-            .ok_or_else(|| format!("the kit's description has no `{name}`"))
-    };
+    let field = |name: &str| described.get(name).cloned().ok_or_else(|| format!("the kit's description has no `{name}`"));
     let schema = json!({
         "kdm": kition_kdm::KDM_VERSION,
         "kit": field("kit")?,
@@ -479,8 +363,7 @@ async fn schema(
         "root": field("root")?,
         "types": schema_types(&field("types")?),
     });
-    serde_json::from_value(schema)
-        .map_err(|error| format!("the kit's described schema does not read: {error}"))
+    serde_json::from_value(schema).map_err(|error| format!("the kit's described schema does not read: {error}"))
 }
 
 /// The comparison a person reviews before merging (A13): `{ path, kit, mode, state, stale, diff,
@@ -497,26 +380,19 @@ pub async fn compare(kits: &KitManager, path: &str, previews: bool) -> Result<Va
     let mut unavailable = Some("a copy of the file has no replica history to compare".to_owned());
     if is_file_mode(&meta) {
         for side in ["base", "draft"] {
-            let view = kits.open(Caller::User, &copy_path(path, side)).await?;
+            let view = kits.open_own(Caller::User, &copy_path(path, side)).await?;
             opened.push((side, view.document_id));
         }
     } else {
         let read = |name: &str| std::fs::read(dir.join(name)).map_err(|error| io(path, &error));
         let (base, draft) = (read(BASE)?, read(DRAFT)?);
         let blobs = std::fs::read(dir.join(BLOBS)).ok();
-        opened.push((
-            "base",
-            open_replica(kits, kit, path, &base, blobs.as_deref()).await?,
-        ));
-        opened.push((
-            "draft",
-            open_replica(kits, kit, path, &draft, blobs.as_deref()).await?,
-        ));
+        opened.push(("base", open_replica(kits, kit, path, &base, blobs.as_deref()).await?));
+        opened.push(("draft", open_replica(kits, kit, path, &draft, blobs.as_deref()).await?));
         let compared = match schema(kits, kit, &opened[1].1).await {
-            Ok(schema) => state_of(&schema, &base).and_then(|before| {
-                state_of(&schema, &draft)
-                    .map(|after| kition_kdm::diff::diff_states(&before, &after).to_json())
-            }),
+            Ok(schema) => {
+                state_of(&schema, &base).and_then(|before| state_of(&schema, &draft).map(|after| kition_kdm::diff::diff_states(&before, &after).to_json()))
+            }
             Err(reason) => Err(reason),
         };
         match compared {
@@ -571,15 +447,13 @@ pub async fn merge(kits: &KitManager, path: &str, overwrite: bool) -> Result<Val
         ));
     }
     let bytes = if is_file_mode(&meta) {
-        let copy = kits.resolve(&copy_path(path, "draft"))?;
+        let copy = kits.resolve_own(&copy_path(path, "draft"))?;
         std::fs::read(copy).map_err(|error| io(path, &error))?
     } else {
         let draft = std::fs::read(dir.join(DRAFT)).map_err(|error| io(path, &error))?;
         let blobs = std::fs::read(dir.join(BLOBS)).ok();
         let id = open_replica(kits, kit, path, &draft, blobs.as_deref()).await?;
-        let saved = kits
-            .headless_request(Caller::User, kit, "model.save", json!({ "documentId": id }))
-            .await;
+        let saved = kits.headless_request(Caller::User, kit, "model.save", json!({ "documentId": id })).await;
         let _ = kits.close(kit.id, &id, true).await;
         decode(&saved?["data"], "file")?
     };

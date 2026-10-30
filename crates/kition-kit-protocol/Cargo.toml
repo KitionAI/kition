@@ -1,6 +1,7 @@
+# Copied from kition-sdk crates/kition-kit-protocol/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
 [package]
 name = "kition-kit-protocol"
-description = "Kit Protocol v1 message types, error codes, launch constants, and line framing shared by the Kition host and kits."
+description = "Kit Host Protocol v1 message types, error codes, launch constants, and line framing shared by hosts and kits."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,15 +12,14 @@ publish.workspace = true
 workspace = true
 
 [features]
-# Async framing and the local socket / named pipe transport over tokio.
 tokio = ["dep:tokio"]
 
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, optional = true, features = ["io-util"] }
+tokio = { version = "1", optional = true, features = ["io-util"] }
 
 [dev-dependencies]
-jsonschema = { workspace = true }
-tokio = { workspace = true, features = ["io-util"] }
+jsonschema = { version = "0.58", default-features = false }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }

@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/error.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! JSON-RPC errors and the kit-specific `data.reason` codes (protocol section 10).
 
 use serde::{Deserialize, Serialize};
@@ -109,11 +110,7 @@ impl RpcError {
     pub const INTERNAL_ERROR: i64 = -32603;
 
     pub fn new(code: i64, message: impl Into<String>) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            data: None,
-        }
+        Self { code, message: message.into(), data: None }
     }
 
     pub fn parse_error() -> Self {
@@ -125,10 +122,7 @@ impl RpcError {
     }
 
     pub fn method_not_found(method: &str) -> Self {
-        Self::new(
-            Self::METHOD_NOT_FOUND,
-            format!("method not found: {method}"),
-        )
+        Self::new(Self::METHOD_NOT_FOUND, format!("method not found: {method}"))
     }
 
     pub fn invalid_params(detail: impl Into<String>) -> Self {
@@ -141,29 +135,17 @@ impl RpcError {
 
     /// A kit error with its paired code and `data.reason`.
     pub fn kit(reason: ErrorReason) -> Self {
-        Self::kit_data(ErrorData {
-            reason,
-            detail: None,
-            errors: None,
-        })
+        Self::kit_data(ErrorData { reason, detail: None, errors: None })
     }
 
     /// A kit error with a sanitized `data.detail`.
     pub fn kit_detail(reason: ErrorReason, detail: impl Into<String>) -> Self {
-        Self::kit_data(ErrorData {
-            reason,
-            detail: Some(detail.into()),
-            errors: None,
-        })
+        Self::kit_data(ErrorData { reason, detail: Some(detail.into()), errors: None })
     }
 
     pub fn kit_data(data: ErrorData) -> Self {
         let reason = data.reason;
-        Self {
-            code: reason.code(),
-            message: reason.message().to_owned(),
-            data: serde_json::to_value(data).ok(),
-        }
+        Self { code: reason.code(), message: reason.message().to_owned(), data: serde_json::to_value(data).ok() }
     }
 
     /// The kit reason, when `data.reason` is present and recognized.

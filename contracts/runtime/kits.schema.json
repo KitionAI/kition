@@ -22,8 +22,7 @@
         "name",
         "extensions",
         "creates",
-        "installed",
-        "binaryEnv"
+        "installed"
       ],
       "properties": {
         "id": {
@@ -50,10 +49,6 @@
         },
         "installed": {
           "type": "boolean"
-        },
-        "binaryEnv": {
-          "type": "string",
-          "description": "Environment variable that points at a local build of the kit executable."
         }
       }
     },

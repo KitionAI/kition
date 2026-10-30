@@ -11,7 +11,8 @@ use axum::body::Body;
 use http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use kition_http::AuthConfig;
-use kition_kits::{Caller, KitAgent, KitDefinition, KitManager, KitsState, router};
+use kition_kits::{Caller, KitAgent, KitDefinition, KitManager};
+use kition_kits_http::{KitsState, router};
 use kition_store::Db;
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -19,13 +20,17 @@ use tower::ServiceExt;
 static MOCK: KitDefinition = KitDefinition {
     id: "kit.mock",
     name: "Mock kit",
-    binary_env: "KITION_KIT_MOCK_BINARY",
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
     base_name: "Untitled Mock kit",
     exports: &["mockout"],
+    executable: None,
+    version: "0.0.0",
+    manifest: "{}",
     agent: KitAgent {
         prefix: "mock",
+        drafts: true,
+        object_model: true,
         noun: "mock document",
         formats: ".mocktext",
         reports: "its text",
@@ -290,14 +295,16 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
         std::fs::read_to_string(f.dir.path().join("art/note.mocktext")).unwrap_or_default(),
         "saved"
     );
-    for path in [
-        "art/note.txt",
-        "../x.mocktext",
-        "attachments/.hidden/x.mockout",
+    // No kit edits a .txt; a path out of the workspace or into a hidden folder is not allowed
+    // (KHP A29).
+    for (path, status) in [
+        ("art/note.txt", StatusCode::BAD_REQUEST),
+        ("../x.mocktext", StatusCode::FORBIDDEN),
+        ("attachments/.hidden/x.mockout", StatusCode::FORBIDDEN),
     ] {
         assert_eq!(
             put(&format!("/kits/files?path={path}")).await,
-            StatusCode::BAD_REQUEST,
+            status,
             "{path}"
         );
     }
@@ -318,7 +325,7 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
         StatusCode::BAD_REQUEST
     );
     assert!(!f.dir.path().join("missing").exists());
-    // Never through a link out of the workspace.
+    // Never through a link out of the workspace: not allowed (KHP A29), even for a new file.
     #[cfg(unix)]
     {
         let outside = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
@@ -326,7 +333,7 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
             .unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(
             put("/kits/files?path=out/new/x.mockout").await,
-            StatusCode::BAD_REQUEST
+            StatusCode::FORBIDDEN
         );
         assert!(!outside.path().join("new").exists());
     }
@@ -336,13 +343,17 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
 static OTHER: KitDefinition = KitDefinition {
     id: "kit.other",
     name: "Other kit",
-    binary_env: "KITION_KIT_OTHER_BINARY",
     extensions: &["mockpic"],
     creates: &[],
     base_name: "Untitled Other kit",
     exports: &[],
+    executable: None,
+    version: "0.0.0",
+    manifest: "{}",
     agent: KitAgent {
         prefix: "other",
+        drafts: true,
+        object_model: true,
         noun: "other document",
         formats: ".mockpic",
         reports: "its picture",
@@ -455,11 +466,28 @@ async fn an_in_page_save_writes_only_the_document_it_names() {
 #[tokio::test]
 async fn rejects_paths_outside_the_workspace_and_unknown_kits() {
     let Some(f) = fixture() else { return };
-    for path in [
-        "../escape.mocktext",
-        "/etc/passwd.mocktext",
-        "art/../../x.mocktext",
-        "art\\note.mocktext",
+    // A hidden file is refused like a missing one, so its existence cannot be probed (KHP A29).
+    std::fs::create_dir_all(f.dir.path().join(".secret")).unwrap_or_else(|err| panic!("{err}"));
+    std::fs::write(f.dir.path().join(".secret/a.mocktext"), "x")
+        .unwrap_or_else(|err| panic!("{err}"));
+    for path in [".secret/a.mocktext", ".secret/missing.mocktext"] {
+        let (status, body) = call(
+            &f.app,
+            "POST",
+            "/kits/documents",
+            Some(json!({ "path": path })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{path}: {body}");
+        assert_eq!(body["data"]["reason"], "not_allowed", "{path}: {body}");
+    }
+    // Out of the workspace is not allowed (KHP A29), an absolute path included; a backslash is no
+    // workspace path at all.
+    for (path, expected) in [
+        ("../escape.mocktext", StatusCode::FORBIDDEN),
+        ("art/../../x.mocktext", StatusCode::FORBIDDEN),
+        ("/etc/passwd.mocktext", StatusCode::FORBIDDEN),
+        ("art\\note.mocktext", StatusCode::BAD_REQUEST),
     ] {
         let (status, body) = call(
             &f.app,
@@ -468,7 +496,7 @@ async fn rejects_paths_outside_the_workspace_and_unknown_kits() {
             Some(json!({ "path": path })),
         )
         .await;
-        assert_eq!(status, StatusCode::BAD_REQUEST, "{path}: {body}");
+        assert_eq!(status, expected, "{path}: {body}");
     }
     let (status, _) = call(
         &f.app,
@@ -505,5 +533,9 @@ async fn a_missing_kit_reports_not_installed() {
         .err()
         .map(|error| error.to_string())
         .unwrap_or_default();
-    assert!(error.contains("KITION_KIT_MOCK_BINARY"), "{error}");
+    assert!(error.contains("Mock kit is not installed"), "{error}");
+    assert!(
+        !error.contains("KITION_KIT_"),
+        "the person is never told to set a variable: {error}"
+    );
 }

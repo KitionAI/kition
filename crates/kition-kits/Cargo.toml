@@ -1,6 +1,7 @@
+# Copied from kition-sdk crates/kition-kits/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
 [package]
 name = "kition-kits"
-description = "Installed kits inside the runtime: launching them, opening workspace files, and the /kits HTTP API."
+description = "Kits through their KHP manifests and headless executables: the KHP agent tools, drafts, file grants, and the kits' MCP server (kition-kits-mcp)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,34 +12,30 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-kition-core = { workspace = true }
-kition-http = { workspace = true }
-kition-kdm = { workspace = true }
-kition-license = { workspace = true }
-kition-kit-host = { workspace = true }
-kition-kit-protocol = { workspace = true, features = ["tokio"] }
+kition-kdm = { path = "../kition-kdm" }
+kition-license = { path = "../kition-license" }
+kition-kit-host = { path = "../kition-kit-host" }
+kition-kit-protocol = { path = "../kition-kit-protocol", features = ["tokio"] }
 
-axum = { workspace = true }
-base64 = { workspace = true }
-hex = { workspace = true }
-http = { workspace = true }
-rand = { workspace = true }
+base64 = "0.22"
+hex = "0.4"
+rand = "0.9"
 serde = { workspace = true }
 serde_json = { workspace = true }
-sha2 = { workspace = true }
+sha2 = "0.10"
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["io-std", "io-util"] }
-tokio-stream = { workspace = true }
-tracing = { workspace = true }
-url = { workspace = true }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"
+url = "2"
+
+[features]
+# The manifests of Kition's kits as fixtures (`definitions::fixture_kits`), for tests.
+test-kits = []
 
 [[bin]]
 name = "kition-kits-mcp"
 path = "src/bin/kition-kits-mcp.rs"
 
 [dev-dependencies]
-http-body-util = { workspace = true }
-jsonschema = { workspace = true }
-kition-store = { workspace = true }
-tempfile = { workspace = true }
-tower = { workspace = true }
+jsonschema = { version = "0.58", default-features = false }
+tempfile = "3"

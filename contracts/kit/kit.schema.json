@@ -498,6 +498,35 @@
           ],
           "description": "Kition platform: document, only the document tools; commands, also one tool per agent-facing command."
         },
+        "describe": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["noun", "fileTypes", "reports", "covers", "queries", "example"],
+          "description": "Kition platform (K21): how a host's agent tools for this kit read to a model; hosts generate the tools' descriptions and the model instructions from it.",
+          "properties": {
+            "noun": { "type": "string", "minLength": 1, "description": "What one file is, for example `layered image`." },
+            "fileTypes": { "type": "string", "minLength": 1, "description": "The file types as people name them, for example `PSD, PSB, or .kphoto`." },
+            "reports": { "type": "string", "minLength": 1, "description": "What `<prefix>_inspect` reports, for example `its size, color mode, bit depth, and layers`." },
+            "covers": { "type": "string", "minLength": 1, "description": "What the commands cover." },
+            "queries": { "type": "string", "minLength": 1, "description": "Keywords that find commands, as the tool description shows them, for example `` `brightness` or `new layer` ``." },
+            "example": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$", "description": "One command id, the example in the `<prefix>_run` schema." }
+          }
+        },
+        "render": {
+          "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$",
+          "description": "Kition platform (K21): the engine command that renders a preview of one part of a document or of a diagnostic's target (KHP A39): `{slide?, target?, scale?, maxSize?}` answers `{png}`, base64. Without it previews are `view.screenshot`'s."
+        },
+        "export": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["command", "data"],
+          "description": "Kition platform (K21): how `<prefix>_export` (KHP A41) writes the document to a new file through the engine, for every extension in `exports`.",
+          "properties": {
+            "command": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$", "description": "The command every format runs, with `format` set to the extension; it answers the file's bytes and names no file." },
+            "data": { "type": "string", "minLength": 1, "description": "The field of the command's answer that holds the file, base64." },
+            "params": { "type": "object", "description": "Parameters every export passes, so the open editor and the headless kit export the same thing (KHP A26) whatever the person has selected." }
+          }
+        },
         "include": {
           "type": "array",
           "items": {

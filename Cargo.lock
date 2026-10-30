@@ -3284,6 +3284,7 @@ dependencies = [
  "kition-http",
  "kition-kdm",
  "kition-kits",
+ "kition-kits-http",
  "kition-store",
  "kition-tableclient",
  "kition-workflow",
@@ -3502,7 +3503,6 @@ name = "kition-kit-mock"
 version = "0.0.0"
 dependencies = [
  "kition-kdm",
- "kition-kit-conformance",
  "kition-kit-protocol",
  "serde",
  "serde_json",
@@ -3525,19 +3525,13 @@ dependencies = [
 name = "kition-kits"
 version = "0.0.0"
 dependencies = [
- "axum",
  "base64 0.22.1",
  "hex",
- "http",
- "http-body-util",
  "jsonschema",
- "kition-core",
- "kition-http",
  "kition-kdm",
  "kition-kit-host",
  "kition-kit-protocol",
  "kition-license",
- "kition-store",
  "rand 0.9.5",
  "serde",
  "serde_json",
@@ -3545,10 +3539,30 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
- "tokio-stream",
- "tower",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "kition-kits-http"
+version = "0.0.0"
+dependencies = [
+ "axum",
+ "http",
+ "http-body-util",
+ "jsonschema",
+ "kition-core",
+ "kition-http",
+ "kition-kit-protocol",
+ "kition-kits",
+ "kition-store",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tokio-stream",
+ "tower",
 ]
 
 [[package]]

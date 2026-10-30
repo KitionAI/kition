@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-protocol/src/launch.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Process launch contract and timeouts (protocol sections 3 and 11).
 
 use std::time::Duration;
@@ -71,9 +72,7 @@ struct RawReadyLine {
 
 impl Default for ReadyLine {
     fn default() -> Self {
-        Self {
-            protocol_version: PROTOCOL_VERSION,
-        }
+        Self { protocol_version: PROTOCOL_VERSION }
     }
 }
 
@@ -81,26 +80,18 @@ impl ReadyLine {
     /// Parses a line read from a kit's standard output.
     pub fn parse(line: &str) -> Option<Self> {
         let raw: RawReadyLine = serde_json::from_str(line.trim_end()).ok()?;
-        (raw.kind == "ready").then_some(Self {
-            protocol_version: raw.protocol_version,
-        })
+        (raw.kind == "ready").then_some(Self { protocol_version: raw.protocol_version })
     }
 
     /// The exact line, newline included, a kit prints.
     pub fn to_line(&self) -> String {
-        format!(
-            "{{\"type\":\"ready\",\"protocolVersion\":{}}}\n",
-            self.protocol_version
-        )
+        format!("{{\"type\":\"ready\",\"protocolVersion\":{}}}\n", self.protocol_version)
     }
 }
 
 /// Whether a token has the launch format: 64 lowercase hexadecimal characters.
 pub fn is_valid_token(token: &str) -> bool {
-    token.len() == 64
-        && token
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    token.len() == 64 && token.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 #[cfg(test)]
@@ -112,10 +103,7 @@ mod tests {
         let line = ReadyLine::default().to_line();
         assert_eq!(line, "{\"type\":\"ready\",\"protocolVersion\":1}\n");
         assert_eq!(ReadyLine::parse(&line), Some(ReadyLine::default()));
-        assert_eq!(
-            ReadyLine::parse(r#"{"type":"other","protocolVersion":1}"#),
-            None
-        );
+        assert_eq!(ReadyLine::parse(r#"{"type":"other","protocolVersion":1}"#), None);
         assert_eq!(ReadyLine::parse("ready"), None);
     }
 
@@ -136,10 +124,7 @@ mod tests {
 
     #[test]
     fn surface_env_round_trip() {
-        assert_eq!(
-            Surface::from_env(Surface::Headless.as_env()),
-            Some(Surface::Headless)
-        );
+        assert_eq!(Surface::from_env(Surface::Headless.as_env()), Some(Surface::Headless));
         for retired in ["embedded", "window", "web"] {
             assert_eq!(Surface::from_env(retired), None);
         }

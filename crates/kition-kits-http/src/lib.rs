@@ -1,5 +1,7 @@
-//! `/kits`: kit status and documents opened in kits, for kit tabs in the renderer.
-//! JSON answers use the runtime envelope; previews are bare `image/png`.
+//! Kition's `/kits` HTTP API over its kits (`kition-kits`): kit status and documents opened in
+//! kits, for kit tabs in the renderer, the Kit AI bridge to the editors in the page, file grants,
+//! headless drafts, and the kits' MCP server as Streamable HTTP (`/mcp/kits`). JSON answers use
+//! the runtime envelope; previews are bare `image/png`.
 
 use axum::Router;
 use axum::extract::{FromRef, Path, Query, State};
@@ -12,7 +14,7 @@ use kition_kit_protocol::ErrorReason;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
-use crate::manager::{Caller, FileWrite, KitError, KitManager};
+use kition_kits::{Caller, FileWrite, KitError, KitManager};
 
 #[derive(Clone)]
 pub struct KitsState {
@@ -73,7 +75,7 @@ pub fn router(state: KitsState) -> Router {
 
 /// Ends a bridge session when its stream is dropped (the renderer window went away).
 struct BridgeStream {
-    bridge: std::sync::Arc<crate::bridge::Bridge>,
+    bridge: std::sync::Arc<kition_kits::bridge::Bridge>,
     session: u64,
     rx: tokio::sync::mpsc::UnboundedReceiver<Value>,
 }
@@ -138,7 +140,7 @@ async fn mcp(
     _user: CurrentUser,
     JsonBody(message): JsonBody<Value>,
 ) -> Response {
-    match crate::mcp::handle(&state.kits, &message).await {
+    match kition_kits::mcp::handle(&state.kits, &message).await {
         Some(answer) => (
             [(header::CONTENT_TYPE, "application/json")],
             answer.to_string(),
@@ -156,6 +158,7 @@ pub fn app_error(error: KitError) -> AppError {
         KitError::NotInstalled { .. } => (409, 40901),
         KitError::NoWorkspace => (409, 40902),
         KitError::InvalidPath(_) => (400, 40000),
+        KitError::NotAllowed(_) => (403, 40302),
         KitError::Launch { .. } => (502, 50201),
         KitError::Stopped { .. } => (503, 50301),
         KitError::Unavailable(_) => (409, 40904),
@@ -175,6 +178,7 @@ pub fn app_error(error: KitError) -> AppError {
         KitError::NotInstalled { .. } => json!("not_installed"),
         KitError::Stopped { .. } => json!("stopped"),
         KitError::Unavailable(_) => json!("unavailable"),
+        KitError::NotAllowed(_) => json!("not_allowed"),
         KitError::Model { code, .. } => json!(code),
         _ => Value::Null,
     };
@@ -401,8 +405,8 @@ const MAX_CHUNK_BYTES: usize = 64 << 20;
 
 /// Maps a refused file request to a status; `data.reason` is the KitFiles reason (section 10),
 /// `null` for malformed parameters.
-fn file_error(error: crate::grants::FileError) -> AppError {
-    use crate::grants::FileError;
+fn file_error(error: kition_kits::grants::FileError) -> AppError {
+    use kition_kits::grants::FileError;
     let (status, code) = match &error {
         FileError::NotGranted(_) => (403, 40310),
         FileError::NotAllowed(_) => (403, 40311),
@@ -455,7 +459,7 @@ struct OpenGrantSessionBody {
     #[serde(default)]
     document: Option<String>,
     #[serde(default)]
-    files: crate::grants::FilesManifest,
+    files: kition_kits::grants::FilesManifest,
     #[serde(default)]
     read_only: bool,
 }
@@ -469,7 +473,7 @@ async fn open_grant_session(
     let session = state
         .kits
         .grants()
-        .open_session(crate::grants::SessionRequest {
+        .open_session(kition_kits::grants::SessionRequest {
             kit: &body.kit,
             principal: &caller.principal,
             document: body.document.as_deref(),
@@ -516,8 +520,8 @@ enum PersonFlow {
 struct GrantBody {
     session: String,
     path: String,
-    kind: crate::grants::Kind,
-    rights: Vec<crate::grants::Right>,
+    kind: kition_kits::grants::Kind,
+    rights: Vec<kition_kits::grants::Right>,
     #[serde(default)]
     accept: Vec<String>,
     flow: PersonFlow,
@@ -530,8 +534,8 @@ async fn grant_file(
     JsonBody(body): JsonBody<GrantBody>,
 ) -> AppResult<Response> {
     let flow = match body.flow {
-        PersonFlow::Pick => crate::grants::Flow::Pick,
-        PersonFlow::Drop => crate::grants::Flow::Drop,
+        PersonFlow::Pick => kition_kits::grants::Flow::Pick,
+        PersonFlow::Drop => kition_kits::grants::Flow::Drop,
     };
     let stat = state
         .kits
@@ -539,7 +543,7 @@ async fn grant_file(
         .grant(
             &body.session,
             &caller.principal,
-            crate::grants::GrantRequest {
+            kition_kits::grants::GrantRequest {
                 path: &body.path,
                 kind: body.kind,
                 rights: &body.rights,
@@ -705,7 +709,7 @@ async fn write_chunk(
             &query.session,
             &caller.principal,
             &handle,
-            crate::grants::WriteChunk {
+            kition_kits::grants::WriteChunk {
                 bytes: &body,
                 offset: query.offset,
                 last: query.last,
@@ -725,7 +729,7 @@ async fn write_chunk(
 
 /// Maps a refused draft command to a status the renderer can branch on; `data.reason` is the
 /// command's code (`not-found`, `stale`, or a kit tool's code).
-fn draft_error(error: crate::drafts::DraftError) -> AppError {
+fn draft_error(error: kition_kits::drafts::DraftError) -> AppError {
     let (status, code) = match error.code {
         "not-found" => (404, 40403),
         "stale" => (409, 40905),
@@ -739,7 +743,7 @@ async fn list_drafts(State(state): State<KitsState>, _user: CurrentUser) -> Resp
     let drafts = state
         .kits
         .workspace_dir()
-        .map(crate::drafts::list)
+        .map(kition_kits::drafts::list)
         .unwrap_or_default();
     ok(json!({ "drafts": drafts }))
 }
@@ -757,7 +761,7 @@ async fn compare_draft(
     _user: CurrentUser,
     Query(query): Query<DraftQuery>,
 ) -> AppResult<Response> {
-    let answer = crate::drafts::compare(&state.kits, &query.path, query.previews)
+    let answer = kition_kits::drafts::compare(&state.kits, &query.path, query.previews)
         .await
         .map_err(draft_error)?;
     Ok(ok(answer))
@@ -778,7 +782,7 @@ async fn merge_draft(
     _user: CurrentUser,
     JsonBody(body): JsonBody<MergeDraftBody>,
 ) -> AppResult<Response> {
-    let answer = crate::drafts::merge(&state.kits, &body.path, body.overwrite)
+    let answer = kition_kits::drafts::merge(&state.kits, &body.path, body.overwrite)
         .await
         .map_err(draft_error)?;
     Ok(ok(answer))
@@ -795,7 +799,7 @@ async fn discard_draft(
     _user: CurrentUser,
     JsonBody(body): JsonBody<DiscardDraftBody>,
 ) -> AppResult<Response> {
-    let answer = crate::drafts::discard(&state.kits, &body.path)
+    let answer = kition_kits::drafts::discard(&state.kits, &body.path)
         .await
         .map_err(draft_error)?;
     Ok(ok(answer))

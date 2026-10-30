@@ -179,6 +179,67 @@ workspace = true
 ${dependencies}`
   },
 })
+// The Kit Host Protocol's host side and the kits' MCP server (crates/kition-kit-protocol,
+// kition-kit-host, kition-kit-mock, kition-kits, with kition-kits-mcp): their sources, tests, and
+// fixtures, unchanged but for the schemas' place (kition-sdk `schemas/`, here `contracts/kit/`),
+// with manifests written here. Kition serves them over HTTP in crates/kition-kits-http.
+const rustKitCrates = ['crates/kition-kit-protocol', 'crates/kition-kit-host', 'crates/kition-kit-mock', 'crates/kition-kits']
+const schemaPlace = (text) =>
+  text
+    .replaceAll('../../../schemas/', '../../../contracts/kit/')
+    .replaceAll('/../../schemas/', '/../../contracts/kit/')
+    .replaceAll('`schemas/kit-protocol.schema.json`', '`contracts/kit/kit-protocol.schema.json`')
+    .replaceAll('schemas/mcp-tools.schema.json', 'contracts/kit/mcp-tools.schema.json')
+const walk = (dir, prefix = '') =>
+  fs
+    .readdirSync(path.join(dir, prefix), { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap((entry) => {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+      if (entry.isDirectory()) return entry.name === 'target' ? [] : walk(dir, relative)
+      return entry.name === '.DS_Store' ? [] : [relative]
+    })
+const rustKitDirs = []
+for (const crate of rustKitCrates) {
+  const relatives = walk(path.join(sdk, crate))
+  for (const relative of relatives) {
+    if (relative === 'Cargo.toml') continue
+    const source = `${crate}/${relative}`
+    if (relative.endsWith('.rs')) files.push({ source, out: source, rewrite: (text) => header(source) + schemaPlace(text) })
+    else files.push({ source, out: source, binary: true })
+  }
+  for (const dir of new Set(relatives.map((relative) => path.posix.dirname(relative)).filter((dir) => dir !== '.'))) {
+    rustKitDirs.push({ dir: `${crate}/${dir}`, ext: dir.includes('fixtures') ? '' : '.rs', all: dir.includes('fixtures') })
+  }
+  files.push({ source: 'clippy.toml', out: `${crate}/clippy.toml`, binary: true })
+  files.push({ source: 'rustfmt.toml', out: `${crate}/rustfmt.toml`, binary: true })
+  files.push({
+    source: `${crate}/Cargo.toml`,
+    out: `${crate}/Cargo.toml`,
+    rewrite: (text) => {
+      const field = (key) => text.match(new RegExp(`^${key} = "(.*)"$`, 'm'))?.[1] ?? ''
+      const rest = text.slice(text.indexOf('\n', text.indexOf('[lints]')) + 1).replace(/^workspace = true\n+/, '')
+      return `# Copied from kition-sdk ${crate}/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "${field('name')}"
+description = "${field('description')}"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+${rest}`
+    },
+  })
+}
+// The Kit Host Protocol's schema and the kit tools' schemas (kition-sdk `schemas/`).
+for (const name of ['kit-protocol.schema.json', 'mcp-tools.schema.json']) {
+  files.push({ source: `schemas/${name}`, out: `contracts/kit/${name}`, rewrite: (text) => text })
+}
 // A KDM copy whose source file is gone is stale too. Only files this script wrote (they start
 // with its header, or sit in the copied fixtures folder) count, so a hand-written file is never
 // removed.
@@ -194,6 +255,7 @@ const copyDirs = [
   { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
   { dir: `${rustLicense}/src`, ext: '.rs' },
   { dir: `${rustLicense}/tests`, ext: '.rs' },
+  ...rustKitDirs,
 ]
 const copies = new Set(files.map((file) => file.out))
 const copiedHere = (file) => fs.readFileSync(file, 'utf8').startsWith('// Copied from kition-sdk ')

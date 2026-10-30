@@ -58,25 +58,30 @@ static CATALOG: LazyLock<Catalog> = LazyLock::new(|| {
     })
 });
 
-/// The catalog's tools and every kit's tools, sorted by name.
-static TOOLS: LazyLock<Vec<ToolDef>> = LazyLock::new(|| {
+/// Every built-in tool and every known kit's tools, sorted by name. The kits are those the
+/// runtime found (`kition_kits::definitions`), so the list is built each time.
+pub fn tools() -> Vec<ToolDef> {
     let mut tools: Vec<ToolDef> = CATALOG
         .tools
         .iter()
-        .chain(crate::tools::kits::tool_defs())
         .cloned()
+        .chain(crate::tools::kits::tool_defs())
         .collect();
     tools.sort_by(|a, b| a.name.cmp(&b.name));
     tools
-});
-
-/// Every built-in tool, sorted by name.
-pub fn tools() -> &'static [ToolDef] {
-    &TOOLS
 }
 
-pub fn tool(name: &str) -> Option<&'static ToolDef> {
-    TOOLS.iter().find(|tool| tool.name == name)
+pub fn tool(name: &str) -> Option<ToolDef> {
+    CATALOG
+        .tools
+        .iter()
+        .find(|tool| tool.name == name)
+        .cloned()
+        .or_else(|| {
+            crate::tools::kits::tool_defs()
+                .into_iter()
+                .find(|tool| tool.name == name)
+        })
 }
 
 /// Built-in skills overridden or extended by the workspace's own.
@@ -330,7 +335,7 @@ mod tests {
     #[test]
     fn catalog_loads_without_browser_tools() {
         assert!(tools().len() > 30);
-        assert!(tool("document_write").is_some_and(ToolDef::writes));
+        assert!(tool("document_write").is_some_and(|tool| tool.writes()));
         assert!(tool("document_read").is_some_and(|tool| !tool.writes()));
         assert!(
             tools()

@@ -21,6 +21,7 @@ kition-agent = { workspace = true }
 kition-ai = { workspace = true }
 kition-connections = { workspace = true }
 kition-kits = { workspace = true }
+kition-kits-http = { workspace = true }
 kition-core = { workspace = true }
 kition-tableclient = { workspace = true }
 kition-desktop = { workspace = true }

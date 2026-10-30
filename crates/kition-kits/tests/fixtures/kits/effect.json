@@ -1,0 +1,141 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.effect",
+  "name": "Effect",
+  "version": "0.3.21",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/effectcraft",
+    "version": "0.7.0",
+    "commit": "4b58cd2eb733bdc7ad39161e93dd8e2ff4af6416"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_effect_sdk",
+    "class": "EffectDocument",
+    "contract": 2,
+    "crate": "kition-effect-sdk"
+  },
+  "formats": [
+    {
+      "id": "effect",
+      "extensions": [
+        "keffect"
+      ],
+      "mime": "application/vnd.kition.effect+json",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "effect",
+      "extension": "keffect",
+      "baseName": "Untitled effect",
+      "size": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "mp4",
+      "mime": "video/mp4",
+      "command": "renderQueue.render"
+    }
+  ],
+  "capabilities": [
+    "lent-files",
+    "timeline",
+    "kdm"
+  ],
+  "extras": {
+    "takeFile": {
+      "params": [
+        "path: string"
+      ],
+      "returns": "Uint8Array | undefined",
+      "description": "A file the engine wrote (a render), taken out of memory."
+    },
+    "renderMovie": {
+      "params": [
+        "path: string",
+        "format: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "The active composition rendered as a movie from a copy of the project; the document is left unchanged."
+    }
+  },
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Composition",
+      "Layer",
+      "Effect",
+      "Animation",
+      "View",
+      "Window",
+      "Help"
+    ],
+    "layout": "timeline",
+    "brand": {
+      "light": "#b03fd6",
+      "dark": "#d27cf0"
+    }
+  },
+  "agent": {
+    "prefix": "effect",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "motion graphics project",
+      "fileTypes": ".keffect",
+      "reports": "its active composition, layers, and their keyframe times",
+      "covers": "compositions, layers, keyframes, effects, masks, text, and more",
+      "queries": "`new solid`, `add keyframe`, or `gaussian blur`",
+      "example": "layer.newSolid"
+    },
+    "export": {
+      "command": "file.exportMovie",
+      "data": "data"
+    }
+  },
+  "headless": {
+    "executable": "kit-effect",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "timeline",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Effect"
+  }
+}

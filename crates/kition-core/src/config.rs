@@ -45,6 +45,12 @@ pub struct AppConfig {
     pub log_level: String,
     pub upload_dir: String,
     pub workspace_dir: String,
+    /// A folder with one folder per kit package holding its `kit.json` (Kition's `public/kits`):
+    /// where the runtime finds the kits it knows (`KITION_KITS_DIR`, then `kits.dir`).
+    pub kits_dir: String,
+    /// Kit manifests (`kit.json` text) the embedding process hands over, as the desktop shell
+    /// does with the kit packages it serves. Set by the embedding process only.
+    pub kit_manifests: Vec<String>,
     pub sqlite_path: String,
     pub smtp_host: String,
     pub smtp_port: i64,
@@ -136,6 +142,8 @@ fn from_value(root: &Value, env: &dyn Fn(&str) -> Option<String>) -> AppConfig {
             env_str("KITION_DESKTOP_WORKSPACE_DIR"),
             file.string("storage.workspaceDir"),
         ]),
+        kits_dir: first_non_empty(&[env_str("KITION_KITS_DIR"), file.string("kits.dir")]),
+        kit_manifests: Vec::new(),
         sqlite_path: first_non_empty(&[
             env_str("KITION_DESKTOP_SQLITE_PATH"),
             file.string("sqlite.path"),

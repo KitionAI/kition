@@ -1,0 +1,130 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.design",
+  "name": "Design",
+  "version": "0.3.9",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/designcraft",
+    "version": "0.6.0",
+    "commit": "a9124a0517594ce9872f73637e7b841a4967bcf9"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_design_sdk",
+    "class": "DesignDocument",
+    "contract": 2,
+    "crate": "kition-design-sdk"
+  },
+  "formats": [
+    {
+      "id": "design",
+      "extensions": [
+        "kdesign"
+      ],
+      "mime": "application/vnd.kition.design+zip",
+      "role": "edit"
+    },
+    {
+      "id": "design-import",
+      "extensions": [
+        "idml"
+      ],
+      "mime": "application/vnd.adobe.indesign-idml-package",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "design",
+      "extension": "kdesign",
+      "baseName": "Untitled design",
+      "size": {
+        "width": 612,
+        "height": 792
+      }
+    }
+  ],
+  "capabilities": [
+    "kdm",
+    "engine-tools",
+    "pages"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "line",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Layout",
+      "Type",
+      "Object",
+      "Table",
+      "View",
+      "Window",
+      "Help"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#d32f8d",
+      "dark": "#f57bbd"
+    }
+  },
+  "agent": {
+    "prefix": "design",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": true,
+    "layout": true,
+    "describe": {
+      "noun": "page layout",
+      "fileTypes": ".kdesign",
+      "reports": "its pages, spreads, frames, stories, styles, and swatches",
+      "covers": "pages, frames, text, styles, swatches, tables, and more",
+      "queries": "`text frame`, `paragraph style`, or `insert page`",
+      "example": "frame.create"
+    }
+  },
+  "headless": {
+    "executable": "kit-design",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "extras": {
+    "setBackdrop": {
+      "params": [
+        "color: string"
+      ],
+      "returns": "void"
+    }
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "rich-text",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Design"
+  }
+}

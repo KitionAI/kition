@@ -1,0 +1,136 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.board",
+  "name": "Board",
+  "version": "0.1.3",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_board_sdk",
+    "class": "BoardDocument",
+    "contract": 2,
+    "crate": "kition-board-sdk"
+  },
+  "formats": [
+    {
+      "id": "kboard",
+      "extensions": [
+        "kboard"
+      ],
+      "mime": "application/vnd.kition.board+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "board",
+      "extension": "kboard",
+      "baseName": "Untitled board",
+      "size": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    },
+    {
+      "extension": "svg",
+      "mime": "image/svg+xml",
+      "command": "file.export"
+    },
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "entry": "ui/index.html",
+    "menus": [
+      "Edit",
+      "Insert",
+      "Arrange",
+      "View"
+    ],
+    "layout": "canvas"
+  },
+  "agent": {
+    "prefix": "board",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "board",
+      "fileTypes": ".kboard",
+      "reports": "its pages, frames, and element counts",
+      "covers": "shapes, sticky notes, text, connectors, frames, mind maps, templates, layout, pages, and more; `element.create` adds elements",
+      "queries": "`connector`, `frame`, or `mindmap`",
+      "example": "element.create"
+    }
+  },
+  "headless": {
+    "executable": "kit-board",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "extras": {
+    "elementSvg": {
+      "params": [
+        "request: string"
+      ],
+      "returns": "string",
+      "description": "Fragments by appearance revision: { ids, lod?, known? } -> { fragments: [{ id, rev, svg, box, frame, size?, slot? }], unchanged, missing, fontEpoch } (design note 4.2)"
+    },
+    "textMetrics": {
+      "params": [
+        "request: string"
+      ],
+      "returns": "string",
+      "description": "The engine's line layout: { texts: [{ text, size?, weight?, family?, maxWidth? }] } -> { results: [{ lines, width, height }], fontEpoch }"
+    },
+    "blob": {
+      "params": [
+        "hash: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "A picture's bytes by blob hash; empty while the board does not hold them"
+    }
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 2
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "rich-text"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Board"
+  }
+}

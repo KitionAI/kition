@@ -1,0 +1,326 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "agent-ready",
+  "id": "kit.fig",
+  "name": "Fig",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/figcraft",
+    "version": "0.11.2",
+    "commit": "43af145a12eacd1e87f5f5e6984c49b7da040288"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_fig_sdk",
+    "class": "FigDocument",
+    "contract": 2,
+    "crate": "kition-fig-sdk"
+  },
+  "formats": [
+    {
+      "id": "fig",
+      "extensions": [
+        "kfig"
+      ],
+      "mime": "application/vnd.kition.fig+zip",
+      "role": "edit"
+    },
+    {
+      "id": "fig-import",
+      "extensions": [
+        "fig",
+        "sketch"
+      ],
+      "mime": "application/octet-stream",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "fig",
+      "extension": "kfig",
+      "baseName": "Untitled fig",
+      "size": {
+        "width": 1440,
+        "height": 1024
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    },
+    {
+      "extension": "jpg",
+      "mime": "image/jpeg",
+      "command": "file.export"
+    },
+    {
+      "extension": "svg",
+      "mime": "image/svg+xml",
+      "command": "file.export"
+    },
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm",
+    "lent-files"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "View",
+      "Object",
+      "Text",
+      "Arrange",
+      "Vector",
+      "Preferences",
+      "Libraries"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#00875F",
+      "dark": "#02DA96"
+    }
+  },
+  "agent": {
+    "prefix": "fig",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "interface design",
+      "fileTypes": ".kfig",
+      "reports": "its pages, layer count, selection, tool, and undo state",
+      "covers": "frames, shapes, text, auto layout, components, styles, variables, prototyping, and more",
+      "queries": "`rectangle`, `auto layout`, or `component`",
+      "example": "shape.rectangle"
+    },
+    "render": "file.render",
+    "export": {
+      "command": "file.export",
+      "data": "data",
+      "params": {
+        "ids": []
+      }
+    }
+  },
+  "headless": {
+    "executable": "kit-fig",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 4
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "rich-text",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Fig"
+  },
+  "extras": {
+    "query": {
+      "params": [
+        "name: string",
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "A panel's answer as JSON: pages, layers, selection, node, document, selectionColors, componentProperties, instanceExposed, prototype, components, styles, variables, devInspect, code, componentCode, devAssets, readyForDev, annotations, annotationCategories, measurements, devResources, comments, versions, branches, framePresets, fonts, documentColors, imagePresets, vectorEdit, textSelection, menus, checked, exportSettings, fontFamilies, font, missingFonts, textStyles, recentColors, prefs, keymap, toolbar, layersAt, distances, paddingLines, redlines, commentPeople, commentPins, protoConnections, paintHandles, blurHandles, playground, evaluate, vectorBounds, shapeBuilderRegions, variable.modeRows, clipboard.paintState, image.info, history, layers.dropInfo, assets.list, drop.preview, library.list, library.updates, library.files, variables.pickFor, menu.context, hitTest, rename.preview, prefs.recentActions, layout.gridGeometry, arrange.spacingInfo, dev.focusState, dev.compare, codeLinks, annotation.callouts, version.previewState, proto.destinations, proto.parseExpression (bindings/wasm/src/query.rs, canvas.rs, panels.rs, lists.rs)"
+    },
+    "chrome": {
+      "params": [
+        "zoom: number"
+      ],
+      "returns": "string",
+      "description": "The canvas chrome in document pixels as JSON: frame labels, the size pill, auto layout padding and gap handles, layout grids, the pixel grid, rulers, ruler guides (bindings/wasm/src/chrome.rs)"
+    },
+    "exportNode": {
+      "params": [
+        "id: string",
+        "format: string",
+        "scale: number"
+      ],
+      "returns": "Uint8Array",
+      "description": "One layer exported as png, jpg, webp, svg, pdf, or xml at scale: the file's bytes"
+    },
+    "exportNodeWith": {
+      "params": [
+        "id: string",
+        "params: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "One layer exported with an export setting's options ({ index?, setting?: { format, size, contentsOnly, includeBoundingBox, svgOutlineText, svgIdAttribute, svgSimplifyStroke, print, vdCompat }, format?, scale? }): the file's bytes (bindings/wasm/src/query.rs)"
+    },
+    "thumbnail": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "A PNG thumbnail of the first page"
+    },
+    "beginInteraction": {
+      "params": [
+        "label: string"
+      ],
+      "returns": "boolean",
+      "description": "Starts an interaction: the edits until commitInteraction are one undo step named label (number scrubs, colour drags, handle drags); true when this call opened it, false when one was open already (bindings/wasm/src/view.rs)"
+    },
+    "commitInteraction": {
+      "params": [],
+      "returns": "boolean",
+      "description": "Ends the editor's interaction as one undo step; true when it recorded one"
+    },
+    "cancelInteraction": {
+      "params": [],
+      "returns": "boolean",
+      "description": "Abandons the editor's interaction and restores the document; true when there was one"
+    },
+    "setViewport": {
+      "params": [
+        "x: number",
+        "y: number",
+        "width: number",
+        "height: number",
+        "zoom: number"
+      ],
+      "returns": "void",
+      "description": "Tells the engine the editor's view: document pixel (x, y) at the viewport's top-left, width x height screen pixels, zoom; never an edit"
+    },
+    "viewTarget": {
+      "params": [
+        "command: string",
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "Where a View menu zoom command (view.zoomFit, view.zoomSelection, view.zoom100, view.zoomIn, view.zoomAt, view.nextFrame, ...) takes the view, as JSON { zoom, x, y, centerX, centerY, rect, selection } in document pixels, for the editor to animate its own viewport (bindings/wasm/src/view.rs)"
+    },
+    "nodeThumbnail": {
+      "params": [
+        "id: string",
+        "size: number"
+      ],
+      "returns": "Uint8Array",
+      "description": "A layer drawn to fit a size x size square (at most 2x) as a transparent PNG: layer and asset thumbnails (bindings/wasm/src/preview.rs)"
+    },
+    "textPreview": {
+      "params": [
+        "params: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "Text drawn in its own font as a transparent PNG, for font lists ({ family, style?, size?, text? }) and text style samples ({ styleId }), with color, scale, maxWidth, maxHeight (bindings/wasm/src/preview.rs)"
+    },
+    "samplePixel": {
+      "params": [
+        "x: number",
+        "y: number",
+        "zoom: number"
+      ],
+      "returns": "string",
+      "description": "The colour the canvas shows at a document pixel, #rrggbb: the colour picker's eyedropper"
+    },
+    "strokePreviewOutline": {
+      "params": [
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "A brush's outline ({ preset, width?, height? }) along a short line as SVG path data in CSS pixels, stroked with 1 px lines by the Stroke section's brush rows (bindings/wasm/src/panels.rs)"
+    },
+    "setHover": {
+      "params": [
+        "id: string | null"
+      ],
+      "returns": "boolean",
+      "description": "Outlines a layer on the canvas as the hover does (null clears it), shared with the layers panel; inspect().hover reads it back; never moves the revision (bindings/wasm/src/view.rs)"
+    },
+    "setDevMode": {
+      "params": [
+        "on: boolean"
+      ],
+      "returns": "boolean",
+      "description": "Turns the engine's Dev Mode tool state on or off (measure on hover, no handles, ends text and vector editing); true when it changed (bindings/wasm/src/view.rs)"
+    },
+    "player": {
+      "params": [
+        "command: string",
+        "params: string"
+      ],
+      "returns": "string",
+      "description": "The prototype player (start, stop, state, tick, event, restart, back, closeOverlay, scrollTo, resize, inspect) as JSON { handled, changed, missed, cursor, links, transition, state }, inspect as { id, name, bounds, clip, sections }; never changes the document (bindings/wasm/src/player.rs)"
+    },
+    "playerRender": {
+      "params": [
+        "params: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "The player's screen ({ scale?, format?: png or rgba, progress?, state?: current or from }) as PNG bytes, or RGBA: the picture's width and height (two little-endian u32) then its pixels; the last transition drawn at progress (bindings/wasm/src/player.rs)"
+    },
+    "devCompareRender": {
+      "params": [
+        "params: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "Dev Mode's compare view picture ({ id?, version?, side: before or after, maxSide? }) as a PNG, at the scale query('dev.compare') gives (bindings/wasm/src/lists/dev.rs)"
+    },
+    "playgroundPreview": {
+      "params": [
+        "params: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "A component playground's instance with the chosen property values ({ id?, properties?, scale?, maxSide? }) as a PNG; never changes the document (bindings/wasm/src/lists/dev.rs)"
+    },
+    "lendLibrary": {
+      "params": [
+        "path: string",
+        "bytes: Uint8Array | null"
+      ],
+      "returns": "boolean",
+      "description": "Lends the library file a design names (query('library.files'): a workspace path relative to the document's folder) as the editor read it with host/read, or null when it can't be read; the engine reads library files through it, else through the host's lent files; never an edit; true when what the path reads changed (bindings/wasm/src/libraries.rs)"
+    },
+    "libraryThumbnail": {
+      "params": [
+        "library: string",
+        "id: string",
+        "size: number"
+      ],
+      "returns": "Uint8Array",
+      "description": "A component or set of an enabled library drawn from its published snapshot to fit a size x size square, as a PNG: the Assets panel's library tiles (bindings/wasm/src/libraries.rs)"
+    },
+    "recordAction": {
+      "params": [
+        "key: string"
+      ],
+      "returns": "void",
+      "description": "Remembers an action run from the Actions palette for its Recents (query('prefs.recentActions')), newest first; session only (bindings/wasm/src/lists.rs)"
+    }
+  }
+}

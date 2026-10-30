@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/grants.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! File grants for kits (Kition platform `KitFiles 1.0`): the runtime's grant table and the files
 //! it serves through them.
 //!
@@ -219,12 +220,7 @@ pub struct GrantLimits {
 
 impl Default for GrantLimits {
     fn default() -> Self {
-        Self {
-            per_grant: 4 << 30,
-            per_session: 16 << 30,
-            idle: Duration::from_secs(12 * 60 * 60),
-            read_chunk: 8 << 20,
-        }
+        Self { per_grant: 4 << 30, per_session: 16 << 30, idle: Duration::from_secs(12 * 60 * 60), read_chunk: 8 << 20 }
     }
 }
 
@@ -332,11 +328,7 @@ struct Session {
 /// The log entry of `event` on `grant` in the session of `kit` and `principal`.
 fn log_entry(kit: &str, principal: &str, event: GrantEvent, grant: &Grant) -> GrantLogEntry {
     let entry = GrantLogEntry {
-        at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |since| {
-                u64::try_from(since.as_millis()).unwrap_or(u64::MAX)
-            }),
+        at: SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |since| u64::try_from(since.as_millis()).unwrap_or(u64::MAX)),
         event,
         handle: grant.handle.clone(),
         flow: grant.flow,
@@ -375,15 +367,12 @@ impl Session {
     }
 
     fn granted(&mut self, handle: &str) -> Result<&mut Grant, FileError> {
-        self.grants.get_mut(handle).ok_or_else(|| {
-            FileError::NotGranted("this handle was not granted to this session".into())
-        })
+        self.grants.get_mut(handle).ok_or_else(|| FileError::NotGranted("this handle was not granted to this session".into()))
     }
 
     fn may_read(&self, name: &str, accept: &[String]) -> bool {
         let extension = extension_of(name);
-        self.manifest.read.contains(&extension)
-            && (accept.is_empty() || accept.contains(&extension))
+        self.manifest.read.contains(&extension) && (accept.is_empty() || accept.contains(&extension))
     }
 
     fn may_create(&self, name: &str) -> bool {
@@ -405,11 +394,7 @@ fn unavailable() -> FileError {
 
 impl GrantStore {
     pub fn new(workspace: Option<PathBuf>) -> Self {
-        Self {
-            workspace,
-            limits: Mutex::new(GrantLimits::default()),
-            sessions: Mutex::default(),
-        }
+        Self { workspace, limits: Mutex::new(GrantLimits::default()), sessions: Mutex::default() }
     }
 
     /// Changes the caps and lifetimes for grants made from now on and sessions still open.
@@ -422,9 +407,7 @@ impl GrantStore {
     }
 
     fn workspace(&self) -> Result<&Path, FileError> {
-        self.workspace
-            .as_deref()
-            .ok_or_else(|| FileError::NotAllowed("open a workspace folder first".into()))
+        self.workspace.as_deref().ok_or_else(|| FileError::NotAllowed("open a workspace folder first".into()))
     }
 
     /// Opens a session for a kit's editor page.
@@ -439,10 +422,7 @@ impl GrantStore {
                 if !path.is_file() {
                     return Err(unavailable());
                 }
-                (
-                    relative_to(workspace, &path),
-                    path.parent().map(Path::to_path_buf),
-                )
+                (relative_to(workspace, &path), path.parent().map(Path::to_path_buf))
             }
             None => (None, None),
         };
@@ -468,9 +448,7 @@ impl GrantStore {
     /// (FA4, FA9). Answers the revoked handles; an unknown session has none.
     pub fn end_session(&self, session: &str, principal: &str) -> Vec<String> {
         let mut sessions = self.sessions();
-        let owned = sessions
-            .get(session)
-            .is_some_and(|found| found.principal == principal);
+        let owned = sessions.get(session).is_some_and(|found| found.principal == principal);
         if !owned {
             return Vec::new();
         }
@@ -489,14 +467,7 @@ impl GrantStore {
     /// What a session holds now, and its grant log (FA16).
     pub fn view(&self, session: &str, principal: &str) -> Result<SessionView, FileError> {
         self.with_session(session, principal, |id, session| {
-            let mut grants: Vec<GrantView> = session
-                .grants
-                .values()
-                .map(|grant| GrantView {
-                    stat: grant.stat(),
-                    flow: grant.flow,
-                })
-                .collect();
+            let mut grants: Vec<GrantView> = session.grants.values().map(|grant| GrantView { stat: grant.stat(), flow: grant.flow }).collect();
             grants.sort_by(|a, b| a.stat.handle.cmp(&b.stat.handle));
             Ok(SessionView {
                 session: id.to_owned(),
@@ -511,12 +482,7 @@ impl GrantStore {
 
     /// Grants a handle on a file or folder the host chose: the person's pick or drop, or a file
     /// an agent's command names (FA6, FA8, FA13, FA17, K15).
-    pub fn grant(
-        &self,
-        session: &str,
-        principal: &str,
-        request: GrantRequest<'_>,
-    ) -> Result<FileStat, FileError> {
+    pub fn grant(&self, session: &str, principal: &str, request: GrantRequest<'_>) -> Result<FileStat, FileError> {
         let mut rights: Vec<Right> = Vec::new();
         for right in request.rights {
             if !rights.contains(right) {
@@ -524,9 +490,7 @@ impl GrantStore {
             }
         }
         if rights.is_empty() {
-            return Err(FileError::BadParams(
-                "rights lists at least one right".into(),
-            ));
+            return Err(FileError::BadParams("rights lists at least one right".into()));
         }
         if matches!(request.flow, Flow::Create | Flow::List) {
             return Err(FileError::BadParams("flow is pick, drop, or agent".into()));
@@ -551,32 +515,20 @@ impl GrantStore {
                     }
                     let accept = normalized(request.accept);
                     if accept.iter().any(|extension| !session.manifest.read.contains(extension)) {
-                        return Err(FileError::NotAllowed(
-                            "the kit asked for a file type its manifest does not declare".into(),
-                        ));
+                        return Err(FileError::NotAllowed("the kit asked for a file type its manifest does not declare".into()));
                     }
-                    Grant {
-                        accept,
-                        ..new_grant(request.flow, rights, Kind::Folder, name, path.clone(), None)
-                    }
+                    Grant { accept, ..new_grant(request.flow, rights, Kind::Folder, name, path.clone(), None) }
                 }
                 Kind::File if rights.contains(&Right::Create) => {
                     if rights.len() > 1 {
-                        return Err(FileError::BadParams(
-                            "a create right on a file comes alone".into(),
-                        ));
+                        return Err(FileError::BadParams("a create right on a file comes alone".into()));
                     }
                     // A new file only: create never replaces one (H5).
                     if std::fs::symlink_metadata(&path).is_ok() {
-                        return Err(FileError::Conflict(
-                            "a file with this name exists; create never replaces one".into(),
-                        ));
+                        return Err(FileError::Conflict("a file with this name exists; create never replaces one".into()));
                     }
                     if !session.may_create(&name) {
-                        return Err(FileError::NotAllowed(format!(
-                            "the kit may not create .{} files",
-                            extension_label(&name)
-                        )));
+                        return Err(FileError::NotAllowed(format!("the kit may not create .{} files", extension_label(&name))));
                     }
                     new_grant(request.flow, rights, Kind::File, name, path.clone(), None)
                 }
@@ -585,28 +537,17 @@ impl GrantStore {
                         return Err(unavailable());
                     };
                     if rights.contains(&Right::Read) && !session.may_read(&name, &[]) {
-                        return Err(FileError::NotAllowed(format!(
-                            "the kit may not read .{} files",
-                            extension_label(&name)
-                        )));
+                        return Err(FileError::NotAllowed(format!("the kit may not read .{} files", extension_label(&name))));
                     }
                     if rights.contains(&Right::Write) {
                         if session.read_only {
-                            return Err(FileError::NotAllowed(
-                                "a read-only session replaces no file".into(),
-                            ));
+                            return Err(FileError::NotAllowed("a read-only session replaces no file".into()));
                         }
                         if request.flow == Flow::Agent && !request.approved {
-                            return Err(FileError::NotAllowed(
-                                "an agent replaces a file only through a draft or the person's approval"
-                                    .into(),
-                            ));
+                            return Err(FileError::NotAllowed("an agent replaces a file only through a draft or the person's approval".into()));
                         }
                         if !session.may_create(&name) {
-                            return Err(FileError::NotAllowed(format!(
-                                "the kit may not write .{} files",
-                                extension_label(&name)
-                            )));
+                            return Err(FileError::NotAllowed(format!("the kit may not write .{} files", extension_label(&name))));
                         }
                     }
                     Grant {
@@ -622,69 +563,38 @@ impl GrantStore {
 
     /// `files/create`: a handle with right `create` on a new file, beside the session's document
     /// or in a granted folder, under an unused name (FA7, FA15). The file appears when committed.
-    pub fn create(
-        &self,
-        session: &str,
-        principal: &str,
-        suggested_name: &str,
-        mime: Option<&str>,
-        folder: Option<&str>,
-    ) -> Result<FileStat, FileError> {
+    pub fn create(&self, session: &str, principal: &str, suggested_name: &str, mime: Option<&str>, folder: Option<&str>) -> Result<FileStat, FileError> {
         self.with_session(session, principal, |_, session| {
             let parent = match folder {
                 Some(handle) => {
                     let folder = session.granted(handle)?;
                     if folder.kind != Kind::Folder || !folder.has(Right::Create) {
-                        return Err(FileError::NotGranted(
-                            "this handle is not a folder with a create right".into(),
-                        ));
+                        return Err(FileError::NotGranted("this handle is not a folder with a create right".into()));
                     }
                     folder.path.clone()
                 }
-                None => session.beside.clone().ok_or_else(|| {
-                    FileError::BadParams("this session has no document to create beside".into())
-                })?,
+                None => session.beside.clone().ok_or_else(|| FileError::BadParams("this session has no document to create beside".into()))?,
             };
             let suggested = sanitize_file_name(suggested_name);
             if !session.may_create(&suggested) {
-                return Err(FileError::NotAllowed(format!(
-                    "the kit may not create .{} files",
-                    extension_label(&suggested)
-                )));
+                return Err(FileError::NotAllowed(format!("the kit may not create .{} files", extension_label(&suggested))));
             }
             let name = free_name(session, &parent, &suggested)?;
             let path = parent.join(&name);
-            let grant = Grant {
-                mime: mime.map(str::to_owned),
-                ..new_grant(
-                    Flow::Create,
-                    vec![Right::Create],
-                    Kind::File,
-                    name,
-                    path,
-                    Some(parent),
-                )
-            };
+            let grant = Grant { mime: mime.map(str::to_owned), ..new_grant(Flow::Create, vec![Right::Create], Kind::File, name, path, Some(parent)) };
             Ok(session.add(grant))
         })
     }
 
     /// `files/stat`.
-    pub fn stat(
-        &self,
-        session: &str,
-        principal: &str,
-        handle: &str,
-    ) -> Result<FileStat, FileError> {
+    pub fn stat(&self, session: &str, principal: &str, handle: &str) -> Result<FileStat, FileError> {
         let workspace = self.workspace()?.to_path_buf();
         self.with_session(session, principal, |_, session| {
             let grant = session.granted(handle)?;
             let creating = grant.has(Right::Create) && grant.kind == Kind::File;
             if grant.kind == Kind::File
                 && (!creating || grant.committed)
-                && let Some(metadata) = still_inside(&workspace, &grant.path)
-                    .and_then(|real| std::fs::metadata(real).ok())
-                    .filter(std::fs::Metadata::is_file)
+                && let Some(metadata) = still_inside(&workspace, &grant.path).and_then(|real| std::fs::metadata(real).ok()).filter(std::fs::Metadata::is_file)
             {
                 grant.version = Some(version_of(&metadata));
                 grant.size = Some(metadata.len());
@@ -694,22 +604,13 @@ impl GrantStore {
     }
 
     /// `files/read`: at most `length` bytes from `offset`, capped at the read chunk.
-    pub fn read(
-        &self,
-        session: &str,
-        principal: &str,
-        handle: &str,
-        offset: u64,
-        length: Option<u64>,
-    ) -> Result<FileRead, FileError> {
+    pub fn read(&self, session: &str, principal: &str, handle: &str, offset: u64, length: Option<u64>) -> Result<FileRead, FileError> {
         let workspace = self.workspace()?.to_path_buf();
         let chunk = self.limits().read_chunk;
         self.with_session(session, principal, |_, session| {
             let grant = session.granted(handle)?;
             if grant.kind != Kind::File || !grant.has(Right::Read) {
-                return Err(FileError::NotGranted(
-                    "this handle has no read right on a file".into(),
-                ));
+                return Err(FileError::NotGranted("this handle has no read right on a file".into()));
             }
             // The file may have become a link out of the workspace since it was granted.
             let real = still_inside(&workspace, &grant.path).ok_or_else(unavailable)?;
@@ -727,28 +628,17 @@ impl GrantStore {
             let version = version_of(&metadata);
             grant.version = Some(version.clone());
             grant.size = Some(size);
-            Ok(FileRead {
-                bytes,
-                version,
-                size,
-            })
+            Ok(FileRead { bytes, version, size })
         })
     }
 
     /// `files/list`: the folder's files its grant accepts, not recursively, each with `read`.
-    pub fn list(
-        &self,
-        session: &str,
-        principal: &str,
-        handle: &str,
-    ) -> Result<Vec<FileStat>, FileError> {
+    pub fn list(&self, session: &str, principal: &str, handle: &str) -> Result<Vec<FileStat>, FileError> {
         let workspace = self.workspace()?.to_path_buf();
         self.with_session(session, principal, |_, session| {
             let folder = session.granted(handle)?;
             if folder.kind != Kind::Folder || !folder.has(Right::Read) {
-                return Err(FileError::NotGranted(
-                    "this handle has no read right on a folder".into(),
-                ));
+                return Err(FileError::NotGranted("this handle has no read right on a folder".into()));
             }
             let real = still_inside(&workspace, &folder.path).ok_or_else(unavailable)?;
             let accept = folder.accept.clone();
@@ -766,10 +656,7 @@ impl GrantStore {
                 if !session.may_read(&name, &accept) {
                     continue;
                 }
-                let Some(metadata) = still_inside(&workspace, &path)
-                    .and_then(|real| std::fs::metadata(real).ok())
-                    .filter(std::fs::Metadata::is_file)
-                else {
+                let Some(metadata) = still_inside(&workspace, &path).and_then(|real| std::fs::metadata(real).ok()).filter(std::fs::Metadata::is_file) else {
                     continue;
                 };
                 let grant = Grant {
@@ -788,9 +675,7 @@ impl GrantStore {
     pub fn replaces(&self, session: &str, principal: &str, handle: &str) -> Option<String> {
         let workspace = self.workspace.clone()?;
         let mut sessions = self.sessions();
-        let session = sessions
-            .get_mut(session)
-            .filter(|found| found.principal == principal)?;
+        let session = sessions.get_mut(session).filter(|found| found.principal == principal)?;
         let grant = session.grants.get(handle)?;
         if grant.kind != Kind::File || !grant.has(Right::Write) {
             return None;
@@ -800,14 +685,7 @@ impl GrantStore {
 
     /// `files/write`: stages a chunk; the final one commits atomically (FA9). `unsaved` says the
     /// file is open with unsaved edits in an editor (FA14).
-    pub fn write(
-        &self,
-        session: &str,
-        principal: &str,
-        handle: &str,
-        chunk: WriteChunk<'_>,
-        unsaved: bool,
-    ) -> Result<Option<String>, FileError> {
+    pub fn write(&self, session: &str, principal: &str, handle: &str, chunk: WriteChunk<'_>, unsaved: bool) -> Result<Option<String>, FileError> {
         let workspace = self.workspace()?.to_path_buf();
         let limits = self.limits();
         self.with_session(session, principal, |_, session| {
@@ -818,30 +696,21 @@ impl GrantStore {
             }
             let creating = grant.has(Right::Create);
             if !creating && !grant.has(Right::Write) {
-                return Err(FileError::NotGranted(
-                    "this handle has no create or write right".into(),
-                ));
+                return Err(FileError::NotGranted("this handle has no create or write right".into()));
             }
             if creating && grant.committed {
                 return Err(FileError::AlreadyCommitted);
             }
             if chunk.offset != grant.staged {
-                return Err(FileError::BadParams(format!(
-                    "offset is {}, the bytes staged so far",
-                    grant.staged
-                )));
+                return Err(FileError::BadParams(format!("offset is {}, the bytes staged so far", grant.staged)));
             }
             let size = chunk.bytes.len() as u64;
-            if grant.written.saturating_add(size) > limits.per_grant
-                || written.saturating_add(size) > limits.per_session
-            {
+            if grant.written.saturating_add(size) > limits.per_grant || written.saturating_add(size) > limits.per_session {
                 return Err(FileError::Quota);
             }
             let expected = if chunk.last && !creating {
                 let Some(expected) = chunk.expected else {
-                    return Err(FileError::Conflict(
-                        "the final chunk carries the version it replaces".into(),
-                    ));
+                    return Err(FileError::Conflict("the final chunk carries the version it replaces".into()));
                 };
                 if unsaved {
                     return Err(FileError::UnsavedEdits);
@@ -901,19 +770,12 @@ impl GrantStore {
 
     /// The one gate of every request on a session and its handles: the session must be open and
     /// the caller's. A check of the caller's kit origin (kit frame isolation) belongs here too.
-    fn with_session<T>(
-        &self,
-        id: &str,
-        principal: &str,
-        run: impl FnOnce(&str, &mut Session) -> Result<T, FileError>,
-    ) -> Result<T, FileError> {
+    fn with_session<T>(&self, id: &str, principal: &str, run: impl FnOnce(&str, &mut Session) -> Result<T, FileError>) -> Result<T, FileError> {
         let mut sessions = self.sessions();
         let session = sessions
             .get_mut(id)
             .filter(|session| session.principal == principal)
-            .ok_or_else(|| {
-                FileError::NotGranted("this session has ended or is not yours".into())
-            })?;
+            .ok_or_else(|| FileError::NotGranted("this session has ended or is not yours".into()))?;
         session.touched = Instant::now();
         run(id, session)
     }
@@ -948,14 +810,7 @@ impl GrantStore {
     }
 }
 
-fn new_grant(
-    flow: Flow,
-    rights: Vec<Right>,
-    kind: Kind,
-    name: String,
-    path: PathBuf,
-    folder: Option<PathBuf>,
-) -> Grant {
+fn new_grant(flow: Flow, rights: Vec<Right>, kind: Kind, name: String, path: PathBuf, folder: Option<PathBuf>) -> Grant {
     Grant {
         handle: String::new(),
         flow,
@@ -1007,18 +862,12 @@ fn relative_to(workspace: &Path, path: &Path) -> Option<String> {
 }
 
 fn display_name(path: &Path) -> String {
-    path.file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_default()
+    path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default()
 }
 
 /// The host's version stamp of a file: its modification time and size.
 fn version_of(metadata: &std::fs::Metadata) -> String {
-    let modified = metadata
-        .modified()
-        .ok()
-        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map_or(0, |since| since.as_nanos());
+    let modified = metadata.modified().ok().and_then(|time| time.duration_since(UNIX_EPOCH).ok()).map_or(0, |since| since.as_nanos());
     format!("\"{modified}-{}\"", metadata.len())
 }
 
@@ -1032,17 +881,11 @@ pub fn extension_of(name: &str) -> String {
 
 fn extension_label(name: &str) -> String {
     let extension = extension_of(name);
-    if extension.is_empty() {
-        "(none)".into()
-    } else {
-        extension
-    }
+    if extension.is_empty() { "(none)".into() } else { extension }
 }
 
 fn normalized(list: &[String]) -> Vec<String> {
-    list.iter()
-        .map(|item| item.trim_start_matches('.').to_ascii_lowercase())
-        .collect()
+    list.iter().map(|item| item.trim_start_matches('.').to_ascii_lowercase()).collect()
 }
 
 /// A name the host may create (FA15): the last segment only, no control characters or
@@ -1051,26 +894,13 @@ fn normalized(list: &[String]) -> Vec<String> {
 /// left.
 pub fn sanitize_file_name(suggested: &str) -> String {
     let last = suggested.rsplit(['/', '\\']).next().unwrap_or_default();
-    let cleaned: String = last
-        .chars()
-        .filter(|c| !c.is_control() && !matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*'))
-        .collect();
-    let mut name = cleaned
-        .trim()
-        .trim_start_matches('.')
-        .trim_end_matches(['.', ' '])
-        .to_owned();
+    let cleaned: String = last.chars().filter(|c| !c.is_control() && !matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*')).collect();
+    let mut name = cleaned.trim().trim_start_matches('.').trim_end_matches(['.', ' ']).to_owned();
     let base_end = name.find('.').unwrap_or(name.len());
     let base = name[..base_end].to_owned();
-    let reserved = matches!(
-        base.to_ascii_lowercase().as_str(),
-        "con" | "prn" | "aux" | "nul"
-    ) || {
+    let reserved = matches!(base.to_ascii_lowercase().as_str(), "con" | "prn" | "aux" | "nul") || {
         let lower = base.to_ascii_lowercase();
-        (lower.starts_with("com") || lower.starts_with("lpt"))
-            && lower.len() == 4
-            && lower.as_bytes()[3].is_ascii_digit()
-            && lower.as_bytes()[3] != b'0'
+        (lower.starts_with("com") || lower.starts_with("lpt")) && lower.len() == 4 && lower.as_bytes()[3].is_ascii_digit() && lower.as_bytes()[3] != b'0'
     };
     if reserved {
         name = format!("{base}_{}", &name[base_end..]);
@@ -1081,17 +911,10 @@ pub fn sanitize_file_name(suggested: &str) -> String {
             name.chars().take(255).collect()
         } else {
             let keep = 254usize.saturating_sub(extension.chars().count());
-            format!(
-                "{}.{extension}",
-                name.chars().take(keep).collect::<String>()
-            )
+            format!("{}.{extension}", name.chars().take(keep).collect::<String>())
         };
     }
-    if name.is_empty() {
-        "Untitled".into()
-    } else {
-        name
-    }
+    if name.is_empty() { "Untitled".into() } else { name }
 }
 
 /// `Report.pdf`, then `Report 2.pdf`, `Report 3.pdf`, …: the first name `taken` says is free (FA7).
@@ -1101,23 +924,15 @@ pub fn unused_name(name: &str, taken: impl Fn(&str) -> bool) -> Option<String> {
         _ => (name, ""),
     };
     (1..10_000).find_map(|number| {
-        let candidate = if number == 1 {
-            name.to_owned()
-        } else {
-            format!("{base} {number}{extension}")
-        };
+        let candidate = if number == 1 { name.to_owned() } else { format!("{base} {number}{extension}") };
         (!taken(&candidate)).then_some(candidate)
     })
 }
 
 /// An unused name in `folder`, skipping names this session's uncommitted creates hold.
 fn free_name(session: &Session, folder: &Path, suggested: &str) -> Result<String, FileError> {
-    let reserved: Vec<&PathBuf> = session
-        .grants
-        .values()
-        .filter(|grant| grant.kind == Kind::File && grant.has(Right::Create) && !grant.committed)
-        .map(|grant| &grant.path)
-        .collect();
+    let reserved: Vec<&PathBuf> =
+        session.grants.values().filter(|grant| grant.kind == Kind::File && grant.has(Right::Create) && !grant.committed).map(|grant| &grant.path).collect();
     unused_name(suggested, |candidate| {
         let path = folder.join(candidate);
         reserved.contains(&&path) || std::fs::symlink_metadata(&path).is_ok()
@@ -1129,16 +944,8 @@ fn free_name(session: &Session, folder: &Path, suggested: &str) -> Result<String
 fn stage(workspace: &Path, target: &Path) -> Result<Staging, FileError> {
     let parent = target.parent().ok_or(FileError::Io)?;
     let parent = still_inside(workspace, parent).ok_or_else(unavailable)?;
-    let temp = parent.join(format!(
-        ".{}.kition-{}.part",
-        display_name(target),
-        hex::encode(rand::random::<[u8; 8]>())
-    ));
-    let file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .map_err(io)?;
+    let temp = parent.join(format!(".{}.kition-{}.part", display_name(target), hex::encode(rand::random::<[u8; 8]>())));
+    let file = OpenOptions::new().write(true).create_new(true).open(&temp).map_err(io)?;
     Ok(Staging { temp, file })
 }
 
@@ -1146,21 +953,14 @@ fn stage(workspace: &Path, target: &Path) -> Result<Staging, FileError> {
 /// since it was granted, a `files/create` handle moves on to the next unused name, and any other
 /// answers `conflict` (FA7, FA9, H5). A `write` handle replaces the file only while its version
 /// is still `expected`. A failed commit drops the staged bytes; the kit writes again from 0.
-fn commit(
-    workspace: &Path,
-    grant: &mut Grant,
-    mut staging: Staging,
-    expected: Option<&str>,
-) -> Result<String, FileError> {
+fn commit(workspace: &Path, grant: &mut Grant, mut staging: Staging, expected: Option<&str>) -> Result<String, FileError> {
     staging.file.flush().map_err(io)?;
     staging.file.sync_all().map_err(io)?;
     if let Some(expected) = expected {
         let real = still_inside(workspace, &grant.path).ok_or_else(unavailable)?;
         let metadata = std::fs::metadata(&real).map_err(io)?;
         if version_of(&metadata) != expected {
-            return Err(FileError::Conflict(
-                "the file changed since the version the kit read".into(),
-            ));
+            return Err(FileError::Conflict("the file changed since the version the kit read".into()));
         }
         std::fs::rename(&staging.temp, &real).map_err(io)?;
         return finish(grant, &real);
@@ -1172,16 +972,10 @@ fn commit(
                 return finish(grant, &path);
             }
             Err(error) if error.kind() == ErrorKind::AlreadyExists => {
-                let Some(folder) = grant.folder.clone().filter(|_| grant.flow == Flow::Create)
-                else {
-                    return Err(FileError::Conflict(
-                        "a file with this name exists; create never replaces one".into(),
-                    ));
+                let Some(folder) = grant.folder.clone().filter(|_| grant.flow == Flow::Create) else {
+                    return Err(FileError::Conflict("a file with this name exists; create never replaces one".into()));
                 };
-                let name = unused_name(&grant.name, |candidate| {
-                    std::fs::symlink_metadata(folder.join(candidate)).is_ok()
-                })
-                .ok_or(FileError::Io)?;
+                let name = unused_name(&grant.name, |candidate| std::fs::symlink_metadata(folder.join(candidate)).is_ok()).ok_or(FileError::Io)?;
                 grant.path = folder.join(&name);
                 grant.name = name;
             }
@@ -1201,10 +995,7 @@ fn place_new(temp: &Path, target: &Path) -> std::io::Result<()> {
         }
         Err(error) if error.kind() == ErrorKind::AlreadyExists => Err(error),
         Err(_) => {
-            OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(target)?;
+            OpenOptions::new().write(true).create_new(true).open(target)?;
             std::fs::rename(temp, target)
         }
     }
@@ -1241,10 +1032,7 @@ mod tests {
     #[test]
     fn unused_names_count_up() {
         let taken = ["Report.pdf", "Report 2.pdf"];
-        assert_eq!(
-            unused_name("Report.pdf", |name| taken.contains(&name)).as_deref(),
-            Some("Report 3.pdf")
-        );
+        assert_eq!(unused_name("Report.pdf", |name| taken.contains(&name)).as_deref(), Some("Report 3.pdf"));
         assert_eq!(unused_name("notes", |_| false).as_deref(), Some("notes"));
     }
 

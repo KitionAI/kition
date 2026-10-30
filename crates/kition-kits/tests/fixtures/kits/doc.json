@@ -1,0 +1,135 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.doc",
+  "name": "Doc",
+  "version": "0.6.6",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/wordcraft",
+    "version": "0.5.0",
+    "commit": "e4b7d155f15a7784197ba34eeea0b54490d70eb2"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_doc_sdk",
+    "class": "DocDocument",
+    "contract": 2,
+    "crate": "kition-doc-sdk"
+  },
+  "formats": [
+    {
+      "id": "docx",
+      "extensions": [
+        "docx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "doc",
+      "extension": "docx",
+      "baseName": "Untitled doc",
+      "size": {
+        "width": 612,
+        "height": 792
+      }
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "line",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Home",
+      "Insert",
+      "Draw",
+      "Design",
+      "Layout",
+      "References",
+      "Mailings",
+      "Review",
+      "View",
+      "Table Design",
+      "Table Layout",
+      "Picture Format",
+      "Shape Format",
+      "Header & Footer",
+      "Equation"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#2b5cd9",
+      "dark": "#6b9bff"
+    }
+  },
+  "agent": {
+    "prefix": "doc",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": true,
+    "describe": {
+      "noun": "doc",
+      "fileTypes": ".docx",
+      "reports": "its pages, word count, and the selection",
+      "covers": "typing, styles, fonts, paragraphs, lists, tables, pictures, headers and footers, references, review, and more",
+      "queries": "`bold`, `heading`, or `insert table`",
+      "example": "text.insert"
+    }
+  },
+  "headless": {
+    "executable": "kit-doc",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "extras": {
+    "setBackdrop": {
+      "params": [
+        "color: string"
+      ],
+      "returns": "void"
+    }
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 6
+  },
+  "collaboration": {
+    "merge": [
+      "rich-text",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false,
+    "comments": {
+      "commands": [
+        "comment.add",
+        "comment.reply",
+        "comment.resolve",
+        "comment.delete"
+      ]
+    }
+  },
+  "objectModel": {
+    "namespace": "Doc"
+  }
+}

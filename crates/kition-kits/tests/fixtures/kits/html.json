@@ -1,0 +1,90 @@
+{
+  "khp": "1.0",
+  "id": "kit.html",
+  "name": "HTML",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "engine": {
+    "module": "kition_html_sdk",
+    "class": "HtmlDocument",
+    "contract": 1,
+    "crate": "kition-html-sdk"
+  },
+  "formats": [
+    {
+      "id": "html",
+      "extensions": [
+        "html",
+        "htm"
+      ],
+      "mime": "text/html",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "html",
+      "extension": "html",
+      "baseName": "Untitled HTML",
+      "size": {
+        "width": 640,
+        "height": 480
+      }
+    }
+  ],
+  "extras": {
+    "setResource": {
+      "params": [
+        "path: string",
+        "bytes: Uint8Array"
+      ],
+      "returns": "void",
+      "description": "Supply host-read bytes under /assets/."
+    },
+    "setViewport": {
+      "params": [
+        "width: u32",
+        "height: u32",
+        "dark: boolean"
+      ],
+      "returns": "void",
+      "description": "Set the transient CSS viewport and color scheme."
+    },
+    "renderPng": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "Return a PNG snapshot without writing a file."
+    }
+  },
+  "ui": {
+    "menus": [
+      "Edit"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#b64b22",
+      "dark": "#ff986b"
+    },
+    "display": "menus"
+  },
+  "agent": {
+    "prefix": "html",
+    "tools": "document",
+    "describe": {
+      "noun": "HTML document",
+      "fileTypes": "HTML (.html or .htm)",
+      "reports": "its HTML source, viewport, and undo state",
+      "covers": "HTML source replacement and undo/redo; HTML/CSS rendering and bounded JavaScript with supplied resources",
+      "queries": "`Replace HTML` or `Undo`",
+      "example": "html.setSource"
+    }
+  },
+  "headless": {
+    "executable": "kit-html",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/tools/model.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The object-model tools (architecture section 13): `<prefix>_query` reads objects by id or by a
 //! field path from the root, and `<prefix>_batch` runs a `model/batch` (KitObjectModel 1.0,
 //! kition-sdk `docs/platform/reference/object-model.md`). Their argument schemas are generated from what the kit's
@@ -11,8 +12,7 @@ use serde_json::{Map, Value, json};
 
 use super::errors::{ErrorCode, KitToolError};
 use super::{
-    Action, DraftAt, KitToolOutput, KitToolResult, KitToolSpec, draft_at, draft_property, kit_path,
-    live, path_property, reads_headless_draft, short, tool_name,
+    Action, DraftAt, KitToolOutput, KitToolResult, KitToolSpec, draft_at, draft_property, kit_path, live, path_property, reads_headless_draft, short, tool_name,
 };
 use crate::bridge::LiveDocument;
 use crate::drafts;
@@ -50,29 +50,33 @@ fn agent_origin() -> Value {
     json!({ "kind": "agent", "principal": "local", "label": "Agent" })
 }
 
-/// The type names and every field name the kit's schema has, sorted.
-fn names(described: &Value) -> (Vec<String>, Vec<String>) {
+/// The kit's types, the root type first and the others by name, so the tools read the same
+/// whatever order the JSON map keeps.
+fn ordered_types(described: &Value) -> Vec<(&String, &Value)> {
     let Some(types) = described.get("types").and_then(Value::as_object) else {
-        return (Vec::new(), Vec::new());
+        return Vec::new();
     };
-    let mut fields: Vec<String> = types
-        .values()
-        .filter_map(|ty| ty.get("fields").and_then(Value::as_object))
-        .flat_map(|fields| fields.keys().cloned())
-        .collect();
+    let root = described["root"].as_str().unwrap_or_default();
+    let mut ordered: Vec<(&String, &Value)> = types.iter().collect();
+    ordered.sort_by(|(a, _), (b, _)| (a.as_str() != root, a.as_str()).cmp(&(b.as_str() != root, b.as_str())));
+    ordered
+}
+
+/// The type names (the root first) and every field name the kit's schema has, sorted.
+fn names(described: &Value) -> (Vec<String>, Vec<String>) {
+    let types = ordered_types(described);
+    let mut fields: Vec<String> =
+        types.iter().filter_map(|(_, ty)| ty.get("fields").and_then(Value::as_object)).flat_map(|fields| fields.keys().cloned()).collect();
     fields.sort_unstable();
     fields.dedup();
-    (types.keys().cloned().collect(), fields)
+    (types.iter().map(|(name, _)| (*name).clone()).collect(), fields)
 }
 
 /// The types as one line each, for a tool description: `Slide { shapes: list of Shape, … }`.
 fn type_listing(described: &Value) -> String {
-    let Some(types) = described.get("types").and_then(Value::as_object) else {
-        return String::new();
-    };
     let root = described["root"].as_str().unwrap_or_default();
     let mut out = String::new();
-    for (name, ty) in types {
+    for (name, ty) in ordered_types(described) {
         let fields: Vec<String> = ty
             .get("fields")
             .and_then(Value::as_object)
@@ -134,38 +138,23 @@ fn field_schema(def: &Value) -> Value {
         _ => json!({}),
     };
     if def["optional"] == true {
-        schema["description"] = json!(format!(
-            "{} Optional.",
-            schema["description"].as_str().unwrap_or_default()
-        ));
+        schema["description"] = json!(format!("{} Optional.", schema["description"].as_str().unwrap_or_default()));
     }
     schema
 }
 
 /// The kit's schema (`model.describe`) as JSON Schema: one definition per type, with its fields.
 pub fn describe_schema(described: &Value) -> Value {
-    let types = described
-        .get("types")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
+    let types = described.get("types").and_then(Value::as_object).cloned().unwrap_or_default();
     let defs: Map<String, Value> = types
         .iter()
         .map(|(name, ty)| {
             let properties: Map<String, Value> = ty
                 .get("fields")
                 .and_then(Value::as_object)
-                .map(|fields| {
-                    fields
-                        .iter()
-                        .map(|(field, def)| (field.clone(), field_schema(def)))
-                        .collect()
-                })
+                .map(|fields| fields.iter().map(|(field, def)| (field.clone(), field_schema(def))).collect())
                 .unwrap_or_default();
-            (
-                name.clone(),
-                json!({ "type": "object", "properties": properties, "additionalProperties": false }),
-            )
+            (name.clone(), json!({ "type": "object", "properties": properties, "additionalProperties": false }))
         })
         .collect();
     json!({
@@ -189,8 +178,7 @@ pub fn query_spec(kit: &'static KitDefinition, described: Option<&Value>) -> Kit
     let (_, fields) = described.map(names).unwrap_or_default();
     let listing = described.map(type_listing).unwrap_or_default();
     let types = if listing.is_empty() {
-        "Call it with `describe: true` first to learn the document's object types and fields."
-            .to_owned()
+        "Call it with `describe: true` first to learn the document's object types and fields.".to_owned()
     } else {
         format!("Types: {listing}")
     };
@@ -221,8 +209,7 @@ pub fn query_spec(kit: &'static KitDefinition, described: Option<&Value>) -> Kit
 pub fn batch_spec(kit: &'static KitDefinition, described: Option<&Value>) -> KitToolSpec {
     let (name, noun) = (kit.name, kit.agent.noun);
     let (types, fields) = described.map(names).unwrap_or_default();
-    let mut type_property =
-        json!({ "type": "string", "description": "`create`: the new object's type." });
+    let mut type_property = json!({ "type": "string", "description": "`create`: the new object's type." });
     if !types.is_empty() {
         type_property["enum"] = json!(types);
     }
@@ -298,24 +285,13 @@ impl Target {
                 if *draft {
                     arguments["draft"] = Value::Bool(true);
                 }
-                kits.bridge()
-                    .call(document, "batch", arguments)
-                    .await
-                    .map_err(KitToolError::from_bridge)
+                kits.bridge().call(document, "batch", arguments).await.map_err(KitToolError::from_bridge)
             }
             Self::Headless(view) | Self::HeadlessDraft(view) => {
                 let request = with_refs(kits, view, request).await;
                 let numeric = numeric_target(&request);
                 let params = request.as_object().cloned().unwrap_or_default();
-                kits.model(
-                    Caller::Agent,
-                    view.kit_id,
-                    &view.document_id,
-                    "model.batch",
-                    params,
-                )
-                .await
-                .map_err(|error| {
+                kits.model(Caller::Agent, view.kit_id, &view.document_id, "model.batch", params).await.map_err(|error| {
                     let mut error = KitToolError::from(error);
                     if let Some(id) = numeric {
                         error.message.push_str(&format!(
@@ -330,27 +306,10 @@ impl Target {
         }
     }
 
-    async fn describe(
-        &self,
-        kits: &KitManager,
-        kit: &KitDefinition,
-    ) -> Result<Value, KitToolError> {
+    async fn describe(&self, kits: &KitManager, kit: &KitDefinition) -> Result<Value, KitToolError> {
         let described = match self {
-            Self::Live { document, draft } => kits
-                .bridge()
-                .call(document, "describe", json!({ "draft": draft }))
-                .await
-                .map_err(KitToolError::from_bridge)?,
-            Self::Headless(view) | Self::HeadlessDraft(view) => {
-                kits.model(
-                    Caller::Agent,
-                    view.kit_id,
-                    &view.document_id,
-                    "model.describe",
-                    Map::new(),
-                )
-                .await?
-            }
+            Self::Live { document, draft } => kits.bridge().call(document, "describe", json!({ "draft": draft })).await.map_err(KitToolError::from_bridge)?,
+            Self::Headless(view) | Self::HeadlessDraft(view) => kits.model(Caller::Agent, view.kit_id, &view.document_id, "model.describe", Map::new()).await?,
         };
         kits.remember_described(kit.id, &described);
         Ok(described)
@@ -385,10 +344,7 @@ fn object_hint(kit: &KitDefinition, mut error: KitToolError) -> KitToolError {
 
 fn unsupported(kit: &KitDefinition, error: KitToolError) -> KitToolError {
     let lower = error.message.to_lowercase();
-    if lower.contains("not found") && lower.contains("method")
-        || lower.contains("no object model")
-        || lower.contains("does not answer the object model")
-    {
+    if lower.contains("not found") && lower.contains("method") || lower.contains("no object model") || lower.contains("does not answer the object model") {
         return KitToolError::new(
             ErrorCode::Unsupported,
             format!(
@@ -405,36 +361,20 @@ fn unsupported(kit: &KitDefinition, error: KitToolError) -> KitToolError {
 
 /// The target of a read: the draft when asked (an explicit `draft: true` needs it), else the
 /// open editor, else the headless kit.
-async fn read_target(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    path: &str,
-    draft: bool,
-    explicit: bool,
-) -> Result<Target, KitToolError> {
+async fn read_target(kits: &KitManager, kit: &'static KitDefinition, path: &str, draft: bool, explicit: bool) -> Result<Target, KitToolError> {
     if reads_headless_draft(kits, kit, path, draft, explicit).await {
         let id = drafts::document(kits, kit, path, false).await?;
-        return Ok(Target::HeadlessDraft(
-            kits.document(Caller::Agent, kit.id, &id).await?,
-        ));
+        return Ok(Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?));
     }
     let open = live(kits, kit, path).await;
     if draft && explicit {
         return Ok(match draft_at(kits, kit, path, false).await? {
-            DraftAt::Editor(document) => Target::Live {
-                document,
-                draft: true,
-            },
-            DraftAt::Headless(id) => {
-                Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?)
-            }
+            DraftAt::Editor(document) => Target::Live { document, draft: true },
+            DraftAt::Headless(id) => Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?),
         });
     }
     if let Some(document) = open {
-        return Ok(Target::Live {
-            document,
-            draft: false,
-        });
+        return Ok(Target::Live { document, draft: false });
     }
     Ok(Target::Headless(kits.open(Caller::Agent, path).await?))
 }
@@ -447,10 +387,7 @@ fn ids_of(value: &Value) -> Option<Vec<String>> {
             .iter()
             .map(|item| match item {
                 Value::String(id) => Some(id.clone()),
-                Value::Object(entry) => entry
-                    .get("object")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
+                Value::Object(entry) => entry.get("object").and_then(Value::as_str).map(str::to_owned),
                 _ => None,
             })
             .collect(),
@@ -458,43 +395,20 @@ fn ids_of(value: &Value) -> Option<Vec<String>> {
     }
 }
 
-async fn load(
-    kits: &KitManager,
-    target: &Target,
-    entries: Vec<Value>,
-) -> Result<Vec<Value>, KitToolError> {
-    let answer = target
-        .batch(
-            kits,
-            json!({ "origin": agent_origin(), "ops": [], "load": entries }),
-        )
-        .await?;
+async fn load(kits: &KitManager, target: &Target, entries: Vec<Value>) -> Result<Vec<Value>, KitToolError> {
+    let answer = target.batch(kits, json!({ "origin": agent_origin(), "ops": [], "load": entries })).await?;
     Ok(answer["loaded"].as_array().cloned().unwrap_or_default())
 }
 
 /// Follows `path` (`slides.0.shapes`) from `start`; answers the ids it ends at.
-async fn follow(
-    kits: &KitManager,
-    target: &Target,
-    start: String,
-    path: &str,
-) -> Result<Vec<String>, KitToolError> {
+async fn follow(kits: &KitManager, target: &Target, start: String, path: &str) -> Result<Vec<String>, KitToolError> {
     let mut current = vec![start];
-    for segment in path
-        .split('.')
-        .map(str::trim)
-        .filter(|segment| !segment.is_empty())
-    {
+    for segment in path.split('.').map(str::trim).filter(|segment| !segment.is_empty()) {
         if let Ok(position) = segment.parse::<usize>() {
-            let picked = current.get(position).cloned().ok_or_else(|| {
-                KitToolError::new(
-                    ErrorCode::NOT_FOUND,
-                    format!(
-                        "`{path}`: there is no item {position} (there are {})",
-                        current.len()
-                    ),
-                )
-            })?;
+            let picked = current
+                .get(position)
+                .cloned()
+                .ok_or_else(|| KitToolError::new(ErrorCode::NOT_FOUND, format!("`{path}`: there is no item {position} (there are {})", current.len())))?;
             current = vec![picked];
             continue;
         }
@@ -504,31 +418,15 @@ async fn follow(
                 current.len()
             )));
         };
-        let loaded = load(
-            kits,
-            target,
-            vec![json!({ "target": object, "fields": [segment] })],
-        )
-        .await?;
-        let value = loaded
-            .first()
-            .map(|object| object["fields"][segment].clone())
-            .unwrap_or(Value::Null);
-        current = ids_of(&value).ok_or_else(|| {
-            KitToolError::invalid(format!(
-                "`{path}`: `{segment}` is not a list, a tree, or a ref, so it names no objects"
-            ))
-        })?;
+        let loaded = load(kits, target, vec![json!({ "target": object, "fields": [segment] })]).await?;
+        let value = loaded.first().map(|object| object["fields"][segment].clone()).unwrap_or(Value::Null);
+        current =
+            ids_of(&value).ok_or_else(|| KitToolError::invalid(format!("`{path}`: `{segment}` is not a list, a tree, or a ref, so it names no objects")))?;
     }
     Ok(current)
 }
 
-pub(super) async fn query(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    input: &Value,
-    draft: bool,
-) -> KitToolResult {
+pub(super) async fn query(kits: &KitManager, kit: &'static KitDefinition, input: &Value, draft: bool) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
     let target = read_target(kits, kit, &path, draft, explicit).await?;
@@ -536,49 +434,26 @@ pub(super) async fn query(
         None | Some(Value::Null) => vec!["root".to_owned()],
         Some(Value::Array(items)) => items
             .iter()
-            .map(|item| {
-                item.as_str()
-                    .map(str::to_owned)
-                    .ok_or_else(|| KitToolError::invalid("`objects` lists object ids"))
-            })
+            .map(|item| item.as_str().map(str::to_owned).ok_or_else(|| KitToolError::invalid("`objects` lists object ids")))
             .collect::<Result<_, _>>()?,
         Some(_) => return Err(KitToolError::invalid("`objects` lists object ids")),
     };
     if objects.is_empty() {
         objects.push("root".to_owned());
     }
-    let limit = input
-        .get("limit")
-        .and_then(Value::as_u64)
-        .and_then(|limit| usize::try_from(limit).ok())
-        .unwrap_or(DEFAULT_LIMIT)
-        .clamp(1, MAX_LIMIT);
+    let limit = input.get("limit").and_then(Value::as_u64).and_then(|limit| usize::try_from(limit).ok()).unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
     let fields = match input.get("fields") {
         None | Some(Value::Null) => Value::Null,
-        Some(Value::Array(names)) if names.iter().all(Value::is_string) => {
-            Value::Array(names.clone())
-        }
+        Some(Value::Array(names)) if names.iter().all(Value::is_string) => Value::Array(names.clone()),
         Some(_) => return Err(KitToolError::invalid("`fields` lists field names")),
     };
-    if let Some(path_of_fields) = input
-        .get("follow")
-        .and_then(Value::as_str)
-        .filter(|text| !text.trim().is_empty())
-    {
+    if let Some(path_of_fields) = input.get("follow").and_then(Value::as_str).filter(|text| !text.trim().is_empty()) {
         let start = objects.swap_remove(0);
-        objects = follow(kits, &target, start, path_of_fields)
-            .await
-            .map_err(|error| unsupported(kit, error))?;
+        objects = follow(kits, &target, start, path_of_fields).await.map_err(|error| unsupported(kit, error))?;
     }
     let total = objects.len();
-    let entries: Vec<Value> = objects
-        .iter()
-        .take(limit)
-        .map(|id| json!({ "target": id, "fields": fields }))
-        .collect();
-    let loaded = load(kits, &target, entries)
-        .await
-        .map_err(|error| object_hint(kit, unsupported(kit, error)))?;
+    let entries: Vec<Value> = objects.iter().take(limit).map(|id| json!({ "target": id, "fields": fields })).collect();
+    let loaded = load(kits, &target, entries).await.map_err(|error| object_hint(kit, unsupported(kit, error)))?;
     let mut output = json!({ "objects": loaded, "total": total });
     if total > limit {
         output["truncated"] = Value::Bool(true);
@@ -589,41 +464,21 @@ pub(super) async fn query(
     // agent to read: 117K characters for Word.)
     match input.get("describe") {
         Some(Value::Bool(true)) => {
-            let described = target
-                .describe(kits, kit)
-                .await
-                .map_err(|error| unsupported(kit, error))?;
+            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
             output["types"] = json!(type_listing(&described));
-            output["describe_more"] =
-                json!("pass describe: \"<Type>[,<Type>]\" for those types in full");
+            output["describe_more"] = json!("pass describe: \"<Type>[,<Type>]\" for those types in full");
         }
         Some(Value::String(wanted)) if wanted.trim() == "*" => {
-            let described = target
-                .describe(kits, kit)
-                .await
-                .map_err(|error| unsupported(kit, error))?;
+            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
             output["schema"] = describe_schema(&described);
             output["describe"] = described;
         }
         Some(Value::String(wanted)) => {
-            let described = target
-                .describe(kits, kit)
-                .await
-                .map_err(|error| unsupported(kit, error))?;
-            let names: Vec<&str> = wanted
-                .split(',')
-                .map(str::trim)
-                .filter(|n| !n.is_empty())
-                .collect();
+            let described = target.describe(kits, kit).await.map_err(|error| unsupported(kit, error))?;
+            let names: Vec<&str> = wanted.split(',').map(str::trim).filter(|n| !n.is_empty()).collect();
             let picked: Map<String, Value> = described["types"]
                 .as_object()
-                .map(|types| {
-                    types
-                        .iter()
-                        .filter(|(name, _)| names.contains(&name.as_str()))
-                        .map(|(n, t)| (n.clone(), t.clone()))
-                        .collect()
-                })
+                .map(|types| types.iter().filter(|(name, _)| names.contains(&name.as_str())).map(|(n, t)| (n.clone(), t.clone())).collect())
                 .unwrap_or_default();
             output["describe"] = json!({ "root": described["root"], "types": picked });
         }
@@ -640,10 +495,7 @@ pub(super) async fn query(
     }
     let shown = loaded_count(&output);
     let summary = if total > shown {
-        format!(
-            "Read {shown} of {total} objects of {} `{path}`; raise `limit` or narrow `follow` for the rest.",
-            target.label()
-        )
+        format!("Read {shown} of {total} objects of {} `{path}`; raise `limit` or narrow `follow` for the rest.", target.label())
     } else {
         format!("Read {shown} objects of {} `{path}`.", target.label())
     };
@@ -664,27 +516,14 @@ async fn with_refs(kits: &KitManager, view: &DocumentView, mut request: Value) -
         Some(Value::String(s)) => !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()),
         _ => false,
     };
-    let any = ["ops", "load"].iter().any(|key| {
-        request
-            .get(*key)
-            .and_then(Value::as_array)
-            .is_some_and(|items| items.iter().any(numeric))
-    });
+    let any = ["ops", "load"].iter().any(|key| request.get(*key).and_then(Value::as_array).is_some_and(|items| items.iter().any(numeric)));
     if !any {
         return request;
     }
     warm(kits, view).await;
     let mut refs = std::collections::HashMap::new();
     for command in ["slide.inspect", "page.inspect"] {
-        if let Ok(executed) = kits
-            .execute(
-                Caller::Agent,
-                view.kit_id,
-                &view.document_id,
-                command,
-                Map::new(),
-            )
-            .await
+        if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, command, Map::new()).await
             && let Some(result) = executed.result
         {
             collect_refs(&result["shapes"], &mut refs);
@@ -713,15 +552,7 @@ pub(super) async fn warm(kits: &KitManager, view: &DocumentView) {
     let mut params = Map::new();
     params.insert("ops".into(), json!([]));
     params.insert("load".into(), json!([]));
-    let _ = kits
-        .model(
-            Caller::Agent,
-            view.kit_id,
-            &view.document_id,
-            "model.batch",
-            params,
-        )
-        .await;
+    let _ = kits.model(Caller::Agent, view.kit_id, &view.document_id, "model.batch", params).await;
 }
 
 fn collect_refs(shapes: &Value, refs: &mut std::collections::HashMap<String, String>) {
@@ -734,25 +565,14 @@ fn collect_refs(shapes: &Value, refs: &mut std::collections::HashMap<String, Str
 }
 
 fn numeric_target(request: &Value) -> Option<String> {
-    request
-        .get("ops")?
-        .as_array()?
-        .iter()
-        .find_map(|op| match op.get("target")? {
-            Value::Number(n) => Some(n.to_string()),
-            Value::String(s) if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) => {
-                Some(s.clone())
-            }
-            _ => None,
-        })
+    request.get("ops")?.as_array()?.iter().find_map(|op| match op.get("target")? {
+        Value::Number(n) => Some(n.to_string()),
+        Value::String(s) if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) => Some(s.clone()),
+        _ => None,
+    })
 }
 
-pub(super) async fn batch(
-    kits: &KitManager,
-    kit: &'static KitDefinition,
-    input: &Value,
-    draft: bool,
-) -> KitToolResult {
+pub(super) async fn batch(kits: &KitManager, kit: &'static KitDefinition, input: &Value, draft: bool) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let ops = match input.get("ops") {
         Some(Value::Array(ops)) => ops.clone(),
@@ -763,71 +583,46 @@ pub(super) async fn batch(
         Some(Value::Array(loads)) => loads.clone(),
         None | Some(Value::Null) => Vec::new(),
         Some(_) => {
-            return Err(KitToolError::invalid(
-                "`load` is an array of `{ target, fields? }`",
-            ));
+            return Err(KitToolError::invalid("`load` is an array of `{ target, fields? }`"));
         }
     };
     if ops.is_empty() && loads.is_empty() {
-        return Err(KitToolError::invalid(format!(
-            "`ops` is empty: give at least one operation (to only read, use {})",
-            tool_name(kit, Action::Query)
-        )));
+        return Err(KitToolError::invalid(format!("`ops` is empty: give at least one operation (to only read, use {})", tool_name(kit, Action::Query))));
     }
     let writes = !ops.is_empty();
     let target = if draft {
         match draft_at(kits, kit, &path, true).await? {
-            DraftAt::Editor(document) => Target::Live {
-                document,
-                draft: true,
-            },
-            DraftAt::Headless(id) => {
-                Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?)
-            }
+            DraftAt::Editor(document) => Target::Live { document, draft: true },
+            DraftAt::Headless(id) => Target::HeadlessDraft(kits.document(Caller::Agent, kit.id, &id).await?),
         }
     } else if let Some(document) = live(kits, kit, &path).await {
-        Target::Live {
-            document,
-            draft: false,
-        }
+        Target::Live { document, draft: false }
     } else {
         Target::Headless(kits.open(Caller::Agent, &path).await?)
     };
     if writes && target.read_only() {
-        return Err(KitToolError::new(
-            ErrorCode::READ_ONLY,
-            format!("`{path}` is open read-only: it cannot be edited"),
-        ));
+        return Err(KitToolError::new(ErrorCode::READ_ONLY, format!("`{path}` is open read-only: it cannot be edited")));
     }
     let save = !draft && input.get("save").and_then(Value::as_bool) != Some(false);
     let mut request = json!({ "origin": agent_origin(), "ops": ops, "load": loads });
     if let Target::Live { draft: false, .. } = &target {
         request["save"] = Value::Bool(save && writes);
     }
-    let mut answer = target
-        .batch(kits, request)
-        .await
-        .map_err(|error| unsupported(kit, error))
-        .map_err(|error| match error.index {
-            Some(index) => error.context(&format!("op {index}: ")),
-            None => error,
-        })?;
+    let mut answer = target.batch(kits, request).await.map_err(|error| unsupported(kit, error)).map_err(|error| match error.index {
+        Some(index) => error.context(&format!("op {index}: ")),
+        None => error,
+    })?;
     if let Some(fields) = answer.as_object_mut() {
         fields.remove("version");
     }
     match &target {
         Target::Headless(view) => {
-            let mut view = kits
-                .document(Caller::Agent, view.kit_id, &view.document_id)
-                .await?;
+            let mut view = kits.document(Caller::Agent, view.kit_id, &view.document_id).await?;
             if save && writes && view.dirty {
                 view = kits
                     .save(Caller::Agent, view.kit_id, &view.document_id)
                     .await
-                    .map_err(|error| {
-                        KitToolError::from(error)
-                            .context("the batch was applied but saving failed: ")
-                    })?;
+                    .map_err(|error| KitToolError::from(error).context("the batch was applied but saving failed: "))?;
             }
             answer["saved"] = Value::Bool(save && writes && !view.dirty);
             answer["document"] = json!({ "path": view.path, "summary": view.summary, "dirty": view.dirty, "canUndo": view.can_undo });
@@ -836,9 +631,7 @@ pub(super) async fn batch(
             if writes {
                 drafts::persist(kits, kit, &path, &view.document_id).await?;
             }
-            let view = kits
-                .document(Caller::Agent, view.kit_id, &view.document_id)
-                .await?;
+            let view = kits.document(Caller::Agent, view.kit_id, &view.document_id).await?;
             answer["draft"] = Value::Bool(true);
             answer["saved"] = Value::Bool(false);
             answer["document"] = json!({ "path": path, "summary": view.summary, "dirty": view.dirty, "canUndo": view.can_undo });
@@ -857,23 +650,10 @@ pub(super) async fn batch(
             "Ran {ran} operations on your draft of `{path}`; the document is unchanged until the person merges the draft. Call {} when it is done.",
             tool_name(kit, Action::DraftReady)
         ),
-        Target::Live { .. } => format!(
-            "Ran {ran} operations on `{path}` in its open {} editor ({}).",
-            short(kit),
-            if answer["saved"] == true {
-                "saved"
-            } else {
-                "not saved"
-            }
-        ),
-        Target::Headless(_) => format!(
-            "Ran {ran} operations on `{path}` ({}).",
-            if answer["saved"] == true {
-                "saved"
-            } else {
-                "not saved"
-            }
-        ),
+        Target::Live { .. } => {
+            format!("Ran {ran} operations on `{path}` in its open {} editor ({}).", short(kit), if answer["saved"] == true { "saved" } else { "not saved" })
+        }
+        Target::Headless(_) => format!("Ran {ran} operations on `{path}` ({}).", if answer["saved"] == true { "saved" } else { "not saved" }),
     };
     Ok(KitToolOutput::new(summary, answer))
 }
@@ -881,7 +661,6 @@ pub(super) async fn batch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::manager::KITS;
 
     fn described() -> Value {
         json!({
@@ -898,37 +677,19 @@ mod tests {
     }
 
     fn slide() -> &'static KitDefinition {
-        KITS.iter()
-            .find(|kit| kit.id == "kit.slide")
-            .unwrap_or_else(|| panic!("kit.slide is a kit"))
+        crate::definitions::fixture_kit("kit.slide")
     }
 
     #[test]
     fn query_and_batch_take_their_enums_from_the_kits_schema() {
+        crate::definitions::fixture_kits();
         let generic = query_spec(slide(), None);
         assert_eq!(generic.name, "slide_query");
-        assert!(
-            generic.description.contains("describe: true"),
-            "{}",
-            generic.description
-        );
-        assert!(
-            generic.input_schema["properties"]["fields"]["items"]
-                .get("enum")
-                .is_none()
-        );
+        assert!(generic.description.contains("describe: true"), "{}", generic.description);
+        assert!(generic.input_schema["properties"]["fields"]["items"].get("enum").is_none());
         let known = query_spec(slide(), Some(&described()));
-        assert_eq!(
-            known.input_schema["properties"]["fields"]["items"]["enum"],
-            json!(["layout", "name", "notes", "slides", "title"])
-        );
-        assert!(
-            known
-                .description
-                .contains("SlideFile (root) { slides: list of Slide, title: string }"),
-            "{}",
-            known.description
-        );
+        assert_eq!(known.input_schema["properties"]["fields"]["items"]["enum"], json!(["layout", "name", "notes", "slides", "title"]));
+        assert!(known.description.contains("SlideFile (root) { slides: list of Slide, title: string }"), "{}", known.description);
         let batch = batch_spec(slide(), Some(&described()));
         assert!(batch.writes && !known.writes);
         let item = &batch.input_schema["properties"]["ops"]["items"]["properties"];
@@ -939,38 +700,21 @@ mod tests {
 
     #[test]
     fn the_described_types_become_json_schema() {
+        crate::definitions::fixture_kits();
         let schema = describe_schema(&described());
         let slide = &schema["$defs"]["Slide"]["properties"];
-        assert_eq!(
-            slide["layout"],
-            json!({ "type": "string", "enum": ["title", "blank"] })
-        );
+        assert_eq!(slide["layout"], json!({ "type": "string", "enum": ["title", "blank"] }));
         assert_eq!(slide["name"]["type"], "string");
-        assert_eq!(
-            schema["$defs"]["SlideFile"]["properties"]["slides"]["items"]["type"],
-            "string"
-        );
-        assert!(
-            slide["notes"]["description"]
-                .as_str()
-                .unwrap_or_default()
-                .ends_with("Optional.")
-        );
+        assert_eq!(schema["$defs"]["SlideFile"]["properties"]["slides"]["items"]["type"], "string");
+        assert!(slide["notes"]["description"].as_str().unwrap_or_default().ends_with("Optional."));
     }
 
     #[test]
     fn fields_name_the_ids_they_hold() {
-        assert_eq!(
-            ids_of(&json!(["a", "b"])),
-            Some(vec!["a".to_owned(), "b".to_owned()])
-        );
+        crate::definitions::fixture_kits();
+        assert_eq!(ids_of(&json!(["a", "b"])), Some(vec!["a".to_owned(), "b".to_owned()]));
         assert_eq!(ids_of(&json!("r")), Some(vec!["r".to_owned()]));
-        assert_eq!(
-            ids_of(
-                &json!([{ "object": "n1", "parent": null }, { "object": "n2", "parent": "n1" }])
-            ),
-            Some(vec!["n1".to_owned(), "n2".to_owned()])
-        );
+        assert_eq!(ids_of(&json!([{ "object": "n1", "parent": null }, { "object": "n2", "parent": "n1" }])), Some(vec!["n1".to_owned(), "n2".to_owned()]));
         assert_eq!(ids_of(&json!(3)), None);
     }
 }

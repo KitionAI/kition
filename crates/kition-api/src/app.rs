@@ -97,7 +97,16 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
             portal.cloud_session_provider(),
         )),
     );
-    let kits = kition_kits::KitManager::from_env(workspace_dir.clone());
+    let kits = kition_kits::KitManager::discover(
+        workspace_dir.clone(),
+        &kition_kits::KitSources {
+            manifests: config.kit_manifests.clone(),
+            kits_dir: Some(config.kits_dir.trim())
+                .filter(|dir| !dir.is_empty())
+                .map(PathBuf::from),
+            executables: kition_kits::KitSources::executables_from_env(),
+        },
+    );
     write_token_file(&config, &upload_dir, workspace_dir.as_deref())?;
     let events = EventBus::default();
     let table_client = kition_tableclient::TableClient::new(kits.clone(), events.clone());
@@ -137,7 +146,7 @@ pub fn router(deps: &Deps) -> Router {
             },
         ))
         .merge(kition_ai::usage::router(deps.auth()))
-        .merge(kition_kits::router(kition_kits::KitsState {
+        .merge(kition_kits_http::router(kition_kits_http::KitsState {
             auth: deps.auth(),
             kits: deps.kits.clone(),
         }));

@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-host/src/process.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Launching a kit executable (protocol section 3).
 
 use std::ffi::OsString;
@@ -8,10 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use kition_kit_protocol::PROTOCOL_VERSION;
-use kition_kit_protocol::launch::{
-    ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, LAUNCH_ARG, READY_TIMEOUT, ReadyLine,
-    Surface,
-};
+use kition_kit_protocol::launch::{ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, LAUNCH_ARG, READY_TIMEOUT, ReadyLine, Surface};
 use kition_kit_protocol::transport;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
@@ -30,11 +28,7 @@ pub struct LaunchOptions {
 
 impl LaunchOptions {
     pub fn new(executable: impl Into<PathBuf>) -> Self {
-        Self {
-            executable: executable.into(),
-            env: Vec::new(),
-            ready_timeout: READY_TIMEOUT,
-        }
+        Self { executable: executable.into(), env: Vec::new(), ready_timeout: READY_TIMEOUT }
     }
 }
 
@@ -109,13 +103,7 @@ impl KitProcess {
         let stdout_after_ready = Arc::new(AtomicBool::new(false));
         let stdout_watch = tokio::spawn(watch_stdout(stdout, Arc::clone(&stdout_after_ready)));
 
-        Ok(Self {
-            child,
-            endpoint,
-            token,
-            stdout_after_ready,
-            stdout_watch: Some(stdout_watch),
-        })
+        Ok(Self { child, endpoint, token, stdout_after_ready, stdout_watch: Some(stdout_watch) })
     }
 
     /// The launch token clients send in `kit.initialize`.
@@ -154,10 +142,7 @@ impl KitProcess {
 
     /// Waits for the process to exit, up to `limit`.
     pub async fn wait_for_exit(&mut self, limit: Duration) -> Option<ExitStatus> {
-        tokio::time::timeout(limit, self.child.wait())
-            .await
-            .ok()?
-            .ok()
+        tokio::time::timeout(limit, self.child.wait()).await.ok()?.ok()
     }
 
     pub fn try_exit_status(&mut self) -> Option<ExitStatus> {

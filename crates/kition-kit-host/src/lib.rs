@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kit-host/src/lib.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The host side of the Kit Protocol: launching kit executables, private
 //! endpoints, and a request client. Kits run only headless.
 
@@ -21,10 +22,7 @@ mod tests {
     #[test]
     fn tokens_have_the_launch_format() {
         let token = new_token();
-        assert!(
-            kition_kit_protocol::launch::is_valid_token(&token),
-            "{token}"
-        );
+        assert!(kition_kit_protocol::launch::is_valid_token(&token), "{token}");
         assert_ne!(token, new_token());
     }
 }

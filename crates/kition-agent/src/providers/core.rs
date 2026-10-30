@@ -90,7 +90,8 @@ impl Provider for CoreProvider {
     }
 
     fn tools<'a>(&'a self, _scene: &'a TurnScene) -> BoxFuture<'a, Result<Vec<ToolDef>, String>> {
-        let names = catalog::tools()
+        let all = catalog::tools();
+        let names = all
             .iter()
             .map(|tool| tool.name.as_str())
             .filter(|name| offers(name, &self.facts) && *name != "exec_command");

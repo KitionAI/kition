@@ -1,3 +1,4 @@
+// Copied from kition-sdk crates/kition-kits/src/tools/schemas.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The kit tools' argument and result schemas, as published in
 //! `contracts/kit/mcp-tools.schema.json` and printed by `kition-kits-mcp --schemas`: every tool
 //! of a kit, named by its `<prefix>`, with the arguments `tools/list` offers (built from a generic
@@ -15,13 +16,17 @@ use crate::manager::{KitAgent, KitDefinition};
 static GENERIC: KitDefinition = KitDefinition {
     id: "kit.<kit>",
     name: "<Kit>",
-    binary_env: "KITION_KIT_<KIT>_BINARY",
     extensions: &[],
     creates: &[],
     base_name: "Untitled <kit>",
     exports: &[],
+    executable: None,
+    version: "<version>",
+    manifest: "{}",
     agent: KitAgent {
         prefix: "<prefix>",
+        drafts: true,
+        object_model: true,
         noun: "document",
         formats: "<formats>",
         reports: "the document",
@@ -67,14 +72,8 @@ fn document_schema() -> Value {
 /// Where the call ran: `live` in the file's open editor, `draft` on the agent's draft.
 fn place() -> [(&'static str, Value); 2] {
     [
-        (
-            "live",
-            json!({ "type": "boolean", "description": "Edited or read in the file's open editor." }),
-        ),
-        (
-            "draft",
-            json!({ "type": "boolean", "description": "Edited or read the agent's draft, not the file." }),
-        ),
+        ("live", json!({ "type": "boolean", "description": "Edited or read in the file's open editor." })),
+        ("draft", json!({ "type": "boolean", "description": "Edited or read the agent's draft, not the file." })),
     ]
 }
 
@@ -240,10 +239,7 @@ pub fn output_schema(action: Action) -> Value {
 /// It accepts the success result and, beside it, a failure's (`error`, with what was done), as
 /// KHP A18 asks; `None` for a name that is no kit tool.
 pub fn tool_output_schema(name: &str) -> Option<Value> {
-    let action = Action::ALL.into_iter().find(|action| {
-        name.strip_suffix(action.suffix())
-            .is_some_and(|rest| rest.ends_with('_'))
-    })?;
+    let action = Action::ALL.into_iter().find(|action| name.strip_suffix(action.suffix()).is_some_and(|rest| rest.ends_with('_')))?;
     let failed = json!({ "type": "object", "properties": { "error": { "$ref": "#/$defs/error" } }, "required": ["error"] });
     Some(json!({
         "type": "object",
@@ -288,43 +284,24 @@ pub fn tool_schemas() -> Value {
 mod tests {
     use super::*;
 
+    /// Where the schemas are published, from the repository's root.
+    const PUBLISHED: &str = "contracts/kit/mcp-tools.schema.json";
+
     #[test]
     fn the_published_schemas_match_the_tools() {
-        let path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../contracts/kit/mcp-tools.schema.json"
-        );
-        let published: Value = std::fs::read_to_string(path)
-            .ok()
-            .and_then(|text| serde_json::from_str(&text).ok())
-            .unwrap_or(Value::Null);
-        assert_eq!(
-            published,
-            tool_schemas(),
-            "contracts/kit/mcp-tools.schema.json is out of date: run `kition-kits-mcp --schemas > contracts/kit/mcp-tools.schema.json`"
-        );
+        let path = format!("{}/../../{PUBLISHED}", env!("CARGO_MANIFEST_DIR"));
+        let published: Value = std::fs::read_to_string(path).ok().and_then(|text| serde_json::from_str(&text).ok()).unwrap_or(Value::Null);
+        assert_eq!(published, tool_schemas(), "{PUBLISHED} is out of date: run `kition-kits-mcp --schemas > {PUBLISHED}`");
     }
 
     #[test]
     fn every_tool_is_described_and_merge_is_not_a_tool() {
         let schemas = tool_schemas();
-        let names: Vec<&String> = schemas["tools"]
-            .as_object()
-            .map(|tools| tools.keys().collect())
-            .unwrap_or_default();
+        let names: Vec<&String> = schemas["tools"].as_object().map(|tools| tools.keys().collect()).unwrap_or_default();
         assert_eq!(names.len(), Action::ALL.len());
         assert!(names.iter().all(|name| name.starts_with("<prefix>_")));
-        assert!(
-            !names
-                .iter()
-                .any(|name| name.contains("merge") || name.contains("discard"))
-        );
-        for tool in schemas["tools"]
-            .as_object()
-            .into_iter()
-            .flatten()
-            .map(|(_, tool)| tool)
-        {
+        assert!(!names.iter().any(|name| name.contains("merge") || name.contains("discard")));
+        for tool in schemas["tools"].as_object().into_iter().flatten().map(|(_, tool)| tool) {
             assert_eq!(tool["input"]["properties"]["path"]["type"], "string");
             assert_eq!(tool["output"]["type"], "object");
         }
@@ -333,15 +310,10 @@ mod tests {
     #[test]
     fn every_tool_lists_an_output_schema_that_takes_its_result_or_a_failure() {
         for action in Action::ALL {
-            for name in [
-                format!("vector_{}", action.suffix()),
-                format!("kit_{}", action.suffix()),
-            ] {
-                let schema = tool_output_schema(&name)
-                    .unwrap_or_else(|| panic!("{name} has no output schema"));
+            for name in [format!("vector_{}", action.suffix()), format!("kit_{}", action.suffix())] {
+                let schema = tool_output_schema(&name).unwrap_or_else(|| panic!("{name} has no output schema"));
                 assert_eq!(schema["type"], "object", "MCP output schemas are objects");
-                let validator = jsonschema::validator_for(&schema)
-                    .unwrap_or_else(|err| panic!("{name}: {err}"));
+                let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{name}: {err}"));
                 let failed = json!({ "error": { "code": "unsupported", "message": "no" } });
                 assert!(validator.is_valid(&failed), "{name} takes a failure");
             }
@@ -349,10 +321,7 @@ mod tests {
         let check = tool_output_schema("vector_check").unwrap_or_default();
         let validator = jsonschema::validator_for(&check).unwrap_or_else(|err| panic!("{err}"));
         assert!(validator.is_valid(&json!({ "diagnostics": [] })));
-        assert!(
-            !validator.is_valid(&json!({})),
-            "a check answers diagnostics or an error"
-        );
+        assert!(!validator.is_valid(&json!({})), "a check answers diagnostics or an error");
         assert!(tool_output_schema("vector_merge").is_none());
         assert!(tool_output_schema("inspect").is_none());
     }

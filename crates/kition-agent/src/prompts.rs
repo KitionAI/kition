@@ -150,6 +150,7 @@ mod tests {
 
     #[test]
     fn layered_images_get_the_photo_tools() {
+        kition_kits::definitions::fixture_kits();
         let photo = linked_document("art/Cover.PSD");
         assert!(
             photo.contains("photo_inspect") && photo.contains("photo_run"),

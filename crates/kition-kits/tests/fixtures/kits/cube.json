@@ -1,0 +1,268 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.cube",
+  "name": "Cube",
+  "version": "0.10.0",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_cube_sdk",
+    "class": "CubeDocument",
+    "contract": 2,
+    "crate": "kition-cube-sdk"
+  },
+  "formats": [
+    {
+      "id": "kcube",
+      "extensions": [
+        "kcube"
+      ],
+      "mime": "application/vnd.kition.cube+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "cube",
+      "extension": "kcube",
+      "baseName": "Untitled cube",
+      "size": {
+        "width": 1280,
+        "height": 720
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "glb",
+      "mime": "model/gltf-binary",
+      "command": "file.export"
+    },
+    {
+      "extension": "gltf",
+      "mime": "model/gltf+json",
+      "command": "file.export"
+    },
+    {
+      "extension": "obj",
+      "mime": "model/obj",
+      "command": "file.export"
+    },
+    {
+      "extension": "stl",
+      "mime": "model/stl",
+      "command": "file.export"
+    },
+    {
+      "extension": "fbx",
+      "mime": "application/octet-stream",
+      "command": "file.export"
+    },
+    {
+      "extension": "usda",
+      "mime": "model/vnd.usda",
+      "command": "file.export"
+    },
+    {
+      "extension": "usdz",
+      "mime": "model/vnd.usdz+zip",
+      "command": "file.export"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    }
+  ],
+  "imports": [
+    {
+      "extensions": [
+        "glb",
+        "gltf",
+        "obj",
+        "stl",
+        "fbx",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
+        "blend"
+      ],
+      "action": "place"
+    }
+  ],
+  "files": {
+    "read": [
+      "glb",
+      "gltf",
+      "obj",
+      "stl",
+      "fbx",
+      "usd",
+      "usda",
+      "usdc",
+      "usdz",
+      "blend",
+      "png",
+      "jpg",
+      "jpeg"
+    ],
+    "create": [
+      "glb",
+      "gltf",
+      "obj",
+      "stl",
+      "fbx",
+      "usda",
+      "usdz",
+      "png"
+    ]
+  },
+  "capabilities": [
+    "engine-tools",
+    "lent-files",
+    "files",
+    "kdm"
+  ],
+  "extras": {
+    "traceStep": {
+      "params": [
+        "budgetMs: f64"
+      ],
+      "returns": "string",
+      "description": "Advances the path-traced render started with render.trace.start by about budgetMs milliseconds: { samples, target, fraction, done, width, height }."
+    },
+    "traceShard": {
+      "params": [
+        "json: string"
+      ],
+      "returns": "string",
+      "description": "Starts tracing one shard of a render split across workers (every count-th row from row index): { index, count, samples, bounces, denoise, seed, frame }; answers its progress as JSON."
+    },
+    "traceSums": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "The rows of the render under way so far (sample counts and summed radiance, albedo, and normal), for traceMerge."
+    },
+    "traceMerge": {
+      "params": [
+        "sums: Uint8Array"
+      ],
+      "returns": "string",
+      "description": "Merges a shard's traceSums into the render started with render.trace.start { collect: true }; answers its progress as JSON. The merged picture is the single tracer's."
+    },
+    "traceSnapshot": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "The scene as it is now, as .kcube bytes, for trace workers to open (nothing is marked saved)."
+    },
+    "traceImage": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "The path-traced render so far, as PNG bytes (once done, through the compositing group when compositing is on)."
+    },
+    "renderImage": {
+      "params": [
+        "samples: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "The scene rendered through its camera at the render size and through its compositing group when compositing is on, as PNG bytes (samples per pixel side, 1 to 4)."
+    },
+    "imageBytes": {
+      "params": [
+        "hash: string"
+      ],
+      "returns": "Uint8Array",
+      "description": "A material image's encoded bytes by hash (empty when the scene has no such image)."
+    },
+    "imagePreview": {
+      "params": [
+        "hash: string",
+        "side: u32"
+      ],
+      "returns": "Uint8Array",
+      "description": "An image of the scene as a PNG at most side pixels on its longer side (HDR clipped), for thumbnails; empty when there is no such image."
+    },
+    "glScene": {
+      "params": [],
+      "returns": "string",
+      "description": "One frame of the editor's GPU viewport as JSON: the view and its matrices, shading, world, lights, drawn objects (world matrix, material, geometry key, selection class), overlays (edit selection, selected origins, gizmo lines, peers), and whether the GPU viewport can show this state."
+    },
+    "glMesh": {
+      "params": [
+        "id: u32",
+        "raw: bool",
+        "tangents: bool"
+      ],
+      "returns": "Uint8Array",
+      "description": "One object's geometry for the GPU viewport: header KGL1 and counts, then per triangle corner position, normal, uv, face index (and tangents), the mesh's vertex positions, and its edges."
+    }
+  },
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "View",
+      "Add",
+      "Object",
+      "Mesh",
+      "Modifier",
+      "Material",
+      "Render"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#9a5a22",
+      "dark": "#e3a46b"
+    }
+  },
+  "agent": {
+    "prefix": "cube",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "3D scene",
+      "fileTypes": ".kcube",
+      "reports": "its objects (meshes, curves, texts, lattices, armatures, lights, cameras, empties) with transforms, materials, modifiers, constraints, and animation, the images, the frame, the mode, and the selection",
+      "covers": "adding primitives, curves, and text, transforms, parenting, edit-mode modeling (extrude, inset, bevel, loop cut, knife, dissolve, bridge, bisect, spin), sculpting (sculpt.stroke, sculpt.gesture, dynamic topology, multires, face sets), modifiers (including shrinkwrap and lattice), seams and UV unwrapping, image and normal-map textures, materials, lights, cameras, armatures, skinning, constraints and IK, shape keys, keyframe animation with drivers, actions, and keying sets, rigid body and cloth physics with constraints and force fields, particles and hair, Geometry Nodes (nodes.*), fast and path-traced rendering with a compositor (compositor.*), glTF/FBX/USD (usda, usdc, usdz)/OBJ/STL import and export, and .blend import; rotations are in degrees and Z is up",
+      "queries": "`cube`, `extrude`, or `modifier`",
+      "example": "add.cube"
+    }
+  },
+  "headless": {
+    "executable": "kit-cube",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 5
+  },
+  "collaboration": {
+    "merge": [
+      "structured"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Cube"
+  }
+}

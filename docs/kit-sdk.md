@@ -51,9 +51,16 @@ forwards it to the kit's editor as `ai/*` (`kition/kitBridge.ts`; runtime
 side `crates/kition-kits/src/bridge.rs`). With
 no window open on the file, the agent uses the headless kit as before.
 
-The same kit tools serve other harnesses as an MCP server (`crates/kition-kits/src/tools.rs`,
-`mcp.rs`): `POST /v1/mcp/kits` on the running runtime (Streamable HTTP, loopback, with the live
-bridge) and the stdio `kition-kits-mcp --workspace <folder>` without Kition (headless kits).
+The same kit tools serve other harnesses as an MCP server: kition-sdk `crates/kition-kits`
+(`tools.rs`, `mcp.rs`, copied here by `scripts/sync-kit-host.mjs`) with `POST /v1/mcp/kits` on
+the running runtime (`crates/kition-kits-http`; Streamable HTTP, loopback, with the live bridge)
+and the stdio `kition-kits-mcp --workspace <folder>` without Kition (headless kits;
+`--list-kits` lists what it found, `--unified` serves one `kit_<action>` tool set). A kit is found
+from its KHP manifest, never from a table: the kit packages' `kit.json` the desktop shell hands
+the runtime (`public/kits/<kit>-ui/` in development), a `--kits-dir`, or the `kit.json` a headless
+executable was built from (`--kit <path>`, and `KITION_KIT_<KIT>_BINARY` for development builds).
+The tools' wording comes from the manifest's `agent.describe`, `agent.render`, and
+`agent.export` (Kition platform K21).
 DeepSeek Harness mounts them through its own `dsh-mcp-client` with kition-sdk's
 `packages/dsh-kits` patches (standard D1); its `test/e2e.sh` proves it with a real dsh runtime.
 
@@ -133,7 +140,9 @@ Kition (this repository)
   src/features/workspace/components/kits/kitEditors.ts
                                   the registry: format -> kit package, engine, create menu item
   scripts/check-kit-sdk.mjs       checks a built engine against the contract (pnpm check:kit-sdks)
-  crates/kition-kits/             the runtime side: kit definitions, the bridge,
+  crates/kition-kits/             copied from kition-sdk: kits found from their kit.json,
+                                  the KHP agent tools, drafts, grants, kition-kits-mcp
+  crates/kition-kits-http/        Kition's /v1/kits routes, the bridge's stream, /v1/mcp/kits,
                                   PUT /v1/kits/files for in-page saves
   crates/kition-agent/src/tools/kits.rs
                                   the agent tools, which drive the headless kit
@@ -496,7 +505,7 @@ engine (`kition_board_sdk`, `BoardDocument`) and editor live in its
 repository, published and pinned like every other kit. The create menu's Board
 item makes an empty board with the engine in the page, and the agent's
 `board_*` tools run on the headless `kit-board` for files no editor has open
-(`KITS` in `crates/kition-kits`). `e2e/board-embedded.spec.ts` (in
+(found from its `kit.json`). `e2e/board-embedded.spec.ts` (in
 `make kit-e2e`) covers what Kition adds around the kit: opening, drawing,
 saving through Kition, and creating a board; the editor's own behavior is
 tested in the kit's repository. Kition has no board editor of its own.
@@ -569,8 +578,8 @@ features that go through the kit:
 
 - The agent changes a note only with `note_run` (find its commands with
   `note_commands`): through the Kit AI bridge when an editor has the file
-  open, and through the headless `kit-note` otherwise (`KITS` in
-  `crates/kition-kits`). Its edits to an existing note arrive as a draft,
+  open, and through the headless `kit-note` otherwise (found from its
+  `kit.json`). Its edits to an existing note arrive as a draft,
   reviewed in `KitDraftReview` or `HeadlessDraftReview`. `document_write` and
   `apply_patch` refuse a note; `document_read`, `document_search`, and
   `document_list` read it as plain text.
@@ -691,25 +700,23 @@ Kit repository:
 
 Kition runtime and desktop:
 
-4. Add a `KitDefinition` to `KITS` in `crates/kition-kits/src/manager.rs`
-   (id, name, binary environment variable, extensions, creatable formats).
+4. Nothing to register for the agent: the runtime finds the kit from its
+   `kit.json` (package, `--kits-dir`, or beside its headless executable).
 5. Map the extensions to a format in `src-tauri/src/workspace/formats.rs`, and
    mirror it in the renderer's `src/features/workspace/lib/workspace.ts` and
    the `WorkspaceDocumentFormat` type.
-6. Give the definition its `agent: KitAgent` (prefix from `kit.json`, the
-   noun, formats, what inspect reports, example queries and command). A kit
-   whose engine renders previews itself (KHP A39: `{slide?, target?, scale?,
-   maxSize?}` answers `{png}`) names that command in `render`: inspect then
-   previews a part, a diagnostic's `target`, or a `scale` with it. A kit that
-   exports for the agent (KHP A41) describes its `kit.json` `exports` command
-   in `export` (`KitExport`: the command, its formats, which answer field holds
-   the base64 file, and the fixed parameters that make the open editor and
-   the headless kit export the same thing, A26), lists the formats in
-   `exports`, and gets `<prefix>_export`, which writes new files only. The
-   agent tools, their labels, and the linked-file prompt follow from it
-   (`crates/kition-agent/src/tools/kits.rs`); add the kit to
-   `KIT_FILE_KINDS` in `src/features/agent/lib/documentMentions.ts` and a case
-   to `crates/kition-kits/tests/sdk_kits.rs` with a small fixture.
+6. Say in `kit.json` how its agent tools read (K21): `agent.describe` (`noun`,
+   `fileTypes`, `reports`, `covers`, `queries`, `example`). A kit whose engine
+   renders previews itself (KHP A39: `{slide?, target?, scale?, maxSize?}`
+   answers `{png}`) names that command in `agent.render`; a kit that exports
+   for the agent (KHP A41) names the command and the answer field holding the
+   base64 file in `agent.export` (`command`, `data`, and fixed `params` so the
+   open editor and the headless kit export the same thing, A26), for every
+   extension in `exports`. The draft tools follow `agent.drafts`, query and
+   batch `agent.objectModel` (A35). Add the kit to `KIT_FILE_KINDS` in
+   `src/features/agent/lib/documentMentions.ts`, its manifest to kition-sdk
+   `crates/kition-kits/tests/fixtures/kits/`, and a case to its
+   `tests/sdk_kits.rs` with a small fixture.
 7. Keep `contracts/runtime/kits.schema.json` in step with any new route or
    detail shape, and regenerate the renderer types.
 

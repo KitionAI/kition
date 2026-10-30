@@ -69,6 +69,27 @@ fn on_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
     }
 }
 
+/// The `kit.json` of each kit package bundled with the renderer (`kits/<kit>-ui/kit.json`).
+fn kit_manifests<R: tauri::Runtime>(assets: tauri::AssetResolver<R>) -> Vec<String> {
+    let mut manifests: Vec<(String, String)> = assets
+        .iter()
+        .filter(|(path, _)| {
+            let path = path.trim_start_matches('/');
+            path.starts_with("kits/")
+                && path.ends_with("-ui/kit.json")
+                && path.matches('/').count() == 2
+        })
+        .filter_map(|(path, bytes)| {
+            Some((
+                path.into_owned(),
+                String::from_utf8(bytes.into_owned()).ok()?,
+            ))
+        })
+        .collect();
+    manifests.sort();
+    manifests.into_iter().map(|(_, text)| text).collect()
+}
+
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle().clone();
     if let Some(menu) = menu::build(&handle)? {
@@ -86,6 +107,9 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             .filter(|_| tauri::is_dev())
             .map(|url| url.origin().ascii_serialization()),
     );
+    desktop
+        .supervisor
+        .set_kit_manifests(kit_manifests(app.asset_resolver()));
     desktop.restore_workspace();
     // A Kition that takes the store lock over, or loses it, tells the renderer.
     let notices = handle.clone();

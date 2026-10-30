@@ -1,0 +1,121 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.table",
+  "name": "Table",
+  "version": "0.2.4",
+  "license": "Apache-2.0",
+  "distribution": "default",
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_table_sdk",
+    "class": "TableDocument",
+    "contract": 1,
+    "crate": "kition-table-sdk"
+  },
+  "formats": [
+    {
+      "id": "ktable",
+      "extensions": [
+        "ktable"
+      ],
+      "mime": "application/vnd.kition.table+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "table",
+      "extension": "ktable",
+      "baseName": "Untitled table",
+      "size": {
+        "width": 640,
+        "height": 420
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "csv",
+      "mime": "text/csv",
+      "command": "table.csv.export"
+    },
+    {
+      "extension": "md",
+      "mime": "text/markdown",
+      "command": "table.markdown.export"
+    }
+  ],
+  "extras": {
+    "call": {
+      "params": [
+        "method",
+        "paramsJson"
+      ],
+      "returns": "string",
+      "description": "One data-document request (kition-table-api): answers { result, change } as JSON."
+    },
+    "takeImported": {
+      "params": [],
+      "returns": "string",
+      "description": "The TableChanges of replica changes imported since the last call, as a JSON array of table/changed params."
+    }
+  },
+  "ui": {
+    "mode": "embedded",
+    "entry": "ui/index.html",
+    "menus": [
+      "Edit"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#0c8375",
+      "dark": "#3fd1bf"
+    }
+  },
+  "agent": {
+    "prefix": "table",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "table file",
+      "fileTypes": ".ktable",
+      "reports": "its tables, fields, views, and record counts",
+      "covers": "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `table.records.create` adds a record",
+      "queries": "`records`, `fields`, or `views`",
+      "example": "table.records.create"
+    }
+  },
+  "headless": {
+    "executable": "kit-table",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "database",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Table"
+  }
+}

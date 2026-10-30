@@ -34,6 +34,8 @@ pub struct Supervisor {
     /// The dev server's origin under `tauri dev`, which the runtime must let through.
     dev_origin: Mutex<Option<String>>,
     smtp_proxy: Mutex<String>,
+    /// The `kit.json` of every kit package the renderer is served with, for the runtime's kits.
+    kit_manifests: Mutex<Vec<String>>,
     server: tokio::sync::Mutex<Option<RunningServer>>,
     last_error: Mutex<String>,
 }
@@ -46,6 +48,7 @@ impl Supervisor {
             api_token: kition_http::gate::new_token(),
             dev_origin: Mutex::default(),
             smtp_proxy: Mutex::default(),
+            kit_manifests: Mutex::default(),
             server: tokio::sync::Mutex::new(None),
             last_error: Mutex::default(),
         }
@@ -54,6 +57,14 @@ impl Supervisor {
     /// The token the renderer sends; only the main window's bootstrap script reads it.
     pub fn api_token(&self) -> &str {
         &self.api_token
+    }
+
+    /// The kit packages' manifests the runtime knows its kits from (`AppConfig::kit_manifests`).
+    pub fn set_kit_manifests(&self, manifests: Vec<String>) {
+        *self
+            .kit_manifests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = manifests;
     }
 
     /// Lets the renderer served from the dev server `origin` (`tauri dev`) call the runtime.
@@ -120,6 +131,18 @@ impl Supervisor {
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .clone(),
+            kit_manifests: self
+                .kit_manifests
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clone(),
+            // A development build serves the renderer from this checkout, whose kit packages are
+            // in `public/kits` (`make kit-fetch`).
+            kits_dir: if cfg!(debug_assertions) {
+                concat!(env!("CARGO_MANIFEST_DIR"), "/../public/kits").to_owned()
+            } else {
+                String::new()
+            },
             ..AppConfig::default()
         }
     }

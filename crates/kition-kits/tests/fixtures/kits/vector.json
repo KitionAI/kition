@@ -1,0 +1,123 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.vector",
+  "name": "Vector",
+  "version": "0.3.21",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "upstream": {
+    "repository": "https://github.com/storytold/vectorcraft",
+    "version": "0.9.0",
+    "commit": "10f1c56a861869936af0027cef14b1cf5d8cf515"
+  },
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_vector_sdk",
+    "class": "VectorDocument",
+    "contract": 2,
+    "crate": "kition-vector-sdk"
+  },
+  "formats": [
+    {
+      "id": "vector",
+      "extensions": [
+        "kvector"
+      ],
+      "mime": "application/vnd.kition.vector+json",
+      "role": "edit"
+    },
+    {
+      "id": "vector-import",
+      "extensions": [
+        "svg",
+        "ai",
+        "eps"
+      ],
+      "mime": "image/svg+xml",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "vector",
+      "extension": "kvector",
+      "baseName": "Untitled vector",
+      "size": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Object",
+      "Type",
+      "Select",
+      "Effect",
+      "View",
+      "Window",
+      "Help"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#58810f",
+      "dark": "#a6d64a"
+    }
+  },
+  "agent": {
+    "prefix": "vector",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "vector drawing",
+      "fileTypes": ".kvector",
+      "reports": "its artboards, layers, objects, and selection",
+      "covers": "shapes, paths, paint, type, alignment, effects, artboards, and more",
+      "queries": "`rectangle`, `align`, or `stroke`",
+      "example": "shape.rectangle"
+    }
+  },
+  "headless": {
+    "executable": "kit-vector",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "rich-text",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Vector"
+  }
+}
