@@ -64,6 +64,16 @@ The tools' wording comes from the manifest's `agent.describe`, `agent.render`, a
 DeepSeek Harness mounts them through its own `dsh-mcp-client` with kition-sdk's
 `packages/dsh-kits` patches (standard D1); its `test/e2e.sh` proves it with a real dsh runtime.
 
+Claude Code gets them as a plugin, kition-sdk `plugins/claude-code/kition-kits` (install with
+`claude plugin marketplace add <kition-sdk>/plugins/claude-code`, then
+`claude plugin install kition-kits@kition`): the stdio `kition-kits-mcp` on the project folder
+(`--unified` by default: 10 tools, about 10K tokens of definitions for all 16 kits, against 129
+tools and about 119K tokens per kit), one `<kit>-editing` skill per kit generated from the kit's
+`agent/guide.md` (`node tools/claude-plugin-skills.mjs`, `--check` for drift), and the person's
+draft review (`/kition-kits:drafts-list`, `-compare`, `-merge`, `-discard`; merge and discard only
+the person starts). Its README covers the options, including serving kits from their repositories'
+debug builds.
+
 Every kit also gets two object-model tools (architecture section 13, `tools/model.rs`):
 `<prefix>_query` reads objects by id (`root` for the document) or by following fields from the
 root (`follow: "slides.0.shapes"`), and `<prefix>_batch` runs one `model/batch` (KitObjectModel
