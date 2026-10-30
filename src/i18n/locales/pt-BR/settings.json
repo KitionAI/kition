@@ -338,7 +338,9 @@
       "minimal": "Mínimo",
       "low": "Baixo",
       "medium": "Médio",
-      "high": "Alto"
+      "high": "Alto",
+      "xhigh": "Muito alto",
+      "max": "Máximo"
     },
     "searchProviders": "Buscar provedores de IA"
   },

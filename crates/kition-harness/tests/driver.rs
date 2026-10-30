@@ -240,6 +240,52 @@ async fn older_turns_reach_the_model_without_their_tool_traffic() {
     );
 }
 
+/// A model whose history stays append-only (an adaptive Claude model with
+/// server-side compaction) gets the whole log, whatever the history budget:
+/// each request starts with the previous one's messages unchanged.
+#[tokio::test]
+async fn an_append_only_model_gets_the_whole_log_and_each_request_extends_the_last() {
+    let mut replies = Vec::new();
+    for number in 1..=3 {
+        replies.push(LlmReply::calls(vec![call(
+            &format!("c{number}"),
+            "echo",
+            json!({ "text": "x" }),
+        )]));
+        replies.push(LlmReply::text(&format!("answer {number}")));
+    }
+    let setup = Setup {
+        llm: Arc::new(ScriptedLlm::new(replies).appending_only()),
+        ..setup(Vec::new())
+    };
+    let mut driver = setup.driver(Pipeline::default());
+    driver.history = HistoryBudget {
+        full_turns: 1,
+        older_messages: 1,
+    };
+    for number in 1..=3 {
+        driver
+            .run_turn(setup.input(&format!("ask {number}"), Cancel::default()))
+            .await
+            .unwrap_or_else(|error| panic!("{error}"));
+    }
+    let requests = setup.llm.requests();
+    assert_eq!(requests.len(), 6);
+    for pair in requests.windows(2) {
+        let (earlier, later) = (&pair[0].messages, &pair[1].messages);
+        assert_eq!(later[..earlier.len()], earlier[..], "{later:?}");
+    }
+    assert_eq!(
+        requests[5]
+            .messages
+            .iter()
+            .filter(|message| message.role == "tool")
+            .count(),
+        3,
+        "older turns keep their tool traffic"
+    );
+}
+
 #[tokio::test]
 async fn unknown_tools_and_denied_tools_become_error_results() {
     let setup = setup(vec![

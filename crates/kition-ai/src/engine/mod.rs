@@ -19,6 +19,7 @@ use kition_core::cloud::{CloudSessionProvider, NOT_LOGGED_IN};
 use serde_json::{Value, json};
 use tokio::sync::Semaphore;
 
+pub use anthropic::appends_only;
 pub use error::{AiError, AiResult};
 pub use images::{IMAGE_MODEL, ImageRequest, normalize_quality, normalize_size};
 pub use retry::{DEFAULT_MAX_RETRIES, RetryEvent, RetryHandler};

@@ -163,6 +163,24 @@ function ProviderConnectionFields({
 
 function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps) {
   const { t } = useTranslation('settings')
+  // `xhigh` and `max` are Claude effort levels; other wires take up to `high`.
+  const reasoningOptions = customReasoningOptions.filter((option) =>
+    (option.value !== 'xhigh' && option.value !== 'max')
+    || kind === 'anthropic'
+    || provider.wireApi === 'anthropic_messages')
+  const reasoningRow = (
+    <SettingsRow title={t('models.reasoningEffort')}>
+      <Select size="lg"
+        className="settings-select"
+        value={provider.reasoningEffort}
+        onChange={(event) => onPatch({ reasoningEffort: event.target.value as typeof provider.reasoningEffort })}
+      >
+        {reasoningOptions.map((option) => (
+          <option key={option.value} value={option.value}>{t(`models.reasoning.${option.value}`)}</option>
+        ))}
+      </Select>
+    </SettingsRow>
+  )
   return (
     <>
       {kind === 'custom' ? (
@@ -207,19 +225,10 @@ function ProviderAdvancedFields({ kind, provider, onPatch }: ProviderFieldsProps
               ))}
             </Select>
           </SettingsRow>
-          <SettingsRow title={t('models.reasoningEffort')}>
-            <Select size="lg"
-              className="settings-select"
-              value={provider.reasoningEffort}
-              onChange={(event) => onPatch({ reasoningEffort: event.target.value as typeof provider.reasoningEffort })}
-            >
-              {customReasoningOptions.map((option) => (
-                <option key={option.value} value={option.value}>{t(`models.reasoning.${option.value}`)}</option>
-              ))}
-            </Select>
-          </SettingsRow>
+          {reasoningRow}
         </>
       ) : null}
+      {kind === 'anthropic' ? reasoningRow : null}
       {kind === 'kition_console' ? (
         <SettingsRow title={t('models.webSearchVersion')}>
           <Select size="lg"

@@ -114,6 +114,7 @@ mod tests {
                 stop_reason: "tool_use".into(),
                 model: "m".into(),
                 raw_items: Vec::new(),
+                usage: None,
             }),
             next(EventBody::ToolCall {
                 turn: 1,
@@ -143,6 +144,7 @@ mod tests {
                 stop_reason: "stop".into(),
                 model: "m".into(),
                 raw_items: Vec::new(),
+                usage: None,
             }),
             next(EventBody::TurnEnd {
                 turn: number,
@@ -242,6 +244,7 @@ mod tests {
             stop_reason: "stop".into(),
             model: "m".into(),
             raw_items: Vec::new(),
+            usage: None,
         };
         let bodies = vec![
             EventBody::SystemMessage {
@@ -269,6 +272,7 @@ mod tests {
                 stop_reason: "tool_use".into(),
                 model: "m".into(),
                 raw_items: Vec::new(),
+                usage: None,
             },
             EventBody::ToolCall {
                 turn: 1,

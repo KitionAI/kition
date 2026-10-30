@@ -198,6 +198,15 @@ export type AgentSessionEventsAssistantMessageEvent = {
    */
   provider: string
   model: string
+  /**
+   * The model call's token counts as the provider reported them (estimated when it reports none), cache reads and writes included.
+   */
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+    cacheReadInputTokens?: number
+    cacheCreationInputTokens?: number
+  }
 }
 
 /**

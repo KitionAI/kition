@@ -12,7 +12,7 @@ use kition_core::now_millis;
 use serde::{Deserialize, Serialize};
 
 use crate::cancel::Cancel;
-use crate::derive::derive_messages_for;
+use crate::derive::{derive_append_only, derive_messages_for};
 use crate::events::{
     ContentBlock, EventBody, InboxTarget, LlmFailure, LoggedCall, MessageSource, PresentedFile,
     QueuedMessage, RetryMode, SessionEvent, TurnEndReason,
@@ -441,11 +441,19 @@ impl Driver {
                     },
                 )?;
             }
-            let request = LlmRequest {
-                messages: derive_messages_for(
+            // An append-only model gets the whole log, derived so that
+            // nothing sent earlier changes; its provider compacts the
+            // context. Others get the bounded history.
+            let messages = if self.llm.append_only() {
+                derive_append_only(events.as_slice(), input.model.as_deref())
+            } else {
+                derive_messages_for(
                     &bound_history(events.as_slice(), self.history),
                     input.model.as_deref(),
-                ),
+                )
+            };
+            let request = LlmRequest {
+                messages,
                 tools: input.tools.specs(),
             };
             let attempt_id = format!("{}#{turn}.{step}", input.session);
@@ -509,6 +517,7 @@ impl Driver {
                     provider: reply.provider,
                     model: reply.model,
                     raw_items: reply.raw_items,
+                    usage: reply.usage,
                 },
             );
             stream.settle(&appended);

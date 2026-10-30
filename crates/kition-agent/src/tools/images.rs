@@ -656,6 +656,7 @@ impl Composer {
                 provider: "kition".into(),
                 model: "image-composer".into(),
                 raw_items: Vec::new(),
+                usage: None,
             })?;
         }
         self.append(EventBody::StepEnd {

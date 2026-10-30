@@ -44,6 +44,20 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
 /// thinking block's signature) is only ever valid for the model that
 /// produced it.
 pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<Message> {
+    derive(events, model, false)
+}
+
+/// Like [`derive_messages_for`], for a model whose history must stay
+/// append-only (an adaptive Claude model: its thinking blocks are bound to
+/// the conversation before them). Nothing derived from an earlier request
+/// changes later: images of earlier turns stay (no [`OMITTED_IMAGE`]
+/// note), and a tool's images travel in its own `tool` message's `parts`
+/// rather than in a user message after the step's results.
+pub fn derive_append_only(events: &[SessionEvent], model: Option<&str>) -> Vec<Message> {
+    derive(events, model, true)
+}
+
+fn derive(events: &[SessionEvent], model: Option<&str>, append_only: bool) -> Vec<Message> {
     let mut system = String::new();
     let mut history = Vec::new();
     let mut pending_images: Vec<MessagePart> = Vec::new();
@@ -57,7 +71,7 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
         .rposition(|event| matches!(event.body, EventBody::TurnStart { .. }))
         .unwrap_or(0);
     for (index, event) in events.iter().enumerate() {
-        let keep_images = index >= current_turn;
+        let keep_images = append_only || index >= current_turn;
         if is_boundary(&event.body) {
             repair_dangling_calls(
                 &mut open_calls,
@@ -133,17 +147,28 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
                     continue;
                 }
                 let (mut text, images) = split(content, keep_images);
-                if text.is_empty() && !images.is_empty() {
-                    text = "(image attached below)".into();
+                if append_only {
+                    history.push(Message {
+                        role: "tool".into(),
+                        name: name.clone(),
+                        tool_call_id: call_id.clone(),
+                        content: text,
+                        parts: images,
+                        ..Message::default()
+                    });
+                } else {
+                    if text.is_empty() && !images.is_empty() {
+                        text = "(image attached below)".into();
+                    }
+                    history.push(Message {
+                        role: "tool".into(),
+                        name: name.clone(),
+                        tool_call_id: call_id.clone(),
+                        content: text,
+                        ..Message::default()
+                    });
+                    pending_images.extend(images);
                 }
-                history.push(Message {
-                    role: "tool".into(),
-                    name: name.clone(),
-                    tool_call_id: call_id.clone(),
-                    content: text,
-                    ..Message::default()
-                });
-                pending_images.extend(images);
                 open_calls.retain(|(id, _)| id != call_id);
                 awaiting_approval.remove(call_id);
                 started.remove(call_id);
@@ -270,6 +295,7 @@ mod tests {
             stop_reason: "tool_use".into(),
             model: "m".into(),
             raw_items: Vec::new(),
+            usage: None,
         }
     }
 
@@ -445,6 +471,7 @@ mod tests {
                     stop_reason: "stop".into(),
                     model: "m".into(),
                     raw_items: Vec::new(),
+                    usage: None,
                 },
             ),
         ];
@@ -726,6 +753,7 @@ mod tests {
                 stop_reason: "stop".into(),
                 model: "deepseek-chat".into(),
                 raw_items: vec![json!({ "type": "thinking", "thinking": "t", "signature": "s" })],
+                usage: None,
             },
         )];
         assert_eq!(
@@ -760,6 +788,7 @@ mod tests {
                     raw_items: vec![
                         json!({ "type": "thinking", "thinking": "t", "signature": "s" }),
                     ],
+                    usage: None,
                 },
             ),
             at(
@@ -916,6 +945,88 @@ mod tests {
 
     fn has_image(message: &Message) -> bool {
         message.parts.iter().any(|part| part.kind == "image_url")
+    }
+
+    /// The append-only derivation: a later request starts with exactly the
+    /// messages of an earlier one, earlier turns keep their images, and a
+    /// tool's images stay in its own `tool` message.
+    #[test]
+    fn append_only_history_keeps_every_earlier_request_as_a_prefix() {
+        let call = |id: &str| LoggedCall {
+            call_id: id.into(),
+            name: "view_image".into(),
+            arguments: json!({}),
+        };
+        let result = |seq: u64, id: &str, url: &str| {
+            at(
+                seq,
+                EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
+                    call_id: id.into(),
+                    name: "view_image".into(),
+                    value: Value::Null,
+                    content: vec![ContentBlock::text("viewed"), image(url)],
+                    is_error: false,
+                    meta: None,
+                },
+            )
+        };
+        let mut events = vec![
+            at(1, EventBody::TurnStart { turn: 1 }),
+            at(
+                2,
+                EventBody::UserMessage {
+                    id: String::new(),
+                    content: vec![ContentBlock::text("look"), image("data:first-user")],
+                    source: crate::events::MessageSource::user(),
+                },
+            ),
+            at(3, assistant_with_calls(vec![call("c1")])),
+            result(4, "c1", "data:first-tool"),
+            at(5, EventBody::StepEnd { turn: 1, step: 1 }),
+        ];
+        let first = derive_append_only(&events, None);
+        events.extend([
+            at(
+                6,
+                EventBody::TurnEnd {
+                    turn: 1,
+                    reason: TurnEndReason::Completed,
+                    error: String::new(),
+                },
+            ),
+            at(7, EventBody::TurnStart { turn: 2 }),
+            at(
+                8,
+                EventBody::UserMessage {
+                    id: String::new(),
+                    content: vec![ContentBlock::text("again")],
+                    source: crate::events::MessageSource::user(),
+                },
+            ),
+            at(9, assistant_with_calls(vec![call("c2")])),
+            result(10, "c2", "data:second-tool"),
+        ]);
+        let second = derive_append_only(&events, None);
+        assert_eq!(second[..first.len()], first[..]);
+        assert!(has_image(&second[0]), "the first turn's user image stays");
+        assert_eq!(second[2].role, "tool");
+        assert_eq!(second[2].parts[0].image_url, "data:first-tool");
+        assert!(
+            second
+                .iter()
+                .all(|message| !message.content.contains(OMITTED_IMAGE)),
+            "no image is replaced by a note"
+        );
+        assert!(
+            !second.iter().any(|message| message.role == "user"
+                && message.content.is_empty()
+                && !message.parts.is_empty()
+                && message.parts.iter().all(|part| part.kind == "image_url")),
+            "no user message carries a tool's images"
+        );
     }
 
     #[test]

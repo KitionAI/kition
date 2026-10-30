@@ -23,6 +23,177 @@ const DEFAULT_WEB_SEARCH_TYPE: &str = "web_search_20260209";
 const LEGACY_WEB_SEARCH_TYPE: &str = "web_search_20250305";
 const API_VERSION: &str = "2023-06-01";
 const DEFAULT_MAX_TOKENS: i64 = 4096;
+/// `max_tokens` with adaptive thinking on: room for the reasoning and the
+/// answer (the claude-api skill's defaults for non-streaming and streaming).
+const THINKING_MAX_TOKENS: i64 = 16_000;
+const THINKING_STREAM_MAX_TOKENS: i64 = 64_000;
+/// The budget for `xhigh`/`max` on models that still take `budget_tokens`.
+const DEEP_THINKING_BUDGET: i64 = 32_000;
+/// Server-side compaction at a token threshold (beta).
+const COMPACTION_BETA: &str = "compact-2026-01-12";
+/// How many times a `pause_turn` is continued within one call.
+const MAX_PAUSE_CONTINUATIONS: usize = 4;
+
+/// Whether thinking can be turned off on a Claude model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ThinkingOff {
+    /// `thinking: {type: "disabled"}` is accepted.
+    Allowed,
+    /// Accepted only at effort `high` or below (Claude Opus 5).
+    UpToHigh,
+    /// Never: the request omits `thinking` and lowers the effort (Claude Opus
+    /// 5.5, Fable 5 and 5.1, Mythos 5 and 5.1).
+    Never,
+}
+
+/// What one Claude model takes on the Messages API (claude-api skill, model
+/// table of 2026-06-24). Names are matched case-insensitively from the
+/// first `claude-`, so gateway names (`anthropic.claude-opus-5`) match too.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Claude {
+    /// `thinking: {type: "adaptive"}` with `output_config.effort`; otherwise
+    /// `thinking: {type: "enabled", budget_tokens}`.
+    pub adaptive: bool,
+    pub thinking_off: ThinkingOff,
+    /// Effort `xhigh` is accepted (otherwise it is sent as `high`).
+    pub xhigh: bool,
+    /// `tool_choice` `{type: "tool"}` is accepted.
+    pub forced_tool_choice: bool,
+    /// Server-side compaction at a token threshold.
+    pub compaction: bool,
+    /// `{role: "system"}` messages inside `messages`.
+    pub system_messages: bool,
+    /// A request without `thinking` runs adaptive thinking (Claude Opus 5
+    /// and later, Sonnet 5, Fable); on Opus 4.6 to 4.8 it runs without.
+    pub thinks_by_default: bool,
+}
+
+const fn adaptive(
+    thinking_off: ThinkingOff,
+    xhigh: bool,
+    forced_tool_choice: bool,
+    system_messages: bool,
+    thinks_by_default: bool,
+) -> Claude {
+    Claude {
+        adaptive: true,
+        thinking_off,
+        xhigh,
+        forced_tool_choice,
+        compaction: true,
+        system_messages,
+        thinks_by_default,
+    }
+}
+
+/// Families by name prefix, the longer names first.
+const CLAUDE_FAMILIES: &[(&str, Claude)] = &[
+    (
+        "claude-fable-5-1",
+        adaptive(ThinkingOff::Never, true, false, true, true),
+    ),
+    (
+        "claude-mythos-5-1",
+        adaptive(ThinkingOff::Never, true, false, true, true),
+    ),
+    (
+        "claude-opus-5-5",
+        adaptive(ThinkingOff::Never, true, false, true, true),
+    ),
+    (
+        "claude-fable-5",
+        adaptive(ThinkingOff::Never, true, true, true, true),
+    ),
+    (
+        "claude-mythos-5",
+        adaptive(ThinkingOff::Never, true, true, true, true),
+    ),
+    (
+        "claude-opus-5",
+        adaptive(ThinkingOff::UpToHigh, true, true, true, true),
+    ),
+    (
+        "claude-sonnet-5",
+        adaptive(ThinkingOff::Allowed, true, true, false, true),
+    ),
+    (
+        "claude-opus-4-8",
+        adaptive(ThinkingOff::Allowed, true, true, true, false),
+    ),
+    (
+        "claude-opus-4-7",
+        adaptive(ThinkingOff::Allowed, true, true, false, false),
+    ),
+    (
+        "claude-opus-4-6",
+        adaptive(ThinkingOff::Allowed, false, true, false, false),
+    ),
+    (
+        "claude-sonnet-4-6",
+        adaptive(ThinkingOff::Allowed, false, true, false, false),
+    ),
+];
+
+/// Earlier models: thinking takes `budget_tokens`, effort is not sent.
+const BUDGET_CLAUDE: Claude = Claude {
+    adaptive: false,
+    thinking_off: ThinkingOff::Allowed,
+    xhigh: false,
+    forced_tool_choice: true,
+    compaction: false,
+    system_messages: false,
+    thinks_by_default: false,
+};
+
+/// A newer Claude this table does not know yet: the newest request surface
+/// (adaptive, never off, no forced tool choice), without beta features.
+const UNKNOWN_CLAUDE: Claude = Claude {
+    adaptive: true,
+    thinking_off: ThinkingOff::Never,
+    xhigh: true,
+    forced_tool_choice: false,
+    compaction: false,
+    system_messages: false,
+    thinks_by_default: true,
+};
+
+/// The Claude model a name stands for, or `None` for another model on the
+/// Messages wire (a DeepSeek or other compatible endpoint).
+pub(crate) fn claude(model_name: &str) -> Option<Claude> {
+    let lower = model_name.trim().to_lowercase();
+    let name = &lower[lower.find("claude-")?..];
+    if let Some((_, caps)) = CLAUDE_FAMILIES
+        .iter()
+        .find(|(prefix, _)| name.starts_with(prefix))
+    {
+        return Some(*caps);
+    }
+    let earlier = name.starts_with("claude-3")
+        || name.starts_with("claude-haiku-4")
+        || ["claude-opus-4", "claude-sonnet-4"].iter().any(|family| {
+            name.strip_prefix(family).is_some_and(|rest| {
+                rest.is_empty()
+                    || ["-0", "-1", "-5", "-2"]
+                        .iter()
+                        .any(|minor| rest.starts_with(minor))
+            })
+        });
+    Some(if earlier {
+        BUDGET_CLAUDE
+    } else {
+        UNKNOWN_CLAUDE
+    })
+}
+
+/// Whether requests to `model` must keep their history append-only: an
+/// adaptive Claude model on the Messages wire, whose thinking blocks are
+/// bound to the conversation before them (preserved thinking) and whose
+/// context is kept in bounds by server-side compaction instead.
+pub fn appends_only(model: &RuntimeModel) -> bool {
+    model.wire_api.trim() == "anthropic_messages"
+        && model.provider_type.trim() != "deepseek"
+        && claude(&model.model_name).is_some_and(|caps| caps.adaptive && caps.compaction)
+}
 
 fn text_of(value: Option<&Value>) -> &str {
     value.map(as_str).unwrap_or_default()
@@ -48,6 +219,7 @@ pub(crate) fn thinking_budget(effort: &str) -> i64 {
         "low" => 1024,
         "medium" => 4096,
         "high" => 16384,
+        "xhigh" | "max" => DEEP_THINKING_BUDGET,
         _ => 0,
     }
 }
@@ -55,8 +227,10 @@ pub(crate) fn thinking_budget(effort: &str) -> i64 {
 /// Reasoning request fields. DeepSeek's Messages API takes both
 /// `thinking.type = enabled` and `output_config.effort` (`low`, `high`,
 /// `max`) together for any non-off effort, and `thinking.type = disabled`
-/// alone for off, as DeepSeek Harness's adapter sends them; Anthropic takes
-/// a thinking token budget.
+/// alone for off, as DeepSeek Harness's adapter sends them. Adaptive Claude
+/// models take `thinking: {type: "adaptive"}` with `output_config.effort`
+/// (`display: "summarized"`, so the reasoning reads as a summary); earlier
+/// Claude models and other Messages endpoints take a thinking token budget.
 pub(crate) fn reasoning_fields(model: &RuntimeModel) -> Vec<(&'static str, Value)> {
     let effort = model.reasoning_effort.trim().to_lowercase();
     if model.provider_type.trim() == "deepseek" {
@@ -72,7 +246,10 @@ pub(crate) fn reasoning_fields(model: &RuntimeModel) -> Vec<(&'static str, Value
             ("output_config", json!({ "effort": configured })),
         ];
     }
-    if matches!(effort.as_str(), "low" | "medium" | "high") {
+    if let Some(caps) = claude(&model.model_name).filter(|caps| caps.adaptive) {
+        return adaptive_fields(caps, &effort);
+    }
+    if matches!(effort.as_str(), "low" | "medium" | "high" | "xhigh" | "max") {
         vec![(
             "thinking",
             json!({ "type": "enabled", "budget_tokens": thinking_budget(&effort) }),
@@ -80,6 +257,33 @@ pub(crate) fn reasoning_fields(model: &RuntimeModel) -> Vec<(&'static str, Value
     } else {
         Vec::new()
     }
+}
+
+/// Kition's effort setting on an adaptive Claude model. No setting sends
+/// nothing (the model's default); off turns thinking off where the model
+/// allows it, and otherwise runs at the lowest effort.
+fn adaptive_fields(caps: Claude, effort: &str) -> Vec<(&'static str, Value)> {
+    let level = match effort {
+        "" => return Vec::new(),
+        "off" | "none" | "minimal" => {
+            return match caps.thinking_off {
+                ThinkingOff::Allowed | ThinkingOff::UpToHigh => {
+                    vec![("thinking", json!({ "type": "disabled" }))]
+                }
+                ThinkingOff::Never => vec![("output_config", json!({ "effort": "low" }))],
+            };
+        }
+        "low" | "medium" | "high" | "max" => effort,
+        "xhigh" if caps.xhigh => "xhigh",
+        _ => "high",
+    };
+    vec![
+        (
+            "thinking",
+            json!({ "type": "adaptive", "display": "summarized" }),
+        ),
+        ("output_config", json!({ "effort": level })),
+    ]
 }
 
 fn has_block(item: &Value, kinds: &[&str]) -> bool {
@@ -112,21 +316,31 @@ fn open_tool_turn_lacks_thinking(items: &[Value]) -> bool {
 /// request goes with thinking off.
 fn request_reasoning(model: &RuntimeModel, items: &[Value]) -> Vec<(&'static str, Value)> {
     let reasoning = reasoning_fields(model);
-    let enabled = reasoning
-        .iter()
-        .any(|(key, value)| *key == "thinking" && value["type"] == "enabled");
-    if enabled && open_tool_turn_lacks_thinking(items) {
+    let enabled = reasoning.iter().any(|(key, value)| {
+        *key == "thinking" && matches!(value["type"].as_str(), Some("enabled" | "adaptive"))
+    });
+    // A model that cannot turn thinking off keeps it: there is no request
+    // that would be accepted otherwise.
+    let can_turn_off =
+        claude(&model.model_name).is_none_or(|caps| caps.thinking_off != ThinkingOff::Never);
+    if enabled && can_turn_off && open_tool_turn_lacks_thinking(items) {
         return vec![("thinking", json!({ "type": "disabled" }))];
     }
     reasoning
 }
 
-/// `max_tokens` large enough for the configured reasoning budget. Anthropic
+/// `max_tokens` large enough for the configured reasoning. Anthropic
 /// requires `max_tokens` to exceed `thinking.budget_tokens`, so the budget
-/// gets headroom on top; DeepSeek's Messages API needs a generous ceiling
-/// whenever thinking is enabled, regardless of effort. An explicit
-/// `max_output_tokens` from the model wins when it is already larger.
-fn resolve_max_tokens(model: &RuntimeModel, reasoning: &[(&'static str, Value)]) -> i64 {
+/// gets headroom on top; adaptive thinking gets the skill's defaults
+/// (16,000, or 64,000 when streaming); DeepSeek's Messages API needs a
+/// generous ceiling whenever thinking is enabled, regardless of effort. An
+/// explicit `max_output_tokens` from the model wins when it is already
+/// larger.
+fn resolve_max_tokens(
+    model: &RuntimeModel,
+    reasoning: &[(&'static str, Value)],
+    streaming: bool,
+) -> i64 {
     let base = if model.max_output_tokens > 0 {
         model.max_output_tokens
     } else {
@@ -139,6 +353,26 @@ fn resolve_max_tokens(model: &RuntimeModel, reasoning: &[(&'static str, Value)])
         } else {
             base
         };
+    }
+    let thinking = reasoning
+        .iter()
+        .find(|(key, _)| *key == "thinking")
+        .map(|(_, value)| value["type"].as_str().unwrap_or_default());
+    let thinks = model.provider_type.trim() != "deepseek"
+        && claude(&model.model_name).is_some_and(|caps| {
+            caps.adaptive
+                && match thinking {
+                    Some(kind) => kind == "adaptive",
+                    None => caps.thinks_by_default,
+                }
+        });
+    if thinks {
+        let floor = if streaming {
+            THINKING_STREAM_MAX_TOKENS
+        } else {
+            THINKING_MAX_TOKENS
+        };
+        return base.max(floor);
     }
     let budget = reasoning
         .iter()
@@ -210,8 +444,10 @@ fn content_parts(message: &Message) -> Option<Vec<Value>> {
     Some(parts)
 }
 
-/// Reasoning blocks from an earlier response, replayed verbatim before the
-/// assistant's text and tool calls (DeepSeek and Anthropic thinking).
+/// Blocks from an earlier response that are replayed verbatim, in their
+/// order, before the assistant's text and tool calls: reasoning (DeepSeek
+/// and Anthropic thinking) and server-side compaction summaries, which the
+/// API needs back to drop what they summarize.
 fn thinking_blocks(message: &Message) -> Vec<Value> {
     message
         .raw_items
@@ -219,7 +455,7 @@ fn thinking_blocks(message: &Message) -> Vec<Value> {
         .filter(|item| {
             matches!(
                 item.get("type").and_then(Value::as_str),
-                Some("thinking" | "redacted_thinking")
+                Some("thinking" | "redacted_thinking" | "compaction")
             )
         })
         .cloned()
@@ -238,7 +474,7 @@ fn replay_raw_items_verbatim(message: &Message) -> Option<Vec<Value>> {
     let has_thinking = message.raw_items.iter().any(|item| {
         matches!(
             item.get("type").and_then(Value::as_str),
-            Some("thinking" | "redacted_thinking")
+            Some("thinking" | "redacted_thinking" | "compaction")
         )
     });
     if !has_thinking {
@@ -263,7 +499,7 @@ fn replay_raw_items_verbatim(message: &Message) -> Option<Vec<Value>> {
         .filter(|item| {
             matches!(
                 item.get("type").and_then(Value::as_str),
-                Some("thinking" | "redacted_thinking" | "text" | "tool_use")
+                Some("thinking" | "redacted_thinking" | "compaction" | "text" | "tool_use")
             )
         })
         .cloned()
@@ -294,9 +530,17 @@ pub(crate) fn normalize_messages(messages: &[Message]) -> (String, Vec<Value>) {
             if call_id.is_empty() {
                 continue;
             }
+            // Images a tool returned travel inside its result, so the tool
+            // result stays where the call was answered (append-only history).
+            let result = match content_parts(message) {
+                Some(parts) if parts.iter().any(|part| part["type"] == "image") => {
+                    Value::Array(parts)
+                }
+                _ => Value::String(content.to_owned()),
+            };
             out.push(json!({
                 "role": "user",
-                "content": [{ "type": "tool_result", "tool_use_id": call_id, "content": content }],
+                "content": [{ "type": "tool_result", "tool_use_id": call_id, "content": result }],
             }));
             continue;
         }
@@ -392,6 +636,8 @@ struct ResultState {
     search_calls: Vec<HostedWebSearchCall>,
     search_results: Vec<HostedWebSearchResult>,
     blocks: Vec<Value>,
+    /// `stop_details` of a refusal: `{category, explanation}`.
+    stop_details: Option<Value>,
 }
 
 impl ResultState {
@@ -439,13 +685,20 @@ impl ResultState {
     }
 
     fn finish(
-        self,
+        mut self,
         stop_reason: String,
         model: &str,
         usage_raw: Option<&Value>,
         prompt: &str,
         started: Instant,
     ) -> ChatResult {
+        if stop_reason == "refusal" {
+            // A declined request runs no tools; the person reads why.
+            self.tool_calls.clear();
+            if self.content.trim().is_empty() {
+                self.content = refusal_text(self.stop_details.as_ref());
+            }
+        }
         ChatResult {
             usage: usage_from(usage_raw, prompt, &self.content, started, true),
             content: self.content.trim().to_owned(),
@@ -458,6 +711,26 @@ impl ResultState {
             ..ChatResult::default()
         }
     }
+}
+
+/// What a refusal says when the model wrote nothing: its explanation and
+/// category from `stop_details`.
+fn refusal_text(details: Option<&Value>) -> String {
+    let explanation = details
+        .map(|details| trimmed(details.get("explanation")))
+        .unwrap_or_default();
+    let category = details
+        .map(|details| trimmed(details.get("category")))
+        .unwrap_or_default();
+    let mut text = "The model declined this request.".to_owned();
+    if !explanation.is_empty() {
+        text.push(' ');
+        text.push_str(&explanation);
+    }
+    if !category.is_empty() {
+        text.push_str(&format!(" (category: {category})"));
+    }
+    text
 }
 
 fn tools_payload(tools: &[ToolSpec], search_version: &str) -> Vec<Value> {
@@ -483,6 +756,156 @@ fn tools_payload(tools: &[ToolSpec], search_version: &str) -> Vec<Value> {
     payload
 }
 
+/// Whether a tool schema meets strict tool use: every object closes its
+/// properties (`additionalProperties: false`) and requires all of them.
+fn strict_compatible(schema: &Value) -> bool {
+    let Some(object) = schema.as_object() else {
+        return true;
+    };
+    if object.get("type").and_then(Value::as_str) == Some("object") {
+        let properties = object
+            .get("properties")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        let required: HashSet<&str> = object
+            .get("required")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        if object.get("additionalProperties") != Some(&Value::Bool(false))
+            || !properties.keys().all(|key| required.contains(key.as_str()))
+        {
+            return false;
+        }
+        return properties.values().all(strict_compatible);
+    }
+    object.get("items").is_none_or(strict_compatible)
+}
+
+/// How a forced tool is asked for. A model that refuses forced
+/// `tool_choice` (Claude Opus 5.5, Fable 5.1, Mythos 5.1) gets `auto`, the
+/// tool marked `strict` when its schema allows it, and an instruction naming
+/// it: a `system` message at the end of `messages` where the model takes
+/// one, else a line of the system prompt (a one-off request, so no history
+/// is edited).
+fn apply_tool_choice(
+    payload: &mut Map<String, Value>,
+    tools: &mut [Value],
+    items: &mut Vec<Value>,
+    system: &mut String,
+    choice: &str,
+    caps: Option<Claude>,
+) {
+    if choice.is_empty() {
+        return;
+    }
+    if caps.is_none_or(|caps| caps.forced_tool_choice) {
+        payload.insert(
+            "tool_choice".into(),
+            json!({ "type": "tool", "name": choice }),
+        );
+        return;
+    }
+    payload.insert("tool_choice".into(), json!({ "type": "auto" }));
+    if let Some(tool) = tools.iter_mut().find(|tool| tool["name"] == choice)
+        && strict_compatible(&tool["input_schema"])
+    {
+        tool["strict"] = Value::Bool(true);
+    }
+    let instruction = format!("Answer this request by calling the `{choice}` tool.");
+    let last_is_user = items.last().is_some_and(|item| item["role"] == "user");
+    if caps.is_some_and(|caps| caps.system_messages) && last_is_user {
+        items.push(json!({ "role": "system", "content": instruction }));
+    } else if system.is_empty() {
+        *system = instruction;
+    } else {
+        system.push_str("\n\n");
+        system.push_str(&instruction);
+    }
+}
+
+/// One call's results, a `pause_turn` continuation appended to the first.
+fn merge_results(mut first: ChatResult, next: ChatResult) -> ChatResult {
+    first.content.push_str(&next.content);
+    first.tool_calls.extend(next.tool_calls);
+    first
+        .hosted_web_search_calls
+        .extend(next.hosted_web_search_calls);
+    first
+        .hosted_web_search_results
+        .extend(next.hosted_web_search_results);
+    first.response_items.extend(next.response_items);
+    first.stop_reason = next.stop_reason;
+    let (a, b) = (&mut first.usage, next.usage);
+    a.prompt_tokens += b.prompt_tokens;
+    a.completion_tokens += b.completion_tokens;
+    a.total_tokens += b.total_tokens;
+    a.cache_creation_input_tokens += b.cache_creation_input_tokens;
+    a.cache_read_input_tokens += b.cache_read_input_tokens;
+    a.response_time_ms += b.response_time_ms;
+    first
+}
+
+/// The request body of one call, without `messages` (each `pause_turn`
+/// continuation sends its own).
+pub(crate) fn request_body(
+    messages: &[Message],
+    tools: &[ToolSpec],
+    choice: &str,
+    model: &RuntimeModel,
+    streaming: bool,
+) -> (Map<String, Value>, Vec<Value>, String) {
+    let caps = (model.provider_type.trim() != "deepseek")
+        .then(|| claude(&model.model_name))
+        .flatten();
+    let (mut system, mut items) = normalize_messages(messages);
+    let mut payload_tools = tools_payload(tools, &model.hosted_web_search_version);
+    let reasoning = request_reasoning(model, &items);
+    let max_tokens = resolve_max_tokens(model, &reasoning, streaming);
+    let mut payload = Map::new();
+    apply_tool_choice(
+        &mut payload,
+        &mut payload_tools,
+        &mut items,
+        &mut system,
+        choice,
+        caps,
+    );
+    payload.insert("model".into(), model.model_name.trim().into());
+    payload.insert("max_tokens".into(), max_tokens.into());
+    payload.insert("stream".into(), streaming.into());
+    if !system.is_empty() {
+        // On Claude the system prompt is its own cache breakpoint, so the
+        // tools and the system prompt stay cached as the conversation grows.
+        let value = if caps.is_some() {
+            json!([{ "type": "text", "text": system, "cache_control": { "type": "ephemeral" } }])
+        } else {
+            system.clone().into()
+        };
+        payload.insert("system".into(), value);
+    }
+    if !payload_tools.is_empty() {
+        payload.insert("tools".into(), Value::Array(payload_tools));
+    }
+    if caps.is_some() {
+        // Automatic caching of the conversation up to its last block.
+        payload.insert("cache_control".into(), json!({ "type": "ephemeral" }));
+    }
+    if appends_only(model) {
+        payload.insert(
+            "context_management".into(),
+            json!({ "edits": [{ "type": "compact_20260112" }] }),
+        );
+    }
+    for (key, value) in reasoning {
+        payload.insert(key.into(), value);
+    }
+    (payload, items, system)
+}
+
 pub(crate) async fn call(
     http: &reqwest::Client,
     messages: &[Message],
@@ -502,6 +925,9 @@ pub(crate) async fn call(
             version
         },
     );
+    if appends_only(model) {
+        set_header(&mut headers, "anthropic-beta", COMPACTION_BETA);
+    }
     let base_url = normalize_base_url(&model.provider_type, &model.base_url);
     let model_name = model.model_name.trim().to_owned();
     if base_url.is_empty() || model_name.is_empty() {
@@ -509,41 +935,59 @@ pub(crate) async fn call(
             "runtime provider is missing base_url or model_name",
         ));
     }
-    let (system, items) = normalize_messages(messages);
-    let payload_tools = tools_payload(tools, &model.hosted_web_search_version);
-    let reasoning = request_reasoning(model, &items);
-    let max_tokens = resolve_max_tokens(model, &reasoning);
-    let mut payload = Map::new();
-    payload.insert("model".into(), model_name.clone().into());
-    payload.insert("messages".into(), Value::Array(items.clone()));
-    payload.insert("max_tokens".into(), max_tokens.into());
-    payload.insert("stream".into(), stream.is_some().into());
-    if !system.is_empty() {
-        payload.insert("system".into(), system.clone().into());
-    }
-    if !payload_tools.is_empty() {
-        payload.insert("tools".into(), Value::Array(payload_tools));
-    }
-    if !choice.is_empty() {
-        payload.insert(
-            "tool_choice".into(),
-            json!({ "type": "tool", "name": choice }),
-        );
-    }
-    for (key, value) in reasoning {
-        payload.insert(key.into(), value);
-    }
-
+    let (mut payload, mut items, system) =
+        request_body(messages, tools, choice, model, stream.is_some());
     let endpoint = validate_endpoint(&format!("{base_url}/v1/messages"))?;
+    let mut combined: Option<ChatResult> = None;
+    for continuation in 0..=MAX_PAUSE_CONTINUATIONS {
+        payload.insert("messages".into(), Value::Array(items.clone()));
+        let result = send_once(
+            http,
+            &endpoint,
+            &headers,
+            &payload,
+            (&items, &system),
+            model,
+            stream,
+        )
+        .await?;
+        let paused = result.stop_reason == "pause_turn";
+        let blocks = result.response_items.clone();
+        combined = Some(match combined {
+            None => result,
+            Some(first) => merge_results(first, result),
+        });
+        if !paused || continuation == MAX_PAUSE_CONTINUATIONS {
+            break;
+        }
+        // A paused turn (a long server-tool run) continues by sending its
+        // own content back.
+        items.push(json!({ "role": "assistant", "content": blocks }));
+    }
+    let mut result = combined.unwrap_or_default();
+    result.wire_api = "anthropic_messages".into();
+    Ok(result)
+}
+
+async fn send_once(
+    http: &reqwest::Client,
+    endpoint: &str,
+    headers: &[(String, String)],
+    payload: &Map<String, Value>,
+    (items, system): (&[Value], &str),
+    model: &RuntimeModel,
+    stream: Option<&StreamHandler>,
+) -> AiResult<ChatResult> {
+    let model_name = model.model_name.trim();
     let request = json_request(
-        http.post(&endpoint).json(&Value::Object(payload)),
-        &headers,
+        http.post(endpoint).json(&Value::Object(payload.clone())),
+        headers,
         stream.is_some(),
     );
     let started = Instant::now();
     let response = send(request, stream.is_some())
         .await
-        .map_err(|failure| network_error("runtime provider call failed", &endpoint, &failure))?;
+        .map_err(|failure| network_error("runtime provider call failed", endpoint, &failure))?;
     let status = response.status().as_u16();
     if status == 402 {
         let body = read_limited(response, 4 * MIB).await.unwrap_or_default();
@@ -554,7 +998,7 @@ pub(crate) async fn call(
         let body = read_limited(response, 4 * MIB)
             .await
             .map_err(|_| AiError::msg("failed to read runtime provider response"))?;
-        log_provider_failure(model, "anthropic_messages", &endpoint, status, &body);
+        log_provider_failure(model, "anthropic_messages", endpoint, status, &body);
         return Err(status_error(
             "runtime provider call failed",
             status,
@@ -562,28 +1006,25 @@ pub(crate) async fn call(
             &body,
         ));
     }
-
-    let prompt = prompt_text(&items, &system);
+    let prompt = prompt_text(items, system);
     let content_type = header(&response, "Content-Type").to_lowercase();
-    let mut result = if stream.is_some() && content_type.contains("text/event-stream") {
+    if stream.is_some() && content_type.contains("text/event-stream") {
         parse_stream(
             SseLines::new(response),
             &prompt,
-            &model_name,
+            model_name,
             started,
             stream,
         )
-        .await?
+        .await
     } else {
         let body = read_limited(response, 8 * MIB)
             .await
             .map_err(|_| AiError::msg("failed to read runtime provider response"))?;
         let data: Map<String, Value> = serde_json::from_slice(&body)
             .map_err(|_| AiError::msg("runtime provider returned a non-JSON response"))?;
-        parse_json(&data, &prompt, &model_name, started)
-    };
-    result.wire_api = "anthropic_messages".into();
-    Ok(result)
+        Ok(parse_json(&data, &prompt, model_name, started))
+    }
 }
 
 pub(crate) fn parse_json(
@@ -602,6 +1043,10 @@ pub(crate) fn parse_json(
     {
         state.consume_block(block);
     }
+    state.stop_details = data
+        .get("stop_details")
+        .filter(|value| !value.is_null())
+        .cloned();
     state.finish(
         trimmed(data.get("stop_reason")),
         model_name,
@@ -709,6 +1154,11 @@ fn apply_stream_event(
                     }
                     if let Some(entry) = entry {
                         entry.text.push_str(text);
+                    }
+                }
+                "compaction_delta" => {
+                    if let Some(entry) = entry {
+                        entry.text.push_str(text_of(delta.get("content")));
                     }
                 }
                 "signature_delta" => {
@@ -825,19 +1275,37 @@ fn apply_stream_event(
                 "web_search_tool_result" => {
                     state.blocks.push(Value::Object(entry.start));
                 }
+                "compaction" => {
+                    let mut block = entry.start;
+                    block.insert("content".into(), Value::String(entry.text));
+                    state.blocks.push(Value::Object(block));
+                }
                 _ => {}
             }
         }
         "message_delta" => {
-            let reason = payload
-                .get("delta")
+            let delta = payload.get("delta");
+            let reason = delta
                 .map(|delta| trimmed(delta.get("stop_reason")))
                 .unwrap_or_default();
             if !reason.is_empty() {
                 *stop_reason = reason;
             }
-            if let Some(usage) = payload.get("usage") {
-                *usage_raw = Some(usage.clone());
+            if let Some(details) = delta
+                .and_then(|delta| delta.get("stop_details"))
+                .filter(|value| !value.is_null())
+            {
+                state.stop_details = Some(details.clone());
+            }
+            // The final usage adds output counts to `message_start`'s input
+            // and cache counts; keep both.
+            if let Some(Value::Object(usage)) = payload.get("usage") {
+                let mut merged = match usage_raw.take() {
+                    Some(Value::Object(start)) => start,
+                    _ => Map::new(),
+                };
+                merged.extend(usage.clone());
+                *usage_raw = Some(Value::Object(merged));
             }
         }
         _ => {}
@@ -1151,7 +1619,7 @@ mod tests {
                 "{provider}"
             );
             assert_eq!(
-                resolve_max_tokens(&model, &reasoning),
+                resolve_max_tokens(&model, &reasoning, false),
                 DEFAULT_MAX_TOKENS,
                 "{provider}"
             );
@@ -1197,7 +1665,7 @@ mod tests {
         let resolved = |provider: &str, effort: &str, explicit: i64| {
             let model = model(provider, effort, explicit);
             let reasoning = reasoning_fields(&model);
-            resolve_max_tokens(&model, &reasoning)
+            resolve_max_tokens(&model, &reasoning, false)
         };
         assert_eq!(resolved("anthropic", "medium", 0), 8192);
         assert_eq!(resolved("anthropic", "high", 0), 20480);
@@ -1253,5 +1721,422 @@ mod tests {
         );
         assert_eq!(state.content, "Hello");
         assert_eq!(state.tool_calls[0].name, "read");
+    }
+
+    fn claude_model(name: &str, effort: &str) -> RuntimeModel {
+        RuntimeModel {
+            provider_type: "anthropic".into(),
+            model_name: name.into(),
+            wire_api: "anthropic_messages".into(),
+            reasoning_effort: effort.into(),
+            ..RuntimeModel::default()
+        }
+    }
+
+    fn body(messages: &[Message], choice: &str, model: &RuntimeModel, streaming: bool) -> Value {
+        let tools = [ToolSpec {
+            name: "report".into(),
+            description: "Report the result.".into(),
+            input_schema: Some(json!({
+                "type": "object",
+                "additionalProperties": false,
+                "properties": { "answer": { "type": "string" } },
+                "required": ["answer"],
+            })),
+        }];
+        let (mut payload, items, _) = request_body(messages, &tools, choice, model, streaming);
+        payload.insert("messages".into(), Value::Array(items));
+        Value::Object(payload)
+    }
+
+    fn ask(text: &str) -> Vec<Message> {
+        vec![
+            Message::new("system", "You are Kition."),
+            Message::new("user", text),
+        ]
+    }
+
+    #[test]
+    fn knows_each_claude_family() {
+        let caps = |name: &str| claude(name).unwrap_or(UNKNOWN_CLAUDE);
+        assert!(caps("claude-opus-5").adaptive);
+        assert_eq!(caps("claude-opus-5").thinking_off, ThinkingOff::UpToHigh);
+        assert_eq!(caps("claude-opus-5-5").thinking_off, ThinkingOff::Never);
+        assert!(!caps("claude-opus-5-5").forced_tool_choice);
+        assert!(caps("claude-opus-5").forced_tool_choice);
+        assert!(!caps("claude-fable-5-1").forced_tool_choice);
+        assert!(caps("claude-fable-5").forced_tool_choice);
+        assert!(!caps("claude-opus-4-6").xhigh);
+        assert!(!caps("claude-sonnet-5").system_messages);
+        assert!(
+            !caps("claude-haiku-4-5").adaptive,
+            "Haiku 4.5 still takes budget_tokens"
+        );
+        assert!(!caps("claude-sonnet-4-5").adaptive);
+        assert!(!caps("claude-3-7-sonnet").adaptive);
+        assert!(caps("anthropic.Claude-Opus-5").adaptive, "a gateway name");
+        assert_eq!(claude("deepseek-chat"), None);
+        assert_eq!(
+            caps("claude-opus-7"),
+            UNKNOWN_CLAUDE,
+            "a newer model gets the newest surface"
+        );
+    }
+
+    #[test]
+    fn adaptive_models_take_adaptive_thinking_and_effort() {
+        let request = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-opus-5", "high"),
+            false,
+        );
+        assert_eq!(
+            request["thinking"],
+            json!({ "type": "adaptive", "display": "summarized" })
+        );
+        assert_eq!(request["output_config"], json!({ "effort": "high" }));
+        assert!(request["thinking"].get("budget_tokens").is_none());
+        assert_eq!(request["max_tokens"], 16_000);
+        let streamed = body(&ask("Hi"), "", &claude_model("claude-opus-5", "max"), true);
+        assert_eq!(streamed["output_config"]["effort"], "max");
+        assert_eq!(streamed["max_tokens"], 64_000);
+        let older = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-opus-4-6", "xhigh"),
+            false,
+        );
+        assert_eq!(
+            older["output_config"]["effort"], "high",
+            "Opus 4.6 has no xhigh"
+        );
+        let newer = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-sonnet-5", "xhigh"),
+            false,
+        );
+        assert_eq!(newer["output_config"]["effort"], "xhigh");
+        // Off: disabled where allowed, the lowest effort where it is not.
+        let off = body(&ask("Hi"), "", &claude_model("claude-opus-5", "off"), false);
+        assert_eq!(off["thinking"], json!({ "type": "disabled" }));
+        assert!(off.get("output_config").is_none());
+        let never = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-opus-5-5", "off"),
+            false,
+        );
+        assert!(
+            never.get("thinking").is_none(),
+            "Opus 5.5 cannot turn thinking off"
+        );
+        assert_eq!(never["output_config"], json!({ "effort": "low" }));
+        // No setting: the model's default, with room for its thinking.
+        let default = body(&ask("Hi"), "", &claude_model("claude-fable-5-1", ""), true);
+        assert!(default.get("thinking").is_none() && default.get("output_config").is_none());
+        assert_eq!(default["max_tokens"], 64_000);
+    }
+
+    #[test]
+    fn earlier_models_take_a_budget_and_no_effort() {
+        let request = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-haiku-4-5", "medium"),
+            false,
+        );
+        assert_eq!(
+            request["thinking"],
+            json!({ "type": "enabled", "budget_tokens": 4096 })
+        );
+        assert!(
+            request.get("output_config").is_none(),
+            "effort errors on Haiku 4.5"
+        );
+        let deep = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-haiku-4-5", "max"),
+            false,
+        );
+        assert_eq!(deep["thinking"]["budget_tokens"], DEEP_THINKING_BUDGET);
+        assert!(deep["max_tokens"].as_i64().unwrap_or(0) > DEEP_THINKING_BUDGET);
+    }
+
+    #[test]
+    fn an_open_tool_turn_without_thinking_keeps_it_where_it_cannot_turn_off() {
+        let items = tool_turn(vec![tool_use()]);
+        let off = request_reasoning(&claude_model("claude-opus-5", "high"), &items);
+        assert_eq!(off, vec![("thinking", json!({ "type": "disabled" }))]);
+        let kept = request_reasoning(&claude_model("claude-opus-5-5", "high"), &items);
+        assert_eq!(kept[0].1["type"], "adaptive");
+    }
+
+    #[test]
+    fn caches_the_system_prompt_and_the_conversation_on_claude_only() {
+        let request = body(
+            &ask("Hi"),
+            "",
+            &claude_model("claude-opus-5", "high"),
+            false,
+        );
+        assert_eq!(
+            request["system"],
+            json!([{ "type": "text", "text": "You are Kition.", "cache_control": { "type": "ephemeral" } }])
+        );
+        assert_eq!(request["cache_control"], json!({ "type": "ephemeral" }));
+        let other = RuntimeModel {
+            provider_type: "custom".into(),
+            model_name: "kimi-k2".into(),
+            ..RuntimeModel::default()
+        };
+        let plain = body(&ask("Hi"), "", &other, false);
+        assert_eq!(plain["system"], "You are Kition.");
+        assert!(plain.get("cache_control").is_none());
+        let deepseek = RuntimeModel {
+            provider_type: "deepseek".into(),
+            model_name: "deepseek-chat".into(),
+            ..RuntimeModel::default()
+        };
+        assert!(
+            body(&ask("Hi"), "", &deepseek, false)
+                .get("cache_control")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn compacts_on_the_server_for_append_only_models() {
+        let model = claude_model("claude-opus-5", "high");
+        assert!(appends_only(&model));
+        let request = body(&ask("Hi"), "", &model, true);
+        assert_eq!(
+            request["context_management"],
+            json!({ "edits": [{ "type": "compact_20260112" }] })
+        );
+        let haiku = claude_model("claude-haiku-4-5", "high");
+        assert!(!appends_only(&haiku));
+        assert!(
+            body(&ask("Hi"), "", &haiku, true)
+                .get("context_management")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn forces_a_tool_only_where_the_model_takes_it() {
+        let forced = body(
+            &ask("Go"),
+            "report",
+            &claude_model("claude-opus-5", "high"),
+            false,
+        );
+        assert_eq!(
+            forced["tool_choice"],
+            json!({ "type": "tool", "name": "report" })
+        );
+        let auto = body(
+            &ask("Go"),
+            "report",
+            &claude_model("claude-opus-5-5", "high"),
+            false,
+        );
+        assert_eq!(auto["tool_choice"], json!({ "type": "auto" }));
+        assert_eq!(auto["tools"][0]["strict"], true);
+        let last = auto["messages"]
+            .as_array()
+            .and_then(|items| items.last())
+            .cloned();
+        assert_eq!(
+            last,
+            Some(
+                json!({ "role": "system", "content": "Answer this request by calling the `report` tool." })
+            )
+        );
+        assert_eq!(
+            auto["system"][0]["text"], "You are Kition.",
+            "the system prompt is not edited"
+        );
+        let unknown = body(
+            &ask("Go"),
+            "report",
+            &claude_model("claude-opus-7", "high"),
+            false,
+        );
+        assert_eq!(unknown["tool_choice"], json!({ "type": "auto" }));
+        assert!(
+            unknown["system"][0]["text"]
+                .as_str()
+                .is_some_and(|text| text.ends_with("calling the `report` tool."))
+        );
+    }
+
+    #[test]
+    fn strict_needs_closed_objects_that_require_every_property() {
+        assert!(strict_compatible(&json!({
+            "type": "object", "additionalProperties": false, "required": ["a"],
+            "properties": { "a": { "type": "array", "items": { "type": "string" } } },
+        })));
+        assert!(!strict_compatible(
+            &json!({ "type": "object", "properties": { "a": {} } })
+        ));
+        assert!(!strict_compatible(&json!({
+            "type": "object", "additionalProperties": false, "required": [],
+            "properties": { "a": { "type": "string" } },
+        })));
+    }
+
+    #[test]
+    fn tool_images_travel_inside_the_tool_result() {
+        let messages = vec![
+            Message::new("user", "Look"),
+            Message {
+                role: "assistant".into(),
+                tool_calls: vec![ToolCall {
+                    id: "c1".into(),
+                    name: "look".into(),
+                    input: "{}".into(),
+                }],
+                ..Message::default()
+            },
+            Message {
+                role: "tool".into(),
+                tool_call_id: "c1".into(),
+                content: "The preview".into(),
+                parts: vec![MessagePart {
+                    kind: "image_url".into(),
+                    image_url: "data:image/png;base64,AAA=".into(),
+                    ..MessagePart::default()
+                }],
+                ..Message::default()
+            },
+        ];
+        let (_, items) = normalize_messages(&messages);
+        assert_eq!(items.len(), 3, "no user message is added after the result");
+        assert_eq!(
+            items[2]["content"][0]["content"],
+            json!([
+                { "type": "text", "text": "The preview" },
+                { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "AAA=" } },
+            ])
+        );
+    }
+
+    #[test]
+    fn appended_messages_keep_the_earlier_request_as_a_prefix() {
+        let model = claude_model("claude-opus-5", "high");
+        let first = ask("Hi");
+        let mut second = first.clone();
+        second.push(Message {
+            role: "assistant".into(),
+            content: "Hello".into(),
+            raw_items: vec![json!({ "type": "thinking", "thinking": "", "signature": "s1" })],
+            ..Message::default()
+        });
+        second.push(Message::new("user", "Again"));
+        let (one, two) = (
+            body(&first, "", &model, true),
+            body(&second, "", &model, true),
+        );
+        let (one, two) = (
+            one["messages"].as_array().cloned().unwrap_or_default(),
+            two["messages"].as_array().cloned().unwrap_or_default(),
+        );
+        assert_eq!(two[..one.len()], one[..]);
+        assert_eq!(
+            two[1]["content"][0]["signature"], "s1",
+            "thinking replays unchanged"
+        );
+    }
+
+    #[test]
+    fn a_refusal_runs_no_tools_and_says_why() {
+        let data = json!({
+            "content": [{ "type": "tool_use", "id": "c1", "name": "rm", "input": {} }],
+            "stop_reason": "refusal",
+            "stop_details": { "type": "refusal", "category": "cyber", "explanation": "This looks harmful." },
+        });
+        let result = parse_json(
+            data.as_object().unwrap_or(&Map::new()),
+            "",
+            "claude-opus-5",
+            Instant::now(),
+        );
+        assert!(result.tool_calls.is_empty());
+        assert_eq!(
+            result.content,
+            "The model declined this request. This looks harmful. (category: cyber)"
+        );
+    }
+
+    #[test]
+    fn a_paused_turn_continues_into_one_result() {
+        let part = |text: &str, reason: &str| ChatResult {
+            content: text.into(),
+            response_items: vec![json!({ "type": "text", "text": text })],
+            stop_reason: reason.into(),
+            usage: super::super::types::Usage {
+                prompt_tokens: 10,
+                completion_tokens: 2,
+                ..Default::default()
+            },
+            ..ChatResult::default()
+        };
+        let merged = merge_results(
+            part("Searching. ", "pause_turn"),
+            part("Found it.", "end_turn"),
+        );
+        assert_eq!(merged.content, "Searching. Found it.");
+        assert_eq!(merged.stop_reason, "end_turn");
+        assert_eq!(merged.response_items.len(), 2);
+        assert_eq!(merged.usage.prompt_tokens, 20);
+    }
+
+    #[test]
+    fn streams_a_compaction_block_and_keeps_the_start_usage() {
+        let mut state = ResultState::default();
+        let mut pending = HashMap::new();
+        let (mut stop, mut usage) = (String::new(), None);
+        let events = [
+            json!({ "type": "message_start", "message": { "usage": { "input_tokens": 900, "cache_read_input_tokens": 800 } } }),
+            json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "compaction" } }),
+            json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "compaction_delta", "content": "Summary so far." } }),
+            json!({ "type": "content_block_stop", "index": 0 }),
+            json!({ "type": "message_delta", "delta": { "stop_reason": "end_turn" }, "usage": { "output_tokens": 40 } }),
+        ];
+        for event in events {
+            apply_stream_event(
+                event.as_object().unwrap_or(&Map::new()),
+                &mut state,
+                &mut pending,
+                &mut stop,
+                &mut usage,
+                &|_| {},
+            );
+        }
+        assert_eq!(
+            state.blocks,
+            vec![json!({ "type": "compaction", "content": "Summary so far." })]
+        );
+        let usage = usage.unwrap_or_default();
+        assert_eq!(
+            (
+                usage["input_tokens"].as_i64(),
+                usage["cache_read_input_tokens"].as_i64(),
+                usage["output_tokens"].as_i64()
+            ),
+            (Some(900), Some(800), Some(40))
+        );
+        // Replayed on the next request, before the text.
+        let message = Message {
+            role: "assistant".into(),
+            content: "Done".into(),
+            raw_items: state.blocks.clone(),
+            ..Message::default()
+        };
+        let (_, items) = normalize_messages(&[Message::new("user", "Hi"), message]);
+        assert_eq!(items[1]["content"][0]["type"], "compaction");
     }
 }

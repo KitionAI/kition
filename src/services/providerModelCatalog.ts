@@ -3,6 +3,9 @@ import { saveDesktopSettings } from '@/services/desktopSettings'
 import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
 import type { DesktopProviderKind, DesktopSettingsState } from '@/types/desktopSettings'
 
+/** The Claude model Kition picks when the account lists it and none is chosen yet. */
+export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5'
+
 function normalizeDiscoveredModels(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return Array.from(new Set(value.map((model) => String(model || '').trim()).filter(Boolean)))
@@ -60,7 +63,9 @@ export async function syncProviderModelCatalog(
   const currentSelection = selectedModelByProvider[kind] || ''
   const fallbackSelection = kind === 'kition_console'
     ? models.find(isLikelyTextGenerationModel) || ''
-    : models[0]
+    : kind === 'anthropic' && models.includes(DEFAULT_ANTHROPIC_MODEL)
+      ? DEFAULT_ANTHROPIC_MODEL
+      : models[0]
   const currentSelectionIsUsable = Boolean(
     currentSelection
     && models.includes(currentSelection)

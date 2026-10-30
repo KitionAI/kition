@@ -338,7 +338,9 @@
       "minimal": "极简",
       "low": "低",
       "medium": "中",
-      "high": "高"
+      "high": "高",
+      "xhigh": "超高",
+      "max": "最高"
     },
     "searchProviders": "搜索 AI 提供方"
   },

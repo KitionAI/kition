@@ -180,6 +180,7 @@ mod tests {
                 stop_reason: String::new(),
                 model: String::new(),
                 raw_items: vec![json!({ "type": "provider_note", "note": "fake-secret" })],
+                usage: None,
             },
         )
         .unwrap_or_else(|error| panic!("{error}"));

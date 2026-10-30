@@ -9,7 +9,9 @@ use std::sync::{Arc, Mutex, PoisonError};
 use futures::future::BoxFuture;
 use kition_ai::engine::{ChatResult, MessagePart};
 use kition_harness::events::ContentBlock;
-use kition_harness::llm::{HostedCall, Llm, LlmReply, LlmRequest, LlmSink, normalize_calls};
+use kition_harness::llm::{
+    HostedCall, Llm, LlmReply, LlmRequest, LlmSink, TokenUsage, normalize_calls,
+};
 use serde_json::json;
 
 use crate::run::Run;
@@ -127,10 +129,14 @@ impl Llm for AgentLlm {
                 raw_items: result.response_items.clone(),
                 follow_up: blocks(&follow_up),
                 hosted,
+                usage: Some(TokenUsage::from_engine(&result.usage)),
             };
             *self.last.lock().unwrap_or_else(PoisonError::into_inner) = Some(reply.content.clone());
             Ok(reply)
         })
+    }
+    fn append_only(&self) -> bool {
+        kition_ai::engine::appends_only(&self.run.model)
     }
 }
 

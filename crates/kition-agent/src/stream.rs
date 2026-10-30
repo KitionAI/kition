@@ -225,6 +225,7 @@ mod tests {
                 stop_reason: String::new(),
                 model: String::new(),
                 raw_items: vec![json!({ "type": "provider_note" })],
+                usage: None,
             },
         })));
         stream.close();

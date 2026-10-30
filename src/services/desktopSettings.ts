@@ -59,7 +59,7 @@ export const desktopProviderCatalog: DesktopProviderDescriptor[] = [
     label: 'Anthropic',
     sublabel: 'Claude',
     descriptor: 'Anthropic · Claude family',
-    description: 'Connect to the Messages API using an Anthropic API Key. Supports Claude 4.x and the hosted web_search server tool.',
+    description: 'Connect to the Messages API using an Anthropic API Key. Supports Claude 5 and 4.x with adaptive thinking, prompt caching, and the hosted web_search server tool.',
     badge: 'Messages',
     defaultBaseUrl: 'https://api.anthropic.com',
     defaultModelsPath: '/v1/models',

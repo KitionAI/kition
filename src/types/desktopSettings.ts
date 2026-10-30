@@ -41,7 +41,7 @@ export type DesktopHookEvent =
 
 export type CustomProviderAuthScheme = 'bearer' | 'raw' | 'x-api-key'
 export type CustomProviderWireAPI = 'responses' | 'chat_completions' | 'anthropic_messages'
-export type CustomProviderReasoningEffort = 'minimal' | 'low' | 'medium' | 'high'
+export type CustomProviderReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 export type HostedWebSearchVersion = '20260209' | '20250305'
 
 export interface DesktopGeneralSettings {

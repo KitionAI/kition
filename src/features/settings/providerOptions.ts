@@ -20,4 +20,6 @@ export const customReasoningOptions = [
   { label: 'Low', value: 'low' },
   { label: 'Medium', value: 'medium' },
   { label: 'High', value: 'high' },
+  { label: 'Extra high', value: 'xhigh' },
+  { label: 'Max', value: 'max' },
 ] as const

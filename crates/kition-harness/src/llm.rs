@@ -38,6 +38,36 @@ pub struct LlmReply {
     /// Calls the provider ran itself during this call (hosted web search,
     /// hosted image generation), logged after the `assistant/message`.
     pub hosted: Vec<HostedCall>,
+    /// What the call used, as the provider reported it.
+    pub usage: Option<TokenUsage>,
+}
+
+/// Token counts of one model call, logged with its `assistant/message`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsage {
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub cache_read_input_tokens: i64,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub cache_creation_input_tokens: i64,
+}
+
+fn is_zero(value: &i64) -> bool {
+    *value == 0
+}
+
+impl TokenUsage {
+    /// The engine's counts for one call.
+    pub fn from_engine(usage: &kition_ai::engine::Usage) -> Self {
+        Self {
+            input_tokens: usage.prompt_tokens,
+            output_tokens: usage.completion_tokens,
+            cache_read_input_tokens: usage.cache_read_input_tokens,
+            cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        }
+    }
 }
 
 /// A call the provider ran itself. It is logged as a `tool/call` and a
@@ -186,6 +216,14 @@ pub fn stream_chunk(event: &StreamEvent) -> Option<StreamChunk> {
 
 pub trait Llm: Send + Sync {
     fn call(&self, request: LlmRequest, sink: LlmSink) -> BoxFuture<'_, Result<LlmReply, String>>;
+
+    /// Whether this model's history must stay append-only: every request
+    /// carries the whole log, derived so that nothing an earlier request
+    /// sent changes (see [`crate::derive::derive_append_only`]). Its
+    /// provider keeps the context in bounds (server-side compaction).
+    fn append_only(&self) -> bool {
+        false
+    }
 }
 
 /// Fills blank call ids from `prefix` plus the call's index, trims names, and
@@ -277,8 +315,13 @@ impl Llm for EngineLlm {
                 raw_items: result.response_items,
                 follow_up: Vec::new(),
                 hosted: Vec::new(),
+                usage: Some(TokenUsage::from_engine(&result.usage)),
             })
         })
+    }
+
+    fn append_only(&self) -> bool {
+        kition_ai::engine::appends_only(&self.model)
     }
 }
 

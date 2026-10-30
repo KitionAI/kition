@@ -240,6 +240,11 @@ struct Fixture {
 }
 
 fn app() -> Fixture {
+    app_with(|_| None)
+}
+
+/// The app with the kits `kits` makes for the fixture's workspace.
+fn app_with(kits: impl FnOnce(&std::path::Path) -> Option<kition_kits::KitManager>) -> Fixture {
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let uploads = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let config = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
@@ -257,7 +262,7 @@ fn app() -> Fixture {
         portal_base_url: String::new(),
         mcp_path: None,
         workflow_prompt: None,
-        kits: None,
+        kits: kits(workspace.path()),
     });
     let db_handle = db.clone();
     let app = router(AgentState {
@@ -1843,5 +1848,71 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         problems.is_empty(),
         "the requests differ from tests/golden/panes.json (KITION_WRITE_GOLDEN=1 rewrites it):\n{}",
         problems.join("\n")
+    );
+}
+
+/// The mock kit executable, built with the workspace (`cargo build -p
+/// kition-kit-mock`).
+#[cfg(unix)]
+fn mock_kit() -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let path = exe.parent()?.parent()?.join("kition-kit-mock");
+    path.is_file().then_some(path)
+}
+
+/// The agent calls a kit tool the model asked for, end to end: a model
+/// (replayed) asks for `vector_inspect`, the agent runs it against the mock
+/// kit standing in for Kition Vector, and the result is logged and answered.
+#[cfg(unix)]
+#[tokio::test]
+async fn the_agent_runs_a_kit_tool_the_model_asks_for() {
+    use std::os::unix::fs::PermissionsExt;
+    let Some(mock) = mock_kit() else {
+        eprintln!("skipped: build kition-kit-mock first (cargo build -p kition-kit-mock)");
+        return;
+    };
+    let bin = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    let launcher = bin.path().join("kit-vector-mock.sh");
+    std::fs::write(
+        &launcher,
+        format!(
+            "#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector exec '{}' \"$@\"\n",
+            mock.display()
+        ),
+    )
+    .unwrap_or_else(|err| panic!("{err}"));
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755))
+        .unwrap_or_else(|err| panic!("{err}"));
+    let Fixture { app, workspace, .. } = app_with(|root| {
+        std::fs::create_dir_all(root.join("art")).unwrap_or_else(|err| panic!("{err}"));
+        std::fs::write(root.join("art/Note.kvector"), "hello")
+            .unwrap_or_else(|err| panic!("{err}"));
+        let vector = kition_kits::definitions::fixture_kit("kit.vector");
+        Some(kition_kits::KitManager::new(
+            Some(root.to_path_buf()),
+            vec![(vector, Some(launcher.clone()))],
+        ))
+    });
+    let session_id = new_session(&app).await;
+    let base_url = fake_provider(vec![
+        tool_call_streamed("vector_inspect", json!({ "path": "art/Note.kvector" })),
+        answer(&["The note says hello."]),
+    ])
+    .await;
+    let lines = stream(&app, session_id, &base_url, json!({})).await;
+    assert_closed_idle(&lines);
+    let streamed = events(&lines);
+    let result = streamed
+        .iter()
+        .find(|event| event["type"] == "tool/result" && event["name"] == "vector_inspect")
+        .cloned()
+        .unwrap_or_else(|| panic!("no vector_inspect result in {:?}", kinds(&streamed)));
+    assert_eq!(result["isError"], false, "{result}");
+    assert_eq!(turn_end(&lines)["reason"], "completed");
+    assert_eq!(reply(&lines), "The note says hello.");
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("art/Note.kvector")).unwrap_or_default(),
+        "hello",
+        "inspecting changes nothing"
     );
 }

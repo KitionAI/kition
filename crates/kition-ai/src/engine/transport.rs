@@ -509,10 +509,28 @@ pub(crate) fn usage_from(
         usage.prompt_tokens = input;
         usage.completion_tokens = output;
         if anthropic {
+            // With server-side compaction the top-level counts leave out
+            // the compaction iterations; the billed total sums them all.
+            if let Some(iterations) = entry.get("iterations").and_then(Value::as_array)
+                && !iterations.is_empty()
+            {
+                let sum = |key: &str| -> i64 {
+                    iterations
+                        .iter()
+                        .map(|iteration| {
+                            kition_core::coerce::as_i64(iteration.get(key).unwrap_or(&Value::Null))
+                        })
+                        .sum()
+                };
+                usage.prompt_tokens = sum("input_tokens");
+                usage.completion_tokens = sum("output_tokens");
+            }
             usage.cache_creation_input_tokens = int("cache_creation_input_tokens");
             usage.cache_read_input_tokens = int("cache_read_input_tokens");
-            usage.total_tokens =
-                input + output + usage.cache_creation_input_tokens + usage.cache_read_input_tokens;
+            usage.total_tokens = usage.prompt_tokens
+                + usage.completion_tokens
+                + usage.cache_creation_input_tokens
+                + usage.cache_read_input_tokens;
         } else {
             let total = int("total_tokens");
             usage.total_tokens = if total == 0 { input + output } else { total };

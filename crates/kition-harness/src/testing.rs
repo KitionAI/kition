@@ -22,6 +22,7 @@ pub struct ScriptedCall {
 pub struct ScriptedLlm {
     replies: Mutex<VecDeque<ScriptedCall>>,
     requests: Mutex<Vec<LlmRequest>>,
+    append_only: bool,
 }
 
 impl std::fmt::Debug for ScriptedLlm {
@@ -64,7 +65,15 @@ impl ScriptedLlm {
         Self {
             replies: Mutex::new(calls.into()),
             requests: Mutex::new(Vec::new()),
+            append_only: false,
         }
+    }
+
+    /// The same model, standing for one whose history stays append-only.
+    #[must_use]
+    pub fn appending_only(mut self) -> Self {
+        self.append_only = true;
+        self
     }
 
     /// Every request received so far.
@@ -99,6 +108,10 @@ impl Llm for ScriptedLlm {
             }
             Ok(call.reply)
         })
+    }
+
+    fn append_only(&self) -> bool {
+        self.append_only
     }
 }
 

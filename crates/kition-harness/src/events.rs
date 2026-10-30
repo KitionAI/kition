@@ -193,6 +193,9 @@ pub enum EventBody {
         /// Provider-native items replayed verbatim on the Responses wire.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         raw_items: Vec<Value>,
+        /// The call's token counts, cache reads and writes included.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        usage: Option<crate::llm::TokenUsage>,
     },
     /// A model call that settled without a message: failed, or `aborted`
     /// when the turn was cancelled.
@@ -412,6 +415,7 @@ mod tests {
                 provider: "deepseek-official".into(),
                 model: String::new(),
                 raw_items: Vec::new(),
+                usage: None,
             },
             EventBody::AssistantAttempt {
                 turn: 1,
