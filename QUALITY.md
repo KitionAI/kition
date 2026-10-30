@@ -31,7 +31,7 @@ Every feature and every case belongs to one or more of these directions.
 | `unit` | Not executed by the case runner: the case points at an existing test (`cargo-test` or `exec` step) that `pnpm -s typecheck && pnpm -s lint` already runs. The runner only checks the test exists, so the catalogue links to it | (inside `pnpm -s typecheck && pnpm -s lint`) | The commit is refused by `pnpm -s typecheck && pnpm -s lint` |
 | `golden` | Every commit, every PR, before an agent ends a task (`cargo xtask golden --affected`; all before merge) | The whole kit ≤ `golden_budget_s` (600) on the owner's machine | Not done; cannot merge |
 | `corpus` | Weekly, on the owner's machine at night | Hours | Weekly report; important failures become issues and then regression cases |
-| `ai` | Weekly, real models | Tokens are recorded, not capped | Success-rate trend in the weekly report |
+| `ai` | Only when the owner starts it (`cargo xtask ai`, F-QA-16): never from a hook, golden, the pre-finish check, a schedule, CI, or by an agent on its own | Tokens are recorded, not capped | Success rate per kit and model in the run's report; the matrix reads the latest owner run |
 
 ## How to run
 

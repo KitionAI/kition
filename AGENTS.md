@@ -22,6 +22,7 @@
 - Stage only your own files: `git add` them by name; never `git commit -a` or `git add -A`.
   Other sessions may have uncommitted work in the same checkout.
 - Work on `kition-slide` only in its main checkout; never change, build, or commit in its worktrees (`kition-slide-wt/*`, `kition-*-wt`, `kition-naming-work`).
+- Never start `cargo xtask ai` (the real-model `layer: ai` cases): only the owner starts it (F-QA-16). Write ai cases and check them with `--dry-run`, which calls no model.
 - No compatibility layers: no aliases, old names, old file suffixes, migrations, or readers for
   old formats. Delete a replaced path in the same change.
 <!-- kition-quality:end -->

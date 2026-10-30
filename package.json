@@ -91,6 +91,7 @@
     "test:workflow:ai-build:e2e": "playwright test --config tooling/playwright.config.ts e2e/workflow-real-ai-build.spec.ts --workers=1",
     "test:workflow:onboarding:e2e": "bash scripts/inspect-workflow-onboarding.sh",
     "check:kit-host": "node scripts/sync-kit-host.mjs --check",
+    "ai": "node ../kition-sdk/tools/ai-cases.mjs --repo .",
     "check:tessera": "node scripts/pin-tessera.mjs --check"
   },
   "dependencies": {
