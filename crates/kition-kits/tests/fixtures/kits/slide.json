@@ -121,6 +121,8 @@
   "agent": {
     "prefix": "slide",
     "tools": "document",
+    "objectModel": true,
+    "render": "file.render",
     "describe": {
       "noun": "slide file",
       "fileTypes": ".kslide and .pptx",
@@ -128,8 +130,7 @@
       "covers": "slides, layouts, text, shapes, pictures, tables, charts, transitions, animations, and more",
       "queries": "`new slide`, `text box`, or `transition`",
       "example": "shape.insert"
-    },
-    "render": "file.render"
+    }
   },
   "headless": {
     "executable": "kit-slide",
@@ -146,7 +147,7 @@
     ]
   },
   "model": {
-    "schema": "model/schema.json",
+    "schema": "crates/kdm/kdm-model/model/schema.json",
     "schemaVersion": 7
   },
   "collaboration": {
