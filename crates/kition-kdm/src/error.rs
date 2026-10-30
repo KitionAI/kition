@@ -9,8 +9,10 @@ pub enum KdmError {
     Schema(String),
     #[error("unknown type `{0}`")]
     UnknownType(String),
-    #[error("type `{ty}` has no field `{field}`")]
-    UnknownField { ty: String, field: String },
+    /// `hint`: the type's fields, and for a dotted path that a field is one name (khp-bench: agents
+    /// tried `frame`, `look.line.fill`, `parts.fmt.text.size` and got only "has no field").
+    #[error("type `{ty}` has no field `{field}`{hint}")]
+    UnknownField { ty: String, field: String, hint: String },
     #[error("field `{field}` of `{ty}` {reason}")]
     InvalidValue { ty: String, field: String, reason: String },
     #[error("object `{0}` not found")]

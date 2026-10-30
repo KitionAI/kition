@@ -130,6 +130,12 @@ pub struct CommandView {
     pub shortcut: Option<String>,
     /// The query matched no command, and this is one of the closest by spelling.
     pub closest: bool,
+    /// The command has every word of the query (a ranked search also answers commands that have
+    /// some of them; counting those as matches said "310 commands match `layer timing`").
+    pub all_words: bool,
+    /// The command's keywords the query named (at most eight): what it was found by when its
+    /// title does not say, for example `Gradient Ramp` for `effect.apply`.
+    pub matched: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -568,6 +574,7 @@ impl KitManager {
         // id, title, description or menu, with a few synonyms and plurals); the best come first.
         // A query no command shares a word with still answers the closest commands, never none.
         let terms: Vec<Vec<String>> = query.unwrap_or_default().split_whitespace().map(|term| search_variants(&term.to_lowercase())).collect();
+        // Keywords (the effect names effect.apply takes, …) count as the description does.
         let fields: Vec<(String, String, String)> = list
             .commands
             .iter()
@@ -575,7 +582,7 @@ impl KitManager {
                 (
                     command.id.to_lowercase(),
                     command.title.to_lowercase(),
-                    format!("{} {:?}", command.description.as_deref().unwrap_or_default(), command.menu).to_lowercase(),
+                    format!("{} {:?} {}", command.description.as_deref().unwrap_or_default(), command.menu, command.keywords.join(" | ")).to_lowercase(),
                 )
             })
             .collect();
@@ -588,11 +595,13 @@ impl KitManager {
                 ((n + 1.0) / (df + 1.0)).ln() + 0.1
             })
             .collect();
-        let mut scored: Vec<(f64, _)> = list
+        let mut scored: Vec<(f64, _, bool)> = list
             .commands
             .into_iter()
             .zip(fields.iter())
             .map(|(command, (id, title, rest))| {
+                let all_words = !terms.is_empty()
+                    && terms.iter().all(|variants| variants.iter().any(|v| id.contains(v.as_str()) || title.contains(v.as_str()) || rest.contains(v.as_str())));
                 let score: f64 = terms
                     .iter()
                     .zip(&weights)
@@ -611,28 +620,44 @@ impl KitManager {
                         field * weight
                     })
                     .sum();
-                (score, command)
+                (score, command, all_words)
             })
             .collect();
-        let matched = terms.is_empty() || scored.iter().any(|(score, _)| *score > 0.0);
+        let matched = terms.is_empty() || scored.iter().any(|(score, _, _)| *score > 0.0);
         if matched {
             if !terms.is_empty() {
-                scored.retain(|(score, _)| *score > 0.0);
+                scored.retain(|(score, _, _)| *score > 0.0);
             }
         } else {
             // No command shares a word with the query: rank by spelling (the share of the query's
             // three-letter pieces found in the command's id and title), so the answer is the
             // closest commands, never the list's first ones (search never returns empty).
             let query = query.unwrap_or_default().to_lowercase();
-            for (score, command) in &mut scored {
+            for (score, command, _) in &mut scored {
                 *score = spelling(&query, &format!("{} {}", command.id, command.title).to_lowercase());
             }
         }
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         Ok(scored
             .into_iter()
-            .map(|(_, command)| command)
-            .map(|command| CommandView {
+            .map(|(_, command, all_words)| CommandView {
+                all_words,
+                // The keywords the query names, so the agent sees what matched (an effect's name).
+                // Those with the most of the query's words first (`gaussian blur` names Gaussian
+                // Blur before the other blurs), then in the kit's order.
+                matched: {
+                    let mut hits: Vec<(usize, &String)> = command
+                        .keywords
+                        .iter()
+                        .map(|keyword| {
+                            let keyword_lower = keyword.to_lowercase();
+                            (terms.iter().filter(|variants| variants.iter().any(|v| keyword_lower.contains(v.as_str()))).count(), keyword)
+                        })
+                        .filter(|(words, _)| *words > 0)
+                        .collect();
+                    hits.sort_by_key(|hit| std::cmp::Reverse(hit.0));
+                    hits.into_iter().take(8).map(|(_, keyword)| keyword.clone()).collect()
+                },
                 id: command.id,
                 title: command.title,
                 description: command.description,

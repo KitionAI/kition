@@ -147,6 +147,7 @@ fn a_command_may_say_what_it_answers() {
 #[test]
 fn command_and_view_shapes_match_the_schema() {
     let command = CommandInfo {
+        keywords: Vec::new(),
         id: "layer.newAdjustmentLayer.curves".into(),
         title: "Curves".into(),
         description: Some("Adds a curves adjustment layer.".into()),

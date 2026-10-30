@@ -195,6 +195,10 @@ pub struct CommandInfo {
     pub menu: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shortcut: Option<String>,
+    /// Words a command search finds it by that its id, title and description do not say (the
+    /// effect names `effect.apply` takes); searched, not shown.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keywords: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

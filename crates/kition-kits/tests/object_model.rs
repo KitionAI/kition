@@ -252,3 +252,13 @@ async fn a_file_open_in_an_editor_is_queried_and_batched_live() {
     assert_eq!(refused.code, ErrorCode::READ_ONLY);
     assert_eq!(refused.to_json()["code"], "read-only");
 }
+
+#[tokio::test]
+async fn a_search_finds_a_command_by_its_keywords_and_says_which() {
+    let Some(f) = fixture() else { return };
+    let found = call(&f.kits, "vector_commands", json!({ "path": "art/Note.kvector", "query": "boilerplate" })).await.unwrap_or_else(|err| panic!("{err}"));
+    let first = &found["commands"][0];
+    assert_eq!(first["id"], "text.append", "{found}");
+    assert_eq!(first["matched"], json!(["Boilerplate"]), "{found}");
+    assert!(found["commands"].as_array().is_some_and(|all| all.iter().all(|c| c.get("keywords").is_none())), "keywords are not listed: {found}");
+}

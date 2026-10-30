@@ -29,7 +29,13 @@ export class KdmError extends Error {
 export const errors = {
   schema: (message: string) => new KdmError('schema', `schema: ${message}`),
   unknownType: (ty: string) => new KdmError('unknown-type', `unknown type \`${ty}\``),
-  unknownField: (ty: string, field: string) => new KdmError('unknown-field', `type \`${ty}\` has no field \`${field}\``),
+  /** As the Rust `Schema::unknown_field`: the type's fields, and that a field is one name, not a path. */
+  unknownField: (ty: string, field: string, known: readonly string[] = []) => {
+    let hint = ''
+    if (field.includes('.') || field.includes('/')) hint += '; a field is one name, not a path: load the nested object and set its own fields'
+    if (known.length > 0) hint += `; its fields: ${known.slice(0, 40).join(', ')}${known.length > 40 ? ', …' : ''}`
+    return new KdmError('unknown-field', `type \`${ty}\` has no field \`${field}\`${hint}`)
+  },
   invalidValue: (ty: string, field: string, reason: string) => new KdmError('invalid-value', `field \`${field}\` of \`${ty}\` ${reason}`),
   notFound: (what: string) => new KdmError('not-found', `object \`${what}\` not found`),
   cycle: () => new KdmError('cycle', 'moving that node would create a cycle'),

@@ -154,10 +154,10 @@ pub fn output_schema(action: Action) -> Value {
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "properties": { "command": { "type": "string" }, "changed": { "type": "boolean" }, "result": {} },
+                        "properties": { "command": { "type": "string" }, "changed": { "type": "boolean" }, "result": {}, "truncated": { "type": "object", "description": "The result was cut to fit: `shown` of `total` items (of `field` when the result is an object)." } },
                         "required": ["command"]
                     },
-                    "description": "The steps that ran, in order; on failure, those before the failing one."
+                    "description": "The steps that ran, in order; on failure, those before the failing one. `changed` is there only when false (the step changed nothing), `result` only when the command answered one."
                 },
                 "saved": { "type": "boolean" },
                 "document": { "$ref": "#/$defs/document" }

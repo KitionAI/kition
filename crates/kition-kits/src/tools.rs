@@ -970,6 +970,7 @@ async fn run_on_draft(kits: &KitManager, kit: &'static KitDefinition, input: &Va
         .await
         .map_err(|error| KitToolError::from(error).context(&format!("on the draft in the open {} editor: ", short(kit))))?;
     let previews = draft_preview(kits, kit, &document).await;
+    lean_completed(&mut answer);
     let ran = answer["completed"].as_array().map_or(0, Vec::len);
     answer["live"] = Value::Bool(true);
     answer["draft"] = Value::Bool(true);
@@ -999,7 +1000,7 @@ async fn run_on_headless_draft(kits: &KitManager, kit: &'static KitDefinition, p
         let params = step.get("params").and_then(Value::as_object).cloned().unwrap_or_else(Map::new);
         match kits.execute(Caller::Agent, kit.id, id, &command, params).await {
             Ok(executed) => {
-                done.push(json!({ "command": command, "changed": executed.changed, "result": executed.result }));
+                done.push(step_entry(&command, executed.changed, executed.result));
                 view = executed.document;
             }
             Err(error) => {
@@ -1066,10 +1067,10 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
     // An explicit `draft: true` needs the editor; the run's default falls back to the file.
     let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
     if reads_headless_draft(kits, kit, &path, draft, explicit).await {
+        // The draft answers as the file does (target, content, the part's objects), on the draft.
         let id = drafts::document(kits, kit, &path, false).await?;
         let view = kits.document(Caller::Agent, kit.id, &id).await?;
-        let previews = if wants_preview { headless_draft_preview(kits, kit, &path, &id).await } else { Vec::new() };
-        return Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened your draft of `{path}`: {}", view.summary), draft_json(&view, &path)) });
+        return inspect_view(kits, kit, input, &path, view, true).await;
     }
     let open = live(kits, kit, &path).await;
     if draft && (open.is_some() || explicit) {
@@ -1101,7 +1102,14 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
         answer["live"] = Value::Bool(true);
         return Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened `{path}` in its open {} editor: {summary}", short(kit)), answer) });
     }
-    let mut view = kits.open(Caller::Agent, &path).await?;
+    let view = kits.open(Caller::Agent, &path).await?;
+    inspect_view(kits, kit, input, &path, view, false).await
+}
+
+/// `<prefix>_inspect` on a document the headless kit holds: the file, or the agent's headless
+/// draft of it (`draft`). Both go to the `target` part, render, and answer content the same way.
+async fn inspect_view(kits: &KitManager, kit: &'static KitDefinition, input: &Value, path: &str, mut view: DocumentView, draft: bool) -> KitToolResult {
+    let wants_preview = input.get("preview").and_then(Value::as_bool) != Some(false);
     if let Some(part) = target_part(input)
         && let Some(moved) = go_to_part(kits, &view, part).await?
     {
@@ -1113,10 +1121,11 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
     };
     let previews = match rendered {
         Some(previews) => previews,
+        None if wants_preview && draft => headless_draft_preview(kits, kit, path, &view.document_id).await,
         None if wants_preview => preview(kits, kit, &view).await,
         None => Vec::new(),
     };
-    let mut answer = document_json(&view);
+    let mut answer = if draft { draft_json(&view, path) } else { document_json(&view) };
     if let Some(content) = part_content(kits, &view, input).await {
         answer["content"] = content;
     }
@@ -1125,6 +1134,10 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
     {
         // The part, not the whole document's outline again.
         answer = document_summary_json(&view);
+        if draft {
+            answer["path"] = Value::String(path.to_owned());
+            answer["draft"] = Value::Bool(true);
+        }
         answer["part"] = objects;
         lean_objects(&mut answer["part"]);
         answer["edit"] = json!(format!(
@@ -1136,7 +1149,8 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
             part - 1
         ));
     }
-    Ok(KitToolOutput { previews, ..KitToolOutput::new(format!("Opened `{path}`: {}", view.summary), answer) })
+    let opened = if draft { format!("Opened your draft of `{path}`: {}", view.summary) } else { format!("Opened `{path}`: {}", view.summary) };
+    Ok(KitToolOutput { previews, ..KitToolOutput::new(opened, answer) })
 }
 
 /// `<prefix>_check` (standard 2.0 A22): the diagnostics of the agent's draft, of the open editor's
@@ -1218,6 +1232,8 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
                 "enabled": command.enabled,
                 "mutates": command.mutates,
                 "closest": command.closest,
+                "allWords": command.all_words,
+                "matched": command.matched,
             })
         })
         .collect();
@@ -1276,7 +1292,10 @@ async fn create(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToo
 /// ParameterSchemaSpec in its JSON Schema form, as the kit lists it), and `enabled: false` when it
 /// cannot run now.
 fn compact_command(command: Value) -> Value {
-    let mut out = json!({ "id": command["id"], "title": command["title"], "params": command["params"] });
+    let mut out = json!({ "id": command["id"], "title": command["title"], "params": lean_params(&command["params"]) });
+    if command["matched"].as_array().is_some_and(|matched| !matched.is_empty()) {
+        out["matched"] = command["matched"].clone();
+    }
     if command["enabled"] == Value::Bool(false) {
         out["enabled"] = Value::Bool(false);
     }
@@ -1317,13 +1336,20 @@ fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
         );
     }
     let total = found.len();
+    let every = found.iter().filter(|command| command["allWords"] == true || command["all_words"] == true).count();
     let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
-    let summary = if total > listed.len() {
-        format!("{total} commands match `{query}`; showing {}. Use more specific keywords.", listed.len())
-    } else {
+    let words = query.split_whitespace().count();
+    let mut summary = if words <= 1 || every == total {
         format!("{total} commands match `{query}`")
+    } else if every > 0 {
+        format!("{every} commands have every word of `{query}`, {} more some of them", total - every)
+    } else {
+        format!("No command has every word of `{query}`; {total} have some of them")
     };
-    KitToolOutput::new(summary, json!({ "commands": listed, "total": total }))
+    if total > listed.len() {
+        summary.push_str(&format!("; showing the best {}. Use more specific keywords.", listed.len()));
+    }
+    KitToolOutput::new(summary, json!({ "commands": listed, "total": total, "allWords": every }))
 }
 
 async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
@@ -1343,6 +1369,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             .await
             .map_err(|error| KitToolError::from(error).context(&format!("in the open {} editor: ", short(kit))))?;
         let previews = live_preview(kits, kit, &document).await;
+        lean_completed(&mut answer);
         let ran = answer["completed"].as_array().map_or(0, Vec::len);
         let saved = if answer["saved"] == true { "saved" } else { "not saved" };
         let summary = answer["document"]["summary"].as_str().unwrap_or_default().to_owned();
@@ -1367,7 +1394,7 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         let params = step.get("params").and_then(Value::as_object).cloned().unwrap_or_else(Map::new);
         match kits.execute(Caller::Agent, view.kit_id, &view.document_id, &command, params).await {
             Ok(executed) => {
-                done.push(json!({ "command": command, "changed": executed.changed, "result": executed.result }));
+                done.push(step_entry(&command, executed.changed, executed.result));
                 view = executed.document;
             }
             Err(error) => {
@@ -1400,6 +1427,117 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             json!({ "completed": done, "saved": save, "document": document_summary_json(&view) }),
         )
     })
+}
+
+/// A command's parameter schema as `<prefix>_commands` lists it: the schema itself (KHP A5), without
+/// what repeats it. The top-level `description` is the kit's notation of the same parameters, kept
+/// only for what the schema cannot say, the result after `→` (`returns`); a property description
+/// that names nothing beyond its type (`an id`, `[shape id]`, the key's own name) goes. In
+/// khp-bench's pilot, command searches were the agents' largest input: 12 commands, 6,000
+/// characters, about half of it the notation beside its own schema.
+fn lean_params(params: &Value) -> Value {
+    let mut schema = params.clone();
+    let Some(object) = schema.as_object_mut() else {
+        return schema;
+    };
+    let has_properties = object.get("properties").and_then(Value::as_object).is_some_and(|properties| !properties.is_empty());
+    if has_properties
+        && let Some(Value::String(notation)) = object.remove("description")
+        && let Some((_, returns)) = notation.split_once('→')
+    {
+        object.insert("returns".into(), Value::String(returns.trim().to_owned()));
+    }
+    if let Some(properties) = object.get_mut("properties").and_then(Value::as_object_mut) {
+        for (key, property) in properties.iter_mut() {
+            if let Some(property) = property.as_object_mut() {
+                let generic = property.get("description").and_then(Value::as_str).is_some_and(|text| {
+                    let text = text.trim().to_ascii_lowercase();
+                    text == "an id"
+                        || text == "[shape id]"
+                        || text == "[..]"
+                        || text == key.to_ascii_lowercase()
+                        || text == format!("{} (no type given)", key.to_ascii_lowercase())
+                });
+                if generic {
+                    property.remove("description");
+                }
+            }
+        }
+    }
+    schema
+}
+
+/// One step of a `<prefix>_run` answer: its command, `changed: false` only when it changed nothing,
+/// and its `result` only when it answered one. A step that changed the document and answered
+/// nothing (most formatting) is `{command}`: khp-bench saw a 302-step run answer 17,000
+/// characters of `"changed": true, "result": null`, re-read on every later turn.
+fn step_entry(command: &str, changed: bool, result: Option<Value>) -> Value {
+    let mut entry = json!({ "command": command });
+    if !changed {
+        entry["changed"] = Value::Bool(false);
+    }
+    if let Some(mut result) = result.filter(|result| !result.is_null()) {
+        if let Some(cut) = shorten(&mut result, MAX_STEP_RESULT) {
+            entry["truncated"] = cut;
+        }
+        entry["result"] = result;
+    }
+    entry
+}
+
+/// The most characters one step's `result` brings into the agent's context. Listings an agent asks
+/// for without narrowing them (khp-bench: every font, 34,000 characters; every effect matching
+/// `noise` with all its parameters, 34,000) are cut to fit and say so; the kit's own API is
+/// untouched.
+const MAX_STEP_RESULT: usize = 8_000;
+
+/// Cuts the longest array in `value` (the value itself, or one of its fields) to the items that fit
+/// in `limit` characters, and answers what was cut: `{field?, shown, total, hint}`. None when the
+/// value fits, or holds no array to cut.
+fn shorten(value: &mut Value, limit: usize) -> Option<Value> {
+    if value.to_string().len() <= limit {
+        return None;
+    }
+    let (field, items) = match value {
+        Value::Array(items) => (None, items),
+        Value::Object(fields) => {
+            let key = fields.iter().filter(|(_, v)| v.is_array()).max_by_key(|(_, v)| v.to_string().len()).map(|(k, _)| k.clone())?;
+            (Some(key.clone()), fields.get_mut(&key)?.as_array_mut()?)
+        }
+        _ => return None,
+    };
+    let total = items.len();
+    let mut kept = 0;
+    let mut used = 0;
+    for item in items.iter() {
+        let size = item.to_string().len() + 1;
+        if used + size > limit && kept > 0 {
+            break;
+        }
+        used += size;
+        kept += 1;
+    }
+    if kept >= total {
+        return None;
+    }
+    items.truncate(kept);
+    let mut cut =
+        json!({ "shown": kept, "total": total, "hint": "the answer was cut to fit; narrow it with the command's own parameters (a query, filter, or range)" });
+    if let Some(field) = field {
+        cut["field"] = Value::String(field);
+    }
+    Some(cut)
+}
+
+/// [`step_entry`] for the steps an open editor answered.
+fn lean_completed(answer: &mut Value) {
+    if let Some(steps) = answer.get_mut("completed").and_then(Value::as_array_mut) {
+        for step in steps.iter_mut() {
+            let command = step["command"].as_str().unwrap_or_default().to_owned();
+            let changed = step["changed"].as_bool() != Some(false);
+            *step = step_entry(&command, changed, step.get("result").cloned());
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1508,6 +1646,58 @@ mod tests {
         ] {
             assert_eq!(offers(kit, &tool_name(kit, action)), offered, "{} {action:?} (KHP A35)", kit.id);
         }
+    }
+
+    #[test]
+    fn a_long_step_result_is_cut_to_fit_and_says_so() {
+        let families: Vec<Value> = (0..2000).map(|i| json!({ "family": format!("Font {i}"), "styles": ["Regular", "Bold"] })).collect();
+        let entry = step_entry("text.fonts", false, Some(json!({ "count": 2000, "families": families })));
+        assert!(entry["result"].to_string().len() <= MAX_STEP_RESULT + 200, "{}", entry["result"].to_string().len());
+        assert_eq!(entry["truncated"]["field"], "families");
+        assert_eq!(entry["truncated"]["total"], 2000);
+        assert_eq!(entry["result"]["count"], 2000, "the kit's own count stays");
+        let small = step_entry("shape.insert", true, Some(json!({ "id": 24 })));
+        assert!(small.get("truncated").is_none());
+    }
+
+    #[test]
+    fn a_listed_schema_drops_what_repeats_it() {
+        let params = json!({
+            "type": "object",
+            "description": "{text, id?: shape, slide?: index} → {index, thread}",
+            "properties": {
+                "text": { "type": "string" },
+                "id": { "description": "an id", "oneOf": [{ "type": "integer" }, { "type": "string" }] },
+                "slide": { "type": "integer", "description": "a position counted from 0 (the first is 0)" },
+                "created": { "description": "created (no type given)" }
+            }
+        });
+        let lean = lean_params(&params);
+        assert!(lean.get("description").is_none(), "{lean}");
+        assert_eq!(lean["returns"], "{index, thread}");
+        assert!(lean["properties"]["id"].get("description").is_none() && lean["properties"]["created"].get("description").is_none());
+        assert_eq!(lean["properties"]["slide"]["description"], "a position counted from 0 (the first is 0)", "what the type does not say stays");
+        let notes_only = json!({ "type": "object", "description": "{} — delete selected items" });
+        assert_eq!(lean_params(&notes_only), notes_only, "a schema without properties keeps its notes");
+    }
+
+    #[test]
+    fn a_run_step_says_only_what_is_news() {
+        assert_eq!(step_entry("format.bold", true, Some(Value::Null)), json!({ "command": "format.bold" }));
+        assert_eq!(step_entry("shape.insert", true, Some(json!({ "id": 24 }))), json!({ "command": "shape.insert", "result": { "id": 24 } }));
+        assert_eq!(step_entry("time.set", false, None), json!({ "command": "time.set", "changed": false }));
+        let mut answer = json!({ "completed": [{ "command": "a", "changed": true, "result": null }, { "command": "b", "changed": false, "result": 3 }] });
+        lean_completed(&mut answer);
+        assert_eq!(answer["completed"], json!([{ "command": "a" }, { "command": "b", "changed": false, "result": 3 }]));
+    }
+
+    #[test]
+    fn a_search_counts_the_commands_with_every_word_apart() {
+        let command = |id: &str, all: bool| json!({ "id": id, "title": id, "params": {}, "allWords": all, "closest": false });
+        let out = listed_commands("layer timing", vec![command("layer.timing", true), command("layer.newText", false), command("time.set", false)]);
+        assert_eq!(out.summary, "1 commands have every word of `layer timing`, 2 more some of them");
+        let out = listed_commands("layer zebra", vec![command("layer.newText", false)]);
+        assert!(out.summary.starts_with("No command has every word of `layer zebra`; 1 have some of them"), "{}", out.summary);
     }
 
     #[test]

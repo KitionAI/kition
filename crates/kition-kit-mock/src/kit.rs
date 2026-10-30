@@ -476,6 +476,8 @@ impl Kit {
         };
         let commands = [
             CommandInfo {
+                // Searched, never listed (an agent finds the command by words its title lacks).
+                keywords: vec!["Boilerplate".to_owned(), "Lorem ipsum".to_owned()],
                 id: "text.append".to_owned(),
                 title: "Append text".to_owned(),
                 description: Some("Appends text to the end of the document.".to_owned()),
@@ -493,6 +495,7 @@ impl Kit {
                 shortcut: None,
             },
             CommandInfo {
+                keywords: Vec::new(),
                 id: "text.clear".to_owned(),
                 title: "Clear".to_owned(),
                 description: Some("Removes all text.".to_owned()),
@@ -505,6 +508,7 @@ impl Kit {
                 shortcut: None,
             },
             CommandInfo {
+                keywords: Vec::new(),
                 id: "edit.undo".to_owned(),
                 title: "Undo".to_owned(),
                 description: None,

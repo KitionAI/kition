@@ -196,3 +196,117 @@ async fn an_agent_drafts_headless_and_the_person_merges() {
         eprintln!("skipped: no Sheet or Slide executable");
     }
 }
+
+/// The kits whose drafts are replicas (`agent.drafts` and `agent.objectModel`), with their
+/// conformance fixture and its `edit.json` steps, from the sibling kit checkouts that are built.
+fn replica_draft_kits() -> Vec<(String, PathBuf, PathBuf, Value)> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let mut kits = Vec::new();
+    for entry in std::fs::read_dir(&root).into_iter().flatten().flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some(kit) = name.strip_prefix("kition-") else { continue };
+        let Ok(text) = std::fs::read_to_string(entry.path().join("kit.json")) else { continue };
+        let Ok(manifest) = serde_json::from_str::<Value>(&text) else { continue };
+        if manifest["agent"]["drafts"] != true || manifest["agent"]["objectModel"] != true {
+            continue;
+        }
+        let Some(executable) = binary(kit) else { continue };
+        let Some(extension) = manifest["formats"]
+            .as_array()
+            .and_then(|formats| formats.iter().find(|format| format["role"] == "edit"))
+            .and_then(|format| format["extensions"][0].as_str())
+        else {
+            continue;
+        };
+        let fixture = entry.path().join("conformance").join(format!("basic.{extension}"));
+        let Ok(edit) = std::fs::read_to_string(entry.path().join("conformance/edit.json")) else { continue };
+        let Ok(edit) = serde_json::from_str::<Value>(&edit) else { continue };
+        if fixture.is_file() && edit["steps"].as_array().is_some_and(|steps| !steps.is_empty()) {
+            let prefix = manifest["agent"]["prefix"].as_str().unwrap_or(kit).to_owned();
+            kits.push((prefix, executable, fixture, edit["steps"].clone()));
+        }
+    }
+    kits.sort_by(|a, b| a.0.cmp(&b.0));
+    kits
+}
+
+async fn start(workspace: &Path, executable: &Path) -> (Server, tokio::process::Child) {
+    let mut child = tokio::process::Command::new(MCP)
+        .arg("--workspace")
+        .arg(workspace)
+        .arg("--kit")
+        .arg(executable)
+        .env_remove("KITION_LICENSE")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap_or_else(|err| panic!("{err}"));
+    let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+        panic!("no pipes");
+    };
+    let mut server = Server { stdin, lines: BufReader::new(stdout).lines(), next: 0 };
+    server.request("initialize", json!({ "protocolVersion": "2025-06-18" })).await;
+    (server, child)
+}
+
+/// What a live `<prefix>_inspect` answers about the document, without its preview and without
+/// object ids, which some kits number per session (a replica opened first takes the next ones).
+async fn live_state(server: &mut Server, prefix: &str, path: &str) -> Value {
+    let answer = server.tool(&format!("{prefix}_inspect"), json!({ "path": path, "preview": false, "draft": false })).await;
+    assert_eq!(answer["isError"], false, "{answer}");
+    without_ids(answer["structuredContent"].clone())
+}
+
+fn without_ids(value: Value) -> Value {
+    match value {
+        Value::Object(map) => Value::Object(map.into_iter().filter(|(key, _)| key != "id").map(|(key, value)| (key, without_ids(value))).collect()),
+        Value::Array(items) => Value::Array(items.into_iter().map(without_ids).collect()),
+        other => other,
+    }
+}
+
+/// KHP A12 to A15: a replica draft never stands in for the file. Editing it leaves the file byte
+/// for byte, live reads in the same server and after a restart see the file, not the draft, and
+/// the draft keeps its edit (regression: cases sheet.agent.draft/east-update and
+/// note.agent.draft/new-task, where the draft replica opened under the file's own name was
+/// found by the file's path).
+#[tokio::test]
+async fn a_replica_draft_never_changes_or_stands_in_for_the_file() {
+    let kits = replica_draft_kits();
+    if kits.is_empty() {
+        eprintln!("skipped: no built kit keeps replica drafts");
+        return;
+    }
+    for (prefix, executable, fixture, steps) in kits {
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        let workspace = dir.path();
+        let path = fixture.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+        let file = workspace.join(&path);
+        std::fs::copy(&fixture, &file).unwrap_or_else(|err| panic!("{err}"));
+        let original = sha256(&file);
+
+        let (mut server, mut child) = start(workspace, &executable).await;
+        let before = live_state(&mut server, &prefix, &path).await;
+        let ran = server.tool(&format!("{prefix}_run"), json!({ "path": path, "draft": true, "steps": steps })).await;
+        assert_eq!(ran["isError"], false, "{prefix}: {ran}");
+        assert_eq!(sha256(&file), original, "{prefix}: the draft edit wrote the file");
+        assert_eq!(live_state(&mut server, &prefix, &path).await, before, "{prefix}: a live read saw the draft");
+        drop(server);
+        let _ = child.kill().await;
+        assert_eq!(sha256(&file), original, "{prefix}: stopping the server wrote the file");
+
+        // A new server opens the draft first, then the file: the file is still the file.
+        let (mut server, mut child) = start(workspace, &executable).await;
+        let draft = server.tool(&format!("{prefix}_inspect"), json!({ "path": path, "preview": false, "draft": true })).await;
+        assert_eq!(draft["isError"], false, "{prefix}: {draft}");
+        let live = live_state(&mut server, &prefix, &path).await;
+        assert_eq!(live, before, "{prefix}: after a restart, a live read saw the draft");
+        let state = |answer: &Value| json!({ "summary": answer["summary"], "details": answer["details"], "content": answer["content"] });
+        assert_ne!(state(&without_ids(draft["structuredContent"].clone())), state(&live), "{prefix}: the draft lost its edit");
+        drop(server);
+        let _ = child.kill().await;
+        assert_eq!(sha256(&file), original, "{prefix}: the file changed before any merge");
+    }
+}

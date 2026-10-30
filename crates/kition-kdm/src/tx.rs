@@ -609,8 +609,7 @@ impl<'a> Tx<'a> {
     fn field(&self, id: &ObjectId, field: &str) -> Result<(&'a str, &'a str, &'a FieldDef)> {
         let ty = self.type_of(id)?;
         let schema: &'a Schema = self.schema;
-        let (name, def) =
-            schema.type_def(ty)?.fields.get_key_value(field).ok_or_else(|| KdmError::UnknownField { ty: ty.to_owned(), field: field.to_owned() })?;
+        let (name, def) = schema.type_def(ty)?.fields.get_key_value(field).ok_or_else(|| schema.unknown_field(ty, field))?;
         Ok((ty, name.as_str(), def))
     }
 

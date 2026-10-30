@@ -279,7 +279,21 @@ impl Schema {
     }
 
     pub fn field(&self, ty: &str, field: &str) -> Result<&FieldDef> {
-        self.type_def(ty)?.fields.get(field).ok_or_else(|| KdmError::UnknownField { ty: ty.to_owned(), field: field.to_owned() })
+        self.type_def(ty)?.fields.get(field).ok_or_else(|| self.unknown_field(ty, field))
+    }
+
+    /// The error for `field`, which `ty` does not have, naming the fields it has.
+    pub fn unknown_field(&self, ty: &str, field: &str) -> KdmError {
+        let names: Vec<&str> = self.types.get(ty).map(|def| def.fields.keys().map(String::as_str).collect()).unwrap_or_default();
+        let mut hint = String::new();
+        if field.contains('.') || field.contains('/') {
+            hint.push_str("; a field is one name, not a path: load the nested object and set its own fields");
+        }
+        if !names.is_empty() {
+            let shown: Vec<&str> = names.iter().copied().take(40).collect();
+            hint.push_str(&format!("; its fields: {}{}", shown.join(", "), if names.len() > shown.len() { ", …" } else { "" }));
+        }
+        KdmError::UnknownField { ty: ty.to_owned(), field: field.to_owned(), hint }
     }
 
     /// Checks a value for a register field. Container fields take no value; use their operations.
@@ -287,7 +301,14 @@ impl Schema {
         let def = self.field(ty, field)?;
         let invalid = |reason: String| KdmError::InvalidValue { ty: ty.to_owned(), field: field.to_owned(), reason };
         if def.kind.is_container() {
-            return Err(invalid("is a container; use its operations".into()));
+            let ops = match def.kind {
+                FieldKind::Text => "text.insert, text.delete, text.set, text.mark, text.unmark",
+                FieldKind::List => "list.insert, list.move, list.remove",
+                FieldKind::Tree => "tree.insert, tree.move",
+                FieldKind::Map => "map.set, map.delete",
+                _ => "its operations",
+            };
+            return Err(invalid(format!("is a container, not a value: change it with {ops}, or set the fields of the objects it holds")));
         }
         if value.is_null() {
             return if def.optional { Ok(()) } else { Err(invalid("is required".into())) };

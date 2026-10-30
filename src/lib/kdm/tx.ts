@@ -621,7 +621,7 @@ export class Tx {
   private field(id: ObjectId, field: string): { ty: string; def: FieldDef } {
     const ty = this.typeOf(id)
     const fields = this.schema.types[ty].fields
-    if (!Object.hasOwn(fields, field)) throw errors.unknownField(ty, field)
+    if (!Object.hasOwn(fields, field)) throw errors.unknownField(ty, field, Object.keys(fields).sort())
     return { ty, def: fields[field] }
   }
 

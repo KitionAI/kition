@@ -48,6 +48,11 @@ fn checks_register_values() {
     assert!(schema.check_value("Shape", "image", &json!({ "hash": "ab" })).is_err());
     assert!(schema.check_value("Shape", "label", &json!("text")).is_err());
     assert!(matches!(schema.check_value("Shape", "nope", &json!(1)), Err(KdmError::UnknownField { .. })));
+    // What to write instead: the type's fields, and that a field is one name, not a path.
+    let unknown = schema.check_value("Shape", "look.line", &json!(1)).unwrap_err().to_string();
+    assert!(unknown.contains("its fields:") && unknown.contains("kind") && unknown.contains("one name, not a path"), "{unknown}");
+    let container = schema.check_value("Shape", "label", &json!("text")).unwrap_err().to_string();
+    assert!(container.contains("text.insert"), "{container}");
 }
 
 #[test]

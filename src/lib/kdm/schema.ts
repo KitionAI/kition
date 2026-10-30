@@ -266,7 +266,7 @@ export function typeDef(schema: Schema, ty: string): TypeDef {
 
 export function fieldDef(schema: Schema, ty: string, field: string): FieldDef {
   const def = typeDef(schema, ty)
-  if (!Object.hasOwn(def.fields, field)) throw errors.unknownField(ty, field)
+  if (!Object.hasOwn(def.fields, field)) throw errors.unknownField(ty, field, Object.keys(def.fields).sort())
   return def.fields[field]
 }
 
@@ -278,7 +278,7 @@ export function checkValue(schema: Schema, ty: string, field: string, value: unk
 /** `checkValue` answering the value as the KDM stores it: a checked JSON copy (see `toJson`). */
 export function checkedValue(schema: Schema, ty: string, field: string, value: unknown): JsonValue {
   const def = fieldDef(schema, ty, field)
-  if (isContainer(def.kind)) throw errors.invalidValue(ty, field, 'is a container; use its operations')
+  if (isContainer(def.kind)) throw errors.invalidValue(ty, field, containerAdvice(def.kind))
   if (value === null || value === undefined) {
     if (def.optional) return null
     throw errors.invalidValue(ty, field, 'is required')
@@ -317,4 +317,15 @@ export function checkedValue(schema: Schema, ty: string, field: string, value: u
   }
   if (!ok) throw errors.invalidValue(ty, field, `expects a ${def.kind} value`)
   return json
+}
+
+/** As the Rust `Schema::check_value`: which operations change a container field. */
+function containerAdvice(kind: string): string {
+  const ops: Record<string, string> = {
+    text: 'text.insert, text.delete, text.set, text.mark, text.unmark',
+    list: 'list.insert, list.move, list.remove',
+    tree: 'tree.insert, tree.move',
+    map: 'map.set, map.delete',
+  }
+  return `is a container, not a value: change it with ${ops[kind] ?? 'its operations'}, or set the fields of the objects it holds`
 }

@@ -236,6 +236,11 @@
         "shortcut": {
           "type": "string",
           "description": "The default shortcut, for example Cmd+Shift+N."
+        },
+        "keywords": {
+          "type": "array",
+          "description": "Words a command search finds the command by that its id, title and description do not say, for example the effect names effect.apply takes. Searched, not shown.",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },
