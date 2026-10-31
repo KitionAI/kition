@@ -164,8 +164,8 @@ forks. Kition does not send pull requests upstream and expects to diverge.
   a clone of the upstream repository with its full history, so newer upstream
   work can still be merged. `KitionAI/kition-photo` started from Kition Photo
   `9c427a7a` (version 0.5.0).
-- The `README.md` of each kit repository opens with the upstream base: the
-  upstream repository, version, and commit. Update it at every sync.
+- A kit derived from an upstream project credits it only in the kit
+  repository's `NOTICE`; neither the README nor `kit.json` names it.
 - Branches:
   - `main` (default): the Kition line. All Kition work lands here through
     pull requests.
@@ -174,8 +174,7 @@ forks. Kition does not send pull requests upstream and expects to diverge.
 - Upstream sync is on demand: fetch upstream, merge it into a branch from
   `main`, and open a pull request. The merge must pass the kit's tests and the
   Kit Protocol conformance suite. Merge, do not rebase.
-- Releases are tagged on `main` as `v<kit-version>`; `kit.json` attribution
-  records the upstream revision included in the release.
+- Releases are tagged on `main` as `v<kit-version>`.
 
 ### 7.2 Rules that keep upstream merges cheap
 
@@ -191,15 +190,13 @@ forks. Kition does not send pull requests upstream and expects to diverge.
 3. **Offer generic changes upstream.** Extension points and bug fixes are
    proposed upstream as well; once accepted, the local diff disappears at the
    next sync.
-4. **Keep a change ledger.** `KITION_CHANGES.md` lists every modified upstream
-   file with the reason and the upstream pull request, if any. Review it at
-   every sync.
+4. **Credit upstream in the NOTICE.** A kit derived from an upstream project
+   credits it only in the kit repository's `NOTICE`; no change ledger is kept.
 5. **Product look through tokens.** Kition theming (colors, radii, fonts) is
    applied through egui style and visuals from a `kition-theme` crate fed by
    the same tokens as `docs/design.md`, not by editing upstream widgets.
 6. **Branding.** User-visible names, icons, and about screens show the Kition
-   kit name. Upstream names remain only in `NOTICE`, license files, and
-   attribution.
+   kit name. Upstream names appear only in the kit's `NOTICE`.
 
 ### 7.3 Workspace layout
 

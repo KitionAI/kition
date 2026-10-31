@@ -7,11 +7,6 @@
   "version": "0.3.22",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/cadcraft",
-    "version": "0.5.0",
-    "commit": "50ffb767c7277067a959135209a4cfce5af5d5e8"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_cad_sdk",

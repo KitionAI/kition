@@ -7,11 +7,6 @@
   "version": "0.4.20",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/photocraft",
-    "version": "0.5.0",
-    "commit": "9c427a7a2c792d326939f5b27b1d814a7c6321a7"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_photo_sdk",

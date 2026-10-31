@@ -7,11 +7,6 @@
   "version": "0.3.21",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/vectorcraft",
-    "version": "0.9.0",
-    "commit": "10f1c56a861869936af0027cef14b1cf5d8cf515"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_vector_sdk",

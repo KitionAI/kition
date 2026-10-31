@@ -7,11 +7,6 @@
   "version": "0.3.18",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/pdfcraft",
-    "version": "0.6.0",
-    "commit": "ae4f5d44f338e54bdbe116117009453639e3e90a"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_pdf_sdk",

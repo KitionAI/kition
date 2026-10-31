@@ -134,7 +134,7 @@ kit repository (for example KitionAI/kition-photo, standalone, private)
   web/                            the kit's own editor on @kition/kit-editor; with the engine,
                                   the kit package (web/scripts/build-engine.sh, pnpm build)
   apps/kit-<kit>                  the headless Kit Protocol executable (agent)
-  KITION_CHANGES.md               every upstream file Kition changed, and why
+  NOTICE                          credits the upstream project the kit derives from, if any
 
 Kition (this repository)
   kits/sdks.json                  every kit engine: crate, module, class, and its contract-check edit
@@ -677,8 +677,7 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
 Kit repository:
 
 1. Create the standalone repository from upstream as a clone, never a GitHub
-   fork. Note the upstream base in the README and keep `KITION_CHANGES.md`
-   current.
+   fork. Credit the upstream project only in the kit's `NOTICE`.
 2. Add `crates/kition-<kit>-sdk` on `kition-sdk` (section 3), with
    `check_contract` in its tests plus the kit's own tests.
 2b. Under engine contract 2, add kition-sdk's `kition-convergence` as a
@@ -979,8 +978,8 @@ Grid kits (Sheet):
 - An engine whose upstream draws with its UI toolkit (the Sheet kit's grid is
   egui) needs its own painting in the SDK: port the toolkit drawing (cell
   fills, borders, text, alignment, number formats) into the SDK crate, with
-  the faces the upstream web build uses, and say in `KITION_CHANGES.md` what is
-  not drawn yet.
+  the faces the upstream web build uses, and list what is not drawn yet in the
+  kit repository's gap list (the Sheet kit's `docs/gaps.md`).
 - Typing goes to the active cell and is entered on Enter, Tab, or an arrow, as
   in Excel; until then it is an overlay, so the document is not changed (and
   not dirty) by keys alone.

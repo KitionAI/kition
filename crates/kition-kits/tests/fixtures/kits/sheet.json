@@ -7,11 +7,6 @@
   "version": "0.4.37",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/gridcraft",
-    "version": "0.5.0",
-    "commit": "9f896c1249f40d18bf182199dc03042959be5f3f"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_sheet_sdk",

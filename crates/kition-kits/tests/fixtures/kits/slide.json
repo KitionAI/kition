@@ -7,11 +7,6 @@
   "version": "0.6.3",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/deckcraft",
-    "version": "0.5.0",
-    "commit": "a98df49b21632d69a3da994d35df1ea91dab41af"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_slide_sdk",

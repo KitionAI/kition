@@ -7,11 +7,6 @@
   "version": "0.1.0",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/figcraft",
-    "version": "0.11.2",
-    "commit": "43af145a12eacd1e87f5f5e6984c49b7da040288"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_fig_sdk",

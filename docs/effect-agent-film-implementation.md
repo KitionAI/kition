@@ -23,7 +23,7 @@ image. The sample has not been accepted as a commercially finished film.
 | FFmpeg and ffprobe | Prepare the soundtrack and independently decode and inspect the exported movie |
 | Playwright Chromium | Assembles preview sheets; a separate delivery check verifies browser playback |
 
-Neither Effect Craft nor Remotion participates in this sample's build or export.
+No other editor or Remotion participates in this sample's build or export.
 The recipe is authored JavaScript, not a prompt interpreted by the renderer.
 Running it does not invoke Claude, Codex, or a model API. Although Kition also
 exposes Effect commands through its kit MCP interface, this runner directly

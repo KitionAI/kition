@@ -165,8 +165,8 @@ own interaction tests live in the kition-table repository and run there.
   `kition_sdk::testing::check_contract` in its tests and `pnpm check:kit-sdks`
   once built. Contract changes happen in kition-sdk and bump the version there
   and in `src/features/kits/sdk/kitSdk.ts` together.
-- Kit repositories are standalone clones (never GitHub forks). Log every
-  upstream file change in their `KITION_CHANGES.md`.
+- Kit repositories are standalone clones (never GitHub forks). A kit derived
+  from an upstream project credits it only in the kit's `NOTICE`.
 - Never run a kit engine on the page's thread, never write a kit file except
   through `PUT /v1/kits/files`, and never overwrite unsaved edits when the
   file changes on disk.

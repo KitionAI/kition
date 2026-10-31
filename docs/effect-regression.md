@@ -126,20 +126,21 @@ cases and independently reviewed expectations as these areas become acceptance r
 
 ## Deliberate reference maintenance
 
-This is a one-time capture workflow, separate from normal testing. It needs a local kit repository
-containing the pinned upstream Git object, a compatible Rust toolchain (1.95 or newer), and the
+This is a one-time capture workflow, separate from normal testing. It needs a local reference
+repository containing the pinned commit (given in full, 40 hex digits), a compatible Rust toolchain (1.95 or newer), and the
 reference engine's Cargo dependencies. It extracts the exact commit into a temporary directory;
-it neither checks out nor modifies the kit repository. Compiled reference dependencies are cached
+it neither checks out nor modifies the reference repository. Compiled reference dependencies are cached
 in the system temporary directory, or in an explicit `CARGO_TARGET_DIR`.
 The adapter wires the reference expression evaluator and syntax checker into its session; a plain
 command session without those services would silently omit expression evaluation.
 
 ```sh
-node scripts/effect-regression/capture.mjs <kit-repository> <new-candidate.json>
+node scripts/effect-regression/capture.mjs <reference-repository> <commit> <new-candidate.json>
 node scripts/effect-regression/run.mjs <new-candidate.json>
 ```
 
-Capture writes only a new candidate and refuses to overwrite an existing file. Review case changes,
+Capture writes only a new candidate and refuses to overwrite an existing file. It records the
+commit, and the reference engine crate's version when its `Cargo.toml` (or the workspace's) states one. Review case changes,
 reference provenance, and frame/state differences before replacing the tracked baseline. Default
 tests have no update flag and never call the capture adapter. Once reviewed and committed, the
 case definitions and baseline are sufficient for future regressions without the reference source.

@@ -8,10 +8,10 @@ import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 import { cases } from './cases.mjs'
 
-const [kitRepository, candidate] = process.argv.slice(2)
-if (!kitRepository || !candidate) throw new Error('Usage: node scripts/effect-regression/capture.mjs <kit-repository> <new-candidate.json>')
-const manifest = JSON.parse(await fs.readFile(path.join(kitRepository, 'kit.json'), 'utf8'))
-const revision = manifest.upstream.commit
+const [referenceRepository, revision, candidate] = process.argv.slice(2)
+if (!referenceRepository || !revision || !candidate) {
+  throw new Error('Usage: node scripts/effect-regression/capture.mjs <reference-repository> <commit> <new-candidate.json>')
+}
 if (!/^[0-9a-f]{40}$/.test(revision)) throw new Error('A full pinned reference commit is required')
 const directory = path.dirname(fileURLToPath(import.meta.url))
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-effect-reference-'))
@@ -20,8 +20,16 @@ try {
   const probe = path.join(temporary, 'probe')
   await fs.mkdir(source)
   await fs.mkdir(path.join(probe, 'src'), { recursive: true })
-  const archive = execFileSync('git', ['-C', path.resolve(kitRepository), 'archive', revision], { maxBuffer: 128 * 1024 * 1024 })
+  const archive = execFileSync('git', ['-C', path.resolve(referenceRepository), 'archive', revision], { maxBuffer: 128 * 1024 * 1024 })
   execFileSync('tar', ['-xf', '-', '-C', source], { input: archive })
+  // The reference's version is its engine crate's (or, when the crate inherits it, its workspace's).
+  const sectionVersion = (text, section) => {
+    const body = text.split(new RegExp(`^\\[${section.replace('.', '\\.')}\\]`, 'm'))[1]?.split(/^\[/m)[0] ?? ''
+    return /^version\s*=\s*"([^"]+)"/m.exec(body)?.[1]
+  }
+  const engineManifest = await fs.readFile(path.join(source, 'crates', 'engine', 'Cargo.toml'), 'utf8')
+  const workspaceManifest = await fs.readFile(path.join(source, 'Cargo.toml'), 'utf8').catch(() => '')
+  const version = sectionVersion(engineManifest, 'package') ?? sectionVersion(workspaceManifest, 'workspace.package')
   const dependencies = await Promise.all(['engine', 'expr'].map(async alias => {
     const crateDirectory = path.join(source, 'crates', alias)
     const crateManifest = await fs.readFile(path.join(crateDirectory, 'Cargo.toml'), 'utf8')
@@ -60,7 +68,7 @@ try {
   }
   const baseline = {
     schema: 1, reference: {
-      version: manifest.upstream.version, commit: revision, adapter: 'command-session-expressions-cpu-rgba8',
+      ...(version ? { version } : {}), commit: revision, adapter: 'command-session-expressions-cpu-rgba8',
       compiler: execFileSync('rustc', ['--version'], { encoding: 'utf8' }).trim(),
       cargoLockSha256: createHash('sha256').update(await fs.readFile(path.join(probe, 'Cargo.lock'))).digest('hex'),
     },

@@ -7,11 +7,6 @@
   "version": "0.3.21",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/effectcraft",
-    "version": "0.7.0",
-    "commit": "4b58cd2eb733bdc7ad39161e93dd8e2ff4af6416"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_effect_sdk",

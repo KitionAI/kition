@@ -6,11 +6,6 @@
   "name": "Film",
   "version": "0.5.4",
   "license": "Apache-2.0",
-  "upstream": {
-    "repository": "https://github.com/storytold/filmcraft",
-    "version": "0.5.0",
-    "commit": "7bd76212629a067a9d1c5426d751de9faf4664b7"
-  },
   "engine": {
     "module": "kition_film_sdk",
     "class": "FilmDocument",

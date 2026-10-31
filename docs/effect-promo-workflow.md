@@ -104,7 +104,7 @@ This runner additionally requires the installed `video-shotcraft` skill's audio
 assets under `$CODEX_HOME/skills` (default `$HOME/.codex/skills`). It uses four
 Mixkit sound-effect cues, with exact source URLs recorded in `audio-cues.json`,
 and no music bed. The skill supplies guidance and sound assets; Effect builds
-and encodes the film without Effect Craft or Remotion.
+and encodes the film without any other editor or Remotion.
 
 This is a direction study, not an accepted commercial-quality baseline. The
 task trace is revealed from a completed screenshot, not recorded live. Camera

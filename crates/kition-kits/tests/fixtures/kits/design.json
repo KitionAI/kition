@@ -7,11 +7,6 @@
   "version": "0.3.9",
   "license": "Apache-2.0",
   "distribution": "plugin",
-  "upstream": {
-    "repository": "https://github.com/storytold/designcraft",
-    "version": "0.6.0",
-    "commit": "a9124a0517594ce9872f73637e7b841a4967bcf9"
-  },
   "engine": {
     "runtime": "rust-wasm",
     "module": "kition_design_sdk",
