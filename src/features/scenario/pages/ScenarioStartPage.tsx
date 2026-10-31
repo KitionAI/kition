@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { KitionLogoMark } from '@/components/KitionLogoMark'
 import type { ScenarioDraftAttachment } from '@/features/scenario/types'
 import { ScenarioDropZone } from '@/features/scenario/components/ScenarioDropZone'
 import { ScenarioInput } from '@/features/scenario/components/ScenarioInput'
@@ -118,13 +119,7 @@ export function ScenarioStartPage({ onSubmit }: ScenarioStartPageProps) {
       >
         <div className="flex w-full max-w-[640px] flex-col items-stretch gap-6">
           <div className="flex items-center gap-3">
-            <span
-              data-scenario-logo=""
-              aria-hidden
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-xs font-bold text-background"
-            >
-              K
-            </span>
+            <KitionLogoMark data-scenario-logo="" alt="" aria-hidden small className="size-6" />
             <h1
               data-testid="scenario-heading"
               className="text-[28px] font-bold leading-none text-foreground"

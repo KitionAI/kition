@@ -45,15 +45,19 @@ def write_kits():
 def main():
     brand = ROOT / 'public/brand'
     write(brand / 'kition-symbol.svg', mark.symbol_svg())
+    write(brand / 'kition-symbol-dark.svg', mark.symbol_dark_svg())
     write(brand / 'kition-icon-flat.svg', mark.flat_icon_svg())
     write(brand / 'kition-icon-small.svg', mark.small_icon_svg())
     write(brand / 'kition-lockup.svg', mark.lockup_svg())
+    write(brand / 'kition-lockup-dark.svg', mark.lockup_dark_svg())
     write_kits()
 
-    tile = mark.icon_3d_tile(512).resize((256, 256), mark.Image.LANCZOS)
+    tile = mark.icon_tile(256)
     for target in ('public/logo-mark.png', 'public/onboarding/logo.png', 'docs/readme/kition-logo-mark.png'):
         save(tile, ROOT / target)
     save(mark.small_icon_png(32), ROOT / 'public/favicon.png')
+    save(mark.small_icon_png(16), ROOT / 'public/favicon-16.png')
+    save(mark.icon_tile(180, square=True), ROOT / 'public/brand/kition-apple-touch-icon.png')
 
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / 'app-icon.png'

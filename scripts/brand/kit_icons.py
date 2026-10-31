@@ -153,12 +153,21 @@ def glyph(kit):
     raise ValueError(f'unknown kit {kit.id}')
 
 
+TILE_RADIUS = 58
+TILE_TINT = .16
+TILE_STROKE_OPACITY = '.18'
+
+
+def tile_svg(hue):
+    """The soft tile every icon sits on (kits and the Kition mark): a light tint of `hue` with a faint rim."""
+    return (f'<rect width="256" height="256" rx="{TILE_RADIUS}" fill="{tint(hue, TILE_TINT)}"/>'
+            f'<rect x="1.5" y="1.5" width="253" height="253" rx="56.5" fill="none" stroke="{hue}" '
+            f'stroke-opacity="{TILE_STROKE_OPACITY}" stroke-width="3"/>')
+
+
 def icon_svg(kit):
     """The app icon: a flat tile in a light tint of the hue, with the glyph in the hue."""
-    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">'
-            f'<rect width="256" height="256" rx="58" fill="{tint(kit.hue, .16)}"/>'
-            f'<rect x="1.5" y="1.5" width="253" height="253" rx="56.5" fill="none" stroke="{kit.hue}" stroke-opacity=".18" stroke-width="3"/>'
-            f'{glyph(kit)}</svg>\n')
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">{tile_svg(kit.hue)}{glyph(kit)}</svg>\n'
 
 
 # Small cut: solid silhouettes on a 16x16 pixel grid for file trees and tabs. Each kit is its own

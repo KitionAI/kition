@@ -27,15 +27,43 @@ def _contrast(a, b):
 
 
 class MarkTests(unittest.TestCase):
-    def test_grid_is_centred_and_spans_62_percent(self):
-        stem, keys, slots = mark.grid_cells(46, 11)
-        self.assertEqual(stem, (48.0, 48.0, 46, 160))
-        self.assertEqual(len(keys), 3)
-        self.assertEqual(len(slots), 3)
-        self.assertAlmostEqual(160 / 256, 0.625)
+    def test_mosaic_k_sits_on_a_3x3_grid(self):
+        stem, keys, slots = mark.grid_cells()
+        self.assertEqual(stem, (58, 52, 44, 152))
+        self.assertEqual(keys, [(166, 52, 44, 44), (112, 106, 44, 44), (166, 160, 44, 44)])
+        self.assertEqual(slots, [(112, 52, 44, 44), (166, 106, 44, 44), (112, 160, 44, 44)])
+        # Stem, keys and slots fill the grid exactly once.
+        cells = {(x, y) for x, y, _, _ in keys + slots}
+        self.assertEqual(len(cells), 6)
+
+    def test_keys_wear_kit_hues_and_the_stem_is_kition_purple(self):
+        kits = {kit.id: kit for kit in kit_icons.KITS}
+        self.assertEqual(mark.ICON.stem, '#5645d4')
+        self.assertEqual(mark.ICON.keys, ('#d63e95', '#0aa3cf', '#f0701a'))
+        self.assertEqual(mark.ICON.keys, tuple(kits[k].hue for _, k in mark.KEYS))
+        self.assertEqual(mark.DARK.stem, kits['note'].brand_dark)
+        self.assertEqual(mark.DARK.keys, tuple(kits[k].brand_dark for _, k in mark.KEYS))
+        for palette in (mark.ICON, mark.LIGHT, mark.DARK):
+            for colour in (palette.stem, palette.slot, *palette.keys):
+                self.assertRegex(colour, HEX)
+            self.assertLess(palette.slot_opacity, .25)
+
+    def test_app_icon_uses_the_kit_icon_tile(self):
+        icon = mark.flat_icon_svg()
+        self.assertIn(kit_icons.tile_svg('#5645d4'), icon)
+        self.assertIn('fill="#e4e1f8"', icon)
+        self.assertEqual(icon.count('fill-opacity="0.16"'), 3)
+
+    def test_symbols_have_slots_and_no_tile(self):
+        for svg, palette in ((mark.symbol_svg(), mark.LIGHT), (mark.symbol_dark_svg(), mark.DARK)):
+            self.assertNotIn('rx="58"', svg)
+            self.assertEqual(svg.count(f'fill-opacity="{palette.slot_opacity:g}"'), 3)
+            for colour in (palette.stem, *palette.keys):
+                self.assertIn(f'fill="{colour}"', svg)
 
     def test_svg_masters_have_no_live_text_or_rasters(self):
-        for svg in (mark.flat_icon_svg(), mark.small_icon_svg(), mark.symbol_svg(), mark.lockup_svg()):
+        for svg in (mark.flat_icon_svg(), mark.small_icon_svg(), mark.symbol_svg(), mark.symbol_dark_svg(),
+                    mark.lockup_svg(), mark.lockup_dark_svg()):
             self.assertNotIn('<text', svg)
             self.assertNotIn('<image', svg)
             self.assertIn('viewBox=', svg)
@@ -43,10 +71,29 @@ class MarkTests(unittest.TestCase):
     def test_small_cut_has_no_slots(self):
         self.assertNotIn('fill-opacity', mark.small_icon_svg())
 
-    def test_small_png_has_transparent_corners(self):
-        image = mark.small_icon_png(32)
-        self.assertEqual(image.size, (32, 32))
-        self.assertEqual(image.getpixel((0, 0))[3], 0)
+    def test_small_cut_sits_on_whole_pixels(self):
+        for size in mark.SMALL:
+            stem, keys = mark.small_cells(size)
+            for rect in [stem, *keys]:
+                self.assertTrue(all(float(v).is_integer() for v in rect), (size, rect))
+                x, y, w, h = rect
+                self.assertTrue(0 < x and x + w < size and 0 < y and y + h < size, (size, rect))
+
+    def test_small_pngs_have_transparent_corners(self):
+        for size in (16, 32):
+            image = mark.small_icon_png(size)
+            self.assertEqual(image.size, (size, size))
+            self.assertEqual(image.getpixel((0, 0))[3], 0)
+
+    def test_app_icon_sizes(self):
+        self.assertEqual(mark.icon_tile(256).size, (256, 256))
+        self.assertEqual(mark.icon_tile(256).getpixel((0, 0))[3], 0)
+        touch = mark.icon_tile(180, square=True)
+        self.assertEqual(touch.size, (180, 180))
+        self.assertEqual(touch.getpixel((0, 0))[3], 255)
+        icon = mark.app_icon(256)
+        self.assertEqual(icon.size, (256, 256))
+        self.assertEqual(icon.getpixel((0, 0))[3], 0)
 
 
 class KitIconTests(unittest.TestCase):

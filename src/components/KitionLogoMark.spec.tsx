@@ -15,12 +15,12 @@ afterEach(async () => {
   delete (window as typeof window & { kitionDesktop?: unknown }).kitionDesktop
 })
 
-async function render() {
+async function render(small = false) {
   container = document.createElement('div')
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container!)
-    root.render(createElement(KitionLogoMark, { className: 'size-10' }))
+    root.render(createElement(KitionLogoMark, { className: 'size-10', small }))
   })
   return container.querySelector('img')!
 }
@@ -36,5 +36,10 @@ describe('KitionLogoMark', () => {
     Object.assign(window, { kitionDesktop: { shell: 'tauri' } })
     const image = await render()
     expect(image.getAttribute('src')).toBe('/logo-mark.png')
+  })
+
+  it('uses the small cut at 32 px and below', async () => {
+    const image = await render(true)
+    expect(image.getAttribute('src')).toBe('/favicon.png')
   })
 })
