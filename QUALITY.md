@@ -109,7 +109,7 @@ directory `out/`.
 | Reference file in `expected/` | `<stem>.<WHAT>.<TOOL>.<ext>`: `<WHAT>` is a conversion (`WORDTOPDF`, `PPTXTOPDF`, …) or an extract (`VALUES`, `COMPOSITE`, `SCORECARD`); `<TOOL>` an upper-case tool token | `comments.WORDTOPDF.WPS.pdf`, `xlookup.VALUES.EXCEL.json`, `curves.COMPOSITE.PHOTOSHOP.png` |
 | Self reference (made by Kition, guards against regressions only) | `<stem>.<WHAT>.KITION.<ext>` | `page1.RENDER.KITION.png` |
 
-Tool tokens: `WPS`, `WORD`, `EXCEL`, `POWERPOINT`, `ACROBAT`, `PHOTOSHOP`, `M365WEB`, `POPPLER`, `GHOSTSCRIPT`, `PDFJS`, `PSDTOOLS`, `UPSTREAM` (the kit's upstream application, named in the kit repository's `ATTRIBUTION.md`), `KITION`.
+Tool tokens: `WPS`, `WORD`, `EXCEL`, `POWERPOINT`, `ACROBAT`, `PHOTOSHOP`, `M365WEB`, `POPPLER`, `GHOSTSCRIPT`, `PDFJS`, `PSDTOOLS`, `UPSTREAM` (the kit's upstream application, credited in the kit repository's `NOTICE`), `KITION`.
 
 ### `case.yaml`
 
