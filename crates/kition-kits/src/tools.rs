@@ -33,6 +33,10 @@ use crate::manager::{Caller, DocumentView, KitDefinition, KitError, KitManager};
 
 const PREVIEW_SIZE: u32 = 1024;
 const MAX_COMMANDS: usize = 12;
+/// Commands a page when `<prefix>_commands` lists every command (no query, KHP A5b): the default
+/// and the most a page may hold.
+const DEFAULT_LISTED: usize = 50;
+const MAX_LISTED: usize = 200;
 
 /// What a kit tool does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -244,16 +248,19 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         KitToolSpec {
             name: commands.clone(),
             description: format!(
-                "Search {name}'s editing commands ({}) by keywords. Returns command ids with their parameter notes; pass an id to {run}.",
+                "Search {name}'s editing commands ({}) by keywords. Returns command ids, what each does, and its parameters in one line; pass `detail: true` (or a command id as the query) for the full parameter schema. Without a query it lists every command by id, a page at a time (`cursor`, `limit`). Pass an id to {run}.",
                 agent.covers
             ),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "path": path_property(kit),
-                    "query": { "type": "string", "description": format!("Keywords to match in the command id, title, or description, for example {}.", agent.queries) }
+                    "query": { "type": "string", "description": format!("Keywords to match in the command id, title, or description, for example {}. Leave it out to list every command.", agent.queries) },
+                    "detail": { "type": "boolean", "description": "List each command's full parameter and result schemas instead of one line." },
+                    "cursor": { "type": "string", "description": "Without a query: the `next` of the previous page." },
+                    "limit": { "type": "integer", "minimum": 1, "maximum": MAX_LISTED, "description": format!("Without a query: commands a page, at most {MAX_LISTED} (default {DEFAULT_LISTED}).") }
                 },
-                "required": ["path", "query"]
+                "required": ["path"]
             }),
             writes: false,
         },
@@ -753,8 +760,7 @@ async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> S
     }
     match kits.commands(Caller::Agent, view.kit_id, Some(&view.document_id), Some(&words)).await {
         Ok(found) if !found.is_empty() => {
-            let near: Vec<String> =
-                found.iter().take(5).map(|c| format!("{} {}", c.id, c.description.as_deref().unwrap_or_default().trim_start_matches("Params: "))).collect();
+            let near: Vec<String> = found.iter().take(5).map(|c| format!("{} {}", c.id, c.description.as_deref().unwrap_or_default())).collect();
             format!(" — nearest commands: {}", near.join("; "))
         }
         _ => String::new(),
@@ -1214,17 +1220,22 @@ fn diagnostics_summary(what: &str, diagnostics: &[Value]) -> String {
 async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToolResult {
     let path = kit_path(input, kit)?;
     let query = text_field(input, "query");
+    let detail = input.get("detail").and_then(Value::as_bool) == Some(true);
+    let page = if query.is_empty() { Some(Page::from_input(input)?) } else { None };
     if let Some(document) = live(kits, kit, &path).await {
         let answer = kits.bridge().call(&document, "commands", json!({ "query": query })).await?;
         let found = answer["commands"].as_array().cloned().unwrap_or_default();
-        return Ok(listed_commands(&query, found));
+        return Ok(match page {
+            Some(page) => paged_commands(found, page, detail),
+            None => listed_commands_with(&query, found, detail),
+        });
     }
     let view = kits.open(Caller::Agent, &path).await?;
     let found = kits.commands(Caller::Agent, view.kit_id, Some(&view.document_id), Some(&query)).await?;
     let found = found
         .into_iter()
         .map(|command| {
-            json!({
+            let mut entry = json!({
                 "id": command.id,
                 "title": command.title,
                 "description": command.description,
@@ -1234,10 +1245,18 @@ async fn commands(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitT
                 "closest": command.closest,
                 "allWords": command.all_words,
                 "matched": command.matched,
-            })
+            });
+            // What a read command answers (KHP A1), so the agent knows the result's shape before it runs.
+            if let Some(output) = command.output {
+                entry["output"] = output;
+            }
+            entry
         })
         .collect();
-    let mut answer = listed_commands(&query, found);
+    if let Some(page) = page {
+        return Ok(paged_commands(found, page, detail));
+    }
+    let mut answer = listed_commands_with(&query, found, detail);
     if let Some(hint) = file_tool_hint(kit, &query) {
         answer.summary = format!("{hint}\n{}", answer.summary);
         answer.output["hint"] = json!(hint);
@@ -1291,15 +1310,102 @@ async fn create(kits: &KitManager, kit: &KitDefinition, input: &Value) -> KitToo
 /// A command as the search answers it: its id, title, and parameter schema (KHP A5: a
 /// ParameterSchemaSpec in its JSON Schema form, as the kit lists it), and `enabled: false` when it
 /// cannot run now.
+#[cfg(test)]
 fn compact_command(command: Value) -> Value {
+    detailed_command(command)
+}
+
+/// A command in full: its parameter schema (KHP A5), what it does, and what it answers. What
+/// `<prefix>_commands` gives for `detail: true` or a query that is the command's id.
+fn detailed_command(command: Value) -> Value {
     let mut out = json!({ "id": command["id"], "title": command["title"], "params": lean_params(&command["params"]) });
+    // What it does and when to choose it (KitCommand.description), and what a read command answers.
+    if command["description"].as_str().is_some_and(|description| !description.is_empty()) {
+        out["description"] = command["description"].clone();
+    }
+    if command["output"].is_object() {
+        out["output"] = command["output"].clone();
+    }
+    flags(&command, &mut out);
+    out
+}
+
+/// A command as a search lists it: its id and title, the first sentence of what it does, and its
+/// parameters as one line written from its schema (`{blank?: boolean, size?: number[]}`, enums as
+/// `a|b`), with what it answers. The schema in full is one call away (`detail: true`, or the id as
+/// the query). In khp-bench's pilot, command searches were the agents' largest input; listing
+/// every schema in full made them three times larger (an average of 1,800 characters a search with
+/// notation, 5,700 with schemas, 56% of it the schemas).
+fn brief_command(command: Value) -> Value {
+    let mut out = json!({ "id": command["id"], "title": command["title"], "params": signature(&command["params"]) });
+    if let Some(description) = command["description"].as_str().filter(|text| !text.is_empty()) {
+        out["description"] = Value::String(first_sentence(description, 140));
+    }
+    if let Some(returns) = lean_params(&command["params"]).get("returns").cloned() {
+        out["returns"] = returns;
+    } else if command["output"].is_object() {
+        out["returns"] = Value::String(signature(&command["output"]));
+    }
+    flags(&command, &mut out);
+    out
+}
+
+fn flags(command: &Value, out: &mut Value) {
     if command["matched"].as_array().is_some_and(|matched| !matched.is_empty()) {
         out["matched"] = command["matched"].clone();
     }
     if command["enabled"] == Value::Bool(false) {
         out["enabled"] = Value::Bool(false);
     }
-    out
+}
+
+/// The first sentence of `text`, at most `max` characters (cut at a word, with `…`).
+fn first_sentence(text: &str, max: usize) -> String {
+    let sentence = text.split_inclusive(". ").next().unwrap_or(text).trim();
+    if sentence.chars().count() <= max {
+        return sentence.to_owned();
+    }
+    let cut: String = sentence.chars().take(max).collect();
+    format!("{}…", cut.rsplit_once(' ').map_or(cut.as_str(), |(head, _)| head))
+}
+
+/// An object schema as one line: `{name: type, optional?: type (short note)}`.
+fn signature(schema: &Value) -> String {
+    let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+        return "{}".to_owned();
+    };
+    let required: Vec<&str> = schema.get("required").and_then(Value::as_array).map(|keys| keys.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+    // By name, whatever order the map keeps (serde_json's `preserve_order` differs between builds),
+    // so the line is the same in every host and a cached prompt prefix stays the same.
+    let mut named: Vec<(&String, &Value)> = properties.iter().collect();
+    named.sort_by(|a, b| a.0.cmp(b.0));
+    let fields: Vec<String> = named
+        .into_iter()
+        .map(|(name, property)| {
+            let mut field = format!("{name}{}: {}", if required.contains(&name.as_str()) { "" } else { "?" }, type_text(property));
+            if let Some(note) = property.get("description").and_then(Value::as_str).filter(|note| note.chars().count() <= 48) {
+                field.push_str(&format!(" ({note})"));
+            }
+            field
+        })
+        .collect();
+    format!("{{{}}}", fields.join(", "))
+}
+
+fn type_text(property: &Value) -> String {
+    if let Some(values) = property.get("enum").and_then(Value::as_array) {
+        let names: Vec<String> = values.iter().take(10).map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_owned)).collect();
+        return format!("{}{}", names.join("|"), if values.len() > 10 { "|…" } else { "" });
+    }
+    if let Some(branches) = property.get("oneOf").and_then(Value::as_array) {
+        return branches.iter().map(type_text).collect::<Vec<_>>().join("|");
+    }
+    match property.get("type").and_then(Value::as_str) {
+        Some("array") => format!("{}[]", property.get("items").map_or_else(|| "any".to_owned(), type_text)),
+        Some("object") if property.get("properties").is_some() => signature(property),
+        Some(kind) => kind.to_owned(),
+        None => "any".to_owned(),
+    }
 }
 
 /// An inspect answer's objects without what the agent does not need: object-model `ref`s (the
@@ -1326,10 +1432,67 @@ fn lean_shape(shape: &mut Value) {
     }
 }
 
+/// Where a listing of every command starts and how much of it a page holds (KHP A5b): `cursor` is
+/// the position after the previous page, as `next` gave it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Page {
+    start: usize,
+    limit: usize,
+}
+
+impl Page {
+    fn from_input(input: &Value) -> Result<Self, KitToolError> {
+        let start = match input.get("cursor") {
+            None | Some(Value::Null) => 0,
+            Some(Value::String(cursor)) if cursor.is_empty() => 0,
+            Some(Value::String(cursor)) => cursor.parse().map_err(|_| KitToolError::invalid(format!("`cursor` `{cursor}` is not a `next` this tool gave")))?,
+            Some(_) => return Err(KitToolError::invalid("`cursor` must be the string `next` gave")),
+        };
+        let limit = match input.get("limit") {
+            None | Some(Value::Null) => DEFAULT_LISTED,
+            Some(value) => value
+                .as_u64()
+                .and_then(|n| usize::try_from(n).ok())
+                .filter(|n| (1..=MAX_LISTED).contains(n))
+                .ok_or_else(|| KitToolError::invalid(format!("`limit` must be a whole number from 1 to {MAX_LISTED}")))?,
+        };
+        Ok(Self { start, limit })
+    }
+}
+
+/// Every command, by id, one page of them (KHP A5b): brief rows, or in full with `detail`; `next`
+/// while more follow, `total` always.
+fn paged_commands(mut found: Vec<Value>, page: Page, detail: bool) -> KitToolOutput {
+    found.sort_by(|a, b| a["id"].as_str().unwrap_or_default().cmp(b["id"].as_str().unwrap_or_default()));
+    let total = found.len();
+    let end = page.start.saturating_add(page.limit).min(total);
+    let listed: Vec<Value> =
+        found.into_iter().skip(page.start).take(page.limit).map(|command| if detail { detailed_command(command) } else { brief_command(command) }).collect();
+    let mut output = json!({ "commands": listed, "total": total });
+    let summary = if page.start >= total {
+        format!("No commands after the first {total}.")
+    } else if end < total {
+        output["next"] = json!(end.to_string());
+        format!("Commands {}–{end} of {total}, by id; pass `cursor: \"{end}\"` for the next page.", page.start + 1)
+    } else {
+        format!("Commands {}–{end} of {total}, by id.", page.start + 1)
+    };
+    KitToolOutput::new(summary, output)
+}
+
 /// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
+#[cfg(test)]
 fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
+    listed_commands_with(query, found, false)
+}
+
+/// The commands that matched as the tool answers them: brief rows ([`brief_command`]), or in full
+/// with `detail`; a command whose id is the query is always in full.
+fn listed_commands_with(query: &str, found: Vec<Value>, detail: bool) -> KitToolOutput {
+    let wanted = query.trim();
+    let shown = |command: Value| if detail || command["id"] == wanted { detailed_command(command) } else { brief_command(command) };
     if found.first().is_some_and(|command| command["closest"] == true) {
-        let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
+        let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(shown).collect();
         return KitToolOutput::new(
             format!("No command matches `{query}`; these are the closest by spelling. Try other words, for example what the command does."),
             json!({ "commands": listed, "total": 0 }),
@@ -1337,7 +1500,7 @@ fn listed_commands(query: &str, found: Vec<Value>) -> KitToolOutput {
     }
     let total = found.len();
     let every = found.iter().filter(|command| command["allWords"] == true || command["all_words"] == true).count();
-    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(compact_command).collect();
+    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).map(shown).collect();
     let words = query.split_whitespace().count();
     let mut summary = if words <= 1 || every == total {
         format!("{total} commands match `{query}`")
@@ -1661,6 +1824,29 @@ mod tests {
     }
 
     #[test]
+    fn a_search_lists_one_line_per_command_and_the_schema_on_request() {
+        let command = json!({
+            "id": "file.new", "title": "New slide", "enabled": true,
+            "description": "Starts a new presentation, from a theme and slide size or blank, replacing the open one in this session. More words.",
+            "params": { "type": "object", "required": ["theme"], "properties": {
+                "blank": { "type": "boolean" },
+                "size": { "type": "array", "items": { "type": "number" }, "description": "[w, h] in points" },
+                "theme": { "type": "string" },
+                "fit": { "enum": ["fill", "fit"] }
+            } }
+        });
+        let brief = brief_command(command.clone());
+        assert_eq!(brief["params"], "{blank?: boolean, fit?: fill|fit, size?: number[] ([w, h] in points), theme: string}");
+        assert_eq!(brief["description"], "Starts a new presentation, from a theme and slide size or blank, replacing the open one in this session.");
+        let listed = listed_commands_with("new", vec![command.clone()], false);
+        assert!(listed.output["commands"][0]["params"].is_string(), "a search lists one line");
+        let detailed = listed_commands_with("new", vec![command.clone()], true);
+        assert!(detailed.output["commands"][0]["params"]["properties"].is_object(), "detail lists the schema (KHP A5)");
+        let by_id = listed_commands_with("file.new", vec![command], false);
+        assert!(by_id.output["commands"][0]["params"]["properties"].is_object(), "a command named by its id is listed in full");
+    }
+
+    #[test]
     fn a_listed_schema_drops_what_repeats_it() {
         let params = json!({
             "type": "object",
@@ -1709,6 +1895,22 @@ mod tests {
         assert!(listed.get("enabled").is_none());
         let disabled = compact_command(json!({ "id": "edit.undo", "title": "Undo", "params": { "type": "object" }, "enabled": false }));
         assert_eq!(disabled["enabled"], false);
+        assert!(listed.get("description").is_none() && listed.get("output").is_none(), "nothing the kit did not say");
+    }
+
+    #[test]
+    fn listed_commands_say_what_they_do_and_what_they_answer() {
+        let output = json!({ "type": "object", "properties": { "value": {} } });
+        let listed = compact_command(json!({
+            "id": "cell.get",
+            "title": "Get Cell",
+            "description": "Reads one cell's value and formula without changing the sheet; use it before cell.set.",
+            "params": { "type": "object" },
+            "output": output,
+            "enabled": true,
+        }));
+        assert_eq!(listed["description"], "Reads one cell's value and formula without changing the sheet; use it before cell.set.");
+        assert_eq!(listed["output"], output, "a read command's answer shape (KHP A1)");
     }
 
     #[test]
@@ -1793,5 +1995,26 @@ mod tests {
         let wrong = wrong.1;
         assert!(wrong.contains("photo_*"), "{wrong}");
         assert_eq!(kit_path(&json!({ "path": "art/Logo.kvector" }), vector_kit).unwrap_or_else(|err| panic!("{}", err.message)), "art/Logo.kvector");
+    }
+
+    #[test]
+    fn without_a_query_every_command_is_listed_a_page_at_a_time_by_id() {
+        let command = |id: &str| json!({ "id": id, "title": id, "description": "Does one thing to the document.", "params": { "type": "object", "properties": { "n": { "type": "integer" } } }, "enabled": true, "mutates": true });
+        let found: Vec<Value> = ["c.three", "a.one", "b.two"].into_iter().map(command).collect();
+        let first = paged_commands(found.clone(), Page { start: 0, limit: 2 }, false);
+        let ids: Vec<&str> = first.output["commands"].as_array().into_iter().flatten().filter_map(|c| c["id"].as_str()).collect();
+        assert_eq!(ids, ["a.one", "b.two"]);
+        assert_eq!(first.output["total"], 3);
+        assert_eq!(first.output["next"], "2");
+        assert!(first.output["commands"][0]["params"].is_string(), "a page lists the compact signature");
+        let last = paged_commands(found.clone(), Page { start: 2, limit: 2 }, true);
+        assert_eq!(last.output["commands"][0]["id"], "c.three");
+        assert!(last.output.get("next").is_none());
+        assert!(last.output["commands"][0]["params"]["properties"].is_object(), "detail lists the schema");
+        assert_eq!(Page::from_input(&json!({})).unwrap(), Page { start: 0, limit: DEFAULT_LISTED });
+        assert_eq!(Page::from_input(&json!({ "cursor": "2", "limit": 7 })).unwrap(), Page { start: 2, limit: 7 });
+        assert!(Page::from_input(&json!({ "cursor": "x" })).is_err());
+        assert!(Page::from_input(&json!({ "limit": 0 })).is_err());
+        assert!(Page::from_input(&json!({ "limit": MAX_LISTED + 1 })).is_err());
     }
 }

@@ -8,6 +8,7 @@ export type KitCommandInfo = {
   menu?: string[] | null
   shortcut?: string | null
   params?: string | null
+  /** What the command does, when to choose it, and what it changes or answers (KitCommand::description). */
   description?: string
   schema?: unknown
   /** What the command answers, as one `ValueSchemaSpec` (KHP A1 `output.schema`). */

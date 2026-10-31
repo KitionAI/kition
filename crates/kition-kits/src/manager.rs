@@ -124,6 +124,8 @@ pub struct CommandView {
     pub group: String,
     /// JSON Schema for the command's params, as the kit's `commands.list` gives it.
     pub params: Value,
+    /// JSON Schema for what the command answers (KHP A1 `output.schema`), when the kit gives one.
+    pub output: Option<Value>,
     pub mutates: bool,
     pub enabled: bool,
     pub menu: Vec<String>,
@@ -663,6 +665,7 @@ impl KitManager {
                 description: command.description,
                 group: command.group,
                 params: command.params,
+                output: command.output,
                 mutates: command.mutates,
                 enabled: command.enabled,
                 menu: command.menu,

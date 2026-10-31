@@ -1,493 +1,201 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Kition kit tools (KHP agent tools, `<prefix>_*`)",
-  "description": "The arguments (`input`) and structured results (`output`) of every kit tool, as kition-kits-mcp and Kition's agent offer them, generated from crates/kition-kits (`kition-kits-mcp --schemas`). `<prefix>` is the kit's `kit.json` agent prefix. A failed call answers `isError: true` and `error` in its structured content, beside what it had done. `<prefix>_query` and `<prefix>_batch` arguments name the kit's object types and fields once the server has seen its `model.describe`.",
-  "tools": {
-    "<prefix>_inspect": {
-      "description": "Open a document (<formats>) in <Kit> and report the document. By default it also attaches a rendered preview to the next turn so you can see it. With `target` (for example {\"slide\": 3}) it previews only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
-      "writes": false,
-      "input": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          },
-          "preview": {
-            "type": "boolean",
-            "description": "Attach a rendered preview image. Defaults to true."
-          },
-          "target": {
-            "type": "object",
-            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
-            "properties": {
-              "slide": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "page": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "path": {
-                "type": "string"
-              },
-              "objectId": {
-                "type": "string"
-              },
-              "range": {
-                "type": "string"
-              },
-              "sheet": {
-                "type": "string"
-              },
-              "paragraphs": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
-                }
-              }
+  "$defs": {
+    "diagnostic": {
+      "properties": {
+        "code": {
+          "description": "Stable `<kit>.<name>`.",
+          "type": "string"
+        },
+        "fix": {
+          "description": "A command for `<prefix>_run` that may fix it; never run by the host itself.",
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object"
             }
           },
-          "scale": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "maximum": 2,
-            "description": "Preview pixels per document unit, up to 2 (default 1), for kits that render previews themselves."
-          },
-          "maxSize": {
-            "type": "integer",
-            "minimum": 16,
-            "maximum": 4096,
-            "description": "The most preview pixels on the longer side."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
-          }
+          "required": [
+            "command"
+          ],
+          "type": "object"
         },
-        "required": [
-          "path"
-        ]
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "The file's workspace path."
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
+          "type": "string"
+        },
+        "target": {
+          "description": "Empty for the whole document.",
+          "properties": {
+            "cell": {
+              "type": "string"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "page": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "sheet": {
+              "type": "string"
+            },
+            "slide": {
+              "minimum": 1,
+              "type": "integer"
+            }
           },
-          "summary": {
-            "type": "string",
-            "description": "One line on the document."
-          },
-          "dirty": {
-            "type": "boolean",
-            "description": "It has unsaved changes."
-          },
-          "canUndo": {
-            "type": "boolean"
-          },
-          "canRedo": {
-            "type": "boolean"
-          },
-          "details": {
-            "description": "What the kit reports about the document."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "document": {
-            "$ref": "#/$defs/document",
-            "description": "The document, when its open editor answered."
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
-          }
+          "type": "object"
         }
-      }
-    },
-    "<prefix>_commands": {
-      "description": "Search <Kit>'s editing commands (the kit's commands) by keywords. Returns command ids with their parameter notes; pass an id to <prefix>_run.",
-      "writes": false,
-      "input": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          },
-          "query": {
-            "type": "string",
-            "description": "Keywords to match in the command id, title, or description, for example `<keywords>`."
-          }
-        },
-        "required": [
-          "path",
-          "query"
-        ]
       },
-      "output": {
-        "type": "object",
-        "properties": {
-          "commands": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "enabled": {
-                  "type": "boolean"
-                },
-                "mutates": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "id"
-              ]
-            }
-          },
-          "total": {
-            "type": "integer",
-            "description": "How many matched; at most 40 are listed."
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
-          }
-        },
-        "required": []
-      }
+      "required": [
+        "code",
+        "severity",
+        "target",
+        "message"
+      ],
+      "type": "object"
     },
-    "<prefix>_run": {
-      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands. Stops at the first failing step. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
-      "writes": true,
-      "input": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          },
-          "steps": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "items": {
-              "type": "object",
-              "properties": {
-                "command": {
-                  "type": "string",
-                  "description": "A command id from <prefix>_commands, for example `<command>`."
-                },
-                "params": {
-                  "type": "object",
-                  "description": "Command parameters."
-                }
-              },
-              "required": [
-                "command"
-              ]
-            }
-          },
-          "save": {
-            "type": "boolean",
-            "description": "Save the file after the steps. Defaults to true; a draft is never saved."
-          },
-          "target": {
-            "type": "object",
-            "description": "The part the steps act on, as in the inspect tool's target, for example {\"slide\": 3} (counted from 1). The kit goes there first, so the ids the inspect tool listed for that part work.",
-            "properties": {
-              "slide": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "page": {
-                "type": "integer",
-                "minimum": 1
-              }
-            }
-          },
-          "preview": {
-            "type": "boolean",
-            "description": "Attach a rendered preview of the whole document. Defaults to false; use the inspect tool with a target to look at one part."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
-          }
+    "document": {
+      "properties": {
+        "canRedo": {
+          "type": "boolean"
         },
-        "required": [
-          "path",
-          "steps"
-        ]
+        "canUndo": {
+          "type": "boolean"
+        },
+        "details": {
+          "description": "What the kit reports about the document."
+        },
+        "dirty": {
+          "description": "It has unsaved changes.",
+          "type": "boolean"
+        },
+        "draft": {
+          "description": "This is the agent's draft of the file.",
+          "type": "boolean"
+        },
+        "path": {
+          "description": "The file's workspace path.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "summary": {
+          "description": "One line on the document.",
+          "type": "string"
+        }
       },
-      "output": {
-        "type": "object",
-        "properties": {
-          "completed": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "command": {
-                  "type": "string"
-                },
-                "changed": {
-                  "type": "boolean"
-                },
-                "result": {},
-                "truncated": {
-                  "type": "object",
-                  "description": "The result was cut to fit: `shown` of `total` items (of `field` when the result is an object)."
-                }
-              },
-              "required": [
-                "command"
-              ]
-            },
-            "description": "The steps that ran, in order; on failure, those before the failing one. `changed` is there only when false (the step changed nothing), `result` only when the command answered one."
-          },
-          "saved": {
-            "type": "boolean"
-          },
-          "document": {
-            "$ref": "#/$defs/document"
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
-          }
-        },
-        "required": []
-      }
+      "type": "object"
     },
-    "<prefix>_draft_ready": {
-      "description": "Ask the person to review your draft of a document in <Kit>: they see a comparison with the document and merge it or discard it. Call it when the draft is done; do not merge or discard it yourself.",
-      "writes": false,
-      "input": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          }
+    "error": {
+      "properties": {
+        "code": {
+          "enum": [
+            "invalid-op",
+            "not-found",
+            "invalid-value",
+            "read-only",
+            "command-failed",
+            "invalid-params",
+            "not-open",
+            "draft-required",
+            "unknown-command",
+            "not-allowed",
+            "unsupported",
+            "unavailable",
+            "failed"
+          ],
+          "type": "string"
         },
-        "required": [
-          "path"
-        ]
+        "index": {
+          "description": "The failing step or operation.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
       },
-      "output": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "open",
-              "ready"
-            ]
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
-          }
-        },
-        "required": []
-      }
-    },
-    "<prefix>_draft_reopen": {
-      "description": "Take your draft of a document in <Kit> back from review to keep editing it (after <prefix>_draft_ready); edits with `draft` also do.",
-      "writes": false,
-      "input": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          }
-        },
-        "required": [
-          "path"
-        ]
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "open",
-              "ready"
-            ]
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
-          }
-        },
-        "required": []
-      }
-    },
-    "<prefix>_query": {
-      "description": "Read a document's objects in <Kit> from its object model: by id (`objects`, `root` for the document itself), or by following fields from the root (`follow`, for example `slides` or `slides.0.shapes`). Answers each object's id, type, and fields (all, or those in `fields`). Use the ids with <prefix>_batch. Low level: to find what to edit, the inspect tool with a `target` is usually enough. Call it with `describe: true` first to learn the document's object types and fields.",
-      "writes": false,
-      "input": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          },
-          "objects": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Object ids to read; `root` is the document's root object. Defaults to the root."
-          },
-          "follow": {
-            "type": "string",
-            "description": "A field path from the first object (the root by default): field names, and list or tree positions, joined with dots. Reads the objects it ends at."
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Only these fields of each object. Defaults to all."
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200,
-            "description": "At most this many objects. Defaults to 50."
-          },
-          "describe": {
-            "type": [
-              "boolean",
-              "string"
-            ],
-            "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full; \"*\": every type in full and their JSON Schema."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
-          }
-        },
-        "required": [
-          "path"
-        ]
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "objects": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "description": "An object as `{ id, type, fields }` read with the fields asked for."
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "truncated": {
-            "type": "boolean",
-            "description": "More objects matched than `limit`."
-          },
-          "schema": {
-            "description": "With `describe`: the object types as JSON Schema."
-          },
-          "describe": {
-            "description": "With `describe`: what the kit's `model.describe` answered."
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
-          }
-        },
-        "required": []
-      }
-    },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The arguments (`input`) and structured results (`output`) of every kit tool, as kition-kits-mcp and Kition's agent offer them, generated from crates/kition-kits (`kition-kits-mcp --schemas`). `<prefix>` is the kit's `kit.json` agent prefix. A failed call answers `isError: true` and `error` in its structured content, beside what it had done. `<prefix>_query` and `<prefix>_batch` arguments name the kit's object types and fields once the server has seen its `model.describe`.",
+  "title": "Kition kit tools (KHP agent tools, `<prefix>_*`)",
+  "tools": {
     "<prefix>_batch": {
       "description": "Edit a document in <Kit> through its object model: one model/batch of `ops`, run in order as one undoable step (each run of ops between commands is one transaction; nothing changes when an op fails), then `load` reads objects back. Ops: create {type, fields?, ref?: \"$name\", in?: \"<target>.<field>\", at?, parent?}, set {target, field, value}, delete {target}, text.insert {target, field, index, text}, text.delete {target, field, index, count}, text.set {target, field, text}, text.mark/text.unmark {target, field, start, end, key, value?}, list.insert {target, field, item, index?}, list.move {target, field, from, to}, list.remove {target, field, index}, map.set/map.delete {target, field, key, value?}, tree.insert/tree.move {target, field, item, parent?}, command {id, params?}. A target is `root`, an object id from <prefix>_query, or a `$name` bound by an earlier create. Saves the file unless `save` is false; with `draft`, edits your draft instead (never saved). Failures answer `error.code` and the op's `index`. Low level: `text.set` here replaces the text together with its formatting, and created objects get default styles; for ordinary edits prefer the kit's commands (its commands and run tools), which keep formatting.",
-      "writes": true,
       "input": {
-        "type": "object",
         "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "load": {
+            "description": "Objects to read after the ops.",
+            "items": {
+              "properties": {
+                "fields": {
+                  "description": "Only these fields.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "target": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "ops": {
-            "type": "array",
-            "maxItems": 200,
             "items": {
-              "type": "object",
               "properties": {
+                "field": {
+                  "description": "The field an op edits.",
+                  "type": "string"
+                },
+                "fields": {
+                  "description": "`create`: the new object's fields.",
+                  "type": "object"
+                },
+                "id": {
+                  "description": "`command`: the command id.",
+                  "type": "string"
+                },
+                "in": {
+                  "description": "`create`: the list or tree to add it to, as `<target>.<field>`.",
+                  "type": "string"
+                },
+                "item": {
+                  "type": "string"
+                },
                 "op": {
-                  "type": "string",
                   "enum": [
                     "create",
                     "set",
@@ -505,461 +213,766 @@
                     "tree.insert",
                     "tree.move",
                     "command"
-                  ]
+                  ],
+                  "type": "string"
+                },
+                "params": {
+                  "description": "`command`: its parameters.",
+                  "type": "object"
+                },
+                "ref": {
+                  "description": "`create`: a `$name` later ops use for the new object.",
+                  "type": "string"
                 },
                 "target": {
-                  "type": "string",
-                  "description": "`root`, an object id, or a `$name`."
+                  "description": "`root`, an object id, or a `$name`.",
+                  "type": "string"
                 },
                 "type": {
-                  "type": "string",
-                  "description": "`create`: the new object's type."
-                },
-                "field": {
-                  "type": "string",
-                  "description": "The field an op edits."
+                  "description": "`create`: the new object's type.",
+                  "type": "string"
                 },
                 "value": {
                   "description": "The value to set."
-                },
-                "fields": {
-                  "type": "object",
-                  "description": "`create`: the new object's fields."
-                },
-                "ref": {
-                  "type": "string",
-                  "description": "`create`: a `$name` later ops use for the new object."
-                },
-                "in": {
-                  "type": "string",
-                  "description": "`create`: the list or tree to add it to, as `<target>.<field>`."
-                },
-                "item": {
-                  "type": "string"
-                },
-                "id": {
-                  "type": "string",
-                  "description": "`command`: the command id."
-                },
-                "params": {
-                  "type": "object",
-                  "description": "`command`: its parameters."
                 }
               },
               "required": [
                 "op"
-              ]
-            }
-          },
-          "load": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "target": {
-                  "type": "string"
-                },
-                "fields": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Only these fields."
-                }
-              },
-              "required": [
-                "target"
-              ]
+              ],
+              "type": "object"
             },
-            "description": "Objects to read after the ops."
+            "maxItems": 200,
+            "type": "array"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
           },
           "save": {
-            "type": "boolean",
-            "description": "Save the file after the batch. Defaults to true; a draft is never saved."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
+            "description": "Save the file after the batch. Defaults to true; a draft is never saved.",
+            "type": "boolean"
           }
         },
         "required": [
           "path",
           "ops"
-        ]
+        ],
+        "type": "object"
       },
       "output": {
-        "type": "object",
         "properties": {
-          "results": {
-            "type": "array",
-            "description": "One result per operation (KitObjectModel 1.0 `model/batch`)."
-          },
-          "loaded": {
-            "type": "array",
-            "description": "The objects `load` asked for."
-          },
-          "saved": {
-            "type": "boolean"
-          },
           "document": {
             "$ref": "#/$defs/document"
           },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
           "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
           },
           "error": {
             "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "loaded": {
+            "description": "The objects `load` asked for.",
+            "type": "array"
+          },
+          "results": {
+            "description": "One result per operation (KitObjectModel 1.0 `model/batch`).",
+            "type": "array"
+          },
+          "saved": {
+            "type": "boolean"
           }
         },
-        "required": []
-      }
+        "required": [],
+        "type": "object"
+      },
+      "writes": true
     },
     "<prefix>_check": {
       "description": "Check a document in <Kit>: lists what the kit finds wrong with it (broken references, overflowing text, formula errors), each with a stable `code`, a `severity` (error, warning, info), its `target` (object id, slide, page, sheet, cell), a message, and sometimes a `fix` command for <prefix>_run. Call it after editing and fix the errors it reports. Changes nothing.",
-      "writes": false,
       "input": {
-        "type": "object",
         "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          },
           "draft": {
-            "type": "boolean",
-            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
           }
         },
         "required": [
           "path"
-        ]
+        ],
+        "type": "object"
       },
       "output": {
-        "type": "object",
         "properties": {
           "diagnostics": {
-            "type": "array",
+            "description": "Errors first.",
             "items": {
               "$ref": "#/$defs/diagnostic"
             },
-            "description": "Errors first."
-          },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
+            "type": "array"
           },
           "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
           },
           "error": {
             "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
           }
         },
         "required": [
           "diagnostics"
-        ]
-      }
+        ],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_commands": {
+      "description": "Search <Kit>'s editing commands (the kit's commands) by keywords. Returns command ids, what each does, and its parameters in one line; pass `detail: true` (or a command id as the query) for the full parameter schema. Without a query it lists every command by id, a page at a time (`cursor`, `limit`). Pass an id to <prefix>_run.",
+      "input": {
+        "properties": {
+          "cursor": {
+            "description": "Without a query: the `next` of the previous page.",
+            "type": "string"
+          },
+          "detail": {
+            "description": "List each command's full parameter and result schemas instead of one line.",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Without a query: commands a page, at most 200 (default 50).",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Keywords to match in the command id, title, or description, for example `<keywords>`. Leave it out to list every command.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "commands": {
+            "items": {
+              "properties": {
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "mutates": {
+                  "type": "boolean"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "total": {
+            "description": "How many matched; at most 40 are listed.",
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_create": {
+      "description": "Create a new, empty document in <Kit> at `path` () and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
+      "input": {
+        "properties": {
+          "path": {
+            "description": "Workspace-relative path of the new file, for example `deck.kslide`.",
+            "type": "string"
+          },
+          "size": {
+            "description": "The document size in pixels, for example {\"width\": 1920, \"height\": 1080}.",
+            "properties": {
+              "height": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "width": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "document": {
+            "$ref": "#/$defs/document"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "files": {
+            "description": "The files written (KHP A30).",
+            "items": {
+              "properties": {
+                "created": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "description": "The new file's workspace path.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "created"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "type": "object"
+      },
+      "writes": true
+    },
+    "<prefix>_draft_ready": {
+      "description": "Ask the person to review your draft of a document in <Kit>: they see a comparison with the document and merge it or discard it. Call it when the draft is done; do not merge or discard it yourself.",
+      "input": {
+        "properties": {
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "ready"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_draft_reopen": {
+      "description": "Take your draft of a document in <Kit> back from review to keep editing it (after <prefix>_draft_ready); edits with `draft` also do.",
+      "input": {
+        "properties": {
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "ready"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
     },
     "<prefix>_export": {
       "description": "Export a document from <Kit> to a new file, as the kit's engine draws it. The file is always new: when `to` exists the next free name is used. Lists the file it wrote; changes nothing in the document.",
-      "writes": true,
       "input": {
-        "type": "object",
         "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a <formats> file."
-          },
-          "to": {
-            "type": "string",
-            "description": "Workspace-relative path of the new file, for example `exports/Screen.png`."
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
           },
           "format": {
-            "type": "string",
-            "description": "The format, a file extension; defaults to the extension of `to`."
+            "description": "The format, a file extension; defaults to the extension of `to`.",
+            "type": "string"
           },
           "options": {
-            "type": "object",
-            "description": "Parameters for the kit's export command, as <prefix>_commands documents it."
+            "description": "Parameters for the kit's export command, as <prefix>_commands documents it.",
+            "type": "object"
           },
-          "draft": {
-            "type": "boolean",
-            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode."
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "to": {
+            "description": "Workspace-relative path of the new file, for example `exports/Screen.png`.",
+            "type": "string"
           }
         },
         "required": [
           "path",
           "to"
-        ]
+        ],
+        "type": "object"
       },
       "output": {
-        "type": "object",
         "properties": {
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
           "files": {
-            "type": "array",
+            "description": "The files written (KHP A30).",
             "items": {
-              "type": "object",
               "properties": {
-                "path": {
-                  "type": "string",
-                  "description": "The new file's workspace path."
-                },
-                "version": {
-                  "type": "string",
-                  "description": "The SHA-256 of the file written."
-                },
                 "created": {
                   "type": "boolean"
+                },
+                "path": {
+                  "description": "The new file's workspace path.",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The SHA-256 of the file written.",
+                  "type": "string"
                 }
               },
               "required": [
                 "path",
                 "version",
                 "created"
-              ]
+              ],
+              "type": "object"
             },
-            "description": "The files written (KHP A30)."
+            "type": "array"
           },
           "format": {
             "type": "string"
           },
-          "bytes": {
-            "type": "integer",
-            "minimum": 0
-          },
           "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
-          "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
-          },
-          "error": {
-            "$ref": "#/$defs/error"
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
           }
         },
         "required": [
           "files"
-        ]
-      }
+        ],
+        "type": "object"
+      },
+      "writes": true
     },
-    "<prefix>_create": {
-      "description": "Create a new, empty document in <Kit> at `path` () and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
-      "writes": true,
+    "<prefix>_inspect": {
+      "description": "Open a document (<formats>) in <Kit> and report the document. By default it also attaches a rendered preview to the next turn so you can see it. With `target` (for example {\"slide\": 3}) it previews only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
       "input": {
-        "type": "object",
         "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path of the new file, for example `deck.kslide`."
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
           },
-          "size": {
-            "type": "object",
-            "description": "The document size in pixels, for example {\"width\": 1920, \"height\": 1080}.",
+          "maxSize": {
+            "description": "The most preview pixels on the longer side.",
+            "maximum": 4096,
+            "minimum": 16,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "preview": {
+            "description": "Attach a rendered preview image. Defaults to true.",
+            "type": "boolean"
+          },
+          "scale": {
+            "description": "Preview pixels per document unit, up to 2 (default 1), for kits that render previews themselves.",
+            "exclusiveMinimum": 0,
+            "maximum": 2,
+            "type": "number"
+          },
+          "target": {
+            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
             "properties": {
-              "width": {
-                "type": "integer",
-                "minimum": 1
+              "objectId": {
+                "type": "string"
               },
-              "height": {
-                "type": "integer",
-                "minimum": 1
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "paragraphs": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "path": {
+                "type": "string"
+              },
+              "range": {
+                "type": "string"
+              },
+              "sheet": {
+                "type": "string"
+              },
+              "slide": {
+                "minimum": 1,
+                "type": "integer"
               }
-            }
+            },
+            "type": "object"
           }
         },
         "required": [
           "path"
-        ]
+        ],
+        "type": "object"
       },
       "output": {
-        "type": "object",
         "properties": {
-          "files": {
-            "type": "array",
+          "canRedo": {
+            "type": "boolean"
+          },
+          "canUndo": {
+            "type": "boolean"
+          },
+          "details": {
+            "description": "What the kit reports about the document."
+          },
+          "dirty": {
+            "description": "It has unsaved changes.",
+            "type": "boolean"
+          },
+          "document": {
+            "$ref": "#/$defs/document",
+            "description": "The document, when its open editor answered."
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "The file's workspace path.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "description": "One line on the document.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_query": {
+      "description": "Read a document's objects in <Kit> from its object model: by id (`objects`, `root` for the document itself), or by following fields from the root (`follow`, for example `slides` or `slides.0.shapes`). Answers each object's id, type, and fields (all, or those in `fields`). Use the ids with <prefix>_batch. Low level: to find what to edit, the inspect tool with a `target` is usually enough. Call it with `describe: true` first to learn the document's object types and fields.",
+      "input": {
+        "properties": {
+          "describe": {
+            "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full; \"*\": every type in full and their JSON Schema.",
+            "type": [
+              "boolean",
+              "string"
+            ]
+          },
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "fields": {
+            "description": "Only these fields of each object. Defaults to all.",
             "items": {
-              "type": "object",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "follow": {
+            "description": "A field path from the first object (the root by default): field names, and list or tree positions, joined with dots. Reads the objects it ends at.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "At most this many objects. Defaults to 50.",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "objects": {
+            "description": "Object ids to read; `root` is the document's root object. Defaults to the root.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "describe": {
+            "description": "With `describe`: what the kit's `model.describe` answered."
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "objects": {
+            "items": {
+              "description": "An object as `{ id, type, fields }` read with the fields asked for.",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema": {
+            "description": "With `describe`: the object types as JSON Schema."
+          },
+          "total": {
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "More objects matched than `limit`.",
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_run": {
+      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands. Stops at the first failing step. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
+      "input": {
+        "properties": {
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "preview": {
+            "description": "Attach a rendered preview of the whole document. Defaults to false; use the inspect tool with a target to look at one part.",
+            "type": "boolean"
+          },
+          "save": {
+            "description": "Save the file after the steps. Defaults to true; a draft is never saved.",
+            "type": "boolean"
+          },
+          "steps": {
+            "items": {
               "properties": {
-                "path": {
-                  "type": "string",
-                  "description": "The new file's workspace path."
+                "command": {
+                  "description": "A command id from <prefix>_commands, for example `<command>`.",
+                  "type": "string"
                 },
-                "created": {
-                  "type": "boolean"
+                "params": {
+                  "description": "Command parameters.",
+                  "type": "object"
                 }
               },
               "required": [
-                "path",
-                "created"
-              ]
+                "command"
+              ],
+              "type": "object"
             },
-            "description": "The files written (KHP A30)."
+            "maxItems": 50,
+            "minItems": 1,
+            "type": "array"
+          },
+          "target": {
+            "description": "The part the steps act on, as in the inspect tool's target, for example {\"slide\": 3} (counted from 1). The kit goes there first, so the ids the inspect tool listed for that part work.",
+            "properties": {
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "slide": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "path",
+          "steps"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "completed": {
+            "description": "The steps that ran, in order; on failure, those before the failing one. `changed` is there only when false (the step changed nothing), `result` only when the command answered one.",
+            "items": {
+              "properties": {
+                "changed": {
+                  "type": "boolean"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "result": {},
+                "truncated": {
+                  "description": "The result was cut to fit: `shown` of `total` items (of `field` when the result is an object).",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "command"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "document": {
             "$ref": "#/$defs/document"
           },
-          "live": {
-            "type": "boolean",
-            "description": "Edited or read in the file's open editor."
-          },
           "draft": {
-            "type": "boolean",
-            "description": "Edited or read the agent's draft, not the file."
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
           },
           "error": {
             "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "saved": {
+            "type": "boolean"
           }
         },
-        "required": [
-          "files"
-        ]
-      }
-    }
-  },
-  "$defs": {
-    "error": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "string",
-          "enum": [
-            "invalid-op",
-            "not-found",
-            "invalid-value",
-            "read-only",
-            "command-failed",
-            "invalid-params",
-            "not-open",
-            "draft-required",
-            "unknown-command",
-            "not-allowed",
-            "unsupported",
-            "unavailable",
-            "failed"
-          ]
-        },
-        "message": {
-          "type": "string"
-        },
-        "index": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "The failing step or operation."
-        },
-        "retryable": {
-          "type": "boolean"
-        }
+        "required": [],
+        "type": "object"
       },
-      "required": [
-        "code",
-        "message"
-      ]
-    },
-    "document": {
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "The file's workspace path."
-        },
-        "summary": {
-          "type": "string",
-          "description": "One line on the document."
-        },
-        "dirty": {
-          "type": "boolean",
-          "description": "It has unsaved changes."
-        },
-        "canUndo": {
-          "type": "boolean"
-        },
-        "canRedo": {
-          "type": "boolean"
-        },
-        "details": {
-          "description": "What the kit reports about the document."
-        },
-        "draft": {
-          "type": "boolean",
-          "description": "This is the agent's draft of the file."
-        }
-      }
-    },
-    "diagnostic": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "string",
-          "description": "Stable `<kit>.<name>`."
-        },
-        "severity": {
-          "type": "string",
-          "enum": [
-            "error",
-            "warning",
-            "info"
-          ]
-        },
-        "target": {
-          "type": "object",
-          "properties": {
-            "objectId": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "page": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "slide": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "sheet": {
-              "type": "string"
-            },
-            "cell": {
-              "type": "string"
-            }
-          },
-          "description": "Empty for the whole document."
-        },
-        "message": {
-          "type": "string"
-        },
-        "fix": {
-          "type": "object",
-          "properties": {
-            "command": {
-              "type": "string"
-            },
-            "params": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "command"
-          ],
-          "description": "A command for `<prefix>_run` that may fix it; never run by the host itself."
-        }
-      },
-      "required": [
-        "code",
-        "severity",
-        "target",
-        "message"
-      ]
+      "writes": true
     }
   }
 }
