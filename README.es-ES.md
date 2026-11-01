@@ -92,7 +92,7 @@ Genera propuestas de diseño, vistas ortográficas, imágenes de característica
 - **Tablas:** campos tipados, adjuntos, fórmulas, filtros, ordenación, grupos y varias vistas.
 - **Agente:** actualización de documentos, investigación web, uso de herramientas y guardado en el espacio de trabajo.
 - **Flujos:** composición visual de disparadores y acciones, pruebas por pasos e historial de ejecución.
-- **Kits:** quince editores integrados, cada uno para su tipo de archivo (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, Note, PDF, Photo, Sheet, Slide, Table, Vector). El motor de cada kit se ejecuta como WebAssembly en un Web Worker, y el agente edita los mismos archivos con las herramientas del kit.
+- **Kits:** dieciséis editores integrados, cada uno para su tipo de archivo (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). El motor de cada kit se ejecuta como WebAssembly en un Web Worker, y el agente edita los mismos archivos con las herramientas del kit.
 - **Ajustes:** correo, modelos, proxy, MCP, cuenta, uso, actualizaciones e integración de escritorio.
 
 ## Instalación

@@ -92,7 +92,7 @@ Kition はタスクの文脈をドキュメント、テーブル、レコード�
 - **テーブル:** 型付きフィールド、添付、数式、フィルター、並べ替え、グループ、複数ビュー。
 - **エージェント:** ドキュメント更新、ウェブ調査、ツール利用、ワークスペースへの保存。
 - **ワークフロー:** ビジュアルキャンバスでトリガーとアクションを構成し、テストと履歴確認を実行。
-- **キット:** ファイル形式ごとの 15 種類の組み込みエディター（Board、CAD、Cube、Design、Doc、Effect、Fig、Film、Note、PDF、Photo、Sheet、Slide、Table、Vector）。各キットのエンジンは WebAssembly として Web Worker で動作し、エージェントはキットのツールを通じて同じファイルを編集します。
+- **キット:** ファイル形式ごとの 16 種類の組み込みエディター（Board、CAD、Cube、Design、Doc、Effect、Fig、Film、HTML、Note、PDF、Photo、Sheet、Slide、Table、Vector）。各キットのエンジンは WebAssembly として Web Worker で動作し、エージェントはキットのツールを通じて同じファイルを編集します。
 - **設定:** メール接続、モデル、プロキシ、MCP、アカウント、使用量、更新、デスクトップ統合。
 
 ## インストール

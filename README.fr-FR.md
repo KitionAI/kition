@@ -92,7 +92,7 @@ Créez des propositions de design, vues orthographiques, images de fonctionnalit
 - **Tableaux :** champs typés, pièces jointes, formules, filtres, tri, groupes et vues multiples.
 - **Agent :** modification de documents, recherche web, utilisation d’outils et sauvegarde dans l’espace de travail.
 - **Workflows :** composition visuelle de déclencheurs et d’actions, tests et historique d’exécution.
-- **Kits :** quinze éditeurs intégrés, chacun pour son type de fichier (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, Note, PDF, Photo, Sheet, Slide, Table, Vector). Le moteur de chaque kit s’exécute en WebAssembly dans un Web Worker, et l’agent modifie les mêmes fichiers avec les outils du kit.
+- **Kits :** seize éditeurs intégrés, chacun pour son type de fichier (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). Le moteur de chaque kit s’exécute en WebAssembly dans un Web Worker, et l’agent modifie les mêmes fichiers avec les outils du kit.
 - **Réglages :** e-mail, modèles, proxy, MCP, compte, consommation, mises à jour et intégration au bureau.
 
 ## Installation

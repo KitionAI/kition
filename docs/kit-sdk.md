@@ -1,6 +1,6 @@
 # Kit SDK: Editing Kit Files Inside Kition
 
-Status: in use for all fifteen kits. Revised 2026-10-15: every kit draws its own
+Status: in use for all sixteen kits. Revised 2026-10-15: every kit draws its own
 editor, and Kition's own kit editors are gone. Every new kit must follow this guide.
 
 This guide is how Kition implements the **Kit Harness Protocol (KHP)** and

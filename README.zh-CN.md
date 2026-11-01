@@ -94,7 +94,7 @@ Kition 把任务上下文放进熟悉的工作界面：文档、表格字段、�
 - **表格：** 类型化字段、附件、公式、筛选、排序、分组、多视图和快速记录编辑。
 - **智能体：** 读取和更新文档、研究网页、使用工具，并将输出写回工作区。
 - **工作流：** 在可视化画布上组合触发器与动作，测试步骤并查看运行历史。
-- **套件（Kit）：** 15 个内置编辑器，各自负责一种文件（Board、CAD、Cube、Design、Doc、Effect、Fig、Film、Note、PDF、Photo、Sheet、Slide、Table、Vector）。每个套件的引擎编译为 WebAssembly，在 Web Worker 中运行；智能体通过套件的工具编辑同一份文件。
+- **套件（Kit）：** 16 个内置编辑器，各自负责一种文件（Board、CAD、Cube、Design、Doc、Effect、Fig、Film、HTML、Note、PDF、Photo、Sheet、Slide、Table、Vector）。每个套件的引擎编译为 WebAssembly，在 Web Worker 中运行；智能体通过套件的工具编辑同一份文件。
 - **连接与设置：** 邮件连接、模型、代理、MCP、账户、用量、更新与桌面集成设置。
 
 ## 安装
