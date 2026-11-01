@@ -1,0 +1,21 @@
+format: 1
+id: kition.platform.open-source-notices/rust-crates
+feature: kition.platform.open-source-notices
+intent: >-
+  The Rust notices follow only the crates linked into the app (not dev or build dependencies),
+  embed the licence texts each crate ships or the canonical text when it ships none, state the
+  source of MPL-2.0 crates, and refuse a GPL crate; the committed notices list tauri and serde.
+layer: golden
+source:
+  kind: synthetic
+  from: scripts/lib/rustCrateNotices.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/rustCrateNotices.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"

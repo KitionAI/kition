@@ -1,0 +1,22 @@
+format: 1
+id: kition.platform.open-source-notices/notices-current
+feature: kition.platform.open-source-notices
+intent: >-
+  The notices file the desktop installers bundle must match the locked npm packages and the
+  Rust crates the app links on every release platform, so no shipped dependency goes out
+  without its licence text and no copyleft crate is linked unnoticed.
+layer: golden
+source:
+  kind: probe
+  from: scripts/generate-third-party-notices.mjs
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, check:notices]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+timeout_s: 60
+since: "2026-10-31"

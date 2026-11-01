@@ -1,0 +1,21 @@
+format: 1
+id: kition.platform.open-source-notices/licenses-view
+feature: kition.platform.open-source-notices
+intent: >-
+  Settings > About > Open source licenses shows Kition's licence, the npm and Rust notices the
+  app bundles, and each bundled kit's NOTICE and LICENSE read from its package, so a user can
+  read every licence that travels with the app inside it.
+layer: golden
+source:
+  kind: synthetic
+  from: src/features/settings/sections/OpenSourceLicenses.spec.tsx
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/settings/sections/OpenSourceLicenses.spec.tsx]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"

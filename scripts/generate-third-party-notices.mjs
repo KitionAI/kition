@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { loadShippedCrates, renderRustNotices } from './lib/rustCrateNotices.mjs'
 
 const repositoryDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outputPath = path.join(repositoryDir, 'docs/legal/THIRD_PARTY_NOTICES.txt')
@@ -121,7 +122,7 @@ function readLicenseTexts(entry, installedPackageIndex) {
   return [...seen].sort(compareText)
 }
 
-function renderNotices(inventory, installedPackageIndex) {
+function renderNotices(inventory, installedPackageIndex, rustNotices) {
   const entries = Object.entries(inventory)
     .flatMap(([license, packages]) => packages.map((entry) => ({ ...entry, license })))
     .sort((left, right) => compareText(left.name, right.name) || compareText(left.versions.join(','), right.versions.join(',')))
@@ -172,14 +173,20 @@ function renderNotices(inventory, installedPackageIndex) {
   return [
     'Kition Third-Party Notices',
     '',
-    'This file covers JavaScript packages installed from pnpm-lock.yaml. It includes',
-    'development and build dependencies conservatively because browser bundles may contain',
-    'code from packages declared as development dependencies. Platform-specific optional',
-    'build packages are omitted because they are not distributed in the application bundle.',
+    'This file covers the JavaScript packages installed from pnpm-lock.yaml and the Rust',
+    'crates compiled into the Kition desktop app from Cargo.lock.',
     '',
-    'Desktop installers also include the Kition desktop shell and runtime, compiled from this',
-    "repository's Rust workspace and the third-party crates pinned in Cargo.lock; each crate",
-    'publishes its license with its source on crates.io.',
+    'The JavaScript inventory includes development and build dependencies conservatively',
+    'because browser bundles may contain code from packages declared as development',
+    'dependencies. Platform-specific optional build packages are omitted because they are not',
+    'distributed in the application bundle.',
+    '',
+    'The Rust inventory lists every crates.io crate the desktop shell and runtime link on the',
+    'platforms Kition releases for, with the license texts each crate ships. Crates used under',
+    'the Mozilla Public License 2.0 are used unmodified; their source code is available from',
+    'crates.io at the address given with each crate.',
+    '',
+    'Kit packages bundled with the app carry their own LICENSE and NOTICE files.',
     '',
     divider,
     '',
@@ -198,6 +205,9 @@ function renderNotices(inventory, installedPackageIndex) {
     '',
     textSections.join(`\n\n${divider}\n\n`),
     '',
+    divider,
+    '',
+    rustNotices.text,
   ].join('\n')
 }
 
@@ -217,7 +227,9 @@ function firstDifference(current, rendered) {
   return null
 }
 
-const rendered = renderNotices(loadLicenseInventory(), buildInstalledPackageIndex())
+const rustNotices = renderRustNotices(loadShippedCrates(repositoryDir), divider)
+const rendered = renderNotices(loadLicenseInventory(), buildInstalledPackageIndex(), rustNotices)
+const rustSummary = `${rustNotices.crateCount} Rust crates under ${rustNotices.licenseCounts.size} licences`
 if (process.argv.includes('--check')) {
   const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : ''
   if (current !== rendered) {
@@ -230,8 +242,8 @@ if (process.argv.includes('--check')) {
     }
     process.exit(1)
   }
-  console.log('[third-party-notices] docs/legal/THIRD_PARTY_NOTICES.txt is current')
+  console.log(`[third-party-notices] docs/legal/THIRD_PARTY_NOTICES.txt is current (${rustSummary})`)
 } else {
   fs.writeFileSync(outputPath, rendered)
-  console.log(`[third-party-notices] wrote ${path.relative(repositoryDir, outputPath)}`)
+  console.log(`[third-party-notices] wrote ${path.relative(repositoryDir, outputPath)} (${rustSummary})`)
 }

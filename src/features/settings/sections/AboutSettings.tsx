@@ -10,6 +10,7 @@ import { Button } from '@kition/tessera-ui'
 import { SupportAndTrustSettings } from '@/features/support/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { getCurrentLocale, useTranslation } from '@/i18n'
+import { OpenSourceLicenses } from '@/features/settings/sections/OpenSourceLicenses'
 
 function formatBuildTime(value: string) {
   const date = new Date(value)
@@ -28,6 +29,7 @@ export function AboutSettings() {
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null)
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [licensesOpen, setLicensesOpen] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -164,6 +166,12 @@ export function AboutSettings() {
         <SettingsRow title={t('about.license')} description={t('about.licenseDescription')}>
           <Button size="md" variant="secondary" className="w-40" onClick={() => void openExternalURL(`${GITHUB_REPO_URL}/blob/main/LICENSE`)}>{t('about.viewLicense')}</Button>
         </SettingsRow>
+        <SettingsRow title={t('about.openSourceLicenses')} description={t('about.openSourceLicensesDescription')}>
+          <Button size="md" variant="secondary" className="w-40" aria-expanded={licensesOpen} onClick={() => setLicensesOpen((open) => !open)}>
+            {licensesOpen ? t('about.hideOpenSourceLicenses') : t('about.viewOpenSourceLicenses')}
+          </Button>
+        </SettingsRow>
+        {licensesOpen ? <OpenSourceLicenses /> : null}
       </SettingsSection>
       {feedback ? <div className="settings-feedback">{feedback}</div> : null}
     </div>

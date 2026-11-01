@@ -1,6 +1,6 @@
 format: 1
 kit: kition
-updated: "2026-10-28"
+updated: "2026-10-31"
 golden_budget_s: 600
 features:
   - id: kition.agent.kit-export
@@ -102,3 +102,25 @@ features:
       - kition.kit-links.pick-link/fig-library-styles-webkit
       - kition.kit-links.pick-link/picker-scope
     since: "2026-10-28"
+  - id: kition.platform.open-source-notices
+    title: The desktop app ships and shows the licence texts of the npm packages, Rust crates and kit packages it includes
+    direction: [platform, function]
+    priority: P0
+    status: has
+    paths:
+      - scripts/generate-third-party-notices.mjs
+      - scripts/lib/rustCrateNotices.mjs
+      - scripts/lib/rustCrateNotices.spec.ts
+      - scripts/licenses/*.txt
+      - docs/legal/THIRD_PARTY_NOTICES.txt
+      - src/features/settings/sections/AboutSettings.tsx
+      - src/features/settings/sections/OpenSourceLicenses.tsx
+      - src/features/settings/sections/OpenSourceLicenses.spec.tsx
+      - src/features/settings/sections/licenseTexts.ts
+      - Cargo.lock
+      - pnpm-lock.yaml
+    cases:
+      - kition.platform.open-source-notices/notices-current
+      - kition.platform.open-source-notices/rust-crates
+      - kition.platform.open-source-notices/licenses-view
+    since: "2026-10-31"
