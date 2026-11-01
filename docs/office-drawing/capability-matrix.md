@@ -1,7 +1,7 @@
 # Shared Office Drawing: Capability Matrix
 
-Status: Phase 0 baseline, 2026-10-21. Part of the
-[shared office drawing editing plan](../office-editing-unification-plan.md);
+Status: Phase 0 baseline, 2026-10-21. Part of the shared office drawing
+editing plan;
 decisions in [decision.md](decision.md).
 
 Each cell records what the kit does today for the feature, judged from its

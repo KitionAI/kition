@@ -1,6 +1,6 @@
 # Contributing to Kition
 
-Thank you for contributing to the public Kition desktop client.
+Thank you for contributing to Kition.
 
 All changes should follow the [Kition Development Standard](docs/development-standard.md).
 It includes the recommended worktree workflow for contributors developing in
@@ -8,13 +8,15 @@ Orca.
 
 ## Scope
 
-This repository contains the React client and its Tauri desktop shell, public
-runtime contracts, mocks, fixtures, packaging logic, and black-box tests. The
-proprietary runtime implementation is maintained separately.
+This repository contains the whole desktop app: the React renderer (`src/`),
+the Tauri desktop shell (`src-tauri/`), the Rust runtime (`crates/`), the
+runtime contracts (`contracts/runtime/`), mocks, fixtures, packaging logic, and
+black-box tests.
 
-Cross-repository behavior changes must begin here with a public contract,
-capability, mock, or client integration update. Contributors never need access
-to the private runtime source repository.
+A change that crosses the renderer and the runtime updates the contract in
+`contracts/runtime/`, the renderer mock, and the runtime together. Kits are
+developed in separate repositories; Kition ships their published packages,
+pinned in `kits/kits.lock.json` (see [docs/kit-sdk.md](docs/kit-sdk.md)).
 
 ## Local Setup
 
@@ -118,7 +120,8 @@ applicable, and basic security risks.
   binaries, or host-specific paths.
 - Keep repository filenames, documentation, comments, tests, fixtures, and UI
   copy in English.
-- Update public runtime contracts before depending on new runtime behavior.
+- Update the runtime contract in `contracts/runtime/` together with the
+  renderer and runtime code that depend on it.
 - State which platforms and test commands were exercised.
 
 ## Release Process
@@ -127,9 +130,9 @@ Releases are maintainer-managed through GitHub Actions. Do not add version bumps
 or run a local production packaging command for a normal contribution. Official
 GitHub Releases must be published as `allentatakai`.
 
-1. `Prepare Unified Release` validates the version, creates a draft release,
-   and requests the matching private runtime artifacts.
-2. `Publish Unified Release` verifies the draft assets, derives the build
+1. `Prepare Release` runs the full suite, validates the version, tags the
+   release, and creates a draft release.
+2. `Publish Release` verifies the draft release, derives the build
    identity from the tag, signs and packages the desktop clients, and publishes
    the release.
 

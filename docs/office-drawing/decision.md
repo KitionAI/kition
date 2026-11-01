@@ -1,7 +1,7 @@
 # Shared Office Drawing: Architecture Decision
 
 Status: Accepted for Phase 1 (2026-10-21). Implements Phase 0 of the
-[shared office drawing editing plan](../office-editing-unification-plan.md).
+shared office drawing editing plan.
 The capability evidence is in [capability-matrix.md](capability-matrix.md) and
 the frozen visual baseline in [baseline.md](baseline.md).
 

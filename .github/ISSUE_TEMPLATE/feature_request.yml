@@ -27,5 +27,5 @@ body:
     attributes:
       label: Scope confirmation
       options:
-        - label: This request can be discussed using public client behavior and contracts without private runtime implementation details.
+        - label: This request describes the behavior I want, not only a specific implementation.
           required: true

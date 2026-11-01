@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <strong>Documents, Tables, Boards, Agents, and Workflows in one desktop workspace.</strong><br />
-  Write connected knowledge, think visually, build data tools, research the web, and automate repeatable work.
+  <strong>Documents, Tables, Boards, kits, Agents, and Workflows in one desktop workspace.</strong><br />
+  Write connected knowledge, think visually, build data tools, edit sheets, slides, photos, films, and CAD drawings, research the web, and automate repeatable work.
 </p>
 
 <p align="center">
@@ -70,6 +70,9 @@ repeat without handing context between disconnected tools.
   every addition and deletion, then accept or reject individual changes.
 - **Visible automation.** Assemble trigger-and-action workflows, test steps,
   inspect run history, and resolve missing inputs before enabling a process.
+- **Kits for every kind of file.** Fifteen built-in kits open sheets, slides,
+  photos, films, CAD drawings, and more as ordinary workspace files, and the Agent
+  works on them through each kit's tools. See [Kits](#kits).
 
 ## Let the Agent Edit—Keep the Final Say
 
@@ -220,6 +223,35 @@ resolve missing inputs before enabling it.
 </tr>
 </table>
 
+## Kits
+
+A kit is an editor for one kind of file. Its engine is compiled to WebAssembly
+and runs in a Web Worker, and the kit draws its own editor inside Kition. The
+Agent edits the same files through the kit's tools, so its changes stay
+visible and reviewable. Kition ships these kits, pinned in
+[`kits/kits.lock.json`](kits/kits.lock.json):
+
+| Kit | Edits |
+| --- | --- |
+| Board | Infinite canvas for diagrams, mind maps, and sketches |
+| CAD | CAD drawings, including DXF |
+| Cube | 3D scenes |
+| Design | Page layouts such as flyers and posters |
+| Doc | Word documents (`.docx`) |
+| Effect | Motion graphics |
+| Fig | Interface and screen designs |
+| Film | Video timelines |
+| Note | Markdown notes |
+| PDF | PDF files |
+| Photo | Raster images and photo editing |
+| Sheet | Spreadsheets (`.xlsx`) with formulas |
+| Slide | Slides, including opening `.pptx` files |
+| Table | Structured `.ktable` data tables |
+| Vector | Vector graphics |
+
+Each kit is developed in its own repository; see
+[Kit SDK](docs/kit-sdk.md) for how kits plug into Kition.
+
 Also included:
 
 - AI-assisted table fields for generating text, structured values, and media
@@ -256,8 +288,8 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-`pnpm dev` verifies and caches the pinned released runtime outside the Git
-worktree, then starts the Tauri desktop client.
+`pnpm dev` runs `tauri dev`, which compiles the Tauri desktop shell together
+with the Rust runtime in `crates/` and starts the desktop client.
 
 For renderer, component, editor, and style work that does not require runtime
 integration:
@@ -266,46 +298,50 @@ integration:
 pnpm dev:web
 ```
 
-The web preview runs without the private runtime and is the fastest path for
-most client-side contributions. More options are documented in
+The web preview runs the renderer against a mocked runtime and is the fastest
+path for most client-side contributions. More options are documented in
 [Runtime development](docs/runtime-development.md).
 
 ## Open Source Boundary
 
-This repository contains the public React client and its Tauri desktop shell:
+Everything that makes up the Kition desktop app is open source in this
+repository:
 
-- document, table, Agent, settings, email, scenario, and
-  workflow UI;
+- the React renderer (`src/`): document, table, Agent, settings, email,
+  scenario, workflow, and kit-host UI;
 - the Tauri desktop shell (`src-tauri/`) and desktop integration;
-- public runtime contracts, mocks, fixtures, and black-box tests;
-- packaging and unified release workflows.
+- the Rust runtime (`crates/`), which the shell runs in-process and which
+  serves its HTTP API on loopback only. See
+  [Runtime development](docs/runtime-development.md);
+- the runtime contracts in [`contracts/runtime/`](contracts/runtime/), mocks,
+  fixtures, and black-box tests;
+- the kit pins (`kits/`) and packaging and release workflows.
 
-The Kition runtime is maintained separately and its source is not included in
-this repository. Released desktop builds pair the public client with a signed
-runtime. Source checkouts communicate with it only through the public contracts
-in [`contracts/runtime/`](contracts/runtime/).
-
-There is no Go source, Go module, or runtime source-build fallback in this
-repository.
+Kits are developed in separate repositories. Kition ships each kit's published
+package, pinned by version and checksum in
+[`kits/kits.lock.json`](kits/kits.lock.json).
 
 ## Technology
 
 | Area | Stack |
 | --- | --- |
 | Desktop | Tauri 2 (Rust) |
+| Runtime | Rust, SQLite |
 | Interface | React, TypeScript, Vite |
+| Kits | WebAssembly engines in Web Workers, editors in iframes |
 | Documents | Marked, Mermaid, KaTeX |
-| Data and state | IndexedDB, Jotai, Zod |
+| Data and state | IndexedDB, TanStack Query, Zod |
 | Testing | Vitest, Playwright |
 
 ## Contributing
 
-Issues and pull requests for the public client are welcome.
+Issues and pull requests are welcome.
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, scope, and required checks.
 2. Follow the [Kition Development Standard](docs/development-standard.md),
    including the recommended Orca worktree workflow.
-3. Keep changes inside the public client/runtime contract boundary.
+3. When a change crosses the renderer and the runtime, update the contract in
+   `contracts/runtime/`, the renderer mock, and the runtime together.
 4. Report security-sensitive issues through
    [.github/SECURITY.md](.github/SECURITY.md), not a public issue.
 
@@ -317,13 +353,16 @@ For product questions, account help, and private workspace concerns, see
 ```text
 .
 ├── .github/                 # Community health files and CI workflows
-├── contracts/runtime/       # Public runtime schemas
+├── contracts/runtime/       # Runtime HTTP API schemas
+├── crates/                  # Rust runtime (kition-api and its feature crates)
 ├── docs/                    # Product, contributor, design, and runtime docs
 ├── e2e/                     # Playwright black-box tests
-├── public/                  # Static assets and onboarding files
+├── kits/                    # Kit pins (kits.lock.json) and kit SDK registry
+├── packages/                # Source packages that also run outside Kition
+├── public/                  # Static assets, onboarding files, and kit packages
 ├── scripts/                 # Repository checks and inspection entry points
 ├── src/                     # React application organized by feature domain
-├── src-tauri/               # Tauri desktop shell, runtime manager, and packaging
+├── src-tauri/               # Tauri desktop shell and packaging
 ├── tooling/                 # Build, lint, and test configuration
 └── package.json             # Development, test, and packaging commands
 ```

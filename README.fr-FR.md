@@ -92,6 +92,7 @@ Créez des propositions de design, vues orthographiques, images de fonctionnalit
 - **Tableaux :** champs typés, pièces jointes, formules, filtres, tri, groupes et vues multiples.
 - **Agent :** modification de documents, recherche web, utilisation d’outils et sauvegarde dans l’espace de travail.
 - **Workflows :** composition visuelle de déclencheurs et d’actions, tests et historique d’exécution.
+- **Kits :** quinze éditeurs intégrés, chacun pour son type de fichier (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, Note, PDF, Photo, Sheet, Slide, Table, Vector). Le moteur de chaque kit s’exécute en WebAssembly dans un Web Worker, et l’agent modifie les mêmes fichiers avec les outils du kit.
 - **Réglages :** e-mail, modèles, proxy, MCP, compte, consommation, mises à jour et intégration au bureau.
 
 ## Installation
@@ -115,7 +116,7 @@ Pour le développement de l’interface sans intégration au runtime, utilisez `
 
 ## Périmètre open source
 
-Ce dépôt contient le client public React/Tauri, les contrats publics du runtime, les mocks, les tests et l’empaquetage. Le code source du runtime Kition est maintenu séparément et n’est pas inclus. Le client communique uniquement à travers les contrats publics de [`contracts/runtime/`](contracts/runtime/).
+Toute l’application de bureau est open source dans ce dépôt : le moteur de rendu React (`src/`), le shell de bureau Tauri (`src-tauri/`), le runtime Rust (`crates/`), que le shell exécute dans le même processus, les contrats du runtime dans [`contracts/runtime/`](contracts/runtime/), les mocks, les tests et l’empaquetage. Les kits sont développés dans des dépôts séparés ; Kition embarque leurs paquets publiés, épinglés par version et somme de contrôle dans [`kits/kits.lock.json`](kits/kits.lock.json).
 
 ## Technologies
 
@@ -124,12 +125,12 @@ Ce dépôt contient le client public React/Tauri, les contrats publics du runtim
 | Bureau | Tauri 2 (Rust) |
 | Interface | React, TypeScript, Vite |
 | Documents | Marked, Mermaid, KaTeX |
-| Données et état | IndexedDB, Jotai, Zod |
+| Données et état | IndexedDB, TanStack Query, Zod |
 | Tests | Vitest, Playwright |
 
 ## Contribuer
 
-Les Issues et Pull Requests concernant le client public sont les bienvenues. Consultez [CONTRIBUTING.md](CONTRIBUTING.md) et le [standard de développement Kition](docs/development-standard.md), en respectant la frontière entre le client public et les contrats du runtime.
+Les Issues et Pull Requests sont les bienvenues. Consultez [CONTRIBUTING.md](CONTRIBUTING.md) et le [standard de développement Kition](docs/development-standard.md). Lorsqu’un changement touche le moteur de rendu et le runtime, mettez à jour ensemble le contrat dans `contracts/runtime/`, le mock du moteur de rendu et le runtime.
 
 ## Licence
 

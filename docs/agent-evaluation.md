@@ -32,8 +32,7 @@ model or produce a task-quality score.
    cases explicitly testing an honest unsupported-capability response.
 6. Report raw counts per family, variability, latency, usage/cost where available,
    and unresolved cases. Do not report an aggregate success rate as representative
-   when some families remain unmeasured. Use the release gates in the
-   [capability improvement plan](agent-capability-improvement-plan.md).
+   when some families remain unmeasured.
 
 ## Known fixture expectations
 
@@ -48,12 +47,6 @@ The initial corpus emphasizes text/Markdown and deterministic table behavior.
 Add binary format, OCR, and document-rendering fixtures alongside their advertised
 capabilities. Do not use these text fixtures to claim PDF, DOCX, or XLSX parsing
 quality.
-
-An initial [live evaluation](agent-live-evaluation-2026-09-30.md) records nine
-generation turns through Kition Cloud and the real Agent endpoint. It covers
-writing, native tables, folder retrieval, and same/new-session recall with actual
-artifact and record checks. This one-pass smoke evaluation does not satisfy the
-full repeated baseline protocol above.
 
 The mocked stream and UI regressions verify completion reporting and localization,
 not writing quality or retrieval recall.

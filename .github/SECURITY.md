@@ -21,8 +21,8 @@ for this repository. If that option is unavailable, email
 - reproduction steps or a proof of concept;
 - any suggested mitigation.
 
-Do not include real user data, access tokens, API keys, private runtime
-binaries, or credentials in a report.
+Do not include real user data, access tokens, API keys, signing keys, or
+credentials in a report.
 
 The maintainers will acknowledge a complete report, investigate it, and
 coordinate disclosure after a fix or mitigation is available.
@@ -30,6 +30,6 @@ coordinate disclosure after a fix or mitigation is available.
 Please allow the maintainers time to investigate before publishing details or
 sharing a proof of concept publicly.
 
-Reports about the proprietary runtime may be submitted through the same private
-channels. Runtime implementation details must not be posted in public issues or
-pull requests.
+Reports about the Rust runtime (`crates/`), the desktop shell, or a kit go
+through the same private channels. Do not post exploit details in public issues
+or pull requests before a fix is available.

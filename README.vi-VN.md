@@ -92,6 +92,7 @@ Tạo phương án thiết kế, hình chiếu, ảnh tính năng, ảnh phong c
 - **Bảng:** trường có kiểu, tệp đính kèm, công thức, bộ lọc, sắp xếp, nhóm và nhiều chế độ xem.
 - **Tác nhân:** cập nhật tài liệu, nghiên cứu web, dùng công cụ và lưu kết quả vào không gian làm việc.
 - **Quy trình:** xây dựng trực quan từ trình kích hoạt và hành động, kiểm thử bước và xem lịch sử chạy.
+- **Kit:** mười lăm trình chỉnh sửa tích hợp, mỗi kit cho một loại tệp (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, Note, PDF, Photo, Sheet, Slide, Table, Vector). Engine của mỗi kit chạy dưới dạng WebAssembly trong Web Worker, và tác nhân chỉnh sửa cùng các tệp đó qua công cụ của kit.
 - **Cài đặt:** email, mô hình, proxy, MCP, tài khoản, mức sử dụng, cập nhật và tích hợp máy tính.
 
 ## Cài đặt
@@ -115,7 +116,7 @@ pnpm dev
 
 ## Phạm vi mã nguồn mở
 
-Kho này chứa ứng dụng React/Tauri công khai, hợp đồng runtime công khai, mock, kiểm thử và quy trình đóng gói. Mã nguồn Kition runtime được duy trì riêng và không nằm trong kho này. Ứng dụng chỉ giao tiếp qua các hợp đồng công khai trong [`contracts/runtime/`](contracts/runtime/).
+Toàn bộ ứng dụng máy tính là mã nguồn mở trong kho này: trình kết xuất React (`src/`), vỏ ứng dụng Tauri (`src-tauri/`), runtime Rust (`crates/`) mà vỏ ứng dụng chạy trong cùng tiến trình, hợp đồng runtime trong [`contracts/runtime/`](contracts/runtime/), mock, kiểm thử và quy trình đóng gói. Các kit được phát triển trong các kho riêng; Kition đi kèm các gói đã phát hành của chúng, được cố định theo phiên bản và mã kiểm tra trong [`kits/kits.lock.json`](kits/kits.lock.json).
 
 ## Công nghệ
 
@@ -124,12 +125,12 @@ Kho này chứa ứng dụng React/Tauri công khai, hợp đồng runtime công
 | Máy tính | Tauri 2 (Rust) |
 | Giao diện | React, TypeScript, Vite |
 | Tài liệu | Marked, Mermaid, KaTeX |
-| Dữ liệu và trạng thái | IndexedDB, Jotai, Zod |
+| Dữ liệu và trạng thái | IndexedDB, TanStack Query, Zod |
 | Kiểm thử | Vitest, Playwright |
 
 ## Đóng góp
 
-Chúng tôi hoan nghênh Issue và Pull Request cho ứng dụng công khai. Hãy đọc [CONTRIBUTING.md](CONTRIBUTING.md) và [tiêu chuẩn phát triển Kition](docs/development-standard.md), đồng thời giữ thay đổi trong ranh giới ứng dụng công khai và hợp đồng runtime.
+Chúng tôi hoan nghênh Issue và Pull Request. Hãy đọc [CONTRIBUTING.md](CONTRIBUTING.md) và [tiêu chuẩn phát triển Kition](docs/development-standard.md). Khi thay đổi liên quan cả trình kết xuất và runtime, hãy cập nhật đồng thời hợp đồng trong `contracts/runtime/`, mock của trình kết xuất và runtime.
 
 ## Giấy phép
 

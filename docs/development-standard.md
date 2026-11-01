@@ -28,7 +28,7 @@ Read the files that own the affected surface before editing:
 - `docs/design.md` and `docs/product-ui-style.md` for UI or visual work.
 - `docs/kition-ui-development.md` for frontend ownership and file placement.
 - `contracts/runtime/` before changing client/runtime behavior.
-- `docs/runtime-development.md` for runtime selection and local integration.
+- `docs/runtime-development.md` for the runtime crates and their checks.
 - `.github/SECURITY.md` before handling credentials, authentication, updates,
   or private reports.
 
@@ -90,7 +90,7 @@ Constraints:
 - Preserve unrelated worktree changes.
 - Keep tracked text and filenames in English except for the approved
   localization paths defined in `AGENTS.md`.
-- Do not cross the public client/runtime boundary.
+- Change the runtime contract, renderer mock, and runtime crates together.
 - Add a regression test for changed behavior.
 
 Verification:
@@ -126,7 +126,7 @@ Verification:
 - Use path utilities and portable placeholders; never hardcode host paths.
 - Treat browser, filesystem, notification, credential, update, and IPC code as
   trust boundaries.
-- Keep web-preview behavior useful when the private runtime is unavailable.
+- Keep web-preview behavior useful when the runtime is not running.
 
 ### Tests
 
@@ -137,7 +137,7 @@ Verification:
   the desktop shell, or IPC behavior.
 - End-to-end assertions should target what the user can see or do, not only an
   internal store value.
-- Keep mocks aligned with public runtime contracts.
+- Keep mocks aligned with the runtime contracts.
 
 ## Verification Matrix
 
@@ -152,7 +152,7 @@ gates.
 | Table behavior | Focused tests, `pnpm test:ktable:e2e`, required table widget gate |
 | Workflow or scenario | Focused tests and the matching inspection command |
 | Desktop shell or packaging | `pnpm check:desktop`, `pnpm test:desktop:unit`, and relevant desktop E2E |
-| Runtime contract | Contract/mock tests plus black-box integration with an explicit binary |
+| Runtime contract | Contract/mock tests plus `pnpm check:desktop` for the runtime crates |
 
 Before completion, always run:
 
@@ -198,8 +198,8 @@ A pull request should contain:
 4. An AI review summary when an AI coding agent contributed to the change.
 5. A basic security review covering relevant input, path, credential, network,
    dependency, update, IPC, and external-action risks.
-6. Runtime-boundary notes when public contracts, mocks, capability flags, or
-   private integration behavior are involved.
+6. Runtime notes when contracts, mocks, capability flags, or runtime crates
+   are involved.
 
 Maintainers own version bumps, tags, signing, packaging credentials, and
 release publication. Normal contributions must not perform release actions.

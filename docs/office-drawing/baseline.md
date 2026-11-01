@@ -1,7 +1,7 @@
 # Shared Office Drawing: Frozen Visual Baseline
 
-Status: Phase 0 baseline, measured 2026-10-21. Part of the
-[shared office drawing editing plan](../office-editing-unification-plan.md).
+Status: Phase 0 baseline, measured 2026-10-21. Part of the shared office
+drawing editing plan.
 Every later report compares against these numbers with the same settings; a
 change to the metric, the fonts, or the corpus starts a new baseline instead
 of editing this one.

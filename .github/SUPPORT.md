@@ -6,12 +6,12 @@ the right context.
 ## Bug Reports
 
 Use the [bug report form](https://github.com/KitionAI/kition/issues/new?template=bug_report.yml)
-for reproducible problems in the public Kition client. Search existing issues
+for reproducible problems in Kition. Search existing issues
 first and include the Kition version, operating system, reproduction steps,
 and expected behavior.
 
-Remove workspace content, credentials, tokens, private runtime details, and
-other personal information from logs and screenshots before posting them.
+Remove workspace content, credentials, tokens, and other personal
+information from logs and screenshots before posting them.
 
 ## Feature Requests
 

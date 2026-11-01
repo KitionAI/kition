@@ -92,6 +92,7 @@ Erzeugen Sie Designvarianten, orthografische Ansichten, Funktionsbilder, Lifesty
 - **Tabellen:** typisierte Felder, Anhänge, Formeln, Filter, Sortierung, Gruppen und mehrere Ansichten.
 - **Agent:** Dokumentaktualisierung, Webrecherche, Werkzeugnutzung und Speichern im Arbeitsbereich.
 - **Workflows:** visuelle Kombination von Auslösern und Aktionen, Schritttests und Ausführungsverlauf.
+- **Kits:** fünfzehn integrierte Editoren für eigene Dateitypen (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, Note, PDF, Photo, Sheet, Slide, Table, Vector). Die Engine jedes Kits läuft als WebAssembly in einem Web Worker, und der Agent bearbeitet dieselben Dateien über die Werkzeuge des Kits.
 - **Einstellungen:** E-Mail, Modelle, Proxy, MCP, Konto, Nutzung, Aktualisierungen und Desktop-Integration.
 
 ## Installation
@@ -115,7 +116,7 @@ Für reine Oberflächenentwicklung ohne Runtime-Integration verwenden Sie `pnpm 
 
 ## Open-Source-Grenze
 
-Dieses Repository enthält den öffentlichen React/Tauri-Client, öffentliche Runtime-Verträge, Mocks, Tests und Paketierung. Der Quellcode der Kition-Runtime wird separat gepflegt und ist nicht enthalten. Der Client kommuniziert ausschließlich über die öffentlichen Verträge in [`contracts/runtime/`](contracts/runtime/).
+Die gesamte Desktop-App ist in diesem Repository quelloffen: der React-Renderer (`src/`), die Tauri-Desktop-Shell (`src-tauri/`), die Rust-Runtime (`crates/`), die die Shell im selben Prozess ausführt, die Runtime-Verträge in [`contracts/runtime/`](contracts/runtime/), Mocks, Tests und Paketierung. Kits werden in separaten Repositories entwickelt; Kition liefert ihre veröffentlichten Pakete aus, mit Version und Prüfsumme festgelegt in [`kits/kits.lock.json`](kits/kits.lock.json).
 
 ## Technologie
 
@@ -124,12 +125,12 @@ Dieses Repository enthält den öffentlichen React/Tauri-Client, öffentliche Ru
 | Desktop | Tauri 2 (Rust) |
 | Oberfläche | React, TypeScript, Vite |
 | Dokumente | Marked, Mermaid, KaTeX |
-| Daten und Zustand | IndexedDB, Jotai, Zod |
+| Daten und Zustand | IndexedDB, TanStack Query, Zod |
 | Tests | Vitest, Playwright |
 
 ## Mitwirken
 
-Issues und Pull Requests für den öffentlichen Client sind willkommen. Lesen Sie [CONTRIBUTING.md](CONTRIBUTING.md) und den [Kition-Entwicklungsstandard](docs/development-standard.md) und halten Sie Änderungen innerhalb der Grenze zwischen öffentlichem Client und Runtime-Verträgen.
+Issues und Pull Requests sind willkommen. Lesen Sie [CONTRIBUTING.md](CONTRIBUTING.md) und den [Kition-Entwicklungsstandard](docs/development-standard.md). Ändern Sie bei Änderungen über Renderer und Runtime hinweg den Vertrag in `contracts/runtime/`, das Renderer-Mock und die Runtime gemeinsam.
 
 ## Lizenz
 

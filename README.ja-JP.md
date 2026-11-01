@@ -92,6 +92,7 @@ Kition はタスクの文脈をドキュメント、テーブル、レコード�
 - **テーブル:** 型付きフィールド、添付、数式、フィルター、並べ替え、グループ、複数ビュー。
 - **エージェント:** ドキュメント更新、ウェブ調査、ツール利用、ワークスペースへの保存。
 - **ワークフロー:** ビジュアルキャンバスでトリガーとアクションを構成し、テストと履歴確認を実行。
+- **キット:** ファイル形式ごとの 15 種類の組み込みエディター（Board、CAD、Cube、Design、Doc、Effect、Fig、Film、Note、PDF、Photo、Sheet、Slide、Table、Vector）。各キットのエンジンは WebAssembly として Web Worker で動作し、エージェントはキットのツールを通じて同じファイルを編集します。
 - **設定:** メール接続、モデル、プロキシ、MCP、アカウント、使用量、更新、デスクトップ統合。
 
 ## インストール
@@ -115,7 +116,7 @@ pnpm dev
 
 ## オープンソースの範囲
 
-このリポジトリには公開 React/Tauri クライアント、公開ランタイム契約、モック、テスト、パッケージング処理が含まれます。Kition ランタイムのソースは別の非公開リポジトリで管理され、このリポジトリには含まれません。通信は [`contracts/runtime/`](contracts/runtime/) の公開契約のみを使用します。
+デスクトップアプリ全体がこのリポジトリでオープンソースとして公開されています。React レンダラー（`src/`）、Tauri デスクトップシェル（`src-tauri/`）、シェルが同じプロセス内で実行する Rust ランタイム（`crates/`）、[`contracts/runtime/`](contracts/runtime/) のランタイム契約、モック、テスト、パッケージング処理が含まれます。キットは別のリポジトリで開発され、Kition は公開済みのパッケージを [`kits/kits.lock.json`](kits/kits.lock.json) でバージョンとチェックサムを固定して同梱します。
 
 ## 技術スタック
 
@@ -124,12 +125,12 @@ pnpm dev
 | デスクトップ | Tauri 2 (Rust) |
 | UI | React、TypeScript、Vite |
 | ドキュメント | Marked、Mermaid、KaTeX |
-| データと状態 | IndexedDB、Jotai、Zod |
+| データと状態 | IndexedDB、TanStack Query、Zod |
 | テスト | Vitest、Playwright |
 
 ## コントリビューション
 
-公開クライアントへの Issue と Pull Request を歓迎します。[CONTRIBUTING.md](CONTRIBUTING.md) と [Kition 開発標準](docs/development-standard.md)を確認し、公開クライアントとランタイム契約の境界を守ってください。
+Issue と Pull Request を歓迎します。[CONTRIBUTING.md](CONTRIBUTING.md) と [Kition 開発標準](docs/development-standard.md)を確認してください。レンダラーとランタイムにまたがる変更では、`contracts/runtime/` の契約、レンダラーのモック、ランタイムを同時に更新してください。
 
 ## ライセンス
 

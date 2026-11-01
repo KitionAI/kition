@@ -1,14 +1,14 @@
 # Kit SDK: Editing Kit Files Inside Kition
 
-Status: in use for all ten kits. Revised 2026-10-15: every kit draws its own
+Status: in use for all fifteen kits. Revised 2026-10-15: every kit draws its own
 editor, and Kition's own kit editors are gone. Every new kit must follow this guide.
 
 This guide is how Kition implements the **Kit Harness Protocol (KHP)** and
 the Kition kit platform, which are normative. KHP (how an AI agent uses a
 kit) is [`spec/`](https://github.com/KitionAI/kit-standard/tree/main/spec)
-in the private `KitionAI/kit-standard` repository (aligned with DeepSeek
+in the `KitionAI/kit-standard` repository (aligned with DeepSeek
 Harness contracts); the platform (engines, the Kit Data Model, the Kit UI
-protocol, embedding) is `docs/platform/` in the private
+protocol, embedding) is `docs/platform/` in the
 `KitionAI/kition-sdk` repository (Apache-2.0), the SDK that implements both,
 with its plan in `docs/roadmap.md` there. Where this guide and KHP or the
 platform disagree, they win and this guide is fixed. Every kit ships a
@@ -126,7 +126,7 @@ engine builds. Kition loads a kit's engine from its package
 ## 2. The Pieces
 
 ```text
-kit repository (for example KitionAI/kition-photo, standalone, private)
+kit repository (for example KitionAI/kition-photo, standalone)
   crates/<engine crates>          the upstream engine, changed as needed
   (git dependency) kition-sdk     KitionAI/kition-sdk: KitDocument, export_kit_document!,
                                   testing::check_contract, host (lent files), raster
@@ -405,7 +405,7 @@ items with `primary`.
   editor shows View only instead of Undo, Redo, and Save; a kit's own panels
   read it with `useReadOnly()`. When the role changes, `KitFrame` opens the
   kit again in a new iframe, since a kit page answers one handshake.
-- `KIT_EDITORS` in `kits/kitEditors.ts` maps a format to its kit package.
+- `KIT_EDITORS` in `src/features/workspace/components/kits/kitEditors.ts` maps a format to its kit package.
   `KitFilePane` shows the package when its `kit-ui.json` is present. A
   development build without the package shows the file preview for formats
   the preview shows (`preview: true`: PDF and Office), or a short notice.
@@ -413,7 +413,7 @@ items with `primary`.
   the engine inside the package (`createKitFile`, the `engine` manifest of the
   entry), under an unused name, written through the host.
 - `src/features/kits/host/` is Kition's copy of `@kition/kit-protocol` and
-  `@kition/kit-host` (kition-sdk is private, Kition public):
+  `@kition/kit-host` (kition-sdk is a separate repository):
   `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
   fails when they drift. The same script copies kition-sdk's `kit.json`
   schema into `contracts/kit/kit.schema.json`, which the conformance
@@ -641,7 +641,7 @@ origin of its own, keeps documents in its own storage, and may co-edit them
 through a sync server. Kition consumes the package the way any other host
 would, through `@kition/kit-host`, so it never builds kits in its release.
 
-- **Publishing** runs on a developer machine, never in the private kit
+- **Publishing** runs on a developer machine, never in the kit
   repositories' CI (their Actions minutes are limited):
   `scripts/publish-kit.sh <kit>` clones the pushed `origin/main` of the kit,
   kition-sdk, kition-tessera, and kition-fonts side by side in a scratch folder (local changes
@@ -662,7 +662,7 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
   pinned version and commit), and `--check` and the release build's
   `dist/kits` check report it. `--check` only compares. Locally it uses your gh login; the release
   workflow uses the `KITION_KITS_TOKEN` secret, a read-only token for the kit
-  repositories' contents. The kit repositories stay private.
+  repositories' contents.
 - **Releasing**: Kition's release workflow (a public repository, so its CI is
   free) fetches the packages, checks every engine against the contract
   (`pnpm check:kit-sdks`), runs the kit e2e specs in its sweep, and fetches
@@ -735,7 +735,7 @@ Kition renderer:
    `KIT_UIS` in the `Makefile`. Then `make kit-ui-<kit>` and
    `pnpm check:kit-sdks`, and when it is ready to ship,
    `scripts/publish-kit.sh <kit>`.
-9. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, icon, the
+9. One entry in `KIT_EDITORS` (`src/features/workspace/components/kits/kitEditors.ts`): format, icon, the
    engine's document class, `preview: true` for a format the file preview
    already shows (PDF, Office; the linked-file prompt then keeps
    `document_read` for its text, `TEXT_EXTRACTED` in
@@ -1062,8 +1062,7 @@ budget records it here until it is fixed.
 
 ## 8. The Kition SDK Repository
 
-`KitionAI/kition-sdk` (private for now, Apache-2.0, like the kits and the shared
-kit UI library) is the kit author's SDK:
+`KitionAI/kition-sdk` (Apache-2.0) is the kit author's SDK:
 
 - `crates/kition-sdk`: the contract trait, export macro, contract checker,
   lent files, and raster helpers;

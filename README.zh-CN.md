@@ -94,6 +94,7 @@ Kition 把任务上下文放进熟悉的工作界面：文档、表格字段、�
 - **表格：** 类型化字段、附件、公式、筛选、排序、分组、多视图和快速记录编辑。
 - **智能体：** 读取和更新文档、研究网页、使用工具，并将输出写回工作区。
 - **工作流：** 在可视化画布上组合触发器与动作，测试步骤并查看运行历史。
+- **套件（Kit）：** 15 个内置编辑器，各自负责一种文件（Board、CAD、Cube、Design、Doc、Effect、Fig、Film、Note、PDF、Photo、Sheet、Slide、Table、Vector）。每个套件的引擎编译为 WebAssembly，在 Web Worker 中运行；智能体通过套件的工具编辑同一份文件。
 - **连接与设置：** 邮件连接、模型、代理、MCP、账户、用量、更新与桌面集成设置。
 
 ## 安装
@@ -123,7 +124,7 @@ pnpm dev:web
 
 ## 开源边界
 
-本仓库包含公开的 React/Tauri 客户端、公共运行时契约、模拟数据、测试和打包流程。Kition 运行时在单独的私有仓库中维护，其源码不包含在本仓库内。客户端仅通过 [`contracts/runtime/`](contracts/runtime/) 中的公共契约与运行时通信。
+整个桌面应用都在本仓库中开源：React 渲染器（`src/`）、Tauri 桌面外壳（`src-tauri/`）、由外壳在同一进程内运行的 Rust 运行时（`crates/`）、[`contracts/runtime/`](contracts/runtime/) 中的运行时契约、模拟数据、测试和打包流程。套件在独立的仓库中开发；Kition 随应用附带它们已发布的包，并在 [`kits/kits.lock.json`](kits/kits.lock.json) 中按版本和校验和固定。
 
 ## 技术栈
 
@@ -132,12 +133,12 @@ pnpm dev:web
 | 桌面端 | Tauri 2 (Rust) |
 | 界面 | React、TypeScript、Vite |
 | 文档 | Marked、Mermaid、KaTeX |
-| 数据与状态 | IndexedDB、Jotai、Zod |
+| 数据与状态 | IndexedDB、TanStack Query、Zod |
 | 测试 | Vitest、Playwright |
 
 ## 参与贡献
 
-欢迎为公开客户端提交 Issue 和 Pull Request。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [Kition 开发标准](docs/development-standard.md)，并保持修改位于公开客户端与运行时契约边界内。
+欢迎提交 Issue 和 Pull Request。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [Kition 开发标准](docs/development-standard.md)。修改同时涉及渲染器和运行时时，请一起更新 `contracts/runtime/` 中的契约、渲染器模拟和运行时。
 
 ## 许可证
 

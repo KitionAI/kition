@@ -24,7 +24,7 @@ If an AI coding agent contributed, summarize its review of:
 
 - user-visible behavior and copy accuracy;
 - macOS, Windows, Linux, web-preview, and desktop shell differences;
-- public runtime contracts, mocks, and private runtime boundaries;
+- runtime contracts in `contracts/runtime/`, renderer mocks, and runtime crates;
 - performance and accessibility risks;
 - English-only content, branding, and portable paths.
 
@@ -37,6 +37,6 @@ update, IPC, external URL, and destructive-action risks reviewed.
 
 ## Release Boundary
 
-- [ ] No credentials, private runtime binaries, host-specific paths, generated local data, or private implementation details are included.
-- [ ] Public contracts or mocks were updated before relying on new runtime behavior.
+- [ ] No credentials, signing keys, host-specific paths, or generated local data are included.
+- [ ] Runtime behavior changes update the contract, the renderer mock, and the runtime together.
 - [ ] This pull request does not include an unrequested version bump, tag, or release action.

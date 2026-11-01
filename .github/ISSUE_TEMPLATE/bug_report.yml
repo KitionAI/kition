@@ -47,7 +47,7 @@ body:
     id: logs
     attributes:
       label: Logs or screenshots
-      description: Remove workspace content, API keys, tokens, and private runtime details.
+      description: Remove workspace content, API keys, tokens, and other personal information.
   - type: checkboxes
     id: security
     attributes:

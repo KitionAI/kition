@@ -493,7 +493,7 @@ documented in the product file.
 
 ## Overview
 
-Kition presents a coherent workspace where documents, tables, browser research, workflows, and AI tools share one product surface. Marketing pages should lead with tangible product capabilities and show real Kition workspace captures rather than relying on abstract positioning.
+Kition presents a coherent workspace where documents, tables, kits, agent web research, workflows, and AI tools share one product surface. Marketing pages should lead with tangible product capabilities and show real Kition workspace captures rather than relying on abstract positioning.
 
 Supporting sections should demonstrate real document editing, structured data, visual workflows, and Agent actions. Use the pastel feature palette to distinguish capabilities while keeping the main product surfaces white or light neutral.
 
