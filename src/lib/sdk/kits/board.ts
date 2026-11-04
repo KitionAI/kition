@@ -149,100 +149,100 @@ export interface Comment extends ModelObject {
 
 /** Every command of kit.board, by id, with its parameters. */
 export interface BoardCommands extends CommandMap {
-  /** Undo. Changes the document. */
-  "edit.undo": Record<string, never>
-  /** Redo. Changes the document. */
-  "edit.redo": Record<string, never>
-  /** Duplicate. Changes the document. */
-  "element.duplicate": { /** The elements */ ids: Array<string>; /** [dx, dy] of the copies (24, 24 by default) */ offset?: Array<number> }
-  /** Delete. Changes the document. */
+  /** Undo. Takes back the last step of one scope: the person's or the agent's (by default the caller's own), leaving the other scope's later steps in place. Changes the document. */
+  "edit.undo": { /** Whose last step to undo: the person's or the agent's. By default the scope of whoever runs it (an agent undoes only its own steps) */ scope?: "person" | "agent" }
+  /** Redo. Puts back the last undone step of one scope (by default the caller's own); a new edit in that scope clears what can be redone. Changes the document. */
+  "edit.redo": { /** Whose last undone step to redo: the person's or the agent's. By default the scope of whoever runs it */ scope?: "person" | "agent" }
+  /** Duplicate. Copies the elements (with what is inside frames and groups) on the same page, offset by 24 units unless offset says otherwise; answers the copies' ids. Changes the document. */
+  "element.duplicate": { /** The elements */ ids: Array<string>; /** [dx, dy] of the copies (24, 24 by default) */ offset?: Json }
+  /** Delete. Removes the elements and everything inside frames and groups among them; connectors attached to them lose that end's binding. Changes the document. */
   "element.delete": { /** The elements; what is inside frames and groups goes with them */ ids: Array<string> }
-  /** Copy */
-  "clipboard.copy": Record<string, never>
-  /** Paste. Changes the document. */
-  "element.paste": { /** [x, y] for the copies' top-left corner */ at?: Array<number>; /** The page's id; the shown page when absent */ page?: string; /** A clipboard.copy payload (application/x-kition-board+json) */ payload: Json }
-  /** Create elements. Changes the document. */
-  "element.create": { /** The elements to make, back to front */ elements: Array<{ connectorType?: "straight" | "elbow" | "curved"; dashStyle?: "solid" | "dashed" | "dotted"; endArrowhead?: "none" | "arrow" | "dot"; fillColor?: string; fillStyle?: "none" | "solid" | "semi" | "pattern"; fontFamily?: "sans" | "serif" | "mono"; fontSize?: number; key?: string; kind: "shape" | "text" | "frame" | "stroke"; opacity?: number; parent?: string; points?: Array<Array<number>>; position?: Array<number>; rotation?: number; roundness?: number; shapeStyle?: "default" | "sticky" | "mind-node" | "flow-node" | "image-placeholder"; shapeType?: "rectangle" | "ellipse" | "triangle" | "diamond" | "hexagon" | "pill" | "parallelogram" | "star" | "cloud" | "heart" | "x-box" | "check-box" | "check" | "arrow-left" | "arrow-right" | "arrow-up" | "arrow-down" | "line"; size?: Array<number>; startArrowhead?: "none" | "arrow" | "dot"; strokeColor?: string; strokeSize?: "s" | "m" | "l" | "xl"; text?: string; textAlign?: "left" | "center" | "right"; textFormat?: "plain" | "markdown" }>; /** The page's id; the shown page when absent */ page?: string }
-  /** Update an element. Changes the document. */
+  /** Copy. Reads the elements into a board clipboard payload without changing the board; pass the payload to element.paste to place copies on any page. */
+  "clipboard.copy": { /** The elements to copy; the answer is a board clipboard payload for element.paste */ ids: Array<string> }
+  /** Paste. Places copies of a clipboard.copy payload on a page, at `at` or offset from the originals; answers the new elements' ids. Changes the document. */
+  "element.paste": { /** [x, y] for the copies' top-left corner */ at?: Json; /** The page's id; the shown page when absent */ page?: string; /** A clipboard.copy payload (application/x-kition-board+json) */ payload: Json }
+  /** Create elements. Makes one or more elements (shapes, text, sticky notes, strokes, frames, connectors, cards) on a page in one step; use it to build content, element.update to change existing elements. Changes the document. */
+  "element.create": { /** The elements to make, back to front */ elements: Array<{ connectorType?: "straight" | "elbow" | "curved"; dashStyle?: "solid" | "dashed" | "dotted"; endArrowhead?: "none" | "arrow" | "dot"; fillColor?: string; fillStyle?: "none" | "solid" | "semi" | "pattern"; fontFamily?: "sans" | "serif" | "mono"; fontSize?: number; key?: string; kind: "shape" | "text" | "frame" | "stroke"; opacity?: number; parent?: string; points?: Array<Array<number>>; position?: Json; rotation?: number; roundness?: number; shapeStyle?: "default" | "sticky" | "mind-node" | "flow-node" | "image-placeholder"; shapeType?: "rectangle" | "ellipse" | "triangle" | "diamond" | "hexagon" | "pill" | "parallelogram" | "star" | "cloud" | "heart" | "x-box" | "check-box" | "check" | "arrow-left" | "arrow-right" | "arrow-up" | "arrow-down" | "line"; size?: Json; startArrowhead?: "none" | "arrow" | "dot"; strokeColor?: string; strokeSize?: "s" | "m" | "l" | "xl"; text?: string; textAlign?: "left" | "center" | "right"; textFormat?: "plain" | "markdown" }>; /** The page's id; the shown page when absent */ page?: string }
+  /** Update an element. Sets fields of one existing element (position, size, rotation, parent, shape type and style, text placement, mind-map fields); null clears an optional field. Changes the document. */
   "element.update": { /** The element */ id: string; /** Fields to set: position [x, y], size [w, h], rotation, parent, key, points, shapeType, shapeStyle, style fields, labelPosition, mind-map fields; null clears an optional field */ set: { [key: string]: Json } }
-  /** Move. Changes the document. */
-  "element.move": { /** [dx, dy] to move by */ delta?: Array<number>; /** The elements; what is inside them moves along */ ids: Array<string>; /** Each moved element takes the frame its centre lands in (and leaves a frame it is moved out of) */ reparent?: boolean; /** [x, y] for the selection's top-left corner (instead of delta) */ to?: Array<number> }
-  /** Resize. Changes the document. */
+  /** Move. Moves the elements by delta or so the selection's top-left lands at `to`; with reparent each element joins the frame its centre lands in. Changes the document. */
+  "element.move": { /** [dx, dy] to move by */ delta?: Json; /** The elements; what is inside them moves along */ ids: Array<string>; /** Each moved element takes the frame its centre lands in (and leaves a frame it is moved out of) */ reparent?: boolean; /** [x, y] for the selection's top-left corner (instead of delta) */ to?: Json }
+  /** Resize. Gives one element, or several scaled together, a new box [x0, y0, x1, y1] in board units. Changes the document. */
   "element.resize": { /** The new box [x0, y0, x1, y1]: the element's unrotated box, or the selection's bounds with ids */ box: Array<number>; /** The element (or ids) */ id?: string; /** Elements to scale together (instead of id) */ ids?: Array<string> }
-  /** Rotate. Changes the document. */
+  /** Rotate. Rotates the elements by degrees clockwise, each about its own centre or all about the selection's centre. Changes the document. */
   "element.rotate": { /** Each about its own centre (default) or all about the selection's centre */ about?: "each" | "selection"; /** Degrees, clockwise */ degrees: number; /** The elements */ ids: Array<string> }
-  /** Style. Changes the document. */
+  /** Style. Sets style fields (colours, fill, stroke, dash, font, size, alignment, opacity, roundness) on the elements; each element takes only the fields its kind uses. Changes the document. */
   "element.style": { /** The elements; each takes the fields its kind uses */ ids: Array<string>; style: { connectorType?: "straight" | "elbow" | "curved"; dashStyle?: "solid" | "dashed" | "dotted"; endArrowhead?: "none" | "arrow" | "dot"; fillColor?: string; fillStyle?: "none" | "solid" | "semi" | "pattern"; fontFamily?: "sans" | "serif" | "mono"; fontSize?: number; opacity?: number; roundness?: number; startArrowhead?: "none" | "arrow" | "dot"; strokeColor?: string; strokeSize?: "s" | "m" | "l" | "xl"; textAlign?: "left" | "center" | "right" } }
-  /** Read style */
+  /** Read style. Reads the style fields the elements use, or a new element's defaults for a kind, without changing anything; null marks a field the elements differ on. Also answers the colour palette. */
   "element.getStyle": { /** The elements (instead of kind) */ ids?: Array<string>; /** A new element's kind, for its defaults (instead of ids) */ kind?: "shape" | "text" | "stroke" | "connector" | "image" | "card" | "frame"; /** The new shape's role */ shapeStyle?: "default" | "sticky" | "mind-node" | "flow-node" | "image-placeholder" }
-  /** Edit text. Changes the document. */
+  /** Edit text. Replaces the whole text of a shape, text element, connector label, card caption or frame title. Changes the document. */
   "element.setText": { /** A shape, text, connector, card or frame */ id: string; /** The whole new text */ text: string }
-  /** Format text. Changes the document. */
+  /** Format text. Applies or removes bold, italic or a link on a character range of one element's text. Changes the document. */
   "text.mark": { /** The element */ id: string; /** The mark */ mark: "bold" | "italic" | "link"; /** [start, end) in characters */ range: Array<number>; /** How range counts: characters (default) or UTF-16 code units */ units?: "scalar" | "utf16"; /** true (bold, italic), { href } (link), or null to remove */ value?: Json }
-  /** Frame. Changes the document. */
+  /** Frame. Makes a frame with a box and title and moves the named elements into it; frames group content and export as one area. Changes the document. */
   "frame.create": { /** The frame's box [x0, y0, x1, y1] */ box: Array<number>; /** Elements to put in the frame */ children?: Array<string>; /** The page's id; the shown page when absent */ page?: string; /** The frame's title */ title?: string }
-  /** Draw a stroke. Changes the document. */
+  /** Draw a stroke. Draws a freehand stroke through at least two points, with optional ink colour, weight and opacity. Changes the document. */
   "stroke.create": { /** The page's id; the shown page when absent */ page?: string; /** The stroke's points, at least two */ points: Array<Array<number>>; style?: { opacity?: number; strokeColor?: string; strokeSize?: "s" | "m" | "l" | "xl" } }
-  /** Connector. Changes the document. */
-  "connector.create": { /** Arrowhead at the end (arrow by default) */ endArrowhead?: "none" | "arrow" | "dot"; /** The start: { element, anchor? } to attach to an element (anchor [0..1, 0..1] on its box, the nearest edge when absent), or { point: [x, y] } */ from: { anchor?: Array<number>; element?: string; point?: Array<number> }; /** An authoring id, unique on the page */ key?: string; /** The label */ label?: string; /** The page's id; the shown page when absent */ page?: string; /** Arrowhead at the start (none by default) */ startArrowhead?: "none" | "arrow" | "dot"; /** The end: { element, anchor? } to attach to an element (anchor [0..1, 0..1] on its box, the nearest edge when absent), or { point: [x, y] } */ to: { anchor?: Array<number>; element?: string; point?: Array<number> }; /** The route */ type?: "straight" | "elbow" | "curved"; /** Bends in path order */ waypoints?: Array<Array<number>> }
-  /** Template. Changes the document. */
-  "template.insert": { /** [x, y] for the template's centre; right of the content when absent */ at?: Array<number>; /** The page's id; the shown page when absent */ page?: string; /** The starting structure */ template: "mindmap" | "flowchart" | "roadmap" | "kanban" | "retrospective" | "storyboard" }
-  /** Card. Changes the document. */
-  "card.create": { /** A caption under the card */ caption?: string; /** A workspace file, relative to the board's folder or rooted with / */ file?: string; /** The card's kind (from the file's extension when absent) */ kind?: "note" | "table" | "board" | "file" | "link"; /** The page's id; the shown page when absent */ page?: string; /** [x, y]; right of the content when absent */ position?: Array<number>; /** [w, h]; 320 ? 200 by default */ size?: Array<number>; /** A link card's title */ title?: string; /** An http, https or mailto address (instead of file) */ url?: string; /** Where in the target: { heading: [...] }, { blockId }, { page } */ view?: { [key: string]: Json } }
-  /** Picture. Changes the document. */
-  "image.insert": { /** Alternative text */ alt?: string; /** The picture's bytes as base64 (instead of file) */ data?: string; /** A workspace picture (PNG, JPEG, GIF, WebP, SVG), read once into the board */ file?: string; /** The picture's type, checked against its bytes */ mime?: string; /** The page's id; the shown page when absent */ page?: string; /** [x, y]; right of the content when absent */ position?: Array<number>; /** [w, h]; from the picture, at most 800 wide, when absent */ size?: Array<number> }
-  /** Attach connector end. Changes the document. */
-  "connector.bind": { /** The connector */ id: string; /** Which end */ terminal: "start" | "end"; /** Where the end goes: { element, anchor? } to attach to an element (anchor [0..1, 0..1] on its box, the nearest edge when absent), or { point: [x, y] } */ to: { anchor?: Array<number>; element?: string; point?: Array<number> } }
-  /** Connector label. Changes the document. */
+  /** Connector. Draws a connector between two ends, each attached to an element or at a free point, with route type, arrowheads, label and bends; answers its id. Changes the document. */
+  "connector.create": { /** Arrowhead at the end (arrow by default) */ endArrowhead?: "none" | "arrow" | "dot"; /** The start: { element, anchor? } to attach to an element (anchor [0..1, 0..1] on its box, the nearest edge when absent), or { point: [x, y] } */ from: { anchor?: Json; element?: string; point?: Json }; /** An authoring id, unique on the page */ key?: string; /** The label */ label?: string; /** The page's id; the shown page when absent */ page?: string; /** Arrowhead at the start (none by default) */ startArrowhead?: "none" | "arrow" | "dot"; /** The end: { element, anchor? } to attach to an element (anchor [0..1, 0..1] on its box, the nearest edge when absent), or { point: [x, y] } */ to: { anchor?: Json; element?: string; point?: Json }; /** The route */ type?: "straight" | "elbow" | "curved"; /** Bends in path order */ waypoints?: Array<Array<number>> }
+  /** Template. Inserts a ready structure (mind map, flowchart, roadmap, kanban, retrospective, storyboard) centred at `at` or right of the content. Changes the document. */
+  "template.insert": { /** [x, y] for the template's centre; right of the content when absent */ at?: Json; /** The page's id; the shown page when absent */ page?: string; /** The starting structure */ template: "mindmap" | "flowchart" | "roadmap" | "kanban" | "retrospective" | "storyboard" }
+  /** Card. Places a card that links to a workspace file (note, table, board or any file) or a web address; the card shows the target's title and opens it. Changes the document. */
+  "card.create": { /** A caption under the card */ caption?: string; /** A workspace file, relative to the board's folder or rooted with / */ file?: Json; /** The card's kind (from the file's extension when absent) */ kind?: "note" | "table" | "board" | "file" | "link"; /** The page's id; the shown page when absent */ page?: string; /** [x, y]; right of the content when absent */ position?: Json; /** [w, h]; 320 ? 200 by default */ size?: Json; /** A link card's title */ title?: string; /** An http, https or mailto address (instead of file) */ url?: string; /** Where in the target: { heading: [...] }, { blockId }, { page } */ view?: { [key: string]: Json } }
+  /** Picture. Places a picture from a workspace file or base64 bytes (PNG, JPEG, GIF, WebP, SVG); the picture is stored in the board. Changes the document. */
+  "image.insert": { /** Alternative text */ alt?: string; /** The picture's bytes as base64 (instead of file) */ data?: string; /** A workspace picture (PNG, JPEG, GIF, WebP, SVG), read once into the board */ file?: Json; /** The picture's type, checked against its bytes */ mime?: string; /** The page's id; the shown page when absent */ page?: string; /** [x, y]; right of the content when absent */ position?: Json; /** [w, h]; from the picture, at most 800 wide, when absent */ size?: Json }
+  /** Attach connector end. Moves one end of an existing connector onto an element (at an anchor on its box) or to a free point. Changes the document. */
+  "connector.bind": { /** The connector */ id: string; /** Which end */ terminal: "start" | "end"; /** Where the end goes: { element, anchor? } to attach to an element (anchor [0..1, 0..1] on its box, the nearest edge when absent), or { point: [x, y] } */ to: { anchor?: Json; element?: string; point?: Json } }
+  /** Connector label. Sets or removes a connector's label and where along the route it sits (0 to 1). Changes the document. */
   "connector.setLabel": { /** The connector */ id: string; /** Where along the route, 0 to 1 (0.5 by default) */ position?: number; /** The label; empty removes it */ text: string }
-  /** Connector bends. Changes the document. */
+  /** Connector bends. Replaces a connector's bend points; an empty list returns it to an automatic route. Changes the document. */
   "connector.setWaypoints": { /** The connector */ id: string; /** Bends in path order; empty for an automatic route */ waypoints: Array<Array<number>> }
-  /** Change card target. Changes the document. */
-  "card.setTarget": { /** A workspace file, relative to the board's folder or rooted with / */ file?: string; /** The card */ id: string; /** The card's kind (from the file's extension when absent) */ kind?: "note" | "table" | "board" | "file" | "link"; /** A link card's title */ title?: string; /** An http, https or mailto address (instead of file) */ url?: string; /** Where in the target: { heading: [...] }, { blockId }, { page } */ view?: { [key: string]: Json } }
-  /** Alternative text. Changes the document. */
+  /** Change card target. Points an existing card at another workspace file or web address, keeping its place and size. Changes the document. */
+  "card.setTarget": { /** A workspace file, relative to the board's folder or rooted with / */ file?: Json; /** The card */ id: string; /** The card's kind (from the file's extension when absent) */ kind?: "note" | "table" | "board" | "file" | "link"; /** A link card's title */ title?: string; /** An http, https or mailto address (instead of file) */ url?: string; /** Where in the target: { heading: [...] }, { blockId }, { page } */ view?: { [key: string]: Json } }
+  /** Alternative text. Sets or removes a picture's alternative text, read by screen readers and exports. Changes the document. */
   "image.setAlt": { /** Alternative text; empty removes it */ alt: string; /** The picture */ id: string }
-  /** Fit frame to content. Changes the document. */
+  /** Fit frame to content. Resizes a frame to wrap its content with padding (32 units by default). Changes the document. */
   "frame.fit": { /** The frame */ id: string; /** Space around the content (32 by default) */ padding?: number }
-  /** Group. Changes the document. */
+  /** Group. Groups the elements so they move, resize and select together; answers the group's id. Changes the document. */
   "element.group": { /** The elements to group */ ids: Array<string> }
-  /** Ungroup. Changes the document. */
+  /** Ungroup. Dissolves the groups, leaving their elements in place and in the same order. Changes the document. */
   "element.ungroup": { /** The groups */ groupIds: Array<string> }
-  /** Order. Changes the document. */
+  /** Order. Moves the elements to the front, one step forward, one step backward or to the back of the stacking order. Changes the document. */
   "element.reorder": { /** The elements */ ids: Array<string>; /** Where in the stacking order */ placement: "front" | "forward" | "backward" | "back" }
-  /** Lock. Changes the document. */
+  /** Lock. Locks or unlocks the elements; locked elements cannot be selected, moved or edited by the person until unlocked. Changes the document. */
   "element.lock": { /** The elements */ ids: Array<string>; locked: boolean }
-  /** Align. Changes the document. */
+  /** Align. Lines up the elements' left, centre, right, top, middle or bottom edges. Changes the document. */
   "layout.align": { /** What to line up */ edge: "left" | "center" | "right" | "top" | "middle" | "bottom"; /** The elements */ ids: Array<string> }
-  /** Distribute. Changes the document. */
+  /** Distribute. Spaces three or more elements evenly between the outermost ones, horizontally or vertically. Changes the document. */
   "layout.distribute": { /** Direction */ axis: "horizontal" | "vertical"; /** Three or more elements */ ids: Array<string> }
-  /** Stack. Changes the document. */
+  /** Stack. Places the elements one after another in a row or column with a fixed gap (24 by default). Changes the document. */
   "layout.stack": { /** Direction */ axis: "horizontal" | "vertical"; /** Space between (24 by default) */ gap?: number; /** The elements */ ids: Array<string> }
-  /** Lay out mind map. Changes the document. */
+  /** Lay out mind map. Re-lays out the whole mind map that a node belongs to, keeping the root in place. Changes the document. */
   "layout.mindmap": { /** Any node of the mind map */ root: string }
-  /** Add branch. Changes the document. */
+  /** Add branch. Adds a branch node under a mind-map node (on a chosen side for two-way maps) and lays the map out again. Changes the document. */
   "mindmap.addChild": { /** The node to branch from */ node: string; /** Which side of the root, for a map that grows both ways */ side?: "left" | "right"; /** The new node's text */ text?: string }
-  /** Add sibling. Changes the document. */
+  /** Add sibling. Adds a node next to a non-root mind-map node, under the same parent. Changes the document. */
   "mindmap.addSibling": { /** A node other than the root */ node: string; /** The new node's text */ text?: string }
-  /** Collapse branch. Changes the document. */
+  /** Collapse branch. Hides or shows the branches below a mind-map node (toggles when collapsed is absent). Changes the document. */
   "mindmap.collapse": { /** Hide (true) or show (false) what is below; toggles when absent */ collapsed?: boolean; /** A node with branches, not the root */ node: string }
-  /** Mind map direction. Changes the document. */
+  /** Mind map direction. Sets which way the mind map grows (right, left, both ways, down) and lays it out again. Changes the document. */
   "mindmap.setDirection": { /** Where the map grows */ direction: "both" | "right" | "left" | "down"; /** Any node of the mind map */ node: string }
-  /** New page. Changes the document. */
+  /** New page. Adds a new page with a name (Page N by default) at a position (last by default); answers its id. Changes the document. */
   "page.create": { /** Position among the pages (last by default) */ at?: number; /** The name (Page N by default) */ name?: string }
-  /** Rename page. Changes the document. */
+  /** Rename page. Gives a page a new name; its id and elements stay the same. Changes the document. */
   "page.rename": { /** The new name */ name: string; /** The page */ page: string }
-  /** Duplicate page. Changes the document. */
+  /** Duplicate page. Copies a page with all its elements, under a new name; answers the copy's id. Changes the document. */
   "page.duplicate": { /** The copy's name */ name?: string; /** The page */ page: string }
-  /** Delete page. Changes the document. */
+  /** Delete page. Deletes a page and its elements; the board's last page cannot be deleted. Changes the document. */
   "page.delete": { /** The page; the last page stays */ page: string }
-  /** Move page. Changes the document. */
+  /** Move page. Moves a page to a new position among the pages, or one step earlier or later. Changes the document. */
   "page.move": { /** The page */ page: string; /** One step (instead of to) */ placement?: "previous" | "next"; /** The new position */ to?: number }
-  /** Show page */
-  "page.activate": Record<string, never>
-  /** Export */
+  /** Show page. Shows a page in the editor; this is view state, not an undo step, and the document does not change. */
+  "page.activate": { /** The id of the page to show (view state, not an undo step) */ page: string }
+  /** Export. Draws the shown page (or `page`, or one frame) as PNG, SVG or PDF and answers the file as base64 without changing the board. */
   "file.export": { /** A white page behind the board (true by default; PDF pages are always white) */ background?: boolean; /** A PNG too large at its scale is drawn at the largest scale that fits instead of refused */ fit?: boolean; /** The file to write */ format: "png" | "svg" | "pdf"; /** One frame and what is in it, instead of the whole page */ frame?: string; /** The page's id; the shown page when absent */ page?: string; /** PNG pixels per board unit, 0.1 to 8 (2 by default) */ scale?: number }
-  /** Retarget links. Changes the document. */
-  "links.retarget": Record<string, never>
+  /** Retarget links. Re-points every card that links to a moved or renamed workspace file or folder at its new path. Changes the document. */
+  "links.retarget": { /** The workspace path cards link to now, a file or a folder (KitLinks LK2) */ from: string; /** The workspace path they link to instead; a folder's cards keep the rest of their path */ to: string }
 }
 
 /** A Board file opened with `openDocument<Board, BoardCommands>`. */

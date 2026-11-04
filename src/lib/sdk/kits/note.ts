@@ -55,195 +55,243 @@ export interface Comment extends ModelObject {
 
 /** Every command of kit.note, by id, with its parameters. */
 export interface NoteCommands extends CommandMap {
-  /** Read the text. Params: { from?: number, to?: number, unit?: "scalar" | "utf16" } (the whole text by default) */
+  /** Read the text. Answers the note's raw Markdown (front matter included) and its length, or the part between `from` and `to` (text positions from 0). Use it to read exact text before editing by position. Params: { from?: number, to?: number, unit?: "scalar" | "utf16" } (the whole text by default). */
   "text.read": { /** Where to start; 0 by default. */ from?: number; /** Where to stop (exclusive); the end by default. */ to?: number; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Read the outline. Params: { limit?: number, cursor?: string } */
+  /** Read the outline. Lists the headings with their level, line (from 1), heading path, text range and word count, a page at a time (`limit`, `cursor`). Use it to find the path or line that section commands take. Params: { limit?: number, cursor?: string }. */
   "outline.read": { /** Where the previous page ended (its next value). */ cursor?: string; /** The most headings to answer (default 200, at most 1000). */ limit?: number }
-  /** Read a section. Params: { heading?: string[], line?: number, withHeading?: boolean, unit?: "scalar" | "utf16" } */
+  /** Read a section. Answers the Markdown of one section, picked by heading path or line, with its range and line; `withHeading: false` leaves the heading line out. Params: { heading?: string[], line?: number, withHeading?: boolean, unit?: "scalar" | "utf16" }. */
   "section.read": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16"; /** Include the heading line. */ withHeading?: boolean }
-  /** Read a block. Params: { blockId: string, unit?: "scalar" | "utf16" } */
+  /** Read a block. Answers the Markdown of the block carrying the block id `blockId` (`^id`), with its line and range. Params: { blockId: string, unit?: "scalar" | "utf16" }. */
   "block.read": { /** The block id, without the caret (^). */ blockId: string; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** List the properties. Params: {} */
+  /** List the properties. Lists the front-matter properties with key, value, type (string, number, boolean, list) and lines. Use it before `property.set`/`property.rename`. Params: {}. */
   "property.list": Record<string, never>
-  /** Read a table. Params: { table?: number } (without table: how many tables there are) */
+  /** Read a table. Answers one table (`table` from 0) as its header, body rows, column alignment and lines; without `table` it answers how many tables the note has. Params: { table?: number } (without table: how many tables there are). */
   "table.read": { /** The table's index in the note, from 0 (document order). */ table?: number }
-  /** List links, tags and block ids. Params: { kinds?: ("wikilink" | "markdown" | "embed" | "image" | "url" | "tag" | "blockId")[] } */
+  /** List links, tags and block ids. Lists the note's wikilinks, Markdown links, embeds, images, URLs, tags and block ids with their line and, for links, whether the target is known; `kinds` limits the list. Params: { kinds?: ("wikilink" | "markdown" | "embed" | "image" | "url" | "tag" | "blockId")[] }. */
   "links.list": { /** Only these kinds; all by default. */ kinds?: Array<"wikilink" | "markdown" | "embed" | "image" | "url" | "tag" | "blockId"> }
-  /** List tasks. Params: { heading?: string[], line?: number } (all tasks by default) */
+  /** List tasks. Lists the task items (`- [ ]`/`- [x]`) with line, text, done and block id, in the whole note or one section. Use it to get the line `task.toggle` takes. Params: { heading?: string[], line?: number } (all tasks by default). */
   "tasks.list": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number }
-  /** Find text. Params: { find: string, regex?: boolean, caseSensitive?: boolean, unit?: "scalar" | "utf16", limit?: number } */
+  /** Find text. Finds text (or a regular expression with `regex: true`) and answers each match's `from`, `to` and line. The way to get text positions for `text.insert`, `text.replace` and `comment.add`. Params: { find: string, regex?: boolean, caseSensitive?: boolean, unit?: "scalar" | "utf16", limit?: number }. */
   "text.find": { /** Match case. */ caseSensitive?: boolean; /** The text, or a regular expression with regex. */ find: string; /** The most matches to answer (default 100). */ limit?: number; /** Read find as a regular expression (Rust syntax). */ regex?: boolean; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Read the page layout. Params: { pageSize?: "letter" | "a4", page?: number } (every page by default) */
+  /** Read the page layout. Answers where each block lands when the note is printed (page, x, y, width, height in points) for `letter` or `a4`; use it to check page breaks before exporting a PDF. Params: { pageSize?: "letter" | "a4", page?: number } (every page by default). */
   "page.layout": { /** Only the blocks placed on this page, from 1. */ page?: number; /** The page size. */ pageSize?: "letter" | "a4" }
-  /** Export as HTML. Params: { standalone?: boolean } */
+  /** Export as HTML. Renders the note as HTML and answers the markup; `standalone: false` answers only the body without the page's styles. Does not change the note. Params: { standalone?: boolean }. */
   "file.exportHtml": { /** A whole HTML file with its stylesheet; false answers the <main> element only. */ standalone?: boolean }
-  /** Export as PDF. Params: { pageSize?: "letter" | "a4" } */
+  /** Export as PDF. Prints the note to a PDF (`letter` or `a4`) and answers it as base64 with its page count and size. Does not change the note. Params: { pageSize?: "letter" | "a4" }. */
   "file.exportPdf": { /** The page size. */ pageSize?: "letter" | "a4" }
-  /** List comment threads. Params: { unit?: "scalar" | "utf16" } */
+  /** List comment threads. Lists the comment threads with their anchored text range, comments and resolved state. Params: { unit?: "scalar" | "utf16" }. */
   "comment.threads": { /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Expand a template. Params: { markdown: string, title?: string, date?: string } */
+  /** Expand a template. Answers `markdown` with the template variables (`{{title}}`, `{{date}}`, `{{time}}`) filled in, without changing the note; pass the result to `note.write` or `section.insert`. Params: { markdown: string, title?: string, date?: string }. */
   "template.expand": { /** The date and time to use, ISO 8601 (2026-10-23 or 2026-10-23T14:05); now by default. */ date?: string; /** Template text with {{title}}, {{date}}, {{time}} and {{date:FORMAT}} (YYYY, MM, DD, HH, mm, ss). */ markdown: string; /** What {{title}} becomes. */ title?: string }
-  /** Insert text. Params: { at: number, text: string, unit?: "scalar" | "utf16" }. Changes the document. */
+  /** Insert text. Inserts `text` at a text position (from 0). Get positions from `text.find`; inserting at 0 puts text above the front matter. Params: { at: number, text: string, unit?: "scalar" | "utf16" }. Changes the document. */
   "text.insert": { /** Where to insert. */ at: number; /** The Markdown to insert. */ text: string; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Delete text. Params: { from: number, to: number, unit?: "scalar" | "utf16", expected?: string }. Changes the document. */
+  /** Delete text. Deletes the text between `from` and `to`; pass `expected` (the text you mean to delete) so a stale position fails instead of deleting the wrong text. Params: { from: number, to: number, unit?: "scalar" | "utf16", expected?: string }. Changes the document. */
   "text.delete": { /** The text there now; the command is refused when it differs. */ expected?: string; /** Where the range starts. */ from: number; /** Where the range ends (exclusive). */ to: number; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Replace text. Params: { from: number, to: number, text: string, unit?: "scalar" | "utf16", expected?: string }. Changes the document. */
+  /** Replace text. Replaces the text between `from` and `to` with `text`; pass `expected` with the current text so a stale range fails. Params: { from: number, to: number, text: string, unit?: "scalar" | "utf16", expected?: string }. Changes the document. */
   "text.replace": { /** The text there now; the command is refused when it differs. */ expected?: string; /** Where the range starts. */ from: number; /** The Markdown to put there. */ text: string; /** Where the range ends (exclusive). */ to: number; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Find and replace. Params: { find: string, replace: string, occurrence?: number | "all", regex?: boolean, caseSensitive?: boolean }. Changes the document. */
+  /** Find and replace. Replaces matches of `find` with `replace`: the first by default, the n-th with `occurrence`, or every one with `occurrence: "all"`; `regex` and `caseSensitive` as in `text.find`. Params: { find: string, replace: string, occurrence?: number | "all", regex?: boolean, caseSensitive?: boolean }. Changes the document. */
   "text.findReplace": { /** Match case. */ caseSensitive?: boolean; /** The text, or a regular expression with regex. */ find: string; /** Which match to replace: a number from 1, or "all"; 1 by default. */ occurrence?: Json; /** Read find as a regular expression (Rust syntax). */ regex?: boolean; /** The replacement; with regex, $1 names a group. */ replace: string }
-  /** Write the whole note. Params: { markdown: string }. Changes the document. */
+  /** Write the whole note. Replaces the whole note with `markdown` as one undo step. Use it to write a new note; prefer section, block and text commands to change part of one. Params: { markdown: string }. Changes the document. */
   "note.write": { /** The note's whole new Markdown; only the lines that differ are changed. */ markdown: string }
-  /** Replace a section. Params: { heading?: string[], line?: number, markdown: string, withHeading?: boolean }. Changes the document. */
+  /** Replace a section. Replaces the body of the section at a heading path or line with `markdown`, keeping its heading unless `withHeading: true` (then `markdown` includes the heading). Params: { heading?: string[], line?: number, markdown: string, withHeading?: boolean }. Changes the document. */
   "section.replace": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number; /** The section's new Markdown. */ markdown: string; /** Replace the heading line too. */ withHeading?: boolean }
-  /** Insert into a section. Params: { heading?: string[], line?: number, position: "before" | "after" | "start" | "end", markdown: string }. Changes the document. */
+  /** Insert into a section. Inserts `markdown` as a new block before or after the section, or at the start or end of its body. A list item added this way starts a new list. Params: { heading?: string[], line?: number, position: "before" | "after" | "start" | "end", markdown: string }. Changes the document. */
   "section.insert": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number; /** The Markdown to insert. */ markdown: string; /** Before the heading, after the section, or inside it at its start or end. */ position: "before" | "after" | "start" | "end" }
-  /** Delete a section. Params: { heading?: string[], line?: number }. Changes the document. */
+  /** Delete a section. Deletes the section at a heading path or line, with its heading and everything under it. Params: { heading?: string[], line?: number }. Changes the document. */
   "section.delete": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number }
-  /** Move a section. Params: { heading?: string[], line?: number, toHeading?: string[], toLine?: number, position: "before" | "after" | "start" | "end" }. Changes the document. */
+  /** Move a section. Moves the section at a heading path or line, with its subsections, before or after another section (`toHeading` or `toLine`). Params: { heading?: string[], line?: number, toHeading?: string[], toLine?: number, position: "before" | "after" | "start" | "end" }. Changes the document. */
   "section.move": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number; /** Where, relative to that heading's section. */ position: "before" | "after" | "start" | "end"; /** The heading to move it next to, by path. */ toHeading?: Array<string>; /** The heading to move it next to, by line, instead of toHeading. */ toLine?: number }
-  /** Set a heading's level. Params: { heading?: string[], line?: number, level: number, style?: "atx" }. Changes the document. */
+  /** Set a heading's level. Sets the level (1 to 6) of the heading at a path or line; its subsections keep their own levels. Params: { heading?: string[], line?: number, level: number, style?: "atx" }. Changes the document. */
   "heading.setLevel": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The new level, 1 to 6. */ level: number; /** The heading's line, from 1, instead of heading. */ line?: number; /** Rewrite an underlined heading as a # heading. */ style?: "atx" }
-  /** Replace a block. Params: { blockId: string, markdown: string }. Changes the document. */
+  /** Replace a block. Replaces the block carrying the block id `blockId` with `markdown`. Params: { blockId: string, markdown: string }. Changes the document. */
   "block.replace": { /** The block id, without the caret (^). */ blockId: string; /** The block's new Markdown; its ^id is kept unless this sets one. */ markdown: string }
-  /** Append a block. Params: { heading?: string[], line?: number, markdown: string } (the end of the note without a heading). Changes the document. */
+  /** Append a block. Appends `markdown` as a new block at the end of the section at a heading path or line, or at the end of the note without one. Params: { heading?: string[], line?: number, markdown: string } (the end of the note without a heading). Changes the document. */
   "block.append": { /** The heading's path from the top, each element a heading's plain text, for example ["Plan", "Risks"]; or give line. */ heading?: Array<string>; /** The heading's line, from 1, instead of heading. */ line?: number; /** The Markdown to add as a block of its own. */ markdown: string }
-  /** Set a block id. Params: { line?: number, blockId?: string, occurrence?: number, id: string }. Changes the document. */
+  /** Set a block id. Gives a block a block id (`^id`) so links and `block.*` commands can reach it: the block at `line`, or the one already carrying `blockId`. Params: { line?: number, blockId?: string, occurrence?: number, id: string }. Changes the document. */
   "block.setId": { /** The block's current id, instead of line. */ blockId?: string; /** The new id: letters, digits and hyphens, without the caret. */ id: string; /** The block's last line, from 1. */ line?: number; /** Which of the blocks with that id, from 1. */ occurrence?: number }
-  /** Check or uncheck a task. Params: { line?: number, blockId?: string, done?: boolean }. Changes the document. */
+  /** Check or uncheck a task. Checks or unchecks the task at `line` (from 1) or carrying `blockId`; `done` sets it, otherwise it flips. Get lines from `tasks.list`. Params: { line?: number, blockId?: string, done?: boolean }. Changes the document. */
   "task.toggle": { /** The task's block id, instead of line. */ blockId?: string; /** Checked or not; flips it by default. */ done?: boolean; /** The task's line, from 1. */ line?: number }
-  /** Set a property. Params: { key: string, value: string | number | boolean | null | string[] }. Changes the document. */
+  /** Set a property. Sets a front-matter property to a string, number, boolean, null or list of strings, adding the property (and the front matter) when it is missing. Params: { key: string, value: string | number | boolean | null | string[] }. Changes the document. */
   "property.set": { /** A top-level property key. */ key: string; /** A string, number, boolean, null, or a list of strings. */ value: Json }
-  /** Delete a property. Params: { key: string, occurrence?: number }. Changes the document. */
+  /** Delete a property. Deletes the front-matter property `key`; `occurrence` picks one when the key appears more than once. Params: { key: string, occurrence?: number }. Changes the document. */
   "property.delete": { /** A top-level property key. */ key: string; /** Which of a key written twice, from 1. */ occurrence?: number }
-  /** Rename a property. Params: { key: string, to: string }. Changes the document. */
+  /** Rename a property. Renames the front-matter property `key` to `to`, keeping its value and place. Params: { key: string, to: string }. Changes the document. */
   "property.rename": { /** The property's key now. */ key: string; /** The new key. */ to: string }
-  /** Insert a table. Params: { line?: number, heading?: string[], position?: "before" | "after" | "start" | "end", columns: number, rows?: number, header?: string[] } (the end of the note by default). Changes the document. */
+  /** Insert a table. Inserts a new table of `columns` columns (with optional header and rows) at a section position or line. Params: { line?: number, heading?: string[], position?: "before" | "after" | "start" | "end", columns: number, rows?: number, header?: string[] } (the end of the note by default). Changes the document. */
   "table.create": { /** How many columns. */ columns: number; /** The header cells. */ header?: Array<string>; /** Or a heading's path, with position. */ heading?: Array<string>; /** Insert before this line, from 1. */ line?: number; /** Where, relative to the heading's section; end by default. */ position?: "before" | "after" | "start" | "end"; /** How many empty body rows (default 1). */ rows?: number }
-  /** Set a table cell. Params: { table: number, row: number, column: number, text: string, expected?: string }. Changes the document. */
+  /** Set a table cell. Sets one cell's text; `table`, `row` and `column` count from 0 and row 0 is the header. Pass `expected` with the current text so a stale cell fails. Params: { table: number, row: number, column: number, text: string, expected?: string }. Changes the document. */
   "table.setCell": { /** The column, from 0. */ column: number; /** The cell's text now; the command is refused when it differs. */ expected?: string; /** The row, 0 for the header row. */ row: number; /** The table's index in the note, from 0 (document order). */ table: number; /** The cell's new text (inline Markdown, one line). */ text: string }
-  /** Insert a table row. Params: { table: number, at: number, cells?: string[] }. Changes the document. */
+  /** Insert a table row. Inserts a body row at `at` (row numbering where 0 is the header) with optional `cells`. Params: { table: number, at: number, cells?: string[] }. Changes the document. */
   "table.insertRow": { /** Where the new row goes: 1 before the first body row; one past the last appends. */ at: number; /** The new row's cells. */ cells?: Array<string>; /** The table's index in the note, from 0 (document order). */ table: number }
-  /** Insert a table column. Params: { table: number, at: number, header?: string, align?: "left" | "center" | "right" | "none" }. Changes the document. */
+  /** Insert a table column. Inserts a column at `at` with an optional header and alignment; existing rows get an empty cell. Params: { table: number, at: number, header?: string, align?: "left" | "center" | "right" | "none" }. Changes the document. */
   "table.insertColumn": { /** The new column's alignment. */ align?: "left" | "center" | "right" | "none"; /** Where the new column goes, from 0; one past the last appends. */ at: number; /** The new column's header. */ header?: string; /** The table's index in the note, from 0 (document order). */ table: number }
-  /** Delete a table row. Params: { table: number, row: number }. Changes the document. */
+  /** Delete a table row. Deletes body row `row` from a table; the header row (0) cannot be deleted. Params: { table: number, row: number }. Changes the document. */
   "table.deleteRow": { /** The body row, from 1. */ row: number; /** The table's index in the note, from 0 (document order). */ table: number }
-  /** Delete a table column. Params: { table: number, column: number }. Changes the document. */
+  /** Delete a table column. Deletes column `column` from a table, header included. Params: { table: number, column: number }. Changes the document. */
   "table.deleteColumn": { /** The column, from 0. */ column: number; /** The table's index in the note, from 0 (document order). */ table: number }
-  /** Move a table row. Params: { table: number, from: number, to: number }. Changes the document. */
+  /** Move a table row. Moves a body row from `from` to `to` within a table. Params: { table: number, from: number, to: number }. Changes the document. */
   "table.moveRow": { /** The body row to move, from 1. */ from: number; /** The table's index in the note, from 0 (document order). */ table: number; /** Where it ends up, from 1. */ to: number }
-  /** Move a table column. Params: { table: number, from: number, to: number }. Changes the document. */
+  /** Move a table column. Moves a column from `from` to `to` within a table, header included. Params: { table: number, from: number, to: number }. Changes the document. */
   "table.moveColumn": { /** The column to move, from 0. */ from: number; /** The table's index in the note, from 0 (document order). */ table: number; /** Where it ends up, from 0. */ to: number }
-  /** Align a table column. Params: { table: number, column: number, align: "left" | "center" | "right" | "none" }. Changes the document. */
+  /** Align a table column. Sets a column's alignment (left, center, right or none) in the table's delimiter row. Params: { table: number, column: number, align: "left" | "center" | "right" | "none" }. Changes the document. */
   "table.align": { /** The alignment. */ align: "left" | "center" | "right" | "none"; /** The column, from 0. */ column: number; /** The table's index in the note, from 0 (document order). */ table: number }
-  /** Format a table. Params: { table: number }. Changes the document. */
+  /** Format a table. Pads every cell so the table's columns line up in the Markdown source, without changing any cell's text. Params: { table: number }. Changes the document. */
   "table.format": { /** The table's index in the note, from 0 (document order). */ table: number }
-  /** Insert a link. Params: { at: number, unit?: "scalar" | "utf16", destination: string, text?: string, style?: "wikilink" | "markdown", embed?: boolean }. Changes the document. */
+  /** Insert a link. Inserts a link to `destination` at a text position, as a wikilink or a Markdown link, with optional display text. Params: { at: number, unit?: "scalar" | "utf16", destination: string, text?: string, style?: "wikilink" | "markdown", embed?: boolean }. Changes the document. */
   "link.insert": { /** Where to insert. */ at: number; /** What the link points at, as the note writes it: Plan, Plan#Risks, docs/plan.md. */ destination: string; /** Embed it (![[...]]) instead of linking. */ embed?: boolean; /** [[wikilink]] or [text](markdown). */ style?: "wikilink" | "markdown"; /** The text shown (a wikilink's alias). */ text?: string; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Change a link. Params: { line: number, index: number, destination: string, text?: string }. Changes the document. */
+  /** Change a link. Changes the destination or text of the `index`-th link on `line` (from `links.list`). Params: { line: number, index: number, destination: string, text?: string }. Changes the document. */
   "link.update": { /** The new destination. */ destination: string; /** Which link of the line, from 0. */ index: number; /** The link's line, from 1. */ line: number; /** The new text shown. */ text?: string }
-  /** Retarget links to a renamed file. Params: { from: string, to: string }. Changes the document. */
+  /** Retarget links to a renamed file. Rewrites every link and embed to the file `from` so it points at `to`, as after a rename; the host runs it. Params: { from: string, to: string }. Changes the document. */
   "links.retarget": { /** The old link destination, for example Plan or docs/plan.md. */ from: string; /** The new one. */ to: string }
-  /** Add a comment. Params: { body: string, from?: number, to?: number, unit?: "scalar" | "utf16", quote?: string, occurrence?: number, heading?: string[], line?: number, author?: string, name?: string, created?: string } (the whole note without an anchor). Changes the document. */
+  /** Add a comment. Starts a comment thread anchored to a text range (`from`/`to`) or to the `occurrence`-th match of `quote`. Params: { body: string, from?: number, to?: number, unit?: "scalar" | "utf16", quote?: string, occurrence?: number, heading?: string[], line?: number, author?: string, name?: string, created?: string } (the whole note without an anchor). Changes the document. */
   "comment.add": { /** The author's principal id; the caller by default. */ author?: string; /** The comment's text. */ body: string; /** When, ISO 8601 UTC; now by default. */ created?: string; /** Where the commented range starts. */ from?: number; /** Or a heading's path: comments on the heading. */ heading?: Array<string>; /** Or the heading's line, from 1. */ line?: number; /** The author's display name. */ name?: string; /** Which occurrence of quote, from 1. */ occurrence?: number; /** Or the text to comment on; its first occurrence unless occurrence is given. */ quote?: string; /** Where it ends (exclusive). */ to?: number; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Reply to a comment. Params: { thread: string, body: string, author?: string, name?: string, created?: string }. Changes the document. */
+  /** Reply to a comment. Adds a reply to the comment thread `thread`. Params: { thread: string, body: string, author?: string, name?: string, created?: string }. Changes the document. */
   "comment.reply": { /** The author's principal id; the caller by default. */ author?: string; /** The reply's text. */ body: string; /** When, ISO 8601 UTC; now by default. */ created?: string; /** The author's display name. */ name?: string; /** The thread's id. */ thread: string }
-  /** Resolve a comment thread. Params: { thread: string, resolved?: boolean }. Changes the document. */
+  /** Resolve a comment thread. Marks the comment thread `thread` resolved, or open again with `resolved: false`. Params: { thread: string, resolved?: boolean }. Changes the document. */
   "comment.resolve": { /** Resolved, or open again. */ resolved?: boolean; /** The thread's id. */ thread: string }
-  /** Move a comment thread. Params: { thread: string, quote?: string, occurrence?: number, from?: number, to?: number, unit?: "scalar" | "utf16" }. Changes the document. */
+  /** Move a comment thread. Moves the comment thread `thread` to another text range or quote, as the editor does when its anchor text is edited. Params: { thread: string, quote?: string, occurrence?: number, from?: number, to?: number, unit?: "scalar" | "utf16" }. Changes the document. */
   "comment.move": { /** Or where the range starts. */ from?: number; /** Which occurrence of quote, from 1. */ occurrence?: number; /** The text to anchor it to. */ quote?: string; /** The thread's id. */ thread: string; /** And where it ends (exclusive). */ to?: number; /** How positions are counted: Unicode characters (scalar, the default), or UTF-16 code units as the editor counts them. */ unit?: "scalar" | "utf16" }
-  /** Delete a comment. Params: { thread: string, comment: string }. Changes the document. */
+  /** Delete a comment. Deletes one comment from a thread; deleting the last one removes the thread. Params: { thread: string, comment: string }. Changes the document. */
   "comment.delete": { /** The comment's id. */ comment: string; /** The thread's id. */ thread: string }
-  /** Set the line endings. Params: { eol: "lf" | "crlf", bom?: boolean }. Changes the document. */
+  /** Set the line endings. Sets the file's line endings to LF or CRLF and whether it starts with a byte-order mark; the text is unchanged. Params: { eol: "lf" | "crlf", bom?: boolean }. Changes the document. */
   "file.setLineEndings": { /** Write a UTF-8 byte order mark; unchanged by default. */ bom?: boolean; /** LF or CRLF for every line. */ eol: "lf" | "crlf" }
-  /** Read the selection. Params: {} */
+  /** Read the selection. Answers the editor's selection: anchor and focus positions, line, column, selected text and caret position on the page. Params: {}. */
   "selection.get": Record<string, never>
-  /** Set the selection. Params: { anchor?: number, focus?: number, line?: number, column?: number } */
+  /** Set the selection. Sets the editor's selection by anchor and focus positions, or puts the caret at a line and column. Params: { anchor?: number, focus?: number, line?: number, column?: number }. */
   "selection.set": { /** Where the selection starts, in Unicode characters. */ anchor: number; /** Where it ends (the caret); anchor by default. */ focus?: number }
-  /** Select All. Params: {} */
+  /** Select All. Selects the whole note in the editor. Params: {}. */
   "edit.selectAll": Record<string, never>
-  /** Cut. Params: {}. Changes the document. */
+  /** Cut. Removes the editor's selection and puts it on the clipboard. Params: {}. Changes the document. */
   "edit.cut": Record<string, never>
-  /** Where the tables are drawn. Params: {} */
-  "table.geometry": Record<string, never>
-  /** The pictures the note draws that are not loaded. Params: {} */
+  /** Where the tables are drawn. Answers where the editor draws each table's rows and columns between `top` and `bottom`, for the table widget's controls. Params: { top?: number, bottom?: number }. */
+  "table.geometry": { /** Only tables above this document height. */ bottom?: number; /** Only tables below this document height. */ top?: number }
+  /** Where the code blocks are drawn. Answers where the editor draws each fenced code block between `top` and `bottom`, for its copy and language controls. Params: { top?: number, bottom?: number }. */
+  "code.blocks": { /** Only tables above this document height. */ bottom?: number; /** Only tables below this document height. */ top?: number }
+  /** The Mermaid diagrams to draw and where. Answers the Mermaid diagrams the editor needs drawn between `top` and `bottom`, their sources and the column width. Params: { top?: number, bottom?: number }. */
+  "diagrams.view": { /** Only tables above this document height. */ bottom?: number; /** Only tables below this document height. */ top?: number }
+  /** A Mermaid diagram's drawn size. Gives the editor a Mermaid diagram's drawn size so it reserves that space in the page. Params: { source: string, width: number, height: number }. */
+  "diagram.set": { /** Its drawn height in document pixels. */ height: number; /** The diagram's source: the code between its fences. */ source: string; /** Its drawn width in document pixels. */ width: number }
+  /** The front matter as a properties block. Answers the front matter as the editor's properties block: each row's key, kind, values and position. Params: {}. */
+  "properties.view": Record<string, never>
+  /** The pictures the note draws that are not loaded. Answers the pictures the note draws that the editor has not loaded yet, by name. Params: {}. */
   "image.wanted": Record<string, never>
-  /** Hand the note a picture's bytes. Params: { name: string, data: string } */
+  /** Hand the note a picture's bytes. Hands the editor a picture's bytes (`data`, base64) by name so the note draws it. Params: { name: string, data: string }. */
   "image.set": { /** Its bytes, base64. */ data: string; /** The picture's name as the note writes it. */ name: string }
-  /** Replace the selection. Params: { text: string }. Changes the document. */
-  "selection.replace": { /** The text that replaces the selection. */ text: string }
-  /** Where a character is drawn. Params: { at: number } */
+  /** Replace the selection. Replaces the editor's selection with `text`; `paste: true` treats it as pasted text (links and Markdown kept). Params: { text: string, paste?: boolean }. Changes the document. */
+  "selection.replace": { /** Plain text the person pasted: an address over a selection links it. */ paste?: boolean; /** The text that replaces the selection. */ text: string }
+  /** Fit the page to the visible width. Sets the page to the editor's visible width (and height) so lines wrap to it. Params: { width: number, height?: number }. */
+  "view.width": { /** The visible height in document pixels: the room below the note is half of it. */ height?: number; /** The visible width in document pixels. */ width: number }
+  /** The pointer left the note: nothing is hovered. Tells the editor the pointer left the note, so nothing is drawn hovered. Params: {}. */
+  "view.hoverOut": Record<string, never>
+  /** Where a character is drawn. Answers where the character at text position `at` is drawn on the page (x, y, height). Params: { at: number }. */
   "selection.where": { /** The character, from 0, in Unicode characters. */ at: number }
-  /** Bold. Params: {}. Changes the document. */
+  /** What block a point of the page is in. Answers what kind of block is under the page point `x`, `y` (a callout, an active widget). Params: { x: number, y: number }. */
+  "view.blockAt": { /** Across, in document pixels. */ x: number; /** Down, in document pixels. */ y: number }
+  /** Fold the properties block to its heading, or open it. Folds the properties block to its heading line in the editor, or opens it again. Params: {}. */
+  "view.foldProperties": Record<string, never>
+  /** Inline math. Wraps the editor's selection in inline math (`$...$`). Params: {}. Changes the document. */
+  "format.math": Record<string, never>
+  /** Highlight in a colour. Highlights the editor's selection in `color`. Params: { color: string }. Changes the document. */
+  "format.highlightColor": { /** The highlight's colour. */ color: "red" | "orange" | "yellow" | "green" | "blue" | "purple" }
+  /** Clear formatting. Removes inline formatting (bold, italic, code, highlight, links) from the editor's selection. Params: {}. Changes the document. */
+  "format.clear": Record<string, never>
+  /** A macOS Control editing key. Runs a macOS Control editing key (`key`, e.g. `k`, `t`, `o`) on the editor's selection, as macOS text fields do. Params: { key: string, shift?: boolean }. Changes the document. */
+  "selection.controlKey": { /** The letter (a, e, b, f, p, n, v, d, h, k, o, or t), or pageUp or pageDown. */ key: string; /** With Shift (Page Up and Page Down extend the selection). */ shift?: boolean }
+  /** Bold. Toggles bold (`**...**`) on the editor's selection. Params: {}. Changes the document. */
   "format.bold": Record<string, never>
-  /** Italic. Params: {}. Changes the document. */
+  /** Italic. Toggles italic (`*...*`) on the editor's selection. Params: {}. Changes the document. */
   "format.italic": Record<string, never>
-  /** Strikethrough. Params: {}. Changes the document. */
+  /** Strikethrough. Toggles strikethrough (`~~...~~`) on the editor's selection. Params: {}. Changes the document. */
   "format.strike": Record<string, never>
-  /** Inline Code. Params: {}. Changes the document. */
+  /** Inline Code. Toggles inline code (backticks) on the editor's selection. Params: {}. Changes the document. */
   "format.code": Record<string, never>
-  /** Highlight. Params: {}. Changes the document. */
+  /** Highlight. Toggles highlight (`==...==`) on the editor's selection. Params: {}. Changes the document. */
   "format.highlight": Record<string, never>
-  /** Link. Params: {}. Changes the document. */
+  /** Link. Turns the editor's selection into a Markdown link and selects its destination to type. Params: {}. Changes the document. */
   "format.link": Record<string, never>
-  /** Paragraph. Params: {}. Changes the document. */
+  /** Paragraph. Turns the heading or list item at the editor's caret back into a plain paragraph. Params: {}. Changes the document. */
   "format.paragraph": Record<string, never>
-  /** Heading 1. Params: {}. Changes the document. */
+  /** Heading 1. Turns the line at the editor's caret into a level-1 heading. Params: {}. Changes the document. */
   "format.heading1": Record<string, never>
-  /** Heading 2. Params: {}. Changes the document. */
+  /** Heading 2. Turns the line at the editor's caret into a level-2 heading. Params: {}. Changes the document. */
   "format.heading2": Record<string, never>
-  /** Heading 3. Params: {}. Changes the document. */
+  /** Heading 3. Turns the line at the editor's caret into a level-3 heading. Params: {}. Changes the document. */
   "format.heading3": Record<string, never>
-  /** Heading 4. Params: {}. Changes the document. */
+  /** Heading 4. Turns the line at the editor's caret into a level-4 heading. Params: {}. Changes the document. */
   "format.heading4": Record<string, never>
-  /** Heading 5. Params: {}. Changes the document. */
+  /** Heading 5. Turns the line at the editor's caret into a level-5 heading. Params: {}. Changes the document. */
   "format.heading5": Record<string, never>
-  /** Heading 6. Params: {}. Changes the document. */
+  /** Heading 6. Turns the line at the editor's caret into a level-6 heading. Params: {}. Changes the document. */
   "format.heading6": Record<string, never>
-  /** Bulleted List. Params: {}. Changes the document. */
+  /** Bulleted List. Turns the selected lines into a bulleted list, or back into paragraphs. Params: {}. Changes the document. */
   "list.bullet": Record<string, never>
-  /** Numbered List. Params: {}. Changes the document. */
+  /** Numbered List. Turns the selected lines into a numbered list, or back into paragraphs. Params: {}. Changes the document. */
   "list.numbered": Record<string, never>
-  /** Task List. Params: {}. Changes the document. */
+  /** Task List. Turns the selected lines into task items (`- [ ]`), or back into list items. Params: {}. Changes the document. */
   "list.task": Record<string, never>
-  /** Quote. Params: {}. Changes the document. */
+  /** Toggle Checkbox. Checks or unchecks the task items in the editor's selection. Params: {}. Changes the document. */
+  "list.toggleCheckbox": Record<string, never>
+  /** Indent. Indents the selected list items one level (or inserts a tab in other lines). Params: {}. Changes the document. */
+  "edit.indent": Record<string, never>
+  /** Outdent. Outdents the selected list items one level. Params: {}. Changes the document. */
+  "edit.outdent": Record<string, never>
+  /** Move Line Up. Moves the selected lines up by one line. Params: {}. Changes the document. */
+  "edit.moveLineUp": Record<string, never>
+  /** Move Line Down. Moves the selected lines down by one line. Params: {}. Changes the document. */
+  "edit.moveLineDown": Record<string, never>
+  /** Delete Paragraph. Deletes the paragraph or block at the editor's caret. Params: {}. Changes the document. */
+  "edit.deleteParagraph": Record<string, never>
+  /** Comment. Wraps the editor's selection in a Markdown comment (`%%...%%`) that is hidden when the note is read. Params: {}. Changes the document. */
+  "format.comment": Record<string, never>
+  /** Quote. Turns the selected lines into a block quote, or back into paragraphs. Params: {}. Changes the document. */
   "format.quote": Record<string, never>
-  /** Promote Heading. Params: {}. Changes the document. */
+  /** Promote Heading. Raises the heading at the editor's caret by one level (for example `###` to `##`). Params: {}. Changes the document. */
   "format.headingUp": Record<string, never>
-  /** Demote Heading. Params: {}. Changes the document. */
+  /** Demote Heading. Lowers the heading at the editor's caret by one level (for example `##` to `###`). Params: {}. Changes the document. */
   "format.headingDown": Record<string, never>
-  /** Select Section. Params: {} */
+  /** Fold Heading. Folds or opens the section under the heading at the editor's caret; answers how many headings are folded. Params: {}. */
+  "view.fold": Record<string, never>
+  /** Fold All Headings. Folds every heading in the editor; answers how many headings are folded. Params: {}. */
+  "view.foldAll": Record<string, never>
+  /** Unfold All. Opens every folded heading in the editor. Params: {}. */
+  "view.unfoldAll": Record<string, never>
+  /** Fold More. Folds one more heading level in the editor (the deepest open level first). Params: {}. */
+  "view.foldMore": Record<string, never>
+  /** Fold Less. Opens one more folded heading level in the editor. Params: {}. */
+  "view.foldLess": Record<string, never>
+  /** Select Section. Selects the whole section under the heading at the editor's caret. Params: {}. */
   "edit.selectSection": Record<string, never>
-  /** Sort Lines. Params: {}. Changes the document. */
+  /** Sort Lines. Sorts the lines the editor's selection covers alphabetically, ignoring case. Params: {}. Changes the document. */
   "edit.sortLines": Record<string, never>
-  /** Trim Trailing Spaces. Params: {}. Changes the document. */
+  /** Trim Trailing Spaces. Removes trailing spaces and tabs from the lines the editor's selection covers. Params: {}. Changes the document. */
   "edit.trimWhitespace": Record<string, never>
-  /** Wikilink. Params: {}. Changes the document. */
+  /** Wikilink. Inserts an empty wikilink (`[[ ]]`) at the editor's caret to type a note name into. Params: {}. Changes the document. */
   "insert.wikilink": Record<string, never>
-  /** Embed. Params: {}. Changes the document. */
+  /** Embed. Inserts an empty embed (`![[ ]]`) at the editor's caret. Params: {}. Changes the document. */
   "insert.embed": Record<string, never>
-  /** Image. Params: {}. Changes the document. */
+  /** Image. Inserts a Markdown image (`![]()`) at the editor's caret. Params: {}. Changes the document. */
   "insert.image": Record<string, never>
-  /** Tag. Params: {}. Changes the document. */
+  /** Tag. Inserts a tag sign (`#`) at the editor's caret to type a tag into. Params: {}. Changes the document. */
   "insert.tag": Record<string, never>
-  /** Table. Params: {}. Changes the document. */
+  /** Table. Inserts an empty two-column table (header, delimiter and one body row) at the editor's caret. Params: {}. Changes the document. */
   "insert.table": Record<string, never>
-  /** Math Block. Params: {}. Changes the document. */
+  /** Math Block. Inserts a math block (`$$ ... $$`) at the editor's caret. Params: {}. Changes the document. */
   "insert.mathBlock": Record<string, never>
-  /** Callout. Params: {}. Changes the document. */
+  /** Callout. Inserts a callout (`> [!note]`) at the editor's caret. Params: {}. Changes the document. */
   "insert.callout": Record<string, never>
-  /** Footnote. Params: {}. Changes the document. */
+  /** Footnote. Inserts a footnote reference at the editor's caret and its definition at the end of the note. Params: {}. Changes the document. */
   "insert.footnote": Record<string, never>
-  /** Date. Params: {}. Changes the document. */
+  /** Date. Inserts today's date at the editor's caret. Params: {}. Changes the document. */
   "insert.date": Record<string, never>
-  /** Date and Time. Params: {}. Changes the document. */
+  /** Date and Time. Inserts the current date and time at the editor's caret. Params: {}. Changes the document. */
   "insert.timestamp": Record<string, never>
-  /** Code Block. Params: {}. Changes the document. */
+  /** Code Block. Inserts a fenced code block at the editor's caret. Params: {}. Changes the document. */
   "insert.codeBlock": Record<string, never>
-  /** Horizontal Rule. Params: {}. Changes the document. */
+  /** Horizontal Rule. Inserts a horizontal rule (`---`) at the editor's caret. Params: {}. Changes the document. */
   "insert.rule": Record<string, never>
-  /** Undo. Params: { scope?: "person" | "agent" }. Changes the document. */
+  /** Undo. Takes back the caller's last edit (the person's or, with `scope: "agent"`, the agent's) without touching the other's edits. Params: { scope?: "person" | "agent" }. Changes the document. */
   "edit.undo": { /** Whose last step to undo: the person's or the agent's. By default the scope of whoever runs it (an agent undoes only its own steps). */ scope?: "person" | "agent" }
-  /** Redo. Params: { scope?: "person" | "agent" }. Changes the document. */
+  /** Redo. Applies again the edit the caller's last undo took back, in the same scope as `edit.undo`. Params: { scope?: "person" | "agent" }. Changes the document. */
   "edit.redo": { /** Whose last undone step to redo: the person's or the agent's. By default the scope of whoever runs it. */ scope?: "person" | "agent" }
 }
 

@@ -167,680 +167,684 @@ export interface Chart extends ModelObject {
 
 /** Every command of kit.sheet, by id, with its parameters. */
 export interface SheetCommands extends CommandMap {
-  /** New Workbook. Params: {sample?: "budget"|"sales"|"grades"}. Changes the document. */
+  /** New Workbook. Replaces the open workbook with a new one, empty or built from a sample (budget, sales, grades); use file.open to load an existing file instead. Params: {sample?: "budget"|"sales"|"grades"}. Changes the document. */
   "file.new": { sample?: "budget" | "sales" | "grades" }
-  /** Open. Params: {path} | {name, base64} (xlsx, xlsm, xlsb and ods data import, csv, tsv, txt, json). Changes the document. */
-  "file.open": { path?: string }
-  /** Save. Params: {path?} (xlsx by default; .csv/.tsv/.json/.html by extension). Changes the document. */
-  "file.save": { path?: string }
-  /** Save As. Params: {path}. Changes the document. */
-  "file.saveAs": { path?: string }
-  /** Encode Workbook. Params: {format?: xlsx|csv|tsv|json|html} ? {base64} */
-  "file.saveBytes": { /** xlsx|csv|tsv|json|html */ format?: Json }
-  /** Close. Params: {force?: bool}. Changes the document. */
+  /** Open. Opens a workbook from a path or from base64 bytes (xlsx, xlsm, xlsb, ods, csv, tsv, txt, json) in place of the current one. Params: {path} | {name, base64} (xlsx, xlsm, xlsb and ods data import, csv, tsv, txt, json). Changes the document. */
+  "file.open": { path?: Json }
+  /** Save. Saves the workbook to its path, or to the given path; the format follows the extension (xlsx by default, also csv, tsv, json, html). Params: {path?} (xlsx by default; .csv/.tsv/.json/.html by extension). Changes the document. */
+  "file.save": { path?: Json }
+  /** Save As. Saves the workbook under a new path and makes that the workbook's path; the extension picks the format. Params: {path}. Changes the document. */
+  "file.saveAs": { path?: Json }
+  /** Encode Workbook. Encodes the workbook without writing a file and answers it as base64 in the chosen format (xlsx, csv, tsv, json or html). Params: {format?: xlsx|csv|tsv|json|html} ? {base64}. */
+  "file.saveBytes": { format?: string }
+  /** Close. Closes the workbook; refuses when there are unsaved changes unless force is true. Params: {force?: bool}. Changes the document. */
   "file.close": { force?: boolean }
-  /** Export as CSV. Params: {path, sheet?} */
-  "file.exportCsv": { path?: string; /** sheet (no type given) */ sheet?: Json }
-  /** Save as Web Page. Params: {path} */
-  "file.exportHtml": { path?: string }
-  /** Properties. Params: {title?, subject?, author?, company?, keywords?, description?}. Changes the document. */
-  "file.properties": { /** author (no type given) */ author?: Json; /** company (no type given) */ company?: Json; /** description (no type given) */ description?: Json; /** keywords (no type given) */ keywords?: Json; /** subject (no type given) */ subject?: Json; title?: string }
-  /** Switch Window. Params: {index} */
-  "window.activate": { index?: number }
-  /** Enter Cell. Params: {cell?: "B2", input: "text, number or =formula", sheet?, array?: bool, runs?: [{text, font}] (a text's rich text runs, as cell.get answers them)}. Changes the document. */
-  "cell.set": { array?: boolean; /** like B2 */ cell?: string; /** like text, number or =formula */ input?: string; /** a text's rich text runs, as cell.get answers them */ runs?: Array<{ font?: string; text?: string }>; /** sheet (no type given) */ sheet?: Json }
-  /** Format Characters. Params: {cell?: "B2", sheet?, start?: 0, end?: (characters, end exclusive; the whole text by default), bold?, italic?, strike?, underline?: true|"double"|"none", vertAlign?: superscript|subscript|baseline, size?, name?, color?: "#C00000"|{theme, tint}|"auto", toggle?: bold|italic|underline|strike|superscript|subscript} ? {cell, start, end, runs}: formats part of a text cell's characters (rich text). Changes the document. */
-  "cell.formatText": { /** bold (no type given) */ bold?: Json; /** like B2 */ cell?: string; /** "#C00000"|{theme, tint}|"auto" */ color?: Json; /** (characters, end exclusive; the whole text by default); characters, end exclusive; the whole text by default */ end?: Json; /** italic (no type given) */ italic?: Json; name?: string; /** sheet (no type given) */ sheet?: Json; size?: number; start?: number; /** strike (no type given) */ strike?: Json; toggle?: "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript"; /** true|"double"|"none" */ underline?: Json; vertAlign?: "superscript" | "subscript" | "baseline" }
-  /** Set Values. Params: {range?: "A1", values: [[...]] (rows of numbers/strings/bools/null; strings starting with = are formulas)}. Changes the document. */
+  /** Export as CSV. Writes one sheet (the active one by default) as CSV to a path, leaving the workbook and its path unchanged. Params: {path, sheet?}. */
+  "file.exportCsv": { path?: Json; sheet?: Json }
+  /** Save as Web Page. Writes the workbook as an HTML web page to a path, leaving the workbook and its path unchanged. Params: {path}. */
+  "file.exportHtml": { path?: Json }
+  /** Properties. Sets the workbook's document properties (title, subject, author, company, keywords, description) that are saved with the file. Params: {title?, subject?, author?, company?, keywords?, description?}. Changes the document. */
+  "file.properties": { author?: string; company?: string; description?: string; keywords?: string; subject?: string; title?: string }
+  /** Switch Window. Brings the open window with the given index (from view.switchWindows) to the front. Params: {index}. */
+  "window.activate": { /** a position counted from 0 (the first is 0) */ index?: number }
+  /** Enter Cell. Enters text, a number or a =formula into one cell, as typing would (a leading = makes a formula, numbers and dates are recognised); use range.setValues for many cells at once. Params: {cell?: "B2", input: "text, number or =formula", sheet?, array?: bool, runs?: [{text, font}] (a text's rich text runs, as cell.get answers them)}. Changes the document. */
+  "cell.set": { array?: boolean; /** like B2 */ cell?: string; /** like text, number or =formula */ input?: string; /** a text's rich text runs, as cell.get answers them */ runs?: Array<{ font?: string; text?: string }>; sheet?: Json }
+  /** Format Characters. Formats characters inside one text cell (bold, italic, strike, underline, font, size, colour) from start to end, leaving the rest of the cell's text as it was. Params: {cell?: "B2", sheet?, start?: 0, end?: (characters, end exclusive; the whole text by default), bold?, italic?, strike?, underline?: true|"double"|"none", vertAlign?: superscript|subscript|baseline, size?, name?, color?: "#C00000"|{theme, tint}|"auto", toggle?: bold|italic|underline|strike|superscript|subscript} ? {cell, start, end, runs}: formats part of a text cell's characters (rich text). Changes the document. */
+  "cell.formatText": { bold?: boolean; /** like B2 */ cell?: string; /** a colour such as #C00000 */ color?: string; /** characters, end exclusive; the whole text by default */ end?: number; italic?: boolean; name?: string; sheet?: Json; size?: number; start?: number; strike?: boolean; toggle?: "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript"; underline?: Json; vertAlign?: "superscript" | "subscript" | "baseline" }
+  /** Set Values. Writes a block of values starting at the range's top-left cell, one inner list per row; strings starting with = become formulas. The fastest way to fill a table. Params: {range?: "A1", values: [[...]] (rows of numbers/strings/bools/null; strings starting with = are formulas)}. Changes the document. */
   "range.setValues": { /** like A1 */ range?: string; /** rows of numbers/strings/bools/null; strings starting with = are formulas */ values?: Array<Array<Json>> }
-  /** Fill Range With Input. Params: {range?, input}: enters the same input in every selected cell (relative formulas adjust). Changes the document. */
-  "range.fill": { /** input (no type given) */ input?: Json; /** range (no type given) */ range?: Json }
-  /** Select. Params: {range: "A1:B2,D4" | cell, active?: "A1", sheet?} */
-  "selection.set": { /** like A1 */ active?: string; /** "A1:B2,D4" | cell */ range?: Json; /** sheet (no type given) */ sheet?: Json }
-  /** Move Selection. Params: {dr, dc, extend?: bool, jump?: bool (Ctrl+arrow), page?: bool} */
-  "selection.move": { /** dc (no type given) */ dc?: Json; /** dr (no type given) */ dr?: Json; extend?: boolean; /** Ctrl+arrow */ jump?: boolean; page?: boolean }
-  /** Next Cell in Selection. Params: {forward?: true, byRow?: false} (Enter/Tab inside a selection) */
+  /** Fill Range With Input. Enters the same input in every cell of the range (default: the selection); relative references in a formula adjust per cell, like Ctrl+Enter. Params: {range?, input}: enters the same input in every selected cell (relative formulas adjust). Changes the document. */
+  "range.fill": { /** text, a number, or a =formula */ input?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Select. Selects cells (one range or several separated by commas) and optionally sets the active cell and sheet; answers the new selection. Params: {range: "A1:B2,D4" | cell, active?: "A1", sheet?}. */
+  "selection.set": { /** like A1 */ active?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; sheet?: Json }
+  /** Move Selection. Moves the active cell by rows and columns, optionally extending the selection or jumping to the data edge like Ctrl+arrow; answers the new selection. Params: {dr, dc, extend?: bool, jump?: bool (Ctrl+arrow), page?: bool}. */
+  "selection.move": { /** columns to move, negative moves left */ dc?: number; /** rows to move, negative moves up */ dr?: number; extend?: boolean; /** Ctrl+arrow */ jump?: boolean; page?: boolean }
+  /** Next Cell in Selection. Moves the active cell to the next (or previous) cell inside the current selection, as Enter or Tab does; answers the new active cell. Params: {forward?: true, byRow?: false} (Enter/Tab inside a selection). */
   "selection.next": { byRow?: boolean; forward?: boolean }
-  /** Select All. Params: {} (current region first, then the whole sheet) */
+  /** Select All. Selects the current region around the active cell, or the whole sheet when the region is already selected; answers the selection. Params: {} (current region first, then the whole sheet). */
   "edit.selectAll": Record<string, never>
-  /** Select Current Region. Params: {} */
+  /** Select Current Region. Selects the block of non-empty cells around the active cell, bounded by empty rows and columns; answers the selection. Params: {}. */
   "selection.currentRegion": Record<string, never>
-  /** Select Entire Row. Params: {} */
+  /** Select Entire Row. Selects the entire rows of the current selection; answers the selection. Params: {}. */
   "selection.row": Record<string, never>
-  /** Select Entire Column. Params: {} */
+  /** Select Entire Column. Selects the entire columns of the current selection; answers the selection. Params: {}. */
   "selection.column": Record<string, never>
-  /** Go To. Params: {reference: "B5" | "Sheet2!A1:C3" | name} */
+  /** Go To. Moves to and selects a reference: a cell or range (B5, Sheet2!A1:C3) or a defined name; answers the new selection. Params: {reference: "B5" | "Sheet2!A1:C3" | name}. */
   "edit.goTo": { /** like B5 */ reference?: string }
-  /** Go To Special. Params: {kind: blanks|constants|formulas|comments|lastCell|currentRegion|visible|conditionalFormats|dataValidation|errors|numbers|text} */
-  "edit.goToSpecial": { /** blanks|constants|formulas|comments|lastCell|currentRegion|visible|conditionalFormats|dataValidation|errors|numbers|text */ kind?: Json }
-  /** Undo. Params: {steps?: 1}. Changes the document. */
-  "edit.undo": { steps?: number }
-  /** Redo. Params: {steps?: 1}. Changes the document. */
-  "edit.redo": { steps?: number }
-  /** Copy. Params: {range?, html?: bool} ? {range, text, html?} (html: a styled HTML table, only when requested and small enough) */
-  "edit.copy": { html?: boolean; /** range (no type given) */ range?: Json }
-  /** Cut. Params: {range?, html?: bool} ? {range, text, html?} (html: a styled HTML table, only when requested and small enough) */
-  "edit.cut": { html?: boolean; /** range (no type given) */ range?: Json }
-  /** Paste. Params: {at?: "C3", text?: "tab-separated text from the system clipboard"}. Changes the document. */
+  /** Go To Special. Selects every cell of a kind (blanks, constants, formulas, comments, errors, numbers, text and more) in the selection or sheet; fails when no cell matches. Params: {kind: blanks|constants|formulas|comments|lastCell|currentRegion|visible|conditionalFormats|dataValidation|errors|numbers|text}. */
+  "edit.goToSpecial": { kind?: "blanks" | "constants" | "formulas" | "comments" | "lastCell" | "currentRegion" | "visible" | "conditionalFormats" | "dataValidation" | "errors" | "numbers" | "text" }
+  /** Undo. Undoes the last steps of the caller's own scope (an agent undoes its own edits, not the person's); steps sets how many. Params: {steps?: 1, scope?: "person"|"agent"}. Changes the document. */
+  "edit.undo": { scope?: "person" | "agent"; steps?: number }
+  /** Redo. Redoes steps undone in the caller's own scope; steps sets how many. Params: {steps?: 1, scope?: "person"|"agent"}. Changes the document. */
+  "edit.redo": { scope?: "person" | "agent"; steps?: number }
+  /** Copy. Copies a range (default: the selection) to the clipboard and answers it as tab-separated text, plus styled HTML when asked; paste it with edit.paste. Params: {range?, html?: bool} ? {range, text, html?} (html: a styled HTML table, only when requested and small enough). */
+  "edit.copy": { html?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Cut. Marks a range for moving and answers its text; the cells move when edit.paste runs. Params: {range?, html?: bool} ? {range, text, html?} (html: a styled HTML table, only when requested and small enough). */
+  "edit.cut": { html?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Paste. Pastes the copied or cut cells at a cell (default: the active cell), or pastes the given tab-separated text. Params: {at?: "C3", text?: "tab-separated text from the system clipboard"}. Changes the document. */
   "edit.paste": { /** like C3 */ at?: string; /** like tab-separated text from the system clipboard */ text?: string }
-  /** Paste Special. Params: {what: all|formulas|values|formats|comments|validation|allExceptBorders|columnWidths|formulasAndNumberFormats|valuesAndNumberFormats, operation?: none|add|subtract|multiply|divide, skipBlanks?, transpose?, link?}. Changes the document. */
-  "edit.pasteSpecial": { /** link (no type given) */ link?: Json; operation?: "none" | "add" | "subtract" | "multiply" | "divide"; /** skipBlanks (no type given) */ skipBlanks?: Json; /** transpose (no type given) */ transpose?: Json; what?: "all" | "formulas" | "values" | "formats" | "comments" | "validation" | "allExceptBorders" | "columnWidths" | "formulasAndNumberFormats" | "valuesAndNumberFormats" }
-  /** Cancel Copy. Params: {} */
+  /** Paste Special. Pastes only part of the copied cells (values, formulas, formats, comments, validation...), optionally combining with an arithmetic operation, skipping blanks or transposing. Params: {what: all|formulas|values|formats|comments|validation|allExceptBorders|columnWidths|formulasAndNumberFormats|valuesAndNumberFormats, operation?: none|add|subtract|multiply|divide, skipBlanks?, transpose?, link?}. Changes the document. */
+  "edit.pasteSpecial": { link?: boolean; operation?: "none" | "add" | "subtract" | "multiply" | "divide"; skipBlanks?: boolean; transpose?: boolean; what?: "all" | "formulas" | "values" | "formats" | "comments" | "validation" | "allExceptBorders" | "columnWidths" | "formulasAndNumberFormats" | "valuesAndNumberFormats" }
+  /** Cancel Copy. Cancels the pending copy or cut so a later paste does nothing; changes no cells. Params: {}. */
   "edit.clearClipboard": Record<string, never>
-  /** Clear All. Params: {range?}. Changes the document. */
-  "edit.clearAll": { /** range (no type given) */ range?: Json }
-  /** Clear Formats. Params: {range?}. Changes the document. */
-  "edit.clearFormats": { /** range (no type given) */ range?: Json }
-  /** Clear Contents. Params: {range?}. Changes the document. */
-  "edit.clearContents": { /** range (no type given) */ range?: Json }
-  /** Clear Comments and Notes. Params: {range?}. Changes the document. */
-  "edit.clearComments": { /** range (no type given) */ range?: Json }
-  /** Clear Hyperlinks. Params: {range?}. Changes the document. */
-  "edit.clearHyperlinks": { /** range (no type given) */ range?: Json }
-  /** Fill Down. Params: {range?}. Changes the document. */
-  "edit.fillDown": { /** range (no type given) */ range?: Json }
-  /** Fill Right. Params: {range?}. Changes the document. */
-  "edit.fillRight": { /** range (no type given) */ range?: Json }
-  /** Fill Up. Params: {range?}. Changes the document. */
-  "edit.fillUp": { /** range (no type given) */ range?: Json }
-  /** Fill Left. Params: {range?}. Changes the document. */
-  "edit.fillLeft": { /** range (no type given) */ range?: Json }
-  /** AutoFill. Params: {source: "A1:A2", target: "A1:A10", mode?: series|copy|formats|values}: the fill-handle drag. Changes the document. */
+  /** Clear All. Clears contents, formats, comments and links from a range (default: the selection). Params: {range?}. Changes the document. */
+  "edit.clearAll": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Clear Formats. Removes formatting from a range (default: the selection) and keeps its values and formulas. Params: {range?}. Changes the document. */
+  "edit.clearFormats": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Clear Contents. Deletes the values and formulas in a range (default: the selection) and keeps its formatting, like the Delete key. Params: {range?}. Changes the document. */
+  "edit.clearContents": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Clear Comments and Notes. Removes comments and notes from the cells of a range (default: the selection). Params: {range?}. Changes the document. */
+  "edit.clearComments": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Clear Hyperlinks. Removes hyperlinks from the cells of a range (default: the selection) and keeps their text. Params: {range?}. Changes the document. */
+  "edit.clearHyperlinks": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Fill Down. Copies the top row of a range into the rows below it (Ctrl+D); formulas adjust their relative references. Params: {range?}. Changes the document. */
+  "edit.fillDown": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Fill Right. Copies the leftmost column of a range into the columns to its right (Ctrl+R); formulas adjust. Params: {range?}. Changes the document. */
+  "edit.fillRight": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Fill Up. Copies the bottom row of a range into the rows above it; formulas adjust. Params: {range?}. Changes the document. */
+  "edit.fillUp": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Fill Left. Copies the rightmost column of a range into the columns to its left; formulas adjust. Params: {range?}. Changes the document. */
+  "edit.fillLeft": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** AutoFill. Extends a source range over a target range as the fill handle does: continues series (1, 2, 3...; months), or copies values or formats only. Params: {source: "A1:A2", target: "A1:A10", mode?: series|copy|formats|values}: the fill-handle drag. Changes the document. */
   "edit.autoFill": { mode?: "series" | "copy" | "formats" | "values"; /** like A1:A2 */ source?: string; /** like A1:A10 */ target?: string }
-  /** Series. Params: {range?, direction?: columns|rows, type?: linear|growth|date|autofill, step?: 1, stop?, dateUnit?: day|weekday|month|year}. Changes the document. */
-  "edit.fillSeries": { dateUnit?: "day" | "weekday" | "month" | "year"; direction?: "columns" | "rows"; /** range (no type given) */ range?: Json; step?: number; /** stop (no type given) */ stop?: Json; type?: "linear" | "growth" | "date" | "autofill" }
-  /** Flash Fill. Params: {range?}. Changes the document. */
-  "edit.flashFill": { /** range (no type given) */ range?: Json }
-  /** Find. Params: {what, matchCase?, wholeCell?, lookIn?: formulas|values, byColumns?, all?: bool, within?: sheet|workbook} */
-  "edit.find": { all?: boolean; /** byColumns (no type given) */ byColumns?: Json; lookIn?: "formulas" | "values"; /** matchCase (no type given) */ matchCase?: Json; /** what (no type given) */ what?: Json; /** wholeCell (no type given) */ wholeCell?: Json; within?: "sheet" | "workbook" }
-  /** Replace. Params: {what, with, matchCase?, wholeCell?, all?: true, within?: sheet|workbook}. Changes the document. */
-  "edit.replace": { all?: boolean; /** matchCase (no type given) */ matchCase?: Json; /** what (no type given) */ what?: Json; /** wholeCell (no type given) */ wholeCell?: Json; /** with (no type given) */ with?: Json; within?: "sheet" | "workbook" }
-  /** Format Painter. Params: {sticky?: bool} ? first call picks up the selection's formats; with {apply: "C3:D4"} pastes them. Changes the document. */
+  /** Series. Fills a range with a linear, growth or date series from its first cell, with a step and optional stop value. Params: {range?, direction?: columns|rows, type?: linear|growth|date|autofill, step?: 1, stop?, dateUnit?: day|weekday|month|year}. Changes the document. */
+  "edit.fillSeries": { dateUnit?: "day" | "weekday" | "month" | "year"; direction?: "columns" | "rows"; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; step?: number; /** the value the series stops at */ stop?: number; type?: "linear" | "growth" | "date" | "autofill" }
+  /** Flash Fill. Fills the empty cells of a column from the pattern of the examples typed above them (for example first names split from full names). Params: {range?}. Changes the document. */
+  "edit.flashFill": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Find. Finds cells whose formulas or values contain (or equal) a text and answers their addresses; nothing is changed. Use all to list every match. Params: {what, matchCase?, wholeCell?, lookIn?: formulas|values, byColumns?, all?: bool, within?: sheet|workbook}. */
+  "edit.find": { all?: boolean; byColumns?: boolean; lookIn?: "formulas" | "values"; matchCase?: boolean; what?: string; wholeCell?: boolean; within?: "sheet" | "workbook" }
+  /** Replace. Replaces text in cell contents across the sheet or workbook (all matches by default) and answers how many cells changed. Params: {what, with, matchCase?, wholeCell?, all?: true, within?: sheet|workbook}. Changes the document. */
+  "edit.replace": { all?: boolean; matchCase?: boolean; what?: string; wholeCell?: boolean; with?: string; within?: "sheet" | "workbook" }
+  /** Format Painter. Picks up the selection's formats on the first call; a call with apply pastes those formats onto another range. Params: {sticky?: bool} ? first call picks up the selection's formats; with {apply: "C3:D4"} pastes them. Changes the document. */
   "edit.formatPainter": { sticky?: boolean }
-  /** Edit Cell. Params: {} */
+  /** Edit Cell. Puts the active cell into edit mode in the editor (F2); for agents, use cell.set to change a cell. Params: {}. */
   "edit.beginEdit": Record<string, never>
-  /** Bold. Params: {range?, on?: bool}. Changes the document. */
-  "home.bold": { on?: boolean; /** range (no type given) */ range?: Json }
-  /** Italic. Params: {range?, on?}. Changes the document. */
-  "home.italic": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Underline. Params: {range?, on?, style?: single|double|singleAccounting|doubleAccounting}. Changes the document. */
-  "home.underline": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json; style?: "single" | "double" | "singleAccounting" | "doubleAccounting" }
-  /** Double Underline. Params: {range?}. Changes the document. */
-  "home.doubleUnderline": { /** range (no type given) */ range?: Json }
-  /** Strikethrough. Params: {range?, on?}. Changes the document. */
-  "home.strikethrough": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Superscript. Params: {range?, on?}. Changes the document. */
-  "home.superscript": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Subscript. Params: {range?, on?}. Changes the document. */
-  "home.subscript": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Font. Params: {range?, name: "Calibri"}. Changes the document. */
-  "home.fontName": { /** like Calibri */ name?: string; /** range (no type given) */ range?: Json }
-  /** Font Size. Params: {range?, size: 11}. Changes the document. */
-  "home.fontSize": { /** range (no type given) */ range?: Json; size?: number }
-  /** Increase Font Size. Params: {range?}. Changes the document. */
-  "home.increaseFontSize": { /** range (no type given) */ range?: Json }
-  /** Decrease Font Size. Params: {range?}. Changes the document. */
-  "home.decreaseFontSize": { /** range (no type given) */ range?: Json }
-  /** Font Color. Params: {range?, color: "#C00000" | "auto" | {theme: 4, tint: -0.25}}. Changes the document. */
-  "home.fontColor": { /** "#C00000" | "auto" | {theme: 4, tint: -0.25} */ color?: Json; /** range (no type given) */ range?: Json }
-  /** Fill Color. Params: {range?, color: "#FFFF00" | "none" | {theme, tint}}. Changes the document. */
-  "home.fillColor": { /** "#FFFF00" | "none" | {theme, tint} */ color?: Json; /** range (no type given) */ range?: Json }
-  /** Borders. Params: {range?, preset: bottom|top|left|right|none|all|outside|thickOutside|thickBottom|doubleBottom|topBottom|topThickBottom|topDoubleBottom|insideHorizontal|insideVertical|inside|diagonalDown|diagonalUp, style?: thin|medium|thick|dashed|dotted|double|hair..., color?}. Changes the document. */
-  "home.borders": { color?: string; preset?: "bottom" | "top" | "left" | "right" | "none" | "all" | "outside" | "thickOutside" | "thickBottom" | "doubleBottom" | "topBottom" | "topThickBottom" | "topDoubleBottom" | "insideHorizontal" | "insideVertical" | "inside" | "diagonalDown" | "diagonalUp"; /** range (no type given) */ range?: Json; /** thin|medium|thick|dashed|dotted|double|hair... */ style?: Json }
-  /** Format Cells. Params: {range?, style: {font?, fill?, borders?, align?, numFmt?, protection?}} (partial Style JSON merged in). Changes the document. */
-  "home.formatCells": { /** range (no type given) */ range?: Json; /** {font?, fill?, borders?, align?, numFmt?, protection?} */ style?: { align?: Json; borders?: Json; fill?: Json; font?: string; numFmt?: Json; protection?: Json } }
-  /** Align Left. Params: {range?}. Changes the document. */
-  "home.alignLeft": { /** range (no type given) */ range?: Json }
-  /** Center. Params: {range?}. Changes the document. */
-  "home.alignCenter": { /** range (no type given) */ range?: Json }
-  /** Align Right. Params: {range?}. Changes the document. */
-  "home.alignRight": { /** range (no type given) */ range?: Json }
-  /** Justify. Params: {range?}. Changes the document. */
-  "home.justify": { /** range (no type given) */ range?: Json }
-  /** Top Align. Params: {range?}. Changes the document. */
-  "home.alignTop": { /** range (no type given) */ range?: Json }
-  /** Middle Align. Params: {range?}. Changes the document. */
-  "home.alignMiddle": { /** range (no type given) */ range?: Json }
-  /** Bottom Align. Params: {range?}. Changes the document. */
-  "home.alignBottom": { /** range (no type given) */ range?: Json }
-  /** Wrap Text. Params: {range?, on?}. Changes the document. */
-  "home.wrapText": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Shrink to Fit. Params: {range?, on?}. Changes the document. */
-  "home.shrinkToFit": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Increase Indent. Params: {range?}. Changes the document. */
-  "home.increaseIndent": { /** range (no type given) */ range?: Json }
-  /** Decrease Indent. Params: {range?}. Changes the document. */
-  "home.decreaseIndent": { /** range (no type given) */ range?: Json }
-  /** Orientation. Params: {range?, angle: -90..90 | "vertical" | "counterclockwise" | "clockwise" | "up" | "down" | 0}. Changes the document. */
-  "home.orientation": { /** -90..90 | "vertical" | "counterclockwise" | "clockwise" | "up" | "down" | 0 */ angle?: Json; /** range (no type given) */ range?: Json }
-  /** Merge & Center. Params: {range?}. Changes the document. */
-  "home.mergeCenter": { /** range (no type given) */ range?: Json }
-  /** Merge Across. Params: {range?}. Changes the document. */
-  "home.mergeAcross": { /** range (no type given) */ range?: Json }
-  /** Merge Cells. Params: {range?}. Changes the document. */
-  "home.mergeCells": { /** range (no type given) */ range?: Json }
-  /** Unmerge Cells. Params: {range?}. Changes the document. */
-  "home.unmergeCells": { /** range (no type given) */ range?: Json }
-  /** Number Format. Params: {range?, format: "General"|"Number"|"Currency"|"Accounting"|"Short Date"|"Long Date"|"Time"|"Percentage"|"Fraction"|"Scientific"|"Text" | code: "0.00"}. Changes the document. */
-  "home.numberFormat": { /** "General"|"Number"|"Currency"|"Accounting"|"Short Date"|"Long Date"|"Time"|"Percentage"|"Fraction"|"Scientific"|"Text" | code: "0.00" */ format?: Json; /** range (no type given) */ range?: Json }
-  /** Accounting Number Format. Params: {range?, symbol?: "$"}. Changes the document. */
-  "home.accounting": { /** range (no type given) */ range?: Json; /** like $ */ symbol?: string }
-  /** Percent Style. Params: {range?}. Changes the document. */
-  "home.percent": { /** range (no type given) */ range?: Json }
-  /** Comma Style. Params: {range?}. Changes the document. */
-  "home.comma": { /** range (no type given) */ range?: Json }
-  /** Increase Decimal. Params: {range?}. Changes the document. */
-  "home.increaseDecimal": { /** range (no type given) */ range?: Json }
-  /** Decrease Decimal. Params: {range?}. Changes the document. */
-  "home.decreaseDecimal": { /** range (no type given) */ range?: Json }
-  /** Cell Styles. Params: {range?, name: "Good"|"Bad"|"Neutral"|"Heading 1"|"Title"|"Total"|"Accent1"...|"Normal"}. Changes the document. */
-  "home.cellStyle": { /** "Good"|"Bad"|"Neutral"|"Heading 1"|"Title"|"Total"|"Accent1"...|"Normal" */ name?: Json; /** range (no type given) */ range?: Json }
-  /** Row Height. Params: {rows?: "2:5", height: 20 (points on screen)}. Changes the document. */
+  /** Bold. Turns bold on or off for a range (default: the selection); without on it toggles from the first cell. Params: {range?, on?: bool}. Changes the document. */
+  "home.bold": { on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Italic. Turns italic on or off for a range (default: the selection); without on it toggles. Params: {range?, on?}. Changes the document. */
+  "home.italic": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Underline. Sets or toggles underline on a range, with a single, double or accounting style. Params: {range?, on?, style?: single|double|singleAccounting|doubleAccounting}. Changes the document. */
+  "home.underline": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; style?: "single" | "double" | "singleAccounting" | "doubleAccounting" }
+  /** Double Underline. Toggles a double underline on a range (default: the selection). Params: {range?}. Changes the document. */
+  "home.doubleUnderline": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Strikethrough. Turns strikethrough on or off for a range (default: the selection). Params: {range?, on?}. Changes the document. */
+  "home.strikethrough": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Superscript. Turns superscript on or off for a range's text (default: the selection). Params: {range?, on?}. Changes the document. */
+  "home.superscript": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Subscript. Turns subscript on or off for a range's text (default: the selection). Params: {range?, on?}. Changes the document. */
+  "home.subscript": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Font. Sets the font family of a range (default: the selection). Params: {range?, name: "Calibri"}. Changes the document. */
+  "home.fontName": { /** like Calibri */ name?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Font Size. Sets the font size in points for a range (default: the selection). Params: {range?, size: 11}. Changes the document. */
+  "home.fontSize": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; size?: number }
+  /** Increase Font Size. Steps a range's font size up to the next size in the size list. Params: {range?}. Changes the document. */
+  "home.increaseFontSize": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Decrease Font Size. Steps a range's font size down to the previous size in the size list. Params: {range?}. Changes the document. */
+  "home.decreaseFontSize": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Font Color. Sets the text colour of a range: a #rrggbb hex, auto, or a theme colour with tint. Params: {range?, color: "#C00000" | "auto" | {theme: 4, tint: -0.25}}. Changes the document. */
+  "home.fontColor": { color?: Json; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Fill Color. Sets the background fill of a range: a #rrggbb hex, none, or a theme colour with tint. Params: {range?, color: "#FFFF00" | "none" | {theme, tint}}. Changes the document. */
+  "home.fillColor": { color?: Json; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Borders. Applies a border preset (bottom, all, outside, thick box, none...) to a range, optionally with a line style and colour. Params: {range?, preset: bottom|top|left|right|none|all|outside|thickOutside|thickBottom|doubleBottom|topBottom|topThickBottom|topDoubleBottom|insideHorizontal|insideVertical|inside|diagonalDown|diagonalUp, style?: thin|medium|thick|dashed|dotted|double|hair..., color?}. Changes the document. */
+  "home.borders": { color?: string; preset?: "bottom" | "top" | "left" | "right" | "none" | "all" | "outside" | "thickOutside" | "thickBottom" | "doubleBottom" | "topBottom" | "topThickBottom" | "topDoubleBottom" | "insideHorizontal" | "insideVertical" | "inside" | "diagonalDown" | "diagonalUp"; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; style?: string }
+  /** Format Cells. Merges a partial Style object (font, fill, borders, alignment, number format, protection) into every cell of a range; the general form of the formatting commands. Params: {range?, style: {font?, fill?, borders?, align?, numFmt?, protection?}} (partial Style JSON merged in). Changes the document. */
+  "home.formatCells": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; /** {font?, fill?, borders?, align?, numFmt?, protection?} */ style?: { align?: Json; borders?: Json; fill?: Json; font?: string; numFmt?: Json; protection?: Json } }
+  /** Align Left. Aligns the text of a range (default: the selection) to the left of its cells. Params: {range?}. Changes the document. */
+  "home.alignLeft": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Center. Centres the text of a range horizontally in its cells. Params: {range?}. Changes the document. */
+  "home.alignCenter": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Align Right. Aligns the text of a range to the right of its cells. Params: {range?}. Changes the document. */
+  "home.alignRight": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Justify. Justifies the text of a range across the width of its cells. Params: {range?}. Changes the document. */
+  "home.justify": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Top Align. Aligns the text of a range to the top of its cells. Params: {range?}. Changes the document. */
+  "home.alignTop": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Middle Align. Centres the text of a range vertically in its cells. Params: {range?}. Changes the document. */
+  "home.alignMiddle": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Bottom Align. Aligns the text of a range to the bottom of its cells. Params: {range?}. Changes the document. */
+  "home.alignBottom": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Wrap Text. Turns text wrapping on or off for a range so long text breaks onto several lines inside the cell. Params: {range?, on?}. Changes the document. */
+  "home.wrapText": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Shrink to Fit. Turns shrink-to-fit on or off for a range so text shrinks to fit the column width instead of overflowing. Params: {range?, on?}. Changes the document. */
+  "home.shrinkToFit": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Increase Indent. Increases the indent level of a range's text by one. Params: {range?}. Changes the document. */
+  "home.increaseIndent": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Decrease Indent. Decreases the indent level of a range's text by one. Params: {range?}. Changes the document. */
+  "home.decreaseIndent": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Orientation. Rotates a range's text by an angle from -90 to 90 degrees, or stacks it vertically. Params: {range?, angle: -90..90 | "vertical" | "counterclockwise" | "clockwise" | "up" | "down" | 0}. Changes the document. */
+  "home.orientation": { angle?: Json; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Merge & Center. Merges a range into one cell and centres its text; only the top-left value is kept. Params: {range?}. Changes the document. */
+  "home.mergeCenter": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Merge Across. Merges each row of a range into one cell per row; only each row's leftmost value is kept. Params: {range?}. Changes the document. */
+  "home.mergeAcross": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Merge Cells. Merges a range into one cell without changing alignment; only the top-left value is kept. Params: {range?}. Changes the document. */
+  "home.mergeCells": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Unmerge Cells. Splits merged cells in a range back into separate cells; the value stays in the top-left cell. Params: {range?}. Changes the document. */
+  "home.unmergeCells": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Number Format. Sets how numbers in a range display: a named format (Currency, Percentage, Short Date, Text...) or a custom format code such as 0.00%. Params: {range?, format: "General"|"Number"|"Currency"|"Accounting"|"Short Date"|"Long Date"|"Time"|"Percentage"|"Fraction"|"Scientific"|"Text" | code: "0.00"}. Changes the document. */
+  "home.numberFormat": { format?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Accounting Number Format. Applies the accounting number format to a range, with a currency symbol ($ by default). Params: {range?, symbol?: "$"}. Changes the document. */
+  "home.accounting": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; /** like $ */ symbol?: string }
+  /** Percent Style. Formats a range as a percentage without decimals (0.25 shows as 25%); the values stay as they are. Params: {range?}. Changes the document. */
+  "home.percent": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Comma Style. Applies the comma style (thousands separator, two decimals) to a range. Params: {range?}. Changes the document. */
+  "home.comma": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Increase Decimal. Shows one more decimal place in a range's number format. Params: {range?}. Changes the document. */
+  "home.increaseDecimal": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Decrease Decimal. Shows one fewer decimal place in a range's number format. Params: {range?}. Changes the document. */
+  "home.decreaseDecimal": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Cell Styles. Applies a named cell style (Good, Bad, Heading 1, Title, Total, Accent1...) to a range. Params: {range?, name: "Good"|"Bad"|"Neutral"|"Heading 1"|"Title"|"Total"|"Accent1"...|"Normal"}. Changes the document. */
+  "home.cellStyle": { name?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Row Height. Sets the height in points of rows given as a row span such as 2:5 (default: the selection's rows). Params: {rows?: "2:5", height: 20 (points on screen)}. Changes the document. */
   "home.rowHeight": { /** points on screen */ height?: number; /** like 2:5 */ rows?: string }
-  /** Column Width. Params: {cols?: "B:D", width: 64 (points) | chars: 8.43}. Changes the document. */
-  "home.columnWidth": { /** like B:D */ cols?: string; /** 64 (points) | chars: 8.43; points */ width?: Json }
-  /** AutoFit Row Height. Params: {rows?}. Changes the document. */
+  /** Column Width. Sets the width of columns given as a column span such as B:D, in points or in characters. Params: {cols?: "B:D", width: 64 (points) | chars: 8.43}. Changes the document. */
+  "home.columnWidth": { /** like B:D */ cols?: string; /** points */ width?: number }
+  /** AutoFit Row Height. Fits the height of rows to their content (default: the selection's rows). Params: {rows?}. Changes the document. */
   "home.autofitRowHeight": { rows?: number }
-  /** AutoFit Column Width. Params: {cols?}. Changes the document. */
-  "home.autofitColumnWidth": { /** cols (no type given) */ cols?: Json }
-  /** Default Width. Params: {width: 64}. Changes the document. */
+  /** AutoFit Column Width. Fits the width of columns to their widest content (default: the selection's columns). Params: {cols?}. Changes the document. */
+  "home.autofitColumnWidth": { /** a column span such as B:D; default: the selection's columns */ cols?: string }
+  /** Default Width. Sets the default column width of the sheet for columns without their own width. Params: {width: 64}. Changes the document. */
   "home.defaultWidth": { width?: number }
-  /** Hide Rows. Params: {rows?}. Changes the document. */
+  /** Hide Rows. Hides rows given as a span such as 3:5 (default: the selection's rows); their data is kept. Params: {rows?}. Changes the document. */
   "home.hideRows": { rows?: number }
-  /** Hide Columns. Params: {cols?}. Changes the document. */
-  "home.hideColumns": { /** cols (no type given) */ cols?: Json }
-  /** Unhide Rows. Params: {rows?}. Changes the document. */
+  /** Hide Columns. Hides columns given as a span such as B:C (default: the selection's columns); their data is kept. Params: {cols?}. Changes the document. */
+  "home.hideColumns": { /** a column span such as B:D; default: the selection's columns */ cols?: string }
+  /** Unhide Rows. Shows hidden rows within a span (default: the selection's rows). Params: {rows?}. Changes the document. */
   "home.unhideRows": { rows?: number }
-  /** Unhide Columns. Params: {cols?}. Changes the document. */
-  "home.unhideColumns": { /** cols (no type given) */ cols?: Json }
-  /** Lock Cell. Params: {range?, on?}. Changes the document. */
-  "home.lockCell": { /** on (no type given) */ on?: Json; /** range (no type given) */ range?: Json }
-  /** Insert Sheet Rows. Params: {rows?: "3:5", count?}. Changes the document. */
+  /** Unhide Columns. Shows hidden columns within a span (default: the selection's columns). Params: {cols?}. Changes the document. */
+  "home.unhideColumns": { /** a column span such as B:D; default: the selection's columns */ cols?: string }
+  /** Lock Cell. Locks or unlocks cells for sheet protection; locking takes effect only once the sheet is protected. Params: {range?, on?}. Changes the document. */
+  "home.lockCell": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Insert Sheet Rows. Inserts whole rows above the given rows (or count rows above the selection), shifting the rows below down and adjusting formulas. Params: {rows?: "3:5", count?}. Changes the document. */
   "home.insertRows": { count?: number; /** like 3:5 */ rows?: string }
-  /** Insert Sheet Columns. Params: {cols?: "B:C"}. Changes the document. */
+  /** Insert Sheet Columns. Inserts whole columns to the left of the given columns, shifting the others right and adjusting formulas. Params: {cols?: "B:C"}. Changes the document. */
   "home.insertColumns": { /** like B:C */ cols?: string }
-  /** Delete Sheet Rows. Params: {rows?}. Changes the document. */
+  /** Delete Sheet Rows. Deletes whole rows (default: the selection's rows), shifting the rows below up; formulas that pointed into them become #REF!. Params: {rows?}. Changes the document. */
   "home.deleteRows": { rows?: number }
-  /** Delete Sheet Columns. Params: {cols?}. Changes the document. */
-  "home.deleteColumns": { /** cols (no type given) */ cols?: Json }
-  /** Insert Cells. Params: {range?, shift: right|down|row|column}. Changes the document. */
-  "home.insertCells": { /** range (no type given) */ range?: Json; shift?: "right" | "down" | "row" | "column" }
-  /** Delete Cells. Params: {range?, shift: left|up|row|column}. Changes the document. */
-  "home.deleteCells": { /** range (no type given) */ range?: Json; shift?: "left" | "up" | "row" | "column" }
-  /** Insert Sheet. Params: {name?, before?: index}. Changes the document. */
-  "home.insertSheet": { before?: number; name?: string }
-  /** Delete Sheet. Params: {sheet?}. Changes the document. */
-  "home.deleteSheet": { /** sheet (no type given) */ sheet?: Json }
-  /** Rename Sheet. Params: {sheet?, name}. Changes the document. */
-  "sheet.rename": { name?: string; /** sheet (no type given) */ sheet?: Json }
-  /** Move or Copy Sheet. Params: {sheet?, to: index, copy?: bool}. Changes the document. */
-  "sheet.move": { copy?: boolean; /** sheet (no type given) */ sheet?: Json; to?: number }
-  /** Tab Color. Params: {sheet?, color: "#FF0000"|"none"}. Changes the document. */
-  "sheet.tabColor": { color?: "#FF0000" | "none"; /** sheet (no type given) */ sheet?: Json }
-  /** Hide Sheet. Params: {sheet?}. Changes the document. */
-  "sheet.hide": { /** sheet (no type given) */ sheet?: Json }
-  /** Unhide Sheet. Params: {sheet}. Changes the document. */
-  "sheet.unhide": { /** sheet (no type given) */ sheet?: Json }
-  /** Activate Sheet. Params: {sheet: index | name} */
-  "sheet.activate": { /** index | name */ sheet?: Json }
-  /** Next Sheet. Params: {} */
+  /** Delete Sheet Columns. Deletes whole columns (default: the selection's columns), shifting the others left; formulas that pointed into them become #REF!. Params: {cols?}. Changes the document. */
+  "home.deleteColumns": { /** a column span such as B:D; default: the selection's columns */ cols?: string }
+  /** Insert Cells. Inserts blank cells at a range, shifting existing cells right or down, or inserting entire rows or columns. Params: {range?, shift: right|down|row|column}. Changes the document. */
+  "home.insertCells": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; shift?: "right" | "down" | "row" | "column" }
+  /** Delete Cells. Deletes the cells of a range, shifting the cells beside them left or up, or deleting entire rows or columns. Params: {range?, shift: left|up|row|column}. Changes the document. */
+  "home.deleteCells": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; shift?: "left" | "up" | "row" | "column" }
+  /** Insert Sheet. Adds a new worksheet, optionally named and placed before the sheet at a 0-based index. Params: {name?, before?: index}. Changes the document. */
+  "home.insertSheet": { /** a position counted from 0 (the first is 0) */ before?: number; name?: string }
+  /** Delete Sheet. Deletes a sheet (default: the active one) with all its data; the last remaining sheet cannot be deleted. Params: {sheet?}. Changes the document. */
+  "home.deleteSheet": { sheet?: Json }
+  /** Rename Sheet. Renames a sheet (default: the active one); formulas that refer to it follow the new name. Params: {sheet?, name}. Changes the document. */
+  "sheet.rename": { name?: string; sheet?: Json }
+  /** Move or Copy Sheet. Moves a sheet to a new 0-based position, or copies it there when copy is true. Params: {sheet?, to: index, copy?: bool}. Changes the document. */
+  "sheet.move": { copy?: boolean; sheet?: Json; /** a position counted from 0 (the first is 0) */ to?: number }
+  /** Tab Color. Sets or clears the colour of a sheet's tab. Params: {sheet?, color: "#FF0000"|"none"}. Changes the document. */
+  "sheet.tabColor": { color?: "#FF0000" | "none"; sheet?: Json }
+  /** Hide Sheet. Hides a sheet (default: the active one); at least one sheet stays visible. Params: {sheet?}. Changes the document. */
+  "sheet.hide": { sheet?: Json }
+  /** Unhide Sheet. Shows a hidden sheet by name or index. Params: {sheet}. Changes the document. */
+  "sheet.unhide": { sheet?: Json }
+  /** Activate Sheet. Makes the sheet with the given 0-based index or name the active sheet; answers its name and index. Params: {sheet: index | name}. */
+  "sheet.activate": { sheet?: Json }
+  /** Next Sheet. Activates the next sheet tab. Params: {}. */
   "sheet.next": Record<string, never>
-  /** Previous Sheet. Params: {} */
+  /** Previous Sheet. Activates the previous sheet tab. Params: {}. */
   "sheet.previous": Record<string, never>
-  /** Table. Params: {range?, header?: true, style?: "TableStyleMedium2", name?}. Changes the document. */
-  "insert.table": { header?: boolean; name?: string; /** range (no type given) */ range?: Json; /** like TableStyleMedium2 */ style?: string }
-  /** Format as Table. Params: {range?, style: "TableStyleMedium2", header?}. Changes the document. */
-  "home.formatAsTable": { /** header (no type given) */ header?: Json; /** range (no type given) */ range?: Json; /** like TableStyleMedium2 */ style?: string }
-  /** Total Row. Params: {table?, on?: bool}. Changes the document. */
-  "table.totalRow": { on?: boolean; /** table (no type given) */ table?: Json }
-  /** Banded Rows. Params: {table?, on?}. Changes the document. */
-  "table.bandedRows": { /** on (no type given) */ on?: Json; /** table (no type given) */ table?: Json }
-  /** Banded Columns. Params: {table?, on?}. Changes the document. */
-  "table.bandedColumns": { /** on (no type given) */ on?: Json; /** table (no type given) */ table?: Json }
-  /** Header Row. Params: {table?, on?}. Changes the document. */
-  "table.headerRow": { /** on (no type given) */ on?: Json; /** table (no type given) */ table?: Json }
-  /** First Column. Params: {table?, on?}. Changes the document. */
-  "table.firstColumn": { /** on (no type given) */ on?: Json; /** table (no type given) */ table?: Json }
-  /** Last Column. Params: {table?, on?}. Changes the document. */
-  "table.lastColumn": { /** on (no type given) */ on?: Json; /** table (no type given) */ table?: Json }
-  /** Table Styles. Params: {table?, style}. Changes the document. */
-  "table.style": { style?: string; /** table (no type given) */ table?: Json }
-  /** Table Name. Params: {table?, name}. Changes the document. */
-  "table.rename": { name?: string; /** table (no type given) */ table?: Json }
-  /** Convert to Range. Params: {table?}. Changes the document. */
-  "table.convertToRange": { /** table (no type given) */ table?: Json }
-  /** Totals Function. Params: {table?, column: "Sales", function: sum|average|count|countNums|max|min|stdDev|var|none}. Changes the document. */
-  "table.totalFunction": { /** like Sales */ column?: string; /** sum|average|count|countNums|max|min|stdDev|var|none */ function?: Json; /** table (no type given) */ table?: Json }
-  /** Insert Chart. Params: {range?, type?: column|bar|line|pie|doughnut|area|scatter|bubble|radar|combo|histogram|waterfall|funnel|treemap|sunburst|boxWhisker|stock, subtype?: clustered|stacked|stacked100|markers, title?, at?: "H2", width?, height?}. Changes the document. */
-  "insert.chart": { /** like H2 */ at?: string; height?: number; /** range (no type given) */ range?: Json; subtype?: "clustered" | "stacked" | "stacked100" | "markers"; title?: string; type?: "column" | "bar" | "line" | "pie" | "doughnut" | "area" | "scatter" | "bubble" | "radar" | "combo" | "histogram" | "waterfall" | "funnel" | "treemap" | "sunburst" | "boxWhisker" | "stock"; width?: number }
-  /** Recommended Charts. Params: {range?}. Changes the document. */
-  "insert.recommendedCharts": { /** range (no type given) */ range?: Json }
-  /** Chart Properties. Params: {chart?: id, type?, title?, legend?: none|bottom|top|left|right, dataLabels?, gridlines?, style?, xTitle?, yTitle?, at?, width?, height?, dx?, dy?}. Changes the document. */
-  "chart.set": { /** at (no type given) */ at?: Json; /** an id */ chart?: number; /** dataLabels (no type given) */ dataLabels?: Json; dx?: number; dy?: number; /** gridlines (no type given) */ gridlines?: Json; height?: number; legend?: "none" | "bottom" | "top" | "left" | "right"; style?: string; title?: string; /** type (no type given) */ type?: Json; width?: number; /** xTitle (no type given) */ xTitle?: Json; /** yTitle (no type given) */ yTitle?: Json }
-  /** Switch Row/Column. Params: {chart?}. Changes the document. */
-  "chart.switchRowColumn": { /** chart (no type given) */ chart?: Json }
-  /** Delete Chart. Params: {chart?}. Changes the document. */
-  "chart.delete": { /** chart (no type given) */ chart?: Json }
-  /** Sparklines. Params: {range: "B2:M2", location: "N2", type?: line|column|winLoss, markers?}. Changes the document. */
-  "insert.sparkline": { /** like N2 */ location?: string; /** markers (no type given) */ markers?: Json; /** like B2:M2 */ range?: string; type?: "line" | "column" | "winLoss" }
-  /** Picture. Params: {path? | base64?: "...", mime?, at?: "B2", width?, height?, alt?, mode?: moveOnly|moveAndSize|absolute, placement?: cell|overCells}. Changes the document. */
-  "insert.picture": { /** alt (no type given) */ alt?: Json; /** like B2 */ at?: string; /** like ...; one of several alternative parameters */ base64?: string; height?: number; /** mime (no type given) */ mime?: Json; mode?: "moveOnly" | "moveAndSize" | "absolute"; /** like ...; one of several alternative parameters */ path?: string; placement?: "cell" | "overCells"; width?: number }
-  /** Shapes. Params: {kind: rectangle|roundedRectangle|ellipse|triangle|line|arrow|textBox, at?, width?, height?, text?, fill?, line?}. Changes the document. */
-  "insert.shape": { /** at (no type given) */ at?: Json; /** fill (no type given) */ fill?: Json; height?: number; kind?: "rectangle" | "roundedRectangle" | "ellipse" | "triangle" | "line" | "arrow" | "textBox"; /** line (no type given) */ line?: Json; text?: string; width?: number }
-  /** Icons. Params: {name: chart|table|sum|filter|lock|comment|picture|book|folder|search|calc|check|... , at?, size?: 48, color?: hex}. Changes the document. */
-  "insert.icons": { /** at (no type given) */ at?: Json; /** a colour such as #rrggbb */ color?: string; /** chart|table|sum|filter|lock|comment|picture|book|folder|search|calc|check|... */ name?: Json; size?: number }
-  /** Text Box. Params: {at?, width?, height?, text?}. Changes the document. */
-  "insert.textBox": { /** at (no type given) */ at?: Json; height?: number; text?: string; width?: number }
-  /** WordArt. Params: {text?, warp?: preset (textArchUp, textWave1, textInflate...)}. Changes the document. */
-  "insert.wordArt": { text?: string; /** preset (textArchUp, textWave1, textInflate...); textArchUp, textWave1, textInflate... */ warp?: Json }
-  /** Edit Text Box. Params: {id: textBox id, text: string}. Changes the document. */
-  "shape.setText": { /** textBox id */ id?: Json; text?: string }
-  /** Delete Object. Params: {kind: chart|image|shape, id}. Changes the document. */
-  "object.delete": { id?: number; kind?: "chart" | "image" | "shape" }
-  /** Move Object. Params: {kind: chart|image|shape, id, at?: "C3", dx?, dy?, width?, height?}. Changes the document. */
-  "object.move": { /** like C3 */ at?: string; dx?: number; dy?: number; height?: number; id?: number; kind?: "chart" | "image" | "shape"; width?: number }
-  /** Object Properties. Params: {kind: chart|image|shape, id, mode: moveAndSize|moveOnly|absolute}. Changes the document. */
-  "object.setAnchorMode": { id?: number; kind?: "chart" | "image" | "shape"; mode?: "moveAndSize" | "moveOnly" | "absolute" }
-  /** Link. Params: {cell?, target: "https://..." | "Sheet2!A1" | "mailto:...", text?, tooltip?, remove?: bool}. Changes the document. */
-  "insert.link": { /** cell (no type given) */ cell?: Json; remove?: boolean; target?: "https://…" | "Sheet2!A1" | "mailto:…"; text?: string; /** tooltip (no type given) */ tooltip?: Json }
-  /** New Note. Params: {cell?, text, author?}. Changes the document. */
-  "review.newNote": { /** author (no type given) */ author?: Json; /** cell (no type given) */ cell?: Json; text?: string }
-  /** New Comment. Params: {cell?, text, author?}. Changes the document. */
-  "review.newComment": { /** author (no type given) */ author?: Json; /** cell (no type given) */ cell?: Json; text?: string }
-  /** Reply. Params: {cell?, text, author?}. Changes the document. */
-  "review.replyComment": { /** author (no type given) */ author?: Json; /** cell (no type given) */ cell?: Json; text?: string }
-  /** Resolve Thread. Params: {cell?, resolved?: true}. Changes the document. */
-  "review.resolveComment": { /** cell (no type given) */ cell?: Json; resolved?: boolean }
-  /** Delete Comment. Params: {cell?}. Changes the document. */
-  "review.deleteComment": { /** cell (no type given) */ cell?: Json }
-  /** Show/Hide Note. Params: {cell?}. Changes the document. */
-  "review.showNote": { /** cell (no type given) */ cell?: Json }
-  /** Symbol. Params: {char: "?"} (inserted at the end of the active cell's text). Changes the document. */
+  /** Table. Turns a range (default: the current region) into a structured table with a style, a header row and a name. Params: {range?, header?: true, style?: "TableStyleMedium2", name?}. Changes the document. */
+  "insert.table": { header?: boolean; name?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; /** like TableStyleMedium2 */ style?: string }
+  /** Format as Table. Formats a range as a table with the given table style, creating the table if needed. Params: {range?, style: "TableStyleMedium2", header?}. Changes the document. */
+  "home.formatAsTable": { header?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; /** like TableStyleMedium2 */ style?: string }
+  /** Total Row. Shows or hides the total row of a table (default: the table at the active cell). Params: {table?, on?: bool}. Changes the document. */
+  "table.totalRow": { on?: boolean; /** a table name; default: the table at the active cell */ table?: string }
+  /** Banded Rows. Turns banded (striped) rows on or off for a table. Params: {table?, on?}. Changes the document. */
+  "table.bandedRows": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** a table name; default: the table at the active cell */ table?: string }
+  /** Banded Columns. Turns banded columns on or off for a table. Params: {table?, on?}. Changes the document. */
+  "table.bandedColumns": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** a table name; default: the table at the active cell */ table?: string }
+  /** Header Row. Shows or hides the header row of a table. Params: {table?, on?}. Changes the document. */
+  "table.headerRow": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** a table name; default: the table at the active cell */ table?: string }
+  /** First Column. Turns special formatting of a table's first column on or off. Params: {table?, on?}. Changes the document. */
+  "table.firstColumn": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** a table name; default: the table at the active cell */ table?: string }
+  /** Last Column. Turns special formatting of a table's last column on or off. Params: {table?, on?}. Changes the document. */
+  "table.lastColumn": { /** true turns it on, false off; left out, it toggles */ on?: boolean; /** a table name; default: the table at the active cell */ table?: string }
+  /** Table Styles. Applies a table style (TableStyleLight1...Dark11, TableStyleMedium2...) to a table. Params: {table?, style}. Changes the document. */
+  "table.style": { style?: string; /** a table name; default: the table at the active cell */ table?: string }
+  /** Table Name. Renames a table; structured references to it follow the new name. Params: {table?, name}. Changes the document. */
+  "table.rename": { name?: string; /** a table name; default: the table at the active cell */ table?: string }
+  /** Convert to Range. Converts a table back to a normal range, keeping its values and formatting. Params: {table?}. Changes the document. */
+  "table.convertToRange": { /** a table name; default: the table at the active cell */ table?: string }
+  /** Totals Function. Sets the function shown in a table column's total row (sum, average, count, max, min...) or removes it with none. Params: {table?, column: "Sales", function: sum|average|count|countNums|max|min|stdDev|var|none}. Changes the document. */
+  "table.totalFunction": { /** like Sales */ column?: string; function?: string; /** a table name; default: the table at the active cell */ table?: string }
+  /** Insert Chart. Inserts a chart of a range (default: the current region) with a type, title and position; answers the new chart's id for chart.* commands. Params: {range?, type?: column|bar|line|pie|doughnut|area|scatter|bubble|radar|combo|histogram|waterfall|funnel|treemap|sunburst|boxWhisker|stock, subtype?: clustered|stacked|stacked100|markers, title?, at?: "H2", width?, height?}. Changes the document. */
+  "insert.chart": { /** like H2 */ at?: string; height?: number; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; subtype?: "clustered" | "stacked" | "stacked100" | "markers"; title?: string; type?: "column" | "bar" | "line" | "pie" | "doughnut" | "area" | "scatter" | "bubble" | "radar" | "combo" | "histogram" | "waterfall" | "funnel" | "treemap" | "sunburst" | "boxWhisker" | "stock"; width?: number }
+  /** Recommended Charts. Inserts the chart type that best fits a range's data shape, as Recommended Charts suggests. Params: {range?}. Changes the document. */
+  "insert.recommendedCharts": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Chart Properties. Changes a chart's properties in one call: type, title, legend, data labels, gridlines, style, axis titles, position and size. Params: {chart?: id, type?, title?, legend?: none|bottom|top|left|right, dataLabels?, gridlines?, style?, xTitle?, yTitle?, at?, width?, height?, dx?, dy?}. Changes the document. */
+  "chart.set": { /** the top-left cell in A1 notation such as C3 */ at?: string; /** an id */ chart?: number; dataLabels?: Json; dx?: number; dy?: number; gridlines?: Json; height?: number; legend?: "none" | "bottom" | "top" | "left" | "right"; style?: string; title?: string; /** a chart type such as column, bar, line, pie */ type?: string; width?: number; xTitle?: string; yTitle?: string }
+  /** Switch Row/Column. Swaps which of a chart's data runs as series and which as categories. Params: {chart?}. Changes the document. */
+  "chart.switchRowColumn": { /** a chart id from document.inspect; default: the selected chart */ chart?: number }
+  /** Delete Chart. Deletes a chart (default: the selected one). Params: {chart?}. Changes the document. */
+  "chart.delete": { /** a chart id from document.inspect; default: the selected chart */ chart?: number }
+  /** Sparklines. Adds sparklines (tiny line, column or win/loss charts) for a data range into location cells. Params: {range: "B2:M2", location: "N2", type?: line|column|winLoss, markers?}. Changes the document. */
+  "insert.sparkline": { /** like N2 */ location?: string; markers?: boolean; /** like B2:M2 */ range?: string; type?: "line" | "column" | "winLoss" }
+  /** Picture. Inserts a picture from a file path or base64 bytes at a cell, with size, alternative text and how it moves with cells. Params: {path? | base64?: "...", mime?, at?: "B2", width?, height?, alt?, mode?: moveOnly|moveAndSize|absolute, placement?: cell|overCells}. Changes the document. */
+  "insert.picture": { alt?: string; /** like B2 */ at?: string; /** like ...; one of several alternative parameters */ base64?: string; height?: number; mime?: string; mode?: "moveOnly" | "moveAndSize" | "absolute"; /** like ...; one of several alternative parameters */ path?: Json; placement?: "cell" | "overCells"; width?: number }
+  /** Shapes. Inserts a shape (rectangle, rounded rectangle, ellipse, triangle, line, arrow or text box) at a cell, with size, text, fill and line. Params: {kind: rectangle|roundedRectangle|ellipse|triangle|line|arrow|textBox, at?, width?, height?, text?, fill?, line?}. Changes the document. */
+  "insert.shape": { /** the top-left cell in A1 notation such as C3 */ at?: string; fill?: Json; height?: number; kind?: "rectangle" | "roundedRectangle" | "ellipse" | "triangle" | "line" | "arrow" | "textBox"; line?: Json; text?: string; width?: number }
+  /** Icons. Inserts a built-in icon (chart, table, sum, filter, lock, check...) at a cell, with size and colour. Params: {name: chart|table|sum|filter|lock|comment|picture|book|folder|search|calc|check|... , at?, size?: 48, color?: hex}. Changes the document. */
+  "insert.icons": { /** the top-left cell in A1 notation such as C3 */ at?: string; /** a colour such as #rrggbb */ color?: string; name?: string; size?: number }
+  /** Text Box. Inserts a text box at a cell with a size and text. Params: {at?, width?, height?, text?}. Changes the document. */
+  "insert.textBox": { /** the top-left cell in A1 notation such as C3 */ at?: string; height?: number; text?: string; width?: number }
+  /** WordArt. Inserts decorative WordArt text, optionally warped by a preset such as textArchUp. Params: {text?, warp?: preset (textArchUp, textWave1, textInflate...)}. Changes the document. */
+  "insert.wordArt": { text?: string; /** a warp preset such as textArchUp */ warp?: string }
+  /** Edit Text Box. Replaces the text of a text box or shape by its id. Params: {id: textBox id, text: string}. Changes the document. */
+  "shape.setText": { /** the text box's id */ id?: Json; text?: string }
+  /** Delete Object. Deletes a chart, image or shape by kind and id. Params: {kind: chart|image|shape, id}. Changes the document. */
+  "object.delete": { /** an id */ id?: Json; kind?: "chart" | "image" | "shape" }
+  /** Move Object. Moves or resizes a chart, image or shape: to a cell, by an offset, or to a width and height. Params: {kind: chart|image|shape, id, at?: "C3", dx?, dy?, width?, height?}. Changes the document. */
+  "object.move": { /** like C3 */ at?: string; dx?: number; dy?: number; height?: number; /** an id */ id?: Json; kind?: "chart" | "image" | "shape"; width?: number }
+  /** Object Properties. Sets how a chart, image or shape follows its cells: move and size with them, move only, or stay fixed. Params: {kind: chart|image|shape, id, mode: moveAndSize|moveOnly|absolute}. Changes the document. */
+  "object.setAnchorMode": { /** an id */ id?: Json; kind?: "chart" | "image" | "shape"; mode?: "moveAndSize" | "moveOnly" | "absolute" }
+  /** Link. Adds a hyperlink to a cell (to a web address, a place in the workbook, or an email address) or removes it. Params: {cell?, target: "https://..." | "Sheet2!A1" | "mailto:...", text?, tooltip?, remove?: bool}. Changes the document. */
+  "insert.link": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; remove?: boolean; target?: "https://…" | "Sheet2!A1" | "mailto:…"; text?: string; tooltip?: string }
+  /** New Note. Adds a note (a plain, unthreaded annotation) to a cell. Params: {cell?, text, author?}. Changes the document. */
+  "review.newNote": { author?: string; /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; text?: string }
+  /** New Comment. Starts a threaded comment on a cell; use review.replyComment to answer an existing thread. Params: {cell?, text, author?}. Changes the document. */
+  "review.newComment": { author?: string; /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; text?: string }
+  /** Reply. Adds a reply to the comment thread on a cell. Params: {cell?, text, author?}. Changes the document. */
+  "review.replyComment": { author?: string; /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; text?: string }
+  /** Resolve Thread. Marks the comment thread on a cell as resolved, or reopens it. Params: {cell?, resolved?: true}. Changes the document. */
+  "review.resolveComment": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; resolved?: boolean }
+  /** Delete Comment. Deletes the comment thread or note on a cell. Params: {cell?}. Changes the document. */
+  "review.deleteComment": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string }
+  /** Show/Hide Note. Shows or hides a cell's note on the sheet. Params: {cell?}. Changes the document. */
+  "review.showNote": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string }
+  /** Symbol. Appends a character such as ? to the end of the active cell's text. Params: {char: "?"} (inserted at the end of the active cell's text). Changes the document. */
   "insert.symbol": { /** like ? */ char?: string }
-  /** Conditional Formatting. Params: {range?, rule: {type: cellIs|expression|containsText|beginsWith|endsWith|blanks|noBlanks|errors|noErrors|duplicate|unique|top10|aboveAverage|timePeriod|colorScale|dataBar|iconSet, operator?, value?, value2?, formula?, text?, rank?, bottom?, percent?, below?, period?, colors?: [..], color?, set?, style?: {font..fill..}|preset: lightRedFill|redText|yellowFill|greenFill|redBorder|lightRedFillDarkRedText...}}. Changes the document. */
-  "home.conditionalFormat": { /** range (no type given) */ range?: Json; /** {type: cellIs|expression|containsText|beginsWith|endsWith|blanks|noBlanks|errors|noErrors|duplicate|unique|top10|aboveAverage|timePeriod|colorScale|dataBar|iconSet, operator?, value?, value2?, formula?, text?, rank?, bottom?, percent?, below?, period?, colors?: [..], color?, set?, style?: {font..fill..}|preset: lightRedFill|redText|yellowFill|greenFill|redBorder|lightRedFillDarkRedText...} */ rule?: { below?: Json; bottom?: number; color?: string; colors?: Array<Json>; formula?: Json; operator?: Json; percent?: Json; period?: Json; rank?: Json; set?: Json; style?: Json; text?: string; type?: "cellIs" | "expression" | "containsText" | "beginsWith" | "endsWith" | "blanks" | "noBlanks" | "errors" | "noErrors" | "duplicate" | "unique" | "top10" | "aboveAverage" | "timePeriod" | "colorScale" | "dataBar" | "iconSet"; value?: Json; value2?: Json } }
-  /** Clear Rules. Params: {range?|sheet: true}. Changes the document. */
+  /** Conditional Formatting. Adds a conditional formatting rule to a range (cell value, formula, text, duplicates, top/bottom, data bar, colour scale, icon set) with its format. Params: {range?, rule: {type: cellIs|expression|containsText|beginsWith|endsWith|blanks|noBlanks|errors|noErrors|duplicate|unique|top10|aboveAverage|timePeriod|colorScale|dataBar|iconSet, operator?, value?, value2?, formula?, text?, rank?, bottom?, percent?, below?, period?, colors?: [..], color?, set?, style?: {font..fill..}|preset: lightRedFill|redText|yellowFill|greenFill|redBorder|lightRedFillDarkRedText...}}. Changes the document. */
+  "home.conditionalFormat": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; /** {type: cellIs|expression|containsText|beginsWith|endsWith|blanks|noBlanks|errors|noErrors|duplicate|unique|top10|aboveAverage|timePeriod|colorScale|dataBar|iconSet, operator?, value?, value2?, formula?, text?, rank?, bottom?, percent?, below?, period?, colors?: [..], color?, set?, style?: {font..fill..}|preset: lightRedFill|redText|yellowFill|greenFill|redBorder|lightRedFillDarkRedText...} */ rule?: { below?: Json; bottom?: number; color?: string; colors?: Array<Json>; formula?: Json; operator?: Json; percent?: Json; period?: Json; rank?: Json; set?: Json; style?: Json; text?: string; type?: "cellIs" | "expression" | "containsText" | "beginsWith" | "endsWith" | "blanks" | "noBlanks" | "errors" | "noErrors" | "duplicate" | "unique" | "top10" | "aboveAverage" | "timePeriod" | "colorScale" | "dataBar" | "iconSet"; value?: Json; value2?: Json } }
+  /** Clear Rules. Removes conditional formatting rules from a range, or from the whole sheet. Params: {range?|sheet: true}. Changes the document. */
   "home.clearRules": { /** one of several alternative parameters */ range?: boolean; /** one of several alternative parameters */ sheet?: boolean }
-  /** Manage Rules. Params: {delete?: index, moveUp?: index, moveDown?: index}. Changes the document. */
-  "home.manageRules": { delete?: number; moveDown?: number; moveUp?: number }
-  /** Sort A to Z. Params: {range?, column?: "B"}. Changes the document. */
-  "data.sortAscending": { /** like B */ column?: string; /** range (no type given) */ range?: Json }
-  /** Sort Z to A. Params: {range?, column?}. Changes the document. */
-  "data.sortDescending": { column?: number; /** range (no type given) */ range?: Json }
-  /** Sort. Params: {range?, header?: bool, keys: [{column: "B", order: asc|desc, by?: values|cellColor|fontColor, customList?: [..]}], orientation?: rows|columns, matchCase?}. Changes the document. */
-  "data.sort": { header?: boolean; /** [{column: "B", order: asc|desc, by?: values|cellColor|fontColor, customList?: [..]}] */ keys?: Array<{ by?: "values" | "cellColor" | "fontColor"; column?: string; customList?: Array<Json>; order?: "asc" | "desc" }>; /** matchCase (no type given) */ matchCase?: Json; orientation?: "rows" | "columns"; /** range (no type given) */ range?: Json }
-  /** Filter. Params: {range?} toggles AutoFilter on the current region. Changes the document. */
-  "data.filter": { /** range (no type given) */ range?: Json }
-  /** Filter Column. Params: {column: "B" (or 0-based offset), values?: [..], blanks?: bool, custom?: {op: ">", value: "10", op2?, value2?, and?}, top?: {count, bottom?, percent?}, aboveAverage?: bool, clear?: bool}. Changes the document. */
+  /** Manage Rules. Deletes a conditional formatting rule or moves it up or down in priority, by its index in the sheet's rule list. Params: {delete?: index, moveUp?: index, moveDown?: index}. Changes the document. */
+  "home.manageRules": { /** a position counted from 0 (the first is 0) */ delete?: number; /** a position counted from 0 (the first is 0) */ moveDown?: number; /** a position counted from 0 (the first is 0) */ moveUp?: number }
+  /** Sort A to Z. Sorts the current region (or range) ascending by one column (default: the active cell's column), keeping rows together. Params: {range?, column?: "B"}. Changes the document. */
+  "data.sortAscending": { /** like B */ column?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Sort Z to A. Sorts the current region (or range) descending by one column, keeping rows together. Params: {range?, column?}. Changes the document. */
+  "data.sortDescending": { column?: number; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Sort. Sorts a range by several keys, each a column with an order, by values or by cell or font colour, optionally by rows instead of columns. Params: {range?, header?: bool, keys: [{column: "B", order: asc|desc, by?: values|cellColor|fontColor, customList?: [..]}], orientation?: rows|columns, matchCase?}. Changes the document. */
+  "data.sort": { header?: boolean; /** [{column: "B", order: asc|desc, by?: values|cellColor|fontColor, customList?: [..]}] */ keys?: Array<{ by?: "values" | "cellColor" | "fontColor"; column?: string; customList?: Array<Json>; order?: "asc" | "desc" }>; matchCase?: boolean; orientation?: "rows" | "columns"; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Filter. Turns AutoFilter on or off for the current region (or range). Params: {range?} toggles AutoFilter on the current region. Changes the document. */
+  "data.filter": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Filter Column. Filters one AutoFilter column by values, blanks, a custom comparison or top/bottom items; rows that do not match are hidden. Params: {column: "B" (or 0-based offset), values?: [..], blanks?: bool, custom?: {op: ">", value: "10", op2?, value2?, and?}, top?: {count, bottom?, percent?}, aboveAverage?: bool, clear?: bool}. Changes the document. */
   "data.filterBy": { aboveAverage?: boolean; blanks?: boolean; clear?: boolean; /** like B; or 0-based offset */ column?: string; /** {op: ">", value: "10", op2?, value2?, and?} */ custom?: { and?: Json; op?: string; op2?: Json; value?: string; value2?: Json }; /** {count, bottom?, percent?} */ top?: { bottom?: number; count?: number; percent?: Json }; /** [..] */ values?: Array<Json> }
-  /** Clear. Params: {}. Changes the document. */
+  /** Clear. Clears every filter on the active sheet's AutoFilter so all rows show again; the filter buttons stay. Params: {}. Changes the document. */
   "data.clearFilter": Record<string, never>
-  /** Reapply. Params: {}. Changes the document. */
+  /** Reapply. Applies the active AutoFilter's criteria again after the data changed. Params: {}. Changes the document. */
   "data.reapply": Record<string, never>
-  /** Remove Duplicates. Params: {range?, columns?: ["A","C"], header?: bool}. Changes the document. */
-  "data.removeDuplicates": { columns?: Array<string>; header?: boolean; /** range (no type given) */ range?: Json }
-  /** Text to Columns. Params: {range?, delimiters?: [",", "\t", " ", ";"], other?: "|", fixedWidths?: [5, 10], treatConsecutive?: bool, textQualifier?: "\"", destination?: "B1"}. Changes the document. */
-  "data.textToColumns": Record<string, never>
-  /** Data Validation. Params: {range?, type: any|whole|decimal|list|date|time|textLength|custom, operator?: between|notBetween|equal|notEqual|greater|less|greaterOrEqual|lessOrEqual, formula1, formula2?, ignoreBlank?, dropdown?, inputTitle?, inputMessage?, errorStyle?: stop|warning|information, errorTitle?, errorMessage?, clear?: bool}. Changes the document. */
-  "data.validation": { clear?: boolean; /** dropdown (no type given) */ dropdown?: Json; /** errorMessage (no type given) */ errorMessage?: Json; errorStyle?: "stop" | "warning" | "information"; /** errorTitle (no type given) */ errorTitle?: Json; /** formula1 (no type given) */ formula1?: Json; /** formula2 (no type given) */ formula2?: Json; /** ignoreBlank (no type given) */ ignoreBlank?: Json; /** inputMessage (no type given) */ inputMessage?: Json; /** inputTitle (no type given) */ inputTitle?: Json; operator?: "between" | "notBetween" | "equal" | "notEqual" | "greater" | "less" | "greaterOrEqual" | "lessOrEqual"; /** range (no type given) */ range?: Json; /** any|whole|decimal|list|date|time|textLength|custom */ type?: Json }
-  /** Check Value Against Validation. Params: {cell?, input} ? {ok, message?} */
-  "data.validate": { /** cell (no type given) */ cell?: Json; /** input (no type given) */ input?: Json }
-  /** Circle Invalid Data. Params: {} ? invalid cells */
+  /** Remove Duplicates. Deletes rows of a range that repeat earlier rows in the chosen columns; answers how many were removed. Params: {range?, columns?: ["A","C"], header?: bool}. Changes the document. */
+  "data.removeDuplicates": { columns?: Array<string>; header?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Text to Columns. Splits the text of a one-column range into several columns at delimiters or fixed widths. Params: {range?: str (an A1 range of one column; default the selection), delimiters?: [",", "?", " ", ";"] (each one character; tab is "?"), other?: str (one more delimiter character, e.g. "|"), fixedWidths?: [int] (column widths in characters, instead of delimiters), treatConsecutive?: bool, textQualifier?: str (one character that quotes a field; default the double quote), destination?: "B1" (the top-left cell of the result; default the range start)}. Changes the document. */
+  "data.textToColumns": { /** each one character; tab is "?" */ delimiters?: Array<string>; /** like B1; the top-left cell of the result; default the range start */ destination?: string; /** column widths in characters, instead of delimiters */ fixedWidths?: Array<number>; /** one more delimiter character, e.g. "|" */ other?: string; /** an A1 range of one column; default the selection */ range?: string; /** one character that quotes a field; default the double quote */ textQualifier?: string; treatConsecutive?: boolean }
+  /** Data Validation. Sets a data validation rule on a range (whole number, decimal, list, date, time, text length or custom formula) with input and error messages. Params: {range?, type: any|whole|decimal|list|date|time|textLength|custom, operator?: between|notBetween|equal|notEqual|greater|less|greaterOrEqual|lessOrEqual, formula1, formula2?, ignoreBlank?, dropdown?, inputTitle?, inputMessage?, errorStyle?: stop|warning|information, errorTitle?, errorMessage?, clear?: bool}. Changes the document. */
+  "data.validation": { clear?: boolean; dropdown?: boolean; errorMessage?: string; errorStyle?: "stop" | "warning" | "information"; errorTitle?: string; formula1?: Json; formula2?: Json; ignoreBlank?: boolean; inputMessage?: string; inputTitle?: string; operator?: "between" | "notBetween" | "equal" | "notEqual" | "greater" | "less" | "greaterOrEqual" | "lessOrEqual"; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; type?: "any" | "whole" | "decimal" | "list" | "date" | "time" | "textLength" | "custom" }
+  /** Check Value Against Validation. Checks whether an input would pass a cell's data validation rule, without entering it; answers ok and the error message. Params: {cell?, input} ? {ok, message?}. */
+  "data.validate": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; /** text, a number, or a =formula */ input?: string }
+  /** Circle Invalid Data. Lists the cells on the active sheet whose values break their data validation rule. Params: {} ? invalid cells. */
   "data.circleInvalid": Record<string, never>
-  /** Group. Params: {rows?: "2:5" | cols?: "B:C"}. Changes the document. */
-  "data.group": { /** "2:5" | cols?: "B:C" */ rows?: Json }
-  /** Ungroup. Params: {rows? | cols?}. Changes the document. */
+  /** Group. Groups rows (2:5) or columns (B:C) into an outline level that can be collapsed. Params: {rows?: "2:5" | cols?: "B:C"}. Changes the document. */
+  "data.group": { /** a row span such as 2:5; default: the selection's rows */ rows?: string }
+  /** Ungroup. Removes an outline grouping from rows or columns. Params: {rows? | cols?}. Changes the document. */
   "data.ungroup": Record<string, never>
-  /** Hide Detail. Params: {rows? | cols?}. Changes the document. */
+  /** Hide Detail. Collapses a group of rows or columns in the outline. Params: {rows? | cols?}. Changes the document. */
   "data.hideDetail": Record<string, never>
-  /** Show Detail. Params: {rows? | cols?}. Changes the document. */
+  /** Show Detail. Expands a collapsed group of rows or columns in the outline. Params: {rows? | cols?}. Changes the document. */
   "data.showDetail": Record<string, never>
-  /** Subtotal. Params: {range?, groupBy: "A", function?: sum|count|average|max|min|product, columns: ["C"], header?: true}. Changes the document. */
-  "data.subtotal": { columns?: Array<string>; /** sum|count|average|max|min|product */ function?: Json; /** like A */ groupBy?: string; header?: boolean; /** range (no type given) */ range?: Json }
-  /** Flash Fill. Params: {range?}. Changes the document. */
-  "data.flashFill": { /** range (no type given) */ range?: Json }
-  /** AutoSum. Params: {function?: SUM|AVERAGE|COUNT|MAX|MIN, range?}. Changes the document. */
-  "formulas.autoSum": { /** SUM|AVERAGE|COUNT|MAX|MIN */ function?: Json; /** range (no type given) */ range?: Json }
-  /** Insert Function. Params: {name?: "VLOOKUP"} (UI opens the dialog; with a name, starts the formula in the active cell). Changes the document. */
+  /** Subtotal. Inserts subtotal rows into a sorted list at each change in the groupBy column, summarising the given columns with a function. Params: {range?, groupBy: "A", function?: sum|count|average|max|min|product, columns: ["C"], header?: true}. Changes the document. */
+  "data.subtotal": { columns?: Array<string>; function?: string; /** like A */ groupBy?: string; header?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Flash Fill. Fills the empty cells of a column from the pattern of the examples above them (same as edit.flashFill). Params: {range?}. Changes the document. */
+  "data.flashFill": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** AutoSum. Inserts a SUM (or AVERAGE, COUNT, MAX, MIN) formula below or beside the selected numbers, guessing the range when none is given. Params: {function?: SUM|AVERAGE|COUNT|MAX|MIN, range?}. Changes the document. */
+  "formulas.autoSum": { function?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Insert Function. Starts a formula with a function name in the active cell, as the Insert Function dialog would. Params: {name?: "VLOOKUP"} (UI opens the dialog; with a name, starts the formula in the active cell). Changes the document. */
   "formulas.insertFunction": { /** like VLOOKUP */ name?: string }
-  /** List Functions. Params: {category?, search?} ? [{name, category, signature, description}] */
-  "formulas.functions": { /** category (no type given) */ category?: Json; /** search (no type given) */ search?: Json }
-  /** Define Name. Params: {name, refersTo?: "=Sheet1!$A$1:$A$10" (default: the selection), scope?: "Workbook"|sheet name, comment?}. Changes the document. */
-  "formulas.defineName": { /** comment (no type given) */ comment?: Json; name?: string; /** like =Sheet1!$A$1:$A$10; default: the selection */ refersTo?: string; /** "Workbook"|sheet name */ scope?: Json }
-  /** Delete Name. Params: {name, scope?: "Workbook"|sheet name (default: every scope)}. Changes the document. */
-  "formulas.deleteName": { name?: string; /** "Workbook"|sheet name (default: every scope); default: every scope */ scope?: Json }
-  /** Name Manager. Params: {} ? names with values */
+  /** List Functions. Lists the worksheet functions this sheet supports with their category, signature and description, optionally filtered by category or a search word. Params: {category?, search?} ? [{name, category, signature, description}]. */
+  "formulas.functions": { category?: string; search?: string }
+  /** Define Name. Defines a named range or constant (default: the selection) at workbook or sheet scope, usable in formulas. Params: {name, refersTo?: "=Sheet1!$A$1:$A$10" (default: the selection), scope?: "Workbook"|sheet name, comment?}. Changes the document. */
+  "formulas.defineName": { comment?: string; name?: string; /** like =Sheet1!$A$1:$A$10; default: the selection */ refersTo?: string; /** Workbook or a sheet name */ scope?: string }
+  /** Delete Name. Deletes a defined name in one scope, or in every scope when none is given; formulas that used it show #NAME?. Params: {name, scope?: "Workbook"|sheet name (default: every scope)}. Changes the document. */
+  "formulas.deleteName": { name?: string; /** Workbook or a sheet name */ scope?: string }
+  /** Name Manager. Lists every defined name with its scope, what it refers to and its current value. Params: {} ? names with values. */
   "formulas.nameManager": Record<string, never>
-  /** Create from Selection. Params: {range?, top?: true, left?: false, bottom?: false, right?: false, replace?: false (existing names are kept and listed in `skipped`)}. Changes the document. */
-  "formulas.createFromSelection": { bottom?: boolean; left?: boolean; /** range (no type given) */ range?: Json; /** existing names are kept and listed in `skipped` */ replace?: boolean; right?: boolean; top?: boolean }
-  /** Trace Precedents. Params: {cell?} ? ranges */
-  "formulas.tracePrecedents": { /** cell (no type given) */ cell?: Json }
-  /** Trace Dependents. Params: {cell?} ? cells */
-  "formulas.traceDependents": { /** cell (no type given) */ cell?: Json }
-  /** Remove Arrows. Params: {} */
+  /** Create from Selection. Creates names for the rows or columns of a range from its top row or left column labels; existing names are kept unless replace is true. Params: {range?, top?: true, left?: false, bottom?: false, right?: false, replace?: false (existing names are kept and listed in `skipped`)}. Changes the document. */
+  "formulas.createFromSelection": { bottom?: boolean; left?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; /** existing names are kept and listed in `skipped` */ replace?: boolean; right?: boolean; top?: boolean }
+  /** Trace Precedents. Answers the cells and ranges a cell's formula reads (default: the active cell), without changing the sheet. Params: {cell?} ? ranges. */
+  "formulas.tracePrecedents": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string }
+  /** Trace Dependents. Answers the cells whose formulas read a cell (default: the active cell), without changing the sheet. Params: {cell?} ? cells. */
+  "formulas.traceDependents": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string }
+  /** Remove Arrows. Hides the trace arrows drawn by trace precedents and dependents. Params: {}. */
   "formulas.removeArrows": Record<string, never>
-  /** Show Formulas. Params: {on?}. Changes the document. */
-  "formulas.showFormulas": { /** on (no type given) */ on?: Json }
-  /** Error Checking. Params: {} ? cells with errors */
+  /** Show Formulas. Shows formulas instead of their results in the cells of the sheet, or turns that off. Params: {on?}. Changes the document. */
+  "formulas.showFormulas": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Error Checking. Lists cells whose formulas end in errors (#DIV/0!, #REF!, #NAME?...) and circular references on the active sheet. Params: {} ? cells with errors. */
   "formulas.errorChecking": Record<string, never>
-  /** Evaluate Formula. Params: {cell?, formula?} ? steps */
-  "formulas.evaluateFormula": { /** cell (no type given) */ cell?: Json; /** formula (no type given) */ formula?: Json }
-  /** Evaluate. Params: {formula: "=SUM(A1:A3)", cell?} ? value without changing the sheet */
-  "formulas.evaluate": { /** cell (no type given) */ cell?: Json; /** like =SUM(A1:A3) */ formula?: string }
-  /** Calculate Now. Params: {} */
+  /** Evaluate Formula. Evaluates a cell's formula (or a given formula) step by step and answers each intermediate step. Params: {cell?, formula?} ? steps. */
+  "formulas.evaluateFormula": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; /** a formula starting with = */ formula?: string }
+  /** Evaluate. Calculates a formula as if it were in a cell (default: the active cell) and answers its value without writing anything to the sheet. Params: {formula: "=SUM(A1:A3)", cell?} ? value without changing the sheet. */
+  "formulas.evaluate": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; /** like =SUM(A1:A3) */ formula?: string }
+  /** Calculate Now. Recalculates every formula in the workbook now (F9) and answers how many cells were calculated; needed in manual calculation mode. Params: {}. */
   "formulas.calculateNow": Record<string, never>
-  /** Calculate Sheet. Params: {} */
+  /** Calculate Sheet. Recalculates the formulas of the active sheet only and answers how many cells were calculated. Params: {}. */
   "formulas.calculateSheet": Record<string, never>
-  /** Calculation Options. Params: {mode: automatic|automaticExceptTables|manual, iterative?, maxIterations?, maxChange?}. Changes the document. */
-  "formulas.calculationOptions": { /** iterative (no type given) */ iterative?: Json; /** maxChange (no type given) */ maxChange?: Json; /** maxIterations (no type given) */ maxIterations?: Json; mode?: "automatic" | "automaticExceptTables" | "manual" }
-  /** Protect Sheet. Params: {password?, formatCells?, formatColumns?, formatRows?, insertRows?, insertColumns?, deleteRows?, deleteColumns?, sort?, autofilter?}. Changes the document. */
-  "review.protectSheet": { /** autofilter (no type given) */ autofilter?: Json; /** deleteColumns (no type given) */ deleteColumns?: Json; /** deleteRows (no type given) */ deleteRows?: Json; /** formatCells (no type given) */ formatCells?: Json; /** formatColumns (no type given) */ formatColumns?: Json; /** formatRows (no type given) */ formatRows?: Json; /** insertColumns (no type given) */ insertColumns?: Json; /** insertRows (no type given) */ insertRows?: Json; /** password (no type given) */ password?: Json; /** sort (no type given) */ sort?: Json }
-  /** Unprotect Sheet. Params: {password?}. Changes the document. */
-  "review.unprotectSheet": { /** password (no type given) */ password?: Json }
-  /** Protect Workbook. Params: {on?: bool}. Changes the document. */
+  /** Calculation Options. Sets the workbook's calculation mode (automatic, automatic except tables, manual) and iterative calculation limits. Params: {mode: automatic|automaticExceptTables|manual, iterative?, maxIterations?, maxChange?}. Changes the document. */
+  "formulas.calculationOptions": { iterative?: boolean; maxChange?: number; maxIterations?: number; mode?: "automatic" | "automaticExceptTables" | "manual" }
+  /** Protect Sheet. Protects the active sheet so locked cells cannot be edited, with an optional password and the actions still allowed (formatting, inserting rows, sorting...). Params: {password?, formatCells?, formatColumns?, formatRows?, insertRows?, insertColumns?, deleteRows?, deleteColumns?, sort?, autofilter?}. Changes the document. */
+  "review.protectSheet": { autofilter?: boolean; deleteColumns?: boolean; deleteRows?: boolean; formatCells?: boolean; formatColumns?: boolean; formatRows?: boolean; insertColumns?: boolean; insertRows?: boolean; password?: string; sort?: boolean }
+  /** Unprotect Sheet. Removes protection from the active sheet, with its password when it has one. Params: {password?}. Changes the document. */
+  "review.unprotectSheet": { password?: string }
+  /** Protect Workbook. Protects or unprotects the workbook's structure so sheets cannot be added, deleted, moved or renamed. Params: {on?: bool}. Changes the document. */
   "review.protectWorkbook": { on?: boolean }
-  /** Workbook Statistics. Params: {} */
+  /** Workbook Statistics. Answers counts for the active sheet and workbook: cells with data, formulas, sheets, tables, charts, comments and the last used cell. Params: {}. */
   "review.workbookStatistics": Record<string, never>
-  /** Check Accessibility. Params: {} ? issues */
+  /** Check Accessibility. Lists accessibility issues in the workbook, such as pictures without alternative text or merged cells, with where they are. Params: {} ? issues. */
   "review.checkAccessibility": Record<string, never>
-  /** Freeze Panes. Params: {cell?: "B2" (rows above and columns left of it freeze)}. Changes the document. */
+  /** Freeze Panes. Freezes the rows above and the columns to the left of a cell (default: the active cell) so they stay visible while scrolling. Params: {cell?: "B2" (rows above and columns left of it freeze)}. Changes the document. */
   "view.freezePanes": { /** like B2; rows above and columns left of it freeze */ cell?: string }
-  /** Freeze Top Row. Params: {}. Changes the document. */
+  /** Freeze Top Row. Freezes the first row of the active sheet so it stays visible while scrolling. Params: {}. Changes the document. */
   "view.freezeTopRow": Record<string, never>
-  /** Freeze First Column. Params: {}. Changes the document. */
+  /** Freeze First Column. Freezes the first column of the active sheet so it stays visible while scrolling. Params: {}. Changes the document. */
   "view.freezeFirstColumn": Record<string, never>
-  /** Unfreeze Panes. Params: {}. Changes the document. */
+  /** Unfreeze Panes. Removes frozen panes from the active sheet. Params: {}. Changes the document. */
   "view.unfreezePanes": Record<string, never>
-  /** Gridlines. Params: {on?}. Changes the document. */
-  "view.gridlines": { /** on (no type given) */ on?: Json }
-  /** Headings. Params: {on?}. Changes the document. */
-  "view.headings": { /** on (no type given) */ on?: Json }
-  /** Show Zeros. Params: {on?}. Changes the document. */
-  "view.showZeros": { /** on (no type given) */ on?: Json }
-  /** Sheet Right-to-Left. Params: {on?}. Changes the document. */
-  "view.rightToLeft": { /** on (no type given) */ on?: Json }
-  /** Zoom. Params: {percent: 10..400} */
+  /** Gridlines. Shows or hides the cell gridlines of the active sheet on screen; use pageLayout.printGridlines for printing. Params: {on?}. Changes the document. */
+  "view.gridlines": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Headings. Shows or hides the row and column headings of the active sheet. Params: {on?}. Changes the document. */
+  "view.headings": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Show Zeros. Shows zero values as 0 or as empty cells on the active sheet. Params: {on?}. Changes the document. */
+  "view.showZeros": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Sheet Right-to-Left. Lays out the active sheet from right to left (column A on the right), or back. Params: {on?}. Changes the document. */
+  "view.rightToLeft": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Zoom. Sets the zoom of the view to a percentage from 10 to 400; changes nothing in the workbook. Params: {percent: 10..400}. */
   "view.zoom": { /** 10 to 400 */ percent?: number }
-  /** Zoom to Selection. Params: {viewWidth?, viewHeight?} */
-  "view.zoomToSelection": { /** viewHeight (no type given) */ viewHeight?: Json; /** viewWidth (no type given) */ viewWidth?: Json }
-  /** Orientation. Params: {orientation: portrait|landscape}. Changes the document. */
+  /** Zoom to Selection. Zooms the view so the selection fills the window and answers the zoom percentage. Params: {viewWidth?, viewHeight?}. */
+  "view.zoomToSelection": { viewHeight?: number; viewWidth?: number }
+  /** Orientation. Sets the active sheet's printed page orientation to portrait or landscape. Params: {orientation: portrait|landscape}. Changes the document. */
   "pageLayout.orientation": { orientation?: "portrait" | "landscape" }
-  /** Size. Params: {paper: Letter|Legal|A4|A3|A5|Tabloid|Executive}. Changes the document. */
+  /** Size. Sets the active sheet's paper size (Letter, Legal, A4, A3...). Params: {paper: Letter|Legal|A4|A3|A5|Tabloid|Executive}. Changes the document. */
   "pageLayout.size": { paper?: "Letter" | "Legal" | "A4" | "A3" | "A5" | "Tabloid" | "Executive" }
-  /** Margins. Params: {preset?: normal|wide|narrow, left?, right?, top?, bottom?, header?, footer? (inches)}. Changes the document. */
-  "pageLayout.margins": { bottom?: number; /** header (no type given) */ header?: Json; left?: number; preset?: "normal" | "wide" | "narrow"; right?: number; top?: number }
-  /** Set Print Area. Params: {range?, clear?: bool}. Changes the document. */
-  "pageLayout.printArea": { clear?: boolean; /** range (no type given) */ range?: Json }
-  /** Print Titles. Params: {rows?: "1:1", cols?: "A:A"}. Changes the document. */
+  /** Margins. Sets the active sheet's page margins from a preset or in inches per side, including header and footer distance. Params: {preset?: normal|wide|narrow, left?, right?, top?, bottom?, header?, footer? (inches)}. Changes the document. */
+  "pageLayout.margins": { bottom?: number; /** inches */ footer?: number; /** inches */ header?: number; left?: number; preset?: "normal" | "wide" | "narrow"; right?: number; top?: number }
+  /** Set Print Area. Sets the range that prints for the active sheet (default: the selection), or clears it. Params: {range?, clear?: bool}. Changes the document. */
+  "pageLayout.printArea": { clear?: boolean; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Print Titles. Sets rows (such as 1:1) and columns (such as A:A) that repeat on every printed page. Params: {rows?: "1:1", cols?: "A:A"}. Changes the document. */
   "pageLayout.printTitles": { /** like A:A */ cols?: string; /** like 1:1 */ rows?: string }
-  /** Scale to Fit. Params: {scale?: 100, width?: pages, height?: pages}. Changes the document. */
-  "pageLayout.scaleToFit": { /** pages */ height?: Json; scale?: number; /** pages */ width?: Json }
-  /** Print Gridlines. Params: {on?}. Changes the document. */
-  "pageLayout.printGridlines": { /** on (no type given) */ on?: Json }
-  /** Print Headings. Params: {on?}. Changes the document. */
-  "pageLayout.printHeadings": { /** on (no type given) */ on?: Json }
-  /** Breaks. Params: {insert?: bool, remove?: bool, reset?: bool, cell?}. Changes the document. */
-  "pageLayout.breaks": { /** cell (no type given) */ cell?: Json; insert?: boolean; remove?: boolean; reset?: boolean }
-  /** Header & Footer. Params: {header?: "&C&P", footer?: "&CPage &P of &N"}. Changes the document. */
+  /** Scale to Fit. Scales printing by a percentage, or fits the sheet to a number of pages wide and tall. Params: {scale?: 100, width?: pages, height?: pages}. Changes the document. */
+  "pageLayout.scaleToFit": { /** pages tall */ height?: number; scale?: number; /** pages wide */ width?: number }
+  /** Print Gridlines. Turns printing of gridlines on or off for the active sheet. Params: {on?}. Changes the document. */
+  "pageLayout.printGridlines": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Print Headings. Turns printing of row and column headings on or off for the active sheet. Params: {on?}. Changes the document. */
+  "pageLayout.printHeadings": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Breaks. Inserts or removes a manual page break at a cell, or resets all page breaks of the sheet. Params: {insert?: bool, remove?: bool, reset?: bool, cell?}. Changes the document. */
+  "pageLayout.breaks": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; insert?: boolean; remove?: boolean; reset?: boolean }
+  /** Header & Footer. Sets the printed header and footer using codes such as &C&P (page number, centred) and &N (page count). Params: {header?: "&C&P", footer?: "&CPage &P of &N"}. Changes the document. */
   "pageLayout.headerFooter": { /** like &CPage &P of &N */ footer?: string; /** like &C&P */ header?: string }
-  /** Themes. Params: {name: Classic|Slate|Meadow|Ember|Ocean|Orchid|Graphite, colors?: [12 hex], majorFont?, minorFont?}. Changes the document. */
-  "pageLayout.theme": { /** [12 hex] */ colors?: Array<Json>; /** majorFont (no type given) */ majorFont?: Json; /** minorFont (no type given) */ minorFont?: Json; name?: "Classic" | "Slate" | "Meadow" | "Ember" | "Ocean" | "Orchid" | "Graphite" }
-  /** Inspect Workbook. Params: {} ? sheets, selection, names, tables, charts, dirty, history */
+  /** Themes. Applies a document theme (colours and fonts), by name or with custom colours and fonts; styles that use theme colours change with it. Params: {name: Classic|Slate|Meadow|Ember|Ocean|Orchid|Graphite, colors?: [12 hex], majorFont?, minorFont?}. Changes the document. */
+  "pageLayout.theme": { /** [12 hex] */ colors?: Array<Json>; majorFont?: string; minorFont?: string; name?: "Classic" | "Slate" | "Meadow" | "Ember" | "Ocean" | "Orchid" | "Graphite" }
+  /** Inspect Workbook. Answers the workbook's structure: sheets, active sheet and cell, selection, defined names, tables, charts, calculation mode, unsaved state and undo history. Use sheet.read or cell.get for cell contents. Params: {} ? sheets, selection, names, tables, charts, dirty, history. */
   "document.inspect": Record<string, never>
-  /** Read Range. Params: {range?: "A1:D10" (default: used range), sheet?, formulas?: bool, formatted?: bool} ? rows of values */
-  "sheet.read": { formatted?: boolean; formulas?: boolean; /** like A1:D10; default: used range */ range?: string; /** sheet (no type given) */ sheet?: Json }
-  /** Get Cell. Params: {cell?, sheet?} ? value, formula, display text, style, comment, link */
-  "cell.get": { /** cell (no type given) */ cell?: Json; /** sheet (no type given) */ sheet?: Json }
-  /** Selection Statistics. Params: {} ? count, sum, average, min, max */
+  /** Read Range. Answers the values of a range (default: the sheet's used range) as rows, with formulas or display text instead of values when asked; the way to read data. Params: {range?: "A1:D10" (default: used range), sheet?, formulas?: bool, formatted?: bool} ? rows of values. */
+  "sheet.read": { formatted?: boolean; formulas?: boolean; /** like A1:D10; default: used range */ range?: string; sheet?: Json }
+  /** Get Cell. Answers everything about one cell: its value, formula, display text, style, merge, comment, note and link. Params: {cell?, sheet?} ? value, formula, display text, style, comment, link. */
+  "cell.get": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; sheet?: Json }
+  /** Selection Statistics. Answers count, numeric count, sum, average, minimum and maximum of the selected cells, as the status bar shows. Params: {} ? count, sum, average, min, max. */
   "selection.stats": Record<string, never>
-  /** Undo History. Params: {} ? undo/redo labels */
+  /** Undo History. Answers the labels of the undo and redo steps. Params: {} ? undo/redo labels. */
   "history.list": Record<string, never>
-  /** List Commands. Params: {search?} ? ids, labels, params */
-  "app.commands": { /** search (no type given) */ search?: Json }
-  /** Add Chart Element. Params: {chart?, element: title|legend|dataLabels|gridlines|axisTitles|smooth, on?: bool, position?: bottom|top|left|right}. Changes the document. */
-  "chart.addElement": { /** chart (no type given) */ chart?: Json; element?: "title" | "legend" | "dataLabels" | "gridlines" | "axisTitles" | "smooth"; on?: boolean; position?: "bottom" | "top" | "left" | "right" }
-  /** Quick Layout. Params: {chart?, layout: 1..6}. Changes the document. */
-  "chart.quickLayout": { /** chart (no type given) */ chart?: Json; /** 1 to 6 */ layout?: number }
-  /** Change Colors. Params: {chart?, palette: colorful|monochrome|accent1..accent6 | colors: [hex...]}. Changes the document. */
-  "chart.changeColors": { /** chart (no type given) */ chart?: Json; /** colorful|monochrome|accent1..accent6 | colors: [hex...] */ palette?: Json }
-  /** Select Data. Params: {chart?, range: "Sheet1!A1:D7", byRows?: bool}. Changes the document. */
-  "chart.selectData": { byRows?: boolean; /** chart (no type given) */ chart?: Json; /** like Sheet1!A1:D7 */ range?: string }
-  /** Change Chart Type. Params: {chart?, type, subtype?}. Changes the document. */
-  "chart.changeType": { /** chart (no type given) */ chart?: Json; /** subtype (no type given) */ subtype?: Json; /** type (no type given) */ type?: Json }
-  /** Move Chart. Params: {chart?, sheet?: name (moves to that sheet), at?: "B2"}. Changes the document. */
-  "chart.move": { /** like B2 */ at?: string; /** chart (no type given) */ chart?: Json; /** moves to that sheet */ sheet?: string }
-  /** Format Selection. Params: {chart?, series?: index, color?: hex}. Changes the document. */
-  "chart.formatSelection": { /** chart (no type given) */ chart?: Json; /** a colour such as #rrggbb */ color?: string; series?: number }
-  /** Shape Fill. Params: {chart? | kind: shape, id?, series?, color: hex}. Changes the document. */
-  "chart.shapeFill": { /** shape; one of several alternative parameters */ chart?: Json; /** a colour such as #rrggbb */ color?: string; id?: number; /** shape; one of several alternative parameters */ kind?: Json; /** series (no type given) */ series?: Json }
-  /** Shape Outline. Params: {kind: shape, id?, color: hex}. Changes the document. */
-  "chart.shapeOutline": { /** a colour such as #rrggbb */ color?: string; id?: number; /** shape */ kind?: Json }
-  /** Bring Forward. Params: {kind: chart|image|shape, id, toFront?: bool}. Changes the document. */
-  "arrange.bringForward": { id?: number; kind?: "chart" | "image" | "shape"; toFront?: boolean }
-  /** Send Backward. Params: {kind: chart|image|shape, id, toBack?: bool}. Changes the document. */
-  "arrange.sendBackward": { id?: number; kind?: "chart" | "image" | "shape"; toBack?: boolean }
-  /** Selection Pane. Params: {} ? objects on the sheet in stacking order */
+  /** List Commands. Lists the sheet's commands with their ids, labels and parameter notes, optionally filtered by a search word. Params: {search?} ? ids, labels, params. */
+  "app.commands": { search?: string }
+  /** Add Chart Element. Adds or removes a chart element (title, legend, data labels, gridlines, axis titles, smooth lines) with its position. Params: {chart?, element: title|legend|dataLabels|gridlines|axisTitles|smooth, on?: bool, position?: bottom|top|left|right}. Changes the document. */
+  "chart.addElement": { /** a chart id from document.inspect; default: the selected chart */ chart?: number; element?: "title" | "legend" | "dataLabels" | "gridlines" | "axisTitles" | "smooth"; on?: boolean; position?: "bottom" | "top" | "left" | "right" }
+  /** Quick Layout. Applies one of the six quick layouts to a chart (which elements it shows and where). Params: {chart?, layout: 1..6}. Changes the document. */
+  "chart.quickLayout": { /** a chart id from document.inspect; default: the selected chart */ chart?: number; /** 1 to 6 */ layout?: number }
+  /** Change Colors. Recolours a chart's series from a palette (colourful, monochrome, an accent) or a list of hex colours. Params: {chart?, palette: colorful|monochrome|accent1..accent6 | colors: [hex...]}. Changes the document. */
+  "chart.changeColors": { /** a chart id from document.inspect; default: the selected chart */ chart?: number; /** colorful, monochrome or accent1 to accent6 */ palette?: string }
+  /** Select Data. Changes the data range a chart plots, optionally with series by rows. Params: {chart?, range: "Sheet1!A1:D7", byRows?: bool}. Changes the document. */
+  "chart.selectData": { byRows?: boolean; /** a chart id from document.inspect; default: the selected chart */ chart?: number; /** like Sheet1!A1:D7 */ range?: string }
+  /** Change Chart Type. Changes a chart's type (column, line, pie...) and subtype, keeping its data. Params: {chart?, type, subtype?}. Changes the document. */
+  "chart.changeType": { /** a chart id from document.inspect; default: the selected chart */ chart?: number; subtype?: string; /** a chart type such as column, bar, line, pie */ type?: string }
+  /** Move Chart. Moves a chart to another sheet or to a cell position. Params: {chart?, sheet?: name (moves to that sheet), at?: "B2"}. Changes the document. */
+  "chart.move": { /** like B2 */ at?: string; /** a chart id from document.inspect; default: the selected chart */ chart?: number; /** moves to that sheet */ sheet?: string }
+  /** Format Selection. Sets the colour of one series of a chart, by its 0-based index. Params: {chart?, series?: index, color?: hex}. Changes the document. */
+  "chart.formatSelection": { /** a chart id from document.inspect; default: the selected chart */ chart?: number; /** a colour such as #rrggbb */ color?: string; /** a position counted from 0 (the first is 0) */ series?: number }
+  /** Shape Fill. Sets the fill colour of a chart (or a series of it) or of a shape. Params: {chart? | kind: shape, id?, series?, color: hex}. Changes the document. */
+  "chart.shapeFill": { /** a chart id from document.inspect; default: the selected chart */ chart?: number; /** a colour such as #rrggbb */ color?: string; /** an id */ id?: Json; kind?: "shape"; /** a series counted from 0 */ series?: number }
+  /** Shape Outline. Sets the outline colour of a shape. Params: {kind: shape, id?, color: hex}. Changes the document. */
+  "chart.shapeOutline": { /** a colour such as #rrggbb */ color?: string; /** an id */ id?: Json; kind?: "shape" }
+  /** Bring Forward. Brings a chart, image or shape one step forward, or to the front, in the stacking order. Params: {kind: chart|image|shape, id, toFront?: bool}. Changes the document. */
+  "arrange.bringForward": { /** an id */ id?: Json; kind?: "chart" | "image" | "shape"; toFront?: boolean }
+  /** Send Backward. Sends a chart, image or shape one step backward, or to the back, in the stacking order. Params: {kind: chart|image|shape, id, toBack?: bool}. Changes the document. */
+  "arrange.sendBackward": { /** an id */ id?: Json; kind?: "chart" | "image" | "shape"; toBack?: boolean }
+  /** Selection Pane. Lists the objects on the active sheet (charts, images, shapes) in stacking order with their ids. Params: {} ? objects on the sheet in stacking order. */
   "arrange.selectionPane": Record<string, never>
-  /** Align. Params: {kind: chart|image|shape, ids: [..], align: left|center|right|top|middle|bottom}. Changes the document. */
+  /** Align. Aligns several objects of one kind by their left, centre, right, top, middle or bottom edges. Params: {kind: chart|image|shape, ids: [..], align: left|center|right|top|middle|bottom}. Changes the document. */
   "arrange.align": { align?: "left" | "center" | "right" | "top" | "middle" | "bottom"; /** [..] */ ids?: Array<Json>; kind?: "chart" | "image" | "shape" }
-  /** Group. Params: {kind, ids} (moves objects together: aligns their anchors to the first). Changes the document. */
-  "arrange.group": { ids?: Array<number>; /** kind (no type given) */ kind?: Json }
-  /** Rotate. Params: {kind: shape, id, flip?: horizontal|vertical} (swaps width/height for 90? turns). Changes the document. */
-  "arrange.rotate": { flip?: "horizontal" | "vertical"; id?: number; /** shape */ kind?: Json }
-  /** Normal. Params: {} */
+  /** Group. Moves several objects so their anchors align to the first, so they move together. Params: {kind, ids} (moves objects together: aligns their anchors to the first). Changes the document. */
+  "arrange.group": { ids?: Array<Json>; kind?: "chart" | "image" | "shape" }
+  /** Rotate. Rotates a shape by 90 degrees or flips it horizontally or vertically. Params: {kind: shape, id, flip?: horizontal|vertical} (swaps width/height for 90? turns). Changes the document. */
+  "arrange.rotate": { flip?: "horizontal" | "vertical"; /** an id */ id?: Json; kind?: "shape" }
+  /** Normal. Switches the view to Normal; answers the view. Params: {}. */
   "view.normal": Record<string, never>
-  /** Page Layout. Params: {} */
+  /** Page Layout. Switches the view to Page Layout, which shows pages as they print; answers the view. Params: {}. */
   "view.pageLayout": Record<string, never>
-  /** Page Break Preview. Params: {} */
+  /** Page Break Preview. Switches the view to Page Break Preview, which shows where pages break; answers the view. Params: {}. */
   "view.pageBreakPreview": Record<string, never>
-  /** Custom Views. Params: {save?: name, show?: name, delete?: name} ? list */
+  /** Custom Views. Saves, shows or deletes a named custom view of the sheet (zoom, frozen panes, filters) and answers the list of saved views. Params: {save?: name, show?: name, delete?: name} ? list. */
   "view.customViews": { delete?: string; save?: string; show?: string }
-  /** Split. Params: {} (toggles a split at the active cell; shown as frozen panes in this version) */
+  /** Split. Toggles a split of the window at the active cell (shown as frozen panes) and answers the frozen cell. Params: {} (toggles a split at the active cell; shown as frozen panes in this version). */
   "view.split": Record<string, never>
-  /** New Window. Params: {} opens a second window on the same workbook (a linked copy). Changes the document. */
+  /** New Window. Opens a second window on the same workbook. Params: {} opens a second window on the same workbook (a linked copy). Changes the document. */
   "view.newWindow": Record<string, never>
-  /** Arrange All. Params: {} */
+  /** Arrange All. Arranges the open windows side by side in the editor. Params: {}. */
   "view.arrangeAll": Record<string, never>
-  /** Hide. Params: {} */
+  /** Hide. Hides the current workbook window. Params: {}. */
   "view.hideWindow": Record<string, never>
-  /** Unhide. Params: {index?} */
-  "view.unhideWindow": { index?: number }
-  /** Switch Windows. Params: {} ? open windows */
+  /** Unhide. Shows a hidden window by index. Params: {index?}. */
+  "view.unhideWindow": { /** a position counted from 0 (the first is 0) */ index?: number }
+  /** Switch Windows. Lists the open windows with their index, title and whether each is active or hidden. Params: {} ? open windows. */
   "view.switchWindows": Record<string, never>
-  /** Ruler. Params: {on?} */
-  "view.ruler": { /** on (no type given) */ on?: Json }
-  /** Macros. Params: {} ? scripts */
+  /** Ruler. Shows or hides the ruler in Page Layout view. Params: {on?}. */
+  "view.ruler": { /** true turns it on, false off; left out, it toggles */ on?: boolean }
+  /** Macros. Lists the saved automation scripts that can run as macros. Params: {} ? scripts. */
   "view.macros": Record<string, never>
-  /** Resize Table. Params: {table?, range: "A1:F20"}. Changes the document. */
-  "table.resize": { /** like A1:F20 */ range?: string; /** table (no type given) */ table?: Json }
-  /** Remove Duplicates. Params: {table?, columns?}. Changes the document. */
-  "table.removeDuplicates": { columns?: number; /** table (no type given) */ table?: Json }
-  /** From Text/CSV. Params: {path | text, delimiter?: ",", sheet?: new sheet name} ? imports into a new sheet as a table. Changes the document. */
-  "data.fromTextCsv": { /** like , */ delimiter?: string; /** new sheet name */ sheet?: Json }
-  /** Get Data. Params: {path | text} (CSV/TSV/JSON array of objects) ? new sheet table. Changes the document. */
+  /** Resize Table. Resizes a table to a new range that keeps the same header row. Params: {table?, range: "A1:F20"}. Changes the document. */
+  "table.resize": { /** like A1:F20 */ range?: string; /** a table name; default: the table at the active cell */ table?: string }
+  /** Remove Duplicates. Deletes table rows that repeat earlier rows in the chosen columns (default: all columns). Params: {table?, columns?}. Changes the document. */
+  "table.removeDuplicates": { columns?: number; /** a table name; default: the table at the active cell */ table?: string }
+  /** From Text/CSV. Imports CSV or delimited text (from a path or inline text) into a new sheet as a table. Params: {path | text, delimiter?: ",", sheet?: new sheet name} ? imports into a new sheet as a table. Changes the document. */
+  "data.fromTextCsv": { /** like , */ delimiter?: string; sheet?: Json }
+  /** Get Data. Imports CSV, TSV or a JSON array of objects (from a path or inline text) into a new sheet as a table. Params: {path | text} (CSV/TSV/JSON array of objects) ? new sheet table. Changes the document. */
   "data.getData": Record<string, never>
-  /** From Table/Range. Params: {range?} ? copies the table/range to a new sheet as a table. Changes the document. */
-  "data.fromTableRange": { /** range (no type given) */ range?: Json }
-  /** Queries & Connections. Params: {} ? imported tables */
+  /** From Table/Range. Copies a table or range (default: the current region) to a new sheet as a table. Params: {range?} ? copies the table/range to a new sheet as a table. Changes the document. */
+  "data.fromTableRange": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Queries & Connections. Lists the tables imported from text or files, with their sources. Params: {} ? imported tables. */
   "data.queriesConnections": Record<string, never>
-  /** Record Actions. Params: {stop?: bool, name?: script name when stopping} */
-  "automate.recordActions": { /** script name when stopping */ name?: Json; stop?: boolean }
-  /** New Script. Params: {name, commands: [{command, params}] }. Changes the document. */
+  /** Record Actions. Starts recording actions into a script, or stops and saves the recording under a name; answers whether it is recording. Params: {stop?: bool, name?: script name when stopping}. */
+  "automate.recordActions": { name?: string; stop?: boolean }
+  /** New Script. Saves a script: a named list of commands with their parameters, to run later with automate.runScript. Params: {name, commands: [{command, params}] }. Changes the document. */
   "automate.newScript": { /** [{command, params}] */ commands?: Array<{ command?: Json; params?: Json }>; name?: string }
-  /** All Scripts. Params: {} ? saved scripts */
+  /** All Scripts. Lists the saved scripts with their names and steps. Params: {} ? saved scripts. */
   "automate.allScripts": Record<string, never>
-  /** Run Script. Params: {name}. Changes the document. */
+  /** Run Script. Runs a saved script's commands in order, as one undo step. Params: {name}. Changes the document. */
   "automate.runScript": { name?: string }
-  /** Delete Script. Params: {name}. Changes the document. */
+  /** Delete Script. Deletes a saved script by name. Params: {name}. Changes the document. */
   "automate.deleteScript": { name?: string }
-  /** Checkbox. Params: {range?} (cells hold TRUE/FALSE and draw as checkboxes; Space toggles). Changes the document. */
-  "insert.checkbox": { /** range (no type given) */ range?: Json }
-  /** Toggle Checkbox. Params: {cell?}. Changes the document. */
-  "cell.toggleCheckbox": { /** cell (no type given) */ cell?: Json }
-  /** Colors. Params: {name: theme name | colors: [12 hex]}. Changes the document. */
-  "pageLayout.themeColors": { /** theme name | colors: [12 hex] */ name?: Json }
-  /** Fonts. Params: {major, minor}. Changes the document. */
-  "pageLayout.themeFonts": { /** major (no type given) */ major?: Json; /** minor (no type given) */ minor?: Json }
-  /** Effects. Params: {name} (chart effects preset; stored with the theme name). Changes the document. */
+  /** Checkbox. Turns the cells of a range into checkboxes that hold TRUE or FALSE. Params: {range?} (cells hold TRUE/FALSE and draw as checkboxes; Space toggles). Changes the document. */
+  "insert.checkbox": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
+  /** Toggle Checkbox. Flips a checkbox cell (default: the active cell) between TRUE and FALSE. Params: {cell?}. Changes the document. */
+  "cell.toggleCheckbox": { /** one cell in A1 notation such as B2; default: the active cell */ cell?: string }
+  /** Colors. Sets the theme's colour scheme by name or as twelve hex colours. Params: {name: theme name | colors: [12 hex]}. Changes the document. */
+  "pageLayout.themeColors": { name?: string }
+  /** Fonts. Sets the theme's heading (major) and body (minor) fonts. Params: {major, minor}. Changes the document. */
+  "pageLayout.themeFonts": { major?: string; minor?: string }
+  /** Effects. Sets the theme's chart effects preset by name. Params: {name} (chart effects preset; stored with the theme name). Changes the document. */
   "pageLayout.themeEffects": { name?: string }
-  /** Background. Params: {path? | clear?: bool} (sheet background picture). Changes the document. */
-  "pageLayout.background": { /** one of several alternative parameters */ clear?: boolean; /** one of several alternative parameters */ path?: boolean }
-  /** Draw Border. Params: {range, edge: top|bottom|left|right|grid, style?, color?}. Changes the document. */
-  "home.drawBorder": { color?: string; edge?: "top" | "bottom" | "left" | "right" | "grid"; /** range (no type given) */ range?: Json; style?: string }
-  /** New Cell Style. Params: {name, fromCell?: "A1" (default: active cell)}. Changes the document. */
+  /** Background. Sets a picture file as the active sheet's background, or clears it. Params: {path? | clear?: bool} (sheet background picture). Changes the document. */
+  "pageLayout.background": { /** one of several alternative parameters */ clear?: boolean; /** one of several alternative parameters */ path?: Json }
+  /** Draw Border. Draws a border on one edge (top, bottom, left, right) or as a grid on a range, with a line style and colour. Params: {range, edge: top|bottom|left|right|grid, style?, color?}. Changes the document. */
+  "home.drawBorder": { color?: string; edge?: "top" | "bottom" | "left" | "right" | "grid"; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; style?: string }
+  /** New Cell Style. Creates a named cell style from a cell's formatting (default: the active cell) for use with home.cellStyle. Params: {name, fromCell?: "A1" (default: active cell)}. Changes the document. */
   "home.newCellStyle": { /** like A1; default: active cell */ fromCell?: string; name?: string }
-  /** Add-ins. Params: {} ? Kition Sheet extends through the agent and scripts instead of add-ins */
+  /** Add-ins. Answers that the sheet has no add-ins and points to the agent and scripts instead. Params: {} ? Kition Sheet extends through the agent and scripts instead of add-ins. */
   "home.addIns": Record<string, never>
-  /** Recently Used. Params: {} ? recently used functions in this workbook */
+  /** Recently Used. Lists the functions used most recently in this workbook's formulas. Params: {} ? recently used functions in this workbook. */
   "formulas.recentlyUsed": Record<string, never>
-  /** Financial. Params: {} */
+  /** Financial. Lists the financial worksheet functions with their signatures and descriptions. Params: {}. */
   "formulas.financial": Record<string, never>
-  /** Logical. Params: {} */
+  /** Logical. Lists the logical worksheet functions (IF, AND, OR...) with their signatures and descriptions. Params: {}. */
   "formulas.logical": Record<string, never>
-  /** Text. Params: {} */
+  /** Text. Lists the text worksheet functions with their signatures and descriptions. Params: {}. */
   "formulas.text": Record<string, never>
-  /** Date & Time. Params: {} */
+  /** Date & Time. Lists the date and time worksheet functions with their signatures and descriptions. Params: {}. */
   "formulas.dateTime": Record<string, never>
-  /** Lookup & Reference. Params: {} */
+  /** Lookup & Reference. Lists the lookup and reference worksheet functions (XLOOKUP, INDEX, MATCH...) with their signatures and descriptions. Params: {}. */
   "formulas.lookupReference": Record<string, never>
-  /** Math & Trig. Params: {} */
+  /** Math & Trig. Lists the math and trigonometry worksheet functions with their signatures and descriptions. Params: {}. */
   "formulas.mathTrig": Record<string, never>
-  /** More Functions. Params: {category?: Statistical|Engineering|Information|Database|Compatibility|Web|Cube} */
+  /** More Functions. Lists the worksheet functions of another category (Statistical, Engineering, Information, Database...). Params: {category?: Statistical|Engineering|Information|Database|Compatibility|Web|Cube}. */
   "formulas.moreFunctions": { category?: "Statistical" | "Engineering" | "Information" | "Database" | "Compatibility" | "Web" | "Cube" }
-  /** Use in Formula. Params: {name} (inserts the name into the cell being edited). Changes the document. */
+  /** Use in Formula. Inserts a defined name into the formula being edited in the active cell. Params: {name} (inserts the name into the cell being edited). Changes the document. */
   "formulas.useInFormula": { name?: string }
-  /** Watch Window. Params: {add?: "Sheet1!B5", remove?: "..."} ? watched cells with current values */
+  /** Watch Window. Adds or removes a cell from the watch window and answers the watched cells with their current values. Params: {add?: "Sheet1!B5", remove?: "..."} ? watched cells with current values. */
   "formulas.watchWindow": { /** like Sheet1!B5 */ add?: string; /** like ... */ remove?: string }
-  /** Pen. Params: {on?: bool (default true), color?: hex, width?: 2} */
+  /** Pen. Selects the pen ink tool in the editor with a colour and width, or turns it off; answers the tool state. Params: {on?: bool (default true), color?: hex, width?: 2}. */
   "draw.pen": { /** a colour such as #rrggbb */ color?: string; /** default true */ on?: boolean; width?: number }
-  /** Pencil. Params: {on?: bool (default true), color?: hex, width?: 1} */
+  /** Pencil. Selects the pencil ink tool in the editor with a colour and width; answers the tool state. Params: {on?: bool (default true), color?: hex, width?: 1}. */
   "draw.pencil": { /** a colour such as #rrggbb */ color?: string; /** default true */ on?: boolean; width?: number }
-  /** Highlighter. Params: {on?: bool (default true), color?: hex, width?: 12} */
+  /** Highlighter. Selects the highlighter ink tool in the editor with a colour and width; answers the tool state. Params: {on?: bool (default true), color?: hex, width?: 12}. */
   "draw.highlighter": { /** a colour such as #rrggbb */ color?: string; /** default true */ on?: boolean; width?: number }
-  /** Eraser. Params: {on?: bool (default true)} */
+  /** Eraser. Selects the ink eraser tool in the editor; answers the tool state. Params: {on?: bool (default true)}. */
   "draw.eraser": { /** default true */ on?: boolean }
-  /** Select. Params: {} */
+  /** Select. Switches the editor back to selecting objects; answers the tool state. Params: {}. */
   "draw.select": Record<string, never>
-  /** Draw Shape. Params: {preset: DrawingML preset | null} */
-  "draw.shape": { /** DrawingML preset | null */ preset?: Json }
-  /** Draw State. Params: {} */
+  /** Draw Shape. Selects a DrawingML shape preset to draw next in the editor, or none; answers it. Params: {preset: DrawingML preset | null}. */
+  "draw.shape": { preset?: Json }
+  /** Draw State. Answers the editor's current ink tool, colour and width. Params: {}. */
   "draw.state": Record<string, never>
-  /** Lasso Select. Params: {} (selects ink by dragging; same as Select Objects) */
+  /** Lasso Select. Selects the lasso tool for picking ink strokes in the editor. Params: {} (selects ink by dragging; same as Select Objects). */
   "draw.lasso": Record<string, never>
-  /** Ink Stroke. Params: {points: [[x,y],...] in sheet points, color?: hex, width?: 2}. Changes the document. */
-  "draw.stroke": { /** a colour such as #rrggbb */ color?: string; /** [[x,y],...] in sheet points */ points?: Json; width?: number }
-  /** Ink to Shape. Params: {id?} converts an ink stroke (default: the last) into a rectangle, ellipse, triangle or line. Changes the document. */
-  "draw.inkToShape": { id?: number }
-  /** Draw Ink Strokes. Params: {strokes: [{tool?: pen|pencil|highlighter, color?, width?, points: [[x, y, pressure?], ...]}]} (sheet points; members left out take the current pen). Changes the document. */
+  /** Ink Stroke. Adds one ink stroke through points given in sheet points, with a colour and width. Params: {points: [[x,y],...] in sheet points, color?: hex, width?: 2}. Changes the document. */
+  "draw.stroke": { /** a colour such as #rrggbb */ color?: string; /** [x, y] points in sheet points */ points?: Array<Array<number>>; width?: number }
+  /** Ink to Shape. Converts an ink stroke (default: the last one) into the rectangle, ellipse, triangle or line it resembles. Params: {id?} converts an ink stroke (default: the last) into a rectangle, ellipse, triangle or line. Changes the document. */
+  "draw.inkToShape": { /** an id */ id?: Json }
+  /** Draw Ink Strokes. Adds ink strokes (pen, pencil or highlighter) through points in sheet points; use drawing.describe to read them back. Params: {strokes: [{tool?: pen|pencil|highlighter, color?, width?, points: [[x, y, pressure?], ...]}]} (sheet points; members left out take the current pen). Changes the document. */
   "drawing.ink": { /** [{tool?: pen|pencil|highlighter, color?, width?, points: [[x, y, pressure?], ...]}] */ strokes?: Array<{ color?: string; points?: Array<Json>; tool?: "pen" | "pencil" | "highlighter"; width?: number }> }
-  /** Erase Ink. Params: {path: [[x, y], ...] | x, y, radius?} (deletes the strokes the path touches). Changes the document. */
-  "drawing.erase": { /** [[x, y], ...] | x */ path?: Json; radius?: number; y?: number }
-  /** Describe Drawing Objects. Params: {ids?} (default: the selected object, else every shape on the sheet) */
-  "drawing.describe": { ids?: Array<number> }
-  /** Insert Drawing Object. Params: {kind?: shape|textBox|chart, geometry?: {preset, adjust?}, frame?: {x,y,w,h,rot?,flipH?,flipV?} (sheet points), placement?: {kind: cell, mode?}, fill?, stroke?, text?, chart?: {kind?, title?, legend?, dataLabels?, gridlines?, xTitle?, yTitle?} (a chart of the selected cells, or of `range`), range?}. Changes the document. */
-  "drawing.insert": { /** {kind?, title?, legend?, dataLabels?, gridlines?, xTitle?, yTitle?} (a chart of the selected cells, or of `range`); a chart of the selected cells, or of `range` */ chart?: { dataLabels?: Json; gridlines?: Json; kind?: Json; legend?: Json; title?: string; xTitle?: Json; yTitle?: Json }; /** fill (no type given) */ fill?: Json; /** {x,y,w,h,rot?,flipH?,flipV?} (sheet points); sheet points */ frame?: { flipH?: Json; flipV?: Json; h?: number; rot?: Json; w?: number; x?: number; y?: number }; /** {preset, adjust?} */ geometry?: { adjust?: Json; preset?: string }; kind?: "shape" | "textBox" | "chart"; /** {kind: cell, mode?} */ placement?: { kind?: Json; mode?: Json }; /** range (no type given) */ range?: Json; /** stroke (no type given) */ stroke?: Json; text?: string }
-  /** Delete Drawing Objects. Params: {ids}. Changes the document. */
-  "drawing.delete": { ids?: Array<number> }
-  /** Transform Drawing Objects. Params: {ids, frame? | dx?, dy?, rotateBy?, flipH?, flipV?}. Changes the document. */
-  "drawing.transform": { dy?: number; /** flipH (no type given) */ flipH?: Json; /** flipV (no type given) */ flipV?: Json; ids?: Array<number>; /** rotateBy (no type given) */ rotateBy?: Json }
-  /** Format Drawing Objects. Params: {ids, fill?, stroke?, geometry?}. Changes the document. */
-  "drawing.format": { /** fill (no type given) */ fill?: Json; /** geometry (no type given) */ geometry?: Json; ids?: Array<number>; /** stroke (no type given) */ stroke?: Json }
-  /** Set Drawing Object Text. Params: {id, text? | paragraphs?}. Changes the document. */
-  "drawing.text": { id?: number }
-  /** Reconnect Connector. Params: {id, end: start|end, to?: id, site?: n, point?: [x, y]}. Changes the document. */
-  "drawing.reconnect": { end?: "start" | "end"; id?: number; point?: Array<number>; site?: number; /** an id */ to?: number }
-  /** Connect Drawing Objects. Params: {from, to, fromSite?, toSite?, geometry?: {preset: straightConnector1|bentConnector3|curvedConnector3}}. Changes the document. */
-  "drawing.connect": { /** from (no type given) */ from?: Json; /** fromSite (no type given) */ fromSite?: Json; geometry?: { preset?: "straightConnector1" | "bentConnector3" | "curvedConnector3" }; /** to (no type given) */ to?: Json; /** toSite (no type given) */ toSite?: Json }
-  /** Group Drawing Objects. Params: {ids} (two or more shapes or groups on the sheet, not in a group). Changes the document. */
-  "drawing.group": { ids?: Array<number> }
-  /** Ungroup Drawing Objects. Params: {ids} (groups). Changes the document. */
-  "drawing.ungroup": { ids?: Array<number> }
-  /** Arrange Drawing Objects. Params: {ids, order: front|back|forward|backward} (charts stay above shapes). Changes the document. */
-  "drawing.arrange": { ids?: Array<number>; order?: "front" | "back" | "forward" | "backward" }
-  /** Change Chart. Params: {id, kind?, title?: text|null, legend?: top|bottom|left|right|null, dataLabels?, gridlines?, xTitle?, yTitle?, series?: [{name, values, color?}] (colours only: the data are the cells)}. Changes the document. */
-  "drawing.chart": { /** dataLabels (no type given) */ dataLabels?: Json; /** gridlines (no type given) */ gridlines?: Json; id?: number; /** kind (no type given) */ kind?: Json; /** top|bottom|left|right|null */ legend?: Json; /** [{name, values, color?}] (colours only: the data are the cells); colours only: the data are the cells */ series?: Array<{ color?: string; name?: string; values?: Json }>; /** text|null */ title?: Json; /** xTitle (no type given) */ xTitle?: Json; /** yTitle (no type given) */ yTitle?: Json }
-  /** Spelling. Params: {range?, sheet?} ? misspelled words with cells and suggestions */
-  "review.spelling": { /** range (no type given) */ range?: Json; /** sheet (no type given) */ sheet?: Json }
-  /** Add to Dictionary. Params: {word} */
-  "review.addToDictionary": { /** word (no type given) */ word?: Json }
-  /** Change. Params: {cell, word, to, all?: bool}. Changes the document. */
-  "review.changeSpelling": { all?: boolean; /** cell (no type given) */ cell?: Json; /** to (no type given) */ to?: Json; /** word (no type given) */ word?: Json }
-  /** Thesaurus. Params: {word} ? related words (words sharing the stem in the dictionary) */
-  "review.thesaurus": { /** word (no type given) */ word?: Json }
-  /** PivotTable. Params: {source?: "Sheet1!$A$1:$E$200" | table name (default: the table or current region of the selection), destination?: "new" (default: new sheet before the current one, report at A3) | "Sheet1!H3", name?, rows?: [field | {field, group?: years|quarters|months|days}], columns?: [..], values?: [field | {field, func?, name?}], filters?: [field], replace?: bool} ? {id, name, sheet, anchor, fields}. Changes the document. */
-  "insert.pivotTable": { /** [..] */ columns?: Array<Json>; /** default: new sheet before the current one, report at A3 */ destination?: "new" | "Sheet1!H3"; /** [field] */ filters?: Array<Json>; name?: string; replace?: boolean; /** [field | {field, group?: years|quarters|months|days}] */ rows?: Array<Json>; /** "Sheet1!$A$1:$E$200" | table name (default: the table or current region of the selection); default: the table or current region of the selection */ source?: Json; /** [field | {field, func?, name?}] */ values?: Array<Json> }
-  /** Recommended PivotTables. Params: {source?, apply?: index, destination?} ? suggestions [{index, title, rows, columns, values}]; with apply, creates that one. Changes the document. */
-  "insert.recommendedPivotTables": { apply?: number; /** destination (no type given) */ destination?: Json; /** source (no type given) */ source?: Json }
-  /** Summarize with PivotTable. Params: {table?, destination?} creates a PivotTable from the table. Changes the document. */
-  "table.summarizePivot": { /** destination (no type given) */ destination?: Json; /** table (no type given) */ table?: Json }
-  /** PivotTable Fields. Params: {pivot?} ? source fields (name, numeric, date, samples, areas) and the current layout */
-  "pivot.fields": { /** pivot (no type given) */ pivot?: Json }
-  /** Field List. Params: {pivot?} (same as pivot.fields) */
-  "pivot.fieldList": { /** pivot (no type given) */ pivot?: Json }
-  /** PivotTables. Params: {} ? every PivotTable in the workbook */
+  /** Erase Ink. Deletes the ink strokes that a path or a circle touches. Params: {path: [[x, y], ...] | x, y, radius?} (deletes the strokes the path touches). Changes the document. */
+  "drawing.erase": { path?: string; radius?: number; y?: number }
+  /** Describe Drawing Objects. Answers the sheet's drawing objects (shapes, text boxes, charts, ink, groups) with ids, geometry, fill, stroke and text; default: the selected object or every shape. Params: {ids?} (default: the selected object, else every shape on the sheet). */
+  "drawing.describe": { ids?: Array<Json> }
+  /** Insert Drawing Object. Inserts a drawing object (shape, text box or chart) with geometry, a frame in sheet points, placement, fill, stroke and text; answers its id. Params: {kind?: shape|textBox|chart, geometry?: {preset, adjust?}, frame?: {x,y,w,h,rot?,flipH?,flipV?} (sheet points), placement?: {kind: cell, mode?}, fill?, stroke?, text?, chart?: {kind?, title?, legend?, dataLabels?, gridlines?, xTitle?, yTitle?} (a chart of the selected cells, or of `range`), range?}. Changes the document. */
+  "drawing.insert": { /** {kind?, title?, legend?, dataLabels?, gridlines?, xTitle?, yTitle?} (a chart of the selected cells, or of `range`); a chart of the selected cells, or of `range` */ chart?: { dataLabels?: Json; gridlines?: Json; kind?: Json; legend?: Json; title?: string; xTitle?: Json; yTitle?: Json }; fill?: Json; /** {x,y,w,h,rot?,flipH?,flipV?} (sheet points); sheet points */ frame?: { flipH?: Json; flipV?: Json; h?: number; rot?: Json; w?: number; x?: number; y?: number }; /** {preset, adjust?} */ geometry?: { adjust?: Json; preset?: string }; kind?: "shape" | "textBox" | "chart"; /** {kind: cell, mode?} */ placement?: { kind?: Json; mode?: Json }; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; stroke?: Json; text?: string }
+  /** Delete Drawing Objects. Deletes drawing objects by their ids from drawing.describe. Params: {ids}. Changes the document. */
+  "drawing.delete": { ids?: Array<Json> }
+  /** Transform Drawing Objects. Moves, resizes, rotates or flips drawing objects by id, to a frame or by offsets. Params: {ids, frame? | dx?, dy?, rotateBy?, flipH?, flipV?}. Changes the document. */
+  "drawing.transform": { dy?: number; flipH?: boolean; flipV?: boolean; ids?: Array<Json>; /** degrees */ rotateBy?: number }
+  /** Format Drawing Objects. Changes the fill, stroke or geometry of drawing objects by id. Params: {ids, fill?, stroke?, geometry?}. Changes the document. */
+  "drawing.format": { fill?: Json; geometry?: Json; ids?: Array<Json>; stroke?: Json }
+  /** Set Drawing Object Text. Replaces the text of a drawing object, as plain text or as formatted paragraphs. Params: {id, text? | paragraphs?}. Changes the document. */
+  "drawing.text": { /** an id */ id?: Json }
+  /** Reconnect Connector. Moves one end of a connector to another object's connection site or to a point. Params: {id, end: start|end, to?: id, site?: n, point?: [x, y]}. Changes the document. */
+  "drawing.reconnect": { end?: "start" | "end"; /** an id */ id?: Json; point?: Array<number>; site?: number; /** an id */ to?: number }
+  /** Connect Drawing Objects. Draws a connector between two objects, straight, bent or curved, attached to their connection sites. Params: {from, to, fromSite?, toSite?, geometry?: {preset: straightConnector1|bentConnector3|curvedConnector3}}. Changes the document. */
+  "drawing.connect": { /** an object id from drawing.describe */ from?: Json; fromSite?: number; geometry?: { preset?: "straightConnector1" | "bentConnector3" | "curvedConnector3" }; /** an object id from drawing.describe */ to?: Json; toSite?: number }
+  /** Group Drawing Objects. Groups two or more top-level drawing objects into one group. Params: {ids} (two or more shapes or groups on the sheet, not in a group). Changes the document. */
+  "drawing.group": { ids?: Array<Json> }
+  /** Ungroup Drawing Objects. Splits groups back into their objects. Params: {ids} (groups). Changes the document. */
+  "drawing.ungroup": { ids?: Array<Json> }
+  /** Arrange Drawing Objects. Moves drawing objects to the front, back, or one step in the stacking order; charts stay above shapes. Params: {ids, order: front|back|forward|backward} (charts stay above shapes). Changes the document. */
+  "drawing.arrange": { ids?: Array<Json>; order?: "front" | "back" | "forward" | "backward" }
+  /** Change Chart. Changes a chart drawing object: its kind, title, legend, data labels, gridlines, axis titles and series. Params: {id, kind?, title?: text|null, legend?: top|bottom|left|right|null, dataLabels?, gridlines?, xTitle?, yTitle?, series?: [{name, values, color?}] (colours only: the data are the cells)}. Changes the document. */
+  "drawing.chart": { dataLabels?: Json; gridlines?: Json; /** an id */ id?: Json; /** a chart kind such as column, bar, line, pie */ kind?: string; legend?: Json; /** [{name, values, color?}] (colours only: the data are the cells); colours only: the data are the cells */ series?: Array<{ color?: string; name?: string; values?: Json }>; title?: Json; xTitle?: string; yTitle?: string }
+  /** Spelling. Checks spelling in a range or sheet and answers misspelled words with their cells and suggestions; changes nothing. Params: {range?, sheet?} ? misspelled words with cells and suggestions. */
+  "review.spelling": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; sheet?: Json }
+  /** Add to Dictionary. Adds a word to the dictionary so spelling no longer reports it. Params: {word}. */
+  "review.addToDictionary": { word?: string }
+  /** Change. Replaces a misspelled word in a cell, or in every cell when all is true. Params: {cell, word, to, all?: bool}. Changes the document. */
+  "review.changeSpelling": { all?: boolean; /** one cell in A1 notation such as B2; default: the active cell */ cell?: string; to?: string; word?: string }
+  /** Thesaurus. Answers words related to a word from the dictionary (sharing its stem). Params: {word} ? related words (words sharing the stem in the dictionary). */
+  "review.thesaurus": { word?: string }
+  /** PivotTable. Creates a PivotTable from a source range or table (default: around the selection) on a new sheet or at a destination, optionally with rows, columns and values. Params: {source?: "Sheet1!$A$1:$E$200" | table name (default: the table or current region of the selection), destination?: "new" (default: new sheet before the current one, report at A3) | "Sheet1!H3", name?, rows?: [field | {field, group?: years|quarters|months|days}], columns?: [..], values?: [field | {field, func?, name?}], filters?: [field], replace?: bool} ? {id, name, sheet, anchor, fields}. Changes the document. */
+  "insert.pivotTable": { /** [..] */ columns?: Array<Json>; /** default: new sheet before the current one, report at A3 */ destination?: "new" | "Sheet1!H3"; /** [field] */ filters?: Array<Json>; name?: string; replace?: boolean; /** [field | {field, group?: years|quarters|months|days}] */ rows?: Array<Json>; /** a range in A1 notation such as Sheet1!$A$1:$E$200, or a table name */ source?: string; /** [field | {field, func?, name?}] */ values?: Array<Json> }
+  /** Recommended PivotTables. Suggests PivotTable layouts for a source and answers them; with apply, creates the suggestion at that index. Params: {source?, apply?: index, destination?} ? suggestions [{index, title, rows, columns, values}]; with apply, creates that one. Changes the document. */
+  "insert.recommendedPivotTables": { /** a position counted from 0 (the first is 0) */ apply?: number; /** a cell in A1 notation, or "new" for a new sheet */ destination?: string; /** a range in A1 notation such as Sheet1!$A$1:$E$200, or a table name */ source?: string }
+  /** Summarize with PivotTable. Creates a PivotTable from a table (default: the table at the active cell). Params: {table?, destination?} creates a PivotTable from the table. Changes the document. */
+  "table.summarizePivot": { /** a cell in A1 notation, or "new" for a new sheet */ destination?: string; /** a table name; default: the table at the active cell */ table?: string }
+  /** PivotTable Fields. Answers a PivotTable's source fields (name, numeric, date, sample values) and its current layout; select a cell in the PivotTable or name it. Params: {pivot?} ? source fields (name, numeric, date, samples, areas) and the current layout. */
+  "pivot.fields": { /** default: the PivotTable at the active cell */ pivot?: Json }
+  /** Field List. Answers a PivotTable's fields and layout (same as pivot.fields). Params: {pivot?} (same as pivot.fields). */
+  "pivot.fieldList": { /** default: the PivotTable at the active cell */ pivot?: Json }
+  /** PivotTables. Lists every PivotTable in the workbook with its name, sheet, location and source. Params: {} ? every PivotTable in the workbook. */
   "pivot.list": Record<string, never>
-  /** Add Field. Params: {pivot?, field, area: rows|columns|values|filters, func?: sum|count|average|max|min|product|countNumbers|stdDev|stdDevP|var|varP, name?, position?: index, replace?}. Changes the document. */
-  "pivot.addField": { area?: "rows" | "columns" | "values" | "filters"; /** field (no type given) */ field?: Json; /** sum|count|average|max|min|product|countNumbers|stdDev|stdDevP|var|varP */ func?: Json; name?: string; /** pivot (no type given) */ pivot?: Json; position?: number; /** replace (no type given) */ replace?: Json }
-  /** Remove Field. Params: {pivot?, field (or value caption), area?: rows|columns|values|filters, replace?}. Changes the document. */
-  "pivot.removeField": { area?: "rows" | "columns" | "values" | "filters"; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json }
-  /** Move Field. Params: {pivot?, field, from: rows|columns|values|filters, to: rows|columns|values|filters, position?: index, replace?}. Changes the document. */
-  "pivot.moveField": { /** field (no type given) */ field?: Json; from?: "rows" | "columns" | "values" | "filters"; /** pivot (no type given) */ pivot?: Json; position?: number; /** replace (no type given) */ replace?: Json; to?: "rows" | "columns" | "values" | "filters" }
-  /** Value Field Settings. Params: {pivot?, field: caption or source field | index: n, func?, name?, showAs?: normal|percentOfGrandTotal|percentOfColumnTotal|percentOfRowTotal|runningTotal|rank, numberFormat?: "#,##0" | null, replace?}. Changes the document. */
-  "pivot.valueSettings": { /** caption or source field | index: n */ field?: Json; /** func (no type given) */ func?: Json; name?: string; /** "#,##0" | null */ numberFormat?: Json; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json; showAs?: "normal" | "percentOfGrandTotal" | "percentOfColumnTotal" | "percentOfRowTotal" | "runningTotal" | "rank" }
-  /** Filter Items. Params: {pivot?, field, selected: ["East", ..] | null (all), replace?}. Changes the document. */
-  "pivot.filter": { /** field (no type given) */ field?: Json; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json; /** ["East", ..] | null (all); all */ selected?: Json }
-  /** Sort Field. Params: {pivot?, field, order: asc|desc|none, replace?}. Changes the document. */
-  "pivot.sort": { /** field (no type given) */ field?: Json; order?: "asc" | "desc" | "none"; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json }
-  /** Group Field. Params: {pivot?, field, by: years|quarters|months|days|none, replace?}. Changes the document. */
-  "pivot.group": { by?: "years" | "quarters" | "months" | "days" | "none"; /** field (no type given) */ field?: Json; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json }
-  /** Expand/Collapse Field. Params: {pivot?, field, items?: [labels] (default: all), collapse?: true, replace?}. Changes the document. */
-  "pivot.collapse": { collapse?: boolean; /** field (no type given) */ field?: Json; /** [labels] (default: all); default: all */ items?: Array<Json>; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json }
-  /** PivotTable Layout. Params: {pivot?, layout?: compact|outline|tabular, grandTotalsRows?: bool, grandTotalsCols?: bool, subtotals?: bool|top|bottom|none, style?: "PivotStyleLight16", showHeaders?: bool, replace?}. Changes the document. */
-  "pivot.layout": { grandTotalsCols?: boolean; grandTotalsRows?: boolean; layout?: "compact" | "outline" | "tabular"; /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json; showHeaders?: boolean; /** like PivotStyleLight16 */ style?: string; /** bool|top|bottom|none */ subtotals?: Json }
-  /** Grand Totals. Params: {pivot?, mode?: off|on|rows|columns, rows?: bool, cols?: bool}. Changes the document. */
-  "pivot.grandTotals": { cols?: boolean; mode?: "off" | "on" | "rows" | "columns"; /** pivot (no type given) */ pivot?: Json; rows?: boolean }
-  /** Subtotals. Params: {pivot?, mode: none|top|bottom}. Changes the document. */
-  "pivot.subtotals": { mode?: "none" | "top" | "bottom"; /** pivot (no type given) */ pivot?: Json }
-  /** Report Layout. Params: {pivot?, layout: compact|outline|tabular}. Changes the document. */
-  "pivot.reportLayout": { layout?: "compact" | "outline" | "tabular"; /** pivot (no type given) */ pivot?: Json }
-  /** PivotTable Styles. Params: {pivot?, style: "PivotStyleMedium9"}. Changes the document. */
-  "pivot.style": { /** pivot (no type given) */ pivot?: Json; /** like PivotStyleMedium9 */ style?: string }
-  /** Refresh. Params: {pivot?, replace?}. Changes the document. */
-  "pivot.refresh": { /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json }
-  /** Refresh All. Params: {replace?} refreshes every PivotTable ? {refreshed, errors}. Changes the document. */
-  "data.refreshAll": { /** replace (no type given) */ replace?: Json }
-  /** Change Data Source. Params: {pivot?, source: "Sheet1!$A$1:$E$300" | table name, replace?} (fields missing from the new source are removed). Changes the document. */
-  "pivot.changeSource": { /** pivot (no type given) */ pivot?: Json; /** replace (no type given) */ replace?: Json; /** "Sheet1!$A$1:$E$300" | table name */ source?: Json }
-  /** Delete PivotTable. Params: {pivot?} clears the report and removes the PivotTable. Changes the document. */
-  "pivot.delete": { /** pivot (no type given) */ pivot?: Json }
-  /** Goal Seek. Params: {set: "B5" (formula cell), to: number, changing: "B2" (constant cell)} ? {value, result, iterations, converged}. Secant search with bisection once the answer is bracketed; stops within Maximum Change (0.001) or after Maximum Iterations (100) from File ? Options ? Formulas. Writes the found value into `changing`.. Changes the document. */
+  /** Add Field. Adds a source field to a PivotTable's rows, columns, values or filters, with the summary function for values. Params: {pivot?, field, area: rows|columns|values|filters, func?: sum|count|average|max|min|product|countNumbers|stdDev|stdDevP|var|varP, name?, position?: index, replace?}. Changes the document. */
+  "pivot.addField": { area?: "rows" | "columns" | "values" | "filters"; /** a source field name or a value field caption */ field?: string; func?: string; name?: string; /** default: the PivotTable at the active cell */ pivot?: Json; /** a position counted from 0 (the first is 0) */ position?: number; /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** Remove Field. Removes a field (or a value caption) from a PivotTable area. Params: {pivot?, field (or value caption), area?: rows|columns|values|filters, replace?}. Changes the document. */
+  "pivot.removeField": { area?: "rows" | "columns" | "values" | "filters"; /** a source field name or a value field caption */ field?: string; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** Move Field. Moves a field between PivotTable areas or to a position within one. Params: {pivot?, field, from: rows|columns|values|filters, to: rows|columns|values|filters, position?: index, replace?}. Changes the document. */
+  "pivot.moveField": { /** a source field name or a value field caption */ field?: string; from?: "rows" | "columns" | "values" | "filters"; /** default: the PivotTable at the active cell */ pivot?: Json; /** a position counted from 0 (the first is 0) */ position?: number; /** replace the existing PivotTable output in place */ replace?: boolean; to?: "rows" | "columns" | "values" | "filters" }
+  /** Value Field Settings. Changes a PivotTable value field's summary function, caption or show-as calculation (percent of total, running total...). Params: {pivot?, field: caption or source field | index: n, func?, name?, showAs?: normal|percentOfGrandTotal|percentOfColumnTotal|percentOfRowTotal|runningTotal|rank, numberFormat?: "#,##0" | null, replace?}. Changes the document. */
+  "pivot.valueSettings": { /** a source field name or a value field caption */ field?: string; func?: string; name?: string; /** a number format code such as #,##0 */ numberFormat?: string; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean; showAs?: "normal" | "percentOfGrandTotal" | "percentOfColumnTotal" | "percentOfRowTotal" | "runningTotal" | "rank" }
+  /** Filter Items. Shows only the chosen items of a PivotTable field, or all items with null. Params: {pivot?, field, selected: ["East", ..] | null (all), replace?}. Changes the document. */
+  "pivot.filter": { /** a source field name or a value field caption */ field?: string; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean; selected?: Json }
+  /** Sort Field. Sorts a PivotTable field's items ascending or descending, or back to source order. Params: {pivot?, field, order: asc|desc|none, replace?}. Changes the document. */
+  "pivot.sort": { /** a source field name or a value field caption */ field?: string; order?: "asc" | "desc" | "none"; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** Group Field. Groups a PivotTable date field by years, quarters, months or days, or ungroups it. Params: {pivot?, field, by: years|quarters|months|days|none, replace?}. Changes the document. */
+  "pivot.group": { by?: "years" | "quarters" | "months" | "days" | "none"; /** a source field name or a value field caption */ field?: string; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** Expand/Collapse Field. Collapses or expands items of a PivotTable field (default: all items). Params: {pivot?, field, items?: [labels] (default: all), collapse?: true, replace?}. Changes the document. */
+  "pivot.collapse": { collapse?: boolean; /** a source field name or a value field caption */ field?: string; /** [labels] (default: all); default: all */ items?: Array<Json>; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** PivotTable Layout. Sets a PivotTable's layout form, grand totals, subtotals and style in one call. Params: {pivot?, layout?: compact|outline|tabular, grandTotalsRows?: bool, grandTotalsCols?: bool, subtotals?: bool|top|bottom|none, style?: "PivotStyleLight16", showHeaders?: bool, replace?}. Changes the document. */
+  "pivot.layout": { grandTotalsCols?: boolean; grandTotalsRows?: boolean; layout?: "compact" | "outline" | "tabular"; /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean; showHeaders?: boolean; /** like PivotStyleLight16 */ style?: string; subtotals?: Json }
+  /** Grand Totals. Turns a PivotTable's grand totals off or on, for rows, columns or both. Params: {pivot?, mode?: off|on|rows|columns, rows?: bool, cols?: bool}. Changes the document. */
+  "pivot.grandTotals": { cols?: boolean; mode?: "off" | "on" | "rows" | "columns"; /** default: the PivotTable at the active cell */ pivot?: Json; rows?: boolean }
+  /** Subtotals. Shows a PivotTable's subtotals at the top or bottom of each group, or hides them. Params: {pivot?, mode: none|top|bottom}. Changes the document. */
+  "pivot.subtotals": { mode?: "none" | "top" | "bottom"; /** default: the PivotTable at the active cell */ pivot?: Json }
+  /** Report Layout. Sets a PivotTable's report layout to compact, outline or tabular form. Params: {pivot?, layout: compact|outline|tabular}. Changes the document. */
+  "pivot.reportLayout": { layout?: "compact" | "outline" | "tabular"; /** default: the PivotTable at the active cell */ pivot?: Json }
+  /** PivotTable Styles. Applies a PivotTable style such as PivotStyleMedium9. Params: {pivot?, style: "PivotStyleMedium9"}. Changes the document. */
+  "pivot.style": { /** default: the PivotTable at the active cell */ pivot?: Json; /** like PivotStyleMedium9 */ style?: string }
+  /** Refresh. Recalculates a PivotTable from its source data. Params: {pivot?, replace?}. Changes the document. */
+  "pivot.refresh": { /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** Refresh All. Refreshes every PivotTable in the workbook from its source and answers which refreshed and which failed. Params: {replace?} refreshes every PivotTable ? {refreshed, errors}. Changes the document. */
+  "data.refreshAll": { /** replace the existing PivotTable output in place */ replace?: boolean }
+  /** Change Data Source. Points a PivotTable at a new source range or table; fields missing from the new source are removed. Params: {pivot?, source: "Sheet1!$A$1:$E$300" | table name, replace?} (fields missing from the new source are removed). Changes the document. */
+  "pivot.changeSource": { /** default: the PivotTable at the active cell */ pivot?: Json; /** replace the existing PivotTable output in place */ replace?: boolean; /** a range in A1 notation such as Sheet1!$A$1:$E$200, or a table name */ source?: string }
+  /** Delete PivotTable. Deletes a PivotTable and clears the cells it occupied. Params: {pivot?} clears the report and removes the PivotTable. Changes the document. */
+  "pivot.delete": { /** default: the PivotTable at the active cell */ pivot?: Json }
+  /** Goal Seek. Finds the value of a constant cell that makes a formula cell reach a target and writes it; answers the value, result and whether it converged. Params: {set: "B5" (formula cell), to: number, changing: "B2" (constant cell)} ? {value, result, iterations, converged}. Secant search with bisection once the answer is bracketed; stops within Maximum Change (0.001) or after Maximum Iterations (100) from File ? Options ? Formulas. Writes the found value into `changing`. Changes the document. */
   "data.goalSeek": { /** like B2; constant cell */ changing?: string; /** like B5; formula cell */ set?: string; to?: number }
-  /** Scenario Manager. Params: {sheet?} ? {scenarios: [{name, sheet, changing, values, comment}]} (scenarios of the active sheet; `sheet: "*"` lists all) */
-  "data.scenarioManager": { /** sheet (no type given) */ sheet?: Json }
-  /** Add Scenario. Params: {name, changing: "B2:B4" or "B2,B4" (?32 cells, active sheet), values?: [..] (default: the cells' current values), comment?, replace?: bool}. Changes the document. */
-  "data.scenarioAdd": { /** "B2:B4" or "B2,B4" (?32 cells, active sheet); ?32 cells, active sheet */ changing?: Json; /** comment (no type given) */ comment?: Json; name?: string; replace?: boolean; /** [..] (default: the cells' current values); default: the cells' current values */ values?: Array<Json> }
-  /** Show Scenario. Params: {name} writes the scenario's values into its changing cells. Changes the document. */
+  /** Scenario Manager. Lists the what-if scenarios of the active sheet (or every sheet with *) with their changing cells and values. Params: {sheet?} ? {scenarios: [{name, sheet, changing, values, comment}]} (scenarios of the active sheet; `sheet: "*"` lists all). */
+  "data.scenarioManager": { sheet?: Json }
+  /** Add Scenario. Saves a what-if scenario: a name, up to 32 changing cells and their values (default: the current values). Params: {name, changing: "B2:B4" or "B2,B4" (?32 cells, active sheet), values?: [..] (default: the cells' current values), comment?, replace?: bool}. Changes the document. */
+  "data.scenarioAdd": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1) */ changing?: string; comment?: string; name?: string; replace?: boolean; /** [..] (default: the cells' current values); default: the cells' current values */ values?: Array<Json> }
+  /** Show Scenario. Writes a scenario's values into its changing cells. Params: {name} writes the scenario's values into its changing cells. Changes the document. */
   "data.scenarioShow": { name?: string }
-  /** Delete Scenario. Params: {name}. Changes the document. */
+  /** Delete Scenario. Deletes a scenario by name. Params: {name}. Changes the document. */
   "data.scenarioDelete": { name?: string }
-  /** Scenario Summary. Params: {resultCells?: "B10" or "B10:B12,D4"} inserts a "Scenario Summary" sheet: changing cells and result cells for the current values and each scenario. Changes the document. */
-  "data.scenarioSummary": { /** "B10" or "B10:B12,D4" */ resultCells?: Json }
-  /** Data Table. Params: {range: "D2:E10", rowInput?: "B1", columnInput?: "B2"} one-variable (values down the first column with columnInput, or across the top row with rowInput; formulas in the other edge) or two-variable (formula in the top-left corner). Computes every result by substitution and writes static values (a snapshot, not a live {=TABLE()}); ?100,000 cells.. Changes the document. */
+  /** Scenario Summary. Inserts a Scenario Summary sheet comparing each scenario's changing cells and the given result cells. Params: {resultCells?: "B10" or "B10:B12,D4"} inserts a "Scenario Summary" sheet: changing cells and result cells for the current values and each scenario. Changes the document. */
+  "data.scenarioSummary": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1) */ resultCells?: string }
+  /** Data Table. Fills a one- or two-variable data table: formulas evaluated for each input value down a column or across a row. Params: {range: "D2:E10", rowInput?: "B1", columnInput?: "B2"} one-variable (values down the first column with columnInput, or across the top row with rowInput; formulas in the other edge) or two-variable (formula in the top-left corner). Computes every result by substitution and writes static values (a snapshot, not a live {=TABLE()}); ?100,000 cells. Changes the document. */
   "data.dataTable": { /** like B2 */ columnInput?: string; /** like D2:E10 */ range?: string; /** like B1 */ rowInput?: string }
-  /** Advanced. Params: {range? (list with headers; default current region), criteria: "H1:I3" (header row of field names; rows OR'ed, columns AND'ed; ">100", "=abc", "a*", "<>"; blank-headed formula cells are computed criteria for the first data row), copyTo?: "K1" (else filter in place by hiding rows), unique?: bool}. Changes the document. */
-  "data.advancedFilter": { /** like K1; else filter in place by hiding rows */ copyTo?: string; /** like H1:I3; header row of field names; rows OR'ed, columns AND'ed; ">100", "=abc", "a*", "<>"; blank-headed formula cells are computed criteria for the first data row */ criteria?: string; unique?: boolean }
-  /** Consolidate. Params: {sources: ["Sheet2!A1:C10", ..], destination?: "A1" (default active cell), function?: sum|count|countNums|average|max|min|product, topRow?: bool, leftColumn?: bool (consolidate by labels; else by position)}. Changes the document. */
-  "data.consolidate": { /** like A1; default active cell */ destination?: string; /** sum|count|countNums|average|max|min|product */ function?: Json; /** consolidate by labels; else by position */ leftColumn?: boolean; /** ["Sheet2!A1:C10", ..] */ sources?: Array<Json>; topRow?: boolean }
-  /** Export as PDF. Params: {path?, sheets?: active|all, range?: "A1:F40" (active sheet), fitToPage?: bool} ? {pages, bytes, path} or {pages, bytes, base64} when no path. Honours each sheet's Page Setup. */
-  "file.exportPdf": { fitToPage?: boolean; path?: string; /** like A1:F40; active sheet */ range?: string; sheets?: "active" | "all" }
-  /** Print. Params: {path?, sheets?: active|all, range?, fitToPage?: bool} ? {pages, bytes, base64} ? the PDF the UI hands to the system print dialog */
-  "file.print": { fitToPage?: boolean; path?: string; /** range (no type given) */ range?: Json; sheets?: "active" | "all" }
-  /** Print Preview. Params: {page? (1-based), sheets?: active|all, range?, fitToPage?} ? {pages, pageList: [{page, sheet, range, rows, columns, scale, paper, orientation, width, height}]} */
-  "file.printPreview": { /** fitToPage (no type given) */ fitToPage?: Json; /** range (no type given) */ range?: Json; sheets?: "active" | "all" }
-  /** Page Setup. Params: {sheet?, orientation?: portrait|landscape, paper?: Letter|Legal|A4|A3|A5|Tabloid|Executive|Ledger|B5, margins?: {left,right,top,bottom,header,footer} (inches; also accepted as top-level keys), scale?: 10..400, fitWidth?, fitHeight? (pages; 0 = automatic), fitToPage?: bool, centerH?, centerV?, gridlines?, headings?, header?: "&L&A&RPage &P of &N", footer?, printArea?: "A1:F50" ("" clears), titleRows?: "1:2", titleCols?: "A:A", rowBreaks?: [46, 91], colBreaks?: ["K"]} ? the sheet's print settings. Changes the document. */
-  "pageLayout.pageSetup": { /** centerH (no type given) */ centerH?: Json; /** centerV (no type given) */ centerV?: Json; colBreaks?: Array<string>; fitToPage?: boolean; /** fitWidth (no type given) */ fitWidth?: Json; /** footer (no type given) */ footer?: Json; /** gridlines (no type given) */ gridlines?: Json; /** like &L&A&RPage &P of &N */ header?: string; /** headings (no type given) */ headings?: Json; /** {left,right,top,bottom,header,footer} (inches; also accepted as top-level keys); inches; also accepted as top-level keys */ margins?: { bottom?: number; footer?: Json; header?: Json; left?: number; right?: number; top?: number }; orientation?: "portrait" | "landscape"; paper?: "Letter" | "Legal" | "A4" | "A3" | "A5" | "Tabloid" | "Executive" | "Ledger" | "B5"; /** like A1:F50; "" clears */ printArea?: string; /** [46, 91] */ rowBreaks?: Array<number>; /** 10 to 400 */ scale?: number; /** sheet (no type given) */ sheet?: Json; /** like A:A */ titleCols?: string; /** like 1:2 */ titleRows?: string }
-  /** Enter in Active Cell. Params: {text: string}. Changes the document. */
+  /** Advanced. Filters a list in place, or copies matching rows elsewhere, using a criteria range of headers and conditions. Params: {range? (list with headers; default current region), criteria: "H1:I3" (header row of field names; rows OR'ed, columns AND'ed; ">100", "=abc", "a*", "<>"; blank-headed formula cells are computed criteria for the first data row), copyTo?: "K1" (else filter in place by hiding rows), unique?: bool}. Changes the document. */
+  "data.advancedFilter": { /** like K1; else filter in place by hiding rows */ copyTo?: string; /** like H1:I3; header row of field names; rows OR'ed, columns AND'ed; ">100", "=abc", "a*", "<>"; blank-headed formula cells are computed criteria for the first data row */ criteria?: string; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; unique?: boolean }
+  /** Consolidate. Combines several source ranges into one at a destination with a function (sum, average, count...), matching by top row and left column labels when asked. Params: {sources: ["Sheet2!A1:C10", ..], destination?: "A1" (default active cell), function?: sum|count|countNums|average|max|min|product, topRow?: bool, leftColumn?: bool (consolidate by labels; else by position)}. Changes the document. */
+  "data.consolidate": { /** like A1; default active cell */ destination?: string; function?: string; /** consolidate by labels; else by position */ leftColumn?: boolean; /** ["Sheet2!A1:C10", ..] */ sources?: Array<Json>; topRow?: boolean }
+  /** Export as PDF. Renders the active sheet, all sheets, or a range to PDF and writes it to a path or answers it as base64, with the page count. Params: {path?, sheets?: active|all, range?: "A1:F40" (active sheet), fitToPage?: bool} ? {pages, bytes, path} or {pages, bytes, base64} when no path. Honours each sheet's Page Setup. */
+  "file.exportPdf": { fitToPage?: boolean; path?: Json; /** like A1:F40; active sheet */ range?: string; sheets?: "active" | "all" }
+  /** Print. Renders what would print (the active sheet, all sheets, or a range) as PDF and answers it as base64 with the page count. Params: {path?, sheets?: active|all, range?, fitToPage?: bool} ? {pages, bytes, base64} ? the PDF the UI hands to the system print dialog. */
+  "file.print": { fitToPage?: boolean; path?: Json; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; sheets?: "active" | "all" }
+  /** Print Preview. Answers the printed pages (sheet, range, rows, columns, scale, paper) and, for one page, its picture, without printing. Params: {page? (1-based), sheets?: active|all, range?, fitToPage?} ? {pages, pageList: [{page, sheet, range, rows, columns, scale, paper, orientation, width, height}]}. */
+  "file.printPreview": { fitToPage?: boolean; /** 1-based */ page?: number; /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string; sheets?: "active" | "all" }
+  /** Page Setup. Sets a sheet's page setup in one call: orientation, paper size, margins, scaling and print options. Params: {sheet?, orientation?: portrait|landscape, paper?: Letter|Legal|A4|A3|A5|Tabloid|Executive|Ledger|B5, margins?: {left,right,top,bottom,header,footer} (inches; also accepted as top-level keys), scale?: 10..400, fitWidth?, fitHeight? (pages; 0 = automatic), fitToPage?: bool, centerH?, centerV?, gridlines?, headings?, header?: "&L&A&RPage &P of &N", footer?, printArea?: "A1:F50" ("" clears), titleRows?: "1:2", titleCols?: "A:A", rowBreaks?: [46, 91], colBreaks?: ["K"]} ? the sheet's print settings. Changes the document. */
+  "pageLayout.pageSetup": { centerH?: boolean; centerV?: boolean; colBreaks?: Array<string>; fitHeight?: number; fitToPage?: boolean; fitWidth?: number; footer?: string; gridlines?: boolean; /** like &L&A&RPage &P of &N */ header?: string; headings?: boolean; /** {left,right,top,bottom,header,footer} (inches; also accepted as top-level keys); inches; also accepted as top-level keys */ margins?: { bottom?: number; footer?: Json; header?: Json; left?: number; right?: number; top?: number }; orientation?: "portrait" | "landscape"; paper?: "Letter" | "Legal" | "A4" | "A3" | "A5" | "Tabloid" | "Executive" | "Ledger" | "B5"; /** like A1:F50; "" clears */ printArea?: string; /** [46, 91] */ rowBreaks?: Array<number>; /** 10 to 400 */ scale?: number; sheet?: Json; /** like A:A */ titleCols?: string; /** like 1:2 */ titleRows?: string }
+  /** Enter in Active Cell. Enters text into the active cell as if typed there and confirmed with Enter. Params: {text: string}. Changes the document. */
   "commandLine": { text?: string }
+  /** Set Visible Grid Extent. Extends the visible grid to the viewport's right and bottom edges in document pixels without editing or saving the workbook. Params: {right: number, bottom: number}. */
+  "editor.viewport": { bottom?: number; right?: number }
+  /** Preview Formula References. Previews formula references as matching text colors and grid outlines without entering the draft. Omit text to clear the preview. Params: {text?: string}. */
+  "editor.formula": { text?: string }
 }
 
 /** A Sheet file opened with `openDocument<Workbook, SheetCommands>`. */

@@ -224,638 +224,640 @@ export interface Constraint extends ModelObject {
 
 /** Every command of kit.cad, by id, with its parameters. */
 export interface CadCommands extends CommandMap {
-  /** New Drawing.... Params: {metric?: bool}. Changes the document. */
+  /** New Drawing... Opens a new empty drawing as a further document and makes it current; metric picks millimetre units and the ISO template instead of inches. Params: {metric?: bool}. Changes the document. */
   "new": { metric?: boolean }
-  /** Open.... Params: {path} | {data: base64, name}. Changes the document. */
-  "open": { path?: string }
-  /** Close. Params: {index?}. Changes the document. */
-  "close": { index?: number }
-  /** Close All. Changes the document. */
+  /** Open... Opens a DXF or DWG drawing, from a path or from base64 data with a name, as a further document and makes it current. Params: {path} | {data: base64, name}. Changes the document. */
+  "open": { path?: Json }
+  /** Close. Closes the drawing at the given document index, or the current one, without saving it. Params: {index?}. Changes the document. */
+  "close": { /** a position counted from 0 (the first is 0) */ index?: number }
+  /** Close All. Closes every open drawing without saving, leaving no current document. Changes the document. */
   "closeall": Record<string, never>
-  /** Save. Params: {path?}. Changes the document. */
-  "qsave": { path?: string }
-  /** Save As.... Params: {path, format?: dxf|dwg}. Changes the document. */
-  "saveas": { format?: "dxf" | "dwg"; path?: string }
-  /** Switch Drawing. Params: {index}. Changes the document. */
-  "document.switch": { index?: number }
-  /** Drawing as bytes. Params: {format?: dxf} ? {data: base64} */
-  "document.bytes": { /** dxf */ format?: Json }
-  /** Audit. Params: {fix?: bool} ? {errors, fixed, issues: [{kind, location, handle?, message, fix}], message}. Changes the document. */
+  /** Save. Saves the current drawing to its own file, or to the given path, in the format the file name says. Params: {path?}. Changes the document. */
+  "qsave": { path?: Json }
+  /** Save As... Saves the current drawing to a new path as DXF or DWG and makes that path the drawing's file. Params: {path, format?: dxf|dwg}. Changes the document. */
+  "saveas": { format?: "dxf" | "dwg"; path?: Json }
+  /** Switch Drawing. Makes the open drawing at the given document index the current one. Params: {index}. Changes the document. */
+  "document.switch": { /** a position counted from 0 (the first is 0) */ index?: number }
+  /** Drawing as bytes. Answers the current drawing written as DXF, base64-encoded, without saving it to a file. Params: {format?: dxf} ? {data: base64}. */
+  "document.bytes": { format?: string }
+  /** Audit. Checks the drawing's database for errors (dangling references, bad handles, invalid tables) and, with fix, repairs them; answers each issue found. Params: {fix?: bool} ? {errors, fixed, issues: [{kind, location, handle?, message, fix}], message}. Changes the document. */
   "audit": { fix?: boolean }
-  /** Recover.... Params: {path} | {data: base64, name} ? {index, errors, fixed, issues, message}. Changes the document. */
-  "recover": { path?: string }
-  /** Undo. Params: {}. Changes the document. */
-  "u": Record<string, never>
-  /** Undo. Params: {count?: n}. Changes the document. */
-  "undo": { count?: number }
-  /** Redo. Params: {count?: n}. Changes the document. */
-  "redo": { count?: number }
-  /** Cut. Params: {handles?}. Changes the document. */
-  "cutclip": { /** handles (no type given) */ handles?: Json }
-  /** Copy. Params: {handles?} */
-  "copyclip": { /** handles (no type given) */ handles?: Json }
-  /** Copy with Base Point. Params: {handles?, base: [x,y]} */
-  "copybase": { base?: Array<number>; /** handles (no type given) */ handles?: Json }
-  /** Paste. Params: {at?: [x,y]} (where the base point lands; default: the original coordinates). Changes the document. */
+  /** Recover... Opens a damaged drawing from a path or base64 data, repairs what audit finds, and answers the new document's index with the issues fixed. Params: {path} | {data: base64, name} ? {index, errors, fixed, issues, message}. Changes the document. */
+  "recover": { path?: Json }
+  /** Undo. Undoes the last step of the caller's undo scope (person or agent), as the U command does. Params: {scope?: "person"|"agent"}. Changes the document. */
+  "u": { scope?: "person" | "agent" }
+  /** Undo. Undoes the last count steps of the caller's undo scope, or of the given person or agent scope. Params: {count?: n, scope?: "person"|"agent"}. Changes the document. */
+  "undo": { count?: number; scope?: "person" | "agent" }
+  /** Redo. Redoes the last count undone steps of the caller's undo scope, or of the given person or agent scope. Params: {count?: n, scope?: "person"|"agent"}. Changes the document. */
+  "redo": { count?: number; scope?: "person" | "agent" }
+  /** Cut. Copies the given objects, or the selection, to the clipboard and erases them from the drawing. Params: {handles?}. Changes the document. */
+  "cutclip": { handles?: Array<string> }
+  /** Copy. Copies the given objects, or the selection, to the clipboard with their own coordinates; the drawing is unchanged. Params: {handles?}. */
+  "copyclip": { handles?: Array<string> }
+  /** Copy with Base Point. Copies the given objects, or the selection, to the clipboard with a base point that a later paste places; the drawing is unchanged. Params: {handles?, base: [x,y]}. */
+  "copybase": { base?: Array<number>; handles?: Array<string> }
+  /** Paste. Pastes the clipboard's objects into the current space, putting their base point at the given point or at their original coordinates. Params: {at?: [x,y]} (where the base point lands; default: the original coordinates). Changes the document. */
   "pasteclip": { at?: Array<number> }
-  /** Paste as Block. Params: {at?: [x,y]} (insertion point; default: the original coordinates). Changes the document. */
+  /** Paste as Block. Pastes the clipboard's objects as one new anonymous block reference inserted at the given point or at their original coordinates. Params: {at?: [x,y]} (insertion point; default: the original coordinates). Changes the document. */
   "pasteblock": { at?: Array<number> }
-  /** Paste to Original Coordinates. Params: {} (only into a drawing other than the one copied from). Changes the document. */
+  /** Paste to Original Coordinates. Pastes the clipboard's objects at their original coordinates into a drawing other than the one they were copied from. Params: {} (only into a drawing other than the one copied from). Changes the document. */
   "pasteorig": Record<string, never>
-  /** Clear. Params: {}. Changes the document. */
+  /** Clear. Erases every selected object from the drawing, as Edit > Clear does. Params: {}. Changes the document. */
   "erase.selection": Record<string, never>
-  /** Select All */
+  /** Select All. Selects every selectable object in the current space and answers how many are selected. */
   "selectall": Record<string, never>
-  /** Deselect All. Params: {} */
+  /** Deselect All. Clears the selection so no object is selected, and answers the selection count. Params: {}. */
   "ai_deselect": Record<string, never>
-  /** Select. Params: {handles: [hex]} | {window: [[x,y],[x,y]], crossing?: bool} | {at: [x,y]} | {clear: true} | {add?: bool} */
+  /** Select. Sets or extends the selection by handles, a window or crossing box, or a pick point, or clears it; answers the selected handles. Params: {handles: [hex]} | {window: [[x,y],[x,y]], crossing?: bool} | {at: [x,y]} | {clear: true} | {add?: bool}. */
   "select": { handles?: Array<string> }
-  /** Quick Select.... Params: {type?: "Line"|"Circle"|..., property?, operator?: "="|"!="|">"|"<"|"*" (wildcard), value?, mode?: new|append|exclude, applyTo?: drawing|selection, layer?, color?} ? selected handles */
-  "qselect": { applyTo?: "drawing" | "selection"; color?: string; layer?: number; mode?: "new" | "append" | "exclude"; /** wildcard */ operator?: "=" | "!=" | ">" | "<" | "*"; /** property (no type given) */ property?: Json; /** "Line"|"Circle"|... */ type?: Json; /** value (no type given) */ value?: Json }
-  /** Quick Select Properties. Params: {applyTo?: drawing|selection, type?} ? object types with counts and the properties available for `type` */
-  "qselect.info": { applyTo?: "drawing" | "selection"; /** type (no type given) */ type?: Json }
-  /** Zoom. Params: {mode: extents|all|window|previous|in|out|center|scale|object, p1?, p2?, center?, height?, factor?, xp?: bool (scale relative to paper space: in a viewport, `factor` paper units per model unit), limits?: bool (scale relative to the limits)} (center: `height`, or `factor` with `xp`/`limits`) */
-  "zoom": { /** center (no type given) */ center?: Json; /** factor (no type given) */ factor?: Json; height?: number; /** scale relative to the limits */ limits?: boolean; /** extents|all|window|previous|in|out|center|scale|object */ mode?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** scale relative to paper space: in a viewport, `factor` paper units per model unit */ xp?: boolean }
-  /** Zoom Previous */
+  /** Quick Select... Selects objects by type and a property comparison (equals, differs, greater, less, wildcard), new, appended or excluded, over the drawing or the selection. Params: {type?: "Line"|"Circle"|..., property?, operator?: "="|"!="|">"|"<"|"*" (wildcard), value?, mode?: new|append|exclude, applyTo?: drawing|selection, layer?: string (a layer name), color?} ? selected handles. */
+  "qselect": { applyTo?: "drawing" | "selection"; color?: string; /** a layer name */ layer?: string; mode?: "new" | "append" | "exclude"; /** wildcard */ operator?: "=" | "!=" | ">" | "<" | "*"; property?: string; type?: string; value?: Json }
+  /** Quick Select Properties. Answers the object types in the drawing or selection with their counts, and the properties and operators Quick Select offers for a type. Params: {applyTo?: drawing|selection, type?} ? object types with counts and the properties available for `type`. */
+  "qselect.info": { applyTo?: "drawing" | "selection"; type?: string }
+  /** Zoom. Changes the view: to extents, all, a window, the previous view, in or out, a centre and height, a scale factor, or objects. Params: {mode: extents|all|window|previous|in|out|center|scale|object, p1?, p2?, center?, height?, factor?, xp?: bool (scale relative to paper space: in a viewport, `factor` paper units per model unit), limits?: bool (scale relative to the limits)} (center: `height`, or `factor` with `xp`/`limits`). */
+  "zoom": { center?: Array<number>; factor?: number; height?: number; /** scale relative to the limits */ limits?: boolean; mode?: string; p1?: Array<number>; p2?: Array<number>; /** scale relative to paper space: in a viewport, `factor` paper units per model unit */ xp?: boolean }
+  /** Zoom Previous. Restores the view saved before the last zoom or pan, if there is one. */
   "zoom.previous": Record<string, never>
-  /** Zoom Window. Params: {p1, p2} */
-  "zoom.window": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Zoom In */
+  /** Zoom Window. Zooms the view to fit the rectangle between two corner points. Params: {p1, p2}. */
+  "zoom.window": { p1?: Array<number>; p2?: Array<number> }
+  /** Zoom In. Zooms the view in by a factor of two about its centre. */
   "zoom.in": Record<string, never>
-  /** Zoom Out */
+  /** Zoom Out. Zooms the view out by a factor of two about its centre. */
   "zoom.out": Record<string, never>
-  /** Zoom All */
+  /** Zoom All. Zooms the view to show the drawing limits and every object, whichever is larger. */
   "zoom.all": Record<string, never>
-  /** Zoom Extents */
+  /** Zoom Extents. Zooms the view to fit the extents of every object in the current space. */
   "zoom.extents": Record<string, never>
-  /** Zoom Object. Params: {handles?} */
-  "zoom.object": { /** handles (no type given) */ handles?: Json }
-  /** Pan. Params: {delta: [dx,dy]} | {from, to} | {center} */
+  /** Zoom Object. Zooms the view to fit the given objects, or the selection. Params: {handles?}. */
+  "zoom.object": { handles?: Array<string> }
+  /** Pan. Moves the view by a delta, from one point to another, or to a new centre, without changing the zoom. Params: {delta: [dx,dy]} | {from, to} | {center}. */
   "pan": { /** [dx, dy] */ delta?: Array<number> }
-  /** Pan Left */
+  /** Pan Left. Pans the view a step to the left. */
   "pan.left": Record<string, never>
-  /** Pan Right */
+  /** Pan Right. Pans the view a step to the right. */
   "pan.right": Record<string, never>
-  /** Pan Up */
+  /** Pan Up. Pans the view a step upwards. */
   "pan.up": Record<string, never>
-  /** Pan Down */
+  /** Pan Down. Pans the view a step downwards. */
   "pan.down": Record<string, never>
-  /** Regen */
+  /** Regen. Regenerates the current viewport's display from the drawing data; the drawing is unchanged. */
   "regen": Record<string, never>
-  /** Regen All */
+  /** Regen All. Regenerates the display of every viewport from the drawing data; the drawing is unchanged. */
   "regenall": Record<string, never>
-  /** Redraw */
+  /** Redraw. Repaints the current view to clear leftover marks; the drawing is unchanged. */
   "redraw": Record<string, never>
-  /** Set View. Params: {center: [x,y], height} */
+  /** Set View. Sets the view to a centre point and a visible height in drawing units. Params: {center: [x,y], height}. */
   "view.set": { center?: Array<number>; height?: number }
-  /** Get View */
+  /** Get View. Answers the current view's centre, visible height in drawing units and viewport size in pixels. */
   "view.get": Record<string, never>
-  /** Switch Layout. Params: {name: "Model" | layout name} */
-  "layout.set": { /** "Model" | layout name */ name?: Json }
-  /** Line. Params: {points: [[x,y],...], closed?: bool}. Changes the document. */
+  /** Switch Layout. Switches to model space or to the named paper space layout tab. Params: {name: "Model" | layout name}. */
+  "layout.set": { name?: string }
+  /** Line. Draws connected line segments through the given points, closing back to the first point when closed is set. Params: {points: [[x,y],...], closed?: bool}. Changes the document. */
   "line": { closed?: boolean; points?: Array<Array<number>> }
-  /** Polyline. Params: {vertices: [[x,y] | {p:[x,y], bulge, startWidth, endWidth}], closed?, width?}. Changes the document. */
+  /** Polyline. Draws one lightweight polyline through the vertices, each a point or a point with bulge and start and end widths, optionally closed. Params: {vertices: [[x,y] | {p:[x,y], bulge, startWidth, endWidth}], closed?, width?}. Changes the document. */
   "pline": { closed?: boolean; /** [[x,y] | {p:[x,y], bulge, startWidth, endWidth}] */ vertices?: Array<Json>; width?: number }
-  /** Circle. Params: {center, radius} | {center, diameter} | {p1, p2} | {p1, p2, p3}. Changes the document. */
-  "circle": { /** center (no type given) */ center?: Json; radius?: number }
-  /** Arc. Params: {p1, p2, p3} | {center, radius, start, end (degrees)} | {start, center, end}. Changes the document. */
-  "arc": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Rectangle. Params: {p1, p2 | dimensions: [l, w] (p2 picks the quadrant) | area + length|breadth, rotation? (deg), fillet?, chamfer?: [d1, d2], width?, elevation?, thickness?}. Changes the document. */
-  "rectang": { /** [d1, d2] */ chamfer?: Array<number>; /** elevation (no type given) */ elevation?: Json; /** fillet (no type given) */ fillet?: Json; /** p1 (no type given) */ p1?: Json; /** thickness (no type given) */ thickness?: Json; width?: number }
-  /** Polygon. Params: {sides, center, radius, inscribed?: bool, angle?: deg to a vertex (inscribed) or edge midpoint (default: bottom edge horizontal)} | {sides, edge: [[x,y],[x,y]]}. Changes the document. */
-  "polygon": { /** deg to a vertex (inscribed) or edge midpoint (default: bottom edge horizontal); inscribed; default: bottom edge horizontal */ angle?: Json; /** center (no type given) */ center?: Json; inscribed?: boolean; radius?: number; /** sides (no type given) */ sides?: Json }
-  /** Ellipse. Params: {center, major: [dx,dy], ratio, start?, end? (degrees)}. Changes the document. */
-  "ellipse": { /** center (no type given) */ center?: Json; /** [dx, dy] */ major?: Array<number>; /** ratio (no type given) */ ratio?: Json; start?: number }
-  /** Point. Params: {at: [x,y]} | {points: [...]}. Changes the document. */
+  /** Circle. Draws a circle from a centre and radius or diameter, two diameter end points, or three points on it. Params: {center, radius} | {center, diameter} | {p1, p2} | {p1, p2, p3}. Changes the document. */
+  "circle": { center?: Array<number>; radius?: number }
+  /** Arc. Draws an arc through three points, from a centre, radius and start and end angles, or from start, centre and end points. Params: {p1, p2, p3} | {center, radius, start, end (degrees)} | {start, center, end}. Changes the document. */
+  "arc": { p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
+  /** Rectangle. Draws a closed rectangular polyline from two corners, dimensions or an area, with optional rotation, fillet or chamfer corners, width, elevation and thickness. Params: {p1, p2 | dimensions: [l, w] (p2 picks the quadrant) | area + length|breadth, rotation? (deg), fillet?, chamfer?: [d1, d2], width?, elevation?, thickness?}. Changes the document. */
+  "rectang": { /** [d1, d2] */ chamfer?: Array<number>; elevation?: number; fillet?: number; p1?: Array<number>; /** deg */ rotation?: number; thickness?: number; width?: number }
+  /** Polygon. Draws a regular closed polygon with the given number of sides, inscribed in or circumscribed about a circle, or from one edge. Params: {sides, center, radius, inscribed?: bool, angle?: deg to a vertex (inscribed) or edge midpoint (default: bottom edge horizontal)} | {sides, edge: [[x,y],[x,y]]}. Changes the document. */
+  "polygon": { angle?: number; center?: Array<number>; inscribed?: boolean; radius?: number; sides?: number }
+  /** Ellipse. Draws an ellipse, or an elliptical arc with start and end angles, from a centre, a major axis vector and a minor-to-major ratio. Params: {center, major: [dx,dy], ratio, start?, end? (degrees)}. Changes the document. */
+  "ellipse": { center?: Array<number>; /** degrees */ end?: number; /** [dx, dy] */ major?: Array<number>; ratio?: number; start?: number }
+  /** Point. Draws a point object at a location, or one at each of the given points, in the current point style. Params: {at: [x,y]} | {points: [...]}. Changes the document. */
   "point": { at?: Array<number> }
-  /** Multiple Point. Params: {points: [...]}. Changes the document. */
+  /** Multiple Point. Draws a point object at each of the given points in the current point style. Params: {points: [...]}. Changes the document. */
   "point.multiple": { points?: Array<Json> }
-  /** Construction Line. Params: {base, through} | {base, angle (degrees)} | {base, hor|ver: true} | {vertex, start, end} (bisect) | {handle, distance, side} | {handle, through} (offset). Changes the document. */
-  "xline": { /** base (no type given) */ base?: Json; /** through (no type given) */ through?: Json }
-  /** Ray. Params: {base, through}. Changes the document. */
-  "ray": { /** base (no type given) */ base?: Json; /** through (no type given) */ through?: Json }
-  /** Spline. Params: {fit: [[x,y],...], closed?, knots?: chord|sqrt|uniform, startTangent?, endTangent? ([dx,dy]), tolerance?} | {control: [...], degree?} | {object: handle|true, handles?} (polyline to spline). Changes the document. */
-  "spline": { closed?: boolean; fit?: Array<Array<number>>; knots?: "chord" | "sqrt" | "uniform"; /** startTangent (no type given) */ startTangent?: Json; /** tolerance (no type given) */ tolerance?: Json }
-  /** Donut. Params: {center, inside, outside}. Changes the document. */
-  "donut": { /** center (no type given) */ center?: Json; /** inside (no type given) */ inside?: Json; /** outside (no type given) */ outside?: Json }
-  /** Single Line Text. Params: {at, text, height?, rotation? (degrees), justify?: L|C|R|M|TL|TC|TR|ML|MC|MR|BL|BC|BR}. Changes the document. */
-  "text": { /** at (no type given) */ at?: Json; height?: number; justify?: "L" | "C" | "R" | "M" | "TL" | "TC" | "TR" | "ML" | "MC" | "MR" | "BL" | "BC" | "BR"; text?: string }
-  /** Multiline Text. Params: {at, text, height?, width?, attach?: 1..9 | justify?: TL..BR, rotation?, style?, lineSpacing?, lineSpacingExact?}. Changes the document. */
-  "mtext": { /** at (no type given) */ at?: Json; /** 1..9 | justify?: TL..BR */ attach?: Json; height?: number; /** lineSpacing (no type given) */ lineSpacing?: Json; /** lineSpacingExact (no type given) */ lineSpacingExact?: Json; rotation?: number; style?: string; text?: string; width?: number }
-  /** Start, Center, End. Params: {start, center, end}. Changes the document. */
-  "arc.sce": { /** center (no type given) */ center?: Json; end?: number; start?: number }
-  /** Start, Center, Angle. Params: {start, center, angle (degrees, + = CCW)}. Changes the document. */
-  "arc.sca": { /** center (no type given) */ center?: Json; start?: number }
-  /** Start, Center, Length. Params: {start, center, length (chord; negative = major arc)}. Changes the document. */
-  "arc.scl": { /** center (no type given) */ center?: Json; start?: number }
-  /** Start, End, Angle. Params: {start, end, angle (degrees, + = CCW)}. Changes the document. */
-  "arc.sea": { end?: number; start?: number }
-  /** Start, End, Direction. Params: {start, end, direction (degrees | [dx,dy])}. Changes the document. */
-  "arc.sed": { end?: number; start?: number }
-  /** Start, End, Radius. Params: {start, end, radius (negative = major arc)}. Changes the document. */
-  "arc.ser": { end?: number; start?: number }
-  /** Center, Start, End. Params: {center, start, end}. Changes the document. */
-  "arc.cse": { /** center (no type given) */ center?: Json; end?: number; start?: number }
-  /** Center, Start, Angle. Params: {center, start, angle (degrees)}. Changes the document. */
-  "arc.csa": { /** center (no type given) */ center?: Json; start?: number }
-  /** Center, Start, Length. Params: {center, start, length (chord)}. Changes the document. */
-  "arc.csl": { /** center (no type given) */ center?: Json; start?: number }
-  /** Continue. Params: {end} (tangent from the last line/arc) | {start, direction, end}. Changes the document. */
+  /** Construction Line. Draws an infinite construction line through two points, at an angle, horizontal or vertical, bisecting an angle, or offset from a line. Params: {base, through} | {base, angle (degrees)} | {base, hor|ver: true} | {vertex, start, end} (bisect) | {handle, distance, side} | {handle, through} (offset). Changes the document. */
+  "xline": { base?: Array<number>; through?: Array<number> }
+  /** Ray. Draws a semi-infinite ray starting at a base point and passing through a second point. Params: {base, through}. Changes the document. */
+  "ray": { base?: Array<number>; through?: Array<number> }
+  /** Spline. Draws a spline through fit points with optional end tangents, from control vertices, or converts a polyline into a spline. Params: {fit: [[x,y],...], closed?, knots?: chord|sqrt|uniform, startTangent?, endTangent? ([dx,dy]), tolerance?} | {control: [...], degree?} | {object: handle|true, handles?} (polyline to spline). Changes the document. */
+  "spline": { closed?: boolean; endTangent?: Array<number>; fit?: Array<Array<number>>; knots?: "chord" | "sqrt" | "uniform"; startTangent?: Array<number>; tolerance?: number }
+  /** Donut. Draws a filled ring as a wide closed polyline, from a centre and inside and outside diameters. Params: {center, inside, outside}. Changes the document. */
+  "donut": { center?: Array<number>; inside?: number; outside?: number }
+  /** Single Line Text. Draws single-line text at a point with optional height, rotation and justification, in the current text style. Params: {at, text, height?, rotation? (degrees), justify?: L|C|R|M|TL|TC|TR|ML|MC|MR|BL|BC|BR}. Changes the document. */
+  "text": { at?: Array<number>; height?: number; justify?: "L" | "C" | "R" | "M" | "TL" | "TC" | "TR" | "ML" | "MC" | "MR" | "BL" | "BC" | "BR"; /** degrees */ rotation?: number; text?: string }
+  /** Multiline Text. Draws multiline text at a point with optional height, wrap width, attachment, rotation, style and line spacing. Params: {at, text, height?, width?, attach?: 1..9 | justify?: TL..BR, rotation?, style?, lineSpacing?, lineSpacingExact?}. Changes the document. */
+  "mtext": { at?: Array<number>; attach?: number; height?: number; lineSpacing?: number; lineSpacingExact?: boolean; rotation?: number; style?: string; text?: string; width?: number }
+  /** Start, Center, End. Draws a counter-clockwise arc from a start point about a centre to the angle of an end point. Params: {start, center, end}. Changes the document. */
+  "arc.sce": { center?: Array<number>; end?: number; start?: number }
+  /** Start, Center, Angle. Draws an arc from a start point about a centre through an included angle; positive angles go counter-clockwise. Params: {start, center, angle (degrees, + = CCW)}. Changes the document. */
+  "arc.sca": { /** degrees, + = CCW */ angle?: number; center?: Array<number>; start?: number }
+  /** Start, Center, Length. Draws an arc from a start point about a centre with the given chord length; a negative length draws the major arc. Params: {start, center, length (chord; negative = major arc)}. Changes the document. */
+  "arc.scl": { center?: Array<number>; length?: number; start?: number }
+  /** Start, End, Angle. Draws an arc between a start and an end point that sweeps the given included angle. Params: {start, end, angle (degrees, + = CCW)}. Changes the document. */
+  "arc.sea": { /** degrees, + = CCW */ angle?: number; end?: number; start?: number }
+  /** Start, End, Direction. Draws an arc between a start and an end point that leaves the start point in the given tangent direction. Params: {start, end, direction (degrees | [dx,dy])}. Changes the document. */
+  "arc.sed": { direction?: Json; end?: number; start?: number }
+  /** Start, End, Radius. Draws an arc between a start and an end point with the given radius; a negative radius draws the major arc. Params: {start, end, radius (negative = major arc)}. Changes the document. */
+  "arc.ser": { end?: number; /** negative = major arc */ radius?: number; start?: number }
+  /** Center, Start, End. Draws a counter-clockwise arc about a centre from a start point to the angle of an end point. Params: {center, start, end}. Changes the document. */
+  "arc.cse": { center?: Array<number>; end?: number; start?: number }
+  /** Center, Start, Angle. Draws an arc about a centre from a start point through an included angle in degrees. Params: {center, start, angle (degrees)}. Changes the document. */
+  "arc.csa": { /** degrees */ angle?: number; center?: Array<number>; start?: number }
+  /** Center, Start, Length. Draws an arc about a centre from a start point with the given chord length. Params: {center, start, length (chord)}. Changes the document. */
+  "arc.csl": { center?: Array<number>; length?: number; start?: number }
+  /** Continue. Draws an arc tangent to the end of the last line or arc drawn, to an end point, or from a start point and direction. Params: {end} (tangent from the last line/arc) | {start, direction, end}. Changes the document. */
   "arc.continue": { end?: number }
-  /** Center, Diameter. Params: {center, diameter}. Changes the document. */
-  "circle.cd": { /** center (no type given) */ center?: Json; /** diameter (no type given) */ diameter?: Json }
-  /** 2 Points. Params: {p1, p2}. Changes the document. */
-  "circle.2p": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** 3 Points. Params: {p1, p2, p3}. Changes the document. */
-  "circle.3p": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Tan, Tan, Radius. Params: {h1, p1, h2, p2, radius} (lines, circles, arcs, polyline segments; nearest solution to the picks). Changes the document. */
-  "circle.ttr": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; radius?: number }
-  /** Tan, Tan, Tan. Params: {h1, p1, h2, p2, h3, p3}. Changes the document. */
-  "circle.ttt": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Axis, End. Params: {p1, p2, distance} | {p1, p2, p3} (axis endpoints, then half the other axis). Changes the document. */
-  "ellipse.axis": { /** distance (no type given) */ distance?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Elliptical Arc. Params: {center, major: [dx,dy], ratio, start, end (degrees)} | {p1, p2, distance, start, end}. Changes the document. */
-  "ellipse.arc": { /** center (no type given) */ center?: Json; /** [dx, dy] */ major?: Array<number>; /** ratio (no type given) */ ratio?: Json; start?: number }
-  /** Divide. Params: {handle, segments, block?, align?: bool}. Changes the document. */
-  "divide": { align?: boolean; /** block (no type given) */ block?: Json; /** handle (no type given) */ handle?: Json; /** segments (no type given) */ segments?: Json }
-  /** Measure. Params: {handle, length, block?, align?: bool, from?: [x,y] (end to start at)}. Changes the document. */
-  "measure": { align?: boolean; /** block (no type given) */ block?: Json; /** end to start at */ from?: Array<number>; /** handle (no type given) */ handle?: Json; /** length (no type given) */ length?: Json }
-  /** Rectangular. Params: {p1, p2} | {points: [...]} | {freehand: [...]} | {handle}, arcLength?, style?: normal|calligraphy, reverse?. Changes the document. */
-  "revcloud": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Polygonal. Params: {points: [[x,y],...], arcLength?}. Changes the document. */
-  "revcloud.polygonal": { /** arcLength (no type given) */ arcLength?: Json; points?: Array<Array<number>> }
-  /** Freehand. Params: {freehand: [[x,y],...], arcLength?}. Changes the document. */
-  "revcloud.freehand": { /** arcLength (no type given) */ arcLength?: Json; freehand?: Array<Array<number>> }
-  /** Wipeout. Params: {points: [[x,y],...]} | {handle (closed polyline), erase?: bool} | {frames: on|off|display}. Changes the document. */
+  /** Center, Diameter. Draws a circle from its centre point and diameter. Params: {center, diameter}. Changes the document. */
+  "circle.cd": { center?: Array<number>; diameter?: number }
+  /** 2 Points. Draws a circle whose diameter runs between two points. Params: {p1, p2}. Changes the document. */
+  "circle.2p": { p1?: Array<number>; p2?: Array<number> }
+  /** 3 Points. Draws the circle that passes through three points. Params: {p1, p2, p3}. Changes the document. */
+  "circle.3p": { p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
+  /** Tan, Tan, Radius. Draws a circle of a given radius tangent to two lines, circles, arcs or polyline segments, the solution nearest the pick points. Params: {h1, p1, h2, p2, radius} (lines, circles, arcs, polyline segments; nearest solution to the picks). Changes the document. */
+  "circle.ttr": { h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number>; radius?: number }
+  /** Tan, Tan, Tan. Draws a circle tangent to three lines, circles, arcs or polyline segments, the solution nearest the three pick points. Params: {h1, p1, h2, p2, h3, p3}. Changes the document. */
+  "circle.ttt": { h1?: string; h2?: string; h3?: string; p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
+  /** Axis, End. Draws an ellipse from the two end points of one axis and half the length of the other, as a distance or a third point. Params: {p1, p2, distance} | {p1, p2, p3} (axis endpoints, then half the other axis). Changes the document. */
+  "ellipse.axis": { distance?: number; p1?: Array<number>; p2?: Array<number> }
+  /** Elliptical Arc. Draws an elliptical arc between start and end angles, from a centre, major axis and ratio or from axis end points and a distance. Params: {center, major: [dx,dy], ratio, start, end (degrees)} | {p1, p2, distance, start, end}. Changes the document. */
+  "ellipse.arc": { center?: Array<number>; /** degrees */ end?: number; /** [dx, dy] */ major?: Array<number>; ratio?: number; start?: number }
+  /** Divide. Places points or block references at equal intervals that split an object into the given number of segments, optionally aligned to it. Params: {handle, segments, block?, align?: bool}. Changes the document. */
+  "divide": { align?: boolean; block?: string; handle?: string; segments?: number }
+  /** Measure. Places points or block references along an object at every given length, from one end, optionally aligned to it. Params: {handle, length, block?, align?: bool, from?: [x,y] (end to start at)}. Changes the document. */
+  "measure": { align?: boolean; block?: string; /** end to start at */ from?: Array<number>; handle?: string; length?: number }
+  /** Rectangular. Draws a revision cloud of arcs from a rectangle, a polygon, a freehand path or an existing object, with optional arc length and style. Params: {p1, p2} | {points: [...]} | {freehand: [...]} | {handle}, arcLength?, style?: normal|calligraphy, reverse?. Changes the document. */
+  "revcloud": { p1?: Array<number>; p2?: Array<number> }
+  /** Polygonal. Draws a revision cloud of arcs along the closed polygon through the given points. Params: {points: [[x,y],...], arcLength?}. Changes the document. */
+  "revcloud.polygonal": { arcLength?: number; points?: Array<Array<number>> }
+  /** Freehand. Draws a revision cloud of arcs along a freehand path through the given points. Params: {freehand: [[x,y],...], arcLength?}. Changes the document. */
+  "revcloud.freehand": { arcLength?: number; freehand?: Array<Array<number>> }
+  /** Wipeout. Draws a wipeout that masks the objects behind it, from points or a closed polyline, or sets whether wipeout frames show. Params: {points: [[x,y],...]} | {handle (closed polyline), erase?: bool} | {frames: on|off|display}. Changes the document. */
   "wipeout": { points?: Array<Array<number>> }
-  /** 3D Polyline. Params: {points: [[x,y,z?],...], closed?}. Changes the document. */
+  /** 3D Polyline. Draws a 3D polyline of straight segments through points with optional z values, optionally closed. Params: {points: [[x,y,z?],...], closed?}. Changes the document. */
   "3dpoly": { closed?: boolean; /** [[x,y,z?],...] */ points?: Array<Json> }
-  /** Multiline. Params: {points, scale?, justification?: top|zero|bottom, closed?} (two offset polylines). Changes the document. */
-  "mline": { closed?: boolean; justification?: "top" | "zero" | "bottom"; /** points (no type given) */ points?: Json; scale?: number }
-  /** Helix. Params: {center, baseRadius, topRadius?, height?, turns?, ccw?} (3D polyline approximation). Changes the document. */
-  "helix": { /** baseRadius (no type given) */ baseRadius?: Json; /** ccw (no type given) */ ccw?: Json; /** center (no type given) */ center?: Json; height?: number; /** topRadius (no type given) */ topRadius?: Json; /** turns (no type given) */ turns?: Json }
-  /** Control Vertices. Params: {control: [[x,y],...], degree?: 1..10 (default 3), closed?}. Changes the document. */
+  /** Multiline. Draws a multiline as two parallel offset polylines through the points, with scale, justification and an optional close. Params: {points, scale?, justification?: top|zero|bottom, closed?} (two offset polylines). Changes the document. */
+  "mline": { closed?: boolean; justification?: "top" | "zero" | "bottom"; points?: Array<Array<Json>>; scale?: number }
+  /** Helix. Draws a helix as a 3D polyline from a centre, base and top radii, height, number of turns and twist direction. Params: {center, baseRadius, topRadius?, height?, turns?, ccw?} (3D polyline approximation). Changes the document. */
+  "helix": { baseRadius?: number; ccw?: boolean; center?: Array<number>; height?: number; topRadius?: number; turns?: number }
+  /** Control Vertices. Draws a spline from control vertices with the given degree (default 3), optionally closed. Params: {control: [[x,y],...], degree?: 1..10 (default 3), closed?}. Changes the document. */
   "spline.cv": { closed?: boolean; control?: Array<Array<number>>; /** 1 to 10; default 3 */ degree?: number }
-  /** Center Mark. Params: {handle | handles} (circles/arcs; lines on the CENTER linetype). Changes the document. */
+  /** Center Mark. Draws centre marks with centre lines on the CENTER linetype for the given circles and arcs. Params: {handle | handles} (circles/arcs; lines on the CENTER linetype). Changes the document. */
   "centermark": Record<string, never>
-  /** Center Line. Params: {h1, h2} (two lines). Changes the document. */
-  "centerline": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json }
-  /** Linear. Params: {p1, p2, at, rotation? (degrees; default: horizontal/vertical from `at`), text?} | {object: hex, at} (associative). Changes the document. */
-  "dimlinear": { /** at (no type given) */ at?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; text?: string }
-  /** Aligned. Params: {p1, p2, at, text?}. Changes the document. */
-  "dimaligned": { /** at (no type given) */ at?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; text?: string }
-  /** Radius. Params: {handle, at?} | {center, point}. Changes the document. */
-  "dimradius": { /** at (no type given) */ at?: Json; /** handle (no type given) */ handle?: Json }
-  /** Diameter. Params: {handle, at?} | {center, point}. Changes the document. */
-  "dimdiameter": { /** at (no type given) */ at?: Json; /** handle (no type given) */ handle?: Json }
-  /** Angular. Params: {vertex, p1, p2, at} | {lines: [hex, hex], at} | {arc: hex, at} (associative). Changes the document. */
-  "dimangular": { /** at (no type given) */ at?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** vertex (no type given) */ vertex?: Json }
-  /** Arc Length. Params: {handle, at}. Changes the document. */
-  "dimarc": { /** at (no type given) */ at?: Json; /** handle (no type given) */ handle?: Json }
-  /** Ordinate. Params: {feature, leader, xtype?: bool}. Changes the document. */
-  "dimordinate": { /** feature (no type given) */ feature?: Json; /** leader (no type given) */ leader?: Json; xtype?: boolean }
-  /** Continue. Params: {points: [[x,y]...]} (continues the last linear dimension). Changes the document. */
+  /** Center Line. Draws a centre line midway between two lines, on the CENTER linetype. Params: {h1, h2} (two lines). Changes the document. */
+  "centerline": { h1?: string; h2?: string }
+  /** Linear. Draws a horizontal, vertical or rotated linear dimension between two points, or an associative one for an object, with the line at a point. Params: {p1, p2, at, rotation? (degrees; default: horizontal/vertical from `at`), text?} | {object: hex, at} (associative). Changes the document. */
+  "dimlinear": { at?: Array<number>; p1?: Array<number>; p2?: Array<number>; /** degrees; default: horizontal/vertical from `at` */ rotation?: number; text?: string }
+  /** Aligned. Draws a dimension parallel to the line between two points, its dimension line through a point, with optional override text. Params: {p1, p2, at, text?}. Changes the document. */
+  "dimaligned": { at?: Array<number>; p1?: Array<number>; p2?: Array<number>; text?: string }
+  /** Radius. Draws a radius dimension for an arc or circle, or from a centre and a point on the curve. Params: {handle, at?} | {center, point}. Changes the document. */
+  "dimradius": { at?: Array<number>; handle?: string }
+  /** Diameter. Draws a diameter dimension for an arc or circle, or from a centre and a point on the curve. Params: {handle, at?} | {center, point}. Changes the document. */
+  "dimdiameter": { at?: Array<number>; handle?: string }
+  /** Angular. Draws an angular dimension from a vertex and two points, between two lines, or for an arc, with its arc through a point. Params: {vertex, p1, p2, at} | {lines: [hex, hex], at} | {arc: hex, at} (associative). Changes the document. */
+  "dimangular": { at?: Array<number>; p1?: Array<number>; p2?: Array<number>; vertex?: Array<number> }
+  /** Arc Length. Draws an arc length dimension for an arc or polyline arc segment, its line through a point. Params: {handle, at}. Changes the document. */
+  "dimarc": { at?: Array<number>; handle?: string }
+  /** Ordinate. Draws an ordinate dimension giving a feature point's x or y datum value, with its leader to a point. Params: {feature, leader, xtype?: bool}. Changes the document. */
+  "dimordinate": { feature?: Array<number>; leader?: Array<number>; xtype?: boolean }
+  /** Continue. Draws linear dimensions that continue end to end from the last linear dimension to each of the given points. Params: {points: [[x,y]...]} (continues the last linear dimension). Changes the document. */
   "dimcontinue": { points?: Array<Json> }
-  /** Baseline. Params: {points: [[x,y]...]} (baseline from the last linear dimension). Changes the document. */
+  /** Baseline. Draws linear dimensions from the first extension line of the last linear dimension to each of the given points, spaced apart. Params: {points: [[x,y]...]} (baseline from the last linear dimension). Changes the document. */
   "dimbaseline": { points?: Array<Json> }
-  /** Quick Dimension. Params: {handles?, at: [x,y], vertical?: bool}. Changes the document. */
-  "qdim": { at?: Array<number>; /** handles (no type given) */ handles?: Json; vertical?: boolean }
-  /** Dimension. Params: {p1, p2, at}. Changes the document. */
-  "dim": { /** at (no type given) */ at?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Multileader. Params: {points: [[arrow], ..., [landing]] ([location] with leaderType none), text?, leaderType?: straight|spline|none, block?: name, blockAttach?: center|insertion}. Changes the document. */
+  /** Quick Dimension. Draws a continuous series of linear dimensions across the end points of the given objects, horizontal or vertical, at a point. Params: {handles?, at: [x,y], vertical?: bool}. Changes the document. */
+  "qdim": { at?: Array<number>; handles?: Array<string>; vertical?: boolean }
+  /** Dimension. Draws a dimension between two points with its line at a point, choosing the dimension kind from the geometry. Params: {p1, p2, at}. Changes the document. */
+  "dim": { at?: Array<number>; p1?: Array<number>; p2?: Array<number> }
+  /** Multileader. Draws a multileader from an arrow point through vertices to a landing, with mtext or a block, straight, spline or no leader. Params: {points: [[arrow], ..., [landing]] ([location] with leaderType none), text?, leaderType?: straight|spline|none, block?: name, blockAttach?: center|insertion}. Changes the document. */
   "mleader": { block?: string; blockAttach?: "center" | "insertion"; leaderType?: "straight" | "spline" | "none"; /** [[arrow], ..., [landing]] ([location] with leaderType none); [location] with leaderType none */ points?: Array<Json>; text?: string }
-  /** Leader. Params: {points: [[x,y]...], text?}. Changes the document. */
+  /** Leader. Draws a leader line through the given points, with optional annotation text at its end. Params: {points: [[x,y]...], text?}. Changes the document. */
   "leader": { points?: Array<Json>; text?: string }
-  /** Update. Params: {handles?}. Changes the document. */
-  "dimstyle.update": { /** handles (no type given) */ handles?: Json }
-  /** Override. Params: {handles?, <DimStyle fields or DIM* variables: values>, clear?: bool, text?: override text}. Changes the document. */
-  "dimoverride": { clear?: boolean; /** handles (no type given) */ handles?: Json; /** override text */ text?: Json }
-  /** Reassociate Dimensions. Params: {handles?} (dimensions; attaches their definition points to the objects under them). Changes the document. */
-  "dimreassociate": { /** handles (no type given) */ handles?: Json }
-  /** Disassociate Dimensions. Params: {handles?}. Changes the document. */
-  "dimdisassociate": { /** handles (no type given) */ handles?: Json }
-  /** Home. Params: {handles?}. Changes the document. */
-  "dimtedit.home": { /** handles (no type given) */ handles?: Json }
-  /** Angle. Params: {handles?, angle: degrees}. Changes the document. */
-  "dimtedit.angle": { /** degrees */ angle?: number; /** handles (no type given) */ handles?: Json }
-  /** Left. Params: {handles?}. Changes the document. */
-  "dimtedit.left": { /** handles (no type given) */ handles?: Json }
-  /** Center. Params: {handles?}. Changes the document. */
-  "dimtedit.center": { /** handles (no type given) */ handles?: Json }
-  /** Right. Params: {handles?}. Changes the document. */
-  "dimtedit.right": { /** handles (no type given) */ handles?: Json }
-  /** Dimension Text Edit. Params: {handles?, at?: [x,y], mode?: home|angle|left|center|right, angle?}. Changes the document. */
-  "dimtedit": { angle?: number; at?: Array<number>; /** handles (no type given) */ handles?: Json; /** home|angle|left|center|right */ mode?: Json }
-  /** Dimension Space. Params: {base: hex, handles: [hex], spacing?: number (default DIMDLI)}. Changes the document. */
+  /** Update. Applies the current dimension style to the given dimensions, or the selected ones, removing their overrides. Params: {handles?}. Changes the document. */
+  "dimstyle.update": { handles?: Array<string> }
+  /** Override. Overrides dimension style fields or DIM variables on the given dimensions, or clears their overrides, and can set override text. Params: {handles?, <DimStyle fields or DIM* variables: values>, clear?: bool, text?: override text}. Changes the document. */
+  "dimoverride": { clear?: boolean; handles?: Array<string>; text?: string }
+  /** Reassociate Dimensions. Reassociates the given dimensions so their definition points attach to the objects under them. Params: {handles?} (dimensions; attaches their definition points to the objects under them). Changes the document. */
+  "dimreassociate": { handles?: Array<string> }
+  /** Disassociate Dimensions. Removes the associativity of the given dimensions so they no longer follow their objects. Params: {handles?}. Changes the document. */
+  "dimdisassociate": { handles?: Array<string> }
+  /** Home. Moves the text of the given dimensions back to its default position and angle. Params: {handles?}. Changes the document. */
+  "dimtedit.home": { handles?: Array<string> }
+  /** Angle. Rotates the text of the given dimensions to an angle in degrees. Params: {handles?, angle: degrees}. Changes the document. */
+  "dimtedit.angle": { /** degrees */ angle?: number; handles?: Array<string> }
+  /** Left. Moves the text of the given linear dimensions towards the left extension line. Params: {handles?}. Changes the document. */
+  "dimtedit.left": { handles?: Array<string> }
+  /** Center. Centres the text of the given dimensions on the dimension line. Params: {handles?}. Changes the document. */
+  "dimtedit.center": { handles?: Array<string> }
+  /** Right. Moves the text of the given linear dimensions towards the right extension line. Params: {handles?}. Changes the document. */
+  "dimtedit.right": { handles?: Array<string> }
+  /** Dimension Text Edit. Moves the text of the given dimensions to a point, or sets it home, to an angle, left, centre or right. Params: {handles?, at?: [x,y], mode?: home|angle|left|center|right, angle?}. Changes the document. */
+  "dimtedit": { angle?: number; at?: Array<number>; handles?: Array<string>; mode?: string }
+  /** Dimension Space. Spaces parallel linear or angular dimensions evenly from a base dimension, by the given spacing or DIMDLI. Params: {base: hex, handles: [hex], spacing?: number (default DIMDLI)}. Changes the document. */
   "dimspace": { /** a colour such as #rrggbb */ base?: string; handles?: Array<string>; /** default DIMDLI */ spacing?: number }
-  /** Hatch.... Params: {points?: [[x,y]] (internal points) | handles?: [hex] (closed objects), pattern?: "ANSI31", scale?, angle? (degrees), associative?}. Changes the document. */
-  "hatch": { /** associative (no type given) */ associative?: Json; /** like ANSI31 */ pattern?: string; /** [[x,y]] (internal points) | handles?: [hex] (closed objects); internal points; closed objects */ points?: Json; scale?: number }
-  /** Gradient.... Params: {points? | handles?, color1?, color2?, angle?}. Changes the document. */
-  "gradient": { angle?: number; /** color1 (no type given) */ color1?: Json; /** color2 (no type given) */ color2?: Json }
-  /** Boundary.... Params: {points: [[x,y]]}. Changes the document. */
+  /** Hatch... Fills areas around internal points, or inside closed objects, with a hatch pattern at a scale and angle, optionally associative. Params: {points?: [[x,y]] (internal points) | handles?: [hex] (closed objects), pattern?: "ANSI31", scale?, angle? (degrees), associative?}. Changes the document. */
+  "hatch": { /** degrees */ angle?: number; associative?: boolean; /** like ANSI31 */ pattern?: string; points?: Array<Array<Json>>; scale?: number }
+  /** Gradient... Fills areas around internal points, or inside closed objects, with a two-colour gradient at an angle. Params: {points? | handles?, color1?, color2?, angle?}. Changes the document. */
+  "gradient": { angle?: number; color1?: Json; color2?: Json }
+  /** Boundary... Creates a closed polyline along the boundary of the area around each internal point. Params: {points: [[x,y]]}. Changes the document. */
   "boundary": { points?: Array<Array<number>> }
-  /** Region. Params: {handles?}. Changes the document. */
-  "region": { /** handles (no type given) */ handles?: Json }
-  /** Hatch Edit. Params: {handles?, pattern?, scale?, angle?}. Changes the document. */
-  "hatchedit": { angle?: number; /** handles (no type given) */ handles?: Json; /** pattern (no type given) */ pattern?: Json; scale?: number }
-  /** Make.... Params: {name, base: [x,y], handles?, keep?: "convert"|"retain"|"delete" (default "convert"), description?}. Changes the document. */
-  "block": { base?: Array<number>; /** description (no type given) */ description?: Json; /** handles (no type given) */ handles?: Json; /** default "convert" */ keep?: "convert" | "retain" | "delete"; name?: string }
-  /** Create Block. Params: {name, base: [x,y], handles?, keep?: "delete"|"retain"|"convert" (default "delete"), description?}. Changes the document. */
-  "-block": { base?: Array<number>; /** description (no type given) */ description?: Json; /** handles (no type given) */ handles?: Json; /** default "delete" */ keep?: "delete" | "retain" | "convert"; name?: string }
-  /** Block.... Params: {name ("*NAME": exploded), file?: DXF/DWG path (defines or redefines block `name`, default the file name, from its model space; base point $INSBASE), at: [x,y], scale?: number | [x, y], rotation? (degrees), basePoint?: [x,y] (block coordinates), attribs?: {TAG: value}, explode?: bool}. Changes the document. */
-  "insert": { at?: Array<number>; attribs?: { TAG?: Json }; /** block coordinates */ basePoint?: Array<number>; explode?: boolean; /** DXF/DWG path (defines or redefines block `name`, default the file name, from its model space; base point $INSBASE); defines or redefines block `name`, default the file name, from its model space; base point $INSBASE */ file?: Json; /** number | [x, y] */ scale?: Json }
-  /** Define Attributes.... Params: {tag, prompt?, default?, at, height?, invisible?}. Changes the document. */
-  "attdef": { /** at (no type given) */ at?: Json; /** default (no type given) */ default?: Json; height?: number; /** invisible (no type given) */ invisible?: Json; /** prompt (no type given) */ prompt?: Json; /** tag (no type given) */ tag?: Json }
-  /** Single.... Params: {handle, values: {TAG: value} (tags in any case)} ? {changed, unknownTags?}. Changes the document. */
-  "attedit": { /** handle (no type given) */ handle?: Json; /** tags in any case */ values?: { TAG?: Json } }
-  /** Global. Params: {find, replace?, block?, tag?, value? (wildcard specifications, default *), handles? (default: every block reference in the current space)} ? {changed}. Changes the document. */
-  "-attedit": { /** block (no type given) */ block?: Json; /** find (no type given) */ find?: Json; /** replace (no type given) */ replace?: Json; /** tag (no type given) */ tag?: Json }
-  /** Write Block. Params: {path, name? | handles?, base?}. Changes the document. */
-  "wblock": { /** base (no type given) */ base?: Json; path?: string }
-  /** Base. Params: {at: [x,y]}. Changes the document. */
+  /** Region. Converts the given closed objects, or the selection, into regions. Params: {handles?}. Changes the document. */
+  "region": { handles?: Array<string> }
+  /** Hatch Edit. Changes the pattern, scale or angle of the given hatches, or the selected ones. Params: {handles?, pattern?, scale?, angle?}. Changes the document. */
+  "hatchedit": { angle?: number; handles?: Array<string>; pattern?: string; scale?: number }
+  /** Make... Defines a block from objects and a base point, then converts the objects to a reference of it, keeps or deletes them. Params: {name, base: [x,y], handles?, keep?: "convert"|"retain"|"delete" (default "convert"), description?}. Changes the document. */
+  "block": { base?: Array<number>; description?: string; handles?: Array<string>; /** default "convert" */ keep?: "convert" | "retain" | "delete"; name?: string }
+  /** Create Block. Defines a block from objects and a base point, then deletes the objects by default (or keeps or converts them), as -BLOCK does. Params: {name, base: [x,y], handles?, keep?: "delete"|"retain"|"convert" (default "delete"), description?}. Changes the document. */
+  "-block": { base?: Array<number>; description?: string; handles?: Array<string>; /** default "delete" */ keep?: "delete" | "retain" | "convert"; name?: string }
+  /** Block... Inserts a block reference at a point with scale and rotation, defining the block from a DXF or DWG file first when one is given. Params: {name ("*NAME": exploded), file?: DXF/DWG path (defines or redefines block `name`, default the file name, from its model space; base point $INSBASE), at: [x,y], scale?: number | [x, y], rotation? (degrees), basePoint?: [x,y] (block coordinates), attribs?: {TAG: value}, explode?: bool}. Changes the document. */
+  "insert": { at?: Array<number>; attribs?: { TAG?: Json }; /** block coordinates */ basePoint?: Array<number>; explode?: boolean; /** DXF/DWG path (defines or redefines block `name`, default the file name, from its model space; base point $INSBASE); defines or redefines block `name`, default the file name, from its model space; base point $INSBASE */ file?: Json; /** "*NAME": exploded */ name?: string; /** degrees */ rotation?: number; scale?: Json }
+  /** Define Attributes... Defines a block attribute with a tag, prompt and default value at a point, with optional height and invisibility. Params: {tag, prompt?, default?, at, height?, invisible?}. Changes the document. */
+  "attdef": { at?: Array<number>; default?: string; height?: number; invisible?: boolean; prompt?: string; tag?: string }
+  /** Single... Sets attribute values on one block reference by tag, and answers which changed and which tags were unknown. Params: {handle, values: {TAG: value} (tags in any case)} ? {changed, unknownTags?}. Changes the document. */
+  "attedit": { handle?: string; /** tags in any case */ values?: { TAG?: Json } }
+  /** Global. Finds and replaces text in attribute values across block references filtered by block, tag and value, and answers how many changed. Params: {find, replace?, block?, tag?, value? (wildcard specifications, default *), handles? (default: every block reference in the current space)} ? {changed}. Changes the document. */
+  "-attedit": { block?: string; find?: string; handles?: Array<string>; replace?: string; tag?: string; value?: Json }
+  /** Write Block. Writes a block, or the given objects with a base point, to a new drawing file at a path. Params: {path, name? | handles?, base?}. Changes the document. */
+  "wblock": { base?: Array<number>; path?: Json }
+  /** Base. Sets the drawing's insertion base point ($INSBASE) used when it is inserted as a block. Params: {at: [x,y]}. Changes the document. */
   "base": { at?: Array<number> }
-  /** Purge. Params: {type?: all|blocks|dimstyles|groups|layers|linetypes|mleaderstyles|tablestyles|textstyles|zerolength|emptytext (default all: every named type), names?: "A*,B" (default *)} ? purged. Changes the document. */
+  /** Purge. Removes unused named items of one or every type (blocks, layers, styles and more) and zero-length or empty objects, matching names. Params: {type?: all|blocks|dimstyles|groups|layers|linetypes|mleaderstyles|tablestyles|textstyles|zerolength|emptytext (default all: every named type), names?: "A*,B" (default *)} ? purged. Changes the document. */
   "purge": { /** like A*,B; default * */ names?: string; /** default all: every named type */ type?: "all" | "blocks" | "dimstyles" | "groups" | "layers" | "linetypes" | "mleaderstyles" | "tablestyles" | "textstyles" | "zerolength" | "emptytext" }
-  /** List Blocks */
+  /** List Blocks. Answers every named block definition in the drawing with its name, base point, number of objects and description. */
   "blocks.list": Record<string, never>
-  /** Block Attribute Manager.... Params: {name} */
+  /** Block Attribute Manager... Answers the attribute definitions of the named block (tag, prompt, default and invisibility), as the Block Attribute Manager lists them. Params: {name}. */
   "battman": { name?: string }
-  /** Attribute Display. Params: {mode: "normal" | "on" | "off"} (sets ATTMODE to 1 / 2 / 0) ? {attmode}. Changes the document. */
+  /** Attribute Display. Sets how attributes display (normal, all on or all off) through ATTMODE, and answers the new value. Params: {mode: "normal" | "on" | "off"} (sets ATTMODE to 1 / 2 / 0) ? {attmode}. Changes the document. */
   "attdisp": { mode?: "normal" | "on" | "off" }
-  /** Synchronize Attributes. Params: {name} or {handle} (a reference of the block) ? {block, references}. Changes the document. */
+  /** Synchronize Attributes. Updates every reference of a block so its attributes match the block's current attribute definitions. Params: {name} or {handle} (a reference of the block) ? {block, references}. Changes the document. */
   "attsync": { name?: string }
-  /** Erase. Params: {handles?: [hex]} (default: selection). Changes the document. */
+  /** Erase. Erases the given objects, or the selection, from the drawing. Params: {handles?: [hex]} (default: selection). Changes the document. */
   "erase": { handles?: Array<string> }
-  /** Move. Params: {handles?, from?: [x,y], to?: [x,y] | delta: [dx,dy]}. Changes the document. */
-  "move": { from?: Array<number>; /** handles (no type given) */ handles?: Json; /** [x,y] | delta: [dx,dy] */ to?: Json }
-  /** Copy. Params: {handles?, delta: [dx,dy] | from,to, count?: n}. Changes the document. */
-  "copy": { count?: number; /** [dx,dy] | from */ delta?: Json; /** handles (no type given) */ handles?: Json; /** to (no type given) */ to?: Json }
-  /** Rotate. Params: {handles?, base: [x,y], angle (degrees), copy?: bool}. Changes the document. */
-  "rotate": { base?: Array<number>; copy?: boolean; /** handles (no type given) */ handles?: Json }
-  /** Scale. Params: {handles?, base: [x,y], factor, copy?: bool}. Changes the document. */
-  "scale": { base?: Array<number>; copy?: boolean; /** factor (no type given) */ factor?: Json; /** handles (no type given) */ handles?: Json }
-  /** Mirror. Params: {handles?, p1, p2, erase?: bool}. Changes the document. */
-  "mirror": { erase?: boolean; /** handles (no type given) */ handles?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Stretch. Params: {window: [[x,y],[x,y]], delta: [dx,dy]}. Changes the document. */
+  /** Move. Moves the given objects, or the selection, by a delta or from a base point to a target point. Params: {handles?, from?: [x,y], to?: [x,y] | delta: [dx,dy]}. Changes the document. */
+  "move": { from?: Array<number>; handles?: Array<string>; to?: Array<number> }
+  /** Copy. Copies the given objects, or the selection, by a delta or from a point to a point, once or count times. Params: {handles?, delta: [dx,dy] | from,to, count?: n}. Changes the document. */
+  "copy": { count?: number; delta?: Array<number>; handles?: Array<string>; to?: Array<number> }
+  /** Rotate. Rotates the given objects, or the selection, about a base point by an angle in degrees, optionally keeping the originals. Params: {handles?, base: [x,y], angle (degrees), copy?: bool}. Changes the document. */
+  "rotate": { /** degrees */ angle?: number; base?: Array<number>; copy?: boolean; handles?: Array<string> }
+  /** Scale. Scales the given objects, or the selection, about a base point by a factor, optionally keeping the originals. Params: {handles?, base: [x,y], factor, copy?: bool}. Changes the document. */
+  "scale": { base?: Array<number>; copy?: boolean; factor?: number; handles?: Array<string> }
+  /** Mirror. Mirrors the given objects, or the selection, about the line through two points, optionally erasing the originals. Params: {handles?, p1, p2, erase?: bool}. Changes the document. */
+  "mirror": { erase?: boolean; handles?: Array<string>; p1?: Array<number>; p2?: Array<number> }
+  /** Stretch. Moves the vertices inside a crossing window by a delta, stretching the objects that cross it and moving those wholly inside. Params: {window: [[x,y],[x,y]], delta: [dx,dy]}. Changes the document. */
   "stretch": { /** [dx, dy] */ delta?: Array<number>; window?: Array<Array<number>> }
-  /** Offset. Params: {handle, distance, side: [x,y], erase?: bool, layer?: "source"|"current"}. Changes the document. */
-  "offset": { /** distance (no type given) */ distance?: Json; erase?: boolean; /** handle (no type given) */ handle?: Json; layer?: "source" | "current"; side?: Array<number> }
-  /** Trim. Params: {handle, pick: [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]], edges?: [hex], edgeMode?: "extend"|"none", mode?: "quick"|"standard"}. Changes the document. */
-  "trim": { edgeMode?: "extend" | "none"; edges?: Array<string>; /** handle (no type given) */ handle?: Json; mode?: "quick" | "standard"; /** [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]] */ pick?: Json }
-  /** Extend. Params: {handle, pick: [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]], edges?: [hex], edgeMode?: "extend"|"none"}. Changes the document. */
-  "extend": { edgeMode?: "extend" | "none"; edges?: Array<string>; /** handle (no type given) */ handle?: Json; /** [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]] */ pick?: Json }
-  /** Fillet. Params: {h1, p1, h2, p2, radius?, trim?: bool} (lines, arcs, circles) | {handle, polyline: true, radius?}. Changes the document. */
-  "fillet": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; radius?: number; trim?: boolean }
-  /** Chamfer. Params: {h1, p1, h2, p2, d1?, d2? | length, angle (degrees), trim?: bool} | {handle, polyline: true, d1?, d2? | length, angle}. Changes the document. */
-  "chamfer": { /** d1 (no type given) */ d1?: Json; /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; trim?: boolean }
-  /** Explode. Params: {handles?}. Changes the document. */
-  "explode": { /** handles (no type given) */ handles?: Json }
-  /** Bring to Front. Params: {handles?}. Changes the document. */
-  "draworder.front": { /** handles (no type given) */ handles?: Json }
-  /** Send to Back. Params: {handles?}. Changes the document. */
-  "draworder.back": { /** handles (no type given) */ handles?: Json }
-  /** Break. Params: {handle, p1, p2}. Changes the document. */
-  "break": { /** handle (no type given) */ handle?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Break At Point. Params: {handle, at}. Changes the document. */
-  "breakatpoint": { /** at (no type given) */ at?: Json; /** handle (no type given) */ handle?: Json }
-  /** Join. Params: {handles?}. Changes the document. */
-  "join": { /** handles (no type given) */ handles?: Json }
-  /** Delete Duplicate Objects. Params: {handles?}. Changes the document. */
-  "overkill": { /** handles (no type given) */ handles?: Json }
-  /** Array. Params: {type?: "rectangular" (default) | "polar" | "path", ...the parameters of arrayrect, arraypolar or arraypath}. Changes the document. */
+  /** Offset. Creates a copy of an object offset by a distance towards a side point, on the source or current layer, optionally erasing it. Params: {handle, distance, side: [x,y], erase?: bool, layer?: "source"|"current"}. Changes the document. */
+  "offset": { distance?: number; erase?: boolean; handle?: string; layer?: "source" | "current"; side?: Array<number> }
+  /** Trim. Trims an object at its cutting edges where it is picked, fenced or crossed, in quick or standard mode. Params: {handle, pick: [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]], edges?: [hex], edgeMode?: "extend"|"none", mode?: "quick"|"standard"}. Changes the document. */
+  "trim": { edgeMode?: "extend" | "none"; edges?: Array<string>; handle?: string; mode?: "quick" | "standard"; pick?: Array<number> }
+  /** Extend. Extends an object to its boundary edges at the end that is picked, fenced or crossed. Params: {handle, pick: [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]], edges?: [hex], edgeMode?: "extend"|"none"}. Changes the document. */
+  "extend": { edgeMode?: "extend" | "none"; edges?: Array<string>; handle?: string; pick?: Array<number> }
+  /** Fillet. Joins two lines, arcs or circles with a tangent arc of a radius, optionally trimming them, or fillets every polyline corner. Params: {h1, p1, h2, p2, radius?, trim?: bool} (lines, arcs, circles) | {handle, polyline: true, radius?}. Changes the document. */
+  "fillet": { h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number>; radius?: number; trim?: boolean }
+  /** Chamfer. Bevels the corner between two lines by two distances or a length and angle, optionally trimming, or chamfers every polyline corner. Params: {h1, p1, h2, p2, d1?, d2? | length, angle (degrees), trim?: bool} | {handle, polyline: true, d1?, d2? | length, angle}. Changes the document. */
+  "chamfer": { /** degrees */ angle?: number; d1?: number; h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number>; trim?: boolean }
+  /** Explode. Breaks the given compound objects (blocks, polylines, dimensions, hatches), or the selection, into their component objects. Params: {handles?}. Changes the document. */
+  "explode": { handles?: Array<string> }
+  /** Bring to Front. Moves the given objects, or the selection, to the front of the draw order. Params: {handles?}. Changes the document. */
+  "draworder.front": { handles?: Array<string> }
+  /** Send to Back. Moves the given objects, or the selection, to the back of the draw order. Params: {handles?}. Changes the document. */
+  "draworder.back": { handles?: Array<string> }
+  /** Break. Removes the part of an object between two points on it, splitting it in two or shortening it. Params: {handle, p1, p2}. Changes the document. */
+  "break": { handle?: string; p1?: Array<number>; p2?: Array<number> }
+  /** Break At Point. Splits an object into two at one point, leaving no gap. Params: {handle, at}. Changes the document. */
+  "breakatpoint": { at?: Array<number>; handle?: string }
+  /** Join. Joins the given lines, arcs, polylines or splines that meet end to end into single objects. Params: {handles?}. Changes the document. */
+  "join": { handles?: Array<string> }
+  /** Delete Duplicate Objects. Deletes duplicate and overlapping objects among the given ones, or the selection. Params: {handles?}. Changes the document. */
+  "overkill": { handles?: Array<string> }
+  /** Array. Copies objects in a rectangular, polar or path array, taking the parameters of arrayrect, arraypolar or arraypath. Params: {type?: "rectangular" (default) | "polar" | "path", ...the parameters of arrayrect, arraypolar or arraypath}. Changes the document. */
   "array": { /** default */ type?: "rectangular" | "polar" | "path" }
-  /** Rectangular Array. Params: {handles?, rows, cols, rowSpacing, colSpacing}. Changes the document. */
-  "arrayrect": { /** colSpacing (no type given) */ colSpacing?: Json; /** cols (no type given) */ cols?: Json; /** handles (no type given) */ handles?: Json; /** rowSpacing (no type given) */ rowSpacing?: Json; rows?: number }
-  /** Polar Array. Params: {handles?, center, count, angle? (degrees, default 360), rotate?: bool}. Changes the document. */
-  "arraypolar": { /** center (no type given) */ center?: Json; count?: number; /** handles (no type given) */ handles?: Json; rotate?: boolean }
-  /** Polyline. Params: {handle | handles, option: close|open|join|width|fit|spline|decurve|reverse|ltypegen|vertex, width?, handles2? (join), fuzz?, action?: move|insert|straighten|width, index?, to?, startWidth?, endWidth?, convert?: bool}. Changes the document. */
-  "pedit": { action?: "move" | "insert" | "straighten" | "width"; convert?: boolean; /** endWidth (no type given) */ endWidth?: Json; /** fuzz (no type given) */ fuzz?: Json; index?: number; option?: "close" | "open" | "join" | "width" | "fit" | "spline" | "decurve" | "reverse" | "ltypegen" | "vertex"; /** startWidth (no type given) */ startWidth?: Json; /** to (no type given) */ to?: Json; width?: number }
-  /** Spline. Params: {handle, option: close|open|reverse|refit|purge|polyline|move, fit?, index?, to?, precision?}. Changes the document. */
-  "splinedit": { /** fit (no type given) */ fit?: Json; /** handle (no type given) */ handle?: Json; index?: number; option?: "close" | "open" | "reverse" | "refit" | "purge" | "polyline" | "move"; /** precision (no type given) */ precision?: Json; /** to (no type given) */ to?: Json }
-  /** Lengthen. Params: {handle, pick?: [x,y] (end), delta? | deltaAngle? (deg) | percent? | total? | totalAngle? (deg) | to?: [x,y]} ({handle} alone measures). Changes the document. */
-  "lengthen": { /** handle (no type given) */ handle?: Json; /** end */ pick?: Array<number> }
-  /** Align. Params: {handles?, s1, d1, s2?, d2?, scale?: bool}. Changes the document. */
-  "align": { /** d1 (no type given) */ d1?: Json; /** d2 (no type given) */ d2?: Json; /** handles (no type given) */ handles?: Json; /** s1 (no type given) */ s1?: Json; /** s2 (no type given) */ s2?: Json; scale?: boolean }
-  /** Blend. Params: {h1, p1, h2, p2, continuity?: tangent|smooth}. Changes the document. */
-  "blend": { continuity?: "tangent" | "smooth"; /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Reverse. Params: {handles?} (lines, polylines, 3D polylines, splines). Changes the document. */
-  "reverse": { /** handles (no type given) */ handles?: Json }
-  /** Copy Nested Objects. Params: {handle (block reference), pick?: [x,y] (nearest nested object; default all), delta? | from,to}. Changes the document. */
-  "ncopy": { /** nearest nested object; default all */ pick?: Array<number>; /** to (no type given) */ to?: Json }
-  /** Change Space. Params: {handles?, to?: "model" | layout name, viewport?: handle}. Changes the document. */
-  "chspace": { /** handles (no type given) */ handles?: Json; /** "model" | layout name */ to?: Json; /** handle */ viewport?: Json }
-  /** Flatten Objects. Params: {handles?} (z = 0, 3D polylines become polylines). Changes the document. */
-  "flatten": { /** handles (no type given) */ handles?: Json }
-  /** Path Array. Params: {handles?, path (handle), count? (default 6) | spacing?, align?: bool (default true)}. Changes the document. */
-  "arraypath": { /** default true */ align?: boolean; /** handles (no type given) */ handles?: Json }
-  /** Edit Text.... Params: {handle, text} (text, mtext, attribute definitions, dimension text override). Changes the document. */
-  "textedit": { /** handle (no type given) */ handle?: Json; text?: string }
-  /** Group. Params: {name? (default: an unnamed group *A1, *A2...), description?, handles? (default the selection), selectable?: bool (default true)} ? {name, members}. Changes the document. */
-  "group": { /** description (no type given) */ description?: Json; /** default true */ selectable?: boolean }
-  /** Ungroup. Params: {name?: "G1" | "G1,G2" | [names]} | {handles?} (default the selection: every group holding one of the objects) ? {ungrouped: [names]}. Changes the document. */
-  "ungroup": { /** "G1" | "G1,G2" | [names] */ name?: Json }
-  /** Group Edit. Params: {name, add?: [handles], remove?: [handles], rename?: new name} ? {name, members}. Removing every member deletes the group.. Changes the document. */
-  "groupedit": { /** [handles] */ add?: Array<Json>; name?: string; /** [handles] */ remove?: Array<Json>; /** new name */ rename?: Json }
-  /** List Groups. Params: {} ? {groups: [{name, description, selectable, unnamed, members: [handles]}]} */
+  /** Rectangular Array. Copies the given objects, or the selection, into a grid of rows and columns at the given spacings. Params: {handles?, rows, cols, rowSpacing, colSpacing}. Changes the document. */
+  "arrayrect": { colSpacing?: number; cols?: number; handles?: Array<string>; rowSpacing?: number; rows?: number }
+  /** Polar Array. Copies the given objects, or the selection, a number of times about a centre over an angle, optionally rotating them. Params: {handles?, center, count, angle? (degrees, default 360), rotate?: bool}. Changes the document. */
+  "arraypolar": { /** degrees, default 360 */ angle?: number; center?: Array<number>; count?: number; handles?: Array<string>; rotate?: boolean }
+  /** Polyline. Edits polylines: close, open, join, width, fit, spline, decurve, reverse, linetype generation, or edit one vertex. Params: {handle | handles, option: close|open|join|width|fit|spline|decurve|reverse|ltypegen|vertex, width?, handles2? (join), fuzz?, action?: move|insert|straighten|width, index?, to?, startWidth?, endWidth?, convert?: bool}. Changes the document. */
+  "pedit": { action?: "move" | "insert" | "straighten" | "width"; convert?: boolean; endWidth?: number; fuzz?: number; handles2?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; option?: "close" | "open" | "join" | "width" | "fit" | "spline" | "decurve" | "reverse" | "ltypegen" | "vertex"; startWidth?: number; to?: Array<number>; width?: number }
+  /** Spline. Edits a spline: close, open, reverse, refit, purge fit data, convert to a polyline, or move a fit or control point. Params: {handle, option: close|open|reverse|refit|purge|polyline|move, fit?, index?, to?, precision?}. Changes the document. */
+  "splinedit": { fit?: Array<Array<Json>>; handle?: string; /** a position counted from 0 (the first is 0) */ index?: number; option?: "close" | "open" | "reverse" | "refit" | "purge" | "polyline" | "move"; precision?: number; to?: Array<number> }
+  /** Lengthen. Changes an object's length at the picked end by a delta, percent, total or to a point, or alone measures its length. Params: {handle, pick?: [x,y] (end), delta? | deltaAngle? (deg) | percent? | total? | totalAngle? (deg) | to?: [x,y]} ({handle} alone measures). Changes the document. */
+  "lengthen": { handle?: string; /** end */ pick?: Array<number> }
+  /** Align. Moves and rotates objects so one or two source points meet destination points, optionally scaling them to fit. Params: {handles?, s1, d1, s2?, d2?, scale?: bool}. Changes the document. */
+  "align": { d1?: Array<number>; d2?: Array<number>; handles?: Array<string>; s1?: Array<number>; s2?: Array<number>; scale?: boolean }
+  /** Blend. Draws a spline that joins the picked ends of two open curves with tangent or smooth continuity. Params: {h1, p1, h2, p2, continuity?: tangent|smooth}. Changes the document. */
+  "blend": { continuity?: "tangent" | "smooth"; h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number> }
+  /** Reverse. Reverses the vertex order of the given lines, polylines, 3D polylines and splines. Params: {handles?} (lines, polylines, 3D polylines, splines). Changes the document. */
+  "reverse": { handles?: Array<string> }
+  /** Copy Nested Objects. Copies objects nested inside a block reference, the one nearest a pick or all, out into the drawing by a delta or points. Params: {handle (block reference), pick?: [x,y] (nearest nested object; default all), delta? | from,to}. Changes the document. */
+  "ncopy": { handle?: string; /** nearest nested object; default all */ pick?: Array<number>; to?: Array<number> }
+  /** Change Space. Moves the given objects between model space and a layout's paper space through a viewport, keeping their apparent size. Params: {handles?, to?: "model" | layout name, viewport?: handle}. Changes the document. */
+  "chspace": { handles?: Array<string>; to?: string; viewport?: string }
+  /** Flatten Objects. Flattens the given objects, or the selection, onto z = 0, turning 3D polylines into 2D polylines. Params: {handles?} (z = 0, 3D polylines become polylines). Changes the document. */
+  "flatten": { handles?: Array<string> }
+  /** Path Array. Copies the given objects, or the selection, along a path object, a count of copies or at a spacing, optionally aligned to it. Params: {handles?, path (handle), count? (default 6) | spacing?, align?: bool (default true)}. Changes the document. */
+  "arraypath": { /** default true */ align?: boolean; count?: number; handles?: Array<string>; /** handle */ path?: string }
+  /** Edit Text... Replaces the contents of a text, mtext, attribute definition, or a dimension's override text. Params: {handle, text} (text, mtext, attribute definitions, dimension text override). Changes the document. */
+  "textedit": { handle?: string; text?: string }
+  /** Group. Makes a named or anonymous group of the given objects, or the selection, and answers its name and members. Params: {name? (default: an unnamed group *A1, *A2...), description?, handles? (default the selection), selectable?: bool (default true)} ? {name, members}. Changes the document. */
+  "group": { description?: string; handles?: Array<string>; /** default: an unnamed group *A1, *A2... */ name?: string; /** default true */ selectable?: boolean }
+  /** Ungroup. Dissolves the named groups, or every group holding one of the given or selected objects, and answers the groups removed. Params: {name?: "G1" | "G1,G2" | [names]} | {handles?} (default the selection: every group holding one of the objects) ? {ungrouped: [names]}. Changes the document. */
+  "ungroup": { name?: Json }
+  /** Group Edit. Adds objects to a group, removes them, or renames it, and answers its members; removing every member deletes the group. Params: {name, add?: [handles], remove?: [handles], rename?: new name} ? {name, members}. Removing every member deletes the group. Changes the document. */
+  "groupedit": { /** [handles] */ add?: Array<Json>; name?: string; /** [handles] */ remove?: Array<Json>; rename?: string }
+  /** List Groups. Answers every group in the drawing with its name, description, selectability, whether it is unnamed, and its member handles. Params: {} ? {groups: [{name, description, selectable, unnamed, members: [handles]}]}. */
   "groups.list": Record<string, never>
-  /** Grip Stretch. Params: {handle?, handles?, index, to} (stretch the grip) | {handles?, index, baseHandle?, to, mode: "move", copy?} (move about the grip). Changes the document. */
-  "grip.move": { /** handle (no type given) */ handle?: Json; /** handles (no type given) */ handles?: Json; index?: number; /** to (no type given) */ to?: Json }
-  /** Grip Stretch. Params: {handle?, handles?, index, to}. Changes the document. */
-  "grip.stretch": { /** handle (no type given) */ handle?: Json; /** handles (no type given) */ handles?: Json; index?: number; /** to (no type given) */ to?: Json }
-  /** Grip Rotate. Params: {handles?, base | baseHandle+index, angle (degrees) | to, copy?}. Changes the document. */
-  "grip.rotate": { copy?: boolean; /** handles (no type given) */ handles?: Json }
-  /** Grip Scale. Params: {handles?, base | baseHandle+index, factor | to, copy?}. Changes the document. */
-  "grip.scale": { copy?: boolean; /** handles (no type given) */ handles?: Json }
-  /** Grip Mirror. Params: {handles?, base | baseHandle+index, to (second mirror point), copy?}. Changes the document. */
-  "grip.mirror": { copy?: boolean; /** handles (no type given) */ handles?: Json }
-  /** Layers. Params: {} ? layers, states (typed -LAYER: option prompts). Changes the document. */
+  /** Grip Stretch. Stretches one grip of the given objects to a point, or with mode move moves the objects from a grip, optionally copying them. Params: {handle?, handles?, index, to} (stretch the grip) | {handles?, index, baseHandle?, to, mode: "move", copy?} (move about the grip). Changes the document. */
+  "grip.move": { handle?: string; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
+  /** Grip Stretch. Stretches the grip at an index of the given objects to a target point, as dragging a grip does. Params: {handle?, handles?, index, to}. Changes the document. */
+  "grip.stretch": { handle?: string; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
+  /** Grip Rotate. Rotates the given objects about a base point or a grip, by an angle or towards a point, optionally copying them. Params: {handles?, base | baseHandle+index, angle (degrees) | to, copy?}. Changes the document. */
+  "grip.rotate": { angle?: number; copy?: boolean; handles?: Array<string> }
+  /** Grip Scale. Scales the given objects about a base point or a grip, by a factor or towards a point, optionally copying them. Params: {handles?, base | baseHandle+index, factor | to, copy?}. Changes the document. */
+  "grip.scale": { copy?: boolean; handles?: Array<string> }
+  /** Grip Mirror. Mirrors the given objects about the line from a base point or grip to a second point, optionally copying them. Params: {handles?, base | baseHandle+index, to (second mirror point), copy?}. Changes the document. */
+  "grip.mirror": { copy?: boolean; handles?: Array<string>; to?: Array<number> }
+  /** Layers. Answers every layer with its properties, whether it is current and in use, and the saved layer states, as the Layer Properties Manager shows. Params: {} ? layers, states (typed -LAYER: option prompts). Changes the document. */
   "layer": Record<string, never>
-  /** New Layer. Params: {name, color?, linetype?, lineweight? (mm), current?: bool}. Changes the document. */
-  "layer.new": { color?: string; current?: boolean; /** linetype (no type given) */ linetype?: Json; name?: string }
-  /** Set Layer Properties. Params: {name, on?, frozen?, locked?, plot?, color?, linetype?, lineweight?, transparency?, description?, newVpFreeze?, plotStyle? (named plot style), newName?}. Changes the document. */
-  "layer.set": { color?: string; /** description (no type given) */ description?: Json; /** frozen (no type given) */ frozen?: Json; /** linetype (no type given) */ linetype?: Json; /** lineweight (no type given) */ lineweight?: Json; locked?: boolean; name?: string; newName?: string; /** newVpFreeze (no type given) */ newVpFreeze?: Json; /** on (no type given) */ on?: Json; /** plot (no type given) */ plot?: Json; /** transparency (no type given) */ transparency?: Json }
-  /** Make Current. Params: {name}. Changes the document. */
+  /** New Layer. Creates a layer with a name and optional colour, linetype and lineweight, optionally making it current. Params: {name, color?, linetype?, lineweight? (mm), current?: bool}. Changes the document. */
+  "layer.new": { color?: string; current?: boolean; linetype?: string; lineweight?: Json; name?: string }
+  /** Set Layer Properties. Changes a layer's properties: on, frozen, locked, plot, colour, linetype, lineweight, transparency, description, plot style, or name. Params: {name, on?, frozen?, locked?, plot?, color?, linetype?, lineweight?, transparency?, description?, newVpFreeze?, plotStyle? (named plot style), newName?}. Changes the document. */
+  "layer.set": { color?: string; description?: string; frozen?: boolean; linetype?: string; lineweight?: Json; locked?: boolean; name?: string; newName?: string; newVpFreeze?: boolean; on?: boolean; plot?: boolean; plotStyle?: string; transparency?: Json }
+  /** Make Current. Makes the named layer current, so new objects are drawn on it. Params: {name}. Changes the document. */
   "layer.current": { name?: string }
-  /** Delete Layer. Params: {name}. Changes the document. */
+  /** Delete Layer. Deletes the named layer when it is empty and is not layer 0, Defpoints or the current layer. Params: {name}. Changes the document. */
   "layer.delete": { name?: string }
-  /** Make Object's Layer Current. Params: {handles?}. Changes the document. */
-  "laymcur": { /** handles (no type given) */ handles?: Json }
-  /** Layer Match. Params: {handles?, layer}. Changes the document. */
-  "laymch": { /** handles (no type given) */ handles?: Json; layer?: number }
-  /** Change to Current Layer. Params: {handles?}. Changes the document. */
-  "laycur": { /** handles (no type given) */ handles?: Json }
-  /** Isolate Layer. Params: {handles?}. Changes the document. */
-  "layiso": { /** handles (no type given) */ handles?: Json }
-  /** Unisolate Layer. Changes the document. */
+  /** Make Object's Layer Current. Makes the layer of the given object, or the selected one, the current layer. Params: {handles?}. Changes the document. */
+  "laymcur": { handles?: Array<string> }
+  /** Layer Match. Moves the given objects, or the selection, onto the named layer. Params: {handles?, layer: string (the target layer's name)}. Changes the document. */
+  "laymch": { handles?: Array<string>; /** the target layer's name */ layer?: string }
+  /** Change to Current Layer. Moves the given objects, or the selection, onto the current layer. Params: {handles?}. Changes the document. */
+  "laycur": { handles?: Array<string> }
+  /** Isolate Layer. Isolates the layers of the given objects, or the selection, by turning every other layer off. Params: {handles?}. Changes the document. */
+  "layiso": { handles?: Array<string> }
+  /** Unisolate Layer. Restores the layers turned off by the last layer isolate. Changes the document. */
   "layuniso": Record<string, never>
-  /** Freeze Layer. Params: {handles?}. Changes the document. */
-  "layfrz": { /** handles (no type given) */ handles?: Json }
-  /** Layer Off. Params: {handles?}. Changes the document. */
-  "layoff": { /** handles (no type given) */ handles?: Json }
-  /** Lock Layer. Params: {handles?}. Changes the document. */
-  "laylck": { /** handles (no type given) */ handles?: Json }
-  /** Unlock Layer. Params: {handles?}. Changes the document. */
-  "layulk": { /** handles (no type given) */ handles?: Json }
-  /** Turn All Layers On. Changes the document. */
+  /** Freeze Layer. Freezes the layers of the given objects, or the selection. Params: {handles?}. Changes the document. */
+  "layfrz": { handles?: Array<string> }
+  /** Layer Off. Turns off the layers of the given objects, or the selection. Params: {handles?}. Changes the document. */
+  "layoff": { handles?: Array<string> }
+  /** Lock Layer. Locks the layers of the given objects, or the selection, so their objects cannot be edited. Params: {handles?}. Changes the document. */
+  "laylck": { handles?: Array<string> }
+  /** Unlock Layer. Unlocks the layers of the given objects, or the selection. Params: {handles?}. Changes the document. */
+  "layulk": { handles?: Array<string> }
+  /** Turn All Layers On. Turns every layer in the drawing on. Changes the document. */
   "layon": Record<string, never>
-  /** Thaw All Layers. Changes the document. */
+  /** Thaw All Layers. Thaws every frozen layer in the drawing. Changes the document. */
   "laythw": Record<string, never>
-  /** Previous Layer. Changes the document. */
+  /** Previous Layer. Undoes the last change to layer settings, restoring the previous layer state. Changes the document. */
   "layerp": Record<string, never>
-  /** Save Layer State. Params: {name}. Changes the document. */
+  /** Save Layer State. Saves every layer's current settings as a named layer state. Params: {name}. Changes the document. */
   "layerstate.save": { name?: string }
-  /** Restore Layer State. Params: {name}. Changes the document. */
+  /** Restore Layer State. Restores the layer settings saved in the named layer state. Params: {name}. Changes the document. */
   "layerstate.restore": { name?: string }
-  /** List Layer States. Params: {} ? states */
+  /** List Layer States. Answers the names of the saved layer states, with a message line. Params: {} ? states. */
   "layerstate.list": Record<string, never>
-  /** Delete Layer State. Params: {name}. Changes the document. */
+  /** Delete Layer State. Deletes the named saved layer state. Params: {name}. Changes the document. */
   "layerstate.delete": { name?: string }
-  /** Rename Layer State. Params: {from, to}. Changes the document. */
-  "layerstate.rename": { /** from (no type given) */ from?: Json; /** to (no type given) */ to?: Json }
-  /** Layer Merge. Params: {from: [names], to} (the from layers' objects move to `to`, then the from layers are deleted). Changes the document. */
-  "laymrg": { /** [names] */ from?: Array<Json>; /** to (no type given) */ to?: Json }
-  /** Layer Delete. Params: {names: [...]} (deletes the layers and every object on them). Changes the document. */
+  /** Rename Layer State. Renames a saved layer state from one name to another. Params: {from, to}. Changes the document. */
+  "layerstate.rename": { from?: string; to?: string }
+  /** Layer Merge. Moves the objects on the from layers onto a target layer, then deletes the from layers. Params: {from: [names], to} (the from layers' objects move to `to`, then the from layers are deleted). Changes the document. */
+  "laymrg": { /** [names] */ from?: Array<Json>; to?: string }
+  /** Layer Delete. Deletes the named layers together with every object on them. Params: {names: [...]} (deletes the layers and every object on them). Changes the document. */
   "laydel": { names?: Array<Json> }
-  /** Layout. Params: {option: new|copy|delete|rename|set|list, name?, to?} (typed LAYOUT / -LAYOUT: option prompts). Changes the document. */
-  "layout": { name?: string; option?: "new" | "copy" | "delete" | "rename" | "set" | "list"; /** to (no type given) */ to?: Json }
-  /** New Layout. Params: {name?, viewport?: bool (default true)} ? {name, viewport}. Changes the document. */
+  /** Layout. Creates, copies, deletes, renames, sets or lists paper space layouts, with the option prompts of LAYOUT. Params: {option: new|copy|delete|rename|set|list, name?, to?} (typed LAYOUT / -LAYOUT: option prompts). Changes the document. */
+  "layout": { name?: string; option?: "new" | "copy" | "delete" | "rename" | "set" | "list"; to?: string }
+  /** New Layout. Creates a paper space layout with a name, by default with one viewport, and answers its name and viewport. Params: {name?, viewport?: bool (default true)} ? {name, viewport}. Changes the document. */
   "layout.new": { name?: string; /** default true */ viewport?: boolean }
-  /** Delete Layout. Params: {name}. Changes the document. */
+  /** Delete Layout. Deletes the named paper space layout. Params: {name}. Changes the document. */
   "layout.delete": { name?: string }
-  /** Rename Layout. Params: {from?: current layout, to}. Changes the document. */
-  "layout.rename": { /** current layout */ from?: Json; /** to (no type given) */ to?: Json }
-  /** Copy Layout. Params: {from, to?}. Changes the document. */
-  "layout.copy": { /** from (no type given) */ from?: Json; /** to (no type given) */ to?: Json }
-  /** List Layouts. Params: ? [{name, tabOrder, page, viewports}] */
+  /** Rename Layout. Renames a layout, by default the current one, to a new name. Params: {from?: current layout, to}. Changes the document. */
+  "layout.rename": { from?: string; to?: string }
+  /** Copy Layout. Copies a layout with its page setup and viewports to a new layout name. Params: {from, to?}. Changes the document. */
+  "layout.copy": { from?: string; to?: string }
+  /** List Layouts. Answers every layout with its name, tab order, whether it is current, its page setup and its viewports. Params: {} ? [{name, tabOrder, page, viewports}]. */
   "layout.list": Record<string, never>
-  /** Viewports. Params: {p1?, p2? (default: printable area), count?: 1-4, arrangement?: vertical|horizontal|left|right|above|below, layout?}. Changes the document. */
-  "mview": { arrangement?: "vertical" | "horizontal" | "left" | "right" | "above" | "below"; /** 1-4 */ count?: Json; /** layout (no type given) */ layout?: Json; /** p1 (no type given) */ p1?: Json }
-  /** New Viewports.... Params: {count?: 1-4, arrangement?, p1?, p2?, layout?}. Changes the document. */
-  "vports": { /** arrangement (no type given) */ arrangement?: Json; /** 1-4 */ count?: Json; /** layout (no type given) */ layout?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** 1 Viewport. Params: {p1?, p2?, layout?}. Changes the document. */
-  "vports.1": { /** layout (no type given) */ layout?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** 2 Viewports. Params: {p1?, p2?, arrangement?: vertical|horizontal, layout?}. Changes the document. */
-  "vports.2": { arrangement?: "vertical" | "horizontal"; /** layout (no type given) */ layout?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** 3 Viewports. Params: {p1?, p2?, arrangement?: right|left|above|below|vertical|horizontal, layout?}. Changes the document. */
-  "vports.3": { arrangement?: "right" | "left" | "above" | "below" | "vertical" | "horizontal"; /** layout (no type given) */ layout?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** 4 Viewports. Params: {p1?, p2?, layout?}. Changes the document. */
-  "vports.4": { /** layout (no type given) */ layout?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Viewport Properties. Params: {handle? (default: selected viewports), scale?: paper units per model unit | "1:50", viewHeight?, center?: [x,y], locked?, freeze?: [layer], thaw?: [layer], colors?: {layer: color | null}}. Changes the document. */
-  "viewport.set": { center?: Array<number>; /** {layer: color | null} */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; locked?: boolean; /** paper units per model unit | "1:50" */ scale?: Json; /** [layer] */ thaw?: Array<Json>; /** viewHeight (no type given) */ viewHeight?: Json }
-  /** Viewport Layer Freeze. Params: {handle?, freeze?: [layer], thaw?: [layer], colors?: {layer: color ("red" | 1..255 | "r,g,b") | null to clear}} (typed: option prompts). Changes the document. */
-  "vplayer": { /** {layer: color ("red" | 1..255 | "r,g,b") | null to clear}; "red" | 1..255 | "r,g,b" */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; /** handle (no type given) */ handle?: Json; /** [layer] */ thaw?: Array<Json> }
-  /** Page Setup Manager.... Params: {layout?: current, paper?: "A4"|"A3"|"Letter"|"ANSI B"|..., width?, height? (mm), landscape?, margins?: [l,b,r,t] mm, lineweights?, plotArea?, scale?, scaleToFit?, center?, plotStyleTable?: "monochrome.ctb"|"grayscale.ctb"|"default.ctb"|"None"|..., displayPlotStyles?: bool}. Changes the document. */
-  "pagesetup": { /** center (no type given) */ center?: Json; displayPlotStyles?: boolean; /** landscape (no type given) */ landscape?: Json; /** current */ layout?: Json; /** lineweights (no type given) */ lineweights?: Json; /** [l,b,r,t] mm */ margins?: Json; /** "A4"|"A3"|"Letter"|"ANSI B"|... */ paper?: Json; /** plotArea (no type given) */ plotArea?: Json; /** "monochrome.ctb"|"grayscale.ctb"|"default.ctb"|"None"|... */ plotStyleTable?: Json; scale?: number; /** scaleToFit (no type given) */ scaleToFit?: Json; width?: number }
-  /** Print.... Params: {path? (else returns base64 `data`), layout?: current|"Model", paper?, landscape?, fit?: bool, scale?, lineweights?: bool} */
-  "plot": { fit?: boolean; /** landscape (no type given) */ landscape?: Json; /** current|"Model" */ layout?: Json; lineweights?: boolean; /** paper (no type given) */ paper?: Json; scale?: number }
-  /** Export to PDF.... Params: {path? (else returns base64 `data`), layout?, paper?, landscape?, fit?, lineweights?} */
-  "exportpdf": { /** fit (no type given) */ fit?: Json; /** landscape (no type given) */ landscape?: Json; /** layout (no type given) */ layout?: Json; /** lineweights (no type given) */ lineweights?: Json; /** paper (no type given) */ paper?: Json }
-  /** Model Space (in viewport). Params: {handle?: viewport, at?: [x,y] paper point inside a viewport} (default: the last active or first viewport) */
-  "mspace": { /** [x,y] paper point inside a viewport */ at?: Json; /** viewport */ handle?: Json }
-  /** Paper Space */
+  /** Viewports. Creates one to four viewports in a layout over two corners, by default the printable area, in an arrangement. Params: {p1?, p2? (default: printable area), count?: 1-4, arrangement?: vertical|horizontal|left|right|above|below, layout?}. Changes the document. */
+  "mview": { arrangement?: "vertical" | "horizontal" | "left" | "right" | "above" | "below"; count?: number; layout?: string; p1?: Array<number>; p2?: Array<number> }
+  /** New Viewports... Creates one to four viewports on a layout in an arrangement, over two corners or the printable area. Params: {count?: 1-4, arrangement?, p1?, p2?, layout?}. Changes the document. */
+  "vports": { arrangement?: string; count?: number; layout?: string; p1?: Array<number>; p2?: Array<number> }
+  /** 1 Viewport. Creates a single viewport on a layout over two corners, by default the printable area. Params: {p1?, p2?, layout?}. Changes the document. */
+  "vports.1": { layout?: string; p1?: Array<number>; p2?: Array<number> }
+  /** 2 Viewports. Creates two viewports on a layout side by side or stacked, over two corners or the printable area. Params: {p1?, p2?, arrangement?: vertical|horizontal, layout?}. Changes the document. */
+  "vports.2": { arrangement?: "vertical" | "horizontal"; layout?: string; p1?: Array<number>; p2?: Array<number> }
+  /** 3 Viewports. Creates three viewports on a layout with the large one right, left, above or below, or in a row or column. Params: {p1?, p2?, arrangement?: right|left|above|below|vertical|horizontal, layout?}. Changes the document. */
+  "vports.3": { arrangement?: "right" | "left" | "above" | "below" | "vertical" | "horizontal"; layout?: string; p1?: Array<number>; p2?: Array<number> }
+  /** 4 Viewports. Creates four equal viewports on a layout over two corners, by default the printable area. Params: {p1?, p2?, layout?}. Changes the document. */
+  "vports.4": { layout?: string; p1?: Array<number>; p2?: Array<number> }
+  /** Viewport Properties. Sets layout viewport properties: scale, view height and centre, lock, layer freeze and thaw, and per-layer colour overrides. Params: {handle? (default: selected viewports), scale?: paper units per model unit | "1:50", viewHeight?, center?: [x,y], locked?, freeze?: [layer], thaw?: [layer], colors?: {layer: color | null}}. Changes the document. */
+  "viewport.set": { center?: Array<number>; /** {layer: color | null} */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; handle?: string; locked?: boolean; scale?: Json; /** [layer] */ thaw?: Array<Json>; viewHeight?: number }
+  /** Viewport Layer Freeze. Freezes or thaws layers and overrides layer colours in one layout viewport only. Params: {handle?, freeze?: [layer], thaw?: [layer], colors?: {layer: color ("red" | 1..255 | "r,g,b") | null to clear}} (typed: option prompts). Changes the document. */
+  "vplayer": { /** {layer: color ("red" | 1..255 | "r,g,b") | null to clear}; "red" | 1..255 | "r,g,b" */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; handle?: string; /** [layer] */ thaw?: Array<Json> }
+  /** Page Setup Manager... Sets a layout's page setup: paper, orientation, margins, plot area, scale or fit, centring, lineweights and plot style table. Params: {layout?: current, paper?: "A4"|"A3"|"Letter"|"ANSI B"|..., width?, height? (mm), landscape?, margins?: [l,b,r,t] mm, lineweights?, plotArea?, scale?, scaleToFit?, center?, plotStyleTable?: "monochrome.ctb"|"grayscale.ctb"|"default.ctb"|"None"|..., displayPlotStyles?: bool}. Changes the document. */
+  "pagesetup": { center?: boolean; displayPlotStyles?: boolean; /** mm */ height?: number; landscape?: boolean; layout?: string; lineweights?: boolean; margins?: Array<number>; paper?: string; plotArea?: string; plotStyleTable?: string; scale?: number; scaleToFit?: boolean; width?: number }
+  /** Print... Plots a layout or model space to PDF, on a paper and orientation, at a scale or fitted, written to a path or answered as base64. Params: {path? (else returns base64 `data`), layout?: current|"Model", paper?, landscape?, fit?: bool, scale?, lineweights?: bool}. */
+  "plot": { fit?: boolean; landscape?: boolean; layout?: string; lineweights?: boolean; paper?: string; /** else returns base64 `data` */ path?: Json; scale?: number }
+  /** Export to PDF... Exports a layout or model space to PDF, on a paper and orientation, fitted or not, to a path or answered as base64. Params: {path? (else returns base64 `data`), layout?, paper?, landscape?, fit?, lineweights?}. */
+  "exportpdf": { fit?: boolean; landscape?: boolean; layout?: string; lineweights?: boolean; paper?: string; /** else returns base64 `data` */ path?: Json }
+  /** Model Space (in viewport). Makes a layout viewport active so editing happens in model space through it, by handle or by a paper point inside it. Params: {handle?: viewport, at?: [x,y] paper point inside a viewport} (default: the last active or first viewport). */
+  "mspace": { at?: Array<number>; handle?: string }
+  /** Paper Space. Leaves the active viewport so editing happens in the layout's paper space again. */
   "pspace": Record<string, never>
-  /** Plot Style.... Params: {name?: "ByLayer"|"ByBlock"|style name, handles?|handle? (default: the selection; nothing selected sets the current plot style for new objects, CPLOTSTYLE)} (no name: reports the current style and the named styles). Changes the document. */
-  "plotstyle": { /** "ByLayer"|"ByBlock"|style name */ name?: Json }
-  /** Plot Style Manager.... Params: {action?: list (default)|get|new|set|delete|load|save, name?: table ("x.ctb"/"x.stb"), kind?: colorDependent|named (new), from?: table to copy (new), description?, style?: {name, color?: "#rrggbb"|null, grayscale?, screening?: 0-100, linetype?: name|null, lineweight?: mm|null, end?, join?, fill?, description?} (set), removeStyle?: name (set, named tables), path? (load/save; save without one returns `text`), text? (load)}. Changes the document. */
-  "stylesmanager": { /** default */ action?: "list" | "get" | "new" | "set" | "delete" | "load" | "save"; /** description (no type given) */ description?: Json; /** table to copy (new); new */ from?: Json; /** new */ kind?: "colorDependent" | "named"; /** table ("x.ctb"/"x.stb"); "x.ctb"/"x.stb" */ name?: Json; /** set, named tables */ removeStyle?: string; /** {name, color?: "#rrggbb"|null, grayscale?, screening?: 0-100, linetype?: name|null, lineweight?: mm|null, end?, join?, fill?, description?} (set); set */ style?: { color?: Json; description?: Json; end?: number; fill?: Json; grayscale?: Json; join?: Json; linetype?: Json; lineweight?: Json; name?: string; screening?: Json } }
-  /** Properties. Params: {handles?} ? properties of the selection */
-  "properties": { /** handles (no type given) */ handles?: Json }
-  /** Set Properties. Params: {handles?, layer?, color?, linetype?, lineweight?, ltscale?, transparency?: "ByLayer" | "ByBlock" | 0..90, visible?, <geometry fields: radius, center, start, end, text, height, rotation...>}. Changes the document. */
-  "properties.set": { /** center (no type given) */ center?: Json; color?: string; end?: number; /** handles (no type given) */ handles?: Json; height?: number; layer?: number; /** linetype (no type given) */ linetype?: Json; /** lineweight (no type given) */ lineweight?: Json; /** ltscale (no type given) */ ltscale?: Json; start?: number; text?: string; /** "ByLayer" | "ByBlock" | 0..90 */ transparency?: Json; visible?: boolean }
-  /** Match Properties. Params: {source, targets: [hex]}. Changes the document. */
-  "matchprop": { /** source (no type given) */ source?: Json; targets?: Array<string> }
-  /** Color.... Params: {color: "ByLayer" | "red" | 1..255 | "r,g,b"}. Changes the document. */
-  "color": { /** "ByLayer" | "red" | 1..255 | "r,g,b" */ color?: Json }
-  /** Linetype.... Params: {current?: name, load?: name | "*"}. Changes the document. */
+  /** Plot Style... Sets the named plot style of the given or selected objects, or the current one for new objects; with no name reports it. Params: {name?: "ByLayer"|"ByBlock"|style name, handles?|handle? (default: the selection; nothing selected sets the current plot style for new objects, CPLOTSTYLE)} (no name: reports the current style and the named styles). Changes the document. */
+  "plotstyle": { handle?: string; handles?: Array<string>; name?: string }
+  /** Plot Style Manager... Lists, reads, creates, changes, deletes, loads or saves plot style tables (colour-dependent .ctb or named .stb) and their styles. Params: {action?: list (default)|get|new|set|delete|load|save, name?: table ("x.ctb"/"x.stb"), kind?: colorDependent|named (new), from?: table to copy (new), description?, style?: {name, color?: "#rrggbb"|null, grayscale?, screening?: 0-100, linetype?: name|null, lineweight?: mm|null, end?, join?, fill?, description?} (set), removeStyle?: name (set, named tables), path? (load/save; save without one returns `text`), text? (load)}. Changes the document. */
+  "stylesmanager": { /** default */ action?: "list" | "get" | "new" | "set" | "delete" | "load" | "save"; description?: string; from?: string; /** new */ kind?: "colorDependent" | "named"; name?: string; /** load/save; save without one returns `text` */ path?: Json; /** set, named tables */ removeStyle?: string; /** {name, color?: "#rrggbb"|null, grayscale?, screening?: 0-100, linetype?: name|null, lineweight?: mm|null, end?, join?, fill?, description?} (set); set */ style?: { color?: Json; description?: Json; end?: number; fill?: Json; grayscale?: Json; join?: Json; linetype?: Json; lineweight?: Json; name?: string; screening?: Json }; /** load */ text?: string }
+  /** Properties. Answers the properties of the given objects, or the selection: type, handle, layer, colour, linetype, bounds and geometry. Params: {handles?} ? properties of the selection. */
+  "properties": { handles?: Array<string> }
+  /** Set Properties. Sets properties of the given objects, or the selection: layer, colour, linetype, lineweight, scale, transparency, visibility and geometry fields. Params: {handles?, layer?: string (a layer name), color?, linetype?, lineweight?, ltscale?, transparency?: "ByLayer" | "ByBlock" | 0..90, visible?, <geometry fields: radius, center, start, end, text, height, rotation...>}. Changes the document. */
+  "properties.set": { center?: Array<number>; color?: string; end?: number; handles?: Array<string>; height?: number; /** a layer name */ layer?: string; linetype?: string; lineweight?: Json; ltscale?: number; start?: number; text?: string; transparency?: Json; visible?: boolean }
+  /** Match Properties. Copies the layer, colour, linetype, lineweight and other properties of a source object onto the target objects. Params: {source, targets: [hex]}. Changes the document. */
+  "matchprop": { source?: string; targets?: Array<string> }
+  /** Color... Sets the current colour for new objects: ByLayer, ByBlock, a colour name, an index 1 to 255 or an r,g,b triple. Params: {color: "ByLayer" | "red" | 1..255 | "r,g,b"}. Changes the document. */
+  "color": { color?: Json }
+  /** Linetype... Loads a linetype, or every one, from the built-in definitions, or sets the current linetype for new objects. Params: {current?: name, load?: name | "*"}. Changes the document. */
   "linetype": { current?: string; load?: string }
-  /** Lineweight.... Params: {lineweight: mm | ByLayer}. Changes the document. */
+  /** Lineweight... Sets the current lineweight for new objects, in millimetres or ByLayer. Params: {lineweight: mm | ByLayer}. Changes the document. */
   "lweight": { lineweight?: "mm" | "ByLayer" }
-  /** Linetype Scale. Params: {scale}. Changes the document. */
+  /** Linetype Scale. Sets the drawing's global linetype scale factor (LTSCALE). Params: {scale}. Changes the document. */
   "ltscale": { scale?: number }
-  /** Units.... Params: {lunits?: 1..5, luprec?: 0..8, aunits?: 0..4, auprec?: 0..8, insunits?}. Changes the document. */
-  "units": { /** 0 to 4 */ aunits?: number; /** 0 to 8 */ auprec?: number; /** insunits (no type given) */ insunits?: Json; /** 1 to 5 */ lunits?: number; /** 0 to 8 */ luprec?: number }
-  /** Drawing Limits. Params: {min: [x,y], max: [x,y]}. Changes the document. */
+  /** Units... Sets the drawing's length and angle unit formats and precisions, and its insertion units. Params: {lunits?: 1..5, luprec?: 0..8, aunits?: 0..4, auprec?: 0..8, insunits?}. Changes the document. */
+  "units": { /** 0 to 4 */ aunits?: number; /** 0 to 8 */ auprec?: number; insunits?: number; /** 1 to 5 */ lunits?: number; /** 0 to 8 */ luprec?: number }
+  /** Drawing Limits. Sets the drawing limits of model space from a lower-left and an upper-right corner. Params: {min: [x,y], max: [x,y]}. Changes the document. */
   "limits": { max?: Array<number>; min?: Array<number> }
-  /** Text Style.... Params: {name, font?, bigFont?, height?, widthFactor?, oblique? (degrees), backwards?, upsideDown?, vertical?, annotative?, current?} ? styles. Changes the document. */
-  "style": { /** annotative (no type given) */ annotative?: Json; /** backwards (no type given) */ backwards?: Json; /** bigFont (no type given) */ bigFont?: Json; /** current (no type given) */ current?: Json; font?: string; height?: number; name?: string; /** upsideDown (no type given) */ upsideDown?: Json; /** vertical (no type given) */ vertical?: Json; /** widthFactor (no type given) */ widthFactor?: Json }
-  /** List Text Styles. Params: {} ? text styles */
+  /** Text Style... Creates or changes a text style: font, big font, height, width factor, oblique angle, flags, annotative, and optionally makes it current. Params: {name, font?, bigFont?, height?, widthFactor?, oblique? (degrees), backwards?, upsideDown?, vertical?, annotative?, current?} ? styles. Changes the document. */
+  "style": { annotative?: boolean; backwards?: boolean; bigFont?: string; current?: boolean; font?: string; height?: number; name?: string; oblique?: number; upsideDown?: boolean; vertical?: boolean; widthFactor?: number }
+  /** List Text Styles. Answers every text style with its font, height, width factor, flags and whether it is current. Params: {} ? text styles. */
   "style.list": Record<string, never>
-  /** Rename Text Style. Params: {from, to}. Changes the document. */
-  "style.rename": { /** from (no type given) */ from?: Json; /** to (no type given) */ to?: Json }
-  /** Delete Text Style. Params: {name} (not Standard, the current style or one in use). Changes the document. */
+  /** Rename Text Style. Renames a text style from one name to another. Params: {from, to}. Changes the document. */
+  "style.rename": { from?: string; to?: string }
+  /** Delete Text Style. Deletes a text style that is not Standard, current or used by any object. Params: {name} (not Standard, the current style or one in use). Changes the document. */
   "style.delete": { name?: string }
-  /** Set Current Text Style. Params: {name}. Changes the document. */
+  /** Set Current Text Style. Makes the named text style the current one for new text. Params: {name}. Changes the document. */
   "style.current": { name?: string }
-  /** Dimension Style.... Params: {name, current?, <style fields or DIM* variables, e.g. arrowSize / DIMASZ, DIMTSZ, DIMBLK, DIMTAD, DIMLUNIT...>} ? styles. Changes the document. */
-  "dimstyle": { /** DIMBLK (no type given) */ DIMBLK?: Json; /** DIMTAD (no type given) */ DIMTAD?: Json; /** DIMTSZ (no type given) */ DIMTSZ?: Json; /** current (no type given) */ current?: Json; name?: string }
-  /** Dimension Style.... Params: same as `dimstyle`. Changes the document. */
-  "dimstyle.dimension": Record<string, never>
-  /** List Dimension Styles. Params: {name?} ? styles (with all variables for `name`) */
+  /** Dimension Style... Creates or changes a dimension style from style fields or DIM variables, and by default makes it current; answers the styles. Params: {name: str, current?: bool (make it the current style; default true), <style fields or DIM* variables, e.g. arrowSize / DIMASZ, DIMTSZ, DIMBLK, DIMTAD, DIMLUNIT...>} ? styles. Changes the document. */
+  "dimstyle": { DIMBLK?: string; DIMTAD?: number; DIMTSZ?: number; /** make it the current style; default true */ current?: boolean; name?: string }
+  /** Dimension Style... Creates or changes a dimension style from style fields or DIM variables, and by default makes it current, from the Dimension menu. Params: {name: str, current?: bool (make it the current style; default true), <style fields or DIM* variables, e.g. arrowSize / DIMASZ, DIMTSZ, DIMBLK, DIMTAD, DIMLUNIT...>} ? styles. Changes the document. */
+  "dimstyle.dimension": { DIMBLK?: string; DIMTAD?: number; DIMTSZ?: number; /** make it the current style; default true */ current?: boolean; name?: string }
+  /** List Dimension Styles. Answers the dimension styles and the current one, and every variable of the named style when one is given. Params: {name?} ? styles (with all variables for `name`). */
   "dimstyle.list": { name?: string }
-  /** Rename Dimension Style. Params: {from, to}. Changes the document. */
-  "dimstyle.rename": { /** from (no type given) */ from?: Json; /** to (no type given) */ to?: Json }
-  /** Delete Dimension Style. Params: {name} (not Standard, the current style or one in use). Changes the document. */
+  /** Rename Dimension Style. Renames a dimension style from one name to another. Params: {from, to}. Changes the document. */
+  "dimstyle.rename": { from?: string; to?: string }
+  /** Delete Dimension Style. Deletes a dimension style that is not Standard, current or used by any dimension. Params: {name} (not Standard, the current style or one in use). Changes the document. */
   "dimstyle.delete": { name?: string }
-  /** Set Current Dimension Style. Params: {name}. Changes the document. */
+  /** Set Current Dimension Style. Makes the named dimension style the current one for new dimensions. Params: {name}. Changes the document. */
   "dimstyle.current": { name?: string }
-  /** Dimension Style Override. Params: {handles?, <style fields or DIM* variables: values>, clear?: bool} (per-dimension overrides). Changes the document. */
-  "dimstyle.override": { clear?: boolean; /** handles (no type given) */ handles?: Json }
-  /** Table Style.... Params: {name, textHeight?, margin?, title?, header?, current?} ? styles. Changes the document. */
-  "tablestyle": { /** current (no type given) */ current?: Json; /** header (no type given) */ header?: Json; /** margin (no type given) */ margin?: Json; name?: string; /** textHeight (no type given) */ textHeight?: Json; title?: string }
-  /** Multileader Style.... Params: {name, arrowSize?, textHeight?, landingGap?, dogleg?, textStyle?, current?} ? styles. Changes the document. */
-  "mleaderstyle": { /** arrowSize (no type given) */ arrowSize?: Json; /** current (no type given) */ current?: Json; /** dogleg (no type given) */ dogleg?: Json; /** landingGap (no type given) */ landingGap?: Json; name?: string; /** textHeight (no type given) */ textHeight?: Json; /** textStyle (no type given) */ textStyle?: Json }
-  /** Point Style.... Params: {pdmode, pdsize}. Changes the document. */
-  "ddptype": { /** pdmode (no type given) */ pdmode?: Json; /** pdsize (no type given) */ pdsize?: Json }
-  /** Rename.... Params: {table: layer|linetype|style|dimstyle|block|mleaderstyle|tablestyle|view|ucs, from, to}. Changes the document. */
-  "rename": { /** from (no type given) */ from?: Json; table?: "layer" | "linetype" | "style" | "dimstyle" | "block" | "mleaderstyle" | "tablestyle" | "view" | "ucs"; /** to (no type given) */ to?: Json }
-  /** Distance. Params: {p1, p2} */
-  "dist": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** ID Point. Params: {at} */
-  "id": { /** at (no type given) */ at?: Json }
-  /** List. Params: {handles?} */
-  "list": { /** handles (no type given) */ handles?: Json }
-  /** Area. Params: {points: [[x,y],...]} | {handle} */
+  /** Dimension Style Override. Sets per-dimension overrides of style fields or DIM variables on the given dimensions, or clears them. Params: {handles?, <style fields or DIM* variables: values>, clear?: bool} (per-dimension overrides). Changes the document. */
+  "dimstyle.override": { clear?: boolean; handles?: Array<string> }
+  /** Table Style... Creates or changes a table style's text height, cell margin, title and header rows, optionally making it current. Params: {name, textHeight?, margin?, title?, header?, current?} ? styles. Changes the document. */
+  "tablestyle": { current?: boolean; header?: boolean; margin?: number; name?: string; textHeight?: number; title?: string }
+  /** Multileader Style... Creates or changes a multileader style's arrow size, text height and style, landing gap and dogleg, optionally making it current. Params: {name, arrowSize?, textHeight?, landingGap?, dogleg?, textStyle?, current?} ? styles. Changes the document. */
+  "mleaderstyle": { arrowSize?: number; current?: boolean; dogleg?: number; landingGap?: number; name?: string; textHeight?: number; textStyle?: string }
+  /** Point Style... Sets how point objects display (PDMODE) and their size (PDSIZE). Params: {pdmode, pdsize}. Changes the document. */
+  "ddptype": { pdmode?: number; pdsize?: number }
+  /** Rename... Renames a named item (layer, linetype, text style, dimension style, block, multileader or table style, view or UCS). Params: {table: layer|linetype|style|dimstyle|block|mleaderstyle|tablestyle|view|ucs, from, to}. Changes the document. */
+  "rename": { from?: string; table?: "layer" | "linetype" | "style" | "dimstyle" | "block" | "mleaderstyle" | "tablestyle" | "view" | "ucs"; to?: string }
+  /** Distance. Measures the distance between two points and answers it with the angle and the x and y deltas. Params: {p1, p2}. */
+  "dist": { p1?: Array<number>; p2?: Array<number> }
+  /** ID Point. Answers the coordinates of a point, as the ID command reports them. Params: {at}. */
+  "id": { at?: Array<number> }
+  /** List. Answers a text listing of the given or selected objects' database properties, as the LIST command prints them. Params: {handles?}. */
+  "list": { handles?: Array<string> }
+  /** Area. Measures the area and perimeter of a closed polygon through points, or of a closed object. Params: {points: [[x,y],...]} | {handle}. */
   "area": { points?: Array<Array<number>> }
-  /** Time */
+  /** Time. Answers the drawing's revision and the number of edits recorded in this session as a message. */
   "time": Record<string, never>
-  /** Status */
+  /** Status. Answers a text report of the drawing's object count, limits, extents, current layer and settings, as STATUS prints it. */
   "status": Record<string, never>
-  /** Inspect Drawing. Params: {entities?: bool, limit?: n} */
+  /** Inspect Drawing. Answers an overview of the drawing: object counts by type, layers, blocks, styles, current settings and, optionally, a page of its objects. Params: {entities?: bool, limit?: n}. */
   "drawing.inspect": { entities?: boolean; limit?: number }
-  /** Query Entities. Params: {type?, layer?, window?: [[x,y],[x,y]], crossing?: bool (default true; false = entirely inside), limit?, offset?} ? {count (all matches), returned, offset, entities} */
-  "entities": { /** default true; false = entirely inside */ crossing?: boolean; layer?: number; /** limit (no type given) */ limit?: Json; offset?: number; /** type (no type given) */ type?: Json; window?: Array<Array<number>> }
-  /** Count. Params: {block?} ? {blocks: {name: n}} | {block, count}, plus a `message` line */
-  "count": { /** block (no type given) */ block?: Json }
-  /** Ortho Mode. Params: {on?: bool} */
+  /** Query Entities. Answers a page of objects filtered by type, layer and a crossing or inside window, with their properties and geometry and the total count. Params: {type?, layer?: string (a layer name), window?: [[x,y],[x,y]], crossing?: bool (default true; false = entirely inside), limit?, offset?} ? {count (all matches), returned, offset, entities}. */
+  "entities": { /** default true; false = entirely inside */ crossing?: boolean; /** a layer name */ layer?: string; limit?: number; offset?: number; type?: string; window?: Array<Array<number>> }
+  /** Count. Counts block references in model space, every block or the named one, and answers the counts with a message line. Params: {block?} ? {blocks: {name: n}} | {block, count}, plus a `message` line. */
+  "count": { block?: string }
+  /** Ortho Mode. Turns ortho mode on or off, or toggles it with no value, and answers the new state; the drawing is unchanged. Params: {on?: bool}. */
   "ortho": { on?: boolean }
-  /** Grid Display. Params: {on?: bool} */
+  /** Grid Display. Turns the grid display on or off, or toggles it with no value, and answers the new state; the drawing is unchanged. Params: {on?: bool}. */
   "grid": { on?: boolean }
-  /** Snap Mode. Params: {on?: bool} */
+  /** Snap Mode. Turns snap mode on or off, or toggles it with no value, and answers the new state; the drawing is unchanged. Params: {on?: bool}. */
   "snap": { on?: boolean }
-  /** Polar Tracking. Params: {on?: bool} */
+  /** Polar Tracking. Turns polar tracking on or off, or toggles it with no value, and answers the new state; the drawing is unchanged. Params: {on?: bool}. */
   "polar": { on?: boolean }
-  /** Object Snap Tracking. Params: {on?: bool} */
+  /** Object Snap Tracking. Turns object snap tracking on or off, or toggles it with no value, and answers the new state; the drawing is unchanged. Params: {on?: bool}. */
   "otrack": { on?: boolean }
-  /** Dynamic Input. Params: {on?: bool} */
+  /** Dynamic Input. Turns dynamic input on or off, or toggles it with no value, and answers the new state; the drawing is unchanged. Params: {on?: bool}. */
   "dynmode": { on?: boolean }
-  /** Show/Hide Lineweight. Params: {on?: bool} */
+  /** Show/Hide Lineweight. Turns the display of lineweights on or off, or toggles it with no value, and answers the new state. Params: {on?: bool}. */
   "lwdisplay": { on?: boolean }
-  /** Isometric Drafting. Params: {on?: bool} */
+  /** Isometric Drafting. Turns isometric drafting on or off, or toggles it with no value, and answers the new state. Params: {on?: bool}. */
   "isodraft": { on?: boolean }
-  /** Show/Hide Transparency. Params: {on?: bool} */
+  /** Show/Hide Transparency. Turns the display of object transparency on or off, or toggles it with no value, and answers the new state. Params: {on?: bool}. */
   "transparencydisplay": { on?: boolean }
-  /** Quick Properties. Params: {on?: bool} */
+  /** Quick Properties. Turns the Quick Properties palette on or off, or toggles it with no value, and answers the new state. Params: {on?: bool}. */
   "qpmode": { on?: boolean }
-  /** Selection Cycling. Params: {on?: bool} */
+  /** Selection Cycling. Turns selection cycling of overlapping objects on or off, or toggles it with no value, and answers the new state. Params: {on?: bool}. */
   "selectioncycling": { on?: boolean }
-  /** Object Snap. Params: {on?: bool, modes?: ["end","mid",...] | osmode?: n} */
-  "osnap": { /** ["end","mid",...] | osmode?: n */ modes?: Json; on?: boolean }
-  /** Drafting Settings.... Params: {snapunit?: [x,y], gridunit?: [x,y], polarang? (degrees), gridmajor?} */
-  "dsettings": { /** gridmajor (no type given) */ gridmajor?: Json; gridunit?: Array<number>; snapunit?: Array<number> }
-  /** Set Variable. Params: {name, value}. Changes the document. */
-  "setvar": { name?: string; /** value (no type given) */ value?: Json }
-  /** Get Variable. Params: {name} */
+  /** Object Snap. Turns running object snaps on or off and sets their modes by name or OSMODE bits; answers the state and the active modes. Params: {on?: bool, modes?: ["end","mid",...] | osmode?: n}. */
+  "osnap": { modes?: Array<string>; on?: boolean }
+  /** Drafting Settings... Sets drafting settings (snap and grid spacing, polar angle, major grid lines) and answers every drafting setting. Params: {snapunit?: [x,y], gridunit?: [x,y], polarang? (degrees), gridmajor?}. */
+  "dsettings": { gridmajor?: number; gridunit?: Array<number>; polarang?: number; snapunit?: Array<number> }
+  /** Set Variable. Sets a system variable by name to a value, as SETVAR does. Params: {name, value}. Changes the document. */
+  "setvar": { name?: string; value?: Json }
+  /** Get Variable. Answers the value of the named system variable. Params: {name}. */
   "getvar": { name?: string }
-  /** List System Variables */
+  /** List System Variables. Answers every system variable the drawing has, by name, with its value. */
   "sysvars": Record<string, never>
-  /** QuickCalc. Params: {expr: "(3+4)*2^2", vars?: {x: 1}} */
+  /** QuickCalc. Evaluates an arithmetic expression, with optional named variables, as QuickCalc does, and answers the result. Params: {expr: "(3+4)*2^2", vars?: {x: 1}}. */
   "cal": { /** like (3+4)*2^2 */ expr?: string; vars?: { x?: number } }
-  /** Find.... Params: {find, replace?, matchCase?: bool, wholeWord?: bool}. Changes the document. */
-  "find": { /** find (no type given) */ find?: Json; matchCase?: boolean; /** replace (no type given) */ replace?: Json; wholeWord?: boolean }
-  /** Region/Mass Properties. Params: {handles?} */
-  "massprop": { /** handles (no type given) */ handles?: Json }
-  /** Measure Geometry. Params: {mode: distance|radius|angle|area, ...} */
-  "measuregeom": { /** distance|radius|angle|area */ mode?: Json }
-  /** Radius. Params: {handle} */
-  "radius.measure": { /** handle (no type given) */ handle?: Json }
-  /** Angle. Params: {vertex, p1, p2} | {h1, h2} */
-  "angle.measure": { /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** vertex (no type given) */ vertex?: Json }
-  /** Table.... Params: {at: [x,y], rows (data rows), cols, rowHeight?, colWidth?, cells?: [[text]], title?: text, header?: [text]}. Changes the document. */
-  "table": { at?: Array<number>; cells?: Array<Array<string>>; /** colWidth (no type given) */ colWidth?: Json; /** cols (no type given) */ cols?: Json; header?: Array<string>; /** rowHeight (no type given) */ rowHeight?: Json; title?: string }
-  /** Set Table Cell. Params: {handle, row, col, text}. Changes the document. */
-  "table.set": { /** col (no type given) */ col?: Json; /** handle (no type given) */ handle?: Json; row?: number; text?: string }
-  /** Insert Row. Params: {handle, row? (insert before; default: append), height?}. Changes the document. */
-  "table.insertrow": { /** handle (no type given) */ handle?: Json; height?: number }
-  /** Delete Row. Params: {handle, row}. Changes the document. */
-  "table.deleterow": { /** handle (no type given) */ handle?: Json; row?: number }
-  /** Insert Column. Params: {handle, col? (insert before; default: append), width?}. Changes the document. */
-  "table.insertcol": { /** handle (no type given) */ handle?: Json; width?: number }
-  /** Delete Column. Params: {handle, col}. Changes the document. */
-  "table.deletecol": { /** col (no type given) */ col?: Json; /** handle (no type given) */ handle?: Json }
-  /** Merge Cells. Params: {handle, row, col, rows, cols}. Changes the document. */
-  "table.merge": { /** col (no type given) */ col?: Json; /** cols (no type given) */ cols?: Json; /** handle (no type given) */ handle?: Json; row?: number; rows?: number }
-  /** Unmerge Cells. Params: {handle, row, col}. Changes the document. */
-  "table.unmerge": { /** col (no type given) */ col?: Json; /** handle (no type given) */ handle?: Json; row?: number }
-  /** Geometric Constraint. Params: {type: coincident|collinear|concentric|fix|parallel|perpendicular|horizontal|vertical|tangent|smooth|symmetric|equal, h1, p1?, h2?, p2?, h3?, p3?}. Changes the document. */
-  "geomconstraint": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json; type?: "coincident" | "collinear" | "concentric" | "fix" | "parallel" | "perpendicular" | "horizontal" | "vertical" | "tangent" | "smooth" | "symmetric" | "equal" }
-  /** Coincident. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gccoincident": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Perpendicular. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcperpendicular": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Parallel. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcparallel": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Tangent. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gctangent": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Horizontal. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gchorizontal": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Vertical. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcvertical": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Collinear. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gccollinear": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Concentric. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcconcentric": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Smooth. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcsmooth": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Symmetric. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcsymmetric": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Equal. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcequal": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** Fix. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
-  "gcfix": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; /** h3 (no type given) */ h3?: Json; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; /** p3 (no type given) */ p3?: Json }
-  /** AutoConstrain. Params: {handles?, tolerance?, angleTolerance? (degrees), types?: [names]}. Changes the document. */
-  "autoconstrain": { /** handles (no type given) */ handles?: Json; /** tolerance (no type given) */ tolerance?: Json; /** [names] */ types?: Array<Json> }
-  /** Constraint Bars. Params: {mode?: show|hide|showall|hideall, handles?}. Changes the document. */
-  "constraintbar": { /** handles (no type given) */ handles?: Json; mode?: "show" | "hide" | "showall" | "hideall" }
-  /** Show All Constraint Bars. Changes the document. */
+  /** Find... Finds text in the text, mtext, attributes and dimensions of the current space, optionally replacing it, matching case or whole words. Params: {find, replace?, matchCase?: bool, wholeWord?: bool}. Changes the document. */
+  "find": { find?: string; matchCase?: boolean; replace?: string; wholeWord?: boolean }
+  /** Region/Mass Properties. Answers the area, perimeter, centroid and moments of inertia of each given or selected closed object. Params: {handles?}. */
+  "massprop": { handles?: Array<string> }
+  /** Measure Geometry. Measures a distance, a radius, an angle or an area, taking the parameters of dist, radius.measure, angle.measure or area. Params: {mode: distance|radius|angle|area, ...}. */
+  "measuregeom": { mode?: string }
+  /** Radius. Answers the radius and diameter of an arc or circle. Params: {handle}. */
+  "radius.measure": { handle?: string }
+  /** Angle. Measures the angle at a vertex between two points, or between two lines, in degrees. Params: {vertex, p1, p2} | {h1, h2}. */
+  "angle.measure": { p1?: Array<number>; p2?: Array<number>; vertex?: Array<number> }
+  /** Table... Draws a table at a point with rows and columns, row height and column width, and optional cell texts, title and header row. Params: {at: [x,y], rows (data rows), cols, rowHeight?, colWidth?, cells?: [[text]], title?: text, header?: [text]}. Changes the document. */
+  "table": { at?: Array<number>; cells?: Array<Array<string>>; colWidth?: number; cols?: number; header?: Array<string>; rowHeight?: number; /** data rows */ rows?: number; title?: string }
+  /** Set Table Cell. Sets the text of one cell of a table, by row and column. Params: {handle, row, col, text}. Changes the document. */
+  "table.set": { col?: number; handle?: string; row?: number; text?: string }
+  /** Insert Row. Inserts a row into a table before a row, or appends one, with an optional height. Params: {handle, row? (insert before; default: append), height?}. Changes the document. */
+  "table.insertrow": { handle?: string; height?: number; /** insert before; default: append */ row?: number }
+  /** Delete Row. Deletes one row of a table by its index. Params: {handle, row}. Changes the document. */
+  "table.deleterow": { handle?: string; row?: number }
+  /** Insert Column. Inserts a column into a table before a column, or appends one, with an optional width. Params: {handle, col? (insert before; default: append), width?}. Changes the document. */
+  "table.insertcol": { col?: number; handle?: string; width?: number }
+  /** Delete Column. Deletes one column of a table by its index. Params: {handle, col}. Changes the document. */
+  "table.deletecol": { col?: number; handle?: string }
+  /** Merge Cells. Merges a block of table cells, from a row and column over a number of rows and columns, into one cell. Params: {handle, row, col, rows, cols}. Changes the document. */
+  "table.merge": { col?: number; cols?: number; handle?: string; row?: number; rows?: number }
+  /** Unmerge Cells. Splits the merged table cell at a row and column back into its single cells. Params: {handle, row, col}. Changes the document. */
+  "table.unmerge": { col?: number; handle?: string; row?: number }
+  /** Geometric Constraint. Adds a geometric constraint of a given type between points or objects and re-solves the drawing's constraints. Params: {type: coincident|collinear|concentric|fix|parallel|perpendicular|horizontal|vertical|tangent|smooth|symmetric|equal, h1, p1?, h2?, p2?, h3?, p3?}. Changes the document. */
+  "geomconstraint": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json; type?: "coincident" | "collinear" | "concentric" | "fix" | "parallel" | "perpendicular" | "horizontal" | "vertical" | "tangent" | "smooth" | "symmetric" | "equal" }
+  /** Coincident. Constrains two points, or a point and an object, to coincide, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gccoincident": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Perpendicular. Constrains two lines or polyline segments to stay perpendicular, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcperpendicular": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Parallel. Constrains two lines or polyline segments to stay parallel, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcparallel": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Tangent. Constrains a curve to stay tangent to another curve or line, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gctangent": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Horizontal. Constrains a line, segment or pair of points to stay horizontal, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gchorizontal": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Vertical. Constrains a line, segment or pair of points to stay vertical, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcvertical": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Collinear. Constrains two lines or segments to lie on the same infinite line, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gccollinear": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Concentric. Constrains two arcs, circles or ellipses to share a centre, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcconcentric": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Smooth. Constrains a spline to join another curve with smooth (curvature) continuity, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcsmooth": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Symmetric. Constrains two points or objects to stay symmetric about a symmetry line, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcsymmetric": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Equal. Constrains two lines to equal length, or two arcs or circles to equal radius, and re-solves the constraints. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcequal": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** Fix. Fixes a point or an object in place so the constraint solver cannot move it. Params: {h1, p1?, h2?, p2?, h3?, p3?} (h = handle; p = "start"/"end"/"mid"/"center"/"v<i>"/"seg<i>"/"object" or a pick point [x, y]). Changes the document. */
+  "gcfix": { h1?: string; h2?: string; h3?: string; p1?: Json; p2?: Json; p3?: Json }
+  /** AutoConstrain. Infers and adds geometric constraints among the given or selected objects within distance and angle tolerances, of the chosen types. Params: {handles?, tolerance?, angleTolerance? (degrees), types?: [names]}. Changes the document. */
+  "autoconstrain": { angleTolerance?: number; handles?: Array<string>; tolerance?: number; /** [names] */ types?: Array<Json> }
+  /** Constraint Bars. Shows or hides the constraint bars of the given objects, or of every object. Params: {mode?: show|hide|showall|hideall, handles?}. Changes the document. */
+  "constraintbar": { handles?: Array<string>; mode?: "show" | "hide" | "showall" | "hideall" }
+  /** Show All Constraint Bars. Shows the constraint bars of every constrained object. Changes the document. */
   "constraintbar.showall": Record<string, never>
-  /** Hide All Constraint Bars. Changes the document. */
+  /** Hide All Constraint Bars. Hides the constraint bars of every constrained object. Changes the document. */
   "constraintbar.hideall": Record<string, never>
-  /** Dimensional Constraint. Params: {type: linear|aligned|horizontal|vertical|angular|radius|diameter, h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dimconstraint": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json; type?: "linear" | "aligned" | "horizontal" | "vertical" | "angular" | "radius" | "diameter" }
-  /** Aligned. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcaligned": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Horizontal. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dchorizontal": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Vertical. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcvertical": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Angular. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcangular": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Radius. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcradius": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Diameter. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcdiameter": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Linear. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dclinear": { /** h1 (no type given) */ h1?: Json; /** h2 (no type given) */ h2?: Json; name?: string; /** p1 (no type given) */ p1?: Json; /** p2 (no type given) */ p2?: Json }
-  /** Dynamic Dimensions. Params: {mode?: show|hide|showall|hideall, handles?}. Changes the document. */
-  "dcdisplay": { /** handles (no type given) */ handles?: Json; mode?: "show" | "hide" | "showall" | "hideall" }
-  /** Show All Dynamic Dimensions. Changes the document. */
+  /** Dimensional Constraint. Adds a dimensional constraint (linear, aligned, horizontal, vertical, angular, radius or diameter) with a value or expression and re-solves. Params: {type: linear|aligned|horizontal|vertical|angular|radius|diameter, h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dimconstraint": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; type?: "linear" | "aligned" | "horizontal" | "vertical" | "angular" | "radius" | "diameter" }
+  /** Aligned. Adds an aligned distance constraint between two points or along a line, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dcaligned": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Horizontal. Adds a horizontal distance constraint between two points, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dchorizontal": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Vertical. Adds a vertical distance constraint between two points, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dcvertical": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Angular. Adds an angular constraint between two lines or on an arc, with a value or expression in degrees, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dcangular": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Radius. Adds a radius constraint to an arc or circle, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dcradius": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Diameter. Adds a diameter constraint to an arc or circle, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dcdiameter": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Linear. Adds a horizontal or vertical distance constraint between two points, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
+  "dclinear": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  /** Dynamic Dimensions. Shows or hides the dynamic dimensional constraints of the given objects, or of every object. Params: {mode?: show|hide|showall|hideall, handles?}. Changes the document. */
+  "dcdisplay": { handles?: Array<string>; mode?: "show" | "hide" | "showall" | "hideall" }
+  /** Show All Dynamic Dimensions. Shows every dynamic dimensional constraint in the drawing. Changes the document. */
   "dcdisplay.showall": Record<string, never>
-  /** Hide All Dynamic Dimensions. Changes the document. */
+  /** Hide All Dynamic Dimensions. Hides every dynamic dimensional constraint in the drawing. Changes the document. */
   "dcdisplay.hideall": Record<string, never>
-  /** Delete Constraints. Params: {handles? | ids?: [n]}. Changes the document. */
+  /** Delete Constraints. Deletes the constraints on the given or selected objects, or the constraints with the given ids. Params: {handles? | ids?: [n]}. Changes the document. */
   "delconstraint": { /** one of several alternative parameters */ handles?: Array<number>; /** one of several alternative parameters */ ids?: Array<number> }
-  /** Parameters Manager. Params: {} lists; {name, expr | value, description?} sets (new name = user parameter) and re-solves; {delete: name}. Changes the document. */
+  /** Parameters Manager. Lists the constraint parameters, sets one by name to a value or expression (creating a user parameter), or deletes one, then re-solves. Params: {} lists; {name, expr | value, description?} sets (new name = user parameter) and re-solves; {delete: name}. Changes the document. */
   "parameters": Record<string, never>
-  /** Constraint Settings. Params: {infer?, distanceTolerance?, angleTolerance?, autoTypes?: [names], barsVisible?, barTransparency?, dimsVisible?}. Changes the document. */
-  "constraintsettings": { /** angleTolerance (no type given) */ angleTolerance?: Json; /** [names] */ autoTypes?: Array<Json>; /** barTransparency (no type given) */ barTransparency?: Json; /** barsVisible (no type given) */ barsVisible?: Json; /** dimsVisible (no type given) */ dimsVisible?: Json; /** distanceTolerance (no type given) */ distanceTolerance?: Json; /** infer (no type given) */ infer?: Json }
-  /** Inspect Constraints. Params: {} ? constraints, glyph anchors, parameters, settings */
+  /** Constraint Settings. Sets constraint inference, distance and angle tolerances, auto-constrain types, and constraint bar and dimension visibility. Params: {infer?, distanceTolerance?, angleTolerance?, autoTypes?: [names], barsVisible?, barTransparency?, dimsVisible?}. Changes the document. */
+  "constraintsettings": { angleTolerance?: number; /** [names] */ autoTypes?: Array<Json>; barTransparency?: number; barsVisible?: boolean; dimsVisible?: boolean; distanceTolerance?: number; infer?: boolean }
+  /** Inspect Constraints. Answers the drawing's constraints, their glyph anchors, the parameters, the constraint settings and whether everything is satisfied. Params: {} ? constraints, glyph anchors, parameters, settings. */
   "constraints.inspect": Record<string, never>
-  /** Undo. Params: {}. Changes the document. */
-  "edit.undo": Record<string, never>
-  /** Redo. Params: {}. Changes the document. */
-  "edit.redo": Record<string, never>
-  /** Command line. Params: {text: string}. Changes the document. */
+  /** Undo. Undoes the last step of the caller's undo scope, or of the given person or agent scope (KitModel M12a). Params: {scope?: "person"|"agent"}. Changes the document. */
+  "edit.undo": { scope?: "person" | "agent" }
+  /** Redo. Redoes the last undone step of the caller's undo scope, or of the given person or agent scope. Params: {scope?: "person"|"agent"}. Changes the document. */
+  "edit.redo": { scope?: "person" | "agent" }
+  /** Command line. Runs a line typed at the command line: a command name or alias with its prompts' answers, as the person types them. Params: {text: string}. Changes the document. */
   "commandLine": { text?: string }
+  /** Synchronize viewport. Tells the engine the editor viewport's pan offset, zoom and pixel size, so its view matches what is drawn on screen. Params: {x: number, y: number, zoom: number, width: number, height: number}. */
+  "viewport.sync": { height?: number; width?: number; x?: number; y?: number; zoom?: number }
 }
 
 /** A Cad file opened with `openDocument<Drawing, CadCommands>`. */

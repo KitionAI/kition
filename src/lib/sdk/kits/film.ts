@@ -161,1359 +161,1369 @@ export interface Transition extends ModelObject {
 
 /** Every command of kit.film, by id, with its parameters. */
 export interface FilmCommands extends CommandMap {
-  /** Project. Params: {"name":str}. Changes the document. */
+  /** Project. Replaces the current project with a new empty one named `name`; unsaved changes are not kept. Params: {"name":str}. Changes the document. */
   "file.newProject": { name?: string }
-  /** Demo Project. Params: {}. Changes the document. */
+  /** Demo Project. Replaces the current project with the built-in demo project and opens its sequence. Params: {}. Changes the document. */
   "file.openDemoProject": Record<string, never>
-  /** Sequence. Params: {"name":str,"width":u32=1920,"height":u32=1080,"fps":f64=23.976,"sampleRate":u32=48000,"video":n=3,"audio":n=3,"mix":"Stereo|Mono|5.1|Adaptive"?,"trackType":"Standard|Mono|5.1|Adaptive"?,"fromItem":itemId?}. Changes the document. */
-  "file.newSequence": { audio?: number; fps?: number; /** itemId? */ fromItem?: Json; height?: number; mix?: "Stereo" | "Mono" | "5.1" | "Adaptive"; name?: string; sampleRate?: number; trackType?: "Standard" | "Mono" | "5.1" | "Adaptive"; video?: number; width?: number }
-  /** Sequence From Clip. Params: {"items":[id]?}. Changes the document. */
+  /** Sequence. Creates a sequence `name` (default 1920?1080, 23.976 fps, 48 kHz, 3 video and 3 audio tracks, or from `item`'s format) and opens it. Answers the new sequence id. Params: {"name":str,"width":u32=1920,"height":u32=1080,"fps":f64=23.976,"sampleRate":u32=48000,"video":n=3,"audio":n=3,"mix":"Stereo|Mono|5.1|Adaptive"?,"trackType":"Standard|Mono|5.1|Adaptive"?,"fromItem":itemId?}. Changes the document. */
+  "file.newSequence": { audio?: number; fps?: number; /** a project item id */ fromItem?: number; height?: number; mix?: "Stereo" | "Mono" | "5.1" | "Adaptive"; name?: string; sampleRate?: number; trackType?: "Standard" | "Mono" | "5.1" | "Adaptive"; video?: number; width?: number }
+  /** Sequence From Clip. Creates a sequence matching the format of each selected or listed clip `items` with that clip placed on it, and opens it. Params: {"items":[id]?}. Changes the document. */
   "file.newSequenceFromClip": { items?: Array<number> }
-  /** Bin. Params: {"name":str,"parent":binId?}. Changes the document. */
-  "file.newBin": { name?: string; /** binId? */ parent?: Json }
-  /** Bin From Selection. Params: {"items":[id]?,"name":str?}. Changes the document. */
+  /** Bin. Creates a bin `name` (default New Bin) in bin `parent` (default root). Answers the new bin id. Params: {"name":str,"parent":binId?}. Changes the document. */
+  "file.newBin": { name?: string; /** binId? */ parent?: number }
+  /** Bin From Selection. Creates a bin named `name` and moves the selected or listed `items` into it. Params: {"items":[id]?,"name":str?}. Changes the document. */
   "file.newBinFromSelection": { items?: Array<number>; name?: string }
-  /** Search Bin. Params: {"name":str?,"column":str?,"operator":str?,"text":str?,"rows":[..]?,"matchAll":bool?,"caseSensitive":bool?}. Changes the document. */
+  /** Search Bin. Creates a search bin `name` that live-matches items by `column`/`operator`/`text` (or `rows` with `matchAll`). Params: {"name":str?,"column":str?,"operator":str?,"text":str?,"rows":[..]?,"matchAll":bool?,"caseSensitive":bool?}. Changes the document. */
   "file.newSearchBin": { caseSensitive?: boolean; column?: string; matchAll?: boolean; name?: string; operator?: string; /** [..]? */ rows?: Array<Json>; text?: string }
-  /** Offline File. Params: {"name":str?,"fileName":str?,"tapeName":str?,"video":bool=true,"audio":bool=true,"width":u32?,"height":u32?,"fps":f64?,"sampleRate":u32=48000,"channels":u32=2,"timecode":"HH:MM:SS:FF"?,"seconds":f64=10,"description":str?}. Changes the document. */
+  /** Offline File. Creates an offline placeholder item with name, file and tape names, video/audio format, timecode and duration, to relink later. Params: {"name":str?,"fileName":str?,"tapeName":str?,"video":bool=true,"audio":bool=true,"width":u32?,"height":u32?,"fps":f64?,"sampleRate":u32=48000,"channels":u32=2,"timecode":"HH:MM:SS:FF"?,"seconds":f64=10,"description":str?}. Changes the document. */
   "file.newOfflineFile": { audio?: boolean; channels?: number; description?: string; fileName?: string; fps?: number; height?: number; name?: string; sampleRate?: number; seconds?: number; tapeName?: string; /** like HH:MM:SS:FF */ timecode?: string; video?: boolean; width?: number }
-  /** Adjustment Layer. Params: {"seconds":f64=5}. Changes the document. */
+  /** Adjustment Layer. Creates an Adjustment Layer project item `seconds` long (default 5) at the active sequence's frame size; effects on it apply to the tracks below. Params: {"seconds":f64=5}. Changes the document. */
   "file.newAdjustmentLayer": { seconds?: number }
-  /** Bars and Tone. Params: {"seconds":f64=10}. Changes the document. */
+  /** Bars and Tone. Creates an SMPTE bars and 1 kHz tone generator item `seconds` long (default 10). Params: {"seconds":f64=10}. Changes the document. */
   "file.newBarsAndTone": { seconds?: number }
-  /** Black Video. Params: {"seconds":f64}. Changes the document. */
+  /** Black Video. Creates a black video generator item `seconds` long. Params: {"seconds":f64}. Changes the document. */
   "file.newBlackVideo": { seconds?: number }
-  /** Color Matte. Params: {"color":"#rrggbb","seconds":f64}. Changes the document. */
+  /** Color Matte. Creates a solid Color Matte item of `color` #rrggbb, `seconds` long. Params: {"color":"#rrggbb","seconds":f64}. Changes the document. */
   "file.newColorMatte": { /** like #rrggbb */ color?: string; seconds?: number }
-  /** Color Matte Color. Params: {"item":id?,"color":"#rrggbb"}. Changes the document. */
+  /** Color Matte Color. Changes a Color Matte item's color (`item` or the Project panel selection) to `color` #rrggbb; every clip of the matte follows. Params: {"item":id?,"color":"#rrggbb"}. Changes the document. */
   "project.matteColor": { /** like #rrggbb */ color?: string; /** an id */ item?: number }
-  /** Universal Counting Leader. Params: {}. Changes the document. */
+  /** Universal Counting Leader. Creates a Universal Counting Leader generator item (an 8-second countdown). Params: {}. Changes the document. */
   "file.newCountingLeader": Record<string, never>
-  /** Transparent Video. Params: {}. Changes the document. */
+  /** Transparent Video. Creates a Transparent Video generator item (an empty clip for effects that draw their own content). Params: {}. Changes the document. */
   "file.newTransparentVideo": Record<string, never>
-  /** Demo Footage. Params: {"scene":"OceanSunset|Aurora|CityNight|Dunes|Plasma|Forest"}. Changes the document. */
+  /** Demo Footage. Adds generated demo footage items (`scene` OceanSunset, Aurora, CityNight, Dunes, Plasma or Forest; all when omitted) to the project. Params: {"scene":"OceanSunset|Aurora|CityNight|Dunes|Plasma|Forest"}. Changes the document. */
   "file.importDemoFootage": { scene?: "OceanSunset" | "Aurora" | "CityNight" | "Dunes" | "Plasma" | "Forest" }
-  /** Export Interchange. Params: {"format":"edl|xml|fcpxml|otio|aaf|omf"=xml,"path":str,"sequence":id?}. Changes the document. */
-  "file.exportInterchange": { /** default xml */ format?: "edl" | "xml" | "fcpxml" | "otio" | "aaf" | "omf"; path?: string; /** an id */ sequence?: number }
-  /** EDL. Params: {"path":str}. Changes the document. */
-  "file.exportEdl": { path?: string }
-  /** Selection as Kition Film Project. Params: {"path":str,"items":[id]?}. Changes the document. */
-  "file.exportSelectionProject": { items?: Array<number>; path?: string }
-  /** Avid Log Exchange. Params: {"path":str,"items":[id]?}. Changes the document. */
-  "file.exportAle": { items?: Array<number>; path?: string }
-  /** OpenTimelineIO. Params: {"path":str}. Changes the document. */
-  "file.exportOtio": { path?: string }
-  /** Final Cut Pro XML. Params: {"path":str}. Changes the document. */
-  "file.exportFcp7Xml": { path?: string }
-  /** FCPXML. Params: {"path":str}. Changes the document. */
-  "file.exportFcpxml": { path?: string }
-  /** AAF. Params: {"path":str,"sequence":id?,"mixdownVideo":bool?,"mixdownFormat":"mov|mxf"?,"breakoutToMono":bool?,"audio":"embedded|separate|linked"?,"audioFormat":"wav|aiff|mxf"?,"sampleRate":int?,"bitDepth":"16|24"?,"trimAudio":bool?,"handles":frames?,"renderAudioEffects":bool?,"smallSectors":bool?}. Changes the document. */
-  "file.exportAaf": { audio?: "embedded" | "separate" | "linked"; audioFormat?: "wav" | "aiff" | "mxf"; bitDepth?: "16" | "24"; breakoutToMono?: boolean; /** frames */ handles?: number; mixdownFormat?: "mov" | "mxf"; mixdownVideo?: boolean; path?: string; renderAudioEffects?: boolean; sampleRate?: number; /** an id */ sequence?: number; smallSectors?: boolean; trimAudio?: boolean }
-  /** OMF. Params: {"path":str,"sequence":id?,"title":str?,"audio":"embedded|separate"?,"audioFormat":"wav|aiff"?,"sampleRate":int?,"bitDepth":"16|24"?,"trimAudio":bool?,"handles":frames?,"renderAudioEffects":bool?,"breakoutToMono":bool?}. Changes the document. */
-  "file.exportOmf": { audio?: "embedded" | "separate"; audioFormat?: "wav" | "aiff"; bitDepth?: "16" | "24"; breakoutToMono?: boolean; /** frames */ handles?: number; path?: string; renderAudioEffects?: boolean; sampleRate?: number; /** an id */ sequence?: number; title?: string; trimAudio?: boolean }
-  /** Import AAF. Params: {"path":str}. Changes the document. */
-  "file.importAaf": { path?: string }
-  /** Open Project. Params: {"path":str}. Changes the document. */
-  "file.open": { path?: string }
-  /** Close. Params: {"item":id?}. Changes the document. */
+  /** Export Interchange. Writes the active (or `sequence`) sequence in an interchange `format`: edl, xml (FCP7), fcpxml, otio, aaf or omf, at `path`. Params: {"format":"edl|xml|fcpxml|otio|aaf|omf"=xml,"path":str,"sequence":id?}. Changes the document. */
+  "file.exportInterchange": { /** default xml */ format?: "edl" | "xml" | "fcpxml" | "otio" | "aaf" | "omf"; path?: Json; /** an id */ sequence?: number }
+  /** EDL. Writes the active sequence as a CMX 3600 EDL at `path` (video track V1 and its edits). Params: {"path":str}. Changes the document. */
+  "file.exportEdl": { path?: Json }
+  /** Selection as Kition Film Project. Writes the selected or listed project `items` (and what they use) as a new Kition Film project at `path`. Params: {"path":str,"items":[id]?}. Changes the document. */
+  "file.exportSelectionProject": { items?: Array<number>; path?: Json }
+  /** Avid Log Exchange. Writes an Avid Log Exchange (ALE) file at `path` listing the selected or listed media `items` with their metadata. Params: {"path":str,"items":[id]?}. Changes the document. */
+  "file.exportAle": { items?: Array<number>; path?: Json }
+  /** OpenTimelineIO. Writes the active sequence as OpenTimelineIO (.otio) at `path`. Params: {"path":str}. Changes the document. */
+  "file.exportOtio": { path?: Json }
+  /** Final Cut Pro XML. Writes the active sequence as Final Cut Pro 7 XML at `path` (Premiere/Resolve interchange). Params: {"path":str}. Changes the document. */
+  "file.exportFcp7Xml": { path?: Json }
+  /** FCPXML. Writes the active sequence as FCPXML at `path` for Final Cut Pro. Params: {"path":str}. Changes the document. */
+  "file.exportFcpxml": { path?: Json }
+  /** AAF. Writes the active (or `sequence`) sequence as AAF at `path` for Avid/Pro Tools, with audio embedded or separate, sample rate, bit depth, handles and optional video mixdown. Params: {"path":str,"sequence":id?,"mixdownVideo":bool?,"mixdownFormat":"mov|mxf"?,"breakoutToMono":bool?,"audio":"embedded|separate|linked"?,"audioFormat":"wav|aiff|mxf"?,"sampleRate":int?,"bitDepth":"16|24"?,"trimAudio":bool?,"handles":frames?,"renderAudioEffects":bool?,"smallSectors":bool?}. Changes the document. */
+  "file.exportAaf": { audio?: "embedded" | "separate" | "linked"; audioFormat?: "wav" | "aiff" | "mxf"; bitDepth?: "16" | "24"; breakoutToMono?: boolean; /** frames */ handles?: number; mixdownFormat?: "mov" | "mxf"; mixdownVideo?: boolean; path?: Json; renderAudioEffects?: boolean; sampleRate?: number; /** an id */ sequence?: number; smallSectors?: boolean; trimAudio?: boolean }
+  /** OMF. Writes the active (or `sequence`) sequence's audio as OMF at `path` for Pro Tools, embedded or separate audio, sample rate, bit depth, handles. Params: {"path":str,"sequence":id?,"title":str?,"audio":"embedded|separate"?,"audioFormat":"wav|aiff"?,"sampleRate":int?,"bitDepth":"16|24"?,"trimAudio":bool?,"handles":frames?,"renderAudioEffects":bool?,"breakoutToMono":bool?}. Changes the document. */
+  "file.exportOmf": { audio?: "embedded" | "separate"; audioFormat?: "wav" | "aiff"; bitDepth?: "16" | "24"; breakoutToMono?: boolean; /** frames */ handles?: number; path?: Json; renderAudioEffects?: boolean; sampleRate?: number; /** an id */ sequence?: number; title?: string; trimAudio?: boolean }
+  /** Import AAF. Imports an AAF (or OMF) file at `path` as new sequences with their media. Params: {"path":str}. Changes the document. */
+  "file.importAaf": { path?: Json }
+  /** Open Project. Opens the project file at `path`, replacing the current project. Params: {"path":str}. Changes the document. */
+  "file.open": { path?: Json }
+  /** Close. Closes the active sequence's timeline tab (or `item`'s), like File ? Close; the project stays open. Params: {"item":id?}. Changes the document. */
   "file.close": { /** an id */ item?: number }
-  /** Close Project. Params: {"force":bool?}. Changes the document. */
+  /** Close Project. Closes the project and starts an empty one; refused with unsaved changes unless `force`. Params: {"force":bool?}. Changes the document. */
   "file.closeProject": { force?: boolean }
-  /** Close All Projects. Params: {"force":bool?}. Changes the document. */
+  /** Close All Projects. Closes the project, as file.closeProject; `force` discards unsaved changes. Params: {"force":bool?}. Changes the document. */
   "file.closeAllProjects": { force?: boolean }
-  /** Close All Other Projects. Params: {}. Changes the document. */
+  /** Close All Other Projects. Closes every other open project; always refused, since a session holds one project. Params: {}. Changes the document. */
   "file.closeAllOtherProjects": Record<string, never>
-  /** Save. Params: {"path":str?}. Changes the document. */
-  "file.save": { path?: string }
-  /** Save As. Params: {"path":str}. Changes the document. */
-  "file.saveAs": { path?: string }
-  /** Save a Copy. Params: {"path":str}. Changes the document. */
-  "file.saveCopy": { path?: string }
-  /** Save as Template. Params: {"name":str?,"path":str?}. Changes the document. */
-  "file.saveAsTemplate": { name?: string; path?: string }
-  /** Save All. Params: {}. Changes the document. */
+  /** Save. Saves the project to its file (or `path`). Needs a path once; use file.saveAs for a new file. Params: {"path":str?}. Changes the document. */
+  "file.save": { path?: Json }
+  /** Save As. Saves the project to `path` and makes that the project's file from now on. Params: {"path":str}. Changes the document. */
+  "file.saveAs": { path?: Json }
+  /** Save a Copy. Writes a copy of the project to `path`; the project keeps its own file. Params: {"path":str}. Changes the document. */
+  "file.saveCopy": { path?: Json }
+  /** Save as Template. Saves the project as a reusable template `name` (or at `path`). Params: {"name":str?,"path":str?}. Changes the document. */
+  "file.saveAsTemplate": { name?: string; path?: Json }
+  /** Save All. Saves the project, as file.save. Params: {}. Changes the document. */
   "file.saveAll": Record<string, never>
-  /** Revert. Params: {}. Changes the document. */
+  /** Revert. Reloads the project from its last saved file, discarding changes since. Needs a saved project. Params: {}. Changes the document. */
   "file.revert": Record<string, never>
-  /** Recover Unsaved Changes. Params: {"id":str?}. Changes the document. */
+  /** Recover Unsaved Changes. Loads a recoverable unsaved session (`id`, default newest) as the current unsaved project. Params: {"id":str?}. Changes the document. */
   "file.recover": { id?: string }
-  /** Discard Unsaved Changes. Params: {"id":str?,"all":bool?}. Changes the document. */
+  /** Discard Unsaved Changes. Deletes recoverable unsaved sessions: one by `id`, or `all`. Params: {"id":str?,"all":bool?}. Changes the document. */
   "file.discardRecovery": { all?: boolean; id?: string }
-  /** List Recoverable Sessions. Params: {} */
+  /** List Recoverable Sessions. Lists recoverable unsaved sessions left by crashes or closed windows. Params: {}. */
   "file.recoveryList": Record<string, never>
-  /** Auto Save Now. Params: {}. Changes the document. */
+  /** Auto Save Now. Writes an auto-save of the current project immediately (desktop sessions with auto-save running). Answers the file written. Params: {}. Changes the document. */
   "file.autoSaveNow": Record<string, never>
-  /** Auto Save Status. Params: {} */
+  /** Auto Save Status. Reads the auto-save state: whether it runs, its preferences, data folder and the last save time. Params: {}. */
   "file.autoSaveStatus": Record<string, never>
-  /** Browse Auto-Saves. Params: {} */
+  /** Browse Auto-Saves. Lists the auto-save files of the current project, newest first, with their folder. Params: {}. */
   "file.listAutoSaves": Record<string, never>
-  /** Get Preferences. Params: {"key":str?} */
+  /** Get Preferences. Reads preferences: one `key` (e.g. audio.scrubAudio, trim.largeTrimOffset) or all. Params: {"key":str?}. */
   "prefs.get": { key?: string }
-  /** Set Preferences. Params: {"key":str,"value":any}|{"values":{key:value}}. Changes the document. */
+  /** Set Preferences. Sets preference `key` to `value`, or several `values`; see prefs.schema for keys and types. Params: {"key":str,"value":any}|{"values":{key:value}}. Changes the document. */
   "prefs.set": { key?: string; value?: Json }
-  /** Reset Preferences. Params: {"category":str?}. Changes the document. */
+  /** Reset Preferences. Resets preferences to defaults: one `category` or all. Params: {"category":str?}. Changes the document. */
   "prefs.reset": { category?: string }
-  /** Media. Params: {"path":str,"preset":str?,"settings":ExportSettings?,"format":"h264|hevc|prores|dnxhr|apv|mjpeg|mxf-op1a|mxf-opatom|png|tiff|bmp|gif|wav|aiff"?,"width":u32?,"height":u32?,"fps":f64?,"bitrateKbps":u32?,"bitrateMode":"cbr|vbr1Pass|vbr2Pass"?,"hardwareEncoding":"off|auto"?,"scale":f32=1,"audio":bool=true,"quality":0..100,"burnCaptions":bool=false,"alpha":bool=false,"captionSidecar":"srt|vtt"?,"loudnessLufs":f64?,"proresProfile":"proxy|lt|standard|hq"?,"dnxProfile":"lb|sq|hq|hqx"?,"apvProfile":"422-10|422-12|444-10|444-12"?,"mxfVideoCodec":"dnxhr|proRes|h264"?,"sequence":id?,"range":"entire|inOut|workArea|custom"?,"startSeconds":f64?,"endSeconds":f64?,"wait":bool=false}. Changes the document. */
-  "file.exportMedia": { alpha?: boolean; apvProfile?: "422-10" | "422-12" | "444-10" | "444-12"; audio?: boolean; bitrateKbps?: number; bitrateMode?: "cbr" | "vbr1Pass" | "vbr2Pass"; burnCaptions?: boolean; captionSidecar?: "srt" | "vtt"; dnxProfile?: "lb" | "sq" | "hq" | "hqx"; endSeconds?: number; format?: "h264" | "hevc" | "prores" | "dnxhr" | "apv" | "mjpeg" | "mxf-op1a" | "mxf-opatom" | "png" | "tiff" | "bmp" | "gif" | "wav" | "aiff"; fps?: number; hardwareEncoding?: "off" | "auto"; height?: number; loudnessLufs?: number; mxfVideoCodec?: "dnxhr" | "proRes" | "h264"; path?: string; preset?: string; proresProfile?: "proxy" | "lt" | "standard" | "hq"; /** 0 to 100 */ quality?: number; range?: "entire" | "inOut" | "workArea" | "custom"; scale?: number; /** an id */ sequence?: number; /** ExportSettings? */ settings?: Json; startSeconds?: number; wait?: boolean; width?: number }
-  /** List Jobs. Params: {} */
+  /** Media. Renders the active sequence (In?Out when set) to a media file at `path`: `format` (h264, hevc, prores, dnxhr, png, wav...), size, fps, bitrate, quality, captions, loudness; or a `preset`. For H.264 a `quality` (0?100) without `bitrateKbps` or `bitrateMode` encodes at constant quality (CRF 51 at 0 to 12 at 100; 90 is CRF 15.9); otherwise the bitrate settings apply. Long jobs run in the background. Params: {"path":str,"preset":str?,"settings":ExportSettings?,"format":"h264|hevc|prores|dnxhr|apv|mjpeg|mxf-op1a|mxf-opatom|png|tiff|bmp|gif|wav|aiff"?,"width":u32?,"height":u32?,"fps":f64?,"bitrateKbps":u32?,"bitrateMode":"cbr|vbr1Pass|vbr2Pass|quality"?,"hardwareEncoding":"off|auto"?,"scale":f32=1,"audio":bool=true,"quality":0..100 (H.264: constant quality unless a bitrate is given)?,"burnCaptions":bool=false,"alpha":bool=false,"captionSidecar":"srt|vtt"?,"loudnessLufs":f64?,"proresProfile":"proxy|lt|standard|hq"?,"dnxProfile":"lb|sq|hq|hqx"?,"apvProfile":"422-10|422-12|444-10|444-12"?,"mxfVideoCodec":"dnxhr|proRes|h264"?,"sequence":id?,"range":"entire|inOut|workArea|custom"?,"startSeconds":f64?,"endSeconds":f64?,"wait":bool=false}. Changes the document. */
+  "file.exportMedia": { alpha?: boolean; apvProfile?: "422-10" | "422-12" | "444-10" | "444-12"; audio?: boolean; bitrateKbps?: number; bitrateMode?: "cbr" | "vbr1Pass" | "vbr2Pass" | "quality"; burnCaptions?: boolean; captionSidecar?: "srt" | "vtt"; dnxProfile?: "lb" | "sq" | "hq" | "hqx"; endSeconds?: number; format?: "h264" | "hevc" | "prores" | "dnxhr" | "apv" | "mjpeg" | "mxf-op1a" | "mxf-opatom" | "png" | "tiff" | "bmp" | "gif" | "wav" | "aiff"; fps?: number; hardwareEncoding?: "off" | "auto"; height?: number; loudnessLufs?: number; mxfVideoCodec?: "dnxhr" | "proRes" | "h264"; path?: Json; preset?: string; proresProfile?: "proxy" | "lt" | "standard" | "hq"; /** 0 to 100; H.264: constant quality unless a bitrate is given */ quality?: number; range?: "entire" | "inOut" | "workArea" | "custom"; scale?: number; /** an id */ sequence?: number; /** ExportSettings? */ settings?: Json; startSeconds?: number; wait?: boolean; width?: number }
+  /** List Jobs. Lists background jobs (exports, proxies, analysis, renders) with id, kind, status and progress. Params: {}. */
   "jobs.list": Record<string, never>
-  /** Performance Statistics. Params: {} */
+  /** Performance Statistics. Reads performance statistics: decode, render and cache timings and memory. Params: {}. */
   "perf.stats": Record<string, never>
-  /** Cancel Job. Params: {"job":id}. Changes the document. */
+  /** Cancel Job. Cancels background `job` by id. Params: {"job":id}. Changes the document. */
   "jobs.cancel": { /** an id */ job?: number }
-  /** Undo. Params: {}. Changes the document. */
-  "edit.undo": Record<string, never>
-  /** Redo. Params: {}. Changes the document. */
-  "edit.redo": Record<string, never>
-  /** Cut. Params: {}. Changes the document. */
+  /** Undo. Undoes the last step in `scope` (person or agent; default the caller's own), so an agent's undo never takes back the person's edit. Answers {undone} with the step's label. Params: {"scope":"person|agent"?}. Changes the document. */
+  "edit.undo": { scope?: "person" | "agent" }
+  /** Redo. Redoes the last undone step in `scope` (person or agent; default the caller's own). Answers {redone} with the step's label. Params: {"scope":"person|agent"?}. Changes the document. */
+  "edit.redo": { scope?: "person" | "agent" }
+  /** Cut. Copies the selected clips (with linked partners) to the clipboard and deletes them, leaving gaps. Params: {}. Changes the document. */
   "edit.cut": Record<string, never>
-  /** Copy. Params: {}. Changes the document. */
+  /** Copy. Copies the selected timeline clips (with their tracks, offsets and markers) to the clipboard for edit.paste/pasteInsert/pasteAttributes. Answers {copied}. Params: {}. Changes the document. */
   "edit.copy": Record<string, never>
-  /** Paste. Params: {}. Changes the document. */
+  /** Paste. Pastes the clipboard's clips at the playhead on their original track layout, overwriting what is there; nothing moves. Use edit.pasteInsert to push later clips right. Params: {}. Changes the document. */
   "edit.paste": Record<string, never>
-  /** Paste Insert. Params: {}. Changes the document. */
+  /** Paste Insert. Pastes the clipboard's clips at the playhead as an insert: clips at and after the playhead move right by the pasted length on the affected tracks. Params: {}. Changes the document. */
   "edit.pasteInsert": Record<string, never>
-  /** Paste Attributes. Params: {"clips":[id]?,"motion":bool=true,"opacity":bool=true,"timeRemapping":bool=true,"volume":bool=true,"channelVolume":bool=true,"panner":bool=true,"effects":bool|[effectId]=true,"scaleTimes":bool=true}. Changes the document. */
-  "edit.pasteAttributes": { channelVolume?: boolean; clips?: Array<number>; /** bool|[effectId]=true; default true */ effects?: Json; motion?: boolean; opacity?: boolean; panner?: boolean; scaleTimes?: boolean; timeRemapping?: boolean; volume?: boolean }
-  /** Remove Attributes. Params: {"clips":[id]?,"motion":bool=true,"opacity":bool=true,"timeRemapping":bool=true,"volume":bool=true,"channelVolume":bool=true,"panner":bool=true,"effects":bool|[effectId]=true}. Changes the document. */
-  "edit.removeAttributes": { channelVolume?: boolean; clips?: Array<number>; /** bool|[effectId]=true; default true */ effects?: Json; motion?: boolean; opacity?: boolean; panner?: boolean; timeRemapping?: boolean; volume?: boolean }
-  /** Clear. Params: {"clips":[id]?}. Changes the document. */
+  /** Paste Attributes. Pastes the copied clip's motion, opacity, time remapping, volume, channel volume, panner and `effects` (true or a list of effect ids) onto the selected or listed `clips`; `scaleTimes` fits keyframes to each clip's length. Params: {"clips":[id]?,"motion":bool=true,"opacity":bool=true,"timeRemapping":bool=true,"volume":bool=true,"channelVolume":bool=true,"panner":bool=true,"effects":bool|[effectId]=true,"scaleTimes":bool=true}. Changes the document. */
+  "edit.pasteAttributes": { channelVolume?: boolean; clips?: Array<number>; /** bool|[effectId]=true; default true */ effects?: Array<Json>; motion?: boolean; opacity?: boolean; panner?: boolean; scaleTimes?: boolean; timeRemapping?: boolean; volume?: boolean }
+  /** Remove Attributes. Removes motion, opacity, time remapping, volume, channel volume, panner and/or `effects` from the selected or listed `clips`, resetting them to defaults. Params: {"clips":[id]?,"motion":bool=true,"opacity":bool=true,"timeRemapping":bool=true,"volume":bool=true,"channelVolume":bool=true,"panner":bool=true,"effects":bool|[effectId]=true}. Changes the document. */
+  "edit.removeAttributes": { channelVolume?: boolean; clips?: Array<number>; /** bool|[effectId]=true; default true */ effects?: Array<Json>; motion?: boolean; opacity?: boolean; panner?: boolean; timeRemapping?: boolean; volume?: boolean }
+  /** Clear. Deletes the selected (or listed `clips`) timeline clips with their linked partners, leaving gaps; with no clip selected it deletes the selected captions. Use edit.rippleDelete to close the gaps. Params: {"clips":[id]?}. Changes the document. */
   "edit.clear": { clips?: Array<number> }
-  /** Ripple Delete. Params: {"clips":[id]?}. Changes the document. */
+  /** Ripple Delete. Deletes the selected (or listed `clips`) clips and closes the gaps by moving later clips earlier; refused when nothing can close. With no clip selected it ripple-deletes the selected captions. Params: {"clips":[id]?}. Changes the document. */
   "edit.rippleDelete": { clips?: Array<number> }
-  /** Select All. Params: {}. Changes the document. */
+  /** Select All. Selects every clip on every track of the active sequence. Answers {selected}. Params: {}. Changes the document. */
   "edit.selectAll": Record<string, never>
-  /** Select All Matching. Params: {"clips":[id]?}. Changes the document. */
+  /** Select All Matching. Selects every clip in the active sequence that uses the same source item as the selected (or listed) clips. Answers {clips}. Params: {"clips":[id]?}. Changes the document. */
   "edit.selectAllMatching": { clips?: Array<number> }
-  /** Deselect All. Params: {}. Changes the document. */
+  /** Deselect All. Clears the timeline clip and caption selection. Params: {}. Changes the document. */
   "edit.deselectAll": Record<string, never>
-  /** Find. Params: {"scope":"project|timeline"?,"column":str?,"operator":"contains|matches|beginsWith|endsWith|doesNotContain"?,"text":str?,"rows":[{"column":str,"operator":str,"text":str}]?,"matchAll":bool=true,"caseSensitive":bool=false,"in":"all|clips|markers"?}. Changes the document. */
+  /** Find. Finds project items (`scope` project) or timeline clips (timeline) by `column` and `operator` with `text`, or several `rows` (`matchAll`); selects and reveals the first match. Answers it and the match count. Params: {"scope":"project|timeline"?,"column":str?,"operator":"contains|matches|beginsWith|endsWith|doesNotContain"?,"text":str?,"rows":[{"column":str,"operator":str,"text":str}]?,"matchAll":bool=true,"caseSensitive":bool=false,"in":"all|clips|markers"?}. Changes the document. */
   "edit.find": { caseSensitive?: boolean; column?: string; in?: "all" | "clips" | "markers"; matchAll?: boolean; operator?: "contains" | "matches" | "beginsWith" | "endsWith" | "doesNotContain"; rows?: Array<{ column?: string; operator?: string; text?: string }>; scope?: "project" | "timeline"; text?: string }
-  /** Find Next. Params: {}. Changes the document. */
+  /** Find Next. Selects and reveals the next match of the last edit.find search. Needs a previous edit.find. Params: {}. Changes the document. */
   "edit.findNext": Record<string, never>
-  /** Duplicate. Params: {}. Changes the document. */
+  /** Duplicate. Duplicates the selected Project panel items as new items named "<name> Copy" in the same bin. Answers the new item ids. Params: {}. Changes the document. */
   "edit.duplicate": Record<string, never>
-  /** Select Label Group. Params: {}. Changes the document. */
+  /** Select Label Group. Selects every timeline clip (or Project panel item, when no clip is selected) with the same color label as the current selection. Params: {}. Changes the document. */
   "edit.selectLabelGroup": Record<string, never>
-  /** Violet. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Violet. Sets the Violet color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.violet": { clips?: Array<number>; items?: Array<number> }
-  /** Iris. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Iris. Sets the Iris color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.iris": { clips?: Array<number>; items?: Array<number> }
-  /** Caribbean. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Caribbean. Sets the Caribbean color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.caribbean": { clips?: Array<number>; items?: Array<number> }
-  /** Lavender. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Lavender. Sets the Lavender color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.lavender": { clips?: Array<number>; items?: Array<number> }
-  /** Cerulean. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Cerulean. Sets the Cerulean color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.cerulean": { clips?: Array<number>; items?: Array<number> }
-  /** Forest. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Forest. Sets the Forest color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.forest": { clips?: Array<number>; items?: Array<number> }
-  /** Rose. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Rose. Sets the Rose color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.rose": { clips?: Array<number>; items?: Array<number> }
-  /** Mango. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Mango. Sets the Mango color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.mango": { clips?: Array<number>; items?: Array<number> }
-  /** Purple. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Purple. Sets the Purple color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.purple": { clips?: Array<number>; items?: Array<number> }
-  /** Blue. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Blue. Sets the Blue color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.blue": { clips?: Array<number>; items?: Array<number> }
-  /** Teal. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Teal. Sets the Teal color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.teal": { clips?: Array<number>; items?: Array<number> }
-  /** Magenta. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Magenta. Sets the Magenta color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.magenta": { clips?: Array<number>; items?: Array<number> }
-  /** Tan. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Tan. Sets the Tan color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.tan": { clips?: Array<number>; items?: Array<number> }
-  /** Green. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Green. Sets the Green color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.green": { clips?: Array<number>; items?: Array<number> }
-  /** Brown. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Brown. Sets the Brown color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.brown": { clips?: Array<number>; items?: Array<number> }
-  /** Yellow. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
+  /** Yellow. Sets the Yellow color label on the selected (or listed `clips`) timeline clips and Project panel (`items`) items. Params: {"items":[id]?,"clips":[id]?}. Changes the document. */
   "edit.label.yellow": { clips?: Array<number>; items?: Array<number> }
-  /** Remove Unused. Params: {}. Changes the document. */
+  /** Remove Unused. Deletes every project item that no sequence uses (sequences and bins are kept). Answers {removed} item ids. Params: {}. Changes the document. */
   "edit.removeUnused": Record<string, never>
-  /** Consolidate Duplicates. Params: {}. Changes the document. */
+  /** Consolidate Duplicates. Merges project items that refer to the same file or generator with the same interpretation: the oldest is kept and every clip using the others is relinked to it. Params: {}. Changes the document. */
   "edit.consolidateDuplicates": Record<string, never>
-  /** Edit Original. Params: {"items":[id]?}. Changes the document. */
+  /** Edit Original. Answers the media file paths of the selected clips or `items` so the host opens them in their original applications; changes nothing. Params: {"items":[id]?}. */
   "edit.editOriginal": { items?: Array<number> }
-  /** Label. Params: {"label":"Violet|Iris|..."}. Changes the document. */
+  /** Label. Sets the color `label` (Violet, Iris, Caribbean...) of the selected timeline clips and Project panel items. Params: {"label":"Violet|Iris|..."}. Changes the document. */
   "edit.label": { /** for example Violet, Iris */ label?: string }
-  /** Rename. Params: {"clip":id?,"item":id?,"name":str}. Changes the document. */
+  /** Rename. Renames a timeline `clip` (default the first selected) or a project `item` to `name`. Params: {"clip":id?,"item":id?,"name":str}. Changes the document. */
   "clip.rename": { /** an id */ clip?: number; /** an id */ item?: number; name?: string }
-  /** Make Subclip. Params: {"item":id?,"clip":id?,"name":str?,"start":ticks?,"end":ticks?,"startFrame":i64?,"endFrame":i64?,"restrictTrims":bool=true}. Changes the document. */
+  /** Make Subclip. Creates a subclip project item from a master `item` or timeline `clip` between start and end (ticks or frames), default the item's In/Out; `restrictTrims` keeps edits inside that range. Answers the new item. Params: {"item":id?,"clip":id?,"name":str?,"start":ticks?,"end":ticks?,"startFrame":i64?,"endFrame":i64?,"restrictTrims":bool=true}. Changes the document. */
   "clip.makeSubclip": { /** an id */ clip?: number; /** ticks (254016000000 per second) */ end?: number; endFrame?: number; /** an id */ item?: number; name?: string; restrictTrims?: boolean; /** ticks (254016000000 per second) */ start?: number; startFrame?: number }
-  /** Edit Subclip. Params: {"item":id?,"start":ticks?,"end":ticks?,"startFrame":i64?,"endFrame":i64?,"restrictTrims":bool?,"convertToMaster":bool?}. Changes the document. */
+  /** Edit Subclip. Changes an existing subclip `item`'s start/end (ticks or frames of its master), `restrictTrims`, or converts it back to a master clip with `convertToMaster`. Params: {"item":id?,"start":ticks?,"end":ticks?,"startFrame":i64?,"endFrame":i64?,"restrictTrims":bool?,"convertToMaster":bool?}. Changes the document. */
   "clip.editSubclip": { convertToMaster?: boolean; /** ticks (254016000000 per second) */ end?: number; endFrame?: number; /** an id */ item?: number; restrictTrims?: boolean; /** ticks (254016000000 per second) */ start?: number; startFrame?: number }
-  /** Edit Offline. Params: {"item":id?,"mediaName":str?,"tapeName":str?,"description":str?,"scene":str?,"shot":str?,"logNote":str?}. Changes the document. */
+  /** Edit Offline. Edits the offline-file information of an offline `item`: media name, tape name, description, scene, shot and log note. Params: {"item":id?,"mediaName":str?,"tapeName":str?,"description":str?,"scene":str?,"shot":str?,"logNote":str?}. Changes the document. */
   "clip.editOffline": { description?: string; /** an id */ item?: number; logNote?: string; mediaName?: string; scene?: string; shot?: string; tapeName?: string }
-  /** Source Settings. Params: {"item":id?} */
+  /** Source Settings. Reads the source settings of a media `item` (codec-specific decode options) as Clip ? Source Settings shows them. Params: {"item":id?}. */
   "clip.sourceSettings": { /** an id */ item?: number }
-  /** Audio Channels. Params: {"items":[id]?,"format":"mono|stereo|5.1|adaptive","clips":[[channel]]?,"channels":[channel]?}. Changes the document. */
+  /** Audio Channels. Sets how project `items`' audio channels map to clips: `format` mono|stereo|5.1|adaptive and which source `channels` each clip carries. Applies to clips made after; existing timeline clips keep theirs. Params: {"items":[id]?,"format":"mono|stereo|5.1|adaptive","clips":[[channel]]?,"channels":[channel]?}. Changes the document. */
   "clip.audioChannels": { /** [channel]? */ channels?: Array<Json>; /** [[channel]]? */ clips?: Array<Array<Json>>; format?: "mono" | "stereo" | "5.1" | "adaptive"; items?: Array<number> }
-  /** Interpret Footage. Params: {"items":[id]?,"colorSpace":"auto"|"<color space id>"}. Changes the document. */
+  /** Interpret Footage. Sets the source color space of the selected or listed footage `items` (`colorSpace`: auto or an id from color.spaces). Params: {"items":[id]?,"colorSpace":"auto"|"<color space id>"}. Changes the document. */
   "clip.interpretFootage": { colorSpace?: "auto" | "<color space id>"; items?: Array<number> }
-  /** Timecode. Params: {"item":id?,"timecode":"HH:MM:SS:FF"?,"frame":i64?,"tapeName":str?,"reset":bool?}. Changes the document. */
+  /** Timecode. Sets the start `timecode` (or `frame`) and `tapeName` of a media `item`; `reset` restores the file's own timecode. Params: {"item":id?,"timecode":"HH:MM:SS:FF"?,"frame":i64?,"tapeName":str?,"reset":bool?}. Changes the document. */
   "clip.modifyTimecode": { frame?: number; /** an id */ item?: number; reset?: boolean; tapeName?: string; /** like HH:MM:SS:FF */ timecode?: string }
-  /** Frame Hold Options. Params: {"clips":[id]?,"enabled":bool=true,"holdOn":"sourceTimecode|sequenceTime|in|out|playhead","time":ticks?,"timecode":str?,"holdFilters":bool=false}. Changes the document. */
+  /** Frame Hold Options. Turns a frame hold on or off for the selected or listed `clips` and chooses the held frame: sourceTimecode, sequenceTime, in, out or playhead; `holdFilters` also freezes effects. Params: {"clips":[id]?,"enabled":bool=true,"holdOn":"sourceTimecode|sequenceTime|in|out|playhead","time":ticks?,"timecode":str?,"holdFilters":bool=false}. Changes the document. */
   "clip.frameHoldOptions": { clips?: Array<number>; enabled?: boolean; holdFilters?: boolean; holdOn?: "sourceTimecode" | "sequenceTime" | "in" | "out" | "playhead"; /** ticks (254016000000 per second) */ time?: number; timecode?: string }
-  /** Add Frame Hold. Params: {"clips":[id]?,"time":ticks?}. Changes the document. */
+  /** Add Frame Hold. Splits the selected clips (or the targeted video clip under the playhead) at the playhead or `time` and freezes the frame there for the rest of the clip. Params: {"clips":[id]?,"time":ticks?}. Changes the document. */
   "clip.frameHold": { clips?: Array<number>; /** ticks (254016000000 per second) */ time?: number }
-  /** Insert Frame Hold Segment. Params: {"clip":id?,"time":ticks?,"seconds":f64=2}. Changes the document. */
+  /** Insert Frame Hold Segment. Inserts a frozen frame `seconds` long (default 2) at the playhead or `time` inside `clip` (default the one under the playhead), splitting it and pushing the rest later. Params: {"clip":id?,"time":ticks?,"seconds":f64=2}. Changes the document. */
   "clip.insertFrameHoldSegment": { /** an id */ clip?: number; seconds?: number; /** ticks (254016000000 per second) */ time?: number }
-  /** Field Options. Params: {"clips":[id]?,"reverseFieldDominance":bool=false,"processing":"none|alwaysDeinterlace|flickerRemoval"}. Changes the document. */
+  /** Field Options. Sets interlaced field handling of the selected or listed `clips`: reverse field dominance, and `processing` none|alwaysDeinterlace|flickerRemoval. Params: {"clips":[id]?,"reverseFieldDominance":bool=false,"processing":"none|alwaysDeinterlace|flickerRemoval"}. Changes the document. */
   "clip.fieldOptions": { clips?: Array<number>; processing?: "none" | "alwaysDeinterlace" | "flickerRemoval"; reverseFieldDominance?: boolean }
-  /** Frame Sampling. Params: {"clips":[id]?}. Changes the document. */
+  /** Frame Sampling. Sets the selected clips' time interpolation to Frame Sampling (repeats or drops whole frames when speed changes). Params: {"clips":[id]?}. Changes the document. */
   "clip.timeInterpolation.frameSampling": { clips?: Array<number> }
-  /** Frame Blending. Params: {"clips":[id]?}. Changes the document. */
+  /** Frame Blending. Sets the selected clips' time interpolation to Frame Blending (blends neighbouring frames when speed changes). Params: {"clips":[id]?}. Changes the document. */
   "clip.timeInterpolation.frameBlending": { clips?: Array<number> }
-  /** Optical Flow. Params: {"clips":[id]?}. Changes the document. */
+  /** Optical Flow. Sets the selected clips' time interpolation to Optical Flow (synthesises in-between frames when speed changes). Params: {"clips":[id]?}. Changes the document. */
   "clip.timeInterpolation.opticalFlow": { clips?: Array<number> }
-  /** Scale to Frame Size. Params: {}. Changes the document. */
+  /** Scale to Frame Size. Toggles Scale to Frame Size on the selected clips: rendered at the frame size rather than their native resolution. Params: {}. Changes the document. */
   "clip.scaleToFrameSize": Record<string, never>
-  /** Fit to frame. Params: {"clips":[id]?}. Changes the document. */
+  /** Fit to frame. Scales and centres the selected or listed video `clips` so the whole picture is visible inside the frame (letterboxing). Use clip.fillFrame to cover the frame. Params: {"clips":[id]?}. Changes the document. */
   "clip.fitToFrame": { clips?: Array<number> }
-  /** Fill frame. Params: {"clips":[id]?}. Changes the document. */
+  /** Fill frame. Scales and centres the selected or listed video `clips` so they cover the whole frame (cropping edges). Use clip.fitToFrame to show the whole picture. Params: {"clips":[id]?}. Changes the document. */
   "clip.fillFrame": { clips?: Array<number> }
-  /** Audio Gain. Params: {"clips":[id]?,"mode":"set|adjust|normalizeMax|normalizeAll"?,"db":f64,"relative":bool?}. Changes the document. */
+  /** Audio Gain. Changes clip gain of the selected or listed audio `clips`: `mode` set (to `db`), adjust (by `db`), normalizeMax (loudest peak to `db`) or normalizeAll (each clip's peak to `db`). Params: {"clips":[id]?,"mode":"set|adjust|normalizeMax|normalizeAll"?,"db":f64,"relative":bool?}. Changes the document. */
   "clip.audioGain": { clips?: Array<number>; db?: number; mode?: "set" | "adjust" | "normalizeMax" | "normalizeAll"; relative?: boolean }
-  /** Breakout to Mono. Params: {"items":[id]?}. Changes the document. */
+  /** Breakout to Mono. Creates one mono project item per audio channel of each selected item with audio, in the same bin. Answers the new items. Params: {"items":[id]?}. Changes the document. */
   "clip.breakoutToMono": { items?: Array<number> }
-  /** Extract Audio. Params: {"items":[id]?,"dir":str?}. Changes the document. */
-  "clip.extractAudio": { dir?: string; items?: Array<number> }
-  /** Speed/Duration. Params: {"clips":[id]?,"speed":percent=100,"reverse":bool,"ripple":bool,"interpolation":"frameSampling|frameBlending|opticalFlow"?}. Changes the document. */
+  /** Extract Audio. Renders the audio of the selected clips or `items` to new audio files (in `dir`) and imports them as project items; one undo step. Params: {"items":[id]?,"dir":str?}. Changes the document. */
+  "clip.extractAudio": { dir?: Json; items?: Array<number> }
+  /** Speed/Duration. Changes the selected or listed `clips`' `speed` in percent (100 = normal; length scales by 100/speed), `reverse`, `ripple` (move later clips) and time `interpolation`. Params: {"clips":[id]?,"speed":percent=100,"reverse":bool,"ripple":bool,"interpolation":"frameSampling|frameBlending|opticalFlow"?}. Changes the document. */
   "clip.speedDuration": { clips?: Array<number>; interpolation?: "frameSampling" | "frameBlending" | "opticalFlow"; reverse?: boolean; ripple?: boolean; /** percent */ speed?: number }
-  /** Scene Edit Detection. Params: {"clips":[id]?,"sensitivity":0..100=50,"minShotFrames":n=6,"applyCuts":bool=true,"createSubclips":bool=false,"generateMarkers":bool=false,"wait":bool=false}. Changes the document. */
+  /** Scene Edit Detection. Detects shot changes in the selected video `clips` (`sensitivity` 0?100, minimum shot `minShotFrames`) and cuts there, and/or makes subclips or markers; `wait` blocks until analysis ends. Params: {"clips":[id]?,"sensitivity":0..100=50,"minShotFrames":n=6,"applyCuts":bool=true,"createSubclips":bool=false,"generateMarkers":bool=false,"wait":bool=false}. Changes the document. */
   "clip.sceneEditDetection": { applyCuts?: boolean; clips?: Array<number>; createSubclips?: boolean; generateMarkers?: boolean; minShotFrames?: number; /** 0 to 100 */ sensitivity?: number; wait?: boolean }
-  /** Enable. Params: {"clips":[id]?}. Changes the document. */
+  /** Enable. Toggles whether the selected or listed `clips` (with linked partners) play and render: all disabled when they were all enabled, else all enabled. Params: {"clips":[id]?}. Changes the document. */
   "clip.enable": { clips?: Array<number> }
-  /** Link. Params: {"clips":[id]?}. Changes the document. */
+  /** Link. Links the selected (or listed) video and audio clips so they select and move together; if they are all already linked, unlinks them instead. Params: {"clips":[id]?}. Changes the document. */
   "clip.link": { clips?: Array<number> }
-  /** Group. Params: {}. Changes the document. */
+  /** Group. Groups the selected clips so selecting or moving one selects or moves them all. Undo with clip.ungroup. Params: {}. Changes the document. */
   "clip.group": Record<string, never>
-  /** Ungroup. Params: {}. Changes the document. */
+  /** Ungroup. Removes the selected clips from their groups. Params: {}. Changes the document. */
   "clip.ungroup": Record<string, never>
-  /** Audio Clip Peak Amplitude. Params: {"clips":[id]?} */
+  /** Audio Clip Peak Amplitude. Reads the peak amplitude (dBFS) of the selected or listed audio clips at their current gain, as the Audio Gain dialog shows it. Params: {"clips":[id]?}. */
   "clip.audioPeak": { clips?: Array<number> }
-  /** Nest. Params: {"name":str}. Changes the document. */
+  /** Nest. Moves the selected clips (with linked partners and their transitions) into a new nested sequence named `name` and replaces them with one clip of it. Params: {"name":str}. Changes the document. */
   "clip.nest": { name?: string }
-  /** Reveal in Project. Params: {"clip":id?}. Changes the document. */
+  /** Reveal in Project. Selects and shows in the Project panel the source item of `clip` (default the selected or topmost targeted clip under the playhead). Params: {"clip":id?}. Changes the document. */
   "clip.revealInProject": { /** an id */ clip?: number }
-  /** Reveal Sequence in Project. Params: {"item":id?}. Changes the document. */
+  /** Reveal Sequence in Project. Selects and shows sequence `item` (default the active one) in the Project panel. Params: {"item":id?}. Changes the document. */
   "sequence.revealInProject": { /** an id */ item?: number }
-  /** Open in Timeline. Params: {"item":id}. Changes the document. */
+  /** Open in Timeline. Opens sequence `item` in a timeline tab and makes it the active sequence that other commands act on. Params: {"item":id}. Changes the document. */
   "sequence.open": { /** an id */ item?: number }
-  /** Close Sequence. Params: {"item":id?}. Changes the document. */
+  /** Close Sequence. Closes the timeline tab of sequence `item` (default the active one); the sequence stays in the project. Params: {"item":id?}. Changes the document. */
   "sequence.close": { /** an id */ item?: number }
-  /** Close Other Timeline Panels. Params: {"item":id?}. Changes the document. */
+  /** Close Other Timeline Panels. Closes every open timeline tab except sequence `item` (default the active one). Params: {"item":id?}. Changes the document. */
   "sequence.closeOthers": { /** an id */ item?: number }
-  /** Move Sequence Tab. Params: {"item":id?,"index":int}. Changes the document. */
+  /** Move Sequence Tab. Moves the timeline tab of sequence `item` to position `index` (0-based) among the open tabs. Params: {"item":id?,"index":int}. Changes the document. */
   "sequence.moveTab": { index?: number; /** an id */ item?: number }
-  /** Sequence Settings. Params: {"width":u32?,"height":u32?,"fps":f64?,"name":str?,"sampleRate":u32?,"mix":"Stereo|Mono|5.1|Adaptive"?,"dropFrame":bool?,"maxRenderQuality":bool?,"workingSpace":"rec709"|"rec2100-pq"|"rec2100-hlg"?,"wideGamut":bool?,"autoToneMap":bool?,"scaleMotion":bool=false}. Changes the document. */
+  /** Sequence Settings. Changes the active sequence's settings: frame size, `fps`, name, sample rate, audio mix layout, drop-frame timecode, render quality and color working space. Params: {"width":u32?,"height":u32?,"fps":f64?,"name":str?,"sampleRate":u32?,"mix":"Stereo|Mono|5.1|Adaptive"?,"dropFrame":bool?,"maxRenderQuality":bool?,"workingSpace":"rec709"|"rec2100-pq"|"rec2100-hlg"?,"wideGamut":bool?,"autoToneMap":bool?,"scaleMotion":bool=false}. Changes the document. */
   "sequence.settings": { autoToneMap?: boolean; dropFrame?: boolean; fps?: number; height?: number; maxRenderQuality?: boolean; mix?: "Stereo" | "Mono" | "5.1" | "Adaptive"; name?: string; sampleRate?: number; scaleMotion?: boolean; wideGamut?: boolean; width?: number; workingSpace?: "rec709" | "rec2100-pq" | "rec2100-hlg" }
-  /** Render Effects In to Out. Params: {"wait":bool=false}. Changes the document. */
+  /** Render Effects In to Out. Renders previews only for the segments with unrendered effects between In and Out; `wait` blocks until done. Params: {"wait":bool=false}. Changes the document. */
   "sequence.renderEffectsInToOut": { wait?: boolean }
-  /** Render In to Out. Params: {"wait":bool=false}. Changes the document. */
+  /** Render In to Out. Renders previews for every segment between In and Out; `wait` blocks until done. Params: {"wait":bool=false}. Changes the document. */
   "sequence.renderInToOut": { wait?: boolean }
-  /** Render Selection. Params: {"wait":bool=false}. Changes the document. */
+  /** Render Selection. Renders previews for the time spanned by the selected clips; `wait` blocks until done. Params: {"wait":bool=false}. Changes the document. */
   "sequence.renderSelection": { wait?: boolean }
-  /** Render Audio. Params: {"wait":bool=false}. Changes the document. */
+  /** Render Audio. Renders audio previews (float WAV) for In?Out or the whole sequence; `wait` blocks until done. Params: {"wait":bool=false}. Changes the document. */
   "sequence.renderAudio": { wait?: boolean }
-  /** Delete Render Files. Params: {}. Changes the document. */
+  /** Delete Render Files. Deletes all preview render files of the active sequence (it shows unrendered again). Params: {}. Changes the document. */
   "sequence.deleteRenderFiles": Record<string, never>
-  /** Delete Render Files In to Out. Params: {}. Changes the document. */
+  /** Delete Render Files In to Out. Deletes the preview render files between the sequence In and Out points. Params: {}. Changes the document. */
   "sequence.deleteRenderFilesInToOut": Record<string, never>
-  /** Match Frame. Params: {}. Changes the document. */
+  /** Match Frame. Opens the source of the topmost clip under the playhead in the Source monitor at the matching source frame. Params: {}. Changes the document. */
   "sequence.matchFrame": Record<string, never>
-  /** Reverse Match Frame. Params: {}. Changes the document. */
+  /** Reverse Match Frame. Finds the Source monitor's current frame in the active sequence (targeted tracks first) and moves the playhead there. Params: {}. Changes the document. */
   "sequence.reverseMatchFrame": Record<string, never>
-  /** Add Edit. Params: {"time":ticks?}. Changes the document. */
+  /** Add Edit. Cuts clips at the playhead or `time`: the selected clips under it if any, otherwise every clip on the targeted tracks. Use sequence.addEditAllTracks to cut all tracks. Params: {"time":ticks?}. Changes the document. */
   "sequence.addEdit": { /** ticks (254016000000 per second) */ time?: number }
-  /** Add Edit to All Tracks. Params: {"time":ticks?}. Changes the document. */
+  /** Add Edit to All Tracks. Cuts every clip on all unlocked tracks (and caption tracks) at the playhead or `time`. Params: {"time":ticks?}. Changes the document. */
   "sequence.addEditAllTracks": { /** ticks (254016000000 per second) */ time?: number }
-  /** Trim Edit. Params: {}. Changes the document. */
+  /** Trim Edit. Enters trim mode: selects the roll edit point nearest the playhead on targeted tracks if none is selected. Answers {editPoints}. Params: {}. Changes the document. */
   "trim.edit": Record<string, never>
-  /** Apply Video Transition. Params: {"clip":id?,"effect":"cross_dissolve|Cross Dissolve|..."?,"frames":i64?,"edge":"in"|"out"?,"params":{param:value}?,"reverse":bool?}. Changes the document. */
+  /** Apply Video Transition. Applies a video transition (`effect` e.g. cross_dissolve, `frames` long, default from preferences) at the edit nearest the playhead on targeted tracks, or at `clip`'s `edge`; `params` and `reverse` set it up. Params: {"clip":id?,"effect":"cross_dissolve|Cross Dissolve|..."?,"frames":i64?,"edge":"in"|"out"?,"params":{param:value}?,"reverse":bool?}. Changes the document. */
   "sequence.applyVideoTransition": { /** an id */ clip?: number; edge?: "in" | "out"; /** for example cross_dissolve, Cross Dissolve */ effect?: string; frames?: number; params?: { param?: Json }; reverse?: boolean }
-  /** Apply Audio Transition. Params: {"clip":id?,"effect":str?,"frames":i64?}. Changes the document. */
+  /** Apply Audio Transition. Applies an audio transition (`effect`, default the default audio transition, `frames` long) at the edit nearest the playhead on targeted tracks, or at `clip`'s edge. Params: {"clip":id?,"effect":str?,"frames":i64?}. Changes the document. */
   "sequence.applyAudioTransition": { /** an id */ clip?: number; effect?: string; frames?: number }
-  /** Apply Default Transitions to Selection. Params: {"clips":[id]?}. Changes the document. */
+  /** Apply Default Transitions to Selection. Adds the default video/audio transition at each edge of the selected clips (centred on cuts, at a free edge otherwise), or at the selected edit points when no clips are selected. Edges that already have a transition keep it. Params: {"clips":[id]?}. Changes the document. */
   "trim.applyDefaultTransition": { clips?: Array<number> }
-  /** Lift. Params: {}. Changes the document. */
+  /** Lift. Removes the In?Out range on targeted tracks and leaves a gap; nothing moves. Needs In and Out. Use sequence.extract to close the gap. Params: {}. Changes the document. */
   "sequence.lift": Record<string, never>
-  /** Extract. Params: {}. Changes the document. */
+  /** Extract. Removes the In?Out range on targeted tracks and closes the gap (later clips move earlier; ripple sequence markers when on). Needs In and Out. Use sequence.lift to leave a gap. Params: {}. Changes the document. */
   "sequence.extract": Record<string, never>
-  /** Close Gap. Params: {"track":"V1"|id,"time":ticks}. Changes the document. */
+  /** Close Gap. Closes the gap on `track` at `time` (default playhead) by moving the clips after it earlier (ripple delete of the gap). Params: {"track":"V1"|id,"time":ticks}. Changes the document. */
   "sequence.closeGap": { /** ticks (254016000000 per second) */ time?: number; /** "V1"|id */ track?: Json }
-  /** Next in Sequence. Params: {}. Changes the document. */
+  /** Next in Sequence. Moves the playhead to the start of the next gap across the whole sequence. Params: {}. Changes the document. */
   "sequence.goToNextGap": Record<string, never>
-  /** Previous in Sequence. Params: {}. Changes the document. */
+  /** Previous in Sequence. Moves the playhead to the start of the previous gap across the whole sequence. Params: {}. Changes the document. */
   "sequence.goToPrevGap": Record<string, never>
-  /** Next in Track. Params: {"track":"V1"|id?}. Changes the document. */
+  /** Next in Track. Moves the playhead to the start of the next gap on `track` (default the first targeted track). Params: {"track":"V1"|id?}. Changes the document. */
   "sequence.goToNextGapInTrack": { /** "V1"|id? */ track?: Json }
-  /** Previous in Track. Params: {"track":"V1"|id?}. Changes the document. */
+  /** Previous in Track. Moves the playhead to the start of the previous gap on `track` (default the first targeted track). Params: {"track":"V1"|id?}. Changes the document. */
   "sequence.goToPrevGapInTrack": { /** "V1"|id? */ track?: Json }
-  /** Snap in Timeline. Params: {"on":bool?}. Changes the document. */
+  /** Snap in Timeline. Sets whether timeline drags snap to edits, markers and the playhead (`on`, toggles when omitted). Params: {"on":bool?}. Changes the document. */
   "sequence.snap": { on?: boolean }
-  /** Linked Selection. Params: {"on":bool?}. Changes the document. */
+  /** Linked Selection. Sets whether selecting a clip also selects its linked video/audio partners (`on`, toggles when omitted). Params: {"on":bool?}. Changes the document. */
   "sequence.linkedSelection": { on?: boolean }
-  /** Selection Follows Playhead. Params: {"on":bool?}. Changes the document. */
+  /** Selection Follows Playhead. Sets whether the clips under the playhead on targeted tracks are selected automatically as it moves (`on`, toggles when omitted). Params: {"on":bool?}. Changes the document. */
   "sequence.selectionFollowsPlayhead": { on?: boolean }
-  /** Show Through Edits. Params: {"on":bool?}. Changes the document. */
+  /** Show Through Edits. Sets whether through edits are marked in the timeline (`on`, toggles when omitted). View setting only. Params: {"on":bool?}. Changes the document. */
   "sequence.showThroughEdits": { on?: boolean }
-  /** Normalize Mix Track. Params: {"db":f64=0}. Changes the document. */
+  /** Normalize Mix Track. Sets the Mix track fader so the whole mix peaks at `db` (default 0 dBFS). Params: {"db":f64=0}. Changes the document. */
   "sequence.normalizeMixTrack": { db?: number }
-  /** Make Subsequence. Params: {"name":str?}. Changes the document. */
+  /** Make Subsequence. Creates a new sequence named `name` from the clips between In and Out (or the selected clips) on targeted tracks; the original is unchanged. Params: {"name":str?}. Changes the document. */
   "sequence.makeSubsequence": { name?: string }
-  /** Transcribe Sequence. Params: {"track":"mix"|"A1"|id?,"language":"en|auto"?,"diarize":bool?,"maxSpeakers":n?,"model":str?}. Changes the document. */
+  /** Transcribe Sequence. Transcribes the active sequence's audio (`track`: mix or an audio track) into a transcript, in `language` (auto detects), with speaker labels when `diarize`. Params: {"track":"mix"|"A1"|id?,"language":"en|auto"?,"diarize":bool?,"maxSpeakers":n?,"model":str?}. Changes the document. */
   "sequence.transcribe": { diarize?: boolean; language?: "en" | "auto"; maxSpeakers?: number; model?: string; /** "mix"|"A1"|id? */ track?: Json }
-  /** Simplify Sequence. Params: {"name":str?,"removeDisabled":bool=true,"removeEmptyTracks":bool=true,"closeGaps":bool=false,"moveClipsDown":bool=false,"removeVideoEffects":bool=false,"removeAudioEffects":bool=false,"removeText":bool=false,"keep":"both|video|audio"}. Changes the document. */
+  /** Simplify Sequence. Creates a simplified copy named `name` of the active sequence: removes disabled clips, empty tracks, effects or text and can close gaps or move clips down; `keep` both, video or audio. Params: {"name":str?,"removeDisabled":bool=true,"removeEmptyTracks":bool=true,"closeGaps":bool=false,"moveClipsDown":bool=false,"removeVideoEffects":bool=false,"removeAudioEffects":bool=false,"removeText":bool=false,"keep":"both|video|audio"}. Changes the document. */
   "sequence.simplify": { closeGaps?: boolean; keep?: "both" | "video" | "audio"; moveClipsDown?: boolean; name?: string; removeAudioEffects?: boolean; removeDisabled?: boolean; removeEmptyTracks?: boolean; removeText?: boolean; removeVideoEffects?: boolean }
-  /** Add Tracks. Params: {"video":n=1,"audio":n=0,"submix":n=0,"videoAfter":"first"|"V2"|n?,"audioAfter":"first"|"A2"|n?,"submixAfter":"first"|"S1"|n?,"audioType":"standard|5.1|adaptive|mono"?,"submixType":"stereo|5.1|adaptive|mono"?}. Changes the document. */
+  /** Add Tracks. Adds `video`, `audio` and `submix` tracks, each after a given track (`videoAfter` "first", "V2" or an index), with `audioType` and `submixType` channel layouts. Params: {"video":n=1,"audio":n=0,"submix":n=0,"videoAfter":"first"|"V2"|n?,"audioAfter":"first"|"A2"|n?,"submixAfter":"first"|"S1"|n?,"audioType":"standard|5.1|adaptive|mono"?,"submixType":"stereo|5.1|adaptive|mono"?}. Changes the document. */
   "sequence.addTracks": { audio?: number; /** "first"|"A2"|n? */ audioAfter?: Json; audioType?: "standard" | "5.1" | "adaptive" | "mono"; submix?: number; /** "first"|"S1"|n? */ submixAfter?: Json; submixType?: "stereo" | "5.1" | "adaptive" | "mono"; video?: number; /** "first"|"V2"|n? */ videoAfter?: Json }
-  /** Delete Tracks. Params: {"video":"empty"|"V2"|id?,"audio":"empty"|"A2"|id?}. Changes the document. */
+  /** Delete Tracks. Deletes all empty video and/or audio tracks (`video`/`audio`: "empty") or one named track of each kind. Params: {"video":"empty"|"V2"|id?,"audio":"empty"|"A2"|id?}. Changes the document. */
   "sequence.deleteTracks": { /** "empty"|"A2"|id? */ audio?: Json; /** "empty"|"V2"|id? */ video?: Json }
-  /** Color Management. Params: {"workingSpace":"rec709"|"rec2100-pq"|"rec2100-hlg"?,"wideGamut":bool?,"autoToneMap":bool?}. Changes the document. */
+  /** Color Management. Sets the active sequence's color management: `workingSpace` rec709, rec2100-pq or rec2100-hlg, `wideGamut`, `autoToneMap`. Params: {"workingSpace":"rec709"|"rec2100-pq"|"rec2100-hlg"?,"wideGamut":bool?,"autoToneMap":bool?}. Changes the document. */
   "sequence.colorSettings": { autoToneMap?: boolean; wideGamut?: boolean; workingSpace?: "rec709" | "rec2100-pq" | "rec2100-hlg" }
-  /** Add Audio Submix Track. Params: {"name":str?,"channels":"Mono|Stereo|5.1"?}. Changes the document. */
+  /** Add Audio Submix Track. Adds an audio submix track with `name` and `channels` Mono|Stereo|5.1 (default Stereo). Route tracks to it with mixer.setStrip `output` or mixer.addSend. Params: {"name":str?,"channels":"Mono|Stereo|5.1"?}. Changes the document. */
   "mixer.addSubmix": { channels?: "Mono" | "Stereo" | "5.1"; name?: string }
-  /** Edit Transition Settings. Params: {"transition":id,"params":{param:value}?,"reverse":bool?,"reset":bool?}. Changes the document. */
+  /** Edit Transition Settings. Changes an applied `transition` by id: effect `params`, `reverse`, or `reset` to defaults. Params: {"transition":id,"params":{param:value}?,"reverse":bool?,"reset":bool?}. Changes the document. */
   "sequence.setTransition": { params?: { param?: Json }; reset?: boolean; reverse?: boolean; /** an id */ transition?: number }
-  /** Join Through Edits. Params: {"clips":[id]?,"all":bool?}. Changes the document. */
+  /** Join Through Edits. Removes through edits (cuts where the media continues uninterrupted) at the selected `clips`, or everywhere with `all`, rejoining the pieces. Params: {"clips":[id]?,"all":bool?}. Changes the document. */
   "sequence.joinThroughEdits": { all?: boolean; clips?: Array<number> }
-  /** List Through Edits. Params: {} */
+  /** List Through Edits. Lists the through edits of the active sequence: {track, left, right, time ticks} for each cut where the media continues. Params: {}. */
   "sequence.throughEdits": Record<string, never>
-  /** Insert and overwrite sequences as nests or individual clips. Params: {"on":bool?}. Changes the document. */
+  /** Insert and overwrite sequences as nests or individual clips. Sets whether sequences placed into a timeline go in as one nested clip (`on`) or as their individual clips. Params: {"on":bool?}. Changes the document. */
   "sequence.nestSequences": { on?: boolean }
-  /** Delete Track. Params: {"track":"V3"|id}. Changes the document. */
+  /** Delete Track. Deletes `track` (V3, A2 or an id) and every clip on it. Params: {"track":"V3"|id}. Changes the document. */
   "sequence.deleteTrack": { /** "V3"|id */ track?: Json }
-  /** Render Bar. Params: {} */
+  /** Render Bar. Reads the active sequence's render bar: the spans that are rendered, need rendering or play in real time. Params: {}. */
   "sequence.renderBar": Record<string, never>
-  /** Mark In. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
+  /** Mark In. Sets the In point at the playhead or `time` on the sequence, or on the Source clip with target "source". Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
   "markers.markIn": { target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Mark Out. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
+  /** Mark Out. Sets the Out point at the playhead or `time` on the sequence, or on the Source clip with target "source". Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
   "markers.markOut": { target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Mark Clip. Params: {}. Changes the document. */
+  /** Mark Clip. Sets In and Out around the clip under the playhead on the first targeted track. Params: {}. Changes the document. */
   "markers.markClip": Record<string, never>
-  /** Mark Selection. Params: {}. Changes the document. */
+  /** Mark Selection. Sets In and Out around the selected clips (from the earliest start to the latest end). Needs a clip selection. Params: {}. Changes the document. */
   "markers.markSelection": Record<string, never>
-  /** Video In. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
+  /** Video In. Sets a separate video In point (split edit) at the playhead or `time`; audio keeps its own In. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
   "markers.markSplitVideoIn": { target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Video Out. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
+  /** Video Out. Sets a separate video Out point (split edit) at the playhead or `time`. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
   "markers.markSplitVideoOut": { target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Audio In. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
+  /** Audio In. Sets a separate audio In point (a split edit, J/L cut) at the playhead or `time`; video keeps its own In. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
   "markers.markSplitAudioIn": { target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Audio Out. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
+  /** Audio Out. Sets a separate audio Out point (split edit) at the playhead or `time`. Params: {"time":ticks?,"target":"program|source"}. Changes the document. */
   "markers.markSplitAudioOut": { target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Go to In. Params: {"target":"program|source"}. Changes the document. */
+  /** Go to In. Moves the playhead to the In point (the start when none is set). Params: {"target":"program|source"}. Changes the document. */
   "markers.goToIn": { target?: "program" | "source" }
-  /** Go to Out. Params: {"target":"program|source"}. Changes the document. */
+  /** Go to Out. Moves the playhead to the Out point (the end when none is set). Params: {"target":"program|source"}. Changes the document. */
   "markers.goToOut": { target?: "program" | "source" }
-  /** Video In. Params: {"target":"program|source"}. Changes the document. */
+  /** Video In. Moves the playhead to the split video In point. Needs a split edit. Params: {"target":"program|source"}. Changes the document. */
   "markers.goToSplitVideoIn": { target?: "program" | "source" }
-  /** Video Out. Params: {"target":"program|source"}. Changes the document. */
+  /** Video Out. Moves the playhead to the split video Out point. Needs a split edit. Params: {"target":"program|source"}. Changes the document. */
   "markers.goToSplitVideoOut": { target?: "program" | "source" }
-  /** Audio In. Params: {"target":"program|source"}. Changes the document. */
+  /** Audio In. Moves the playhead to the split audio In point. Needs a split edit. Params: {"target":"program|source"}. Changes the document. */
   "markers.goToSplitAudioIn": { target?: "program" | "source" }
-  /** Audio Out. Params: {"target":"program|source"}. Changes the document. */
+  /** Audio Out. Moves the playhead to the split audio Out point. Needs a split edit. Params: {"target":"program|source"}. Changes the document. */
   "markers.goToSplitAudioOut": { target?: "program" | "source" }
-  /** Clear In. Params: {"target":"program|source"}. Changes the document. */
+  /** Clear In. Clears the In point (including split video/audio Ins) of the sequence or Source clip. Params: {"target":"program|source"}. Changes the document. */
   "markers.clearIn": { target?: "program" | "source" }
-  /** Clear Out. Params: {"target":"program|source"}. Changes the document. */
+  /** Clear Out. Clears the Out point (including split video/audio Outs) of the sequence or Source clip. Params: {"target":"program|source"}. Changes the document. */
   "markers.clearOut": { target?: "program" | "source" }
-  /** Clear In and Out. Params: {"target":"program|source"}. Changes the document. */
+  /** Clear In and Out. Clears both In and Out points (and any split edits) of the sequence or Source clip. Params: {"target":"program|source"}. Changes the document. */
   "markers.clearInOut": { target?: "program" | "source" }
-  /** Add Marker. Params: {"target":"program|source","time":ticks?,"name":str?,"comment":str?,"color":label?,"durationFrames":i64?}. Changes the document. */
-  "markers.add": { /** label? */ color?: Json; comment?: string; durationFrames?: number; name?: string; target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
-  /** Add Range Marker. Params: {"time":ticks?,"durationFrames":i64=1s,"duration":ticks?,"name":str?,"comment":str?,"color":label?}. Changes the document. */
-  "markers.addRange": { /** label? */ color?: Json; comment?: string; /** ticks (254016000000 per second) */ duration?: number; /** default 1s */ durationFrames?: number; name?: string; /** ticks (254016000000 per second) */ time?: number }
-  /** Add Range Marker to In and Out. Params: {"name":str?,"comment":str?,"color":label?}. Changes the document. */
-  "markers.addRangeInOut": { /** label? */ color?: Json; comment?: string; name?: string }
-  /** Go to Next Marker. Params: {"target":"program|source"}. Changes the document. */
+  /** Add Marker. Adds a marker at the playhead or `time` with `name`, `comment`, `color` label and optional `durationFrames` (a range marker), on the sequence or, with target "source", the Source monitor clip. Params: {"target":"program|source","time":ticks?,"name":str?,"comment":str?,"color":label?,"durationFrames":i64?}. Changes the document. */
+  "markers.add": { /** label? */ color?: string; comment?: string; durationFrames?: number; name?: string; target?: "program" | "source"; /** ticks (254016000000 per second) */ time?: number }
+  /** Add Range Marker. Adds a range marker starting at the playhead or `time`, `durationFrames` long (1 second by default) or `duration` ticks. Params: {"time":ticks?,"durationFrames":i64=1s,"duration":ticks?,"name":str?,"comment":str?,"color":label?}. Changes the document. */
+  "markers.addRange": { /** label? */ color?: string; comment?: string; /** ticks (254016000000 per second) */ duration?: number; /** default 1s */ durationFrames?: number; name?: string; /** ticks (254016000000 per second) */ time?: number }
+  /** Add Range Marker to In and Out. Adds a range marker spanning the sequence In to Out points. Needs both In and Out set. Params: {"name":str?,"comment":str?,"color":label?}. Changes the document. */
+  "markers.addRangeInOut": { /** label? */ color?: string; comment?: string; name?: string }
+  /** Go to Next Marker. Moves the playhead to the next marker after it on the sequence (or Source clip). Params: {"target":"program|source"}. Changes the document. */
   "markers.goNext": { target?: "program" | "source" }
-  /** Go to Previous Marker. Params: {"target":"program|source"}. Changes the document. */
+  /** Go to Previous Marker. Moves the playhead to the previous marker before it on the sequence (or Source clip). Params: {"target":"program|source"}. Changes the document. */
   "markers.goPrev": { target?: "program" | "source" }
-  /** Clear Selected Marker. Params: {"target":"program|source"}. Changes the document. */
+  /** Clear Selected Marker. Removes the marker that starts exactly at the playhead. Params: {"target":"program|source"}. Changes the document. */
   "markers.clearCurrent": { target?: "program" | "source" }
-  /** Clear Markers. Params: {"target":"program|source"}. Changes the document. */
+  /** Clear Markers. Removes every marker from the sequence (or the Source clip with target "source"). Params: {"target":"program|source"}. Changes the document. */
   "markers.clearAll": { target?: "program" | "source" }
-  /** Show All Marker Colors. Params: {}. Changes the document. */
+  /** Show All Marker Colors. Shows every marker color again in the Markers panel, clearing the color filter. Params: {}. Changes the document. */
   "markers.showAllMarkerColors": Record<string, never>
-  /** Marker Colour Filter. Params: {"hidden":[label]}|{"color":label,"visible":bool?}. Changes the document. */
+  /** Marker Colour Filter. Hides or shows marker colors in the Markers panel: `hidden` lists colors to hide, or `color` with `visible`. View filter only. Params: {"hidden":[label]}|{"color":label,"visible":bool?}. Changes the document. */
   "markers.filterColors": { /** [label] */ hidden?: Array<Json> }
-  /** Edit Marker. Params: {"target":"program|source","marker":id,"name":str?,"comment":str?,"color":label?,"durationFrames":i64?}. Changes the document. */
-  "markers.edit": { /** label? */ color?: Json; comment?: string; durationFrames?: number; /** an id */ marker?: number; name?: string; target?: "program" | "source" }
-  /** Add Chapter Marker. Params: {"time":ticks?,"name":str?,"comment":str?,"color":label?}. Changes the document. */
-  "markers.addChapter": { /** label? */ color?: Json; comment?: string; name?: string; /** ticks (254016000000 per second) */ time?: number }
-  /** Add Flash Cue Marker. Params: {"time":ticks?,"name":str?,"comment":str?,"color":label?}. Changes the document. */
-  "markers.addFlashCue": { /** label? */ color?: Json; comment?: string; name?: string; /** ticks (254016000000 per second) */ time?: number }
-  /** Ripple Sequence Markers. Params: {"on":bool?}. Changes the document. */
+  /** Edit Marker. Changes a marker by id (`marker`): name, comment, color label or `durationFrames` (0 makes it a point marker). Params: {"target":"program|source","marker":id,"name":str?,"comment":str?,"color":label?,"durationFrames":i64?}. Changes the document. */
+  "markers.edit": { /** label? */ color?: string; comment?: string; durationFrames?: number; /** an id */ marker?: number; name?: string; target?: "program" | "source" }
+  /** Add Chapter Marker. Adds a chapter marker (exported as a chapter in MP4/DVD) at the playhead or `time`; named Chapter n by default. Params: {"time":ticks?,"name":str?,"comment":str?,"color":label?}. Changes the document. */
+  "markers.addChapter": { /** label? */ color?: string; comment?: string; name?: string; /** ticks (254016000000 per second) */ time?: number }
+  /** Add Flash Cue Marker. Adds a Flash Cue marker (an event cue for interactive exports) at the playhead or `time`. Params: {"time":ticks?,"name":str?,"comment":str?,"color":label?}. Changes the document. */
+  "markers.addFlashCue": { /** label? */ color?: string; comment?: string; name?: string; /** ticks (254016000000 per second) */ time?: number }
+  /** Ripple Sequence Markers. Sets whether ripple edits also move the sequence markers after the edit (`on`, toggles when omitted). Params: {"on":bool?}. Changes the document. */
   "markers.rippleSequenceMarkers": { on?: boolean }
-  /** Copy Paste Includes Sequence Markers. Params: {"on":bool?}. Changes the document. */
+  /** Copy Paste Includes Sequence Markers. Sets whether copying and pasting clips also carries the sequence markers over them (`on`, toggles when omitted). Params: {"on":bool?}. Changes the document. */
   "markers.copyPasteIncludesSequenceMarkers": { on?: boolean }
-  /** Set Playhead. Params: {"time":ticks|"frame":i64|"seconds":f64|"timecode":str}. Changes the document. */
+  /** Set Playhead. Moves the sequence playhead to `time` (ticks, 254016000000 per second), `frame` (0-based sequence frame), `seconds` or `timecode`. Answers {time} in ticks. Params: {"time":ticks|"frame":i64|"seconds":f64|"timecode":str}. Changes the document. */
   "playhead.set": { /** one of several alternative parameters */ frame?: number; /** one of several alternative parameters */ seconds?: number; /** ticks (254016000000 per second); one of several alternative parameters */ time?: number; /** one of several alternative parameters */ timecode?: string }
-  /** Step Frames. Params: {"frames":i64}. Changes the document. */
+  /** Step Frames. Moves the playhead by `frames` sequence frames (negative steps back, stops at 0). Answers {frame}. Params: {"frames":i64}. Changes the document. */
   "playhead.step": { frames?: number }
-  /** Step Forward One Frame. Params: {}. Changes the document. */
+  /** Step Forward One Frame. Moves the playhead one frame later. Params: {}. Changes the document. */
   "playhead.stepForward": Record<string, never>
-  /** Step Back One Frame. Params: {}. Changes the document. */
+  /** Step Back One Frame. Moves the playhead one frame earlier. Params: {}. Changes the document. */
   "playhead.stepBack": Record<string, never>
-  /** Step Forward Five Frames. Params: {}. Changes the document. */
+  /** Step Forward Five Frames. Moves the playhead forward by the Step Many Frames preference (5 by default). Params: {}. Changes the document. */
   "playhead.stepForward5": Record<string, never>
-  /** Step Back Five Frames. Params: {}. Changes the document. */
+  /** Step Back Five Frames. Moves the playhead back by the Step Many Frames preference (5 by default). Params: {}. Changes the document. */
   "playhead.stepBack5": Record<string, never>
-  /** Go to Next Edit Point. Params: {}. Changes the document. */
+  /** Go to Next Edit Point. Moves the playhead to the next edit point on the targeted tracks (all tracks when none is targeted). Use playhead.nextEditAnyTrack to ignore targeting. Params: {}. Changes the document. */
   "playhead.nextEdit": Record<string, never>
-  /** Go to Previous Edit Point. Params: {}. Changes the document. */
+  /** Go to Previous Edit Point. Moves the playhead to the previous edit point on the targeted tracks (all tracks when none is targeted). Params: {}. Changes the document. */
   "playhead.prevEdit": Record<string, never>
-  /** Go to Sequence Start. Params: {}. Changes the document. */
+  /** Go to Sequence Start. Moves the playhead to the start of the active sequence (time 0). Params: {}. Changes the document. */
   "playhead.start": Record<string, never>
-  /** Go to Sequence End. Params: {}. Changes the document. */
+  /** Go to Sequence End. Moves the playhead to the end of the active sequence. Params: {}. Changes the document. */
   "playhead.end": Record<string, never>
-  /** Open in Source Monitor. Params: {"item":id?}. Changes the document. */
+  /** Open in Source Monitor. Opens a project `item` (default: the Project panel selection) in the Source monitor; a subclip opens at its In point. Params: {"item":id?}. Changes the document. */
   "source.open": { /** an id */ item?: number }
-  /** Set Source Playhead. Params: {"time":ticks|"frame":i64|"seconds":f64}. Changes the document. */
+  /** Set Source Playhead. Moves the Source monitor playhead to `time` ticks, `frame` (source frame) or `seconds`. Needs a clip open in the Source monitor. Params: {"time":ticks|"frame":i64|"seconds":f64}. Changes the document. */
   "source.setPlayhead": { /** one of several alternative parameters */ frame?: number; /** one of several alternative parameters */ seconds?: number; /** ticks (254016000000 per second); one of several alternative parameters */ time?: number }
-  /** Inspect Source Monitor. Params: {} */
+  /** Inspect Source Monitor. Reads the Source monitor: the open item, its In/Out, source playhead, frame size and streams. Answers {item:null} when nothing is open. Params: {}. */
   "source.inspect": Record<string, never>
-  /** Insert. Params: {}. Changes the document. */
+  /** Insert. Three-point edit: inserts the Source monitor's In?Out range at the sequence In point (else the playhead) on the source-patched tracks, pushing later clips right. Use source.overwrite to replace instead. Params: {}. Changes the document. */
   "source.insert": Record<string, never>
-  /** Overwrite. Params: {}. Changes the document. */
+  /** Overwrite. Three-point edit: places the Source monitor's In?Out range at the sequence In point (else the playhead) on the source-patched tracks, replacing what is there; nothing moves. Params: {}. Changes the document. */
   "source.overwrite": Record<string, never>
-  /** From Source Monitor. Params: {"clips":[id]?}. Changes the document. */
+  /** From Source Monitor. Replaces the source of the selected clips with the clip open in the Source monitor, starting at its In point. Params: {"clips":[id]?}. Changes the document. */
   "clip.replaceFromSource": { clips?: Array<number> }
-  /** From Source Monitor, Match Frame. Params: {"clips":[id]?}. Changes the document. */
+  /** From Source Monitor, Match Frame. Replaces the selected clips with the Source monitor clip so its frame at the Source playhead lines up with the sequence playhead. Params: {"clips":[id]?}. Changes the document. */
   "clip.replaceFromSourceMatchFrame": { clips?: Array<number> }
-  /** From Bin. Params: {"clips":[id]?,"item":id?,"keepSourceIn":bool=false}. Changes the document. */
+  /** From Bin. Replaces the source of the selected or listed `clips` with project `item`, keeping position and length; `keepSourceIn` keeps the old In point instead of the new item's. Params: {"clips":[id]?,"item":id?,"keepSourceIn":bool=false}. Changes the document. */
   "clip.replaceFromBin": { clips?: Array<number>; /** an id */ item?: number; keepSourceIn?: boolean }
-  /** Restore Captions from Source Clip. Params: {}. Changes the document. */
+  /** Restore Captions from Source Clip. Restores embedded captions from source media; always refused, since no embedded caption reader exists. Params: {}. Changes the document. */
   "clip.restoreCaptionsFromSource": Record<string, never>
-  /** Update Metadata. Params: {"items":[id]?}. Changes the document. */
+  /** Update Metadata. Writes the selected file `items`' metadata to XMP sidecar files next to the media. Params: {"items":[id]?}. Changes the document. */
   "clip.updateMetadata": { items?: Array<number> }
-  /** Generate Audio Waveform. Params: {"items":[id]?} */
+  /** Generate Audio Waveform. Asks the host to rebuild audio waveform peaks for the selected or listed `items`; changes no project data. Params: {"items":[id]?}. */
   "clip.generateAudioWaveform": { items?: Array<number> }
-  /** Automate to Sequence. Params: {"items":[id]?,"ordering":"sort|selection","placement":"sequentially|unnumberedMarkers","method":"insert|overwrite","overlapFrames":n=30,"stillFrames":n?,"videoTransition":bool=true,"audioTransition":bool=true,"ignoreAudio":bool=false,"ignoreVideo":bool=false}. Changes the document. */
+  /** Automate to Sequence. Places the selected project `items` in the active sequence in `ordering` (sort or selection), sequentially or at unnumbered markers, by insert or overwrite, with optional default transitions of `overlapFrames`. Params: {"items":[id]?,"ordering":"sort|selection","placement":"sequentially|unnumberedMarkers","method":"insert|overwrite","overlapFrames":n=30,"stillFrames":n?,"videoTransition":bool=true,"audioTransition":bool=true,"ignoreAudio":bool=false,"ignoreVideo":bool=false}. Changes the document. */
   "clip.automateToSequence": { audioTransition?: boolean; ignoreAudio?: boolean; ignoreVideo?: boolean; items?: Array<number>; method?: "insert" | "overwrite"; ordering?: "sort" | "selection"; overlapFrames?: number; placement?: "sequentially" | "unnumberedMarkers"; stillFrames?: number; videoTransition?: boolean }
-  /** Place Clip. Params: {"item":id,"track":"V1"|id|"A1" (sound only)?,"audioTrack":"A1"|id?,"time":ticks|"frame":i64|"seconds":f64,"insert":bool,"sourceIn":ticks?,"duration":ticks?,"video":bool=true,"audio":bool=true}. Changes the document. */
-  "timeline.place": { audio?: boolean; /** "A1"|id? */ audioTrack?: Json; /** ticks (254016000000 per second) */ duration?: number; /** one of several alternative parameters */ frame?: number; insert?: boolean; /** an id */ item?: number; /** one of several alternative parameters */ seconds?: number; /** ticks (254016000000 per second) */ sourceIn?: number; /** ticks (254016000000 per second); one of several alternative parameters */ time?: number; /** "V1"|id|"A1" (sound only)?; sound only */ track?: Json; video?: boolean }
-  /** Select Clips. Params: {"clips":[id],"add":bool,"toggle":bool,"linked":bool?}. Changes the document. */
+  /** Place Clip. Places project `item` on the timeline at `time` (ticks), `frame` or `seconds` on `track` (and `audioTrack`), from `sourceIn` for `duration`; `insert: true` pushes later clips right, false overwrites. `video`/`audio` choose streams. `track: "auto"` / `audioTrack: "auto"` put the picture / sound on the first track with room for it (a new track when none has) instead of overwriting, and answer the track chosen ("V2", "A3"). `snap` ("markers", "beats" or both) starts the clip on the nearest sequence marker or music beat within `toleranceFrames` (3). Answers the new clip ids (and `snapped`). Params: {"item":id,"track":"V1"|id|"A1" (sound only)|"auto"?,"audioTrack":"A1"|id|"auto"?,"time":ticks|"frame":i64|"seconds":f64,"insert":bool,"sourceIn":ticks?,"duration":ticks?,"video":bool=true,"audio":bool=true,"snap":"markers"|"beats"|["markers","beats"]?,"toleranceFrames":i64=3}. Changes the document. */
+  "timeline.place": { audio?: boolean; /** "A1"|id? */ audioTrack?: Json; /** ticks (254016000000 per second) */ duration?: number; /** one of several alternative parameters */ frame?: number; insert?: boolean; /** an id */ item?: number; /** one of several alternative parameters */ seconds?: number; /** "markers"|"beats"|["markers","beats"]? */ snap?: Json; /** ticks (254016000000 per second) */ sourceIn?: number; /** ticks (254016000000 per second); one of several alternative parameters */ time?: number; toleranceFrames?: number; /** "V1"|id|"A1" (sound only)?; sound only */ track?: Json; video?: boolean }
+  /** Select Clips. Sets the timeline clip selection to `clips`; `add` adds to it, `toggle` flips each clip; linked partners are included unless `linked: false`. Params: {"clips":[id],"add":bool,"toggle":bool,"linked":bool?}. Changes the document. */
   "timeline.select": { add?: boolean; clips?: Array<number>; linked?: boolean; toggle?: boolean }
-  /** Move Clips. Params: {"moves":[{"clip":id,"track":id|"V2","time":ticks}],"insert":bool,"linked":bool?}. Changes the document. */
-  "timeline.move": { insert?: boolean; linked?: boolean; /** [{"clip":id,"track":id|"V2","time":ticks}] */ moves?: Array<{ clip?: number; time?: number; track?: Json }> }
-  /** Trim Edit. Params: {"clip":id,"edge":"in|out","mode":"regular|ripple","delta":ticks|"deltaFrames":i64}. Changes the document. */
-  "timeline.trim": { /** an id */ clip?: number; /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number; edge?: "in" | "out"; mode?: "regular" | "ripple" }
-  /** Select Edit Point. Params: {"clip":id,"edge":"in|out","kind":"trim|ripple|roll","add":bool?}. Changes the document. */
+  /** Move Clips. Moves clips to new tracks and times in one step: `moves` lists {clip, track, time ticks}. `insert: true` pushes clips at the destination right; otherwise it overwrites. Linked partners follow unless `linked: false`. `snap` ("markers", "beats" or both) lands the earliest clip on the nearest sequence marker or music beat within `toleranceFrames` (3) and moves the rest by as much; the answer's `snapped` says {from, to}. Params: {"moves":[{"clip":id,"track":id|"V2","time":ticks}],"insert":bool,"linked":bool?,"snap":"markers"|"beats"|["markers","beats"]?,"toleranceFrames":i64=3}. Changes the document. */
+  "timeline.move": { insert?: boolean; linked?: boolean; /** [{"clip":id,"track":id|"V2","time":ticks}] */ moves?: Array<{ clip?: number; time?: number; track?: Json }>; /** "markers"|"beats"|["markers","beats"]? */ snap?: Json; toleranceFrames?: number }
+  /** Trim Edit. Trims `clip`'s in or out `edge` by `delta` ticks or `deltaFrames`: `mode` regular leaves a gap or overlaps; ripple moves later clips to keep the edit closed. `snap` ("markers", "beats" or both) lands the trimmed edge on the nearest sequence marker or music beat within `toleranceFrames` (3). Params: {"clip":id,"edge":"in|out","mode":"regular|ripple","delta":ticks|"deltaFrames":i64,"snap":"markers"|"beats"|["markers","beats"]?,"toleranceFrames":i64=3}. Changes the document. */
+  "timeline.trim": { /** an id */ clip?: number; /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number; edge?: "in" | "out"; mode?: "regular" | "ripple"; /** "markers"|"beats"|["markers","beats"]? */ snap?: Json; toleranceFrames?: number }
+  /** Select Edit Point. Selects the `edge` (in|out) of `clip` as an edit point of `kind` trim|ripple|roll; `add` keeps the existing edit points. The first step before trim.nudge or trim.shuttle. Params: {"clip":id,"edge":"in|out","kind":"trim|ripple|roll","add":bool?}. Changes the document. */
   "trim.selectEditPoint": { add?: boolean; /** an id */ clip?: number; edge?: "in" | "out"; kind?: "trim" | "ripple" | "roll" }
-  /** Select Nearest Edit Point. Params: {"kind":"rippleIn|rippleOut|roll|trimIn|trimOut"}. Changes the document. */
+  /** Select Nearest Edit Point. Selects, on each targeted track (all tracks when none), the edit point nearest the playhead as `kind` rippleIn|rippleOut|roll|trimIn|trimOut. Params: {"kind":"rippleIn|rippleOut|roll|trimIn|trimOut"}. Changes the document. */
   "trim.selectNearest": { kind?: "rippleIn" | "rippleOut" | "roll" | "trimIn" | "trimOut" }
-  /** Clear Edit Point Selection. Params: {}. Changes the document. */
+  /** Clear Edit Point Selection. Deselects all edit points and leaves trim mode; changes no clips. Params: {}. Changes the document. */
   "trim.clear": Record<string, never>
-  /** Toggle Trim Type. Params: {}. Changes the document. */
+  /** Toggle Trim Type. Cycles every selected edit point Ripple ? Roll ? Trim. Params: {}. Changes the document. */
   "trim.toggleType": Record<string, never>
-  /** Trim Backward. Params: {}. Changes the document. */
+  /** Trim Backward. Trims every selected edit point one frame earlier, using each point's ripple/roll/trim type. Needs selected edit points; use trim.nudge for any number of frames. Params: {}. Changes the document. */
   "trim.backward": Record<string, never>
-  /** Trim Forward. Params: {}. Changes the document. */
+  /** Trim Forward. Trims every selected edit point one frame later, using each point's ripple/roll/trim type. Needs selected edit points; use trim.nudge for any number of frames. Params: {}. Changes the document. */
   "trim.forward": Record<string, never>
-  /** Trim Backward Many. Params: {}. Changes the document. */
+  /** Trim Backward Many. Trims every selected edit point earlier by the Large Trim Offset preference (5 frames by default). Needs selected edit points. Params: {}. Changes the document. */
   "trim.backwardMany": Record<string, never>
-  /** Trim Forward Many. Params: {}. Changes the document. */
+  /** Trim Forward Many. Trims every selected edit point later by the Large Trim Offset preference (5 frames by default). Needs selected edit points. Params: {}. Changes the document. */
   "trim.forwardMany": Record<string, never>
-  /** Dynamic Trim (Shuttle). Params: {"direction":"forward|reverse","slow":bool?,"clock":seconds}. Changes the document. */
+  /** Dynamic Trim (Shuttle). Starts or speeds up a dynamic trim of the selected edit points in `direction` (pressing again doubles speed up to 8?, `slow` for slow); `clock` is playback time in seconds. Commit with trim.shuttleStop. Params: {"direction":"forward|reverse","slow":bool?,"clock":seconds}. Changes the document. */
   "trim.shuttle": { /** seconds */ clock?: number; direction?: "forward" | "reverse"; slow?: boolean }
-  /** Dynamic Trim Stop. Params: {"clock":seconds?}. Changes the document. */
+  /** Dynamic Trim Stop. Stops a dynamic trim and commits it as one undo step, and stops trim loop playback; `clock` is the playback time in seconds. Params: {"clock":seconds?}. Changes the document. */
   "trim.shuttleStop": { /** seconds */ clock?: number }
-  /** Cancel Dynamic Trim. Params: {}. Changes the document. */
+  /** Cancel Dynamic Trim. Abandons a dynamic (J/L) trim in progress without committing it; the edit points return to where the trim started. Params: {}. Changes the document. */
   "trim.cancelDynamic": Record<string, never>
-  /** Play Around Edit. Params: {"clock":seconds,"loop":bool=true,"toggle":bool?}. Changes the document. */
+  /** Play Around Edit. Plays from preroll before the first selected edit to postroll after it (loops by default); `clock` is the caller's playback time in seconds, `toggle` stops it if playing. Params: {"clock":seconds,"loop":bool=true,"toggle":bool?}. Changes the document. */
   "trim.playAround": { /** seconds */ clock?: number; loop?: boolean; toggle?: boolean }
-  /** Advance Trim Playback. Params: {"clock":seconds} */
+  /** Advance Trim Playback. Advances a dynamic trim or Play Around Edit to playback time `clock` (seconds) and answers the trim status; the host calls it while playing. Params: {"clock":seconds}. */
   "trim.tick": { /** seconds */ clock?: number }
-  /** Trim Monitor State. Params: {} */
+  /** Trim Monitor State. Reads the Trim Monitor for the first selected edit point: kind, edge, the outgoing and incoming clips' frames and the trim shift. Answers {active:false} with no edit point. Params: {}. */
   "trim.monitor": Record<string, never>
-  /** Trim by Frames. Params: {"frames":i64}. Changes the document. */
+  /** Trim by Frames. Trims every selected edit point by `frames` (sequence frames; negative is earlier), using each point's ripple/roll/trim type. Needs selected edit points. Params: {"frames":i64}. Changes the document. */
   "trim.nudge": { frames?: number }
-  /** Extend Selected Edit to Playhead. Params: {}. Changes the document. */
+  /** Extend Selected Edit to Playhead. Moves every selected edit point by the distance from the first one to the playhead, keeping each point's trim type. Needs selected edit points. Params: {}. Changes the document. */
   "trim.extendToPlayhead": Record<string, never>
-  /** Ripple Trim Previous Edit to Playhead. Params: {}. Changes the document. */
+  /** Ripple Trim Previous Edit to Playhead. Removes the material between the previous edit and the playhead on targeted tracks and closes the gap by moving later clips earlier (Premiere Q). Params: {}. Changes the document. */
   "trim.ripplePrevious": Record<string, never>
-  /** Ripple Trim Next Edit to Playhead. Params: {}. Changes the document. */
+  /** Ripple Trim Next Edit to Playhead. Removes the material between the playhead and the next edit on targeted tracks and closes the gap by moving later clips earlier (Premiere W). Params: {}. Changes the document. */
   "trim.rippleNext": Record<string, never>
-  /** Trim Previous Edit to Playhead. Params: {}. Changes the document. */
+  /** Trim Previous Edit to Playhead. Trims the clip edge at the previous edit on targeted tracks up to the playhead, removing that material and leaving a gap (no ripple). Use trim.ripplePrevious to close the gap. Params: {}. Changes the document. */
   "trim.previous": Record<string, never>
-  /** Trim Next Edit to Playhead. Params: {}. Changes the document. */
+  /** Trim Next Edit to Playhead. Trims the clip edge at the next edit on targeted tracks back to the playhead, removing that material and leaving a gap (no ripple). Use trim.rippleNext to close the gap. Params: {}. Changes the document. */
   "trim.next": Record<string, never>
-  /** Rolling Edit. Params: {"left":id,"right":id,"delta":ticks|"deltaFrames":i64}. Changes the document. */
+  /** Rolling Edit. Rolling edit between adjacent clips `left` and `right`: moves the cut by `delta` ticks or `deltaFrames`, lengthening one and shortening the other; total duration is unchanged. Params: {"left":id,"right":id,"delta":ticks|"deltaFrames":i64}. Changes the document. */
   "timeline.roll": { /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number; /** an id */ left?: number; /** an id */ right?: number }
-  /** Slip. Params: {"clip":id,"delta":ticks|"deltaFrames":i64}. Changes the document. */
+  /** Slip. Slip edit: shifts which part of the source `clip` shows by `delta` ticks or `deltaFrames`, keeping its position and length on the timeline. Params: {"clip":id,"delta":ticks|"deltaFrames":i64}. Changes the document. */
   "timeline.slip": { /** an id */ clip?: number; /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number }
-  /** Slide. Params: {"clip":id,"delta":ticks|"deltaFrames":i64}. Changes the document. */
+  /** Slide. Slide edit: moves `clip` by `delta` ticks or `deltaFrames` while trimming its neighbours to keep the gap closed; the clip's content and the sequence length don't change. Params: {"clip":id,"delta":ticks|"deltaFrames":i64}. Changes the document. */
   "timeline.slide": { /** an id */ clip?: number; /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number }
-  /** Rate Stretch. Params: {"clip":id,"edge":"in|out","delta":ticks}. Changes the document. */
+  /** Rate Stretch. Drags `clip`'s in or out `edge` by `delta` ticks and changes its speed so the same media fills the new length (Rate Stretch tool). Answers the new speed. Params: {"clip":id,"edge":"in|out","delta":ticks}. Changes the document. */
   "timeline.rateStretch": { /** an id */ clip?: number; /** ticks (254016000000 per second) */ delta?: number; edge?: "in" | "out" }
-  /** Razor. Params: {"time":ticks,"track":"V1"|id?,"clip":id?}. Changes the document. */
+  /** Razor. Cuts clips at `time` (default playhead): only `clip` (and linked partners) when given, else every clip on `track`, else all unlocked tracks. Answers the new clip ids. Params: {"time":ticks,"track":"V1"|id?,"clip":id?}. Changes the document. */
   "timeline.razor": { /** an id */ clip?: number; /** ticks (254016000000 per second) */ time?: number; /** "V1"|id? */ track?: Json }
-  /** Track Settings. Params: {"track":"V1"|id,"locked":bool?,"syncLock":bool?,"enabled":bool?,"muted":bool?,"solo":bool?,"name":str?,"volumeDb":f64?,"pan":f64?}. Changes the document. */
+  /** Track Settings. Changes a track's settings: locked, sync lock, enabled (output), muted, solo, name, and for audio volume dB and pan. Params: {"track":"V1"|id,"locked":bool?,"syncLock":bool?,"enabled":bool?,"muted":bool?,"solo":bool?,"name":str?,"volumeDb":f64?,"pan":f64?}. Changes the document. */
   "timeline.setTrack": { enabled?: boolean; locked?: boolean; muted?: boolean; name?: string; pan?: number; solo?: boolean; syncLock?: boolean; /** "V1"|id */ track?: Json; volumeDb?: number }
-  /** Track Targeting. Params: {"track":"V1"|id,"targeted":bool?,"sourcePatch":bool?}. Changes the document. */
+  /** Track Targeting. Turns track targeting (`targeted`, used by paste, match frame and edit navigation) and/or source patching (`sourcePatch`, where source.insert/overwrite land) on or off for `track`. Params: {"track":"V1"|id,"targeted":bool?,"sourcePatch":bool?}. Changes the document. */
   "timeline.setTargeting": { sourcePatch?: boolean; targeted?: boolean; /** "V1"|id */ track?: Json }
-  /** Apply Effect. Params: {"clips":[id]?,"effect":"gaussian_blur|Gaussian Blur|..."}. Changes the document. */
+  /** Apply Effect. Adds `effect` (id like gaussian_blur or its name; see effects.list) to the selected or listed `clips`, at the end of each clip's effect stack. Params: {"clips":[id]?,"effect":"gaussian_blur|Gaussian Blur|..."}. Changes the document. */
   "effects.apply": { clips?: Array<number>; /** for example gaussian_blur, Gaussian Blur */ effect?: string }
-  /** Remove Effect. Params: {"clip":id,"index":n}. Changes the document. */
+  /** Remove Effect. Removes the effect at `index` (0-based, as sequence.inspect lists a clip's effects; fixed effects can't be removed) from `clip`. Params: {"clip":id,"index":n}. Changes the document. */
   "effects.remove": { /** an id */ clip?: number; index?: number }
-  /** Set Effect Parameter. Params: {"clip":id,"effect":"motion"|index,"param":str,"mask":n?,"value":num|[x,y]|"#rrggbb"|bool|path,"time":ticks?,"merge":bool?,"begin":bool?}. Changes the document. */
-  "effects.setParam": { begin?: boolean; /** an id */ clip?: number; /** "motion"|index */ effect?: Json; mask?: number; merge?: boolean; param?: string; /** ticks (254016000000 per second) */ time?: number; /** num|[x,y]|"#rrggbb"|bool|path */ value?: Json }
-  /** Toggle Animation. Params: {"clip":id,"effect":str|index,"param":str,"mask":n?}. Changes the document. */
-  "effects.toggleAnimation": { /** an id */ clip?: number; /** str|index */ effect?: Json; mask?: number; param?: string }
-  /** Toggle Effect. Params: {"clip":id,"index":n}. Changes the document. */
+  /** Set Effect Parameter. Sets `param` of `clip`'s `effect` ("motion", "opacity", a name or index) to `value`. With a `time` (sequence ticks; or `frame`, `seconds`, `timecode`) it sets a keyframe there, turning animation on if the parameter was static; without one it keys the playhead when the parameter is animated, else sets the static value. `mask` targets a mask's parameter. Params: {"clip":id,"effect":"motion"|index,"param":str,"mask":n?,"value":num|[x,y]|"#rrggbb"|bool|path,"time":ticks|"frame":i64|"seconds":f64?,"merge":bool?,"begin":bool?}. Changes the document. */
+  "effects.setParam": { begin?: boolean; /** an id */ clip?: number; /** "motion"|index */ effect?: string; /** one of several alternative parameters */ frame?: number; mask?: number; merge?: boolean; param?: string; /** one of several alternative parameters */ seconds?: number; /** ticks (254016000000 per second); one of several alternative parameters */ time?: number; /** num|[x,y]|"#rrggbb"|bool|path */ value?: Json }
+  /** Toggle Animation. Turns keyframe animation of an effect parameter on (a keyframe at `time`, sequence ticks or `frame`/`seconds`, default the playhead) or off (removes its keyframes, keeping the value at that time). Params: {"clip":id,"effect":str|index,"param":str,"mask":n?,"time":ticks|"frame":i64|"seconds":f64?}. Changes the document. */
+  "effects.toggleAnimation": { /** an id */ clip?: number; /** str|index */ effect?: string; /** one of several alternative parameters */ frame?: number; mask?: number; param?: string; /** one of several alternative parameters */ seconds?: number; /** ticks (254016000000 per second); one of several alternative parameters */ time?: number }
+  /** Toggle Effect. Turns the effect at `index` of `clip` on or off without removing it. Params: {"clip":id,"index":n}. Changes the document. */
   "effects.toggleEnabled": { /** an id */ clip?: number; index?: number }
-  /** Reset Effect. Params: {"clip":id,"index":n}. Changes the document. */
+  /** Reset Effect. Resets every parameter of the effect at `index` of `clip` to its defaults. Params: {"clip":id,"index":n}. Changes the document. */
   "effects.reset": { /** an id */ clip?: number; index?: number }
-  /** Add/Remove Keyframe. Params: {"clip":id,"effect":str|index,"param":str,"mask":n?,"time":ticks?}. Changes the document. */
-  "effects.addKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: Json; mask?: number; param?: string; /** ticks (254016000000 per second) */ time?: number }
-  /** Delete Keyframe. Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks}. Changes the document. */
-  "effects.deleteKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: Json; /** ticks (254016000000 per second) */ mediaTime?: number; param?: string }
-  /** Move Keyframe. Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks,"to":ticks}. Changes the document. */
-  "effects.moveKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: Json; /** ticks (254016000000 per second) */ mediaTime?: number; param?: string; /** ticks (254016000000 per second) */ to?: number }
-  /** Keyframe Interpolation. Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks,"interpolation":"linear|bezier|autoBezier|continuousBezier|hold|easeIn|easeOut"}. Changes the document. */
-  "effects.setInterpolation": { /** an id */ clip?: number; /** str|index */ effect?: Json; interpolation?: "linear" | "bezier" | "autoBezier" | "continuousBezier" | "hold" | "easeIn" | "easeOut"; /** ticks (254016000000 per second) */ mediaTime?: number; param?: string }
-  /** Edit Keyframe. Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks,"value":any?,"inInfluence":0..1?,"outInfluence":0..1?}. Changes the document. */
-  "effects.setKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: Json; /** 0 to 1 */ inInfluence?: number; /** ticks (254016000000 per second) */ mediaTime?: number; /** 0 to 1 */ outInfluence?: number; param?: string; value?: Json }
-  /** Select Project Items. Params: {"items":[id]}. Changes the document. */
+  /** Add/Remove Keyframe. Adds a keyframe of an effect parameter at `time` (sequence ticks, default playhead) with its current value, or removes it if one is there. Params: {"clip":id,"effect":str|index,"param":str,"mask":n?,"time":ticks?}. Changes the document. */
+  "effects.addKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: string; mask?: number; param?: string; /** ticks (254016000000 per second) */ time?: number }
+  /** Delete Keyframe. Deletes the keyframe of an effect parameter at `mediaTime` (ticks of the clip's media time, as listed by sequence.inspect). Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks}. Changes the document. */
+  "effects.deleteKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: string; /** ticks (254016000000 per second) */ mediaTime?: number; param?: string }
+  /** Move Keyframe. Moves the keyframe of an effect parameter at `mediaTime` to media time `to` (both clip media ticks). Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks,"to":ticks}. Changes the document. */
+  "effects.moveKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: string; /** ticks (254016000000 per second) */ mediaTime?: number; param?: string; /** ticks (254016000000 per second) */ to?: number }
+  /** Keyframe Interpolation. Sets the interpolation of the keyframe at `mediaTime`: linear, bezier, autoBezier, continuousBezier, hold, easeIn or easeOut. Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks,"interpolation":"linear|bezier|autoBezier|continuousBezier|hold|easeIn|easeOut"}. Changes the document. */
+  "effects.setInterpolation": { /** an id */ clip?: number; /** str|index */ effect?: string; interpolation?: "linear" | "bezier" | "autoBezier" | "continuousBezier" | "hold" | "easeIn" | "easeOut"; /** ticks (254016000000 per second) */ mediaTime?: number; param?: string }
+  /** Edit Keyframe. Changes the keyframe at `mediaTime`: its `value` and bezier in/out influence (0?1). Params: {"clip":id,"effect":str|index,"param":str,"mediaTime":ticks,"value":any?,"inInfluence":0..1?,"outInfluence":0..1?}. Changes the document. */
+  "effects.setKeyframe": { /** an id */ clip?: number; /** str|index */ effect?: string; /** 0 to 1 */ inInfluence?: number; /** ticks (254016000000 per second) */ mediaTime?: number; /** 0 to 1 */ outInfluence?: number; param?: string; value?: Json }
+  /** Select Project Items. Sets the Project panel selection to `items`; many project commands act on this selection. Params: {"items":[id]}. Changes the document. */
   "project.select": { items?: Array<number> }
-  /** Clear. Params: {"items":[id]?}. Changes the document. */
+  /** Clear. Deletes the listed or selected project `items` (bins with their contents); clips using them are removed from sequences. Answers what was removed. Params: {"items":[id]?}. Changes the document. */
   "project.delete": { items?: Array<number> }
-  /** Move to Bin. Params: {"items":[id]?,"bin":binId|null}. Changes the document. */
-  "project.moveToBin": { /** binId|null */ bin?: Json; items?: Array<number> }
-  /** Set Source In/Out. Params: {"item":id,"in":ticks?|null,"out":ticks?|null}. Changes the document. */
-  "project.setMarks": { /** ticks?|null */ in?: Json; /** an id */ item?: number; /** ticks?|null */ out?: Json }
-  /** List Commands. Params: {} */
+  /** Move to Bin. Moves the listed or selected project `items` into `bin` (null for the root). Answers how many moved. Params: {"items":[id]?,"bin":binId|null}. Changes the document. */
+  "project.moveToBin": { /** binId|null */ bin?: number; items?: Array<number> }
+  /** Set Source In/Out. Sets or clears (null) the source In and Out points of project `item` (default the Source monitor item), in ticks of the item's time. Params: {"item":id,"in":ticks?|null,"out":ticks?|null}. Changes the document. */
+  "project.setMarks": { /** ticks?|null */ in?: number; /** an id */ item?: number; /** ticks?|null */ out?: number }
+  /** List Commands. Lists every command with id, title, menu path, shortcut, parameters and whether it is enabled now. Params: {}. */
   "command.list": Record<string, never>
-  /** Inspect Project. Params: {} */
+  /** Inspect Project. Reads the whole project: bins and items with ids, kinds (media, sequence, generators), durations, frame rates and media paths. Read first to find item ids. Params: {}. */
   "project.inspect": Record<string, never>
-  /** Inspect Sequence. Params: {"item":id?} */
+  /** Inspect Sequence. Reads sequence `item` (default active): settings, tracks with their clips (ids, times in ticks, sources, effects), transitions, markers, In/Out and playhead. The main read before editing a timeline. Params: {"item":id?}. */
   "sequence.inspect": { /** an id */ item?: number }
-  /** Inspect Editor State. Params: {} */
+  /** Inspect Editor State. Reads the editor state: active sequence, playhead, selections (clips, captions, project items, edit points), targeting, In/Out and toggles like snapping and linked selection. Params: {}. */
   "state.inspect": Record<string, never>
-  /** List Effects. Params: {"kind":"Video"|"Audio"|"VideoTransition"|"AudioTransition"?,"folder":"Video Transitions/Wipe"?,"detail":bool?} */
-  "effects.list": { detail?: boolean; /** like Video Transitions/Wipe */ folder?: string; kind?: "Video" | "Audio" | "VideoTransition" | "AudioTransition" }
-  /** List History. Params: {} */
+  /** List Effects. Lists available effects and transitions (filter by `kind` Video, Audio, VideoTransition, AudioTransition, `folder`, or one `effect` by id or name) with ids; `detail` (implied by `effect`) adds `paramInfo`: each parameter's id, type, default, min / max / unit, choice `options`, and `accepts` (the values it takes, e.g. booleans for an amount, left/right/up/down for a direction). Read to find effect ids and transition `params`. Params: {"kind":"Video"|"Audio"|"VideoTransition"|"AudioTransition"?,"folder":"Video Transitions/Wipe"?,"effect":"push"|"Push"?,"detail":bool?}. */
+  "effects.list": { detail?: boolean; effect?: "push" | "Push"; /** like Video Transitions/Wipe */ folder?: string; kind?: "Video" | "Audio" | "VideoTransition" | "AudioTransition" }
+  /** List History. Lists the undo history: each step's label, who made it (person or agent) and which steps can be undone or redone. Params: {}. */
   "history.list": Record<string, never>
-  /** Add New Caption Track. Params: {"format":"Subtitle|CEA-608|CEA-708|Teletext","name":str?,"language":str?}. Changes the document. */
+  /** Add New Caption Track. Adds a caption track of `format` Subtitle|CEA-608|CEA-708|Teletext (default Subtitle) with `name` and `language` (default en). Answers the new track. Params: {"format":"Subtitle|CEA-608|CEA-708|Teletext","name":str?,"language":str?}. Changes the document. */
   "captions.newTrack": { format?: "Subtitle" | "CEA-608" | "CEA-708" | "Teletext"; language?: string; name?: string }
-  /** Delete Caption Track. Params: {"track":id|"C1"}. Changes the document. */
+  /** Delete Caption Track. Removes a whole caption track (`track` id or "C1"..., default the first) and all its captions. Params: {"track":id|"C1"}. Changes the document. */
   "captions.deleteTrack": { /** id|"C1" */ track?: Json }
-  /** Caption Track Settings. Params: {"track":id|"C1","name":str?,"format":str?,"language":str?,"enabled":bool?,"locked":bool?,"syncLock":bool?}. Changes the document. */
+  /** Caption Track Settings. Changes a caption track's name, format, language, enabled, locked or sync-lock settings. Params: {"track":id|"C1","name":str?,"format":str?,"language":str?,"enabled":bool?,"locked":bool?,"syncLock":bool?}. Changes the document. */
   "captions.setTrack": { enabled?: boolean; format?: string; language?: string; locked?: boolean; name?: string; syncLock?: boolean; /** id|"C1" */ track?: Json }
-  /** Caption Track Style. Params: {"track":id|"C1","font":str?,"size":f32?,"color":"#rrggbb[aa]"?,"background":bool?,"backgroundColor":"#rrggbbaa"?,"align":"left|center|right"?,"anchor":"top|middle|bottom"?,"margin":0..0.45 (fraction of frame height)?,"lineSpacing":f32?,"outline":f32?,"outlineColor":str?,"reset":bool?}. Changes the document. */
-  "captions.setStyle": { align?: "left" | "center" | "right"; anchor?: "top" | "middle" | "bottom"; background?: boolean; /** like #rrggbbaa */ backgroundColor?: string; /** like #rrggbb[aa] */ color?: string; font?: string; lineSpacing?: number; /** 0 to 0.45; fraction of frame height */ margin?: number; outline?: number; outlineColor?: string; reset?: boolean; size?: number; /** id|"C1" */ track?: Json }
-  /** Add Caption at Playhead. Params: {"track":id|"C1"?,"text":str?,"time":ticks?,"seconds":f64?,"durationSeconds":f64=3}. Changes the document. */
-  "captions.add": { durationSeconds?: number; seconds?: number; text?: string; /** ticks (254016000000 per second) */ time?: number; /** id|"C1"? */ track?: Json }
-  /** Split Caption. Params: {"caption":id?,"time":ticks?}. Changes the document. */
+  /** Caption Track Style. Sets a caption track's look: font, size, color, background, align, anchor, margin (fraction of frame height, 0?0.45), line spacing, outline, and for karaoke captions `highlightColor` and `highlightScale` (0.25?4) of the word being sung; `reset` restores defaults. Applies to every caption on the track. Params: {"track":id|"C1","font":str?,"size":f32?,"color":"#rrggbb[aa]"?,"background":bool?,"backgroundColor":"#rrggbbaa"?,"align":"left|center|right"?,"anchor":"top|middle|bottom"?,"margin":0..0.45 (fraction of frame height)?,"lineSpacing":f32?,"outline":f32?,"outlineColor":str?,"highlightColor":"#rrggbb[aa]" (karaoke word)?,"highlightScale":0.25..4 (karaoke word size)?,"reset":bool?}. Changes the document. */
+  "captions.setStyle": { align?: "left" | "center" | "right"; anchor?: "top" | "middle" | "bottom"; background?: boolean; /** like #rrggbbaa */ backgroundColor?: string; /** like #rrggbb[aa] */ color?: string; font?: string; /** like #rrggbb[aa]; karaoke word */ highlightColor?: string; /** 0.25 to 4; karaoke word size */ highlightScale?: number; lineSpacing?: number; /** 0 to 0.45; fraction of frame height */ margin?: number; outline?: number; outlineColor?: string; reset?: boolean; size?: number; /** id|"C1" */ track?: Json }
+  /** Add Caption at Playhead. Adds a caption on a caption track at the playhead (or `time` ticks / `seconds`), `durationSeconds` long (3 by default) with `text`; creates track C1 if the sequence has none. `words` [{text, start, end} in sequence seconds] makes a karaoke caption spanning the words: each word gets a WebVTT timestamp, Chinese/Japanese/Korean words join without spaces, and burned-in captions draw the word being sung in the track's highlight colour and scale (a pause between words highlights nothing). Inline <b>, <i>, <u> are drawn. Answers the new caption. Params: {"track":id|"C1"?,"text":str?,"words":[{"text":str,"start":seconds,"end":seconds}]? (karaoke; the caption spans them unless seconds/durationSeconds are given),"time":ticks?,"seconds":f64?,"durationSeconds":f64=3}. Changes the document. */
+  "captions.add": { durationSeconds?: number; seconds?: number; text?: string; /** ticks (254016000000 per second) */ time?: number; /** id|"C1"? */ track?: Json; /** karaoke; the caption spans them unless seconds/durationSeconds are given */ words?: Array<{ end?: number; start?: number; text?: string }> }
+  /** Split Caption. Splits `caption` at `time` (default: the playhead), or every caption under the playhead on unlocked caption tracks when no caption is given. Answers the new captions. Params: {"caption":id?,"time":ticks?}. Changes the document. */
   "captions.split": { /** an id */ caption?: number; /** ticks (254016000000 per second) */ time?: number }
-  /** Merge Captions. Params: {"captions":[id]?}. Changes the document. */
+  /** Merge Captions. Joins consecutive captions on one track into the first: it spans from the first start to the last end, texts joined with line breaks. Answers {caption}. Params: {"captions":[id]?}. Changes the document. */
   "captions.merge": { captions?: Array<number> }
-  /** Edit Caption Text. Params: {"caption":id?,"text":str?,"speaker":str|null?}. Changes the document. */
+  /** Edit Caption Text. Changes the `text` and/or `speaker` (null clears it) of one caption (default: the selected one). Params: {"caption":id?,"text":str?,"speaker":str|null?}. Changes the document. */
   "captions.setText": { /** an id */ caption?: number; /** str|null? */ speaker?: Json; text?: string }
-  /** Set Caption In/Out. Params: {"caption":id?,"startTime|startFrame|startSeconds|startTimecode":...,"endTime|endFrame|endSeconds|endTimecode":...}. Changes the document. */
+  /** Set Caption In/Out. Sets a caption's start and/or end, each as ticks (`startTime`), frames, seconds or timecode; default caption is the selected one. Params: {"caption":id?,"startTime|startFrame|startSeconds|startTimecode":...,"endTime|endFrame|endSeconds|endTimecode":...}. Changes the document. */
   "captions.setTimes": { /** an id */ caption?: number }
-  /** Trim Caption. Params: {"caption":id,"edge":"in|out","delta":ticks|"deltaFrames":i64}. Changes the document. */
+  /** Trim Caption. Moves the in or out `edge` of one caption by `delta` ticks or `deltaFrames`, without moving neighbours. Use captions.setTimes to set an absolute time. Params: {"caption":id,"edge":"in|out","delta":ticks|"deltaFrames":i64}. Changes the document. */
   "captions.trim": { /** an id */ caption?: number; /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number; edge?: "in" | "out" }
-  /** Move Captions. Params: {"captions":[id]?,"delta":ticks|"deltaFrames":i64}. Changes the document. */
+  /** Move Captions. Shifts `captions` (default: selected) by `delta` ticks or `deltaFrames`, clamped at zero and so they don't overlap captions that stay. Answers {applied} ticks. Params: {"captions":[id]?,"delta":ticks|"deltaFrames":i64}. Changes the document. */
   "captions.move": { captions?: Array<number>; /** ticks (254016000000 per second); one of several alternative parameters */ delta?: number; /** one of several alternative parameters */ deltaFrames?: number }
-  /** Delete Captions. Params: {"captions":[id]?,"ripple":bool=false}. Changes the document. */
+  /** Delete Captions. Deletes the listed `captions` (default: the caption selection). `ripple: true` also closes the gaps by moving later captions earlier. Answers {deleted}. Params: {"captions":[id]?,"ripple":bool=false}. Changes the document. */
   "captions.delete": { captions?: Array<number>; ripple?: boolean }
-  /** Select Captions. Params: {"captions":[id],"add":bool?}. Changes the document. */
+  /** Select Captions. Selects `captions` by id (ids not in the sequence are ignored); `add: true` adds to the current caption selection. Params: {"captions":[id],"add":bool?}. Changes the document. */
   "captions.select": { add?: boolean; captions?: Array<number> }
-  /** Go to Caption. Params: {"caption":id}. Changes the document. */
+  /** Go to Caption. Moves the playhead to the start of `caption` and selects it. Answers {time} in ticks. Params: {"caption":id}. Changes the document. */
   "captions.goTo": { /** an id */ caption?: number }
-  /** Go to Next Caption Segment. Params: {}. Changes the document. */
+  /** Go to Next Caption Segment. Moves the playhead to the start of the next caption on enabled caption tracks and selects it. Answers {time, caption}. Params: {}. Changes the document. */
   "captions.next": Record<string, never>
-  /** Go to Previous Caption Segment. Params: {}. Changes the document. */
+  /** Go to Previous Caption Segment. Moves the playhead to the start of the previous caption on enabled caption tracks and selects it. Answers {time, caption}. Params: {}. Changes the document. */
   "captions.previous": Record<string, never>
-  /** Show All Caption Tracks. Params: {}. Changes the document. */
+  /** Show All Caption Tracks. Enables every caption track of the active sequence. Reverse with captions.hideAll. Params: {}. Changes the document. */
   "captions.showAll": Record<string, never>
-  /** Show Active Caption Tracks Only. Params: {"track":id|"C1"?}. Changes the document. */
+  /** Show Active Caption Tracks Only. Enables only `track` (default the first) and disables the other caption tracks, so one language shows. Params: {"track":id|"C1"?}. Changes the document. */
   "captions.showActiveOnly": { /** id|"C1"? */ track?: Json }
-  /** Hide All Caption Tracks. Params: {}. Changes the document. */
+  /** Hide All Caption Tracks. Disables every caption track of the active sequence so none shows in the Program monitor or export; the captions stay. Reverse with captions.showAll. Params: {}. Changes the document. */
   "captions.hideAll": Record<string, never>
-  /** Import Captions. Params: {"path":str,"name":str?}. Changes the document. */
-  "captions.import": { name?: string; path?: string }
-  /** Captions. Params: {"path":str,"format":"srt|vtt|scc|mcc|stl|ttml|dfxp"? (default: from the extension),"track":id|"C1"?,"dropFrame":bool=true}. Changes the document. */
-  "captions.export": { dropFrame?: boolean; /** default: from the extension */ format?: "srt" | "vtt" | "scc" | "mcc" | "stl" | "ttml" | "dfxp"; path?: string; /** id|"C1"? */ track?: Json }
-  /** List Captions. Params: {"track":id|"C1"?} */
+  /** Import Captions. Reads a caption file at `path` (format detected from content and extension) into a new caption track of the active sequence; `name` names the track. Params: {"path":str,"name":str?}. Changes the document. */
+  "captions.import": { name?: string; path?: Json }
+  /** Captions. Writes a caption track to a new file at `path`; `format` srt|vtt|scc|mcc|stl|ttml|dfxp defaults from the extension (else SRT); `dropFrame` applies to SCC/MCC timecode. Params: {"path":str,"format":"srt|vtt|scc|mcc|stl|ttml|dfxp"? (default: from the extension),"track":id|"C1"?,"dropFrame":bool=true}. Changes the document. */
+  "captions.export": { dropFrame?: boolean; /** default: from the extension */ format?: "srt" | "vtt" | "scc" | "mcc" | "stl" | "ttml" | "dfxp"; path?: Json; /** id|"C1"? */ track?: Json }
+  /** List Captions. Lists the caption tracks (or just `track`) with their captions' ids, times in ticks, text and speaker, plus the caption selection. Read before editing captions. Params: {"track":id|"C1"?}. */
   "captions.list": { /** id|"C1"? */ track?: Json }
-  /** Settings Schema. Params: {"category":str?} */
+  /** Settings Schema. Lists every preference key with its type, default, allowed values and category. Params: {"category":str?}. */
   "prefs.schema": { category?: string }
-  /** Media Cache Info. Params: {} */
+  /** Media Cache Info. Reads the media cache: folder, size, and file counts (peaks, conformed audio, previews). Params: {}. */
   "mediaCache.info": Record<string, never>
-  /** Delete Media Cache Files. Params: {"all":bool?}. Changes the document. */
+  /** Delete Media Cache Files. Deletes media cache files no longer used by open projects, or `all` of them. Params: {"all":bool?}. Changes the document. */
   "mediaCache.clean": { all?: boolean }
-  /** Inspect Audio Track Mixer. Params: {"time":ticks?} */
+  /** Inspect Audio Track Mixer. Reads the Audio Track Mixer at `time` (default playhead): every strip's volume, pan, mute/solo, mode, output, sends, track effects and automation values. Params: {"time":ticks?}. */
   "mixer.inspect": { /** ticks (254016000000 per second) */ time?: number }
-  /** Track Mixer Settings. Params: {"strip":"A1"|"S1"|"Mix"|id,"name":str?,"volumeDb":f64?,"pan":f64?,"muted":bool?,"solo":bool?,"recordArm":bool?,"soloSafe":bool?,"mode":"Off|Read|Latch|Touch|Write"?,"output":"Mix"|"S1"?,"inputMap":"Stereo|Left|Right|Swap|Mono"?,"channels":"Mono|Stereo|5.1"?}. Changes the document. */
+  /** Track Mixer Settings. Changes a mixer strip's static settings: name, volume dB, pan, mute, solo, record arm, solo safe, automation mode, output routing, input map, channels. Params: {"strip":"A1"|"S1"|"Mix"|id,"name":str?,"volumeDb":f64?,"pan":f64?,"muted":bool?,"solo":bool?,"recordArm":bool?,"soloSafe":bool?,"mode":"Off|Read|Latch|Touch|Write"?,"output":"Mix"|"S1"?,"inputMap":"Stereo|Left|Right|Swap|Mono"?,"channels":"Mono|Stereo|5.1"?}. Changes the document. */
   "mixer.setStrip": { channels?: "Mono" | "Stereo" | "5.1"; inputMap?: "Stereo" | "Left" | "Right" | "Swap" | "Mono"; mode?: "Off" | "Read" | "Latch" | "Touch" | "Write"; muted?: boolean; name?: string; output?: "Mix" | "S1"; pan?: number; recordArm?: boolean; solo?: boolean; soloSafe?: boolean; /** "A1"|"S1"|"Mix"|id */ strip?: Json; volumeDb?: number }
-  /** Set Mixer Control. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":"volume|pan|mute|send.<i>.level|fx.<slot>.<param>","value":f64,"time":ticks?}. Changes the document. */
+  /** Set Mixer Control. Sets a mixer control (`lane`) on `strip` to `value` once: writes a keyframe at `time` when the lane has automation, else the static value. Use mixer.touch for recorded gestures. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":"volume|pan|mute|send.<i>.level|fx.<slot>.<param>","value":f64,"time":ticks?}. Changes the document. */
   "mixer.setValue": { lane?: "volume" | "pan" | "mute" | "send.<i>.level" | "fx.<slot>.<param>"; /** "A1"|"S1"|"Mix"|id */ strip?: Json; /** ticks (254016000000 per second) */ time?: number; value?: number }
-  /** Touch Mixer Control. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":"volume|pan|mute|send.<i>.level|fx.<slot>.<param>","value":f64,"time":ticks?} */
+  /** Touch Mixer Control. Moves a mixer control during an automation pass: the audio follows at once and the value is recorded at `time` per the strip's automation mode. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":"volume|pan|mute|send.<i>.level|fx.<slot>.<param>","value":f64,"time":ticks?}. */
   "mixer.touch": { lane?: "volume" | "pan" | "mute" | "send.<i>.level" | "fx.<slot>.<param>"; /** "A1"|"S1"|"Mix"|id */ strip?: Json; /** ticks (254016000000 per second) */ time?: number; value?: number }
-  /** Release Mixer Control. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks?}. Changes the document. */
+  /** Release Mixer Control. Lets go of a mixer control (`lane`, default volume) on `strip` at `time`; in Touch mode the value ramps back to the existing automation. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks?}. Changes the document. */
   "mixer.release": { lane?: string; /** "A1"|"S1"|"Mix"|id */ strip?: Json; /** ticks (254016000000 per second) */ time?: number }
-  /** Start Automation Pass. Params: {"time":ticks?} */
+  /** Start Automation Pass. Starts an automation pass at `time` (default playhead); mixer.touch/release gestures are recorded per each strip's mode until mixer.recordStop. Params: {"time":ticks?}. */
   "mixer.recordStart": { /** ticks (254016000000 per second) */ time?: number }
-  /** Write Automation. Params: {"time":ticks?}. Changes the document. */
+  /** Write Automation. Ends the automation pass at `time`, thins every recorded gesture into keyframes and writes them as one undo step (Write strips may switch to Touch). Params: {"time":ticks?}. Changes the document. */
   "mixer.recordStop": { /** ticks (254016000000 per second) */ time?: number }
-  /** Audio Clip Mixer Adjust. Params: {"clip":id,"effect":"volume"|"panner","param":"level"|"balance","value":f64,"keyframe":bool?,"time":ticks?,"begin":bool?}. Changes the document. */
+  /** Audio Clip Mixer Adjust. Sets a clip's audio effect parameter (default Volume ? Level) to `value` at `time` (default playhead); `keyframe: true` writes a keyframe, otherwise the static value. Consecutive calls on the same control are one undo step. Params: {"clip":id,"effect":"volume"|"panner","param":"level"|"balance","value":f64,"keyframe":bool?,"time":ticks?,"begin":bool?}. Changes the document. */
   "clipMixer.set": { begin?: boolean; /** an id */ clip?: number; effect?: "volume" | "panner"; keyframe?: boolean; param?: "level" | "balance"; /** ticks (254016000000 per second) */ time?: number; value?: number }
-  /** Audio Clip Mixer Automation Mode. Params: {"track":"A1"|id,"mode":"Off|Read|Latch|Touch|Write"} */
+  /** Audio Clip Mixer Automation Mode. Sets the Audio Clip Mixer automation mode of an audio `track`: Off, Read, Latch, Touch or Write. Not undoable; mixer state only. Params: {"track":"A1"|id,"mode":"Off|Read|Latch|Touch|Write"}. */
   "clipMixer.setMode": { mode?: "Off" | "Read" | "Latch" | "Touch" | "Write"; /** "A1"|id */ track?: Json }
-  /** Touch Clip Mixer Control. Params: {"track":"A1"|id,"lane":"volume|pan","value":f64,"time":ticks?} */
+  /** Touch Clip Mixer Control. Moves an Audio Clip Mixer control (`lane` volume or pan) on `track` to `value` at `time`, recording keyframes on the clip under it per the track's automation mode. Params: {"track":"A1"|id,"lane":"volume|pan","value":f64,"time":ticks?}. */
   "clipMixer.touch": { lane?: "volume" | "pan"; /** ticks (254016000000 per second) */ time?: number; /** "A1"|id */ track?: Json; value?: number }
-  /** Release Clip Mixer Control. Params: {"track":"A1"|id,"lane":"volume|pan","time":ticks?}. Changes the document. */
+  /** Release Clip Mixer Control. Lets go of an Audio Clip Mixer fader or pan control on `track` at `time` (default playhead), ending a Latch/Touch automation pass for that lane. Params: {"track":"A1"|id,"lane":"volume|pan","time":ticks?}. Changes the document. */
   "clipMixer.release": { lane?: "volume" | "pan"; /** ticks (254016000000 per second) */ time?: number; /** "A1"|id */ track?: Json }
-  /** Set Selected as Default Transition. Params: {"effect":"constant_power|constant_gain|exponential_fade|<video transition>"}. Changes the document. */
+  /** Set Selected as Default Transition. Sets the default video or audio transition used by sequence.applyVideoTransition/applyAudioTransition and default-transition commands. Params: {"effect":"constant_power|constant_gain|exponential_fade|<video transition>"}. Changes the document. */
   "effects.setDefaultTransition": { effect?: "constant_power" | "constant_gain" | "exponential_fade" | "<video transition>" }
-  /** Delete Submix Track. Params: {"strip":"S1"|id}. Changes the document. */
+  /** Delete Submix Track. Removes submix track `strip` (S1...); tracks and sends that fed it route to the Mix. Params: {"strip":"S1"|id}. Changes the document. */
   "mixer.deleteSubmix": { /** "S1"|id */ strip?: Json }
-  /** Add Track Effect. Params: {"strip":"A1"|"S1"|"Mix"|id,"effect":str,"slot":n?,"postFader":bool?}. Changes the document. */
+  /** Add Track Effect. Adds a track effect `effect` to a mixer `strip` (A1..., S1..., Mix) at `slot` (default last), pre-fader unless `postFader`. Params: {"strip":"A1"|"S1"|"Mix"|id,"effect":str,"slot":n?,"postFader":bool?}. Changes the document. */
   "mixer.addInsert": { effect?: string; postFader?: boolean; slot?: number; /** "A1"|"S1"|"Mix"|id */ strip?: Json }
-  /** Remove Track Effect. Params: {"strip":"A1"|"S1"|"Mix"|id,"slot":n}. Changes the document. */
+  /** Remove Track Effect. Removes the track effect at `slot` (0-based) from a mixer `strip`. Params: {"strip":"A1"|"S1"|"Mix"|id,"slot":n}. Changes the document. */
   "mixer.removeInsert": { slot?: number; /** "A1"|"S1"|"Mix"|id */ strip?: Json }
-  /** Track Effect Settings. Params: {"strip":"A1"|"S1"|"Mix"|id,"slot":n,"enabled":bool?,"postFader":bool?,"params":{id:value}?}. Changes the document. */
+  /** Track Effect Settings. Changes the track effect at `slot` on a `strip`: `enabled`, pre/post fader, or effect `params` by id. Params: {"strip":"A1"|"S1"|"Mix"|id,"slot":n,"enabled":bool?,"postFader":bool?,"params":{id:value}?}. Changes the document. */
   "mixer.setInsert": { enabled?: boolean; params?: { id?: Json }; postFader?: boolean; slot?: number; /** "A1"|"S1"|"Mix"|id */ strip?: Json }
-  /** Add Send. Params: {"strip":"A1"|"S1"|id,"target":"S1"|id,"levelDb":f64?,"preFader":bool?,"pan":f64?}. Changes the document. */
+  /** Add Send. Adds a send from an audio track or submix `strip` to submix `target` at `levelDb`, post-fader unless `preFader`, with `pan`. The Mix has no sends. Params: {"strip":"A1"|"S1"|id,"target":"S1"|id,"levelDb":f64?,"preFader":bool?,"pan":f64?}. Changes the document. */
   "mixer.addSend": { levelDb?: number; pan?: number; preFader?: boolean; /** "A1"|"S1"|id */ strip?: Json; /** "S1"|id */ target?: Json }
-  /** Send Settings. Params: {"strip":"A1"|"S1"|id,"send":n,"levelDb":f64?,"pan":f64?,"preFader":bool?,"muted":bool?,"target":"S1"?}. Changes the document. */
+  /** Send Settings. Changes send `send` (0-based) on a `strip`: level dB, pan, pre/post fader, mute, or retarget to another submix. Params: {"strip":"A1"|"S1"|id,"send":n,"levelDb":f64?,"pan":f64?,"preFader":bool?,"muted":bool?,"target":"S1"?}. Changes the document. */
   "mixer.setSend": { levelDb?: number; muted?: boolean; pan?: number; preFader?: boolean; send?: number; /** "A1"|"S1"|id */ strip?: Json; /** like S1 */ target?: string }
-  /** Remove Send. Params: {"strip":"A1"|"S1"|id,"send":n}. Changes the document. */
+  /** Remove Send. Removes send number `send` (0-based) from a mixer `strip`. Params: {"strip":"A1"|"S1"|id,"send":n}. Changes the document. */
   "mixer.removeSend": { send?: number; /** "A1"|"S1"|id */ strip?: Json }
-  /** Add Track Keyframe. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks?,"value":f64}. Changes the document. */
+  /** Add Track Keyframe. Adds or replaces an automation keyframe of `value` at `time` (default playhead) on a strip's `lane` (volume dB, pan -1...1, mute, send.i.level, fx.slot.param). Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks?,"value":f64}. Changes the document. */
   "mixer.setKeyframe": { lane?: string; /** "A1"|"S1"|"Mix"|id */ strip?: Json; /** ticks (254016000000 per second) */ time?: number; value?: number }
-  /** Delete Track Keyframe. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks}. Changes the document. */
+  /** Delete Track Keyframe. Deletes the automation keyframe at `time` ticks on a strip's `lane` (default volume). Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks}. Changes the document. */
   "mixer.deleteKeyframe": { lane?: string; /** "A1"|"S1"|"Mix"|id */ strip?: Json; /** ticks (254016000000 per second) */ time?: number }
-  /** Move Track Keyframe. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks,"newTime":ticks?,"value":f64?}. Changes the document. */
+  /** Move Track Keyframe. Moves the automation keyframe at `time` on a strip's `lane` to `newTime` and/or changes its `value`. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"time":ticks,"newTime":ticks?,"value":f64?}. Changes the document. */
   "mixer.moveKeyframe": { lane?: string; /** ticks (254016000000 per second) */ newTime?: number; /** "A1"|"S1"|"Mix"|id */ strip?: Json; /** ticks (254016000000 per second) */ time?: number; value?: number }
-  /** Clear Track Keyframes. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?}. Changes the document. */
+  /** Clear Track Keyframes. Deletes every automation keyframe of `lane` (default volume) on a mixer `strip`. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?}. Changes the document. */
   "mixer.clearLane": { lane?: string; /** "A1"|"S1"|"Mix"|id */ strip?: Json }
-  /** Write Automation Points. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"points":[[ticks,value]],"tolerance":f64?}. Changes the document. */
+  /** Write Automation Points. Writes a whole automation curve to a strip's `lane` from `points` [[ticks, value]...], thinned to keyframes within `tolerance`, replacing that span; one undo step. Params: {"strip":"A1"|"S1"|"Mix"|id,"lane":str?,"points":[[ticks,value]],"tolerance":f64?}. Changes the document. */
   "mixer.writeAutomation": { lane?: string; /** [[ticks,value]] */ points?: Array<Array<Json>>; /** "A1"|"S1"|"Mix"|id */ strip?: Json; tolerance?: number }
-  /** Synchronize. Params: {"method":"in|out|timecode|marker|audio","clips":[id]?,"reference":clip?,"track":"V1"|"A1"?,"ignoreHours":bool?,"marker":str?,"offset":frames?}. Changes the document. */
-  "clip.synchronize": { clips?: Array<number>; ignoreHours?: boolean; marker?: string; method?: "in" | "out" | "timecode" | "marker" | "audio"; /** frames */ offset?: number; /** clip? */ reference?: Json; track?: "V1" | "A1" }
-  /** Merge Clips. Params: {"items":[id]?,"method":"in|out|timecode|marker|audio","name":str?,"removeVideoAudio":bool?,"ignoreHours":bool?,"marker":str?,"offset":frames?}. Changes the document. */
+  /** Synchronize. Aligns the selected timeline clips to a `reference` clip by in, out, timecode, a named clip `marker` or audio waveform, plus `offset` frames. Params: {"method":"in|out|timecode|marker|audio","clips":[id]?,"reference":clip?,"track":"V1"|"A1"?,"ignoreHours":bool?,"marker":str?,"offset":frames?}. Changes the document. */
+  "clip.synchronize": { clips?: Array<number>; ignoreHours?: boolean; marker?: string; method?: "in" | "out" | "timecode" | "marker" | "audio"; /** frames */ offset?: number; /** clip? */ reference?: number; track?: "V1" | "A1" }
+  /** Merge Clips. Merges one video item and audio items, aligned by in, out, timecode, marker or audio, into a new merged project item; `removeVideoAudio` drops the camera audio. Params: {"items":[id]?,"method":"in|out|timecode|marker|audio","name":str?,"removeVideoAudio":bool?,"ignoreHours":bool?,"marker":str?,"offset":frames?}. Changes the document. */
   "clip.mergeClips": { ignoreHours?: boolean; items?: Array<number>; marker?: string; method?: "in" | "out" | "timecode" | "marker" | "audio"; name?: string; /** frames */ offset?: number; removeVideoAudio?: boolean }
-  /** Create Multi-Camera Source Sequence. Params: {"items":[id]?,"name":str?,"method":"in|out|timecode|marker|audio","ignoreHours":bool?,"marker":str?,"offset":frames?,"audio":"camera1|all|switch","cameraNames":"clip|track|metadata","processedBin":bool?,"reference":item?}. Changes the document. */
-  "clip.createMulticam": { audio?: "camera1" | "all" | "switch"; cameraNames?: "clip" | "track" | "metadata"; ignoreHours?: boolean; items?: Array<number>; marker?: string; method?: "in" | "out" | "timecode" | "marker" | "audio"; name?: string; /** frames */ offset?: number; processedBin?: boolean; /** item? */ reference?: Json }
-  /** Enable. Params: {"clips":[id]?,"enabled":bool?}. Changes the document. */
+  /** Create Multi-Camera Source Sequence. Builds a multi-camera source sequence from synchronized project `items` (aligned by in, out, timecode, marker or audio), with `audio` mode and camera names from clip, track or metadata. Params: {"items":[id]?,"name":str?,"method":"in|out|timecode|marker|audio","ignoreHours":bool?,"marker":str?,"offset":frames?,"audio":"camera1|all|switch","cameraNames":"clip|track|metadata","processedBin":bool?,"reference":item?}. Changes the document. */
+  "clip.createMulticam": { audio?: "camera1" | "all" | "switch"; cameraNames?: "clip" | "track" | "metadata"; ignoreHours?: boolean; items?: Array<number>; marker?: string; method?: "in" | "out" | "timecode" | "marker" | "audio"; name?: string; /** frames */ offset?: number; processedBin?: boolean; /** item? */ reference?: number }
+  /** Enable. Turns multi-camera behaviour of the selected nested clips on or off (`enabled`, toggles when omitted). Params: {"clips":[id]?,"enabled":bool?}. Changes the document. */
   "clip.multicamEnable": { clips?: Array<number>; enabled?: boolean }
-  /** Flatten. Params: {"clips":[id]?}. Changes the document. */
+  /** Flatten. Replaces the selected multi-camera clips with the clips their active angles show; the result no longer switches angles. Params: {"clips":[id]?}. Changes the document. */
   "clip.multicamFlatten": { clips?: Array<number> }
-  /** Switch Multi-Camera Angle. Params: {"camera":1..16 (shown order)|"angle":0-based,"clips":[id]?,"time":ticks?,"videoOnly":bool?,"audioOnly":bool?}. Changes the document. */
-  "multicam.switchAngle": { /** 0-based; one of several alternative parameters */ angle?: Json; audioOnly?: boolean; /** 1 to 16; shown order; one of several alternative parameters */ camera?: number; clips?: Array<number>; /** ticks (254016000000 per second) */ time?: number; videoOnly?: boolean }
-  /** Start Multi-Camera Recording. Params: {"time":ticks?} */
+  /** Switch Multi-Camera Angle. Sets the active angle of the multi-camera clips at `time` (or `clips`) to `camera` (1?16, shown order) or `angle` (0-based) for their whole length; `videoOnly`/`audioOnly` limit it. No edit is added. Params: {"camera":1..16 (shown order)|"angle":0-based,"clips":[id]?,"time":ticks?,"videoOnly":bool?,"audioOnly":bool?}. Changes the document. */
+  "multicam.switchAngle": { /** 0-based; one of several alternative parameters */ angle?: number; audioOnly?: boolean; /** 1 to 16; shown order; one of several alternative parameters */ camera?: number; clips?: Array<number>; /** ticks (254016000000 per second) */ time?: number; videoOnly?: boolean }
+  /** Start Multi-Camera Recording. Starts a multi-camera recording pass at `time` (default playhead): cuts made with multicam.cut until multicam.recordStop become one undo step. Params: {"time":ticks?}. */
   "multicam.recordStart": { /** ticks (254016000000 per second) */ time?: number }
-  /** Cut to Camera. Params: {"camera":1..16|"angle":0-based,"time":ticks?,"videoOnly":bool?}. Changes the document. */
-  "multicam.cut": { /** 0-based; one of several alternative parameters */ angle?: Json; /** 1 to 16; one of several alternative parameters */ camera?: number; /** ticks (254016000000 per second) */ time?: number; videoOnly?: boolean }
-  /** Stop Multi-Camera Recording. Params: {"time":ticks?}. Changes the document. */
+  /** Cut to Camera. While multi-camera recording, cuts to `camera` (1?16, shown order) or `angle` (0-based) at `time` (default playhead); `videoOnly` leaves audio. Use multicam.switchAngle when not recording. Params: {"camera":1..16|"angle":0-based,"time":ticks?,"videoOnly":bool?}. Changes the document. */
+  "multicam.cut": { /** 0-based; one of several alternative parameters */ angle?: number; /** 1 to 16; one of several alternative parameters */ camera?: number; /** ticks (254016000000 per second) */ time?: number; videoOnly?: boolean }
+  /** Stop Multi-Camera Recording. Ends the multi-camera recording pass at `time` and commits its cuts to the multi-camera clip as one undo step. Params: {"time":ticks?}. Changes the document. */
   "multicam.recordStop": { /** ticks (254016000000 per second) */ time?: number }
-  /** Multi-Camera Audio Follows Video. Params: {"enabled":bool?}. Changes the document. */
+  /** Multi-Camera Audio Follows Video. Sets whether switching a multi-camera clip's video angle also switches its linked audio clips (`enabled`, toggles when omitted). Params: {"enabled":bool?}. Changes the document. */
   "multicam.audioFollowsVideo": { enabled?: boolean }
-  /** Edit Cameras. Params: {"sequence":id?,"cameras":[{"angle":0-based,"name":str?,"enabled":bool?}]?,"audio":"camera1|all|switch"?}. Changes the document. */
+  /** Edit Cameras. Renames, shows or hides cameras (`cameras` by 0-based `angle`) of a multi-camera source `sequence`, and sets its `audio` mode: camera1, all or switch. Params: {"sequence":id?,"cameras":[{"angle":0-based,"name":str?,"enabled":bool?}]?,"audio":"camera1|all|switch"?}. Changes the document. */
   "multicam.editCameras": { audio?: "camera1" | "all" | "switch"; /** [{"angle":0-based,"name":str?,"enabled":bool?}]? */ cameras?: Array<{ angle?: Json; enabled?: boolean; name?: string }>; /** an id */ sequence?: number }
-  /** Cut to Camera. Params: {"camera":1..16|"angle":0-based,"time":ticks?,"videoOnly":bool?}. Changes the document. */
-  "multicam.cutToCamera": { /** 0-based; one of several alternative parameters */ angle?: Json; /** 1 to 16; one of several alternative parameters */ camera?: number; /** ticks (254016000000 per second) */ time?: number; videoOnly?: boolean }
-  /** Multi-Camera Layout. Params: {"layout":"auto|2x2|3x3|4x4"}. Changes the document. */
+  /** Cut to Camera. Adds an edit at the playhead on the multi-camera clip (and its linked audio when audio follows video) and shows `camera` from there to the clip's end; `videoOnly` leaves the audio angle. Params: {"camera":1..16|"angle":0-based,"time":ticks?,"videoOnly":bool?}. Changes the document. */
+  "multicam.cutToCamera": { /** 0-based; one of several alternative parameters */ angle?: number; /** 1 to 16; one of several alternative parameters */ camera?: number; /** ticks (254016000000 per second) */ time?: number; videoOnly?: boolean }
+  /** Multi-Camera Layout. Sets the multi-camera angle grid layout: auto, 2x2, 3x3 or 4x4 (paged when the angles don't fit). Params: {"layout":"auto|2x2|3x3|4x4"}. Changes the document. */
   "multicam.gridLayout": { layout?: "auto" | "2x2" | "3x3" | "4x4" }
-  /** Multi-Camera Page. Params: {"page":0-based|"next"|"prev"}. Changes the document. */
-  "multicam.page": { /** 0-based|"next"|"prev" */ page?: Json }
-  /** Next Multi-Camera Page. Params: {}. Changes the document. */
+  /** Multi-Camera Page. Shows `page` (0-based, or next/prev) of the multi-camera angle grid. Params: {"page":0-based|"next"|"prev"}. Changes the document. */
+  "multicam.page": { /** 0-based|"next"|"prev" */ page?: number }
+  /** Next Multi-Camera Page. Shows the next page of the multi-camera angle grid; number keys pick cameras on the shown page. Params: {}. Changes the document. */
   "multicam.nextPage": Record<string, never>
-  /** Previous Multi-Camera Page. Params: {}. Changes the document. */
+  /** Previous Multi-Camera Page. Shows the previous page of the multi-camera angle grid. Params: {}. Changes the document. */
   "multicam.prevPage": Record<string, never>
-  /** Multi-Camera Selection Top Down. Params: {"enabled":bool?}. Changes the document. */
+  /** Multi-Camera Selection Top Down. Sets whether stacked multi-camera clips switch the topmost clip instead of the lowest (`enabled`, toggles when omitted). Params: {"enabled":bool?}. Changes the document. */
   "multicam.selectionTopDown": { enabled?: boolean }
-  /** Show Multi-Camera Preview Monitor. Params: {"enabled":bool?}. Changes the document. */
+  /** Show Multi-Camera Preview Monitor. Sets whether the program shows next to the multi-camera grid (`enabled`); off, the grid fills the monitor. View setting only. Params: {"enabled":bool?}. Changes the document. */
   "multicam.showPreviewMonitor": { enabled?: boolean }
-  /** Auto-Adjust Multi-Camera Playback Quality. Params: {"enabled":bool?}. Changes the document. */
+  /** Auto-Adjust Multi-Camera Playback Quality. Sets whether the multi-camera grid decodes at lower resolution while playing (`enabled`, toggles when omitted). View setting only. Params: {"enabled":bool?}. Changes the document. */
   "multicam.autoAdjustQuality": { enabled?: boolean }
-  /** Transmit Multi-Camera View. Params: {"enabled":bool?}. Changes the document. */
+  /** Transmit Multi-Camera View. Sets whether the multi-camera grid is sent to the transmit device; stored only, there is no transmit output yet. Params: {"enabled":bool?}. Changes the document. */
   "multicam.transmitView": { enabled?: boolean }
-  /** Multi-Camera Grid. Params: {"time":ticks?,"playing":bool?,"cellPixels":f32?,"playbackScale":f32?} */
+  /** Multi-Camera Grid. Reads the multi-camera grid page at the playhead (or `time`): layout, pages and cells with camera, angle, name and which is active; `cellPixels` picks a decode size. Params: {"time":ticks?,"playing":bool?,"cellPixels":f32?,"playbackScale":f32?}. */
   "multicam.grid": { cellPixels?: number; playbackScale?: number; playing?: boolean; /** ticks (254016000000 per second) */ time?: number }
-  /** Inspect Multi-Camera. Params: {"time":ticks?} */
+  /** Inspect Multi-Camera. Reads the multi-camera clip at the playhead (or `time`): its source, cameras with names and angles, the active angle and the recorder state. Params: {"time":ticks?}. */
   "multicam.inspect": { /** ticks (254016000000 per second) */ time?: number }
-  /** Select Camera 1. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 1. While multi-camera recording, cuts to camera 1 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 1 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera1": { videoOnly?: boolean }
-  /** Cut to Camera 1. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 1. Adds an edit at the playhead on the multi-camera clip and shows camera 1 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera1": { videoOnly?: boolean }
-  /** Select Camera 2. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 2. While multi-camera recording, cuts to camera 2 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 2 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera2": { videoOnly?: boolean }
-  /** Cut to Camera 2. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 2. Adds an edit at the playhead on the multi-camera clip and shows camera 2 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera2": { videoOnly?: boolean }
-  /** Select Camera 3. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 3. While multi-camera recording, cuts to camera 3 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 3 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera3": { videoOnly?: boolean }
-  /** Cut to Camera 3. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 3. Adds an edit at the playhead on the multi-camera clip and shows camera 3 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera3": { videoOnly?: boolean }
-  /** Select Camera 4. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 4. While multi-camera recording, cuts to camera 4 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 4 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera4": { videoOnly?: boolean }
-  /** Cut to Camera 4. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 4. Adds an edit at the playhead on the multi-camera clip and shows camera 4 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera4": { videoOnly?: boolean }
-  /** Select Camera 5. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 5. While multi-camera recording, cuts to camera 5 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 5 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera5": { videoOnly?: boolean }
-  /** Cut to Camera 5. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 5. Adds an edit at the playhead on the multi-camera clip and shows camera 5 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera5": { videoOnly?: boolean }
-  /** Select Camera 6. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 6. While multi-camera recording, cuts to camera 6 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 6 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera6": { videoOnly?: boolean }
-  /** Cut to Camera 6. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 6. Adds an edit at the playhead on the multi-camera clip and shows camera 6 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera6": { videoOnly?: boolean }
-  /** Select Camera 7. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 7. While multi-camera recording, cuts to camera 7 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 7 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera7": { videoOnly?: boolean }
-  /** Cut to Camera 7. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 7. Adds an edit at the playhead on the multi-camera clip and shows camera 7 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera7": { videoOnly?: boolean }
-  /** Select Camera 8. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 8. While multi-camera recording, cuts to camera 8 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 8 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera8": { videoOnly?: boolean }
-  /** Cut to Camera 8. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 8. Adds an edit at the playhead on the multi-camera clip and shows camera 8 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera8": { videoOnly?: boolean }
-  /** Select Camera 9. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Select Camera 9. While multi-camera recording, cuts to camera 9 at the playhead; when stopped, switches the multi-camera clip at the playhead to camera 9 without adding an edit. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.selectCamera9": { videoOnly?: boolean }
-  /** Cut to Camera 9. Params: {"videoOnly":bool?}. Changes the document. */
+  /** Cut to Camera 9. Adds an edit at the playhead on the multi-camera clip and shows camera 9 (on the shown grid page) from there to the clip's end; linked audio follows when audio follows video. Params: {"videoOnly":bool?}. Changes the document. */
   "multicam.cutToCamera9": { videoOnly?: boolean }
-  /** Inspect Essential Sound. Params: {"clips":[id]?} */
+  /** Inspect Essential Sound. Reads the Essential Sound settings of the selected or listed audio `clips`: type, repair, clarity, creative, ducking and loudness. Params: {"clips":[id]?}. */
   "essentialSound.inspect": { clips?: Array<number> }
-  /** Set Audio Type. Params: {"clips":[id]?,"type":"dialogue|music|sfx|ambience"}. Changes the document. */
+  /** Set Audio Type. Sets the audio type of the selected or listed `clips`: dialogue, music, sfx or ambience, which decides the Essential Sound controls. Params: {"clips":[id]?,"type":"dialogue|music|sfx|ambience"}. Changes the document. */
   "essentialSound.setType": { clips?: Array<number>; type?: "dialogue" | "music" | "sfx" | "ambience" }
-  /** Clear Audio Type. Params: {"clips":[id]?}. Changes the document. */
+  /** Clear Audio Type. Clears the audio type of the selected or listed `clips`, removing their Essential Sound effects. Params: {"clips":[id]?}. Changes the document. */
   "essentialSound.clearType": { clips?: Array<number> }
-  /** Essential Sound Setting. Params: {"clips":[id]?,"key":"repair.noise.on|repair.noise.amount|repair.humHz|clarity.eqPreset|creative.reverbPreset|ducking.reduceDb|volume.levelDb|mute|...","value":any,"values":{key:value}?,"begin":bool?}. Changes the document. */
+  /** Essential Sound Setting. Sets an Essential Sound control (`key` like repair.noise.amount, clarity.eqPreset, ducking.reduceDb, volume.levelDb) to `value`, or several `values`, on the selected or listed `clips`. Params: {"clips":[id]?,"key":"repair.noise.on|repair.noise.amount|repair.humHz|clarity.eqPreset|creative.reverbPreset|ducking.reduceDb|volume.levelDb|mute|...","value":any,"values":{key:value}?,"begin":bool?}. Changes the document. */
   "essentialSound.set": { begin?: boolean; clips?: Array<number>; /** for example repair.noise.on, repair.noise.amount, repair.humHz, clarity.eqPreset, creative.reverbPreset, ducking.reduceDb, volume.levelDb, mute */ key?: string; value?: Json; values?: { key?: Json } }
-  /** Apply Sound Preset. Params: {"clips":[id]?,"preset":str,"type":"dialogue|music|sfx|ambience"?}. Changes the document. */
+  /** Apply Sound Preset. Applies Essential Sound `preset` to the selected or listed `clips` (for audio `type`). Params: {"clips":[id]?,"preset":str,"type":"dialogue|music|sfx|ambience"?}. Changes the document. */
   "essentialSound.applyPreset": { clips?: Array<number>; preset?: string; type?: "dialogue" | "music" | "sfx" | "ambience" }
-  /** Save Sound Preset. Params: {"clips":[id]?,"name":str}. Changes the document. */
+  /** Save Sound Preset. Saves the Essential Sound settings of the first selected or listed clip as preset `name`. Params: {"clips":[id]?,"name":str}. Changes the document. */
   "essentialSound.savePreset": { clips?: Array<number>; name?: string }
-  /** Delete Sound Preset. Params: {"name":str,"type":"dialogue|music|sfx|ambience"?}. Changes the document. */
+  /** Delete Sound Preset. Deletes saved Essential Sound preset `name`. Params: {"name":str,"type":"dialogue|music|sfx|ambience"?}. Changes the document. */
   "essentialSound.deletePreset": { name?: string; type?: "dialogue" | "music" | "sfx" | "ambience" }
-  /** Auto-Match Loudness. Params: {"clips":[id]?,"target":lufs?}. Changes the document. */
+  /** Auto-Match Loudness. Sets the clip gain of the selected or listed dialogue `clips` so each measures `target` LUFS (default -23). Params: {"clips":[id]?,"target":lufs?}. Changes the document. */
   "essentialSound.autoMatch": { clips?: Array<number>; /** lufs? */ target?: Json }
-  /** Generate Ducking Keyframes. Params: {"clips":[id]?}. Changes the document. */
+  /** Generate Ducking Keyframes. Writes volume keyframes on the selected music `clips` that duck them under dialogue clips, per their ducking settings. Params: {"clips":[id]?}. Changes the document. */
   "essentialSound.generateDucking": { clips?: Array<number> }
-  /** List Colour Spaces. Params: {} */
+  /** List Colour Spaces. Lists the color space ids that clip.interpretFootage and sequence color settings accept. Params: {}. */
   "color.spaces": Record<string, never>
-  /** List Lumetri Presets. Params: {"folder":str?} */
+  /** List Lumetri Presets. Lists Lumetri Color presets (and `.cube` looks) in `folder`. Params: {"folder":str?}. */
   "lumetri.presets": { folder?: string }
-  /** Apply Lumetri Preset. Params: {"name":str,"clips":[id]?}. Changes the document. */
+  /** Apply Lumetri Preset. Applies Lumetri preset `name` to the selected or listed `clips` as a Lumetri Color effect. Params: {"name":str,"clips":[id]?}. Changes the document. */
   "lumetri.applyPreset": { clips?: Array<number>; name?: string }
-  /** Lumetri Preset Thumbnails. Params: {"folder":str?,"names":[str]?,"width":n=160,"columns":n=4,"path":str?} */
-  "lumetri.presetThumbnails": { columns?: number; folder?: string; names?: Array<string>; path?: string; width?: number }
-  /** Media Colour Info. Params: {"item":id} */
+  /** Lumetri Preset Thumbnails. Renders thumbnails of Lumetri presets applied to the current program frame. Params: {"folder":str?,"names":[str]?,"width":n=160,"columns":n=4,"path":str?}. */
+  "lumetri.presetThumbnails": { columns?: number; folder?: string; names?: Array<string>; path?: Json; width?: number }
+  /** Media Colour Info. Reads a media `item`'s detected color: primaries, transfer, matrix, range, bit depth and the color space used. Params: {"item":id}. */
   "media.colorInfo": { /** an id */ item?: number }
-  /** Import LUT. Params: {"path":str,"name":str?}. Changes the document. */
-  "lut.import": { name?: string; path?: string }
-  /** List LUTs. Params: {} */
+  /** Import LUT. Installs the LUT file at `path` (cube, 3dl...) into the LUT library as `name`. Params: {"path":str,"name":str?}. Changes the document. */
+  "lut.import": { name?: string; path?: Json }
+  /** List LUTs. Lists the LUTs installed for Lumetri Input LUT and Creative Look. Params: {}. */
   "lut.list": Record<string, never>
-  /** Remove LUT. Params: {"id":str}. Changes the document. */
+  /** Remove LUT. Uninstalls LUT `id` from the LUT library; clips that use it keep a copy. Params: {"id":str}. Changes the document. */
   "lut.remove": { id?: string }
-  /** Export LUT. Params: {"lut":"lib:<id>"|"builtin:<id>","path":str,"format":"cube"|"3dl"?} */
-  "lut.export": { format?: "cube" | "3dl"; lut?: "lib:<id>" | "builtin:<id>"; path?: string }
-  /** Set Input LUT. Params: {"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}. Changes the document. */
-  "lumetri.setInputLut": { /** an id */ clip?: number; lut?: "lib:<id>" | "builtin:<id>" | ""; path?: string }
-  /** Set Creative Look. Params: {"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}. Changes the document. */
-  "lumetri.setLook": { /** an id */ clip?: number; lut?: "lib:<id>" | "builtin:<id>" | ""; path?: string }
-  /** Apply Match. Params: {"clip":id?,"referenceTime":ticks?|"referenceFrame":n?|"referenceTimecode":str?,"faceDetection":bool=true}. Changes the document. */
+  /** Export LUT. Writes installed `lut` to a file at `path` in `format` cube or 3dl. Params: {"lut":"lib:<id>"|"builtin:<id>","path":str,"format":"cube"|"3dl"?}. */
+  "lut.export": { format?: "cube" | "3dl"; lut?: "lib:<id>" | "builtin:<id>"; path?: Json }
+  /** Set Input LUT. Sets the Lumetri Input LUT of `clip` to an installed `lut` (lib:/builtin: id) or a .cube file at `path`; "" clears it. Params: {"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}. Changes the document. */
+  "lumetri.setInputLut": { /** an id */ clip?: number; lut?: "lib:<id>" | "builtin:<id>" | ""; path?: Json }
+  /** Set Creative Look. Sets the Lumetri Creative Look of `clip` to an installed `lut` (lib:/builtin: id) or a file at `path`; "" clears it. Params: {"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}. Changes the document. */
+  "lumetri.setLook": { /** an id */ clip?: number; lut?: "lib:<id>" | "builtin:<id>" | ""; path?: Json }
+  /** Apply Match. Color-matches `clip` (default selected) to the reference frame at `referenceTime`/frame/timecode in the sequence, writing Lumetri corrections; `faceDetection` weights skin tones. Params: {"clip":id?,"referenceTime":ticks?|"referenceFrame":n?|"referenceTimecode":str?,"faceDetection":bool=true}. Changes the document. */
   "lumetri.applyMatch": { /** an id */ clip?: number; faceDetection?: boolean; /** one of several alternative parameters */ referenceFrame?: number; /** ticks (254016000000 per second); one of several alternative parameters */ referenceTime?: number; /** one of several alternative parameters */ referenceTimecode?: string }
-  /** Toggle Lumetri Section. Params: {"clip":id?,"section":"basic"|"creative"|"curves"|"wheels"|"hsl"|"vignette","on":bool?}. Changes the document. */
+  /** Toggle Lumetri Section. Turns a Lumetri Color `section` (basic, creative, curves, wheels, hsl, vignette) of `clip` on or off. Params: {"clip":id?,"section":"basic"|"creative"|"curves"|"wheels"|"hsl"|"vignette","on":bool?}. Changes the document. */
   "lumetri.setSection": { /** an id */ clip?: number; on?: boolean; section?: "basic" | "creative" | "curves" | "wheels" | "hsl" | "vignette" }
-  /** Text. Params: {"text":str="New Text","position":[x,y]? (point text: its alignment point on the first baseline; with `box`: the box's top-left corner),"box":[w,h]? (paragraph text wrapped in a box this size),"clip":id?,"newClip":bool?,"vertical":bool=false,"size":px=100,"font":str?,"fontStyle":str?,"seconds":f64=5,"track":index?,"time":ticks?}. Changes the document. */
-  "graphics.newText": { /** paragraph text wrapped in a box this size */ box?: Array<number>; /** an id */ clip?: number; font?: string; fontStyle?: string; newClip?: boolean; /** point text: its alignment point on the first baseline; with `box`: the box's top-left corner */ position?: Array<number>; seconds?: number; /** pixels */ size?: number; text?: string; /** ticks (254016000000 per second) */ time?: number; track?: number; vertical?: boolean }
-  /** Shape. Params: {"shape":"rectangle|ellipse|polygon|path","position":[x,y]?,"size":[w,h]=[400,200],"points":[[x,y],...]?,"clip":id?,"seconds":f64=5}. Changes the document. */
+  /** Text. Adds a text layer with `text`, `size` px, font and `position` (point text) or `box` [w,h] (paragraph text) to graphic `clip`, or a new graphic clip `seconds` long at the playhead (`newClip`). Answers the clip and layer. Params: {"text":str="New Text","position":[x,y]? (point text: its alignment point on the first baseline; with `box`: the box's top-left corner),"box":[w,h]? (paragraph text wrapped in a box this size),"clip":id?,"newClip":bool?,"vertical":bool=false,"size":px=100,"font":str?,"fontStyle":str?,"seconds":f64=5,"track":index?,"time":ticks?}. Changes the document. */
+  "graphics.newText": { /** paragraph text wrapped in a box this size */ box?: Array<number>; /** an id */ clip?: number; font?: string; fontStyle?: string; newClip?: boolean; /** point text: its alignment point on the first baseline; with `box`: the box's top-left corner */ position?: Array<number>; seconds?: number; /** pixels */ size?: number; text?: string; /** ticks (254016000000 per second) */ time?: number; /** a position counted from 0 (the first is 0) */ track?: number; vertical?: boolean }
+  /** Shape. Adds a shape layer (`shape` rectangle|ellipse|polygon|path with `points`) to graphic `clip`, or a new graphic clip `seconds` long at the playhead. Params: {"shape":"rectangle|ellipse|polygon|path","position":[x,y]?,"size":[w,h]=[400,200],"points":[[x,y],...]?,"clip":id?,"seconds":f64=5}. Changes the document. */
   "graphics.newShape": { /** an id */ clip?: number; points?: Array<Array<number>>; position?: Array<number>; seconds?: number; shape?: "rectangle" | "ellipse" | "polygon" | "path"; /** default [400,200] */ size?: Array<number> }
-  /** Edit Text. Params: {"clip":id?,"layer":n|name?,"text":str,"merge":bool? (coalesce with the previous Edit Text undo step)}. Changes the document. */
+  /** Edit Text. Replaces the text of graphic text `layer` (index or name; default selected) in `clip`; `merge` joins it with the previous Edit Text undo step. Params: {"clip":id?,"layer":n|name?,"text":str,"merge":bool? (coalesce with the previous Edit Text undo step)}. Changes the document. */
   "graphics.setText": { /** an id */ clip?: number; /** n|name? */ layer?: Json; /** coalesce with the previous Edit Text undo step */ merge?: boolean; text?: string }
-  /** Set Graphic Properties. Params: {"clip":id?,"layer":n|name?,"props":{"font":"Inter","font_style":"Bold","size":120,"align":"center","tracking":50,"leading":0,"fill_color":"#ffcc00","stroke":true,"stroke_width":6,"background":true,"shadow":true,"position":[x,y],"scale":100,"rotation":0,"opacity":100,...},"time":ticks?}. Changes the document. */
+  /** Set Graphic Properties. Sets properties of graphic `layer` (default selected) in `clip`: `props` like font, size, align, tracking, leading, fill_color, stroke, background, shadow, position, scale, rotation, opacity; keyframed at `time` when animated. Params: {"clip":id?,"layer":n|name?,"props":{"font":"Inter","font_style":"Bold","size":120,"align":"center","tracking":50,"leading":0,"fill_color":"#ffcc00","stroke":true,"stroke_width":6,"background":true,"shadow":true,"position":[x,y],"scale":100,"rotation":0,"opacity":100,...},"time":ticks?}. Changes the document. */
   "graphics.set": { /** an id */ clip?: number; /** n|name? */ layer?: Json; props?: { align?: string; background?: boolean; fill_color?: string; font?: string; font_style?: string; leading?: number; opacity?: number; position?: Array<number>; rotation?: number; scale?: number; shadow?: boolean; size?: number; stroke?: boolean; stroke_width?: number; tracking?: number }; /** ticks (254016000000 per second) */ time?: number }
-  /** Text Layer Type. Params: {"clip":id?,"layer":n|name?,"type":"point|paragraph" (point: no box, handles scale the text; paragraph: the text wraps in a box that handles resize)}. Changes the document. */
+  /** Text Layer Type. Converts a text layer to `point` text (scales with handles) or `paragraph` text (wraps in a resizable box). Params: {"clip":id?,"layer":n|name?,"type":"point|paragraph" (point: no box, handles scale the text; paragraph: the text wraps in a box that handles resize)}. Changes the document. */
   "graphics.setTextType": { /** an id */ clip?: number; /** n|name? */ layer?: Json; /** point: no box, handles scale the text; paragraph: the text wraps in a box that handles resize */ type?: "point" | "paragraph" }
-  /** Select Graphic Layer. Params: {"clip":id?,"layers":[n],"keepSelection":bool? (leave the selected clips as they are, as upstream's empty Program-monitor click)}. Changes the document. */
+  /** Select Graphic Layer. Selects graphic `layers` by index in graphic `clip`; `keepSelection` leaves the clip selection as it is. Params: {"clip":id?,"layers":[n],"keepSelection":bool? (leave the selected clips as they are, as upstream's empty Program-monitor click)}. Changes the document. */
   "graphics.selectLayer": { /** an id */ clip?: number; /** leave the selected clips as they are, as upstream's empty Program-monitor click */ keepSelection?: boolean; layers?: Array<number> }
-  /** Delete Graphic Layer. Params: {"clip":id?,"layer":n?}. Changes the document. */
+  /** Delete Graphic Layer. Deletes graphic `layer` (default the selected or frontmost) from graphic `clip`; the clip stays. Params: {"clip":id?,"layer":n?}. Changes the document. */
   "graphics.deleteLayer": { /** an id */ clip?: number; layer?: number }
-  /** Arrange Graphic Layer. Params: {"clip":id?,"layer":n?,"to":"front|back|forward|backward"|index}. Changes the document. */
+  /** Arrange Graphic Layer. Moves a graphic `layer` (default selected) in paint order: front, back, forward, backward, or to an index (0 = bottom). Params: {"clip":id?,"layer":n?,"to":"front|back|forward|backward"|index}. Changes the document. */
   "graphics.arrangeLayer": { /** an id */ clip?: number; layer?: number; /** "front|back|forward|backward"|index */ to?: Json }
-  /** Align Layers. Params: {"clip":id?,"layers":[n]?,"align":"left|hcenter|right|top|vcenter|bottom","to":"frame|group|selection"="frame" (frame: each layer; group: the layers' union; one layer always aligns to the frame)}. Changes the document. */
+  /** Align Layers. Aligns graphic `layers` (default selected) of a graphic clip `left|hcenter|right|top|vcenter|bottom`, relative to the `frame`, their union (`group`) or the selection. Params: {"clip":id?,"layers":[n]?,"align":"left|hcenter|right|top|vcenter|bottom","to":"frame|group|selection"="frame" (frame: each layer; group: the layers' union; one layer always aligns to the frame)}. Changes the document. */
   "graphics.align": { align?: "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom"; /** an id */ clip?: number; layers?: Array<number>; /** frame: each layer; group: the layers' union; one layer always aligns to the frame */ to?: "frame" | "group" | "selection" }
-  /** Distribute Layers. Params: {"clip":id?,"layers":[n] (3 or more)?,"axis":"horizontal|vertical","space":bool=false (equal gaps instead of equal centre spacing)}. Changes the document. */
+  /** Distribute Layers. Spaces 3 or more graphic `layers` evenly along `axis` horizontal|vertical: equal centre spacing, or equal gaps with `space: true`. Params: {"clip":id?,"layers":[n] (3 or more)?,"axis":"horizontal|vertical","space":bool=false (equal gaps instead of equal centre spacing)}. Changes the document. */
   "graphics.distribute": { axis?: "horizontal" | "vertical"; /** an id */ clip?: number; /** 3 or more */ layers?: Array<number>; /** equal gaps instead of equal centre spacing */ space?: boolean }
-  /** List Graphic Layers. Params: {"clip":id?} */
+  /** List Graphic Layers. Lists the layers of graphic `clip` (default targeted) in paint order with index, kind, name, text and properties. Read before editing a graphic. Params: {"clip":id?}. */
   "graphics.list": { /** an id */ clip?: number }
-  /** List Fonts. Params: {"system":bool=true (scan the system font folders)} */
+  /** List Fonts. Lists the available font families and styles (bundled plus system fonts when `system`). Params: {"system":bool=true (scan the system font folders)}. */
   "fonts.list": { /** scan the system font folders */ system?: boolean }
-  /** Vertical Text. Params: {"text":str="New Text","position":[x,y]?,"clip":id?,"size":px=100,"seconds":f64=5,"time":ticks?}. Changes the document. */
+  /** Vertical Text. Adds a vertical text layer (top-to-bottom) with `text` and `size` to graphic `clip`, or a new graphic clip at the playhead. Params: {"text":str="New Text","position":[x,y]?,"clip":id?,"size":px=100,"seconds":f64=5,"time":ticks?}. Changes the document. */
   "graphics.newVerticalText": { /** an id */ clip?: number; position?: Array<number>; seconds?: number; /** pixels */ size?: number; text?: string; /** ticks (254016000000 per second) */ time?: number }
-  /** Rectangle. Params: {"position":[x,y]?,"size":[w,h]=[400,200],"clip":id?}. Changes the document. */
+  /** Rectangle. Adds a rectangle shape layer `size` [w,h] (default 400?200) at `position` to graphic `clip`, or a new graphic clip at the playhead. Params: {"position":[x,y]?,"size":[w,h]=[400,200],"clip":id?}. Changes the document. */
   "graphics.newRectangle": { /** an id */ clip?: number; position?: Array<number>; /** default [400,200] */ size?: Array<number> }
-  /** Ellipse. Params: {"position":[x,y]?,"size":[w,h]=[400,200],"clip":id?}. Changes the document. */
+  /** Ellipse. Adds an ellipse shape layer `size` [w,h] (default 400?200) at `position` to graphic `clip`, or a new graphic clip at the playhead. Params: {"position":[x,y]?,"size":[w,h]=[400,200],"clip":id?}. Changes the document. */
   "graphics.newEllipse": { /** an id */ clip?: number; position?: Array<number>; /** default [400,200] */ size?: Array<number> }
-  /** Polygon. Params: {"position":[x,y]?,"size":[w,h]=[300,300],"sides":n=6,"clip":id?}. Changes the document. */
+  /** Polygon. Adds a polygon shape layer with `sides` (default 6), `size` and `position` to graphic `clip`, or a new graphic clip at the playhead. Params: {"position":[x,y]?,"size":[w,h]=[300,300],"sides":n=6,"clip":id?}. Changes the document. */
   "graphics.newPolygon": { /** an id */ clip?: number; position?: Array<number>; sides?: number; /** default [300,300] */ size?: Array<number> }
-  /** From file. Params: {"path":str,"time":ticks?,"track":index?} (imports the image or video and places it above the clips at the playhead). Changes the document. */
-  "graphics.newFromFile": { path?: string; /** ticks (254016000000 per second) */ time?: number; track?: number }
-  /** Left. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** From file. Imports the image or video at `path` and places it as a clip above the clips at the playhead or `time` (on `track`). Params: {"path":str,"time":ticks?,"track":index?} (imports the image or video and places it above the clips at the playhead). Changes the document. */
+  "graphics.newFromFile": { path?: Json; /** ticks (254016000000 per second) */ time?: number; /** a position counted from 0 (the first is 0) */ track?: number }
+  /** Left. Aligns the left edges of the selected graphic layers to the frame. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignFrame.left": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Center Horizontally. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Center Horizontally. Aligns the horizontal centres of the selected graphic layers to the frame. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignFrame.hcenter": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Right. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Right. Aligns the right edges of the selected graphic layers to the frame. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignFrame.right": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Top. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Top. Aligns the top edges of the selected graphic layers to the frame. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignFrame.top": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Center Vertically. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Center Vertically. Aligns the vertical centres of the selected graphic layers to the frame. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignFrame.vcenter": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Bottom. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Bottom. Aligns the bottom edges of the selected graphic layers to the frame. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignFrame.bottom": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Left. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Left. Aligns the left edges of the selected graphic layers to their combined bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignGroup.left": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Center Horizontally. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Center Horizontally. Aligns the horizontal centres of the selected graphic layers to their combined bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignGroup.hcenter": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Right. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Right. Aligns the right edges of the selected graphic layers to their combined bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignGroup.right": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Top. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Top. Aligns the top edges of the selected graphic layers to their combined bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignGroup.top": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Center Vertically. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Center Vertically. Aligns the vertical centres of the selected graphic layers to their combined bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignGroup.vcenter": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Bottom. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Bottom. Aligns the bottom edges of the selected graphic layers to their combined bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignGroup.bottom": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Left. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Left. Aligns the left edges of the selected graphic layers to the selection's bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignSelection.left": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Center Horizontally. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Center Horizontally. Aligns the horizontal centres of the selected graphic layers to the selection's bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignSelection.hcenter": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Right. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Right. Aligns the right edges of the selected graphic layers to the selection's bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignSelection.right": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Top. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Top. Aligns the top edges of the selected graphic layers to the selection's bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignSelection.top": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Center Vertically. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Center Vertically. Aligns the vertical centres of the selected graphic layers to the selection's bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignSelection.vcenter": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Bottom. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Bottom. Aligns the bottom edges of the selected graphic layers to the selection's bounds. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.alignSelection.bottom": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Distribute Vertically. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Distribute Vertically. Spaces the selected graphic layers (3 or more) with equal vertical centre spacing. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.distributeVertically": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Distribute Space Vertically. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Distribute Space Vertically. Spaces the selected graphic layers (3 or more) with equal vertical gaps between them. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.distributeSpaceVertically": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Distribute Horizontally. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Distribute Horizontally. Spaces the selected graphic layers (3 or more) with equal horizontal centre spacing. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.distributeHorizontally": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Distribute Space Horizontally. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
+  /** Distribute Space Horizontally. Spaces the selected graphic layers (3 or more) with equal horizontal gaps between them. Params: {"clip":id?,"layers":[n]? (default: the selected layers)}. Changes the document. */
   "graphics.distributeSpaceHorizontally": { /** an id */ clip?: number; /** default: the selected layers */ layers?: Array<number> }
-  /** Bring to Front. Params: {"clip":id?,"layer":n?}. Changes the document. */
+  /** Bring to Front. Moves the selected graphic layer to the top of the paint order. Params: {"clip":id?,"layer":n?}. Changes the document. */
   "graphics.bringToFront": { /** an id */ clip?: number; layer?: number }
-  /** Bring Forward. Params: {"clip":id?,"layer":n?}. Changes the document. */
+  /** Bring Forward. Moves the selected graphic layer one step up in paint order. Params: {"clip":id?,"layer":n?}. Changes the document. */
   "graphics.bringForward": { /** an id */ clip?: number; layer?: number }
-  /** Send Backward. Params: {"clip":id?,"layer":n?}. Changes the document. */
+  /** Send Backward. Moves the selected graphic layer one step down in paint order. Params: {"clip":id?,"layer":n?}. Changes the document. */
   "graphics.sendBackward": { /** an id */ clip?: number; layer?: number }
-  /** Send to Back. Params: {"clip":id?,"layer":n?}. Changes the document. */
+  /** Send to Back. Moves the selected graphic layer to the bottom of the paint order. Params: {"clip":id?,"layer":n?}. Changes the document. */
   "graphics.sendToBack": { /** an id */ clip?: number; layer?: number }
-  /** Select Next Graphic. Params: {}. Changes the document. */
+  /** Select Next Graphic. Selects the next graphic clip in the sequence after the current one. Params: {}. Changes the document. */
   "graphics.selectNextGraphic": Record<string, never>
-  /** Select Previous Graphic. Params: {}. Changes the document. */
+  /** Select Previous Graphic. Selects the previous graphic clip in the sequence. Params: {}. Changes the document. */
   "graphics.selectPreviousGraphic": Record<string, never>
-  /** Select Next Layer. Params: {}. Changes the document. */
+  /** Select Next Layer. Selects the next layer of the targeted graphic clip, cycling. Params: {}. Changes the document. */
   "graphics.selectNextLayer": Record<string, never>
-  /** Select Previous Layer. Params: {}. Changes the document. */
+  /** Select Previous Layer. Selects the previous layer of the targeted graphic clip, cycling. Params: {}. Changes the document. */
   "graphics.selectPreviousLayer": Record<string, never>
-  /** Reset All Parameters. Params: {"clip":id?,"layers":[n]? (default: the selected layers, else all)}. Changes the document. */
+  /** Reset All Parameters. Resets every property of the graphic `layers` (default selected, else all) to defaults. Params: {"clip":id?,"layers":[n]? (default: the selected layers, else all)}. Changes the document. */
   "graphics.resetAllParameters": { /** an id */ clip?: number; /** default: the selected layers, else all */ layers?: Array<number> }
-  /** Reset Duration. Params: {"clip":id?,"seconds":f64=5 (the default graphic duration; limited by the next clip on the track)}. Changes the document. */
+  /** Reset Duration. Sets graphic `clip`'s length back to `seconds` (default 5), limited by the next clip on the track. Params: {"clip":id?,"seconds":f64=5 (the default graphic duration; limited by the next clip on the track)}. Changes the document. */
   "graphics.resetDuration": { /** an id */ clip?: number; /** the default graphic duration; limited by the next clip on the track */ seconds?: number }
-  /** List Graphics Templates. Params: {"query":str? (search names, categories, descriptions, tags),"category":str?,"source":"builtin|user"?} */
+  /** List Graphics Templates. Lists built-in and user graphics templates, filtered by `query`, `category` or `source`. Params: {"query":str? (search names, categories, descriptions, tags),"category":str?,"source":"builtin|user"?}. */
   "graphics.template.list": { category?: string; /** search names, categories, descriptions, tags */ query?: string; source?: "builtin" | "user" }
-  /** Apply Graphics Template. Params: {"template":id|name|path,"values":{control id or name: value}?,"time":ticks?,"track":index?}. Changes the document. */
-  "graphics.template.apply": { /** id|name|path */ template?: Json; /** ticks (254016000000 per second) */ time?: number; track?: number; values?: { [key: string]: Json } }
-  /** Export As Motion Graphics Template. Params: {"clip":id?,"name":str,"category":str="My Templates","description":str?,"controls":[{"layer":n|name,"param":"text|fill_color|size|font|position|enabled|...","name":str?,"kind":"text|color|slider|checkbox|font|position"?,"min":f64?,"max":f64?,"id":str?}]? (default: each text layer's text),"path":str? (default: the user templates folder),"embedFonts":bool=false,"fontLicense":str?}. Changes the document. */
-  "graphics.template.export": { category?: string; /** an id */ clip?: number; /** [{"layer":n|name,"param":"text|fill_color|size|font|position|enabled|...","name":str?,"kind":"text|color|slider|checkbox|font|position"?,"min":f64?,"max":f64?,"id":str?}]? (default: each text layer's text); default: each text layer's text */ controls?: Array<{ id?: string; kind?: "text" | "color" | "slider" | "checkbox" | "font" | "position"; layer?: Json; max?: number; min?: number; name?: string; param?: string }>; description?: string; embedFonts?: boolean; fontLicense?: string; name?: string; /** default: the user templates folder */ path?: string }
-  /** Motion Graphics Template. Params: as graphics.template.export. Changes the document. */
-  "file.exportGraphicsTemplate": Record<string, never>
-  /** Install Motion Graphics Template. Params: {"path":str (a .fcgt file; Adobe .mogrt files are refused)}. Changes the document. */
-  "graphics.template.install": { /** a .fcgt file; Adobe .mogrt files are refused */ path?: string }
-  /** Remove Graphics Template. Params: {"template":id|name (a user template)}. Changes the document. */
-  "graphics.template.remove": { /** id|name (a user template); a user template */ template?: Json }
-  /** Set Template Property. Params: {"clip":id?,"control":id|name,"value":any} or {"clip":id?,"values":{control: value}}. Changes the document. */
+  /** Apply Graphics Template. Places a graphics template (`template` id, name or path) as a new graphic clip at the playhead or `time` on `track`, setting `values` of its controls. Params: {"template":id|name|path,"values":{control id or name: value}?,"time":ticks?,"track":index?}. Changes the document. */
+  "graphics.template.apply": { /** id|name|path */ template?: string; /** ticks (254016000000 per second) */ time?: number; /** a position counted from 0 (the first is 0) */ track?: number; values?: { [key: string]: Json } }
+  /** Export As Motion Graphics Template. Writes graphic `clip` as a reusable template named `name` exposing the listed `controls` (layer parameters) as editable fields. Params: {"clip":id?,"name":str,"category":str="My Templates","description":str?,"controls":[{"layer":n|name,"param":"text|fill_color|size|font|position|enabled|...","name":str?,"kind":"text|color|slider|checkbox|font|position"?,"min":f64?,"max":f64?,"id":str?}]? (default: each text layer's text),"path":str? (default: the user templates folder),"embedFonts":bool=false,"fontLicense":str?}. Changes the document. */
+  "graphics.template.export": { category?: string; /** an id */ clip?: number; /** [{"layer":n|name,"param":"text|fill_color|size|font|position|enabled|...","name":str?,"kind":"text|color|slider|checkbox|font|position"?,"min":f64?,"max":f64?,"id":str?}]? (default: each text layer's text); default: each text layer's text */ controls?: Array<{ id?: string; kind?: "text" | "color" | "slider" | "checkbox" | "font" | "position"; layer?: Json; max?: number; min?: number; name?: string; param?: string }>; description?: string; embedFonts?: boolean; fontLicense?: string; name?: string; /** default: the user templates folder */ path?: Json }
+  /** Motion Graphics Template. Writes graphic `clip` as a Motion Graphics Template named `name` in `category`, exposing the listed `controls` (layer parameters) as editable fields. Params: {"clip":id?,"name":str,"category":str="My Templates","description":str?,"controls":[{"layer":n|name,"param":"text|fill_color|size|font|position|enabled|...","name":str?,"kind":"text|color|slider|checkbox|font|position"?,"min":f64?,"max":f64?,"id":str?}]? (default: each text layer's text),"path":str? (default: the user templates folder),"embedFonts":bool=false,"fontLicense":str?}. Changes the document. */
+  "file.exportGraphicsTemplate": { category?: string; /** an id */ clip?: number; /** [{"layer":n|name,"param":"text|fill_color|size|font|position|enabled|...","name":str?,"kind":"text|color|slider|checkbox|font|position"?,"min":f64?,"max":f64?,"id":str?}]? (default: each text layer's text); default: each text layer's text */ controls?: Array<{ id?: string; kind?: "text" | "color" | "slider" | "checkbox" | "font" | "position"; layer?: Json; max?: number; min?: number; name?: string; param?: string }>; description?: string; embedFonts?: boolean; fontLicense?: string; name?: string; /** default: the user templates folder */ path?: Json }
+  /** Install Motion Graphics Template. Installs a graphics template file (.fcgt) at `path` into the user template library; .mogrt packages are refused. Params: {"path":str (a .fcgt file; Adobe .mogrt files are refused)}. Changes the document. */
+  "graphics.template.install": { /** a .fcgt file; Adobe .mogrt files are refused */ path?: Json }
+  /** Remove Graphics Template. Removes a user graphics template by id or name from the library. Params: {"template":id|name (a user template)}. Changes the document. */
+  "graphics.template.remove": { /** id|name (a user template); a user template */ template?: string }
+  /** Set Template Property. Sets a template control (`control` id or name to `value`, or several `values`) on graphic `clip`. Params: {"clip":id?,"control":id|name,"value":any} or {"clip":id?,"values":{control: value}}. Changes the document. */
   "graphics.template.set": { /** an id */ clip?: number; /** id|name */ control?: Json; value?: Json }
-  /** List Template Properties. Params: {"clip":id?} */
+  /** List Template Properties. Lists the editable controls of the template on graphic `clip`, with ids, kinds and current values. Params: {"clip":id?}. */
   "graphics.template.controls": { /** an id */ clip?: number }
-  /** Graphics Template Thumbnail. Params: {"template":id|name|path,"width":px=320,"path":str? (write a PNG there; else returned as pngBase64)} */
-  "graphics.template.thumbnail": { /** write a PNG there; else returned as pngBase64 */ path?: string; /** id|name|path */ template?: Json; /** pixels */ width?: number }
-  /** Roll/Crawl Options. Params: {"clip":id?,"mode":"off|roll|crawlLeft|crawlRight"?,"startOffScreen":bool?,"endOffScreen":bool?,"prerollFrames":n?,"easeInFrames":n?,"easeOutFrames":n?,"postrollFrames":n? (or ...Seconds, or ticks as preroll/easeIn/easeOut/postroll)}. Changes the document. */
+  /** Graphics Template Thumbnail. Renders a thumbnail PNG of graphics `template`, `width` px wide (default 320). Answers base64 PNG and size. Params: {"template":id|name|path,"width":px=320,"path":str? (write a PNG there; else returned as pngBase64)}. */
+  "graphics.template.thumbnail": { /** write a PNG there; else returned as pngBase64 */ path?: Json; /** id|name|path */ template?: string; /** pixels */ width?: number }
+  /** Roll/Crawl Options. Makes a graphic clip roll (credits) or crawl left/right with start/end off screen and preroll, ease and postroll frames; `mode: off` stops it. Params: {"clip":id?,"mode":"off|roll|crawlLeft|crawlRight"?,"startOffScreen":bool?,"endOffScreen":bool?,"prerollFrames":n?,"easeInFrames":n?,"easeOutFrames":n?,"postrollFrames":n? (or ...Seconds, or ticks as preroll/easeIn/easeOut/postroll)}. Changes the document. */
   "graphics.setRoll": { /** an id */ clip?: number; easeInFrames?: number; easeOutFrames?: number; endOffScreen?: boolean; mode?: "off" | "roll" | "crawlLeft" | "crawlRight"; /** or ...Seconds, or ticks as preroll/easeIn/easeOut/postroll */ postrollFrames?: number; prerollFrames?: number; startOffScreen?: boolean }
-  /** Responsive Design - Time. Params: {"clip":id?,"introFrames":n?,"outroFrames":n? (or introSeconds / outroSeconds, or ticks as intro / outro)}. Changes the document. */
+  /** Responsive Design - Time. Sets a graphic clip's protected intro and outro (`introFrames`/`outroFrames` or seconds) that keep their timing when the clip is trimmed. Params: {"clip":id?,"introFrames":n?,"outroFrames":n? (or introSeconds / outroSeconds, or ticks as intro / outro)}. Changes the document. */
   "graphics.setResponsiveTime": { /** an id */ clip?: number; introFrames?: number; /** or introSeconds / outroSeconds, or ticks as intro / outro */ outroFrames?: number }
-  /** Responsive Design - Position. Params: {"clip":id?,"layer":n|name?,"to":"frame"|"none"|layer index|layer name,"edges":["left","top","right","bottom"]|"all"="all"}. Changes the document. */
+  /** Responsive Design - Position. Responsive position: pins graphic `layer`'s `edges` to the frame or another layer (`to`), so it follows when that resizes; `to: none` unpins. Params: {"clip":id?,"layer":n|name?,"to":"frame"|"none"|layer index|layer name,"edges":["left","top","right","bottom"]|"all"="all"}. Changes the document. */
   "graphics.pin": { /** an id */ clip?: number; /** ["left","top","right","bottom"]|"all"="all"; default "all" */ edges?: Json; /** n|name? */ layer?: Json; /** "frame"|"none"|layer index|layer name */ to?: Json }
-  /** Character Style. Params: {"clip":id?,"layer":n|name?,"start":char=0,"end":char=len,"style":{"font":str,"fontStyle":str,"size":px,"color":"#rrggbb","bold":bool,"italic":bool,"underline":bool,"tracking":n,"baselineShift":px,"caps":"normal|all caps|small caps"},"clear":bool? (remove styles from the range)}. Changes the document. */
-  "graphics.setCharStyle": { /** remove styles from the range */ clear?: boolean; /** an id */ clip?: number; /** char=len; default len */ end?: Json; /** n|name? */ layer?: Json; /** char=0; default 0 */ start?: Json; style?: { baselineShift?: number; bold?: boolean; caps?: "normal" | "all caps" | "small caps"; color?: string; font?: string; fontStyle?: string; italic?: boolean; size?: number; tracking?: number; underline?: boolean } }
-  /** Upgrade Caption to Graphic. Params: {"captions":[id]? (default: the selected captions, else the one under the playhead)}. Changes the document. */
+  /** Character Style. Styles characters `start`?`end` of a text layer: font, size, color, bold, italic, underline, tracking, baseline shift, caps; `clear` removes run styles from the range. Params: {"clip":id?,"layer":n|name?,"start":char=0,"end":char=len,"style":{"font":str,"fontStyle":str,"size":px,"color":"#rrggbb","bold":bool,"italic":bool,"underline":bool,"tracking":n,"baselineShift":px,"caps":"normal|all caps|small caps"},"clear":bool? (remove styles from the range)}. Changes the document. */
+  "graphics.setCharStyle": { /** remove styles from the range */ clear?: boolean; /** an id */ clip?: number; /** char=len; default len */ end?: number; /** n|name? */ layer?: Json; /** char=0; default 0 */ start?: number; style?: { baselineShift?: number; bold?: boolean; caps?: "normal" | "all caps" | "small caps"; color?: string; font?: string; fontStyle?: string; italic?: boolean; size?: number; tracking?: number; underline?: boolean } }
+  /** Upgrade Caption to Graphic. Converts `captions` (default selected, else the one under the playhead) into graphic clips with the same text and timing. Params: {"captions":[id]? (default: the selected captions, else the one under the playhead)}. Changes the document. */
   "graphics.upgradeCaption": { /** default: the selected captions, else the one under the playhead */ captions?: Array<number> }
-  /** Upgrade to Source Graphic. Params: {"clip":id?}. Changes the document. */
+  /** Upgrade to Source Graphic. Turns graphic `clip` into a source graphic project item, so several clips can share and update it. Params: {"clip":id?}. Changes the document. */
   "graphics.upgradeToSourceGraphic": { /** an id */ clip?: number }
-  /** Replace Fonts in Projects. Params: {"from":family|{"family","style"?},"to":family|{"family","style"?},"toStyle":str?}. Changes the document. */
-  "file.replaceFonts": { /** family|{"family","style"?} */ from?: Json; /** family|{"family","style"?} */ to?: Json; toStyle?: string }
-  /** List Fonts Used. Params: {} */
+  /** Replace Fonts in Projects. Replaces font `from` (family, optional style) with `to` in every graphic and caption in the project. Params: {"from":family|{"family","style"?},"to":family|{"family","style"?},"toStyle":str?}. Changes the document. */
+  "file.replaceFonts": { /** family|{"family","style"?} */ from?: string; /** family|{"family","style"?} */ to?: Json; toStyle?: string }
+  /** List Fonts Used. Lists the font families and styles used by graphics and captions in the project, and whether each is installed. Params: {}. */
   "graphics.fonts.used": Record<string, never>
-  /** Register Frontend Commands. Params: {"commands":[{"id":str,"label":str,"menu":[str]?,"shortcut":str?}]} */
+  /** Register Frontend Commands. Registers host-side (frontend) commands so they can be given keyboard shortcuts; host use only. Params: {"commands":[{"id":str,"label":str,"menu":[str]?,"shortcut":str?}]}. */
   "shortcuts.registerExternal": { commands?: Array<{ id?: string; label?: string; menu?: Array<string>; shortcut?: string }> }
-  /** List Keyboard Shortcuts. Params: {"query":str?,"panel":str?,"assigned":bool?,"platform":"mac|windows|linux"?} */
+  /** List Keyboard Shortcuts. Lists keyboard shortcuts, filtered by `query`, `panel`, `assigned` and `platform`. Params: {"query":str?,"panel":str?,"assigned":bool?,"platform":"mac|windows|linux"?}. */
   "shortcuts.list": { assigned?: boolean; panel?: string; platform?: "mac" | "windows" | "linux"; query?: string }
-  /** Get Shortcuts of a Command. Params: {"command":id,"platform":str?} */
+  /** Get Shortcuts of a Command. Reads the shortcuts assigned to `command` on `platform`. Params: {"command":id,"platform":str?}. */
   "shortcuts.get": { /** an id */ command?: number; platform?: string }
-  /** Assign Shortcut. Params: {"command":id,"keys":"Cmd+Shift+K","panel":str?,"add":bool?,"keepConflicts":bool?}. Changes the document. */
+  /** Assign Shortcut. Assigns `keys` (e.g. Cmd+Shift+K) to `command` in `panel`; `add` keeps its existing keys, and conflicting assignments are removed unless `keepConflicts`. Params: {"command":id,"keys":"Cmd+Shift+K","panel":str?,"add":bool?,"keepConflicts":bool?}. Changes the document. */
   "shortcuts.set": { add?: boolean; /** an id */ command?: number; keepConflicts?: boolean; /** like Cmd+Shift+K */ keys?: string; panel?: string }
-  /** Clear Shortcut. Params: {"command":id,"keys":str?,"panel":str?}. Changes the document. */
+  /** Clear Shortcut. Removes `keys` (or every shortcut) from `command` in `panel`. Params: {"command":id,"keys":str?,"panel":str?}. Changes the document. */
   "shortcuts.clear": { /** an id */ command?: number; keys?: string; panel?: string }
-  /** Undo Shortcut Change. Params: {}. Changes the document. */
+  /** Undo Shortcut Change. Undoes the last keyboard shortcut change. Params: {}. Changes the document. */
   "shortcuts.undo": Record<string, never>
-  /** Redo Shortcut Change. Params: {}. Changes the document. */
+  /** Redo Shortcut Change. Redoes the last undone keyboard shortcut change. Params: {}. Changes the document. */
   "shortcuts.redo": Record<string, never>
-  /** Shortcut Conflicts. Params: {"platform":"mac|windows|linux"?} */
+  /** Shortcut Conflicts. Lists keys assigned to more than one command in the same panel on `platform`. Params: {"platform":"mac|windows|linux"?}. */
   "shortcuts.conflicts": { platform?: "mac" | "windows" | "linux" }
-  /** Shortcuts on a Key. Params: {"key":"K","platform":str?} */
+  /** Shortcuts on a Key. Lists the commands on `key` with every modifier combination. Params: {"key":"K","platform":str?}. */
   "shortcuts.forKey": { /** like K */ key?: string; platform?: string }
-  /** Resolve Shortcut. Params: {"keys":str,"panel":str?,"platform":str?} */
+  /** Resolve Shortcut. Answers which command `keys` would run in `panel` on `platform`. Params: {"keys":str,"panel":str?,"platform":str?}. */
   "shortcuts.resolve": { keys?: string; panel?: string; platform?: string }
-  /** Keyboard Shortcut Presets. Params: {} */
+  /** Keyboard Shortcut Presets. Lists the keyboard shortcut presets (built-in and saved) and the current one. Params: {}. */
   "shortcuts.presets": Record<string, never>
-  /** Load Shortcut Preset. Params: {"name":str}. Changes the document. */
+  /** Load Shortcut Preset. Switches to keyboard shortcut preset `name`. Params: {"name":str}. Changes the document. */
   "shortcuts.loadPreset": { name?: string }
-  /** Save Shortcut Preset As. Params: {"name":str}. Changes the document. */
+  /** Save Shortcut Preset As. Saves the current shortcuts as preset `name`. Params: {"name":str}. Changes the document. */
   "shortcuts.savePreset": { name?: string }
-  /** Delete Shortcut Preset. Params: {"name":str}. Changes the document. */
+  /** Delete Shortcut Preset. Deletes saved keyboard shortcut preset `name`. Params: {"name":str}. Changes the document. */
   "shortcuts.deletePreset": { name?: string }
-  /** Export Keyboard Shortcuts. Params: {"path":str}. Changes the document. */
-  "shortcuts.export": { path?: string }
-  /** Import Keyboard Shortcuts. Params: {"path":str,"activate":bool=true}. Changes the document. */
-  "shortcuts.import": { activate?: boolean; path?: string }
-  /** Shortcut Audit. Params: {} */
+  /** Export Keyboard Shortcuts. Writes the current keyboard shortcuts to a file at `path`. Params: {"path":str}. Changes the document. */
+  "shortcuts.export": { path?: Json }
+  /** Import Keyboard Shortcuts. Reads a keyboard shortcut file at `path` as a preset and makes it active unless `activate: false`. Params: {"path":str,"activate":bool=true}. Changes the document. */
+  "shortcuts.import": { activate?: boolean; path?: Json }
+  /** Shortcut Audit. Checks the shortcut table for unknown commands, conflicts and invalid keys. Params: {}. */
   "shortcuts.audit": Record<string, never>
-  /** Find Missing Media. Params: {} */
+  /** Find Missing Media. Lists project items whose media files are missing, with their last known paths. Params: {}. */
   "media.findMissing": Record<string, never>
-  /** Media Status. Params: {"item":id?} */
+  /** Media Status. Reads media `item`'s (or every item's) file status: online, offline or missing, proxy attached, path. Params: {"item":id?}. */
   "media.status": { /** an id */ item?: number }
-  /** Link Media. Params: {}  (opens the Link Media dialog; agents use media.relink / media.autoRelink) */
+  /** Link Media. Opens the Link Media dialog for missing files in the host. Agents relink with media.relink or media.autoRelink instead. Params: {}  (opens the Link Media dialog; agents use media.relink / media.autoRelink). */
   "media.linkMedia": Record<string, never>
-  /** Relink Media. Params: {"item":id,"path":str,"force":bool=false,"relinkOthers":bool=true,"alignTimecode":bool=false,"match":{"fileName":bool,"extension":bool,"clipId":bool,"duration":bool,"mediaStart":bool,"metadata":bool}?}. Changes the document. */
-  "media.relink": { alignTimecode?: boolean; force?: boolean; /** an id */ item?: number; match?: { clipId?: boolean; duration?: boolean; extension?: boolean; fileName?: boolean; mediaStart?: boolean; metadata?: boolean }; path?: string; relinkOthers?: boolean }
-  /** Replace Footage. Params: {"item":id,"path":str}. Changes the document. */
-  "media.replaceFootage": { /** an id */ item?: number; path?: string }
-  /** Relink Moved Media. Params: {"from":str,"to":str}|{"folder":str} + match options. Changes the document. */
+  /** Relink Media. Links media `item` to the file at `path` (checked to match unless `force`), then relinks other missing items found the same way when `relinkOthers`. Params: {"item":id,"path":str,"force":bool=false,"relinkOthers":bool=true,"alignTimecode":bool=false,"match":{"fileName":bool,"extension":bool,"clipId":bool,"duration":bool,"mediaStart":bool,"metadata":bool}?}. Changes the document. */
+  "media.relink": { alignTimecode?: boolean; force?: boolean; /** an id */ item?: number; match?: { clipId?: boolean; duration?: boolean; extension?: boolean; fileName?: boolean; mediaStart?: boolean; metadata?: boolean }; path?: Json; relinkOthers?: boolean }
+  /** Replace Footage. Replaces media `item`'s file with the one at `path` without matching checks; clips using it show the new file. Params: {"item":id,"path":str}. Changes the document. */
+  "media.replaceFootage": { /** an id */ item?: number; path?: Json }
+  /** Relink Moved Media. Relinks missing media by remapping a folder prefix (`from` ? `to`) or by searching a `folder` tree for the same file names. Params: {"from":str,"to":str}|{"folder":str} + match options. Changes the document. */
   "media.autoRelink": { from?: string; to?: string }
-  /** Search for Media. Params: {"folder":str,"item":id?,"exactName":bool=true} */
-  "media.search": { exactName?: boolean; folder?: string; /** an id */ item?: number }
-  /** Make Offline. Params: {"items":[id]?,"deleteFiles":bool=false}. Changes the document. */
+  /** Search for Media. Searches `folder` for files matching missing media (`item` or all) by `exactName`; answers candidates without relinking. Params: {"folder":str,"item":id?,"exactName":bool=true}. */
+  "media.search": { exactName?: boolean; folder?: Json; /** an id */ item?: number }
+  /** Make Offline. Makes the selected or listed `items` offline (clips show Media Offline); `deleteFiles` also deletes the files on disk. Params: {"items":[id]?,"deleteFiles":bool=false}. Changes the document. */
   "media.makeOffline": { deleteFiles?: boolean; items?: Array<number> }
-  /** Import from Media Browser. Params: {"paths":[str]?,"imageSequence":bool?}. Changes the document. */
-  "file.importFromMediaBrowser": { imageSequence?: boolean; paths?: Array<string> }
-  /** Import. Params: {"paths":[str],"bin":binId?,"imageSequence":bool?}. Changes the document. */
-  "file.import": { /** binId? */ bin?: Json; imageSequence?: boolean; paths?: Array<string> }
-  /** Import Image Sequence. Params: {"path":str,"bin":binId?}. Changes the document. */
-  "file.importImageSequence": { /** binId? */ bin?: Json; path?: string }
-  /** Offline All. Params: {}  (leave every missing file offline and close the Link Media dialog) */
+  /** Import from Media Browser. Imports the Media Browser's selected files, or `paths`; `imageSequence` treats numbered stills as one clip. Params: {"paths":[str]?,"imageSequence":bool?}. Changes the document. */
+  "file.importFromMediaBrowser": { imageSequence?: boolean; paths?: Array<Json> }
+  /** Import. Imports media files at `paths` into the project (into `bin` when given); `imageSequence` treats numbered stills as one clip. Answers the new item ids. Params: {"paths":[str],"bin":binId?,"imageSequence":bool?}. Changes the document. */
+  "file.import": { /** binId? */ bin?: number; imageSequence?: boolean; paths?: Array<Json> }
+  /** Import Image Sequence. Imports numbered stills starting at `path` (the first still) as one image-sequence clip, into `bin`. Params: {"path":str,"bin":binId?}. Changes the document. */
+  "file.importImageSequence": { /** binId? */ bin?: number; path?: Json }
+  /** Offline All. Leaves every missing file offline and closes the Link Media dialog. Params: {}  (leave every missing file offline and close the Link Media dialog). */
   "media.offlineAll": Record<string, never>
-  /** Create Proxies. Params: {"items":[id]?,"preset":"prores_proxy_quarter|prores_proxy_half|prores_lt_half|h264_quarter|h264_half","destination":str?,"attach":bool=true,"wait":bool=false}. Changes the document. */
+  /** Create Proxies. Creates proxy files for the selected or listed `items` with a `preset` (ProRes or H.264, quarter/half size) in `destination`, attaching them by default; `wait` blocks. Params: {"items":[id]?,"preset":"prores_proxy_quarter|prores_proxy_half|prores_lt_half|h264_quarter|h264_half","destination":str?,"attach":bool=true,"wait":bool=false}. Changes the document. */
   "media.createProxies": { attach?: boolean; destination?: string; items?: Array<number>; preset?: "prores_proxy_quarter" | "prores_proxy_half" | "prores_lt_half" | "h264_quarter" | "h264_half"; wait?: boolean }
-  /** Attach Proxies. Params: {"item":id,"path":str}|{"items":[id],"paths":[str]},"force":bool=false. Changes the document. */
-  "media.attachProxies": { /** an id */ item?: number; path?: string }
-  /** Detach Proxies. Params: {"items":[id]?}. Changes the document. */
+  /** Attach Proxies. Attaches existing proxy files (`path` or `paths`) to media `item`/`items`; `force` skips the format check. Params: {"item":id,"path":str}|{"items":[id],"paths":[str]},"force":bool=false. Changes the document. */
+  "media.attachProxies": { /** an id */ item?: number; path?: Json }
+  /** Detach Proxies. Detaches proxies from the selected or listed `items`; the proxy files stay on disk. Params: {"items":[id]?}. Changes the document. */
   "media.detachProxies": { items?: Array<number> }
-  /** Reconnect Full Resolution Media. Params: {"item":id,"path":str}. Changes the document. */
-  "media.reconnectFullRes": { /** an id */ item?: number; path?: string }
-  /** Toggle Proxies. Params: {"enabled":bool?} */
+  /** Reconnect Full Resolution Media. Points media `item`'s full-resolution file at `path` while keeping its proxy. Params: {"item":id,"path":str}. Changes the document. */
+  "media.reconnectFullRes": { /** an id */ item?: number; path?: Json }
+  /** Toggle Proxies. Switches playback between proxies and full-resolution media (`enabled`, toggles when omitted). Export always uses full resolution. Params: {"enabled":bool?}. */
   "media.toggleProxies": { enabled?: boolean }
-  /** Proxy Presets. Params: {} */
+  /** Proxy Presets. Lists the proxy presets media.createProxies accepts. Params: {}. */
   "media.proxyPresets": Record<string, never>
-  /** File. Params: {"path":str} */
-  "file.mediaPropertiesFile": { path?: string }
-  /** Selection. Params: {"items":[id]?} */
+  /** File. Reads media file properties of the file at `path` without importing it. Params: {"path":str}. */
+  "file.mediaPropertiesFile": { path?: Json }
+  /** Selection. Reads media file properties (codec, size, frame rate, streams, duration, timecode) of the selected or listed `items`. Params: {"items":[id]?}. */
   "file.mediaProperties": { items?: Array<number> }
-  /** General. Params: {"renderer":"gpu|software"?,"videoDisplay":"timecode|feet35|feet16|frames"?,"audioDisplay":"samples|milliseconds"?,"captureFormat":"DV|HDV"?,"titleSafe":[h,v]?,"actionSafe":[h,v]?}. Changes the document. */
+  /** General. Changes General project settings: renderer, video and audio time display, capture format, title/action safe margins. Params: {"renderer":"gpu|software"?,"videoDisplay":"timecode|feet35|feet16|frames"?,"audioDisplay":"samples|milliseconds"?,"captureFormat":"DV|HDV"?,"titleSafe":[h,v]?,"actionSafe":[h,v]?}. Changes the document. */
   "file.projectSettings.general": { /** [h,v]? */ actionSafe?: Array<Json>; audioDisplay?: "samples" | "milliseconds"; captureFormat?: "DV" | "HDV"; renderer?: "gpu" | "software"; /** [h,v]? */ titleSafe?: Array<Json>; videoDisplay?: "timecode" | "feet35" | "feet16" | "frames" }
-  /** Scratch Disks. Params: {"captured":path|null?,"videoPreviews":path|null?,"audioPreviews":path|null?,"autoSave":path|null?}. Changes the document. */
+  /** Scratch Disks. Sets the folders for captured media, video previews, audio previews and auto-saves (null resets to default). Params: {"captured":path|null?,"videoPreviews":path|null?,"audioPreviews":path|null?,"autoSave":path|null?}. Changes the document. */
   "file.projectSettings.scratchDisks": { /** path|null? */ audioPreviews?: Json; /** path|null? */ autoSave?: Json; /** path|null? */ captured?: Json; /** path|null? */ videoPreviews?: Json }
-  /** Ingest Settings. Params: {"enabled":bool?,"action":"copy|transcode|createProxies|copyAndCreateProxies"?,"destination":str?,"preset":str?}. Changes the document. */
+  /** Ingest Settings. Reads or sets the project's ingest settings: `enabled`, `action` copy|transcode|createProxies|copyAndCreateProxies, `destination` folder and transcode `preset`. Params: {"enabled":bool?,"action":"copy|transcode|createProxies|copyAndCreateProxies"?,"destination":str?,"preset":str?}. Changes the document. */
   "project.ingestSettings": { action?: "copy" | "transcode" | "createProxies" | "copyAndCreateProxies"; destination?: string; enabled?: boolean; preset?: string }
-  /** Project Manager. Params: {"destination":str,"mode":"collect|consolidate","sequences":[id]?,"excludeUnused":bool=true,"handles":frames=30,"preset":"prores_lt|prores_hq|h264|...","includeProxies":bool,"includePreviews":bool=false,"projectName":str?,"dryRun":bool=false,"overwrite":bool=false,"wait":bool=false} */
+  /** Project Manager. Copies (collect) or trims and transcodes (consolidate) the `sequences` and their media to `destination` as a new project, with `handles` frames; `dryRun` only reports. Long jobs run in the background. Params: {"destination":str,"mode":"collect|consolidate","sequences":[id]?,"excludeUnused":bool=true,"handles":frames=30,"preset":"prores_lt|prores_hq|h264|...","includeProxies":bool,"includePreviews":bool=false,"projectName":str?,"dryRun":bool=false,"overwrite":bool=false,"wait":bool=false}. */
   "file.projectManager": { destination?: string; dryRun?: boolean; excludeUnused?: boolean; /** frames */ handles?: number; includePreviews?: boolean; includeProxies?: boolean; mode?: "collect" | "consolidate"; overwrite?: boolean; /** for example prores_lt, prores_hq, h264 */ preset?: string; projectName?: string; sequences?: Array<number>; wait?: boolean }
-  /** Create Mask. Params: {"clip":id?,"effect":index|id?="opacity","shape":"ellipse"|"polygon"|"bezier","path":[[x,y]...]|{vertices}?,"center":[x,y]?,"size":[w,h]?}. Changes the document. */
-  "masks.add": { center?: Array<number>; /** an id */ clip?: number; /** index|id?="opacity"; default "opacity" */ effect?: Json; /** [[x,y]...]|{vertices}? */ path?: Json; shape?: "ellipse" | "polygon" | "bezier"; size?: Array<number> }
-  /** Delete Mask. Params: {"clip":id?,"effect":index|id?,"mask":n?}. Changes the document. */
-  "masks.remove": { /** an id */ clip?: number; effect?: number; mask?: number }
-  /** Change Mask. Params: {"clip":id?,"effect":index|id?,"mask":n?,"name":str?,"inverted":bool?,"mode":"none|add|subtract|intersect|lighten|darken|difference"?,"trackMethod":"position|positionRotation|positionScaleRotation"?,"feather":px?,"opacity":pct?,"expansion":px?,"path":path?,"time":ticks?,"merge":key?}. Changes the document. */
-  "masks.set": { /** an id */ clip?: number; effect?: number; /** pixels */ expansion?: number; /** pixels */ feather?: number; inverted?: boolean; mask?: number; /** key? */ merge?: Json; mode?: "none" | "add" | "subtract" | "intersect" | "lighten" | "darken" | "difference"; name?: string; /** pct? */ opacity?: Json; path?: string; /** ticks (254016000000 per second) */ time?: number; trackMethod?: "position" | "positionRotation" | "positionScaleRotation" }
-  /** Move Mask Vertex. Params: {"clip":id?,"effect":index|id?,"mask":n?,"vertex":n,"handle":"point"|"in"|"out"?,"to":[x,y]?|"delta":[dx,dy]?,"breakHandles":bool?,"merge":key?}. Changes the document. */
-  "masks.moveVertex": { breakHandles?: boolean; /** an id */ clip?: number; /** [dx, dy]; one of several alternative parameters */ delta?: Array<number>; effect?: number; handle?: "point" | "in" | "out"; mask?: number; /** key? */ merge?: Json; /** one of several alternative parameters */ to?: Array<number>; vertex?: number }
-  /** Move Mask. Params: {"clip":id?,"effect":index|id?,"mask":n?,"delta":[dx,dy],"merge":key?}. Changes the document. */
-  "masks.translate": { /** an id */ clip?: number; /** [dx, dy] */ delta?: Array<number>; effect?: number; mask?: number; /** key? */ merge?: Json }
-  /** Add Mask Vertex. Params: {"clip":id?,"effect":index|id?,"mask":n?,"after":n,"at":[x,y]}. Changes the document. */
-  "masks.addVertex": { after?: number; at?: Array<number>; /** an id */ clip?: number; effect?: number; mask?: number }
-  /** Delete Mask Vertex. Params: {"clip":id?,"effect":index|id?,"mask":n?,"vertex":n}. Changes the document. */
-  "masks.removeVertex": { /** an id */ clip?: number; effect?: number; mask?: number; vertex?: number }
-  /** Track Selected Mask. Params: {"clip":id?,"effect":index|id?,"mask":n?,"direction":"forward"|"backward"?,"frames":n?,"method":"position|positionRotation|positionScaleRotation"?,"wait":bool?}. Changes the document. */
-  "masks.track": { /** an id */ clip?: number; direction?: "forward" | "backward"; effect?: number; frames?: number; mask?: number; method?: "position" | "positionRotation" | "positionScaleRotation"; wait?: boolean }
-  /** Convert Mask Vertex. Params: {"clip":id?,"effect":index|id?,"mask":n?,"vertex":n}. Changes the document. */
-  "masks.toggleVertexSmooth": { /** an id */ clip?: number; effect?: number; mask?: number; vertex?: number }
-  /** Select Mask. Params: {"clip":id,"effect":index|id,"mask":n}|{"none":true} */
-  "masks.select": { /** an id */ clip?: number; effect?: number; mask?: number }
-  /** List Masks. Params: {"clip":id?,"time":ticks?} */
+  /** Create Mask. Adds a mask to `clip`'s `effect` (default Opacity): `shape` ellipse, polygon or bezier `path`, with `center` and `size` in frame pixels. Answers its index. Params: {"clip":id?,"effect":index|id?="opacity","shape":"ellipse"|"polygon"|"bezier","path":[[x,y]...]|{vertices}?,"center":[x,y]?,"size":[w,h]?}. Changes the document. */
+  "masks.add": { center?: Array<number>; /** an id */ clip?: number; /** index|id?="opacity"; default "opacity" */ effect?: string; /** [[x,y]...]|{vertices}? */ path?: string; shape?: "ellipse" | "polygon" | "bezier"; size?: Array<number> }
+  /** Delete Mask. Deletes mask `mask` (default selected) from an effect of `clip`. Params: {"clip":id?,"effect":index|id?,"mask":n?}. Changes the document. */
+  "masks.remove": { /** an id */ clip?: number; /** a position counted from 0 (the first is 0) */ effect?: number; mask?: number }
+  /** Change Mask. Changes a mask: name, inverted, blend `mode`, feather px, opacity %, expansion px, tracking method, or its `path` (keyframed at `time` when animated). Params: {"clip":id?,"effect":index|id?,"mask":n?,"name":str?,"inverted":bool?,"mode":"none|add|subtract|intersect|lighten|darken|difference"?,"trackMethod":"position|positionRotation|positionScaleRotation"?,"feather":px?,"opacity":pct?,"expansion":px?,"path":path?,"time":ticks?,"merge":key?}. Changes the document. */
+  "masks.set": { /** an id */ clip?: number; /** a position counted from 0 (the first is 0) */ effect?: number; /** pixels */ expansion?: number; /** pixels */ feather?: number; inverted?: boolean; mask?: number; /** key? */ merge?: Json; mode?: "none" | "add" | "subtract" | "intersect" | "lighten" | "darken" | "difference"; name?: string; /** pct? */ opacity?: number; path?: string; /** ticks (254016000000 per second) */ time?: number; trackMethod?: "position" | "positionRotation" | "positionScaleRotation" }
+  /** Move Mask Vertex. Moves vertex `vertex` of a mask (or its in/out bezier `handle`) `to` a point or by `delta` in frame pixels; `breakHandles` unlinks the handles. Params: {"clip":id?,"effect":index|id?,"mask":n?,"vertex":n,"handle":"point"|"in"|"out"?,"to":[x,y]?|"delta":[dx,dy]?,"breakHandles":bool?,"merge":key?}. Changes the document. */
+  "masks.moveVertex": { breakHandles?: boolean; /** an id */ clip?: number; /** [dx, dy]; one of several alternative parameters */ delta?: Array<number>; /** a position counted from 0 (the first is 0) */ effect?: number; handle?: "point" | "in" | "out"; mask?: number; /** key? */ merge?: Json; /** one of several alternative parameters */ to?: Array<number>; vertex?: number }
+  /** Move Mask. Moves a whole mask by `delta` [dx, dy] frame pixels. Params: {"clip":id?,"effect":index|id?,"mask":n?,"delta":[dx,dy],"merge":key?}. Changes the document. */
+  "masks.translate": { /** an id */ clip?: number; /** [dx, dy] */ delta?: Array<number>; /** a position counted from 0 (the first is 0) */ effect?: number; mask?: number; /** key? */ merge?: Json }
+  /** Add Mask Vertex. Inserts a vertex into a mask path `after` vertex n, at point `at`. Params: {"clip":id?,"effect":index|id?,"mask":n?,"after":n,"at":[x,y]}. Changes the document. */
+  "masks.addVertex": { after?: number; at?: Array<number>; /** an id */ clip?: number; /** a position counted from 0 (the first is 0) */ effect?: number; mask?: number }
+  /** Delete Mask Vertex. Deletes vertex `vertex` from a mask path. Params: {"clip":id?,"effect":index|id?,"mask":n?,"vertex":n}. Changes the document. */
+  "masks.removeVertex": { /** an id */ clip?: number; /** a position counted from 0 (the first is 0) */ effect?: number; mask?: number; vertex?: number }
+  /** Track Selected Mask. Tracks a mask through the clip `direction` forward or backward (for `frames`, default to the end), keyframing its path by position, rotation and scale; `wait` blocks. Params: {"clip":id?,"effect":index|id?,"mask":n?,"direction":"forward"|"backward"?,"frames":n?,"method":"position|positionRotation|positionScaleRotation"?,"wait":bool?}. Changes the document. */
+  "masks.track": { /** an id */ clip?: number; direction?: "forward" | "backward"; /** a position counted from 0 (the first is 0) */ effect?: number; frames?: number; mask?: number; method?: "position" | "positionRotation" | "positionScaleRotation"; wait?: boolean }
+  /** Convert Mask Vertex. Converts a mask vertex between a sharp corner and a smooth bezier point. Params: {"clip":id?,"effect":index|id?,"mask":n?,"vertex":n}. Changes the document. */
+  "masks.toggleVertexSmooth": { /** an id */ clip?: number; /** a position counted from 0 (the first is 0) */ effect?: number; mask?: number; vertex?: number }
+  /** Select Mask. Selects mask `mask` of `clip`'s `effect` for editing in the Program monitor, or clears it with `none`. Params: {"clip":id,"effect":index|id,"mask":n}|{"none":true}. */
+  "masks.select": { /** an id */ clip?: number; /** a position counted from 0 (the first is 0) */ effect?: number; mask?: number }
+  /** List Masks. Lists the masks of `clip` (or every clip with masks) evaluated at the playhead or `time`: effect, index, shape, path points, feather, opacity, mode. Params: {"clip":id?,"time":ticks?}. */
   "masks.list": { /** an id */ clip?: number; /** ticks (254016000000 per second) */ time?: number }
-  /** List Effect Presets. Params: {} */
+  /** List Effect Presets. Lists saved effect presets with their effects and keyframe handling. Params: {}. */
   "presets.list": Record<string, never>
-  /** Save Preset. Params: {"clip":id?,"effects":[index]?,"name":str,"description":str?,"keyframes":"scale"|"anchorIn"|"anchorOut"|"none"?}. Changes the document. */
+  /** Save Preset. Saves `clip`'s effects (`effects` indices, default all) as preset `name`; `keyframes` scale|anchorIn|anchorOut|none decides how keyframes fit other clips. Params: {"clip":id?,"effects":[index]?,"name":str,"description":str?,"keyframes":"scale"|"anchorIn"|"anchorOut"|"none"?}. Changes the document. */
   "presets.save": { /** an id */ clip?: number; description?: string; effects?: Array<number>; keyframes?: "scale" | "anchorIn" | "anchorOut" | "none"; name?: string }
-  /** Apply Preset. Params: {"preset":str,"clips":[id]?}. Changes the document. */
+  /** Apply Preset. Applies effect `preset` to the selected or listed `clips`. Params: {"preset":str,"clips":[id]?}. Changes the document. */
   "presets.apply": { clips?: Array<number>; preset?: string }
-  /** Delete Preset. Params: {"name":str}. Changes the document. */
+  /** Delete Preset. Deletes saved effect preset `name`; clips it was applied to keep their effects. Params: {"name":str}. Changes the document. */
   "presets.delete": { name?: string }
-  /** Rename Preset. Params: {"name":str,"to":str}. Changes the document. */
+  /** Rename Preset. Renames effect preset `name` to `to`. Params: {"name":str,"to":str}. Changes the document. */
   "presets.rename": { name?: string; to?: string }
-  /** Export Presets. Params: {"path":str,"names":[str]?} */
-  "presets.export": { names?: Array<string>; path?: string }
-  /** Import Presets. Params: {"path":str}. Changes the document. */
-  "presets.import": { path?: string }
-  /** List Export Presets. Params: {"query":str?,"category":str?,"format":str?,"favorites":bool?} */
+  /** Export Presets. Writes effect presets (`names`, default all) to a preset file at `path`. Params: {"path":str,"names":[str]?}. */
+  "presets.export": { names?: Array<string>; path?: Json }
+  /** Import Presets. Reads effect presets from the file at `path` into the preset library. Params: {"path":str}. Changes the document. */
+  "presets.import": { path?: Json }
+  /** List Export Presets. Lists export presets (built-in and user), filtered by `query`, `category`, `format` or `favorites`. Params: {"query":str?,"category":str?,"format":str?,"favorites":bool?}. */
   "export.presets.list": { category?: string; favorites?: boolean; format?: string; query?: string }
-  /** Get Export Preset. Params: {"name":str} */
+  /** Get Export Preset. Reads export preset `name`'s full settings. Params: {"name":str}. */
   "export.presets.get": { name?: string }
-  /** Save Export Preset. Params: {"name":str,"from":str?,"settings":ExportSettings?,"category":str?,"description":str?,"overwrite":bool=true, ...flat overrides}. Changes the document. */
+  /** Save Export Preset. Saves a user export preset `name` from another preset (`from`) or `settings` plus overrides; overwrites by default. Params: {"name":str,"from":str?,"settings":ExportSettings?,"category":str?,"description":str?,"overwrite":bool=true, ...flat overrides}. Changes the document. */
   "export.presets.save": { category?: string; description?: string; from?: string; name?: string; overwrite?: boolean; /** ExportSettings? */ settings?: Json }
-  /** Delete Export Preset. Params: {"name":str}. Changes the document. */
+  /** Delete Export Preset. Deletes user export preset `name`. Params: {"name":str}. Changes the document. */
   "export.presets.delete": { name?: string }
-  /** Favorite Export Preset. Params: {"name":str,"favorite":bool?}. Changes the document. */
+  /** Favorite Export Preset. Marks export preset `name` as a favorite or not. Params: {"name":str,"favorite":bool?}. Changes the document. */
   "export.presets.favorite": { favorite?: boolean; name?: string }
-  /** Import Export Presets. Params: {"path":str}. Changes the document. */
-  "export.presets.import": { path?: string }
-  /** Export Export Presets. Params: {"path":str,"names":[str]?} */
-  "export.presets.export": { names?: Array<string>; path?: string }
-  /** List Export Formats. Params: {} */
+  /** Import Export Presets. Reads export presets from the preset file at `path` into the user library. Params: {"path":str}. Changes the document. */
+  "export.presets.import": { path?: Json }
+  /** Export Export Presets. Writes user export presets (`names`, default all) to a preset file at `path`. Params: {"path":str,"names":[str]?}. */
+  "export.presets.export": { names?: Array<string>; path?: Json }
+  /** List Export Formats. Lists the export formats with their codecs, containers and supported options. Params: {}. */
   "export.formats": Record<string, never>
-  /** Resolve Export Settings. Params: {...settings params, "path":str?} */
-  "export.resolve": { path?: string }
-  /** Send to Export Queue. Params: {...settings params,"path":str|dir?,"sequences":[id]?,"ranges":[range]?,"start":bool?,"wait":bool?}. Changes the document. */
+  /** Resolve Export Settings. Answers the full export settings a preset plus overrides would use, and the output path, without exporting. Params: {...settings params, "path":str?}. */
+  "export.resolve": { path?: Json }
+  /** Send to Export Queue. Adds an export of the active (or given) sequence with a preset or settings and output path to the export queue; start it with export.queue.start. Params: {...settings params,"path":str|dir?,"sequences":[id]?,"ranges":[range]?,"start":bool?,"wait":bool?}. Changes the document. */
   "export.queue.add": { /** str|dir? */ path?: Json; /** [range]? */ ranges?: Array<Json>; sequences?: Array<number>; start?: boolean; wait?: boolean }
-  /** List Export Queue. Params: {} */
+  /** List Export Queue. Lists the export queue: each job's id, sequence, output path, status and progress. Params: {}. */
   "export.queue.list": Record<string, never>
-  /** Start Export Queue. Params: {"wait":bool=false}. Changes the document. */
+  /** Start Export Queue. Starts encoding the queued exports in order; `wait` blocks until the queue finishes. Params: {"wait":bool=false}. Changes the document. */
   "export.queue.start": { wait?: boolean }
-  /** Stop Export Queue. Params: {}. Changes the document. */
+  /** Stop Export Queue. Pauses the export queue after the current job. Params: {}. Changes the document. */
   "export.queue.stop": Record<string, never>
-  /** Cancel Queued Export. Params: {"id":id?,"wait":bool?}. Changes the document. */
+  /** Cancel Queued Export. Cancels queued or running export `id` (default the running one). Params: {"id":id?,"wait":bool?}. Changes the document. */
   "export.queue.cancel": { /** an id */ id?: number; wait?: boolean }
-  /** Retry Queued Export. Params: {"id":id,"start":bool?,"wait":bool?}. Changes the document. */
+  /** Retry Queued Export. Re-queues failed or cancelled export `id`; `start` starts the queue. Params: {"id":id,"start":bool?,"wait":bool?}. Changes the document. */
   "export.queue.retry": { /** an id */ id?: number; start?: boolean; wait?: boolean }
-  /** Remove Queued Export. Params: {"id":id}. Changes the document. */
+  /** Remove Queued Export. Removes export `id` from the queue. Params: {"id":id}. Changes the document. */
   "export.queue.remove": { /** an id */ id?: number }
-  /** Reorder Queued Export. Params: {"id":id,"to":index?,"by":int?}. Changes the document. */
-  "export.queue.move": { by?: number; /** an id */ id?: number; to?: number }
-  /** Clear Finished Exports. Params: {"all":bool=false}. Changes the document. */
+  /** Reorder Queued Export. Moves queued export `id` to position `to` or by `by` places. Params: {"id":id,"to":index?,"by":int?}. Changes the document. */
+  "export.queue.move": { by?: number; /** an id */ id?: number; /** a position counted from 0 (the first is 0) */ to?: number }
+  /** Clear Finished Exports. Removes finished exports from the queue (`all` also removes failed and cancelled ones). Params: {"all":bool=false}. Changes the document. */
   "export.queue.clear": { all?: boolean }
-  /** Quick Export. Params: {"preset":str?,"path":str?,"wait":bool?, ...settings params}. Changes the document. */
-  "export.quick": { path?: string; preset?: string; wait?: boolean }
-  /** Transcribe. Params: {"items":[id]?,"model":"whisper-base"?,"language":"en|auto"?,"diarize":bool?,"maxSpeakers":n?}. Changes the document. */
+  /** Quick Export. Exports the active sequence immediately with `preset` (default the Quick Export preset) to `path` (default next to the project); `wait` blocks. Params: {"preset":str?,"path":str?,"wait":bool?, ...settings params}. Changes the document. */
+  "export.quick": { path?: Json; preset?: string; wait?: boolean }
+  /** Transcribe. Transcribes the speech of the selected or listed `items` with a local speech `model` in `language` (auto detects), with speaker labels when `diarize`. Params: {"items":[id]?,"model":"whisper-base"?,"language":"en|auto"?,"diarize":bool?,"maxSpeakers":n?}. Changes the document. */
   "transcript.generate": { diarize?: boolean; items?: Array<number>; language?: "en" | "auto"; maxSpeakers?: number; /** like whisper-base */ model?: string }
-  /** Import Transcript. Params: {"item":id,"transcript":{"language":str,"speakers":[{"name":str}],"words":[{"text":str,"start":tick,"end":tick,"speaker":n?}]}}. Changes the document. */
+  /** Import Transcript. Stores a transcript for `item` from the given words (text, start/end ticks, speaker) instead of transcribing. Params: {"item":id,"transcript":{"language":str,"speakers":[{"name":str}],"words":[{"text":str,"start":tick,"end":tick,"speaker":n?}]}}. Changes the document. */
   "transcript.set": { /** an id */ item?: number; /** {"language":str,"speakers":[{"name":str}],"words":[{"text":str,"start":tick,"end":tick,"speaker":n?}]} */ transcript?: { language?: string; speakers?: Array<{ name?: string }>; words?: Array<{ end?: Json; speaker?: number; start?: Json; text?: string }> } }
-  /** Delete Transcript. Params: {"items":[id]?}. Changes the document. */
+  /** Delete Transcript. Deletes the transcripts of the selected or listed `items`. Params: {"items":[id]?}. Changes the document. */
   "transcript.delete": { items?: Array<number> }
-  /** Inspect Transcript. Params: {"paragraphGapSeconds":f?} */
-  "transcript.inspect": { /** f? */ paragraphGapSeconds?: Json }
-  /** Search Transcript. Params: {"query":str} */
+  /** Inspect Transcript. Reads the active sequence's transcript as paragraphs of words with sequence times and speakers; `paragraphGapSeconds` sets where paragraphs break. Params: {"paragraphGapSeconds":f?}. */
+  "transcript.inspect": { /** f? */ paragraphGapSeconds?: number }
+  /** Search Transcript. Finds `query` in the active sequence's transcript and answers the matching words with their sequence times. Params: {"query":str}. */
   "transcript.search": { query?: string }
-  /** List Speech Models. Params: {} */
+  /** List Speech Models. Lists the local speech models and whether each is downloaded. Params: {}. */
   "transcript.models": Record<string, never>
-  /** Download Speech Model. Params: {"model":"whisper-base"?}. Changes the document. */
+  /** Download Speech Model. Downloads speech `model` (default whisper-base) for transcript.generate. Params: {"model":"whisper-base"?}. Changes the document. */
   "transcript.downloadModel": { /** like whisper-base */ model?: string }
-  /** Mark Selected Text. Params: {"from":word,"to":word?}. Changes the document. */
-  "transcript.select": { /** word */ from?: Json; /** word? */ to?: Json }
-  /** Extract Selected Text. Params: {"from":word,"to":word?}. Changes the document. */
-  "transcript.extract": { /** word */ from?: Json; /** word? */ to?: Json }
-  /** Lift Selected Text. Params: {"from":word,"to":word?}. Changes the document. */
-  "transcript.lift": { /** word */ from?: Json; /** word? */ to?: Json }
-  /** Rename Speaker. Params: {"speaker":"Speaker 1"|index,"name":str,"item":id?}. Changes the document. */
+  /** Mark Selected Text. Sets In and Out around transcript words `from`?`to` (word indices from transcript.inspect). Params: {"from":word,"to":word?}. Changes the document. */
+  "transcript.select": { /** word */ from?: string; /** word? */ to?: Json }
+  /** Extract Selected Text. Removes the sequence span of transcript words `from`?`to` and closes the gap (text-based ripple delete). Params: {"from":word,"to":word?}. Changes the document. */
+  "transcript.extract": { /** word */ from?: string; /** word? */ to?: Json }
+  /** Lift Selected Text. Removes the sequence span of transcript words `from`?`to` and leaves a gap. Params: {"from":word,"to":word?}. Changes the document. */
+  "transcript.lift": { /** word */ from?: string; /** word? */ to?: Json }
+  /** Rename Speaker. Renames a transcript speaker ("Speaker 1" or index) to `name`, in `item`'s transcript or all. Params: {"speaker":"Speaker 1"|index,"name":str,"item":id?}. Changes the document. */
   "transcript.renameSpeaker": { /** an id */ item?: number; name?: string; /** "Speaker 1"|index */ speaker?: Json }
-  /** Remove Pauses. Params: {"minSeconds":f?,"keepSeconds":f?}. Changes the document. */
-  "transcript.removePauses": { /** f? */ keepSeconds?: Json; /** f? */ minSeconds?: Json }
-  /** Remove Filler Words. Params: {"fillers":[str]?}. Changes the document. */
+  /** Remove Pauses. Extracts pauses longer than `minSeconds` from the sequence, keeping `keepSeconds` of each, by ripple delete. Params: {"minSeconds":f?,"keepSeconds":f?}. Changes the document. */
+  "transcript.removePauses": { /** f? */ keepSeconds?: number; /** f? */ minSeconds?: number }
+  /** Remove Filler Words. Extracts filler words (`fillers`, default um, uh...) from the sequence by ripple delete. Params: {"fillers":[str]?}. Changes the document. */
   "transcript.removeFillers": { fillers?: Array<string> }
-  /** Create Captions from Transcript. Params: {"maxChars":n?,"lines":1|2?,"minSeconds":f?,"maxSeconds":f?,"gapFrames":n?,"format":str?,"name":str?}. Changes the document. */
-  "transcript.createCaptions": { format?: string; gapFrames?: number; lines?: 1 | 2; maxChars?: number; /** f? */ maxSeconds?: Json; /** f? */ minSeconds?: Json; name?: string }
-  /** List Events. Params: {"level":"info|warning|error"?,"since":id?} */
+  /** Create Captions from Transcript. Creates a caption track from the sequence transcript: `maxChars` per line, 1 or 2 `lines`, caption length between `minSeconds` and `maxSeconds`, `gapFrames` between captions. Params: {"maxChars":n?,"lines":1|2?,"minSeconds":f?,"maxSeconds":f?,"gapFrames":n?,"format":str?,"name":str?}. Changes the document. */
+  "transcript.createCaptions": { format?: string; gapFrames?: number; lines?: 1 | 2; maxChars?: number; /** f? */ maxSeconds?: number; /** f? */ minSeconds?: number; name?: string }
+  /** List Events. Lists the session's event log (warnings, errors, info) at or above `level`, newer than `since`. Params: {"level":"info|warning|error"?,"since":id?}. */
   "events.list": { level?: "info" | "warning" | "error"; /** an id */ since?: number }
-  /** Clear All Events. Params: {}. Changes the document. */
+  /** Clear All Events. Clears every entry from the session's event log. Params: {}. Changes the document. */
   "events.clear": Record<string, never>
-  /** Get Metadata. Params: {"item":id?,"clip":id?} */
+  /** Get Metadata. Reads the metadata fields of project `item` or timeline `clip`'s source (Name, Label, Description, Scene, Shot, Log Note...). Params: {"item":id?,"clip":id?}. */
   "metadata.get": { /** an id */ clip?: number; /** an id */ item?: number }
-  /** Edit Metadata. Params: {"item":id?,"clip":id?,"field":"Name|Label|Description|Scene|Shot|Log Note|Comment|Tape Name|Client|Camera Angle|...","value":str} | {"item":id?,"fields":{name:str}}. Changes the document. */
+  /** Edit Metadata. Sets metadata `field` to `value` (or several `fields`) on project `item` or `clip`'s source; one undo step. Name renames the item and Label sets its color label. Params: {"item":id?,"clip":id?,"field":"Name|Label|Description|Scene|Shot|Log Note|Comment|Tape Name|Client|Camera Angle|...","value":str} | {"item":id?,"fields":{name:str}}. Changes the document. */
   "metadata.set": { /** an id */ clip?: number; /** for example Name, Label, Description, Scene, Shot, Log Note, Comment, Tape Name, Client, Camera Angle */ field?: string; /** an id */ item?: number; value?: string }
-  /** Read Lumetri Scopes. Params: {"scopes":["waveform","parade","histogram","vectorscopeYuv","vectorscopeHls"]?,"waveformType":"rgb|luma|yc|ycNoChroma"?,"paradeType":"rgb|yuv|rgbWhite"?,"colorSpace":"auto|601|709|2100"?,"clamp":bool=true,"columns":n=8,"peaks":n=8,"bins":bool=true,"scale":0.5,"time":ticks?|"frame"|"seconds"|"timecode"} */
-  "scopes.read": { bins?: boolean; clamp?: boolean; colorSpace?: "auto" | "601" | "709" | "2100"; columns?: number; paradeType?: "rgb" | "yuv" | "rgbWhite"; peaks?: number; scale?: number; scopes?: Array<string>; /** ticks?|"frame"|"seconds"|"timecode" */ time?: Json; waveformType?: "rgb" | "luma" | "yc" | "ycNoChroma" }
-  /** Enable Remix. Params: {"clip":id?}. Changes the document. */
+  /** Read Lumetri Scopes. Measures the program frame at the playhead or `time` with Lumetri scopes (waveform, parade, histogram, vectorscopes), summarised in `columns`, `peaks` and bins. Params: {"scopes":["waveform","parade","histogram","vectorscopeYuv","vectorscopeHls"]?,"waveformType":"rgb|luma|yc|ycNoChroma"?,"paradeType":"rgb|yuv|rgbWhite"?,"colorSpace":"auto|601|709|2100"?,"clamp":bool=true,"columns":n=8,"peaks":n=8,"bins":bool=true,"scale":0.5,"time":ticks?|"frame"|"seconds"|"timecode"}. */
+  "scopes.read": { bins?: boolean; clamp?: boolean; colorSpace?: "auto" | "601" | "709" | "2100"; columns?: number; paradeType?: "rgb" | "yuv" | "rgbWhite"; peaks?: number; scale?: number; scopes?: Array<string>; /** ticks?|"frame"|"seconds"|"timecode" */ time?: number; waveformType?: "rgb" | "luma" | "yc" | "ycNoChroma" }
+  /** Enable Remix. Analyses the selected audio `clip` and makes it a remix clip at its current duration, so its length can later be changed with clip.remix. Params: {"clip":id?}. Changes the document. */
   "clip.remix.enable": { /** an id */ clip?: number }
-  /** Remix Properties. Params: {"clip":id?,"duration":ticks?,"seconds":f64?,"frame":n?,"timecode":str?,"segments":0..100?,"variations":0..100?}. Changes the document. */
+  /** Remix Properties. Without parameters reads a remix clip's settings; with a target duration, `segments` or `variations` re-plans the remix. Params: {"clip":id?,"duration":ticks?,"seconds":f64?,"frame":n?,"timecode":str?,"segments":0..100?,"variations":0..100?}. Changes the document. */
   "clip.remix.properties": { /** an id */ clip?: number; /** ticks (254016000000 per second) */ duration?: number; frame?: number; seconds?: number; /** 0 to 100 */ segments?: number; timecode?: string; /** 0 to 100 */ variations?: number }
-  /** Revert Remix. Params: {"clip":id?}. Changes the document. */
+  /** Revert Remix. Restores a remix `clip` to how it was before remixing. Params: {"clip":id?}. Changes the document. */
   "clip.remix.revert": { /** an id */ clip?: number }
-  /** Remix. Params: {"clip":id?,"duration":ticks?,"seconds":f64?,"frame":n?,"timecode":str?,"segments":0..100?,"variations":0..100?}. Changes the document. */
+  /** Remix. Remixes an audio `clip` (default selected) to a target length (`duration` ticks, `seconds`, `frame` or `timecode`) by cutting and crossfading its musical segments, enabling remix first if needed. Answers the plan. Params: {"clip":id?,"duration":ticks?,"seconds":f64?,"frame":n?,"timecode":str?,"segments":0..100?,"variations":0..100?}. Changes the document. */
   "clip.remix": { /** an id */ clip?: number; /** ticks (254016000000 per second) */ duration?: number; frame?: number; seconds?: number; /** 0 to 100 */ segments?: number; timecode?: string; /** 0 to 100 */ variations?: number }
-  /** Voice-Over Record Settings. Params: {"source":str?,"inputChannel":n?,"name":str?,"countdownSoundCues":bool?,"prerollSeconds":f64?,"postrollSeconds":f64?}. Changes the document. */
+  /** Detect Beats. Finds the beats of music: an audio `clip` on the timeline (times in the sequence) or a project `item` (times from its start). Answers {bpm, confidence 0?1, beats in seconds, times in ticks, frames}; speech, silence and noise are an error (no beat). `markers: true` also adds a sequence marker (`name`, `color`) on every beat as one undo step, for snapping edits to them. Params: {"clip":id?,"item":id?,"markers":bool=false,"name":str="Beat"?,"color":label?}. Changes the document. */
+  "audio.detectBeats": { /** an id */ clip?: number; /** label? */ color?: Json; /** an id */ item?: number; markers?: boolean; name?: string }
+  /** Place Sounds. Places several sounds as one undo step: each of `items` ({item, frame | seconds, gainDb or volume, fadeInFrames/fadeInSeconds, fadeOutFrames/fadeOutSeconds, durationFrames/durationSeconds}) goes on the first audio track with no clip in its span (a new track below the others when none has room), so sounds never overwrite each other. `alignPeak: true` starts the clip at frame ? the sound's peak lag (its loudest sample, from the decoded audio), so a whoosh's or impact's hit lands on the frame; a head before 0 is dropped. Fades are Constant Gain audio transitions on the clip's edges. Answers `placed`: [{clips, audioTrack ("A3"), frame (clip start), peakFrame, peakLagFrames, gainDb}]. Params: {"items":[{"item":id,"frame":i64|"seconds":f64,"gainDb":f64=0|"volume":f64?,"fadeInFrames":f64?|"fadeInSeconds":f64?,"fadeOutFrames":f64?|"fadeOutSeconds":f64?,"durationFrames":f64?|"durationSeconds":f64?,"alignPeak":bool=false}],"tracks":"auto"="auto"}. Changes the document. */
+  "timeline.placeMany": { items?: Array<{ alignPeak?: boolean; durationFrames?: number; durationSeconds?: number; fadeInFrames?: number; fadeInSeconds?: number; fadeOutFrames?: number; fadeOutSeconds?: number; frame?: number; gainDb?: number; item?: number; seconds?: number; volume?: number }>; /** like auto */ tracks?: string }
+  /** Sound Phrase. Builds a stock sound phrase at `frame` (or `seconds`) from sound items the caller imported, as one undo step, each sound peak-aligned (its loudest sample on the frame) on the first free audio track: `closing` = items.riser starting at the frame (0.5), items.impact peaking `impactAfterFrames` (35) later at 0.55 (keep it the loudest sound, at most three such hits a film), items.sparkle `sparkleAfterFrames` (25) after the impact at 0.3; `titleIn` = items.swoosh 0.4; `sceneIn` = items.transition 0.4; `click` = items.click 0.6; `hitRun` = `count` (6) hits alternating items.hit / items.hitAlt, volume stepping 0.40 ? 0.25, spacing from `spacingFrames` (5) to `endSpacingFrames`; hits closer than 3 frames blur, so items.swoosh plays once over the run instead. `gainOffsetDb` shifts every gain. Answers `placed` as timeline.placeMany. Params: {"preset":"closing"|"titleIn"|"sceneIn"|"click"|"hitRun","frame":i64|"seconds":f64,"items":{"riser":id,"impact":id,"sparkle":id?}|{"swoosh":id}|{"transition":id}|{"click":id}|{"hit":id,"hitAlt":id?,"swoosh":id?},"count":i64=6 (hitRun),"spacingFrames":f64=5 (hitRun),"endSpacingFrames":f64? (hitRun),"impactAfterFrames":f64=35 (closing),"sparkleAfterFrames":f64=25 (closing),"gainOffsetDb":f64=0}. Changes the document. */
+  "sound.phrase": { /** hitRun */ count?: number; /** hitRun */ endSpacingFrames?: number; /** one of several alternative parameters */ frame?: number; gainOffsetDb?: number; /** closing */ impactAfterFrames?: number; /** {"riser":id,"impact":id,"sparkle":id?}|{"swoosh":id}|{"transition":id}|{"click":id}|{"hit":id,"hitAlt":id?,"swoosh":id?} */ items?: Json; preset?: "closing" | "titleIn" | "sceneIn" | "click" | "hitRun"; /** one of several alternative parameters */ seconds?: number; /** hitRun */ spacingFrames?: number; /** closing */ sparkleAfterFrames?: number }
+  /** Beat Cut Transitions. Cuts picture on the beat as one undo step: puts a video transition centred on every cut between two clips that lies within `toleranceFrames` (1) of a beat of the sequence's music (or of a sequence marker when no audio clip has a beat; `onBeat: false` takes every cut), or only on the cuts into `clips`, or at the `at` frames (taken as given). `effect` is whip, flash, push, crossZoom, cut (no transition, sound only) or any video transition id, or a list used in turn; `frames` sets the length (whip 8, flash 6, push 10, crossZoom 10); `params` are transition parameters, each effect taking the ones it has (booleans for amounts such as motion_blur, left/right/up/down for direction). `sfx` (a sound item or a list used in turn) drops a whoosh or impact peak-aligned to each cut at `sfxGainDb` (?6.9 dB, ?0.45) on a free audio track. Answers `cuts` [{frame, track, effect, transition, frames, sfx}] and `skipped` cuts with the reason. Params: {"clips":[id]? (cuts into these clips)|"at":[frame]? (cuts at these frames),"effect":"whip"|"flash"|"push"|"crossZoom"|"cut"|id|[names, used in turn]="whip","frames":i64? (whip 8, flash 6, push 10, crossZoom 10),"params":{param:value}?,"sfx":id|[id, used in turn]?,"sfxGainDb":f64=-6.9|"sfxVolume":f64?,"toleranceFrames":i64=1,"onBeat":bool=true}. Changes the document. */
+  "transition.beatCut": { /** cuts at these frames; one of several alternative parameters */ at?: Array<number>; /** cuts into these clips; one of several alternative parameters */ clips?: Array<number>; /** "whip"|"flash"|"push"|"crossZoom"|"cut"|id|[names, used in turn]="whip"; default "whip" */ effect?: Json; /** whip 8, flash 6, push 10, crossZoom 10 */ frames?: number; onBeat?: boolean; params?: { param?: Json }; /** id|[id, used in turn]? */ sfx?: Json; /** one of several alternative parameters */ sfxGainDb?: number; /** one of several alternative parameters */ sfxVolume?: number; toleranceFrames?: number }
+  /** Music Bed. Lays music under the film as one undo step: an audio `clip`, or a project `item` placed from `frame`/`seconds` (0) to the end of the picture on the first free audio track. Sets clip gain `gainDb` (?9.4, ?0.34 linear; or `volume`) and Constant Gain fades of `fadeInSeconds` (1) and `fadeOutSeconds` (1.7); `duck` {against: dialogue (or sfx, ambience, a list), reduceDb, sensitivity, fadeSeconds} makes it Music, sets its ducking and generates the ducking keyframes. Answers {clips, audioTrack, gainDb, frames [start, end], ducking regions}. Params: {"clip":id?|"item":id? (placed from frame/seconds, default 0, to the end of the picture),"frame":i64?|"seconds":f64?,"gainDb":f64=-9.4|"volume":f64?,"fadeInSeconds":f64=1,"fadeOutSeconds":f64=1.7,"duck":{"against":"dialogue"|"sfx"|...|[types]="dialogue","reduceDb":f64=-15,"sensitivity":0..10?,"fadeSeconds":f64?}?}. Changes the document. */
+  "audio.bed": { /** an id; one of several alternative parameters */ clip?: number; /** {"against":"dialogue"|"sfx"|...|[types]="dialogue","reduceDb":f64=-15,"sensitivity":0..10?,"fadeSeconds":f64?}? */ duck?: { against?: Json; fadeSeconds?: number; reduceDb?: number; sensitivity?: number }; fadeInSeconds?: number; fadeOutSeconds?: number; /** one of several alternative parameters */ frame?: number; /** one of several alternative parameters */ gainDb?: number; /** an id; placed from frame/seconds, default 0, to the end of the picture; one of several alternative parameters */ item?: number; /** one of several alternative parameters */ seconds?: number; /** one of several alternative parameters */ volume?: number }
+  /** Voice-Over Record Settings. Reads or changes the Voice-Over Record Settings preferences: source device, input channel, take `name`, countdown cues, pre-roll and post-roll seconds (0?60). Answers the settings and the input devices. Params: {"source":str?,"inputChannel":n?,"name":str?,"countdownSoundCues":bool?,"prerollSeconds":f64?,"postrollSeconds":f64?}. Changes the document. */
   "audio.voiceover.settings": { countdownSoundCues?: boolean; inputChannel?: number; name?: string; postrollSeconds?: number; prerollSeconds?: number; source?: string }
-  /** Start Voice-over Recording. Params: {"track":"A1"|id?,"time":ticks?,"preroll":seconds?}. Changes the document. */
+  /** Start Voice-over Recording. Arms and starts a voice-over take at the playhead or `time` (the sequence In point when In/Out are set), on `track` or the record-armed/targeted audio track; `preroll` overrides the pre-roll. Answers the record, capture and punch-out times. Params: {"track":"A1"|id?,"time":ticks?,"preroll":seconds?}. Changes the document. */
   "audio.voiceover.start": { /** seconds */ preroll?: number; /** ticks (254016000000 per second) */ time?: number; /** "A1"|id? */ track?: Json }
-  /** Sync Voice-over Capture. Params: {"time":ticks?}. Changes the document. */
+  /** Sync Voice-over Capture. Tells the recorder that host playback actually started at `time`, so capture restarts there and the take lands sample-accurately. Call after audio.voiceover.start once playback runs. Params: {"time":ticks?}. Changes the document. */
   "audio.voiceover.sync": { /** ticks (254016000000 per second) */ time?: number }
-  /** Stop Voice-over Recording. Params: {"time":ticks?,"dir":str?,"discard":bool?}. Changes the document. */
-  "audio.voiceover.stop": { dir?: string; discard?: boolean; /** ticks (254016000000 per second) */ time?: number }
-  /** Go to Next Edit Point on Any Track. Params: {}. Changes the document. */
+  /** Stop Voice-over Recording. Stops the voice-over take and, as one undo step, writes it to `<Name> n.wav` (in `dir` or the captured-media folder), imports it and places it on the record track at the record point. `discard: true` drops the take instead. Params: {"time":ticks?,"dir":str?,"discard":bool?}. Changes the document. */
+  "audio.voiceover.stop": { dir?: Json; discard?: boolean; /** ticks (254016000000 per second) */ time?: number }
+  /** Go to Next Edit Point on Any Track. Moves the playhead to the next edit point on any track, regardless of track targeting. Params: {}. Changes the document. */
   "playhead.nextEditAnyTrack": Record<string, never>
-  /** Go to Previous Edit Point on Any Track. Params: {}. Changes the document. */
+  /** Go to Previous Edit Point on Any Track. Moves the playhead to the previous edit point on any track, regardless of track targeting. Params: {}. Changes the document. */
   "playhead.prevEditAnyTrack": Record<string, never>
-  /** Go to Selected Clip Start. Params: {}. Changes the document. */
+  /** Go to Selected Clip Start. Moves the playhead to the first frame of the selected clips. Needs a clip selection. Answers {time}. Params: {}. Changes the document. */
   "playhead.selectedClipStart": Record<string, never>
-  /** Go to Selected Clip End. Params: {}. Changes the document. */
+  /** Go to Selected Clip End. Moves the playhead to the last frame of the selected clips (the frame before their out edge). Needs a clip selection. Answers {time}. Params: {}. Changes the document. */
   "playhead.selectedClipEnd": Record<string, never>
-  /** Reveal Nested Sequence. Params: {}. Changes the document. */
+  /** Reveal Nested Sequence. Opens the nested sequence of the selected (or topmost targeted) nested clip with its playhead on the matching frame. Params: {}. Changes the document. */
   "sequence.revealNested": Record<string, never>
-  /** Select Clip at Playhead. Params: {}. Changes the document. */
+  /** Select Clip at Playhead. Selects the clips under the playhead on the targeted tracks. Params: {}. Changes the document. */
   "timeline.selectClipAtPlayhead": Record<string, never>
-  /** Select Next Clip. Params: {}. Changes the document. */
+  /** Select Next Clip. Selects the clip after each selected clip on its track; with nothing selected, the clips at the playhead on targeted tracks. Params: {}. Changes the document. */
   "timeline.selectNextClip": Record<string, never>
-  /** Select Previous Clip. Params: {}. Changes the document. */
+  /** Select Previous Clip. Selects the clip before each selected clip on its track; with nothing selected, the clips at the playhead on targeted tracks. Params: {}. Changes the document. */
   "timeline.selectPrevClip": Record<string, never>
-  /** Extend Previous Edit To Playhead. Params: {}. Changes the document. */
+  /** Extend Previous Edit To Playhead. On each targeted, unlocked track, moves the nearest edit before the playhead forward to the playhead: a cut between clips rolls, an edge beside a gap trims; nothing ripples. Params: {}. Changes the document. */
   "trim.extendPreviousEdit": Record<string, never>
-  /** Extend Next Edit To Playhead. Params: {}. Changes the document. */
+  /** Extend Next Edit To Playhead. On each targeted, unlocked track, moves the nearest edit after the playhead back to the playhead: a cut between clips rolls, an edge beside a gap trims; nothing ripples. Params: {}. Changes the document. */
   "trim.extendNextEdit": Record<string, never>
-  /** Nudge Clip Selection Left One Frame. Params: {}. Changes the document. */
+  /** Nudge Clip Selection Left One Frame. Moves the selected clips (with linked partners) one frame earlier, overwriting what they land on. Params: {}. Changes the document. */
   "timeline.nudgeLeft": Record<string, never>
-  /** Nudge Clip Selection Right One Frame. Params: {}. Changes the document. */
+  /** Nudge Clip Selection Right One Frame. Moves the selected clips (with linked partners) one frame later, overwriting what they land on. Params: {}. Changes the document. */
   "timeline.nudgeRight": Record<string, never>
-  /** Nudge Clip Selection Left Five Frames. Params: {}. Changes the document. */
+  /** Nudge Clip Selection Left Five Frames. Moves the selected clips (with linked partners) five frames earlier, overwriting what they land on. Params: {}. Changes the document. */
   "timeline.nudgeLeft5": Record<string, never>
-  /** Nudge Clip Selection Right Five Frames. Params: {}. Changes the document. */
+  /** Nudge Clip Selection Right Five Frames. Moves the selected clips (with linked partners) five frames later, overwriting what they land on. Params: {}. Changes the document. */
   "timeline.nudgeRight5": Record<string, never>
-  /** Nudge Clip Selection Up. Params: {}. Changes the document. */
+  /** Nudge Clip Selection Up. Moves the selected clips (with linked partners) one track up as displayed (video to V(n+1), audio to A(n-1)), overwriting there. Params: {}. Changes the document. */
   "timeline.nudgeUp": Record<string, never>
-  /** Nudge Clip Selection Down. Params: {}. Changes the document. */
+  /** Nudge Clip Selection Down. Moves the selected clips (with linked partners) one track down as displayed (video to V(n-1), audio to A(n+1)), overwriting there. Params: {}. Changes the document. */
   "timeline.nudgeDown": Record<string, never>
-  /** Slip Clip Selection Left One Frame. Params: {}. Changes the document. */
+  /** Slip Clip Selection Left One Frame. Slips the selected clips' content one frame (shows later source frames) without moving them. Params: {}. Changes the document. */
   "timeline.slipLeft": Record<string, never>
-  /** Slip Clip Selection Right One Frame. Params: {}. Changes the document. */
+  /** Slip Clip Selection Right One Frame. Slips the selected clips' content one frame back (earlier source frames) without moving them. Params: {}. Changes the document. */
   "timeline.slipRight": Record<string, never>
-  /** Slip Clip Selection Left Five Frames. Params: {}. Changes the document. */
+  /** Slip Clip Selection Left Five Frames. Slips the selected clips' content five frames (later source frames) without moving them. Params: {}. Changes the document. */
   "timeline.slipLeft5": Record<string, never>
-  /** Slip Clip Selection Right Five Frames. Params: {}. Changes the document. */
+  /** Slip Clip Selection Right Five Frames. Slips the selected clips' content five frames back (earlier source frames) without moving them. Params: {}. Changes the document. */
   "timeline.slipRight5": Record<string, never>
-  /** Slide Clip Selection Left One Frame. Params: {}. Changes the document. */
+  /** Slide Clip Selection Left One Frame. Slides the selected clips one frame earlier, trimming their neighbours (Slide tool). Params: {}. Changes the document. */
   "timeline.slideLeft": Record<string, never>
-  /** Slide Clip Selection Right One Frame. Params: {}. Changes the document. */
+  /** Slide Clip Selection Right One Frame. Slides the selected clips one frame later, trimming their neighbours. Params: {}. Changes the document. */
   "timeline.slideRight": Record<string, never>
-  /** Slide Clip Selection Left Five Frames. Params: {}. Changes the document. */
+  /** Slide Clip Selection Left Five Frames. Slides the selected clips five frames earlier, trimming their neighbours. Params: {}. Changes the document. */
   "timeline.slideLeft5": Record<string, never>
-  /** Slide Clip Selection Right Five Frames. Params: {}. Changes the document. */
+  /** Slide Clip Selection Right Five Frames. Slides the selected clips five frames later, trimming their neighbours. Params: {}. Changes the document. */
   "timeline.slideRight5": Record<string, never>
-  /** Toggle All Video Targets. Params: {}. Changes the document. */
+  /** Toggle All Video Targets. Targets all video tracks, or untargets them all if they already are. Params: {}. Changes the document. */
   "timeline.toggleAllVideoTargets": Record<string, never>
-  /** Toggle All Audio Targets. Params: {}. Changes the document. */
+  /** Toggle All Audio Targets. Targets all audio tracks, or untargets them all if they already are. Params: {}. Changes the document. */
   "timeline.toggleAllAudioTargets": Record<string, never>
-  /** Toggle All Source Video. Params: {}. Changes the document. */
+  /** Toggle All Source Video. Turns source patching on for all video tracks, or off if it already is. Params: {}. Changes the document. */
   "timeline.toggleAllSourceVideo": Record<string, never>
-  /** Toggle All Source Audio. Params: {}. Changes the document. */
+  /** Toggle All Source Audio. Turns source patching on for all audio tracks, or off if it already is. Params: {}. Changes the document. */
   "timeline.toggleAllSourceAudio": Record<string, never>
-  /** Move All Video Targets Up. Params: {}. Changes the document. */
+  /** Move All Video Targets Up. Moves every video track target up by one track. Params: {}. Changes the document. */
   "timeline.moveVideoTargetsUp": Record<string, never>
-  /** Move All Video Targets Down. Params: {}. Changes the document. */
+  /** Move All Video Targets Down. Moves every video track target down by one track. Params: {}. Changes the document. */
   "timeline.moveVideoTargetsDown": Record<string, never>
-  /** Move All Audio Targets Up. Params: {}. Changes the document. */
+  /** Move All Audio Targets Up. Moves every audio track target up by one track. Params: {}. Changes the document. */
   "timeline.moveAudioTargetsUp": Record<string, never>
-  /** Move All Audio Targets Down. Params: {}. Changes the document. */
+  /** Move All Audio Targets Down. Moves every audio track target down by one track. Params: {}. Changes the document. */
   "timeline.moveAudioTargetsDown": Record<string, never>
-  /** Toggle Mute for All Targeted Audio Tracks. Params: {}. Changes the document. */
+  /** Toggle Mute for All Targeted Audio Tracks. Toggles mute on every targeted audio track. Params: {}. Changes the document. */
   "timeline.toggleMuteTargetedAudio": Record<string, never>
-  /** Toggle Solo for All Targeted Audio Tracks. Params: {}. Changes the document. */
+  /** Toggle Solo for All Targeted Audio Tracks. Toggles solo on every targeted audio track. Params: {}. Changes the document. */
   "timeline.toggleSoloTargetedAudio": Record<string, never>
-  /** Toggle Track Output for All Targeted Video Tracks. Params: {}. Changes the document. */
+  /** Toggle Track Output for All Targeted Video Tracks. Toggles track output (visibility) of every targeted video track. Params: {}. Changes the document. */
   "timeline.toggleOutputTargetedVideo": Record<string, never>
-  /** Increase Clip Volume. Params: {}. Changes the document. */
+  /** Increase Clip Volume. Raises the Volume level of the selected audio clips by 1 dB. Params: {}. Changes the document. */
   "clip.volumeUp": Record<string, never>
-  /** Decrease Clip Volume. Params: {}. Changes the document. */
+  /** Decrease Clip Volume. Lowers the Volume level of the selected audio clips by 1 dB. Params: {}. Changes the document. */
   "clip.volumeDown": Record<string, never>
-  /** Increase Clip Volume Many. Params: {}. Changes the document. */
+  /** Increase Clip Volume Many. Raises the Volume level of the selected audio clips by the Large Volume Adjustment preference. Params: {}. Changes the document. */
   "clip.volumeUpMany": Record<string, never>
-  /** Decrease Clip Volume Many. Params: {}. Changes the document. */
+  /** Decrease Clip Volume Many. Lowers the Volume level of the selected audio clips by the Large Volume Adjustment preference. Params: {}. Changes the document. */
   "clip.volumeDownMany": Record<string, never>
-  /** Nudge Volume +1dB. Params: {}. Changes the document. */
+  /** Nudge Volume +1dB. Raises the Volume level of the selected audio clips by 1 dB (keyframed levels shift as a whole). Params: {}. Changes the document. */
   "clip.nudgeVolumeUp1": Record<string, never>
-  /** Nudge Volume +3dB. Params: {}. Changes the document. */
+  /** Nudge Volume +3dB. Raises the Volume level of the selected audio clips by 3 dB (keyframed levels shift as a whole). Params: {}. Changes the document. */
   "clip.nudgeVolumeUp3": Record<string, never>
-  /** Nudge Volume -1dB. Params: {}. Changes the document. */
+  /** Nudge Volume -1dB. Lowers the Volume level of the selected audio clips by 1 dB (keyframed levels shift as a whole). Params: {}. Changes the document. */
   "clip.nudgeVolumeDown1": Record<string, never>
-  /** Nudge Volume -3dB. Params: {}. Changes the document. */
+  /** Nudge Volume -3dB. Lowers the Volume level of the selected audio clips by 3 dB (keyframed levels shift as a whole). Params: {}. Changes the document. */
   "clip.nudgeVolumeDown3": Record<string, never>
-  /** Toggle Audio During Scrubbing. Params: {}. Changes the document. */
+  /** Toggle Audio During Scrubbing. Turns audio during scrubbing on or off (the audio.scrubAudio preference). Answers {scrubAudio}. Params: {}. Changes the document. */
   "audio.toggleScrubbing": Record<string, never>
-  /** Increase Font Size by One Unit. Params: {}. Changes the document. */
+  /** Increase Font Size by One Unit. Increases the font size of the selected text layers by 1 px. Params: {}. Changes the document. */
   "graphics.fontSizeUp": Record<string, never>
-  /** Decrease Font Size by One Unit. Params: {}. Changes the document. */
+  /** Decrease Font Size by One Unit. Decreases the font size of the selected text layers by 1 px. Params: {}. Changes the document. */
   "graphics.fontSizeDown": Record<string, never>
-  /** Increase Font Size by Five Units. Params: {}. Changes the document. */
+  /** Increase Font Size by Five Units. Increases the font size of the selected text layers by 5 px. Params: {}. Changes the document. */
   "graphics.fontSizeUp5": Record<string, never>
-  /** Decrease Font Size by Five Units. Params: {}. Changes the document. */
+  /** Decrease Font Size by Five Units. Decreases the font size of the selected text layers by 5 px. Params: {}. Changes the document. */
   "graphics.fontSizeDown5": Record<string, never>
-  /** Increase Leading by One Unit. Params: {}. Changes the document. */
+  /** Increase Leading by One Unit. Increases line spacing (leading) of the selected text layers by 1. Params: {}. Changes the document. */
   "graphics.leadingUp": Record<string, never>
-  /** Decrease Leading by One Unit. Params: {}. Changes the document. */
+  /** Decrease Leading by One Unit. Decreases line spacing (leading) of the selected text layers by 1. Params: {}. Changes the document. */
   "graphics.leadingDown": Record<string, never>
-  /** Increase Leading by Five Units. Params: {}. Changes the document. */
+  /** Increase Leading by Five Units. Increases line spacing (leading) of the selected text layers by 5. Params: {}. Changes the document. */
   "graphics.leadingUp5": Record<string, never>
-  /** Decrease Leading by Five Units. Params: {}. Changes the document. */
+  /** Decrease Leading by Five Units. Decreases line spacing (leading) of the selected text layers by 5. Params: {}. Changes the document. */
   "graphics.leadingDown5": Record<string, never>
-  /** Left align text. Params: {}. Changes the document. */
+  /** Left align text. Left-aligns the text of the selected graphic text layers. Params: {}. Changes the document. */
   "graphics.alignTextLeft": Record<string, never>
-  /** Center align text. Params: {}. Changes the document. */
+  /** Center align text. Center-aligns the text of the selected graphic text layers. Params: {}. Changes the document. */
   "graphics.alignTextCenter": Record<string, never>
-  /** Right align text. Params: {}. Changes the document. */
+  /** Right align text. Right-aligns the text of the selected graphic text layers. Params: {}. Changes the document. */
   "graphics.alignTextRight": Record<string, never>
-  /** Nudge Selected Object to left by one. Params: {}. Changes the document. */
+  /** Nudge Selected Object to left by one. Moves the selected graphic layers (or the selected video clips' Motion position) left 1 px. Params: {}. Changes the document. */
   "graphics.nudgeLeft": Record<string, never>
-  /** Nudge Selected Object to right by one. Params: {}. Changes the document. */
+  /** Nudge Selected Object to right by one. Moves the selected graphic layers (or the selected video clips' Motion position) right 1 px. Params: {}. Changes the document. */
   "graphics.nudgeRight": Record<string, never>
-  /** Nudge Selected Object up by one. Params: {}. Changes the document. */
+  /** Nudge Selected Object up by one. Moves the selected graphic layers (or the selected video clips' Motion position) up 1 px. Params: {}. Changes the document. */
   "graphics.nudgeUp": Record<string, never>
-  /** Nudge Selected Object down by one. Params: {}. Changes the document. */
+  /** Nudge Selected Object down by one. Moves the selected graphic layers (or the selected video clips' Motion position) down 1 px. Params: {}. Changes the document. */
   "graphics.nudgeDown": Record<string, never>
-  /** Nudge Selected Object to left by five. Params: {}. Changes the document. */
+  /** Nudge Selected Object to left by five. Moves the selected graphic layers (or the selected video clips' Motion position) left 5 px. Params: {}. Changes the document. */
   "graphics.nudgeLeft5": Record<string, never>
-  /** Nudge Selected Object to right by five. Params: {}. Changes the document. */
+  /** Nudge Selected Object to right by five. Moves the selected graphic layers (or the selected video clips' Motion position) right 5 px. Params: {}. Changes the document. */
   "graphics.nudgeRight5": Record<string, never>
-  /** Nudge Selected Object up by five. Params: {}. Changes the document. */
+  /** Nudge Selected Object up by five. Moves the selected graphic layers (or the selected video clips' Motion position) up 5 px. Params: {}. Changes the document. */
   "graphics.nudgeUp5": Record<string, never>
-  /** Nudge Selected Object down by five. Params: {}. Changes the document. */
+  /** Nudge Selected Object down by five. Moves the selected graphic layers (or the selected video clips' Motion position) down 5 px. Params: {}. Changes the document. */
   "graphics.nudgeDown5": Record<string, never>
-  /** Export Frame. Params: {"path":str?,"format":"png|jpeg|tiff|bmp"?,"depth":8|16?,"import":bool?,"target":"source|program"?,"item":id?,"sequence":id?,"time":ticks?}. Changes the document. */
-  "file.exportFrame": { depth?: 8 | 16; format?: "png" | "jpeg" | "tiff" | "bmp"; import?: boolean; /** an id */ item?: number; path?: string; /** an id */ sequence?: number; target?: "source" | "program"; /** ticks (254016000000 per second) */ time?: number }
-  /** Set Poster Frame. Params: {"item":id?,"time":ticks?}. Changes the document. */
+  /** Export Frame. Writes one frame to an image file at `path` (`format` png|jpeg|tiff|bmp, `depth` 8 or 16) from the program (or Source monitor with target "source") at `time`; `import` adds it to the project. Params: {"path":str?,"format":"png|jpeg|tiff|bmp"?,"depth":8|16?,"import":bool?,"target":"source|program"?,"item":id?,"sequence":id?,"time":ticks?}. Changes the document. */
+  "file.exportFrame": { depth?: 8 | 16; format?: "png" | "jpeg" | "tiff" | "bmp"; import?: boolean; /** an id */ item?: number; path?: Json; /** an id */ sequence?: number; target?: "source" | "program"; /** ticks (254016000000 per second) */ time?: number }
+  /** Set Poster Frame. Sets a project `item`'s poster (thumbnail) frame to `time` or its Source playhead. Params: {"item":id?,"time":ticks?}. Changes the document. */
   "clip.setPosterFrame": { /** an id */ item?: number; /** ticks (254016000000 per second) */ time?: number }
-  /** Clear Poster Frame. Params: {"item":id?}. Changes the document. */
+  /** Clear Poster Frame. Clears the poster frame of a project `item` (default selected), so its thumbnail returns to the first frame. Params: {"item":id?}. Changes the document. */
   "clip.clearPosterFrame": { /** an id */ item?: number }
-  /** Toggle Target Video 1. Params: {}. Changes the document. */
+  /** Toggle Target Video 1. Toggles track targeting of video track V1. Params: {}. Changes the document. */
   "timeline.toggleTargetV1": Record<string, never>
-  /** Toggle Target Video 2. Params: {}. Changes the document. */
+  /** Toggle Target Video 2. Toggles track targeting of video track V2. Params: {}. Changes the document. */
   "timeline.toggleTargetV2": Record<string, never>
-  /** Toggle Target Video 3. Params: {}. Changes the document. */
+  /** Toggle Target Video 3. Toggles track targeting of video track V3. Params: {}. Changes the document. */
   "timeline.toggleTargetV3": Record<string, never>
-  /** Toggle Target Video 4. Params: {}. Changes the document. */
+  /** Toggle Target Video 4. Toggles track targeting of video track V4. Params: {}. Changes the document. */
   "timeline.toggleTargetV4": Record<string, never>
-  /** Toggle Target Video 5. Params: {}. Changes the document. */
+  /** Toggle Target Video 5. Toggles track targeting of video track V5. Params: {}. Changes the document. */
   "timeline.toggleTargetV5": Record<string, never>
-  /** Toggle Target Video 6. Params: {}. Changes the document. */
+  /** Toggle Target Video 6. Toggles track targeting of video track V6. Params: {}. Changes the document. */
   "timeline.toggleTargetV6": Record<string, never>
-  /** Toggle Target Video 7. Params: {}. Changes the document. */
+  /** Toggle Target Video 7. Toggles track targeting of video track V7. Params: {}. Changes the document. */
   "timeline.toggleTargetV7": Record<string, never>
-  /** Toggle Target Video 8. Params: {}. Changes the document. */
+  /** Toggle Target Video 8. Toggles track targeting of video track V8. Params: {}. Changes the document. */
   "timeline.toggleTargetV8": Record<string, never>
-  /** Toggle Target Audio 1. Params: {}. Changes the document. */
+  /** Toggle Target Audio 1. Toggles track targeting of audio track A1. Params: {}. Changes the document. */
   "timeline.toggleTargetA1": Record<string, never>
-  /** Toggle Target Audio 2. Params: {}. Changes the document. */
+  /** Toggle Target Audio 2. Toggles track targeting of audio track A2. Params: {}. Changes the document. */
   "timeline.toggleTargetA2": Record<string, never>
-  /** Toggle Target Audio 3. Params: {}. Changes the document. */
+  /** Toggle Target Audio 3. Toggles track targeting of audio track A3. Params: {}. Changes the document. */
   "timeline.toggleTargetA3": Record<string, never>
-  /** Toggle Target Audio 4. Params: {}. Changes the document. */
+  /** Toggle Target Audio 4. Toggles track targeting of audio track A4. Params: {}. Changes the document. */
   "timeline.toggleTargetA4": Record<string, never>
-  /** Toggle Target Audio 5. Params: {}. Changes the document. */
+  /** Toggle Target Audio 5. Toggles track targeting of audio track A5. Params: {}. Changes the document. */
   "timeline.toggleTargetA5": Record<string, never>
-  /** Toggle Target Audio 6. Params: {}. Changes the document. */
+  /** Toggle Target Audio 6. Toggles track targeting of audio track A6. Params: {}. Changes the document. */
   "timeline.toggleTargetA6": Record<string, never>
-  /** Toggle Target Audio 7. Params: {}. Changes the document. */
+  /** Toggle Target Audio 7. Toggles track targeting of audio track A7. Params: {}. Changes the document. */
   "timeline.toggleTargetA7": Record<string, never>
-  /** Toggle Target Audio 8. Params: {}. Changes the document. */
+  /** Toggle Target Audio 8. Toggles track targeting of audio track A8. Params: {}. Changes the document. */
   "timeline.toggleTargetA8": Record<string, never>
-  /** Project Panel View. Params: {} */
+  /** Project Panel View. Reads the Project panel view: list/icon/freeform, icon and font size, preview area, thumbnails, the shown columns and every available column. Params: {}. */
   "project.view.get": Record<string, never>
-  /** Set Project Panel View. Params: {"view":"list|icon|freeform"?,"iconSize":f32?,"fontSize":"small|medium|large|extraLarge"?,"previewArea":bool?,"thumbnails":bool?,"thumbnailsShowEffects":bool?,"hoverScrub":bool?,"thumbnailControlsAllDevices":bool?,"iconSort":column|{"column":str,"descending":bool}?}. Changes the document. */
+  /** Set Project Panel View. Sets the Project panel view: `view` list|icon|freeform, icon size, font size, preview area, thumbnails and hover scrub. Params: {"view":"list|icon|freeform"?,"iconSize":f32?,"fontSize":"small|medium|large|extraLarge"?,"previewArea":bool?,"thumbnails":bool?,"thumbnailsShowEffects":bool?,"hoverScrub":bool?,"thumbnailControlsAllDevices":bool?,"iconSort":column|{"column":str,"descending":bool}?}. Changes the document. */
   "project.view.set": { fontSize?: "small" | "medium" | "large" | "extraLarge"; hoverScrub?: boolean; iconSize?: number; /** column|{"column":str,"descending":bool}? */ iconSort?: Json; previewArea?: boolean; thumbnailControlsAllDevices?: boolean; thumbnails?: boolean; thumbnailsShowEffects?: boolean; view?: "list" | "icon" | "freeform" }
-  /** List Project Columns. Params: {} */
+  /** List Project Columns. Lists every Project panel column (built-ins plus metadata fields found on items) and whether each is shown, in display order with widths. Params: {}. */
   "project.columns.list": Record<string, never>
-  /** Metadata Display. Params: {"columns":[name|{"name":str,"width":f32}]}. Changes the document. */
+  /** Metadata Display. Sets which Project panel columns show and in what order: `columns` is a list of names or {name, width}. Params: {"columns":[name|{"name":str,"width":f32}]}. Changes the document. */
   "project.columns.set": { /** [name|{"name":str,"width":f32}] */ columns?: Array<Json> }
-  /** Resize Column. Params: {"column":str,"width":f32}. Changes the document. */
+  /** Resize Column. Sets the width of one Project panel `column` to `width` pixels. View setting only. Params: {"column":str,"width":f32}. Changes the document. */
   "project.columns.resize": { column?: string; width?: number }
-  /** Sort Project Items. Params: {"column":str,"descending":bool?}. Changes the document. */
+  /** Sort Project Items. Sorts the Project panel List view by `column` (`descending` reverses). View setting only. Params: {"column":str,"descending":bool?}. Changes the document. */
   "project.sort": { column?: string; descending?: boolean }
-  /** List Project Panel Rows. Params: {"bin":binId?,"recursive":bool?,"order":"icon"?} */
-  "project.items": { /** binId? */ bin?: Json; /** like icon */ order?: string; recursive?: boolean }
-  /** List View Presets. Params: {} */
+  /** List Project Panel Rows. Lists the rows the Project panel shows for `bin` (default root; `recursive` for sub-bins), sorted, with each shown column's text. Params: {"bin":binId?,"recursive":bool?,"order":"icon"?}. */
+  "project.items": { /** binId? */ bin?: number; /** like icon */ order?: string; recursive?: boolean }
+  /** List View Presets. Lists the saved Project panel view presets (slots 1?10) and the current one. Params: {}. */
   "project.viewPreset.list": Record<string, never>
-  /** Save Current View Preset. Params: {"slot":1..10?,"name":str?}. Changes the document. */
+  /** Save Current View Preset. Saves the current Project panel view over the current preset (or `slot`) with `name`. Params: {"slot":1..10?,"name":str?}. Changes the document. */
   "project.viewPreset.save": { name?: string; /** 1 to 10 */ slot?: number }
-  /** Save As New View Preset. Params: {"name":str?,"slot":1..10?}. Changes the document. */
+  /** Save As New View Preset. Saves the current Project panel view as a new preset in `slot` (default the first free) named `name`. Params: {"name":str?,"slot":1..10?}. Changes the document. */
   "project.viewPreset.saveAs": { name?: string; /** 1 to 10 */ slot?: number }
-  /** Restore View Preset. Params: {"slot":1..10}. Changes the document. */
+  /** Restore View Preset. Applies the Project panel view preset in `slot` (1?10). Params: {"slot":1..10}. Changes the document. */
   "project.viewPreset.restore": { /** 1 to 10 */ slot?: number }
-  /** Rename View Preset. Params: {"slot":1..10,"name":str}. Changes the document. */
+  /** Rename View Preset. Renames the Project panel view preset in `slot` to `name`. Params: {"slot":1..10,"name":str}. Changes the document. */
   "project.viewPreset.rename": { name?: string; /** 1 to 10 */ slot?: number }
-  /** Delete View Preset. Params: {"slot":1..10}. Changes the document. */
+  /** Delete View Preset. Deletes the Project panel view preset in `slot` (1?10). Params: {"slot":1..10}. Changes the document. */
   "project.viewPreset.delete": { /** 1 to 10 */ slot?: number }
-  /** Freeform Layout. Params: {"bin":binId?,"width":f32?} */
-  "project.freeform.layout": { /** binId? */ bin?: Json; width?: number }
-  /** Move Clip Cards. Params: {"items":[id]?,"x":f32,"y":f32,"snap":bool?,"width":f32?} | {"positions":{"<id>":[x,y]},"width":f32?}. Changes the document. */
+  /** Freeform Layout. Reads the Freeform card positions and sizes of `bin`'s items (auto-placed ones included) for a panel `width`. Params: {"bin":binId?,"width":f32?}. */
+  "project.freeform.layout": { /** binId? */ bin?: number; width?: number }
+  /** Move Clip Cards. Moves Freeform clip cards: the listed or selected `items` to (`x`, `y`), or per-item positions; `snap` aligns to the grid. Undoable. Params: {"items":[id]?,"x":f32,"y":f32,"snap":bool?,"width":f32?} | {"positions":{"<id>":[x,y]},"width":f32?}. Changes the document. */
   "project.freeform.move": { items?: Array<number>; snap?: boolean; width?: number; x?: number; y?: number }
-  /** Clip Size. Params: {"items":[id]?,"size":f32?,"step":1|-1?,"width":f32?}. Changes the document. */
+  /** Clip Size. Sets the card size of the listed or selected `items` in Freeform view. Params: {"items":[id]?,"size":f32?,"step":1|-1?,"width":f32?}. Changes the document. */
   "project.freeform.resize": { items?: Array<number>; size?: number; step?: 1 | -1; width?: number }
-  /** Align to Grid. Params: {"bin":binId?,"grid":f32?,"width":f32?}. Changes the document. */
-  "project.freeform.alignToGrid": { /** binId? */ bin?: Json; grid?: number; width?: number }
-  /** Reset to Grid. Params: {"bin":binId?,"width":f32?}. Changes the document. */
-  "project.freeform.reset": { /** binId? */ bin?: Json; width?: number }
-  /** Stack Clips. Params: {"items":[id]?,"width":f32?}. Changes the document. */
+  /** Align to Grid. Snaps the clip cards of `bin` (default root) in Freeform view to a `grid` of the given spacing; undoable. Params: {"bin":binId?,"grid":f32?,"width":f32?}. Changes the document. */
+  "project.freeform.alignToGrid": { /** binId? */ bin?: number; grid?: number; width?: number }
+  /** Reset to Grid. Resets `bin`'s Freeform cards to the default grid layout, dropping manual positions. Params: {"bin":binId?,"width":f32?}. Changes the document. */
+  "project.freeform.reset": { /** binId? */ bin?: number; width?: number }
+  /** Stack Clips. Groups the listed or selected `items` into one stack in Freeform view. Params: {"items":[id]?,"width":f32?}. Changes the document. */
   "project.freeform.stack": { items?: Array<number>; width?: number }
-  /** Unstack Clips. Params: {"items":[id]?,"width":f32?}. Changes the document. */
+  /** Unstack Clips. Splits the stack holding the listed or selected `items` back into separate cards. Params: {"items":[id]?,"width":f32?}. Changes the document. */
   "project.freeform.unstack": { items?: Array<number>; width?: number }
-  /** Save Arrangement. Params: {"name":str,"bin":binId?,"width":f32?}. Changes the document. */
-  "project.freeform.saveArrangement": { /** binId? */ bin?: Json; name?: string; width?: number }
-  /** Restore Arrangement. Params: {"name":str,"bin":binId?,"width":f32?}. Changes the document. */
-  "project.freeform.restoreArrangement": { /** binId? */ bin?: Json; name?: string; width?: number }
-  /** Delete Arrangement. Params: {"name":str,"bin":binId?}. Changes the document. */
-  "project.freeform.deleteArrangement": { /** binId? */ bin?: Json; name?: string }
-  /** List Arrangements. Params: {"bin":binId?} */
-  "project.freeform.arrangements": { /** binId? */ bin?: Json }
-  /** Freeform View Options. Params: {"grid":f32?,"snap":bool?,"showNames":bool?,"showDurations":bool?,"cardSize":f32?}. Changes the document. */
+  /** Save Arrangement. Saves the current Freeform card positions of `bin` as arrangement `name`. Params: {"name":str,"bin":binId?,"width":f32?}. Changes the document. */
+  "project.freeform.saveArrangement": { /** binId? */ bin?: number; name?: string; width?: number }
+  /** Restore Arrangement. Restores the saved Freeform arrangement `name` of `bin`, moving the cards back. Params: {"name":str,"bin":binId?,"width":f32?}. Changes the document. */
+  "project.freeform.restoreArrangement": { /** binId? */ bin?: number; name?: string; width?: number }
+  /** Delete Arrangement. Deletes the saved Freeform arrangement `name` of `bin`. Params: {"name":str,"bin":binId?}. Changes the document. */
+  "project.freeform.deleteArrangement": { /** binId? */ bin?: number; name?: string }
+  /** List Arrangements. Lists the saved Freeform arrangements of `bin` (default root). Params: {"bin":binId?}. */
+  "project.freeform.arrangements": { /** binId? */ bin?: number }
+  /** Freeform View Options. Sets Freeform view options: grid spacing, snapping, showing names and durations, card size. Params: {"grid":f32?,"snap":bool?,"showNames":bool?,"showDurations":bool?,"cardSize":f32?}. Changes the document. */
   "project.freeform.options": { cardSize?: number; grid?: number; showDurations?: boolean; showNames?: boolean; snap?: boolean }
-  /** Rename Bin. Params: {"bin":binId,"name":str}. Changes the document. */
-  "project.renameBin": { /** binId */ bin?: Json; name?: string }
-  /** Select All Project Items. Params: {}. Changes the document. */
+  /** Rename Bin. Renames bin `bin` to `name`. Params: {"bin":binId,"name":str}. Changes the document. */
+  "project.renameBin": { /** binId */ bin?: number; name?: string }
+  /** Select All Project Items. Selects every item in the project. Answers {selected}. Params: {}. Changes the document. */
   "project.selectAll": Record<string, never>
-  /** Deselect All Project Items. Params: {}. Changes the document. */
+  /** Deselect All Project Items. Clears the Project panel selection. Params: {}. Changes the document. */
   "project.deselectAll": Record<string, never>
-  /** Media Browser Locations. Params: {} */
+  /** Media Browser Locations. Lists the Media Browser's locations: volumes, favorites and recent folders. Params: {}. */
   "mediaBrowser.roots": Record<string, never>
-  /** List Directory. Params: {"path":str?,"fileTypes":str?} */
-  "mediaBrowser.list": { fileTypes?: string; path?: string }
-  /** Go to Directory. Params: {"path":str} | {"back":true} | {"forward":true} | {"up":true}. Changes the document. */
-  "mediaBrowser.navigate": { path?: string }
-  /** Select Files. Params: {"paths":[str]}. Changes the document. */
-  "mediaBrowser.select": { paths?: Array<string> }
-  /** Add to Favorites. Params: {"path":str?,"remove":bool?}. Changes the document. */
-  "mediaBrowser.favorite": { path?: string; remove?: boolean }
-  /** Clear Recent Directories. Params: {}. Changes the document. */
+  /** List Directory. Lists the entries of a folder (default the current one) filtered by the Media Browser file types. Params: {"path":str?,"fileTypes":str?}. */
+  "mediaBrowser.list": { fileTypes?: string; path?: Json }
+  /** Go to Directory. Goes to a folder in the Media Browser, or `back`, `forward` or `up`. Params: {"path":str} | {"back":true} | {"forward":true} | {"up":true}. Changes the document. */
+  "mediaBrowser.navigate": { path?: Json }
+  /** Select Files. Sets the Media Browser's selected files, which mediaBrowser.import and Import from Media Browser use. Params: {"paths":[str]}. Changes the document. */
+  "mediaBrowser.select": { paths?: Array<Json> }
+  /** Add to Favorites. Adds a folder to, or removes it from, the Media Browser favorites. Params: {"path":str?,"remove":bool?}. Changes the document. */
+  "mediaBrowser.favorite": { path?: Json; remove?: boolean }
+  /** Clear Recent Directories. Clears the Media Browser's recent folders. Params: {}. Changes the document. */
   "mediaBrowser.clearRecent": Record<string, never>
-  /** Media Browser Settings. Params: {"fileTypes":"all|video|audio|image|project|caption|<ext>"?,"view":"list|thumbnails"?,"columns":[str]?,"importAsImageSequence":bool?,"hoverScrub":bool?,"thumbnailSize":f32?}. Changes the document. */
+  /** Media Browser Settings. Sets Media Browser options: shown `fileTypes`, list or thumbnail `view`, columns, import numbered stills as image sequences, hover scrub, thumbnail size. Params: {"fileTypes":"all|video|audio|image|project|caption|<ext>"?,"view":"list|thumbnails"?,"columns":[str]?,"importAsImageSequence":bool?,"hoverScrub":bool?,"thumbnailSize":f32?}. Changes the document. */
   "mediaBrowser.settings": { columns?: Array<string>; fileTypes?: "all" | "video" | "audio" | "image" | "project" | "caption" | "<ext>"; hoverScrub?: boolean; importAsImageSequence?: boolean; thumbnailSize?: number; view?: "list" | "thumbnails" }
-  /** Import. Params: {"paths":[str]?,"bin":binId?,"imageSequence":bool?}. Changes the document. */
-  "mediaBrowser.import": { /** binId? */ bin?: Json; imageSequence?: boolean; paths?: Array<string> }
-  /** Open In Source Monitor. Params: {"path":str?}. Changes the document. */
-  "mediaBrowser.openInSource": { path?: string }
-  /** Media File Properties. Params: {"path":str} */
-  "mediaBrowser.probe": { path?: string }
-  /** Set Time Interpolation. Params: {"clips":[id]?,"mode":"frameSampling|frameBlending|opticalFlow"}. Changes the document. */
+  /** Import. Imports the Media Browser's selected files (or `paths`) into the project, applying the project's ingest settings. Params: {"paths":[str]?,"bin":binId?,"imageSequence":bool?}. Changes the document. */
+  "mediaBrowser.import": { /** binId? */ bin?: number; imageSequence?: boolean; paths?: Array<Json> }
+  /** Open In Source Monitor. Opens the Media Browser's selected file (or `path`) in the Source monitor without importing it. Params: {"path":str?}. Changes the document. */
+  "mediaBrowser.openInSource": { path?: Json }
+  /** Media File Properties. Reads a file's media properties (frame rate, duration, video and audio streams) at `path`, cached. Params: {"path":str}. */
+  "mediaBrowser.probe": { path?: Json }
+  /** Set Time Interpolation. Sets how the selected or listed `clips` render changed speed: `mode` frameSampling, frameBlending or opticalFlow. Params: {"clips":[id]?,"mode":"frameSampling|frameBlending|opticalFlow"}. Changes the document. */
   "clip.setTimeInterpolation": { clips?: Array<number>; mode?: "frameSampling" | "frameBlending" | "opticalFlow" }
-  /** Search Bin Contents. Params: {"bin":id} */
+  /** Search Bin Contents. Lists the items search bin `bin` currently matches. Params: {"bin":id}. */
   "project.searchBinItems": { /** an id */ bin?: number }
-  /** List Search Bins. Params: {} */
+  /** List Search Bins. Lists the project's search bins with their queries and live contents. Params: {}. */
   "project.searchBins": Record<string, never>
-  /** Edit Search Bin. Params: {"bin":id,"name":str?,"column":str?,"operator":str?,"text":str?,"rows":[..]?,"matchAll":bool?,"caseSensitive":bool?}. Changes the document. */
+  /** Edit Search Bin. Changes search bin `bin`: its name and the query (`column`, `operator`, `text`, or `rows` with `matchAll`, `caseSensitive`). Params: {"bin":id,"name":str?,"column":str?,"operator":str?,"text":str?,"rows":[..]?,"matchAll":bool?,"caseSensitive":bool?}. Changes the document. */
   "project.editSearchBin": { /** an id */ bin?: number; caseSensitive?: boolean; column?: string; matchAll?: boolean; name?: string; operator?: string; /** [..]? */ rows?: Array<Json>; text?: string }
-  /** Delete Search Bin. Params: {"bin":id}. Changes the document. */
+  /** Delete Search Bin. Deletes search bin `bin`; the items it matched stay in the project. Params: {"bin":id}. Changes the document. */
   "project.deleteSearchBin": { /** an id */ bin?: number }
-  /** List Project Templates. Params: {} */
+  /** List Project Templates. Lists the saved project templates. Params: {}. */
   "file.templates": Record<string, never>
-  /** New Project from Template. Params: {"template":name|path,"name":str?}. Changes the document. */
+  /** New Project from Template. Creates a new project from `template` (a saved template name or path) named `name`. Params: {"template":name|path,"name":str?}. Changes the document. */
   "file.newProjectFromTemplate": { name?: string; template?: string }
-  /** System Compatibility Report. Params: {} */
+  /** System Compatibility Report. Reads what this build supports: OS, CPU, decoders, containers and export formats. Params: {}. */
   "help.systemReport": Record<string, never>
 }
 
