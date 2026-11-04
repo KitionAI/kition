@@ -11,6 +11,7 @@ import { registerKit } from '@/lib/sdk'
 const files = new Map<string, string>()
 const mounted: { listener: ((document: MountedKitDocument) => (() => void) | void) | null; active: MountedKitDocument | null } = { listener: null, active: null }
 const notices: Array<{ level: string; title: string; description?: string }> = []
+const activeListeners = new Set<() => void>()
 
 vi.mock('@/features/kits/public', () => ({
   KITION_KIT_HOST: {
@@ -28,6 +29,10 @@ vi.mock('@/features/kits/public', () => ({
     }
   },
   activeKitDocument: () => mounted.active,
+  subscribeActiveKitDocument: (listener: () => void) => {
+    activeListeners.add(listener)
+    return () => { activeListeners.delete(listener) }
+  },
 }))
 vi.mock('@/lib/notify', () => {
   const record = (level: string) => (title: string, options?: { description?: string }) => notices.push({ level, title, ...(options?.description ? { description: options.description } : {}) })
@@ -120,6 +125,7 @@ beforeEach(async () => {
   files.clear()
   notices.length = 0
   mounted.active = null
+  activeListeners.clear()
 })
 afterEach(() => {
   service?.dispose()
@@ -133,6 +139,27 @@ function start() {
 }
 
 describe('ExtensionService', () => {
+  it('refreshes document consumers when an already mounted editor becomes active', async () => {
+    const { service } = start()
+    await service.ready
+    const document = fakeKitDocument('Screen.test')
+    const withdraw = mounted.listener!(document) as () => void
+    const heard: Array<string | null> = []
+    const unsubscribe = service.subscribeDocuments(() => heard.push(service.activeDocument()?.path ?? null))
+
+    mounted.active = document
+    for (const listener of activeListeners) listener()
+    expect(heard).toEqual(['Screen.test'])
+    mounted.active = null
+    for (const listener of activeListeners) listener()
+    expect(heard).toEqual(['Screen.test', null])
+
+    unsubscribe()
+    withdraw()
+    service.dispose()
+    expect(activeListeners.size).toBe(0)
+  })
+
   it('installs an extension from the workspace and runs its command on the kit document shown now', async () => {
     files.set('ext/titles/extension.json', JSON.stringify(manifest(['model.read', 'model.write'])))
     files.set('ext/titles/extension.mjs', SOURCE)

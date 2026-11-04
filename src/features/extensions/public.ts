@@ -81,25 +81,40 @@ export function useExtensionPaletteItems(labels: { runScript: string; runScriptH
   const [items, setItems] = useState<ExtensionPaletteItem[]>([])
   useEffect(() => {
     let live = true
+    let unsubscribe = () => {}
     void loadExtensionService().then(async (service) => {
       await service.ready
-      if (!live || !service.activeDocument()) return
-      const commands = service.paletteCommands().map((command) => ({
-        key: `extension:${command.extension}:${command.id}`,
-        title: command.title,
-        hint: command.description ?? command.extensionName,
-        run: () => void service.runCommand(command),
-      }))
-      const panels = service.palettePanels().map((panel) => ({
-        key: `panel:${panel.extension}:${panel.id}`,
-        title: i18next.t('extensions.panel.show', { ns: 'common', title: panel.title }) as string,
-        hint: panel.extensionName,
-        run: () => openExtensionPanel(panel.documentPath, { extension: panel.extension, panel: panel.id }),
-      }))
-      setItems([...commands, ...panels, { key: 'run-script', title: labels.runScript, hint: labels.runScriptHint, run: openRunScriptDialog }])
+      if (!live) return
+      const read = () => {
+        if (!service.activeDocument()) {
+          setItems([])
+          return
+        }
+        const commands = service.paletteCommands().map((command) => ({
+          key: `extension:${command.extension}:${command.id}`,
+          title: command.title,
+          hint: command.description ?? command.extensionName,
+          run: () => void service.runCommand(command),
+        }))
+        const panels = service.palettePanels().map((panel) => ({
+          key: `panel:${panel.extension}:${panel.id}`,
+          title: i18next.t('extensions.panel.show', { ns: 'common', title: panel.title }) as string,
+          hint: panel.extensionName,
+          run: () => openExtensionPanel(panel.documentPath, { extension: panel.extension, panel: panel.id }),
+        }))
+        setItems([...commands, ...panels, { key: 'run-script', title: labels.runScript, hint: labels.runScriptHint, run: openRunScriptDialog }])
+      }
+      const stopDocuments = service.subscribeDocuments(read)
+      const stopChanges = service.subscribe(read)
+      unsubscribe = () => {
+        stopDocuments()
+        stopChanges()
+      }
+      read()
     })
     return () => {
       live = false
+      unsubscribe()
     }
   }, [labels.runScript, labels.runScriptHint])
   return items

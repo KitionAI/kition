@@ -14,7 +14,7 @@ export { HeadlessDraftBadge, HeadlessDraftReviewHost } from './kition/HeadlessDr
 export { KITION_KIT_HOST } from './kition/kitionHost'
 export { kitionTheme } from './kition/kitionTheme'
 export { openFilesWithUnsavedEdits, openWithUnsavedEdits, saveOpenEditor } from './kition/kitBridge'
-export { activeKitDocument, followKitConnections, mountedKitDocument, type MountedKitDocument } from './kition/kitConnections'
+export { activeKitDocument, followKitConnections, mountedKitDocument, subscribeActiveKitDocument, type MountedKitDocument } from './kition/kitConnections'
 export { writeKitFileFromReplica } from './kition/kitFileFromReplica'
 export { KitRpcError } from './host/mountKit'
 export type { KitConnection, KitLinkRef, KitOpenParams, KitOpenResult } from './host/mountKit'

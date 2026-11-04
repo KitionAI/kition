@@ -12,6 +12,7 @@ const mounted = new Map<string, MountedKitDocument>()
 /** The paths of kit editors in the order they were last shown, the latest last. */
 const shown: string[] = []
 const listeners = new Set<Listener>()
+const activeListeners = new Set<() => void>()
 /** Each listener's cleanup for each mounted document, run when that editor closes. */
 const cleanups = new Map<MountedKitDocument, Map<Listener, () => void>>()
 
@@ -28,12 +29,16 @@ function attach(document: MountedKitDocument, listener: Listener) {
  * withdrawal, which runs every follower's cleanup for it.
  */
 export function registerKitConnection(document: MountedKitDocument) {
+  const previous = activeKitDocument()
   mounted.set(document.path, document)
   for (const listener of listeners) attach(document, listener)
+  notifyActiveDocument(previous)
   return () => {
+    const previous = activeKitDocument()
     if (mounted.get(document.path) === document) mounted.delete(document.path)
     for (const cleanup of cleanups.get(document)?.values() ?? []) cleanup()
     cleanups.delete(document)
+    notifyActiveDocument(previous)
   }
 }
 
@@ -60,9 +65,22 @@ export function mountedKitDocument(path: string) {
 
 /** Records that the kit editor of `path` is the one shown now (its tab became active). */
 export function markKitDocumentShown(path: string) {
+  const previous = activeKitDocument()
   const index = shown.indexOf(path)
   if (index >= 0) shown.splice(index, 1)
   shown.push(path)
+  notifyActiveDocument(previous)
+}
+
+/** Hears activation, replacement and withdrawal of the document commands act on. */
+export function subscribeActiveKitDocument(listener: () => void) {
+  activeListeners.add(listener)
+  return () => { activeListeners.delete(listener) }
+}
+
+function notifyActiveDocument(previous: MountedKitDocument | null) {
+  if (activeKitDocument() === previous) return
+  for (const listener of [...activeListeners]) listener()
 }
 
 /** The kit editor shown last that is still open, if any: what commands for "this document" act on. */

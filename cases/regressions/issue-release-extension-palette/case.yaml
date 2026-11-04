@@ -1,0 +1,21 @@
+format: 1
+id: regressions/issue-release-extension-palette
+feature: kition.extensions.kit-scripts
+intent: >-
+  An open command palette must show script and extension commands when the kit
+  finishes opening, refresh installed commands, and remove entries when it closes.
+layer: golden
+source:
+  kind: probe
+  from: e2e/extensions.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/extensions/public.spec.tsx]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"
+timeout_s: 60

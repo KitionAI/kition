@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-active-kit-palette
+feature: kition.extensions.kit-scripts
+intent: Activating an already connected kit refreshes its extension commands and Run script entry, including activation after the command palette has opened.
+layer: golden
+source:
+  kind: probe
+  from: src/features/extensions/extensionService.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/extensions/extensionService.spec.ts, src/features/extensions/public.spec.tsx, src/features/kits/kition/kitConnections.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: []
+timeout_s: 60
+since: "2026-10-31"

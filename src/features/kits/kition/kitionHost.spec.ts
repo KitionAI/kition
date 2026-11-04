@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createHmac } from 'node:crypto'
 
 import { renameDocument } from '@/lib/docstore/documentIndex'
 import { readDocumentIndex } from '@/services/desktop'
@@ -38,6 +39,26 @@ describe("the URLs a kit is given in the desktop app (kit frame isolation, phase
   afterEach(() => {
     setRuntimeTokenForTests('')
     delete (window as { kitionDesktop?: unknown }).kitionDesktop
+  })
+
+  it.each(['Untitled table 2.ktable', 'Untitled board 3.kboard'])('authenticates reads and stamps of %s with a valid file signature', async (path) => {
+    window.kitionDesktop = { shell: 'tauri', backendOrigin: 'http://127.0.0.1:18101' } as typeof window.kitionDesktop
+    const token = 'k'.repeat(64)
+    setRuntimeTokenForTests(token)
+    const methods: string[] = []
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      methods.push(init?.method ?? 'GET')
+      const parsed = new URL(url)
+      const match = /^\/_signed\/(\d+)\.(\d+)\.([0-9a-f]+)(\/.*)$/.exec(parsed.pathname)
+      if (!match) return new Response(null, { status: 401 })
+      const [, expires, length, signature, target] = match
+      const expected = createHmac('sha256', token).update(`${expires}\n${target.slice(0, Number(length))}`).digest('hex')
+      const valid = signature === expected && Number(expires) > Date.now() / 1000 && target === `/workspace-files/${encodeURIComponent(path)}`
+      return new Response(null, { status: valid ? 200 : 401, headers: { etag: '"created"' } })
+    })
+    await expect(KITION_KIT_HOST.read(path)).resolves.toMatchObject({ stamp: '"created"' })
+    await expect(KITION_KIT_HOST.stamp(path)).resolves.toBe('"created"')
+    expect(methods).toEqual(['GET', 'HEAD'])
   })
 
   it('lends a root signed for the kit file service only, never the API token', () => {

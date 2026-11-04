@@ -5,7 +5,7 @@
  * the document, and only their declared origins the network.
  */
 import i18next from 'i18next'
-import { activeKitDocument, followKitConnections, KITION_KIT_HOST, type MountedKitDocument } from '@/features/kits/public'
+import { activeKitDocument, followKitConnections, subscribeActiveKitDocument, KITION_KIT_HOST, type MountedKitDocument } from '@/features/kits/public'
 import { ExtensionHost, iframeSandbox, openPanelFrame, type ContributedCommand, type ContributedPanel, type ExtensionNotice, type PanelFrame, type SandboxFactory } from '@/lib/extensions'
 import { notify } from '@/lib/notify'
 import { portFromConnection, type ConnectionLike } from '@/lib/sdk'
@@ -39,6 +39,7 @@ export class ExtensionService {
   private snapshot: ExtensionsSnapshot = { ready: false, installed: [] }
   private listeners = new Set<() => void>()
   private stopFollowing: (() => void) | null = null
+  private stopFollowingActive: (() => void) | null = null
   /** Each kit document offered to extensions now, by path: which offer it is (see `documentOpening`). */
   private offered = new Map<string, number>()
   private offers = 0
@@ -60,6 +61,7 @@ export class ExtensionService {
     })
     for (const extension of installed) if (extension.enabled) this.loadQuietly(extension)
     this.stopFollowing = followKitConnections((document) => this.offer(document))
+    this.stopFollowingActive = subscribeActiveKitDocument(() => this.documentsChanged())
     this.update({ ready: true, installed })
   }
 
@@ -223,6 +225,7 @@ export class ExtensionService {
   }
 
   dispose() {
+    this.stopFollowingActive?.()
     this.stopFollowing?.()
     this.host.dispose()
     this.listeners.clear()
