@@ -87,8 +87,8 @@ hostMatrix({
   focus: (kit) => kit.getByTestId('table-title').click(),
   // The Table kit keeps no replica, so Kition keeps no version history of its files (H10).
   history: false,
-  undo: (kit) => kit.getByTestId('ktable-toolbar-undo').click(),
-  redo: (kit) => kit.getByTestId('ktable-toolbar-redo').click(),
+  undo: (kit) => kit.getByTestId('table-undo').click(),
+  redo: (kit) => kit.getByTestId('table-redo').click(),
   create: { group: 'Data', name: 'Untitled table.ktable', count: 0 },
   agent: { command: 'table.records.create', params: { tableId: FIRST_TABLE, values: { title: 'From the agent' } } },
   damaged: Buffer.from('this is not a table file'),

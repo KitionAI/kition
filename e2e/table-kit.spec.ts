@@ -216,7 +216,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
     await expect(kit.getByTestId('table-unsaved')).toBeVisible()
 
     // The person's Undo takes back their own duplicate, never the workflow's record.
-    await kit.getByTestId('ktable-toolbar-undo').click()
+    await kit.getByTestId('table-undo').click()
     await expect(records(kit)).toContainText('2 records')
 
     // The person's model answers the AI field (host/generate), through the runtime.
