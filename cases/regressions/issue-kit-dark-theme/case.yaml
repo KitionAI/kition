@@ -1,0 +1,24 @@
+format: 1
+id: regressions/issue-kit-dark-theme
+feature: kition.kit-protocol.theme
+intent: >-
+  An open kit takes Kition's scheme and the theme tokens Kition's stylesheet gives it, and each
+  switch between light and dark reaches it as `ui/theme` (Kit UI protocol section 4, UI-H6);
+  before, every kit editor stayed white in dark mode because the host sent a fixed light theme once.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan reports/2026-11-04-ui-design-review.md (U1)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/kits/kition/kitionTheme.spec.ts, src/features/kits/kition/KitFrame.spec.tsx]
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/kit-theme.spec.ts, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-04"
+timeout_s: 60

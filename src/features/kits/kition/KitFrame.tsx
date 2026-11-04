@@ -23,7 +23,7 @@ import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { followKitFileChanges } from './kitFileChanges'
 import { registerKitTestFrame } from './kitTestBridge'
-import { kitionTheme } from './kitionTheme'
+import { kitionTheme, watchKitionTheme } from './kitionTheme'
 import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 import { openConfirmedUrl, useOpenUrlConfirmation } from './KitOpenUrlDialog'
@@ -319,13 +319,14 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
         if (closed) return
         let fromCarried = carry && fileStamp ? { snapshot: carry.changes, blobs: carry.blobs, fileStamp } : null
         const lend = KITION_KIT_HOST.lend?.(path) ?? undefined
+        const theme = kitionTheme()
         mounted = await mountKit(element, {
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
           ...(files ? { files: files.option } : {}),
           document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(preview ? {} : openingView(path)), ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
-          theme: kitionTheme(),
+          theme,
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
           capabilitySets: KITION_CAPABILITY_SETS,
@@ -394,6 +395,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
         }
         if (carry?.open === 'replica' && !fileStamp) console.warn('[kit] could not open the kit again with its edits: the file has no stamp')
         carried.current = null
+        // Each later switch of Kition's theme reaches the open kit (UI-H6) until this run is cleaned up.
+        abandon.signal.addEventListener('abort', watchKitionTheme(theme, (next) => mounted?.setTheme(next)), { once: true })
         if (preview) {
           setConnection(mounted)
           return

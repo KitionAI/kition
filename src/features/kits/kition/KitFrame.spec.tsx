@@ -49,6 +49,8 @@ const store: { replica: { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: 
 
 /** Every kit opened, oldest first. */
 const opened: Opened[] = []
+/** Every theme Kition sent an open kit after its handshake (`ui/theme`), oldest first. */
+const themes: Array<{ colorScheme: string }> = []
 
 type FakeOptions = {
   document: { path: string; bytes: ArrayBuffer; version?: string | null; readOnly?: boolean }
@@ -117,6 +119,9 @@ vi.mock('../host/mountKit', () => ({
         kit.closed = true
       },
       setLocale: () => undefined,
+      setTheme: (theme: { colorScheme: string }) => {
+        themes.push(theme)
+      },
       focus: () => undefined,
       replica: {
         version: async () => buffer(kit.replica.version().encode()),
@@ -239,6 +244,7 @@ async function mount(props: Partial<Parameters<typeof KitFrame>[0]> = {}) {
 
 beforeEach(() => {
   opened.length = 0
+  themes.length = 0
   relayed.length = 0
   writes.length = 0
   reads.host.length = 0
@@ -256,9 +262,28 @@ afterEach(async () => {
   root = null
   container?.remove()
   setReadOnlyDocuments([])
+  document.documentElement.classList.remove('dark')
 })
 
 describe('KitFrame', () => {
+  it('opens a kit in the scheme Kition shows and tells it each switch between light and dark (UI-H6)', async () => {
+    document.documentElement.classList.add('dark')
+    await mount()
+    const options = vi.mocked(mountKit).mock.calls.at(-1)?.[1] as unknown as { theme: { colorScheme: string } }
+    expect(options.theme.colorScheme).toBe('dark')
+    expect(themes).toEqual([])
+
+    await act(async () => document.documentElement.classList.remove('dark'))
+    await settle()
+    expect(themes.map((theme) => theme.colorScheme)).toEqual(['light'])
+
+    await act(async () => root?.unmount())
+    root = null
+    document.documentElement.classList.add('dark')
+    await settle()
+    expect(themes.map((theme) => theme.colorScheme)).toEqual(['light'])
+  })
+
   it('opens files a link names through the workspace, and offers no opening without it', async () => {
     const onOpenLink = vi.fn(async () => ({ opened: true }))
     await mount({ onOpenLink })
