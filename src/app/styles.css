@@ -4015,9 +4015,9 @@
     @apply p-0;
   }
 
-  /* In Settings the account header reads like every other pane's header. */
+  /* In Settings the pane header names the pane; the account's state heading sits under it. */
   .settings-account-pane .kition-account-panel__header {
-    @apply mb-6 block border-b border-border/40 pb-5 pr-0;
+    @apply mb-5 block pr-0;
   }
 
   .settings-account-pane .kition-account-panel__icon,
@@ -4026,7 +4026,7 @@
   }
 
   .settings-account-pane .kition-account-panel h1 {
-    @apply mt-0 text-[22px] font-semibold leading-snug;
+    @apply mt-0 text-base font-semibold leading-snug;
   }
 
   .settings-account-pane .kition-account-panel__description {

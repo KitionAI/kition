@@ -1,0 +1,21 @@
+format: 1
+id: regressions/issue-account-pane-title
+feature: kition.platform.release-checks
+intent: >-
+  The Account settings pane is titled with its navigation name, like every other pane; the
+  account's state ("Sign in to Kition", "Your Kition Account") is a heading inside the pane.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan reports/2026-11-04-ui-design-review.md (U11)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/settings/DesktopSettingsPage.spec.tsx, -t, "titles the Account pane with its navigation name"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-04"
+timeout_s: 60

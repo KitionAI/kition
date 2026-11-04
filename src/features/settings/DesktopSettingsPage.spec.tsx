@@ -131,6 +131,11 @@ describe('DesktopSettingsPage information architecture', () => {
     expect(container.querySelector('.settings-nav-button.is-active')?.textContent).toContain('Account')
   })
 
+  it('titles the Account pane with its navigation name, like every other pane', async () => {
+    await renderSettings('account')
+    expect(container.querySelector('.settings-account-pane .settings-pane-header h2')?.textContent).toBe('Account')
+  })
+
   it('shows a safe update message instead of a raw network error', async () => {
     updateStateMock.mockReturnValue({
       phase: 'error',
