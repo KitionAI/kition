@@ -27,6 +27,13 @@ async function slideFixture() {
 }
 
 
+/** Adds a slide with the ribbon's New Slide command, opening the Home tab first when the ribbon is collapsed. */
+async function addSlide(kit: FrameLocator) {
+  const command = kit.getByTestId('slides-cmd-slide.new')
+  if (!(await command.isVisible())) await kit.getByTestId('ribbon-tab-home').click()
+  await command.click()
+}
+
 const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
 /** The kit's canvas as drawn. Kition's floating agent launcher sits over the canvas's corner and
  * idles with an animation, so it is masked: it is the host's, not the kit's. */
@@ -124,9 +131,9 @@ test('co-edits a slide file between two windows: live, and merging edits made of
     await bobNetwork.setOnline(false)
     await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
     const offlineVersion = JSON.stringify(await replicaCounters(pageA, 'Keynote.kslide'))
-    await kitB.getByTestId('slides-add-slide').click()
+    await addSlide(kitB)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 3$/)
-    await a.kit.getByTestId('slides-add-slide').click()
+    await addSlide(a.kit)
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 3$/)
     await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Keynote.kslide'))).not.toBe(offlineVersion)
     expect(JSON.stringify(await replicaCounters(pageB, 'Shared/Keynote.kslide'))).not.toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kslide')))
@@ -268,7 +275,7 @@ test('a viewer of a shared slide file sees it change but cannot change it', asyn
     await expect(kitB.getByTestId('slides-unsaved')).toHaveCount(0)
 
     // Bob clicks the text box and types and presses New Slide's shortcut: his screen and his
-    // replica stay as they were. The slide panel's add button is disabled for him.
+    // replica stay as they were. He has no New Slide command.
     // What his canvas shows once Alice's edit has painted.
     let shown = await canvas(kitB)
     await expect
@@ -286,8 +293,7 @@ test('a viewer of a shared slide file sees it change but cannot change it', asyn
     await pageB.waitForTimeout(500)
     const after = await canvas(kitB)
     expect(after.equals(shown)).toBe(true)
-    await expect(kitB.getByTestId('slides-add-slide')).toBeDisabled()
-    await kitB.getByTestId('slides-add-slide').click({ force: true })
+    await expect(kitB.getByTestId('slides-cmd-slide.new')).toHaveCount(0)
     await pageB.waitForTimeout(1_000)
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2')
     expect(JSON.stringify(await replicaCounters(pageB, bobPath))).toBe(aliceVersion)
@@ -299,7 +305,7 @@ test('a viewer of a shared slide file sees it change but cannot change it', asyn
     expect(JSON.stringify(await replicaCounters(pageB, bobPath))).toBe(aliceVersion)
 
     // Alice's next edit still reaches him.
-    await a.kit.getByTestId('slides-add-slide').click()
+    await addSlide(a.kit)
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 3$/)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 3$/, { timeout: 10_000 })
     await pageB.screenshot({ path: testInfo.outputPath('bob-viewer.png') })
@@ -323,7 +329,7 @@ test('without a Kition Pro session a slide file opens, edits, and saves as befor
     await openTabMenu(page, 'Keynote', 'Copy path/reference')
     await expect(page.getByRole('menuitem', { name: 'Share for co-editing' })).toHaveCount(0)
     await page.keyboard.press('Escape')
-    await kit.getByTestId('slides-add-slide').click()
+    await addSlide(kit)
     await expect(kit.getByTestId('slides-status')).toHaveText(/of 3$/)
     await expect(kit.getByTestId('slides-unsaved')).toBeVisible()
     await kit.getByTestId('slides-save').click()

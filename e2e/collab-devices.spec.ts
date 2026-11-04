@@ -41,6 +41,13 @@ async function settledVersion(page: Page, file: string) {
 }
 
 /** Clicks the lone text box on the current slide and types `text` there. */
+/** Adds a slide with the ribbon's New Slide command, opening the Home tab first when the ribbon is collapsed. */
+async function addSlide(kit: FrameLocator) {
+  const command = kit.getByTestId('slides-cmd-slide.new')
+  if (!(await command.isVisible())) await kit.getByTestId('ribbon-tab-home').click()
+  await command.click()
+}
+
 async function typeIntoShape(page: Page, kit: FrameLocator, text: string) {
   const region = (await kit.getByTestId('slides-canvas-region').boundingBox())!
   await page.mouse.click(region.x + region.width / 2, region.y + region.height / 2)
@@ -114,10 +121,10 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
 
     // She adds a slide on the desktop, and one on the laptop: both converge with both slides.
     await pageA.keyboard.press('Escape')
-    await kitB.getByTestId('slides-cmd-slide.new').click()
+    await addSlide(kitB)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 3$/)
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 3$/, { timeout: 10_000 })
-    await a.kit.getByTestId('slides-cmd-slide.new').click()
+    await addSlide(a.kit)
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 4$/)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 4$/, { timeout: 10_000 })
     await expect.poll(() => sameReplicas(pageA, 'Keynote.kslide', pageB, 'Keynote.kslide'), { timeout: 30_000 }).toBe('same')
