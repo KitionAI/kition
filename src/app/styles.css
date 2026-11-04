@@ -4163,10 +4163,6 @@
     padding-left: 0;
   }
 
-  .app-shell.is-document-route .app-topbar {
-    left: 0;
-  }
-
 }
 
 @media (max-width: 1024px) {

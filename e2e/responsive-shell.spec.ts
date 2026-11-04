@@ -60,6 +60,28 @@ test.describe('responsive shell — narrow / tiny viewports', () => {
     await expect(page.locator('.app-shell.is-sidebar-drawer-open')).toHaveCount(0)
   })
 
+  for (const width of [1024, 1100, 1200]) {
+    test(`desktop ${width}: the sidebar header's files, search and collapse buttons are visible and not covered`, async ({ page }) => {
+      await bootShell(page, { width, height: 768 })
+      await expect(page.locator('.app-shell.is-narrow')).toHaveCount(0)
+      const header = page.locator('.workspace-sidebar-header')
+      const controls = [
+        header.getByTestId('sidebar-tab-files'),
+        header.getByTestId('sidebar-tab-search'),
+        header.locator('.workspace-sidebar-header-action'),
+      ]
+      for (const control of controls) {
+        await expect(control).toBeVisible()
+        const onTop = await control.evaluate((element) => {
+          const box = element.getBoundingClientRect()
+          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+          return hit !== null && element.contains(hit)
+        })
+        expect(onTop, `${await control.getAttribute('aria-label')} is covered by another element`).toBe(true)
+      }
+    })
+  }
+
   test('tiny <480: viewport warning is visible', async ({ page }) => {
     await bootShell(page, { width: 390, height: 720 })
     await expect(page.locator('.app-shell.is-tiny')).toHaveCount(1)

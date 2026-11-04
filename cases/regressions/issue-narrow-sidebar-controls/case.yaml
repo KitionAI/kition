@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-narrow-sidebar-controls
+feature: kition.platform.release-checks
+intent: At desktop widths from 1024px to 1200px the document topbar starts beside the sidebar, so the sidebar's files, search and collapse buttons stay visible and clickable instead of sitting under the tab strip.
+layer: golden
+source:
+  kind: probe
+  from: e2e/responsive-shell.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/responsive-shell.spec.ts, -g, sidebar header, --workers=1, --output=target/golden/narrow-sidebar-controls]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-11-04"
