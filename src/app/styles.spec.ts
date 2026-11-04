@@ -80,3 +80,13 @@ describe('theme token parity', () => {
     expect([...dark].filter((token) => !light.has(token))).toEqual([])
   })
 })
+
+describe('palette backdrops', () => {
+  it('gives the command and search palettes one backdrop, a dim scrim without blur', () => {
+    expect(styles).toMatch(
+      /\.command-overlay,\n\.search-palette-backdrop\s*\{[\s\S]*?background: hsl\(var\(--shadow-color\) \/ 0\.4\);[\s\S]*?backdrop-filter: none;[\s\S]*?\}/,
+    )
+    const commandOverlay = styles.match(/\.command-overlay\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(commandOverlay).not.toMatch(/backdrop-blur|bg-black/)
+  })
+})

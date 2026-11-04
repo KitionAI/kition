@@ -3759,8 +3759,7 @@
   }
 
   .command-overlay {
-    @apply fixed inset-0 z-[100] grid place-items-start justify-center bg-black/20 p-8 pt-24 backdrop-blur-sm;
-    animation: overlay-backdrop-in 120ms cubic-bezier(0.2, 0, 0, 1);
+    @apply fixed inset-0 z-[100] grid place-items-start justify-center p-8 pt-24;
   }
 
   .command-panel {
@@ -4513,15 +4512,21 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* The command and search palettes share one backdrop: a dim scrim without blur, like Tessera's dialogs. */
+.command-overlay,
+.search-palette-backdrop {
+  background: hsl(var(--shadow-color) / 0.4);
+  backdrop-filter: none;
+  animation: overlay-backdrop-in 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
 .search-palette-backdrop {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: hsl(var(--shadow-color) / 0.4);
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  animation: overlay-backdrop-in 120ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .search-palette {
