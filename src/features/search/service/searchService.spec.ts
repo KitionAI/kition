@@ -34,6 +34,26 @@ class MockWorker {
 }
 
 describe('SearchService', () => {
+  it('notifies subscribers after index mutations, but not queries, and supports unsubscribe', async () => {
+    const svc = new SearchService({ workerFactory: () => new MockWorker() as unknown as Worker })
+    await svc.init('/workspace')
+    const changed = vi.fn()
+    const unsubscribe = svc.onChange(changed)
+    const pending = svc.bulkLoad([])
+    expect(changed).not.toHaveBeenCalled()
+    await pending
+    await svc.upsert([])
+    await svc.remove(['removed'])
+    await svc.removeByVaultPath(['deleted.md'])
+    expect(changed).toHaveBeenCalledTimes(4)
+    await svc.query('needle')
+    expect(changed).toHaveBeenCalledTimes(4)
+    unsubscribe()
+    await svc.bulkLoad([])
+    expect(changed).toHaveBeenCalledTimes(4)
+    await svc.destroy()
+  })
+
   it('init + query round-trip', async () => {
     const svc = new SearchService({ workerFactory: () => new MockWorker() as unknown as Worker })
     await svc.init('/vault')

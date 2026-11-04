@@ -11,8 +11,43 @@ const mkHit = (id: string): SearchHit => ({
 })
 
 describe('SearchCommandPalette', () => {
+  it('refreshes an unchanged query after indexing and ignores an older response', async () => {
+    vi.useFakeTimers()
+    let changed!: () => void
+    let resolveOld!: (hits: SearchHit[]) => void
+    const query = vi.fn()
+      .mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
+      .mockResolvedValue([mkHit('fresh result')])
+    const unsubscribe = vi.fn()
+    const svc = { query, onChange: (listener: () => void) => { changed = listener; return unsubscribe } } as unknown as SearchService
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    try {
+      await act(async () => root.render(<SearchCommandPalette service={svc} ready open onClose={() => undefined} onPick={() => undefined} />))
+      const input = container.querySelector('input')!
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'needle')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      await act(async () => { await vi.advanceTimersByTimeAsync(250) })
+      expect(query).toHaveBeenCalledTimes(1)
+      await act(async () => changed())
+      await act(async () => { await vi.advanceTimersByTimeAsync(250) })
+      expect(query).toHaveBeenCalledTimes(2)
+      expect(container.querySelector('.search-result-snippet')?.textContent).toBe('fresh result')
+      await act(async () => resolveOld([mkHit('stale result')]))
+      expect(container.querySelector('.search-result-snippet')?.textContent).toBe('fresh result')
+    } finally {
+      await act(async () => root.unmount())
+      container.remove()
+      vi.useRealTimers()
+    }
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
   it('Enter calls onPick with cursor hit', async () => {
-    const svc = { query: vi.fn().mockResolvedValue([mkHit('1'), mkHit('2'), mkHit('3')]) } as unknown as SearchService
+    const svc = { onChange: () => () => {}, query: vi.fn().mockResolvedValue([mkHit('1'), mkHit('2'), mkHit('3')]) } as unknown as SearchService
     const onPick = vi.fn()
     const onClose = vi.fn()
     const container = document.createElement('div')
@@ -41,7 +76,7 @@ describe('SearchCommandPalette', () => {
   })
 
   it('Cmd+2 quick-selects the second result', async () => {
-    const svc = { query: vi.fn().mockResolvedValue([mkHit('1'), mkHit('2'), mkHit('3')]) } as unknown as SearchService
+    const svc = { onChange: () => () => {}, query: vi.fn().mockResolvedValue([mkHit('1'), mkHit('2'), mkHit('3')]) } as unknown as SearchService
     const onPick = vi.fn()
     const onClose = vi.fn()
     const container = document.createElement('div')
@@ -67,7 +102,7 @@ describe('SearchCommandPalette', () => {
   })
 
   it('disables querying until the index is ready', async () => {
-    const svc = { query: vi.fn() } as unknown as SearchService
+    const svc = { onChange: () => () => {}, query: vi.fn() } as unknown as SearchService
     const container = document.createElement('div')
     document.body.appendChild(container)
     const root = createRoot(container)

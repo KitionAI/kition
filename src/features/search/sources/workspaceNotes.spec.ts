@@ -22,10 +22,10 @@ beforeEach(() => {
 describe('loadWorkspaceNotes', () => {
   it('lists the workspace’s notes in every folder, once for calls close together', async () => {
     const { loadWorkspaceNotes } = await import('./workspaceNotes')
-    const [first, second] = await Promise.all([loadWorkspaceNotes(), loadWorkspaceNotes()])
+    const [first, second] = await Promise.all([loadWorkspaceNotes('/ws'), loadWorkspaceNotes('/ws')])
     expect(first.map((file) => file.path)).toEqual(['Plan.md', 'notes/Today.MD'])
     expect(second).toBe(first)
-    expect(await loadWorkspaceNotes()).toBe(first)
+    expect(await loadWorkspaceNotes('/ws')).toBe(first)
     expect(listed.calls).toBe(1)
   })
 })

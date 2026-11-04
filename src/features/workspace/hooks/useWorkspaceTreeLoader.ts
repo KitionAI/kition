@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getWorkspaceDisplayName,
@@ -38,6 +38,8 @@ type UseWorkspaceTreeLoaderOptions = {
   >
 }
 
+type DocumentListOptions = { treeOnly?: boolean; onlyWhenEmpty?: boolean }
+
 export function useWorkspaceTreeLoader({
   activeDocumentPath,
   applyWorkspaceDocument,
@@ -47,6 +49,10 @@ export function useWorkspaceTreeLoader({
   treeState,
 }: UseWorkspaceTreeLoaderOptions) {
   const { t } = useTranslation('workspace')
+  const activeDocumentPathRef = useRef(activeDocumentPath)
+  useLayoutEffect(() => {
+    activeDocumentPathRef.current = activeDocumentPath
+  }, [activeDocumentPath])
   const {
     rootPath,
     setLoading,
@@ -58,7 +64,7 @@ export function useWorkspaceTreeLoader({
   const applyWorkspaceDocumentList = useCallback(async (
     response: WorkspaceDocumentListResponse,
     preferredPath?: string,
-    options?: { treeOnly?: boolean },
+    options?: DocumentListOptions,
   ) => {
     setTreeItems(response.items || [])
     setRootPath(response.root_path || '')
@@ -69,7 +75,7 @@ export function useWorkspaceTreeLoader({
 
     // A plain tree refresh should only reconcile the file list, leaving the
     // currently open document untouched.
-    if (options?.treeOnly) {
+    if (options?.treeOnly || (options?.onlyWhenEmpty && activeDocumentPathRef.current)) {
       return
     }
 
@@ -91,6 +97,8 @@ export function useWorkspaceTreeLoader({
     }
 
     const nextDocument = await readWorkspaceDocument(nextPath)
+    // Background onboarding must not replace a document selected during the read.
+    if (options?.onlyWhenEmpty && activeDocumentPathRef.current) return
     void applyWorkspaceDocument(nextDocument)
   }, [
     activeDocumentPath,
@@ -103,7 +111,7 @@ export function useWorkspaceTreeLoader({
 
   const refreshWorkspaceDocuments = useCallback(async (
     preferredPath?: string,
-    options?: { silent?: boolean; treeOnly?: boolean },
+    options?: DocumentListOptions & { silent?: boolean },
   ) => {
     const silent = options?.silent === true
     if (!silent) setLoading(true)
@@ -111,7 +119,7 @@ export function useWorkspaceTreeLoader({
 
     try {
       const response = await listWorkspaceDocuments()
-      await applyWorkspaceDocumentList(response, preferredPath, { treeOnly: options?.treeOnly })
+      await applyWorkspaceDocumentList(response, preferredPath, options)
       return true
     } catch (requestError: any) {
       setError(requestError?.message || 'Failed to load local document library')
@@ -132,8 +140,11 @@ export function useWorkspaceTreeLoader({
       return
     }
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ preferredPath?: string; treeOnly?: boolean }>).detail
-      void refreshWorkspaceDocuments(detail?.preferredPath, { treeOnly: detail?.treeOnly === true })
+      const detail = (e as CustomEvent<DocumentListOptions & { preferredPath?: string }>).detail
+      void refreshWorkspaceDocuments(detail?.preferredPath, {
+        treeOnly: detail?.treeOnly === true,
+        onlyWhenEmpty: detail?.onlyWhenEmpty === true,
+      })
     }
     window.addEventListener('kition:workspace-reload', handler)
     return () => window.removeEventListener('kition:workspace-reload', handler)

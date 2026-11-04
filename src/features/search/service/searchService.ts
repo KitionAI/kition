@@ -30,6 +30,7 @@ export class SearchService {
   private currentRootPath = ''
   private onProgressCbs = new Set<(p: WorkerProgress) => void>()
   private onErrorCbs = new Set<(msg: string) => void>()
+  private onChangeCbs = new Set<() => void>()
 
   constructor(opts: SearchServiceOptions) {
     this.factory = opts.workerFactory
@@ -43,6 +44,15 @@ export class SearchService {
   onError(cb: (msg: string) => void): () => void {
     this.onErrorCbs.add(cb)
     return () => { this.onErrorCbs.delete(cb) }
+  }
+
+  onChange(cb: () => void): () => void {
+    this.onChangeCbs.add(cb)
+    return () => { this.onChangeCbs.delete(cb) }
+  }
+
+  private changed(client: WorkerClient) {
+    if (this.client === client) this.onChangeCbs.forEach(cb => cb())
   }
 
   async init(rootPath: string): Promise<{ restoredFromDisk: boolean; docCount: number; stamps: Record<string, string> }> {
@@ -72,33 +82,42 @@ export class SearchService {
   }
 
   async bulkLoad(docs: IndexableDoc[]): Promise<void> {
-    if (!this.client) throw new Error('service not initialized')
+    const client = this.client
+    if (!client) throw new Error('service not initialized')
     if (docs.length === 0) {
-      await this.client.send({ type: 'bulkLoad', requestId: rid(), docs: [], isFinal: true })
+      await client.send({ type: 'bulkLoad', requestId: rid(), docs: [], isFinal: true })
+      this.changed(client)
       return
     }
     for (let i = 0; i < docs.length; i += BATCH_SIZE) {
       const slice = docs.slice(i, i + BATCH_SIZE)
       const isFinal = i + BATCH_SIZE >= docs.length
       const msg: WorkerInbound = { type: 'bulkLoad', requestId: rid(), docs: slice, isFinal }
-      await this.client.send(msg)
+      await client.send(msg)
     }
+    this.changed(client)
   }
 
   /** `stamps`: the source files the docs were read from, at the stamp they were read at. */
   async upsert(docs: IndexableDoc[], stamps?: Record<string, string>): Promise<void> {
-    if (!this.client) throw new Error('service not initialized')
-    await this.client.send({ type: 'upsert', requestId: rid(), docs, ...(stamps ? { stamps } : {}) })
+    const client = this.client
+    if (!client) throw new Error('service not initialized')
+    await client.send({ type: 'upsert', requestId: rid(), docs, ...(stamps ? { stamps } : {}) })
+    this.changed(client)
   }
 
   async remove(ids: string[]): Promise<void> {
-    if (!this.client) throw new Error('service not initialized')
-    await this.client.send({ type: 'remove', requestId: rid(), ids })
+    const client = this.client
+    if (!client) throw new Error('service not initialized')
+    await client.send({ type: 'remove', requestId: rid(), ids })
+    this.changed(client)
   }
 
   async removeByVaultPath(vaultPaths: string[]): Promise<void> {
-    if (!this.client) throw new Error('service not initialized')
-    await this.client.send({ type: 'removeByVaultPath', requestId: rid(), vaultPaths })
+    const client = this.client
+    if (!client) throw new Error('service not initialized')
+    await client.send({ type: 'removeByVaultPath', requestId: rid(), vaultPaths })
+    this.changed(client)
   }
 
   async query(input: string, limit = 200): Promise<SearchHit[]> {

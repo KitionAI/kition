@@ -20,7 +20,13 @@ export function SearchCommandPalette({ service, ready, open, onClose, onPick }: 
   const [input, setInput] = useState('')
   const [hits, setHits] = useState<SearchHit[]>([])
   const [cursor, setCursor] = useState(0)
+  const [indexRevision, setIndexRevision] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    return service.onChange(() => setIndexRevision(revision => revision + 1))
+  }, [open, service])
 
   useEffect(() => {
     if (!open) return
@@ -29,14 +35,17 @@ export function SearchCommandPalette({ service, ready, open, onClose, onPick }: 
   }, [open])
 
   useEffect(() => {
-    if (!ready) { setHits([]); return }
+    if (!open || !ready) { setHits([]); return }
     const trimmed = input.trim()
     if (!trimmed) { setHits([]); return }
+    let cancelled = false
     const id = setTimeout(() => {
-      service.query(trimmed, MAX).then(h => { setHits(h); setCursor(0) }).catch(() => setHits([]))
+      service.query(trimmed, MAX).then(h => {
+        if (!cancelled) { setHits(h); setCursor(0) }
+      }).catch(() => { if (!cancelled) setHits([]) })
     }, 250)
-    return () => clearTimeout(id)
-  }, [input, ready, service])
+    return () => { cancelled = true; clearTimeout(id) }
+  }, [input, ready, service, open, indexRevision])
 
   useEffect(() => {
     if (!open) return

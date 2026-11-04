@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-welcome-focus
+feature: kition.platform.release-checks
+intent: Background onboarding refreshes the file tree without replacing a kit selected before or during asynchronous loading, while explicit navigation still works.
+layer: golden
+source:
+  kind: probe
+  from: src/features/workspace/hooks/useWorkspaceTreeLoader.spec.tsx
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/workspace/hooks/useWorkspaceTreeLoader.spec.tsx]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: []
+timeout_s: 60
+since: "2026-10-31"

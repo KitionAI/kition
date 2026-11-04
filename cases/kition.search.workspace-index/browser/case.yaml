@@ -1,0 +1,22 @@
+format: 1
+id: kition.search.workspace-index/browser
+feature: kition.search.workspace-index
+intent: >-
+  The real search Worker indexes workspace notes and table records, applies query
+  operators, opens results, and refreshes its file list when the workspace reloads.
+layer: golden
+source:
+  kind: synthetic
+  from: e2e/search-fulltext.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/search-fulltext.spec.ts, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 180
+since: "2026-10-31"

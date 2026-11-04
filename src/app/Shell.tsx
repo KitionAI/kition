@@ -31,7 +31,7 @@ import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFile
 import { SearchService } from '@/features/search/service/searchService'
 import { attachEventBridges } from '@/features/search/service/events'
 import { scheduleSearchBoot } from '@/features/search/service/searchBootScheduler'
-import { loadWorkspaceNotes } from '@/features/search/sources/workspaceNotes'
+import { invalidateWorkspaceNotes, loadWorkspaceNotes } from '@/features/search/sources/workspaceNotes'
 import { extractNoteDocs } from '@/features/search/sources/noteSource'
 import { loadTableSearchFile, syncTableSearchDocs } from '@/features/search/sources/tableSource'
 import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
@@ -90,8 +90,8 @@ const navigateAdapters: NavigateAdapters = {
 
 const NOTE_READ_CONCURRENCY = 8
 
-async function loadSearchNoteDocs(cancelled: () => boolean) {
-  const mdFiles = await loadWorkspaceNotes()
+async function loadSearchNoteDocs(rootPath: string, cancelled: () => boolean) {
+  const mdFiles = await loadWorkspaceNotes(rootPath)
   const noteDocs: ReturnType<typeof extractNoteDocs> = []
   let readFailures = 0
 
@@ -152,7 +152,7 @@ function useSearchBoot(rootPath: string) {
             loadTableFile: (vaultPath) => loadTableSearchFile(vaultPath),
           })
 
-          const scan = await loadSearchNoteDocs(() => cancelled)
+          const scan = await loadSearchNoteDocs(rootPath, () => cancelled)
           if (cancelled) return
           await searchService.bulkLoad(scan.noteDocs)
           if (!initOut.restoredFromDisk) setReady(true)
@@ -185,6 +185,7 @@ function useSearchBoot(rootPath: string) {
     cancelScheduled = scheduleSearchBoot(start)
 
     const onReload = () => {
+      invalidateWorkspaceNotes()
       unsub()
       unsub = () => {}
       void searchService.destroy()
@@ -328,10 +329,10 @@ export function AppShell() {
     setLauncherVariant((current) => (current === 'dialog' ? null : current))
   }, [])
 
-  const notifyWorkspaceReload = useCallback((preferredPath?: string) => {
+  const notifyWorkspaceReload = useCallback((preferredPath?: string, onlyWhenEmpty = false) => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
-        new CustomEvent('kition:workspace-reload', { detail: { preferredPath } }),
+        new CustomEvent('kition:workspace-reload', { detail: { preferredPath, onlyWhenEmpty } }),
       )
     }
   }, [])
@@ -367,10 +368,10 @@ export function AppShell() {
       const { migratedPath, welcomePath } = await prepareFirstRun(activeVaultPath)
       if (welcomePath) {
         markWorkspaceOnboardingPending(activeVaultPath)
-        notifyWorkspaceReload(welcomePath)
+        notifyWorkspaceReload(welcomePath, true)
         setOnboardingOpen(true)
       } else if (migratedPath) {
-        notifyWorkspaceReload(migratedPath)
+        notifyWorkspaceReload(migratedPath, true)
       }
     })()
   }, [vaultsLoaded, activeVaultPath, prepareFirstRun, notifyWorkspaceReload])
@@ -851,4 +852,3 @@ export function AppShell() {
     </ConfirmProvider>
   )
 }
-

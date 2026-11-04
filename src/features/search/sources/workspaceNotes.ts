@@ -3,8 +3,8 @@ import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/servic
 /** How long one listing of the workspace serves. */
 const TTL_MS = 10_000
 
-let cache: { fetchedAt: number; files: WorkspaceDocumentTreeItem[] } | null = null
-let inflight: Promise<WorkspaceDocumentTreeItem[]> | null = null
+let cache: { rootPath: string; fetchedAt: number; files: WorkspaceDocumentTreeItem[] } | null = null
+let inflight: { rootPath: string; promise: Promise<WorkspaceDocumentTreeItem[]> } | null = null
 
 function markdownFiles(items: readonly WorkspaceDocumentTreeItem[], out: WorkspaceDocumentTreeItem[] = []) {
   for (const item of items) {
@@ -14,18 +14,24 @@ function markdownFiles(items: readonly WorkspaceDocumentTreeItem[], out: Workspa
   return out
 }
 
-/** The workspace's notes (`.md` files) the search index reads: listed at most once every ten seconds. */
-export async function loadWorkspaceNotes(): Promise<WorkspaceDocumentTreeItem[]> {
-  if (cache && Date.now() - cache.fetchedAt < TTL_MS) return cache.files
-  if (inflight) return inflight
-  inflight = (async () => {
-    try {
-      const files = markdownFiles((await listWorkspaceDocuments()).items ?? [])
-      cache = { fetchedAt: Date.now(), files }
-      return files
-    } finally {
-      inflight = null
-    }
-  })()
-  return inflight
+/** A workspace reload makes both the cached list and an older request obsolete. */
+export function invalidateWorkspaceNotes() {
+  cache = null
+  inflight = null
+}
+
+/** The current workspace's notes, sharing a recent or in-flight list only for the same root. */
+export async function loadWorkspaceNotes(rootPath: string): Promise<WorkspaceDocumentTreeItem[]> {
+  if (cache?.rootPath === rootPath && Date.now() - cache.fetchedAt < TTL_MS) return cache.files
+  if (inflight?.rootPath === rootPath) return inflight.promise
+  const promise: Promise<WorkspaceDocumentTreeItem[]> = listWorkspaceDocuments().then(response => {
+    if (response.root_path !== rootPath) throw new Error('Workspace changed while listing search documents')
+    const files = markdownFiles(response.items ?? [])
+    if (inflight?.promise === promise) cache = { rootPath, fetchedAt: Date.now(), files }
+    return files
+  }).finally(() => {
+    if (inflight?.promise === promise) inflight = null
+  })
+  inflight = { rootPath, promise }
+  return promise
 }
