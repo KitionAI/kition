@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-vite-watcher
+feature: kition.platform.development-server
+intent: >-
+  The development server must watch source changes without traversing Rust build outputs
+  or browser test artifacts, which otherwise stall page loading during release checks.
+layer: golden
+source:
+  kind: probe
+  from: scripts/viteWatcher.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/viteWatcher.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"

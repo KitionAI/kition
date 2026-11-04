@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-release-platform-shortcut
+feature: kition.platform.release-checks
+intent: >-
+  The tab-close shortcut must use Command on macOS and Control elsewhere, close
+  the active tab from a kit frame, and reject additional Shift or Alt modifiers.
+layer: golden
+source:
+  kind: probe
+  from: e2e/shortcuts.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/shortcuts.spec.ts, --project, chromium, --workers, "1"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"
+requires: [chromium]
+timeout_s: 60

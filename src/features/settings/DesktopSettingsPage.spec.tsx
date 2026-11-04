@@ -45,6 +45,10 @@ vi.mock('@/features/updates/useUpdateState', () => ({
 }))
 vi.mock('@/features/settings/OnboardingGuidesPanel', () => ({ OnboardingGuidesPanel: () => null }))
 
+// Load the mocked module before any test owns a React root. A cold transform must not
+// outlive one test's cleanup and render into the following test's container.
+const { DesktopSettingsPage } = await import('./DesktopSettingsPage')
+
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -62,7 +66,6 @@ afterEach(() => {
 })
 
 async function renderSettings(initialSection: 'general' | 'account' | 'about' = 'general') {
-  const { DesktopSettingsPage } = await import('./DesktopSettingsPage')
   await act(async () => {
     root = createRoot(container)
     root.render(createElement(DesktopSettingsPage, { initialSection }))

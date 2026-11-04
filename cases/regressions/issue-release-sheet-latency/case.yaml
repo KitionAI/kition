@@ -1,0 +1,24 @@
+format: 1
+id: regressions/issue-release-sheet-latency
+feature: kition.kit-collab.sheet
+intent: >-
+  A row insertion reaches the other workbook replica within 1000 ms of clicking the
+  Insert Sheet Rows command. Preparing the cell selection and opening its menu precede
+  that command; formula references and offline merge assertions remain mandatory.
+layer: golden
+source:
+  kind: probe
+  from: e2e/collab-sheet.spec.ts
+  licence: owned
+  note: The owner approved the reviewed timing-origin adjustment before it was applied.
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/collab-sheet.spec.ts, -g, co-edits a workbook, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 300
+since: "2026-11-01"

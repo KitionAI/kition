@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-route-isolation
+feature: kition.platform.release-checks
+intent: Each removed route redirects to the document workspace in an independent browser test, without sharing navigation state or a timeout with other routes.
+layer: golden
+source:
+  kind: probe
+  from: e2e/app-shell.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/app-shell.spec.ts, -g, removed workspace and admin routes return to documents, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 180
+since: "2026-10-31"

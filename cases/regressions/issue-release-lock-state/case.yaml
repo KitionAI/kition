@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-release-lock-state
+feature: kition.platform.release-checks
+intent: >-
+  The lock recovery regression must observe that the original writer lost ownership
+  before testing a damaged lock, including platforms that use heartbeat expiry.
+layer: golden
+source:
+  kind: issue
+  from: https://github.com/KitionAI/kition/actions/runs/41211372604
+  licence: owned
+input: []
+steps:
+  - cargo-test:
+      package: kition-app
+      filter: workspace::docstore::lock::tests::takes_over_the_lock_of_a_process_that_ended
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+tags: [platform-windows]
+since: "2026-10-31"

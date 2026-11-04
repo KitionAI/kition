@@ -159,6 +159,7 @@ test('renders Canvas images and activates a label without persisting runtime pix
     await expect(source).toHaveValue(html, { timeout: 60_000 })
     const editedSource = `${html}\n`
     await source.fill(editedSource)
+    await expect(kit.getByTestId('html-unsaved')).toBeVisible({ timeout: 60_000 })
     const preview = kit.getByTestId('html-preview').locator('canvas').first()
     const color = () => preview.evaluate((element) => {
       const canvas = element as HTMLCanvasElement

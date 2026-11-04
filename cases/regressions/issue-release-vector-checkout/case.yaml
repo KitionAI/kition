@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-vector-checkout
+feature: kition.platform.release-checks
+intent: >-
+  A Windows checkout must preserve the committed license vectors byte for byte. Git's
+  automatic CRLF conversion must not invalidate the existing exact vector comparison.
+layer: golden
+source:
+  kind: issue
+  from: https://github.com/KitionAI/kition/actions/runs/41211372604
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/repositoryCheckout.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"

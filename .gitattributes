@@ -1,3 +1,4 @@
 public/templates/youtube-tiktok-thumbnail-generator/**/*.webp filter=lfs diff=lfs merge=lfs -text
 public/templates/batch-product-designer/**/*.webp filter=lfs diff=lfs merge=lfs -text
 public/templates/receipt-ocr-database/**/*.webp filter=lfs diff=lfs merge=lfs -text
+crates/kition-license/tests/vectors.json text eol=lf

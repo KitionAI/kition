@@ -124,6 +124,11 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     port: 3000,
+    // Rust builds and browser artifacts can contain millions of files. Watching
+    // them stalls module requests while desktop builds and E2E checks run.
+    watch: {
+      ignored: ['**/target/**', '**/test-results/**', '**/playwright-report/**'],
+    },
     proxy: {
       '/api': runtimeProxy(),
       '/uploads': runtimeProxy(),

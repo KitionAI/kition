@@ -826,13 +826,13 @@ test.describe('app shell navigation', () => {
     })
   })
 
-  test('removed workspace and admin routes return to documents', async ({ page }) => {
-    for (const path of ['/writing', '/image', '/video', '/history', '/templates', '/settings/oauth', '/admin/model-usage']) {
+  for (const path of ['/writing', '/image', '/video', '/history', '/templates', '/settings/oauth', '/admin/model-usage']) {
+    test(`removed workspace and admin routes return to documents (${path})`, async ({ page }) => {
       await page.goto(path)
       await expect(page).toHaveURL(/\/documents$/)
       await expect(page.getByTestId('document-tree')).toBeVisible()
-    }
-  })
+    })
+  }
 
   test('connects, refreshes, and disconnects a Kition Account from the profile page', async ({ page }) => {
     const secureStore = new Map<string, string>()

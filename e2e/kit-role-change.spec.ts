@@ -88,10 +88,13 @@ const TITLES_SCRIPT = `export default async function (ctx) {
       slide.shapes.load()
       await context.sync()
       let title = ''
-      for (const shape of slide.shapes.items) shape.load(['props', 'body'])
+      for (const shape of slide.shapes.items) {
+        shape.load(['body'])
+        shape.look.load()
+      }
       await context.sync()
       for (const shape of slide.shapes.items) {
-        if (!['title', 'ctrTitle'].includes(shape.props?.ph?.kind) || !shape.body) continue
+        if (!['title', 'ctrTitle'].includes(shape.look.get('ph')?.kind) || !shape.body) continue
         const body = context.object(shape.body, 'TextBody')
         body.paragraphs.load()
         await context.sync()

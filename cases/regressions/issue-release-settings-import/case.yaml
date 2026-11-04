@@ -1,0 +1,18 @@
+format: 1
+id: regressions/issue-release-settings-import
+feature: kition.platform.release-checks
+intent: Settings behavior tests finish without leaking an asynchronous module import into the next test's React root.
+layer: golden
+source:
+  kind: probe
+  from: src/features/settings/DesktopSettingsPage.spec.tsx
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/settings/DesktopSettingsPage.spec.tsx]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"

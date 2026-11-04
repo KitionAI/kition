@@ -60,8 +60,13 @@ async function expectCell(kit: FrameLocator, cell: string, input: string) {
 async function insertRowAbove(kit: FrameLocator, row: number) {
   await goTo(kit, `A${row}`)
   await kit.getByTestId('ribbon-tab-home').click()
-  await kit.getByRole('group', { name: 'Cells' }).getByRole('button', { name: 'Insert', exact: true }).click()
+  const cells = kit.getByRole('group', { name: 'Cells', exact: true })
+  const collapsed = cells.getByRole('button', { name: 'Cells', exact: true })
+  if (await collapsed.isVisible()) await collapsed.click()
+  await kit.getByRole('button', { name: 'Insert', exact: true }).click()
+  const started = Date.now()
   await kit.getByTestId('sheet-cmd-home.insertRows').click()
+  return started
 }
 
 /** The replica version at `path` once it stops changing. */
@@ -105,7 +110,10 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     // Alice opens her workbook and shares it.
     const pageA = await alice.newPage()
     await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, pathA, await budgetFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    const a = await openInKitFrame(pageA, baseURL!, pathA, await budgetFixture(), {}, {
+      ...signedIn(DEV_PRINCIPALS.alice),
+      modes: { 'kit.sheet': 'classic' },
+    })
     await expect(a.kit.getByTestId('sheet-status')).toHaveText('Sheet1 · A1', { timeout: 60_000 })
     const link = await shareFromTab(pageA, 'Budget')
     await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
@@ -136,8 +144,7 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     // Alice inserts a row above the rent: within a second Bob has it, and the total there still
     // sums the same two rows, now one row down.
     const insertBaseline = JSON.stringify(await replicaCounters(pageB, pathB))
-    const inserting = Date.now()
-    await insertRowAbove(a.kit, 2)
+    const inserting = await insertRowAbove(a.kit, 2)
     const insertLive = await liveTo(pageA, pathA, pageB, pathB, insertBaseline, inserting)
     testInfo.annotations.push({ type: 'live row insert to the other window', description: `${insertLive} ms` })
     expect(insertLive).toBeLessThan(1_000)

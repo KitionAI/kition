@@ -252,7 +252,9 @@ test('a viewer of a shared slide file sees it change but cannot change it', asyn
     await expect(kitB.getByTestId('slides-view-only')).toBeVisible({ timeout: 15_000 })
     await expect(kitB.getByTestId('slides-save')).toHaveCount(0)
     await expect(kitB.getByTestId('slides-undo')).toHaveCount(0)
-    await expect(kitB.getByTestId('slides-cmd-slide.new')).toBeDisabled()
+    await expect(kitB.getByTestId('slides-redo')).toHaveCount(0)
+    await expect(kitB.getByTestId('ribbon-tab-home')).toHaveCount(0)
+    await expect(kitB.getByTestId('slides-cmd-slide.new')).toHaveCount(0)
     const bobPath = 'Shared/Keynote.kslide'
     await expect.poll(() => sameReplicas(pageA, 'Keynote.kslide', pageB, bobPath), { timeout: 15_000 }).toBe('same')
 

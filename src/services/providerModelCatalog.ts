@@ -4,7 +4,7 @@ import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
 import type { DesktopProviderKind, DesktopSettingsState } from '@/types/desktopSettings'
 
 /** The Claude model Kition picks when the account lists it and none is chosen yet. */
-export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5'
+const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5'
 
 function normalizeDiscoveredModels(value: unknown): string[] {
   if (!Array.isArray(value)) return []

@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-release-slide-title-reader
+feature: kition.kit-collab.slide
+intent: >-
+  Role changes must preserve every slide and its unsaved title edits. The reader
+  must find title placeholders through the current Shape.look map in schema 7.
+layer: golden
+source:
+  kind: probe
+  from: e2e/kit-role-change.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/kit-role-change.spec.ts, --project, chromium, --workers, "1"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"
+requires: [chromium]
+timeout_s: 60

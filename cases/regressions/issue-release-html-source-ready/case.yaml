@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-release-html-source-ready
+feature: kition.kits.html-preview
+intent: >-
+  After the engine accepts an edited HTML source, canvas clicks must activate its
+  label and save only source text. Old pixels cannot establish source readiness.
+layer: golden
+source:
+  kind: probe
+  from: e2e/html-embedded.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.webkit.config.ts, e2e/html-embedded.spec.ts, --grep, renders Canvas images, --workers, "1"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"
+requires: [webkit]
+timeout_s: 60

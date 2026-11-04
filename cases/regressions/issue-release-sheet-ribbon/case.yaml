@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-release-sheet-ribbon
+feature: kition.kit-collab.sheet
+intent: >-
+  The workbook collaboration scenario must open the classic ribbon before using its
+  Insert menu, then retain every formula, convergence, and latency assertion.
+layer: golden
+source:
+  kind: probe
+  from: e2e/collab-sheet.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/collab-sheet.spec.ts, -g, co-edits a workbook, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-31"

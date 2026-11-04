@@ -480,9 +480,11 @@ mod tests {
         let second = StoreLock::open(&root);
         if cfg!(unix) {
             assert!(second.is_writer());
-            assert!(first.refresh());
-            assert!(!first.is_writer());
         }
+        // Observe the loss of ownership even when the other process's lock must
+        // expire by heartbeat. Recovery below must start from a read-only state.
+        assert!(first.refresh());
+        assert!(!first.is_writer());
         // A damaged lock file is taken over too.
         fs::write(lock_file(&root), b"garbage").unwrap_or_else(|err| panic!("{err}"));
         assert!(first.refresh());

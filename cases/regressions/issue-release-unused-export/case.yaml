@@ -1,0 +1,21 @@
+format: 1
+id: regressions/issue-release-unused-export
+feature: kition.platform.release-checks
+intent: >-
+  Model catalogue defaults must remain internal when no consumer imports them, so the
+  unused-code gate reaches the remaining release checks without expanding its baseline.
+layer: golden
+source:
+  kind: issue
+  from: https://github.com/KitionAI/kition/actions/runs/41211372604
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, check:knip]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+timeout_s: 60
+since: "2026-10-31"
