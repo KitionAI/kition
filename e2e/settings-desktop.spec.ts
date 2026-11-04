@@ -330,6 +330,28 @@ test('desktop settings keep a live light-theme preview after syncing provider mo
   await expect(page.locator('html')).toHaveAttribute('data-desktop-theme', 'light')
 })
 
+test('closing settings without saving puts the saved theme back', async ({ page }) => {
+  const secureStore = new Map<string, string>([
+    ['kition.desktop.settings.v1', JSON.stringify({ general: { theme: 'light' } })],
+  ])
+  await page.exposeFunction('__desktopWriteSecureValue', async (key: string, value: string) => {
+    secureStore.set(key, value)
+  })
+  await page.exposeFunction('__desktopReadSecureValue', async (key: string) => secureStore.get(key) || '')
+  await mockDesktopBridge(page)
+
+  await page.goto('/settings?section=display')
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await page.getByRole('button', { name: 'Dark' }).click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await expect(page).toHaveURL(/\/documents$/)
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await expect(page.locator('html')).toHaveAttribute('data-desktop-theme-mode', 'light')
+  expect(secureStore.get('kition.desktop.settings.v1') || '').toContain('"theme":"light"')
+})
+
 test('closing a directly opened settings route returns to the workspace', async ({ page }) => {
   await mockDesktopBridge(page)
 

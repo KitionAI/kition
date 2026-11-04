@@ -17,6 +17,7 @@ import { GeneralSettings } from '@/features/settings/sections/GeneralSettings'
 import { RuntimeSettings } from '@/features/settings/sections/RuntimeSettings'
 import { CollabSettings } from '@/features/settings/sections/CollabSettings'
 import { ExtensionsSettings } from '@/features/settings/sections/ExtensionsSettings'
+import { applyDesktopAppearance, applyDesktopDisplay, loadDesktopSettings } from '@/services/desktopSettings'
 
 export type { SettingsSectionKey } from '@/features/settings/sections/sectionRegistry'
 
@@ -41,6 +42,14 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
     advancedSettingsSections.some((section) => section.key === activeSection)
   ))
   const hasVisibleSections = visible.main.length > 0 || visible.about !== undefined || visible.advanced.length > 0
+
+  // Panes preview theme and display changes live; leaving settings puts the saved ones back.
+  useEffect(() => () => {
+    void loadDesktopSettings().then((saved) => {
+      applyDesktopAppearance(saved.general.theme)
+      applyDesktopDisplay(saved.display)
+    })
+  }, [])
 
   useEffect(() => {
     if (!settingsSections.some((section) => section.key === activeSection)) {
