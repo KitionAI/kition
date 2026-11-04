@@ -70,7 +70,7 @@ repeat without handing context between disconnected tools.
   every addition and deletion, then accept or reject individual changes.
 - **Visible automation.** Assemble trigger-and-action workflows, test steps,
   inspect run history, and resolve missing inputs before enabling a process.
-- **Kits for every kind of file.** Fifteen built-in kits open sheets, slides,
+- **Kits for every kind of file.** Sixteen kits in four product lines open sheets, slides,
   photos, films, CAD drawings, and more as ordinary workspace files, and the Agent
   works on them through each kit's tools. See [Kits](#kits).
 
@@ -228,26 +228,30 @@ resolve missing inputs before enabling it.
 A kit is an editor for one kind of file. Its engine is compiled to WebAssembly
 and runs in a Web Worker, and the kit draws its own editor inside Kition. The
 Agent edits the same files through the kit's tools, so its changes stay
-visible and reviewable. Kition ships these kits, pinned in
-[`kits/kits.lock.json`](kits/kits.lock.json):
+visible and reviewable. Kition's kits come in four product lines; the packages
+Kition ships are pinned in [`kits/kits.lock.json`](kits/kits.lock.json).
 
-| Kit | Edits |
-| --- | --- |
-| Board | Infinite canvas for diagrams, mind maps, and sketches |
-| CAD | CAD drawings, including DXF |
-| Cube | 3D scenes |
-| Design | Page layouts such as flyers and posters |
-| Doc | Word documents (`.docx`) |
-| Effect | Motion graphics |
-| Fig | Interface and screen designs |
-| Film | Video timelines |
-| Note | Markdown notes |
-| PDF | PDF files |
-| Photo | Raster images and photo editing |
-| Sheet | Spreadsheets (`.xlsx`) with formulas |
-| Slide | Slides, including opening `.pptx` files |
-| Table | Structured `.ktable` data tables |
-| Vector | Vector graphics |
+| Product line | Kit | Edits |
+| --- | --- | --- |
+| Office | Note | Markdown notes |
+| Office | Table | Structured `.ktable` data tables |
+| Office | Board | Infinite canvas for diagrams, mind maps, and sketches |
+| Office | Doc | Word documents (`.docx`) |
+| Office | Sheet | Spreadsheets (`.xlsx`) with formulas |
+| Office | Slide | Slides, including opening `.pptx` files |
+| Office | PDF | PDF files |
+| Office | HTML (Preview) | HTML pages |
+| Design | Photo | Raster images and photo editing |
+| Design | Vector | Vector graphics |
+| Design | Design | Page layouts such as flyers and posters |
+| Design | Fig (Preview) | Interface and screen designs |
+| Media | Film | Video timelines |
+| Media | Effect | Motion graphics |
+| Engineering | CAD | CAD drawings, including DXF |
+| Engineering | Cube (Preview) | 3D scenes |
+
+Preview kits are early. HTML and Fig are not pinned in `kits/kits.lock.json`
+yet; they ship once their packages are published.
 
 Each kit is developed in its own repository; see
 [Kit SDK](docs/kit-sdk.md) for how kits plug into Kition.

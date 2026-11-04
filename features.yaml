@@ -1,8 +1,153 @@
 format: 1
 kit: kition
-updated: "2026-10-31"
+updated: "2026-11-01"
 golden_budget_s: 600
 features:
+  - id: kition.kits.doc-page-view
+    title: Document pages open at reading scale with visible margin corner guides
+    direction: [function, fidelity, data-safety]
+    priority: P1
+    status: has
+    paths: [e2e/doc-page-view.spec.ts]
+    cases: [regressions/issue-doc-page-view, regressions/issue-doc-page-gap]
+    since: "2026-11-01"
+  - id: kition.kits.doc-scroll
+    title: Word documents scroll within their page bounds without moving onto empty canvas
+    direction: [function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - e2e/doc-embedded.spec.ts
+      - e2e/doc-scrollbar.spec.ts
+    cases:
+      - regressions/issue-doc-scroll-bounds
+      - regressions/issue-doc-scrollbar
+    since: "2026-11-01"
+  - id: kition.kits.signed-files
+    title: Desktop kit files open through correctly signed runtime URLs at every filename length
+    direction: [function, security]
+    priority: P0
+    status: has
+    paths:
+      - src/lib/hmacSha256.ts
+      - src/lib/hmacSha256.spec.ts
+      - src/features/kits/kition/kitionHost.spec.ts
+      - e2e/table-kit.spec.ts
+    cases:
+      - regressions/issue-kit-file-signature
+    since: "2026-10-31"
+  - id: kition.search.workspace-index
+    title: Full-text search indexes current workspace notes and table records without reusing another workspace's listing
+    direction: [function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - src/app/Shell.tsx
+      - src/features/search/sources/workspaceNotes.ts
+      - src/features/search/sources/workspaceNotes.spec.ts
+      - src/features/search/sources/workspaceNotesIsolation.spec.ts
+      - src/features/search/service/searchService.ts
+      - src/features/search/service/searchService.spec.ts
+      - src/features/search/ui/SearchCommandPalette.tsx
+      - src/features/search/ui/SearchCommandPalette.spec.tsx
+      - e2e/search-fulltext.spec.ts
+    cases:
+      - regressions/issue-release-search-cache
+      - regressions/issue-release-search-refresh
+      - kition.search.workspace-index/browser
+    since: "2026-10-31"
+  - id: kition.agent.kit-adaptation
+    title: Every installed kit accepts agent edits while preserving saved files, drafts and read-only access
+    direction: [ai, function, data-safety, security]
+    priority: P0
+    status: has
+    paths:
+      - e2e/interaction/agent-adaptation.spec.ts
+      - src/features/kits/kition/kitBridge.ts
+      - src/features/kits/kition/kitBridgeModel.ts
+      - kits/sdks.json
+      - scripts/check-kit-sdk.mjs
+      - scripts/lib/kitParameterSchema.mjs
+      - scripts/lib/kitParameterSchema.spec.ts
+    cases:
+      - kition.agent.kit-adaptation/design
+      - kition.agent.kit-adaptation/note
+      - kition.agent.kit-adaptation/all-kits
+      - regressions/issue-agent-file-schema
+    since: "2026-10-31"
+  - id: kition.kits.html-preview
+    title: HTML previews run canvas interactions after the edited source is ready
+    direction: [function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - e2e/html-embedded.spec.ts
+    cases:
+      - regressions/issue-release-html-source-ready
+    since: "2026-10-31"
+  - id: kition.kit-collab.sheet
+    title: Workbook collaboration preserves formulas and merges offline cell edits
+    direction: [collab, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - e2e/collab-sheet.spec.ts
+    cases:
+      - regressions/issue-release-sheet-ribbon
+      - regressions/issue-release-sheet-latency
+    since: "2026-10-31"
+  - id: kition.kit-collab.slide
+    title: Shared slide viewers see remote edits while their documents remain read-only
+    direction: [collab, security]
+    priority: P1
+    status: has
+    paths:
+      - e2e/collab-slide.spec.ts
+      - e2e/kit-role-change.spec.ts
+      - src/features/kits/kition/KitFrame.tsx
+    cases:
+      - regressions/issue-release-slide-view-mode
+      - regressions/issue-release-slide-title-reader
+    since: "2026-10-31"
+  - id: kition.platform.development-server
+    title: The development server watches sources without traversing build artifacts
+    direction: [performance, robustness]
+    priority: P1
+    status: has
+    paths:
+      - tooling/vite.config.ts
+      - scripts/viteWatcher.spec.ts
+    cases:
+      - regressions/issue-release-vite-watcher
+    since: "2026-10-31"
+  - id: kition.platform.release-checks
+    title: Release checks preserve repository and document-store invariants across platforms
+    direction: [platform, robustness, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - .gitattributes
+      - src/services/providerModelCatalog.ts
+      - src-tauri/src/workspace/docstore/lock.rs
+      - scripts/repositoryCheckout.spec.ts
+      - e2e/shortcuts.spec.ts
+      - e2e/app-shell.spec.ts
+      - e2e/helpers/onboarding.ts
+      - e2e/onboarding-helper.spec.ts
+      - src/features/settings/DesktopSettingsPage.spec.tsx
+      - src/app/Shell.tsx
+      - src/features/workspace/hooks/useWorkspaceTreeLoader.ts
+      - src/features/workspace/hooks/useWorkspaceTreeLoader.spec.tsx
+    cases:
+      - regressions/issue-release-unused-export
+      - regressions/issue-release-vector-checkout
+      - regressions/issue-release-lock-state
+      - regressions/issue-release-platform-shortcut
+      - regressions/issue-release-settings-import
+      - regressions/issue-release-route-isolation
+      - regressions/issue-release-late-onboarding
+      - regressions/issue-release-welcome-focus
+    since: "2026-10-31"
   - id: kition.agent.kit-export
     title: The agent exports a kit document to a new file (KHP A41)
     direction: [ai, function]
@@ -56,6 +201,7 @@ features:
       - kition.agent.kit-object-model/fig-headless
       - kition.agent.kit-object-model/fig-open-editor
       - regressions/issue-bridge-model-schema
+      - regressions/issue-agent-design-schema
     since: "2026-10-28"
   - id: kition.kit-collab.fig
     title: People co-edit a Fig design live and across going offline (engine contract 2), and its replica is kept in Kition's store
@@ -78,8 +224,18 @@ features:
       - src/lib/sdk/kits/*.ts
       - src/lib/extensions/*.ts
       - e2e/extensions.spec.ts
+      - src/features/extensions/public.ts
+      - src/features/extensions/public.spec.tsx
+      - src/features/extensions/extensionService.ts
+      - src/features/extensions/extensionService.spec.ts
+      - src/features/kits/public.ts
+      - src/features/kits/kition/kitConnections.ts
+      - src/features/kits/kition/kitConnections.spec.ts
     cases:
       - kition.extensions.kit-scripts/fig-script
+      - regressions/issue-release-sdk-sync
+      - regressions/issue-release-extension-palette
+      - regressions/issue-release-active-kit-palette
     since: "2026-10-28"
   - id: kition.kit-links.pick-link
     title: A kit links an existing workspace file where it is (`links/pick`, Kit UI protocol 2.5) and reads it by its document-relative path
