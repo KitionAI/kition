@@ -17,7 +17,7 @@ const K = new Uint32Array([
 
 function sha256(message: Uint8Array): Uint8Array {
   const length = message.length
-  const padded = new Uint8Array((((length + 9) >> 6) + 1) << 6)
+  const padded = new Uint8Array(Math.ceil((length + 9) / 64) * 64)
   padded.set(message)
   padded[length] = 0x80
   const view = new DataView(padded.buffer)

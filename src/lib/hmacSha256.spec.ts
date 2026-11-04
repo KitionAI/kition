@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { hmacSha256Hex } from './hmacSha256'
 
 describe('hmacSha256Hex', () => {
+  it('matches Node at every message byte length across the first three blocks', () => {
+    for (const key of ['test-token', 'k'.repeat(64), 'k'.repeat(119)]) {
+      for (let length = 0; length <= 192; length += 1) {
+        const message = 'm'.repeat(length)
+        expect(hmacSha256Hex(key, message), `${key.length}/${length}`).toBe(createHmac('sha256', key).update(message).digest('hex'))
+      }
+    }
+  })
+
   it('matches RFC 4231', () => {
     expect(hmacSha256Hex('Jefe', 'what do ya want for nothing?')).toBe('5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843')
   })

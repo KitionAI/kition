@@ -1,4 +1,5 @@
 import { expect, test, type FrameLocator, type Page, type Route } from '@playwright/test'
+import { createHmac } from 'node:crypto'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
 import { fulfillJson } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
@@ -110,6 +111,41 @@ test('creates a table file from the New menu and opens it in the Table kit’s e
     await expect(kit.getByTestId('ktable-editor')).toBeVisible({ timeout: 60_000 })
     await expect(kit.getByTestId('table-title')).toHaveText('Untitled table.ktable')
     await expect(page.locator('.document-tree-row', { hasText: 'Untitled table' })).toBeVisible()
+  } finally {
+    await host.dispose()
+  }
+})
+
+test('creates a second table and opens it through a valid desktop file signature', async ({ page, baseURL }) => {
+  test.setTimeout(120_000)
+  const { bytes } = await leadsFixture()
+  const token = 'k'.repeat(64)
+  const reads: string[] = []
+  const routes = async (page: Page) => {
+    await serveKitTables(page)
+    // The runtime checks signed paths before considering a token header.
+    await page.route(/\/_signed\/.*\/workspace-files\//, async (route) => {
+      const match = /^\/_signed\/(\d+)\.(\d+)\.([0-9a-f]+)(\/.*)$/.exec(new URL(route.request().url()).pathname)
+      if (!match) return route.fulfill({ status: 401 })
+      const [, expires, length, signature, target] = match
+      const expected = createHmac('sha256', token).update(`${expires}\n${target.slice(0, Number(length))}`).digest('hex')
+      if (signature !== expected || Number(expires) < Date.now() / 1000) return route.fulfill({ status: 401 })
+      if (route.request().method() === 'GET') reads.push(decodeURIComponent(target))
+      return route.fallback()
+    })
+  }
+  const { host, saves } = await openKitWorkspace(page, baseURL!, { 'Untitled table.ktable': bytes }, { persist: true, desktop: { apiToken: token }, routes })
+  try {
+    await expect(page.locator('.document-tree-row').first()).toBeVisible({ timeout: 30_000 })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+    await page.getByTestId('workspace-create-table').click()
+    await expect.poll(() => saves.map((save) => save.path), { timeout: 60_000 }).toEqual(['Untitled table 2.ktable'])
+    const kit = page.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
+    await expect(kit.getByTestId('ktable-editor')).toBeVisible({ timeout: 60_000 })
+    await expect(kit.getByTestId('table-title')).toHaveText('Untitled table 2.ktable')
+    expect(reads).toContain('/workspace-files/Untitled table 2.ktable')
+    await expect(page.getByTestId('kit-open-failed')).toHaveCount(0)
   } finally {
     await host.dispose()
   }

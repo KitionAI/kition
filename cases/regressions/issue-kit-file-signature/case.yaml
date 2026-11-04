@@ -1,0 +1,19 @@
+format: 1
+id: regressions/issue-kit-file-signature
+feature: kition.kits.signed-files
+intent: Numbered table and board files open through authenticated desktop file URLs. HMAC signatures match an independent implementation at every SHA-256 padding boundary.
+layer: golden
+source:
+  kind: probe
+  from: src/features/kits/kition/kitionHost.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/lib/hmacSha256.spec.ts, src/features/kits/kition/kitionHost.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+timeout_s: 60
+since: "2026-10-31"
