@@ -1,0 +1,18 @@
+format: 1
+id: regressions/issue-agent-file-schema
+feature: kition.agent.kit-adaptation
+intent: The SDK checker accepts KHP A28 file parameters and rejects missing or invalid access declarations, including nested schemas.
+layer: golden
+source:
+  kind: probe
+  from: scripts/lib/kitParameterSchema.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitParameterSchema.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"
