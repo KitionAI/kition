@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-late-onboarding
+feature: kition.platform.release-checks
+intent: Kit test flows dismiss first-run activation even when it appears after workspace initialization, preserving real click actionability.
+layer: golden
+source:
+  kind: probe
+  from: e2e/onboarding-helper.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/onboarding-helper.spec.ts, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-31"
