@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-toast-over-settings
+feature: kition.platform.release-checks
+intent: >-
+  A notice raised while Settings is open (here a failed first-run setup) shows above Settings'
+  action bar, covering neither the pane's title nor Save, at the smallest supported window.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan reports/2026-11-04-ui-design-review.md (U14)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/toast-placement.spec.ts, -g, "a notice raised while Settings is open", --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-04"
+tags: [browser]
+requires: [chromium]
+timeout_s: 60

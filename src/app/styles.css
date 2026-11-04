@@ -4512,6 +4512,14 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* With Settings open, notices sit just above its action bar, clear of the pane's title and of
+   Save; the window is min(760px, 100vh - 4rem) tall, centred. Tessera's Toaster sets its top
+   offset inline, hence the override. */
+body:has(.settings-modal-window) .kui-toasts {
+  top: auto !important;
+  bottom: calc((100vh - min(760px, 100vh - 4rem)) / 2 + 76px);
+}
+
 /* The command and search palettes share one backdrop: a dim scrim without blur, like Tessera's dialogs. */
 .command-overlay,
 .search-palette-backdrop {

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { installDesktopHost } from './helpers/desktopHost'
 import { openNote } from './helpers/noteKit'
 
 // Toasts must never cover the tab chrome: one about the workspace (here, a file no application
@@ -25,4 +26,31 @@ test('a workspace error toast leaves the tab strip clickable', async ({ page, ba
   const open = await tabs.count()
   await page.locator('.document-tab-list .document-tab-close').first().click({ timeout: 2_000 })
   await expect(tabs).toHaveCount(open - 1)
+})
+
+// A notice raised while Settings is open must not cover the pane's title or its action bar (U14):
+// here the Getting Started setup fails on first run, after Settings opened from its URL.
+test('a notice raised while Settings is open leaves the pane title and action bar readable', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 1024, height: 768 })
+  const host = await installDesktopHost(page)
+  try {
+    await page.route('**/onboarding/manifest.json', (route) => route.fulfill({ status: 500, body: 'unavailable' }))
+    await page.goto(new URL('/settings?section=display', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
+
+    const toast = page.getByRole('alert').filter({ hasText: 'Getting Started' })
+    await expect(toast).toBeVisible({ timeout: 10_000 })
+    const covered = async (selector: string) => {
+      const target = await page.locator(selector).first().boundingBox()
+      const box = await toast.boundingBox()
+      if (!target || !box) return `${selector} or the notice is missing`
+      const overlaps = box.y < target.y + target.height && box.y + box.height > target.y
+        && box.x < target.x + target.width && box.x + box.width > target.x
+      return overlaps ? `covers ${selector}` : 'clear'
+    }
+    await expect.poll(() => covered('.settings-pane-header')).toBe('clear')
+    await expect.poll(() => covered('.settings-action-bar')).toBe('clear')
+  } finally {
+    await host.dispose()
+  }
 })

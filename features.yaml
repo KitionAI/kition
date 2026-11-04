@@ -154,6 +154,7 @@ features:
       - regressions/issue-about-switches
       - regressions/issue-workflow-empty-state
       - regressions/issue-palette-backdrop
+      - regressions/issue-toast-over-settings
     since: "2026-10-31"
   - id: kition.agent.kit-export
     title: The agent exports a kit document to a new file (KHP A41)
