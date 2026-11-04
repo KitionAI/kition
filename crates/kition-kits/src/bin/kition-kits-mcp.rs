@@ -8,9 +8,10 @@
 //! the person reviews and merges them with `kition-kits-mcp drafts`, never the agent. See
 //! [`USAGE`] for every option.
 //!
-//! The SDK licence key (`--license`, or `KITION_LICENSE`) is verified offline at start; without a
-//! valid one the server still serves and warns on stderr (kition-sdk docs/platform/licence.md). `--app-id`
-//! (or `KITION_APP_ID`) names the application when the licence binds application ids.
+//! A local server is client-side use: free, with no licence key and no warning (kition-sdk
+//! docs/platform/licence.md). A key given with `--license` (or `KITION_LICENSE`) is verified offline
+//! at start and its status printed on stderr; `--app-id` (or `KITION_APP_ID`) names the application
+//! when the licence binds application ids.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -41,7 +42,8 @@ server options:
                          extension, instead of `<prefix>_<action>` for each kit
   --drafts               the agent's edits go to drafts unless a call says `draft: false`
                          (by default edits are live and a call asks for a draft with `draft: true`)
-  --license <key>        the SDK licence key (or KITION_LICENSE); without a valid one the server warns
+  --license <key>        an SDK licence key (or KITION_LICENSE), reported at start; a local server
+                         needs none
   --app-id <id>          the application the licence names (or KITION_APP_ID)
 
 drafts commands (print JSON; an error is `{ \"error\": { code, message } }` and exit status 1):
@@ -220,8 +222,8 @@ fn main() -> ExitCode {
         return runtime.block_on(drafts_command(&kits, &options.command, &options));
     }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|elapsed| elapsed.as_secs()).unwrap_or_default();
-    match kition_kits::license::startup_notice(options.license.as_deref(), options.app_id.as_deref(), kition_license::PINNED_KEYS, now) {
-        Ok(notice) | Err(notice) => eprintln!("{notice}"),
+    if let Some(notice) = kition_kits::license::startup_notice(options.license.as_deref(), options.app_id.as_deref(), kition_license::PINNED_KEYS, now) {
+        eprintln!("{notice}");
     }
     let call = tools::CallOptions { draft: options.drafts };
     match runtime.block_on(kition_kits::mcp::serve_stdio(kits, call)) {

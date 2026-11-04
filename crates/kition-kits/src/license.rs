@@ -1,21 +1,21 @@
 // Copied from kition-sdk crates/kition-kits/src/license.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! The SDK licence of `kition-kits-mcp` (kition-sdk docs/platform/licence.md): the integrator's key
-//! (`--license` or `KITION_LICENSE`) is verified offline when the server starts. The server always
-//! serves; without a key that covers the `mcp` form it tells the operator on stderr that it runs
-//! unlicensed, for development and evaluation only.
+//! The SDK licence of `kition-kits-mcp` (kition-sdk docs/platform/licence.md). A local MCP server
+//! on the user's machine is client-side use: free, no key needed, and no warning without one. A key
+//! given with `--license` (or `KITION_LICENSE`) is verified offline when the server starts and its
+//! status reported. Server-side use (headless kits on a server, `collab`, `selfhost`) stays
+//! licensed; the host that runs it checks the key.
 
 use kition_license::{Context, Form, PublicKey, verify};
 
-/// What the server reports about its licence at start: `Ok` when licensed, else the warning.
-pub fn startup_notice(token: Option<&str>, app_id: Option<&str>, keys: &[PublicKey], now: u64) -> Result<String, String> {
-    let Some(token) = token.map(str::trim).filter(|token| !token.is_empty()) else {
-        return Err("kition-kits-mcp: running unlicensed (no --license or KITION_LICENSE): development and evaluation only".into());
-    };
+/// What the server reports about its licence at start: nothing without a key (local use is free),
+/// the licensee when the key covers the `mcp` form, else why the key was not accepted.
+pub fn startup_notice(token: Option<&str>, app_id: Option<&str>, keys: &[PublicKey], now: u64) -> Option<String> {
+    let token = token.map(str::trim).filter(|token| !token.is_empty())?;
     let context = Context { kit: None, form: Form::Mcp, origin: None, app_id, now };
-    match verify(token, keys, &context) {
-        Ok(license) => Ok(format!("kition-kits-mcp: licensed to {} until {}", license.licensee, license.expires)),
-        Err(error) => Err(format!("kition-kits-mcp: running unlicensed ({}: {error}): development and evaluation only", error.code())),
-    }
+    Some(match verify(token, keys, &context) {
+        Ok(license) => format!("kition-kits-mcp: licensed to {} until {}", license.licensee, license.expires),
+        Err(error) => format!("kition-kits-mcp: the licence key was not accepted ({}: {error}); a local server needs none and serves as usual", error.code()),
+    })
 }
 
 #[cfg(test)]
@@ -44,17 +44,29 @@ mod tests {
         let (keys, vectors) = vectors();
         let now = vectors["cases"][0]["context"]["now"].as_u64().unwrap_or_default();
         let notice = startup_notice(Some(&token(&vectors, "mcp at a server's start")), None, &keys, now);
-        assert_eq!(notice, Ok(format!("kition-kits-mcp: licensed to Example Corp (test) until {}", now + 364 * 86_400 + 86_400)));
+        assert_eq!(notice, Some(format!("kition-kits-mcp: licensed to Example Corp (test) until {}", now + 364 * 86_400 + 86_400)));
     }
 
     #[test]
-    fn without_a_valid_key_the_server_warns_and_says_why() {
+    fn without_a_key_the_local_server_says_nothing() {
         let (keys, vectors) = vectors();
         let now = vectors["cases"][0]["context"]["now"].as_u64().unwrap_or_default();
-        assert!(startup_notice(None, None, &keys, now).is_err_and(|warning| warning.contains("no --license")));
-        assert!(startup_notice(Some(&token(&vectors, "form not covered")), None, &keys, now).is_err_and(|warning| warning.contains("(form:")));
-        assert!(startup_notice(Some(&token(&vectors, "expired")), None, &keys, now).is_err_and(|warning| warning.contains("(expired:")));
-        assert!(startup_notice(Some(&token(&vectors, "application id required")), None, &keys, now).is_err_and(|warning| warning.contains("(app:")));
-        assert!(startup_notice(Some(&token(&vectors, "application id required")), Some("com.example.agent"), &keys, now).is_ok());
+        assert_eq!(startup_notice(None, None, &keys, now), None);
+        assert_eq!(startup_notice(Some("  "), None, &keys, now), None);
+    }
+
+    #[test]
+    fn a_key_that_is_not_accepted_says_why_without_calling_the_server_unlicensed() {
+        let (keys, vectors) = vectors();
+        let now = vectors["cases"][0]["context"]["now"].as_u64().unwrap_or_default();
+        let refused = |name: &str, app_id: Option<&str>| startup_notice(Some(&token(&vectors, name)), app_id, &keys, now).unwrap_or_default();
+        assert!(refused("form not covered", None).contains("(form:"));
+        assert!(refused("expired", None).contains("(expired:"));
+        assert!(refused("application id required", None).contains("(app:"));
+        assert!(refused("application id required", Some("com.example.agent")).contains("licensed to"));
+        for name in ["form not covered", "expired"] {
+            let notice = refused(name, None);
+            assert!(!notice.contains("unlicensed") && !notice.contains("evaluation"), "{notice}");
+        }
     }
 }
