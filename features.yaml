@@ -1,6 +1,6 @@
 format: 1
 kit: kition
-updated: "2026-11-01"
+updated: "2026-11-04"
 golden_budget_s: 600
 features:
   - id: kition.kits.doc-page-view
@@ -147,6 +147,8 @@ features:
       - regressions/issue-release-route-isolation
       - regressions/issue-release-late-onboarding
       - regressions/issue-release-welcome-focus
+      - regressions/issue-display-settings-revert
+      - regressions/issue-narrow-sidebar-controls
     since: "2026-10-31"
   - id: kition.agent.kit-export
     title: The agent exports a kit document to a new file (KHP A41)
@@ -185,6 +187,18 @@ features:
     cases:
       - regressions/issue-command-output
     since: "2026-10-28"
+  - id: kition.kit-protocol.theme
+    title: Kits follow Kition's colour scheme at open and on every switch (`ui/theme`, UI-H6)
+    direction: [function, fidelity]
+    priority: P1
+    status: has
+    paths:
+      - src/features/kits/kition/kitionTheme.ts
+      - src/features/kits/kition/KitFrame.tsx
+      - e2e/kit-theme.spec.ts
+    cases:
+      - regressions/issue-kit-dark-theme
+    since: "2026-11-04"
   - id: kition.agent.kit-object-model
     title: The agent reads and edits a kit document through its object model (`<prefix>_query`, `<prefix>_batch`), headless and in the open editor
     direction: [ai, function]
@@ -202,6 +216,7 @@ features:
       - kition.agent.kit-object-model/fig-open-editor
       - regressions/issue-bridge-model-schema
       - regressions/issue-agent-design-schema
+      - regressions/issue-fig-schema-version
     since: "2026-10-28"
   - id: kition.kit-collab.fig
     title: People co-edit a Fig design live and across going offline (engine contract 2), and its replica is kept in Kition's store
