@@ -213,6 +213,14 @@ async fn fork_replica(kits: &KitManager, kit: &'static KitDefinition, path: &str
     Ok(id)
 }
 
+/// Drops what the headless draft `id` of `path` holds beyond what was last stored (a failed
+/// `<prefix>_run`, KHP A53) and opens it again from its folder; answers the draft document's id.
+pub(crate) async fn reload(kits: &KitManager, kit: &'static KitDefinition, path: &str, id: &str) -> Result<String, KitToolError> {
+    kits.close(kit.id, id, true).await?;
+    kits.inner.draft_documents.lock().await.remove(path);
+    document(kits, kit, path, false).await
+}
+
 /// Stores the draft after an edit, and makes it `open` again (A12).
 pub(crate) async fn persist(kits: &KitManager, kit: &'static KitDefinition, path: &str, id: &str) -> Result<(), KitToolError> {
     let dir = folder(workspace(kits)?, path);

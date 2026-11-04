@@ -157,7 +157,12 @@ pub fn output_schema(action: Action) -> Value {
                         "properties": { "command": { "type": "string" }, "changed": { "type": "boolean" }, "result": {}, "truncated": { "type": "object", "description": "The result was cut to fit: `shown` of `total` items (of `field` when the result is an object)." } },
                         "required": ["command"]
                     },
-                    "description": "The steps that ran, in order; on failure, those before the failing one. `changed` is there only when false (the step changed nothing), `result` only when the command answered one."
+                    "description": "The steps that ran, in order. On failure it is empty: a run is atomic (KHP A53), and the steps before the failing one are in `rolledBack`; only when they could not be rolled back are they here. `changed` is there only when false (the step changed nothing), `result` only when the command answered one."
+                },
+                "rolledBack": {
+                    "type": "array",
+                    "items": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] },
+                    "description": "On failure: the steps that ran before the failing one and were undone, so the document is as it was before the call and nothing was saved (KHP A53)."
                 },
                 "saved": { "type": "boolean" },
                 "document": { "$ref": "#/$defs/document" }

@@ -267,7 +267,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         KitToolSpec {
             name: run.clone(),
             description: format!(
-                "Edit a {noun} in {name} by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by {commands}. Stops at the first failing step. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call {ready} when it is done."
+                "Edit a {noun} in {name} by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by {commands}. Stops at the first failing step and rolls the run back: the file and the document are as they were before the call, and nothing is saved. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call {ready} when it is done."
             ),
             input_schema: json!({
                 "type": "object",
@@ -1019,12 +1019,32 @@ async fn run_on_headless_draft(kits: &KitManager, kit: &'static KitDefinition, p
             }
         }
     }
-    // The steps that ran stay in the draft, as in an editor's draft.
+    if let Some(mut failure) = failure {
+        // A failed run is atomic (KHP A53): the draft goes back to what was stored before the call.
+        if done.is_empty() {
+            return Err(failure.with_output(json!({ "completed": [], "draft": true, "document": draft_json(&view, path) })));
+        }
+        return Err(match drafts::reload(kits, kit, path, id).await {
+            Ok(reloaded) => {
+                let restored = kits.document(Caller::Agent, kit.id, &reloaded).await.unwrap_or(view);
+                failure
+                    .message
+                    .push_str(&format!(" The {} step(s) before it were rolled back: your draft of `{path}` is as it was before the call.", done.len()));
+                failure.with_output(json!({ "completed": [], "rolledBack": done, "draft": true, "document": draft_json(&restored, path) }))
+            }
+            Err(error) => {
+                failure.message.push_str(&format!(
+                    " The {} step(s) before it could not be rolled back ({}): they stay in your draft of `{path}`.",
+                    done.len(),
+                    error.message
+                ));
+                drafts::persist(kits, kit, path, id).await?;
+                failure.with_output(json!({ "completed": done, "draft": true, "document": draft_json(&view, path) }))
+            }
+        });
+    }
     if !done.is_empty() {
         drafts::persist(kits, kit, path, id).await?;
-    }
-    if let Some(failure) = failure {
-        return Err(failure.with_output(json!({ "completed": done, "draft": true, "document": draft_json(&view, path) })));
     }
     let previews = headless_draft_preview(kits, kit, path, id).await;
     Ok(KitToolOutput {
@@ -1543,6 +1563,9 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
         });
     }
     let mut view = kits.open(Caller::Agent, &path).await?;
+    // Whether the document held unsaved edits before the call: a failed run puts it back as it
+    // was (KHP A53), by reopening the file when it had none, else by undoing the run's steps.
+    let was_dirty = view.dirty;
     if let Some(part) = target_part(input) {
         view = go_to_part(kits, &view, part)
             .await?
@@ -1568,18 +1591,19 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
                 if !matches!(failure.code, ErrorCode::UnknownCommand | ErrorCode::NotAllowed | ErrorCode::Unavailable) {
                     failure.code = ErrorCode::COMMAND_FAILED;
                 }
-                return Err(failure
-                    .context(&format!("step {index} (`{command}`) failed: "))
-                    .at(Some(index))
-                    .with_output(json!({ "completed": done, "document": document_summary_json(&view) })));
+                let failure = failure.context(&format!("step {index} (`{command}`) failed: ")).at(Some(index));
+                return Err(rolled_back(kits, &path, &view, was_dirty, done, failure).await);
             }
         }
     }
     if save && view.dirty {
-        view = kits
-            .save(Caller::Agent, view.kit_id, &view.document_id)
-            .await
-            .map_err(|error| KitToolError::from(error).context("the edits were applied but saving failed: "))?;
+        match kits.save(Caller::Agent, view.kit_id, &view.document_id).await {
+            Ok(saved) => view = saved,
+            Err(error) => {
+                let failure = KitToolError::from(error).context("saving failed: ");
+                return Err(rolled_back(kits, &path, &view, was_dirty, done, failure).await);
+            }
+        }
     }
     let previews = if input.get("preview").and_then(Value::as_bool) == Some(true) { preview(kits, kit, &view).await } else { Vec::new() };
     let saved = if save { "saved" } else { "not saved" };
@@ -1590,6 +1614,61 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
             json!({ "completed": done, "saved": save, "document": document_summary_json(&view) }),
         )
     })
+}
+
+/// A failed `<prefix>_run` is atomic (KHP A53): the session's document is put back as it was before
+/// the call and nothing is saved. The error lists the steps that ran before the failure as
+/// `rolledBack`, with `completed` empty; when the document cannot be put back it says so, and the
+/// steps that stay are `completed`.
+async fn rolled_back(kits: &KitManager, path: &str, view: &DocumentView, was_dirty: bool, done: Vec<Value>, mut failure: KitToolError) -> KitToolError {
+    match restore(kits, path, view, was_dirty, &done).await {
+        Ok(restored) => {
+            if !done.is_empty() {
+                failure.message.push_str(&format!(
+                    " The {} step(s) before it were rolled back: `{path}` is as it was before the call, and nothing was saved.",
+                    done.len()
+                ));
+            }
+            failure.with_output(json!({ "completed": [], "rolledBack": done, "saved": false, "document": document_summary_json(&restored) }))
+        }
+        Err(reason) => {
+            failure.message.push_str(&format!(
+                " The {} step(s) before it could not be rolled back ({reason}): they stay in `{path}`, unsaved; undo them (`edit.undo`) or save to keep them.",
+                done.len()
+            ));
+            failure.with_output(json!({ "completed": done, "saved": false, "document": document_summary_json(view) }))
+        }
+    }
+}
+
+/// Puts the headless document of a failed run back as it was before the call: a document that
+/// had no unsaved edits is closed without saving and opened again from its file; one that had is
+/// taken back by undoing each step that changed it, in the agent's undo scope. Answers the
+/// document as it now is.
+async fn restore(kits: &KitManager, path: &str, view: &DocumentView, was_dirty: bool, done: &[Value]) -> Result<DocumentView, String> {
+    let now = kits.document(Caller::Agent, view.kit_id, &view.document_id).await.map_err(|error| error.to_string())?;
+    let changed = done.iter().filter(|step| step.get("changed") != Some(&Value::Bool(false))).count();
+    if !was_dirty {
+        if !now.dirty && changed == 0 {
+            return Ok(now);
+        }
+        kits.close(view.kit_id, &view.document_id, true).await.map_err(|error| error.to_string())?;
+        return kits.open(Caller::Agent, path).await.map_err(|error| error.to_string());
+    }
+    if done.iter().any(|step| matches!(step["command"].as_str(), Some("edit.undo" | "edit.redo"))) {
+        return Err("the steps undid or redid edits themselves".into());
+    }
+    let mut now = now;
+    for _ in 0..changed {
+        let mut params = Map::new();
+        params.insert("scope".into(), Value::String("agent".into()));
+        let undone = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "edit.undo", params).await.map_err(|error| error.to_string())?;
+        if !undone.changed {
+            return Err("the kit had nothing more to undo".into());
+        }
+        now = undone.document;
+    }
+    Ok(now)
 }
 
 /// A command's parameter schema as `<prefix>_commands` lists it: the schema itself (KHP A5), without

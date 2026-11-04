@@ -865,7 +865,7 @@
       "writes": false
     },
     "<prefix>_run": {
-      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands. Stops at the first failing step. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
+      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands. Stops at the first failing step and rolls the run back: the file and the document are as they were before the call, and nothing is saved. Answers each step's result and a short document summary. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
       "input": {
         "properties": {
           "draft": {
@@ -929,7 +929,7 @@
       "output": {
         "properties": {
           "completed": {
-            "description": "The steps that ran, in order; on failure, those before the failing one. `changed` is there only when false (the step changed nothing), `result` only when the command answered one.",
+            "description": "The steps that ran, in order. On failure it is empty: a run is atomic (KHP A53), and the steps before the failing one are in `rolledBack`; only when they could not be rolled back are they here. `changed` is there only when false (the step changed nothing), `result` only when the command answered one.",
             "items": {
               "properties": {
                 "changed": {
@@ -964,6 +964,21 @@
           "live": {
             "description": "Edited or read in the file's open editor.",
             "type": "boolean"
+          },
+          "rolledBack": {
+            "description": "On failure: the steps that ran before the failing one and were undone, so the document is as it was before the call and nothing was saved (KHP A53).",
+            "items": {
+              "properties": {
+                "command": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "command"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "saved": {
             "type": "boolean"
