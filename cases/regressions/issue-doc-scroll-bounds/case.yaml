@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-doc-scroll-bounds
+feature: kition.kits.doc-scroll
+intent: Scrolling a Word document stops at its first and last page instead of leaving an empty canvas, without editing the document.
+layer: golden
+source:
+  kind: probe
+  from: e2e/doc-embedded.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/doc-embedded.spec.ts, -g, scrolling a Word document, --workers=1, --output=target/golden/doc-scroll]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-11-01"

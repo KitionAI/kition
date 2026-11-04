@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-doc-page-view
+feature: kition.kits.doc-page-view
+intent: A blank document opens in KitFrame at reading scale with visible margin corner guides and no unsaved edits.
+layer: golden
+source:
+  kind: probe
+  from: e2e/doc-page-view.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/doc-page-view.spec.ts, --workers=1, --output=target/golden/doc-page-view]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-11-01"

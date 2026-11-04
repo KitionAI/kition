@@ -52,6 +52,40 @@ async function textOf(bytes: Buffer) {
 // The tests click the Classic ribbon, which needs a wide window: a narrower one steps down to Single line.
 test.use({ viewport: { width: 1920, height: 1000 } })
 
+test('scrolling a Word document stops at the first and last page', async ({ page, baseURL }, testInfo) => {
+  test.setTimeout(90_000)
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Letter.docx', await letterFixture())
+  try {
+    await expect(kit.getByTestId('doc-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    const surface = kit.getByTestId('kit-canvas-surface')
+    const paper = () => surface.evaluate((canvas: HTMLCanvasElement) => {
+      const pixels = canvas.getContext('2d')!.getImageData(Math.floor(canvas.width / 2), 0, 1, canvas.height).data
+      const rows: number[] = []
+      for (let y = 0; y < canvas.height; y += 1) {
+        if (pixels[y * 4] === 255 && pixels[y * 4 + 1] === 255 && pixels[y * 4 + 2] === 255) rows.push(y)
+      }
+      return { top: rows[0] ?? canvas.height, coverage: rows.length / canvas.height, height: canvas.height }
+    })
+    await expect.poll(async () => (await paper()).coverage).toBeGreaterThan(0.5)
+    await surface.hover()
+    await page.mouse.wheel(0, -1000)
+    // Let the wheel and the engine's resulting repaint settle before reading the pixels.
+    await page.waitForTimeout(500)
+    await expect.poll(async () => { const image = await paper(); return image.top / image.height }).toBeLessThan(0.2)
+    await page.screenshot({ path: testInfo.outputPath('word-scroll-top.png') })
+    await page.mouse.wheel(0, 100_000)
+    await page.waitForTimeout(500)
+    await expect.poll(async () => (await paper()).coverage).toBeGreaterThan(0.5)
+    await page.mouse.wheel(0, -100_000)
+    await page.waitForTimeout(500)
+    await expect.poll(async () => { const image = await paper(); return image.top / image.height }).toBeLessThan(0.2)
+    await expect(kit.getByTestId('doc-status')).toHaveText('Page 1 of 1')
+    await expect(kit.getByTestId('doc-unsaved')).toHaveCount(0)
+  } finally {
+    await host.dispose()
+  }
+})
+
 test('opens a Doc document in the Doc kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Doc kit editor is not built into public/kits/doc-ui')
   test.setTimeout(120_000)

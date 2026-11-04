@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-doc-scrollbar
+feature: kition.kits.doc-scroll
+intent: A visible scrollbar reflects a multipage Word document and supports wheel, dragging and return to the top inside KitFrame without creating edits or saves.
+layer: golden
+source:
+  kind: probe
+  from: e2e/doc-scrollbar.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/doc-scrollbar.spec.ts, --workers=1, --output=target/golden/doc-scrollbar]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-11-01"

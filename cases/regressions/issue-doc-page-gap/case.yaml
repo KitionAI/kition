@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-doc-page-gap
+feature: kition.kits.doc-page-view
+intent: The document's paper stays about twenty screen pixels below its toolbar when opening and resizing tall KitFrame windows, without creating edits.
+layer: golden
+source:
+  kind: probe
+  from: e2e/doc-page-view.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/doc-page-view.spec.ts, -g, document paper stays close, --workers=1, --output=target/golden/doc-page-gap]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-11-01"
