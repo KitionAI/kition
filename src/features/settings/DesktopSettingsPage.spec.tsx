@@ -131,6 +131,12 @@ describe('DesktopSettingsPage information architecture', () => {
     expect(container.querySelector('.settings-nav-button.is-active')?.textContent).toContain('Account')
   })
 
+  it('uses switches for the update toggles in About, like every other settings toggle', async () => {
+    await renderSettings('about')
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0)
+    expect(container.querySelectorAll('[role="switch"]').length).toBeGreaterThanOrEqual(2)
+  })
+
   it('titles the Account pane with its navigation name, like every other pane', async () => {
     await renderSettings('account')
     expect(container.querySelector('.settings-account-pane .settings-pane-header h2')?.textContent).toBe('Account')

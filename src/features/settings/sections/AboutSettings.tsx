@@ -6,7 +6,7 @@ import { checkForUpdates, downloadUpdate, installUpdate, setAutoCheckUpdates, se
 import { useUpdateState } from '@/features/updates/public'
 import { UpdateDownloadProgress } from '@/features/updates/public'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
-import { Button } from '@kition/tessera-ui'
+import { Button, Switch } from '@kition/tessera-ui'
 import { SupportAndTrustSettings } from '@/features/support/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { getCurrentLocale, useTranslation } from '@/i18n'
@@ -130,10 +130,9 @@ export function AboutSettings() {
           title={t('about.autoCheck')}
           description={t('about.autoCheckDescription')}
         >
-          <input
-            type="checkbox"
+          <Switch
             checked={settings.general.autoCheckUpdates}
-            onChange={(e) => void handleToggleAutoCheck(e.target.checked)}
+            onCheckedChange={(checked) => void handleToggleAutoCheck(checked)}
             aria-label={t('about.autoCheckAria')}
           />
         </SettingsRow>
@@ -141,10 +140,9 @@ export function AboutSettings() {
           title={t('about.betaChannel')}
           description={t('about.betaChannelDescription')}
         >
-          <input
-            type="checkbox"
+          <Switch
             checked={settings.general.updateBetaChannel}
-            onChange={(e) => void handleToggleBeta(e.target.checked)}
+            onCheckedChange={(checked) => void handleToggleBeta(checked)}
             aria-label={t('about.betaChannelAria')}
           />
         </SettingsRow>
