@@ -141,6 +141,39 @@ export type KitDocumentInit = {
    * selects it; otherwise it ignores it.
    */
   view?: KitView
+  /**
+   * What the person may take out of the document (minor version 2.6, managed co-editing OT5): a
+   * kit hides Download, Export, Print, and Share controls the host withholds. Absent: all allowed.
+   * Display permissions, not a security boundary: the host enforces them for bytes it serves.
+   */
+  permissions?: KitDocumentPermissions
+  /** Text the kit draws over its canvas, faint and repeated (minor version 2.6); absent: none. */
+  watermark?: KitWatermark | null
+}
+
+/** `document.permissions` (minor version 2.6): `export` covers Print too. */
+export type KitDocumentPermissions = { download: boolean; export: boolean; share: boolean }
+/** `document.watermark` (minor version 2.6): at most `WATERMARK_TEXT_LIMIT` characters, no control characters. */
+export type KitWatermark = { text: string }
+export const WATERMARK_TEXT_LIMIT = 256
+
+/** `document.permissions` as a kit reads it: absent, everything is allowed; present, only the flags that are `true`. */
+export function parseDocumentPermissions(value: unknown): KitDocumentPermissions {
+  if (value === undefined || value === null) return { download: true, export: true, share: true }
+  const record = typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return { download: record.download === true, export: record.export === true, share: record.share === true }
+}
+
+// eslint-disable-next-line no-control-regex
+const WATERMARK_CONTROL = /[\u0000-\u001f\u007f-\u009f]/
+
+/** `document.watermark` as a kit draws it: its text trimmed, or `null` for none or a malformed one. */
+export function parseWatermark(value: unknown): KitWatermark | null {
+  const text = value && typeof value === 'object' ? (value as { text?: unknown }).text : undefined
+  if (typeof text !== 'string') return null
+  const trimmed = text.trim()
+  if (!trimmed || trimmed.length > WATERMARK_TEXT_LIMIT || WATERMARK_CONTROL.test(trimmed)) return null
+  return { text: trimmed }
 }
 
 export type InitializeParams = {
@@ -415,6 +448,164 @@ export const ACTION_ERROR_REASONS = ['not-allowed', 'no-gesture', 'not-found', '
 export type KitActionErrorReason = (typeof ACTION_ERROR_REASONS)[number]
 
 /**
+ * Host services (minor version 2.6, section 7k; managed co-editing D4): what a kit asks its host
+ * for instead of doing it itself, so every kit behaves as a native part of the host. A host lists
+ * each service it serves as the capability `service:<id>`.
+ */
+export const HOST_SERVICE_CAPABILITY_PREFIX = 'service:'
+export const HOST_SERVICES = ['file.pick', 'image.insert', 'people.mention', 'people.notify', 'share.open', 'file.rename', 'file.saveAs', 'access.request', 'editor.close', 'comment.create'] as const
+export type KitHostService = (typeof HOST_SERVICES)[number]
+
+/** A person the host lets this person see (`people.mention`). */
+export type KitPerson = { id: string; name: string; avatar?: string }
+
+/** Each service's params and result (section 7k). */
+export type KitHostServices = {
+  'file.pick': [KitFilesPickParams, { files: KitFileStat[] }]
+  'image.insert': [{ accept?: string[] }, { image: { name: string; mime: string; bytes: ArrayBuffer } | null }]
+  'people.mention': [{ query: string; limit?: number }, { people: KitPerson[] }]
+  'people.notify': [{ people: string[]; message: string; anchor?: KitCommentAnchor }, { notified: string[] }]
+  'share.open': [Record<string, never>, { done: boolean }]
+  'file.rename': [{ name?: string }, { name: string | null }]
+  'file.saveAs': [{ name?: string; format?: string; bytes: ArrayBuffer }, { path: string | null }]
+  'access.request': [{ perm: 'edit' | 'comment' }, { requested: boolean }]
+  'editor.close': [Record<string, never>, { closed: boolean }]
+  'comment.create': [{ anchor: KitCommentAnchor; text?: string }, { thread: string | null }]
+}
+export type KitServiceParams<S extends KitHostService = KitHostService> = { [K in S]: { service: K; params: KitHostServices[K][0] } }[S]
+export type KitServiceResult<S extends KitHostService = KitHostService> = KitHostServices[S][1]
+
+/** The reasons a `host/service` is refused (`error.data.reason` of a `-32000`, UI-V1). */
+export const SERVICE_ERROR_REASONS = ['not-allowed', 'no-gesture', 'cancelled', 'not-found', 'failed'] as const
+export type KitServiceErrorReason = (typeof SERVICE_ERROR_REASONS)[number]
+
+/**
+ * Which services a document's permissions allow (UI-V4): comments, mentions and notices need
+ * comment rights, inserting and renaming need edit rights, save-as needs download or export,
+ * sharing needs share; requesting access and closing need nothing.
+ */
+export function serviceAllowed(service: KitHostService, document: { readOnly?: boolean; comments?: { canComment?: boolean } | null; permissions?: unknown }) {
+  const edit = document.readOnly !== true
+  const comment = edit || document.comments?.canComment === true
+  const take = parseDocumentPermissions(document.permissions)
+  switch (service) {
+    case 'comment.create':
+    case 'people.mention':
+    case 'people.notify':
+      return comment
+    case 'file.pick':
+    case 'image.insert':
+    case 'file.rename':
+      return edit
+    case 'file.saveAs':
+      return take.download || take.export
+    case 'share.open':
+      return take.share
+    case 'access.request':
+    case 'editor.close':
+      return true
+  }
+}
+
+/** Limits a host checks a service's params against (UI-V3). */
+export const SERVICE_MESSAGE_LIMIT = 2000
+export const SERVICE_PEOPLE_LIMIT = 256
+
+/**
+ * A comment anchor (section 7k, claim O23): where in the document a host-stored comment points.
+ * `ids` are the selection's object ids (`KitPointer 1.0` PT7), `range` a text range in the first
+ * id's text, `quote` the text it quoted, `page` the page, `label` what the host's comment list shows.
+ */
+export type KitCommentAnchor = { ids: string[]; range?: { start: number; end: number }; quote?: string; page?: number; label?: string }
+/** A host's thread as a kit marks it (`comments/show`). */
+export type KitShownThread = { id: string; anchor: KitCommentAnchor; resolved: boolean; count: number }
+
+export const ANCHOR_IDS_LIMIT = 256
+export const ANCHOR_TEXT_LIMIT = 500
+
+// eslint-disable-next-line no-control-regex
+const LINE_CONTROL = /[\u0000-\u001f\u007f-\u009f]/
+// eslint-disable-next-line no-control-regex
+const TEXT_CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/
+/** Bidirectional overrides and isolates, which make text read other than it is (UI-V3). */
+const BIDI_CONTROL = /[\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c]/
+/** One line of text a host shows: no control or bidirectional formatting characters. */
+const isLineText = (text: string) => !LINE_CONTROL.test(text) && !BIDI_CONTROL.test(text)
+/** Text that may hold lines and tabs, but no other control or bidirectional formatting characters. */
+const isBodyText = (text: string) => !TEXT_CONTROL.test(text) && !BIDI_CONTROL.test(text)
+
+/**
+ * `value` as a comment anchor both sides trust (UI-V3): 1 to 256 string ids, a well-formed range,
+ * a quote and label of at most 500 characters, a page at least 0; anything malformed is `null`.
+ */
+export function parseCommentAnchor(value: unknown): KitCommentAnchor | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  const ids = Array.isArray(record.ids) ? record.ids.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 256 && isLineText(id)) : []
+  if (!ids.length || ids.length > ANCHOR_IDS_LIMIT || ids.length !== (record.ids as unknown[]).length) return null
+  const anchor: KitCommentAnchor = { ids }
+  const range = record.range as { start?: unknown; end?: unknown } | undefined
+  if (range !== undefined) {
+    const { start, end } = range ?? {}
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || (start as number) < 0 || (end as number) < (start as number)) return null
+    anchor.range = { start: start as number, end: end as number }
+  }
+  for (const key of ['quote', 'label'] as const) {
+    const text = record[key]
+    if (text === undefined) continue
+    if (typeof text !== 'string' || text.length > ANCHOR_TEXT_LIMIT || !(key === 'label' ? isLineText(text) : isBodyText(text))) return null
+    anchor[key] = text
+  }
+  if (record.page !== undefined) {
+    if (!Number.isSafeInteger(record.page) || (record.page as number) < 0) return null
+    anchor.page = record.page as number
+  }
+  return anchor
+}
+
+/**
+ * Checks a `host/service` request against UI-V3: a defined service and its params' shapes and
+ * limits. Answers the params as checked, or `null`.
+ */
+export function parseServiceParams(value: unknown): KitServiceParams | null {
+  const record = value as { service?: unknown; params?: unknown } | null
+  if (!record || typeof record !== 'object' || !(HOST_SERVICES as readonly unknown[]).includes(record.service)) return null
+  const service = record.service as KitHostService
+  const params = (record.params ?? {}) as Record<string, unknown>
+  if (typeof params !== 'object' || Array.isArray(params)) return null
+  const optionalString = (key: string, max = 256, body = false) => params[key] === undefined || (typeof params[key] === 'string' && (params[key] as string).length <= max && (body ? isBodyText : isLineText)(params[key] as string))
+  switch (service) {
+    case 'file.pick':
+      return typeof params.purpose === 'string' && Array.isArray(params.accept) && params.accept.every((item) => typeof item === 'string') ? ({ service, params } as KitServiceParams) : null
+    case 'image.insert':
+      return params.accept === undefined || (Array.isArray(params.accept) && params.accept.every((item) => typeof item === 'string')) ? ({ service, params } as KitServiceParams) : null
+    case 'people.mention':
+      return typeof params.query === 'string' && params.query.length <= 256 && isLineText(params.query) && (params.limit === undefined || (Number.isSafeInteger(params.limit) && (params.limit as number) > 0 && (params.limit as number) <= 100)) ? ({ service, params } as KitServiceParams) : null
+    case 'people.notify': {
+      const people = params.people
+      const ok = Array.isArray(people) && people.length > 0 && people.length <= SERVICE_PEOPLE_LIMIT && people.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 256 && isLineText(id)) && typeof params.message === 'string' && params.message.length <= SERVICE_MESSAGE_LIMIT && isBodyText(params.message)
+      if (!ok) return null
+      if (params.anchor === undefined) return { service, params } as KitServiceParams
+      const anchor = parseCommentAnchor(params.anchor)
+      return anchor ? ({ service, params: { ...params, anchor } } as KitServiceParams) : null
+    }
+    case 'share.open':
+    case 'editor.close':
+      return { service, params: {} } as KitServiceParams
+    case 'file.rename':
+      return optionalString('name') ? ({ service, params } as KitServiceParams) : null
+    case 'file.saveAs':
+      return params.bytes instanceof ArrayBuffer && optionalString('name') && optionalString('format', 32) ? ({ service, params } as KitServiceParams) : null
+    case 'access.request':
+      return params.perm === 'edit' || params.perm === 'comment' ? ({ service, params } as KitServiceParams) : null
+    case 'comment.create': {
+      const anchor = parseCommentAnchor(params.anchor)
+      return anchor && optionalString('text', SERVICE_MESSAGE_LIMIT, true) ? ({ service, params: { ...params, anchor } } as KitServiceParams) : null
+    }
+  }
+}
+
+/**
  * Opening (capabilities `open-file` and `open-url`, section 7i, minor version 2.1; KitLinks 1.0
  * section 5): the kit asks the host to open a workspace file or a web address, only from a
  * person's gesture (OP1, OP6). `linkRef` names the target as the document stores it: a path
@@ -546,11 +737,19 @@ export type HostToKit = {
   'replica/info': [Record<string, never>, { docId: string | null }]
   'model/describe': [{ schema?: object }, Record<string, unknown>]
   'model/batch': [ModelBatchParams, ModelBatchResult]
+  /** Whether the kit finds each anchor in the document now (minor version 2.6, capability `comment-anchors`, section 7k). */
+  'comments/locate': [{ anchors: KitCommentAnchor[] }, { found: boolean[] }]
 }
 
 /** Notifications the host sends. */
 export type HostNotifications = {
   'document/fileChanged': { version: string }
+  /**
+   * The file is now `version`, and this session's document already holds what it holds (minor
+   * version 2.6): another session of a co-edited room saved a state this replica has. The kit takes
+   * `version` as the one it last read or wrote, keeps its unsaved mark, and raises no conflict.
+   */
+  'document/held': { version: string }
   'ui/theme': { theme: KitTheme }
   'ui/locale': { locale: string }
   'ui/focus': Record<string, never>
@@ -564,6 +763,8 @@ export type HostNotifications = {
   'files/revoked': { handles: string[] }
   /** Shows `view` in the open document (minor version 2.1, section 7i; OP3), as `document.view` does for a new editor. */
   'document/reveal': { view: KitView }
+  /** The host's comment threads the kit marks (minor version 2.6, capability `comment-anchors`, section 7k): the whole list. */
+  'comments/show': { threads: KitShownThread[] }
 }
 
 /** Requests the kit sends. */
@@ -611,6 +812,8 @@ export type KitToHost = {
   'host/openUrl': [{ url: string }, KitOpenResult]
   /** Asks the person for existing workspace files to link, never copied (capability `links-pick`, section 7i); only from a person's gesture. Empty when the person cancels. */
   'links/pick': [KitLinksPickParams, { links: KitPickedLink[] }]
+  /** Asks the host for one of its services (capability `service:<id>`, section 7k); only from a person's gesture. */
+  'host/service': [KitServiceParams, KitServiceResult]
 }
 
 /** Notifications the kit sends. */
@@ -629,6 +832,8 @@ export type KitNotifications = {
   'draft/changed': DraftInfo
   /** What this session shares with the other people in the document changed (capability `presence`, section 7e). */
   'presence/set': KitPresence
+  /** The person clicked a host thread's marker (capability `comment-anchors`, section 7k): the host opens the thread. */
+  'comments/activated': { id: string }
 }
 
 type Message = { jsonrpc: '2.0'; id?: string; method?: string; params?: unknown; result?: unknown; error?: { code: number; message: string; data?: unknown } }

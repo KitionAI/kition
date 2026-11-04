@@ -45,6 +45,15 @@ import {
   type StoredReplica,
   type KitDiagnostic,
   HOST_ACTION_CAPABILITY_PREFIX,
+  HOST_SERVICE_CAPABILITY_PREFIX,
+  HOST_SERVICES,
+  parseCommentAnchor,
+  parseServiceParams,
+  serviceAllowed,
+  type KitCommentAnchor,
+  type KitHostService,
+  type KitHostServices,
+  type KitShownThread,
 } from './protocol'
 import { FILES_METHODS, openFileSession, type KitFileSession, type KitFilesOptions } from './files'
 
@@ -56,6 +65,8 @@ export type { KitFileErrorReason, KitFileRight, KitFileStat, KitFilesPickParams 
 export type { KitActionErrorReason, KitActionParams, KitActionResult, KitDefinedGeneratePurpose, KitGenerateErrorReason, KitGenerateMessage, KitGenerateParams, KitGeneratePart, KitGeneratePurpose, KitGenerateResult } from './protocol'
 export type { KitView } from './protocol'
 export { parseKitView } from './protocol'
+export { HOST_SERVICES, SERVICE_ERROR_REASONS, parseCommentAnchor, parseServiceParams, serviceAllowed } from './protocol'
+export type { KitCommentAnchor, KitHostService, KitHostServices, KitPerson, KitServiceErrorReason, KitServiceParams, KitServiceResult, KitShownThread } from './protocol'
 export type { KitLinkRef, KitLinksPickParams, KitOpenErrorReason, KitOpenParams, KitOpenResult, KitPickedLink } from './protocol'
 export { isOpenableUrl, linkPathFrom, openErrorReason, parseLinkRef, parseLinksPickParams, parseOpenParams, OPEN_ERROR_REASONS, OPEN_URL_SCHEMES } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
@@ -128,6 +139,18 @@ export type KitHostHandlers = {
    * with reason `not-allowed`.
    */
   actions?: Record<string, (params: Record<string, unknown>) => Result<'host/action'>>
+  /**
+   * `host/service`: the host's services by id (minor version 2.6, section 7k; managed co-editing
+   * D4), each listed as capability `service:<id>`. Params arrive checked (`parseServiceParams`,
+   * UI-V3); a service not served is refused `not-allowed`.
+   */
+  services?: { [S in KitHostService]?: (params: KitHostServices[S][0]) => KitHostServices[S][1] | Promise<KitHostServices[S][1]> }
+  /**
+   * The host keeps comment threads itself (capability `comment-anchors`, section 7k):
+   * `activated` hears the person click a thread's marker in the kit. Show threads with
+   * `KitConnection.showComments`.
+   */
+  comments?: { activated: (id: string) => void }
   /**
    * `host/open`: open a workspace file in the host (capability `open-file`, section 7i; KitLinks
    * 1.0 OP1 to OP5), with its `view` (OP3), creating a missing one when asked (OP4). The params
@@ -223,6 +246,8 @@ export type KitConnection = {
   state: () => Promise<DocumentState>
   save: () => Promise<{ saved: boolean; version: string | null }>
   fileChanged: (version: string) => void
+  /** Tells the kit the file is now `version` and its document already holds it (`document/held`, protocol 2.6): no conflict. */
+  fileHeld: (version: string) => void
   setTheme: (theme: KitTheme) => void
   setLocale: (locale: string) => void
   focus: () => void
@@ -240,6 +265,10 @@ export type KitConnection = {
    * a new editor opens at. A kit that cannot show it ignores it.
    */
   reveal: (view: KitView) => void
+  /** Tells the kit the host's threads to mark (`comments/show`, capability `comment-anchors`): the whole list; malformed anchors are left out. */
+  showComments: (threads: KitShownThread[]) => void
+  /** Whether the kit finds each anchor now (`comments/locate`); all `false` from a kit without `comment-anchors`. */
+  locateComments: (anchors: KitCommentAnchor[]) => Promise<boolean[]>
   /**
    * Hears every `presence/set` the kit sends (what the person selected, where their caret is),
    * checked; answers an unsubscribe. The object model's `selection` event follows it.
@@ -318,6 +347,10 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   if (handlers.pickLinks && !readOnly) capabilities.push('links-pick')
   const actions = Object.entries(handlers.actions ?? {}).filter(([, run]) => typeof run === 'function')
   capabilities.push(...actions.map(([id]) => `${HOST_ACTION_CAPABILITY_PREFIX}${id}`))
+  // Only what the document's permissions allow is offered and served (UI-V4).
+  const services = Object.entries(handlers.services ?? {}).filter(([id, run]) => typeof run === 'function' && (HOST_SERVICES as readonly string[]).includes(id) && serviceAllowed(id as KitHostService, options.document))
+  capabilities.push(...services.map(([id]) => `${HOST_SERVICE_CAPABILITY_PREFIX}${id}`))
+  if (handlers.comments) capabilities.push('comment-anchors')
   if (options.files) capabilities.push('files', ...(options.files.pick ? ['files-pick'] : []), ...(options.files.print ? ['print'] : []))
   const timeout = options.timeoutMs ?? 120_000
 
@@ -405,6 +438,17 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
     peer.on('host/notify', (notice) => handlers.notify?.(notice))
     peer.on('host/shortcut', (key) => handlers.shortcut?.(key))
     peer.on('ui/action', (params) => handlers.action?.(params))
+    peer.handle('host/service', (params) => {
+      const service = (params as { service?: unknown } | null)?.service
+      const run = services.find(([id]) => id === service)?.[1] as ((params: unknown) => unknown) | undefined
+      if (!run) throw new KitRpcError(-32000, `this host does not serve ${String(service)}`, { reason: 'not-allowed' })
+      const checked = parseServiceParams(params)
+      if (!checked) throw new KitRpcError(-32602, `bad params for ${String(service)}`)
+      return run(checked.params) as never
+    })
+    peer.on('comments/activated', (params) => {
+      if (typeof params?.id === 'string' && params.id) handlers.comments?.activated(params.id)
+    })
     target.postMessage({ kitionKitUi: 1, protocol: KIT_UI_PROTOCOL, id }, options.origin, [channel.port2])
     // Each attempt sends the document's bytes; the transfer leaves this copy intact for the next.
     const document = { ...options.document, bytes: options.document.bytes?.slice(0) }
@@ -485,6 +529,7 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     state: () => peer.request('document/state', {}),
     save: () => peer.request('document/save', {}),
     fileChanged: (version) => peer.notify('document/fileChanged', { version }),
+    fileHeld: (version) => peer.notify('document/held', { version }),
     setTheme: (theme) => peer.notify('ui/theme', { theme }),
     setLocale: (locale) => peer.notify('ui/locale', { locale }),
     focus: () => peer.notify('ui/focus', {}),
@@ -492,6 +537,18 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     leasesChanged: (leases) => peer.notify('lease/changed', { leases }),
     peersChanged: (peers) => peer.notify('presence/peers', { peers }),
     reveal: (view) => peer.notify('document/reveal', { view }),
+    showComments: (threads) => {
+      const checked = threads.flatMap((thread) => {
+        const anchor = parseCommentAnchor(thread.anchor)
+        return anchor && typeof thread.id === 'string' ? [{ id: thread.id, anchor, resolved: thread.resolved === true, count: Number.isSafeInteger(thread.count) ? thread.count : 0 }] : []
+      })
+      peer.notify('comments/show', { threads: checked })
+    },
+    locateComments: async (anchors) => {
+      if (!info.capabilities.includes('comment-anchors')) return anchors.map(() => false)
+      const { found } = await peer.request('comments/locate', { anchors })
+      return anchors.map((_, index) => found?.[index] === true)
+    },
     onPresence: (listener) =>
       peer.on('presence/set', (params) => {
         const presence = parsePresence(params)

@@ -188,7 +188,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
         false
     );
 
-    let (_, inspected) = post(&app, json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "art/Drawing.kvector" } } })).await;
+    let (_, inspected) = post(&app, json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "art/Drawing.kvector", "preview": true } } })).await;
     let result = &inspected["result"];
     assert_eq!(result["isError"], false, "{result}");
     conforms(&listed, "vector_inspect", result);

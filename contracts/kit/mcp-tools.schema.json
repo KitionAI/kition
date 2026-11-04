@@ -665,7 +665,7 @@
       "writes": true
     },
     "<prefix>_inspect": {
-      "description": "Open a document (<formats>) in <Kit> and report the document. By default it also attaches a rendered preview to the next turn so you can see it. With `target` (for example {\"slide\": 3}) it previews only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
+      "description": "Open a document (<formats>) in <Kit> and report the document. With `preview: true` it also attaches a rendered preview to the next turn, for when you need to see it (layout, overlaps, colours); without it, it answers JSON only. With `target` (for example {\"slide\": 3}) it looks at only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
       "input": {
         "properties": {
           "draft": {
@@ -683,7 +683,7 @@
             "type": "string"
           },
           "preview": {
-            "description": "Attach a rendered preview image. Defaults to true.",
+            "description": "Attach a rendered preview image of what you look at. Defaults to false: pass true when you need to see it (layout, overlaps, colours).",
             "type": "boolean"
           },
           "scale": {
@@ -693,13 +693,17 @@
             "type": "number"
           },
           "target": {
-            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
+            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1), or {\"slideId\": 260} or {\"pageId\": 7} (the part's `id` as inspect lists it, which stays the same when parts are added, deleted or moved), lists its objects (and previews it with `preview: true`); a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.",
             "properties": {
               "objectId": {
                 "type": "string"
               },
               "page": {
                 "minimum": 1,
+                "type": "integer"
+              },
+              "pageId": {
+                "minimum": 0,
                 "type": "integer"
               },
               "paragraphs": {
@@ -719,6 +723,10 @@
               },
               "slide": {
                 "minimum": 1,
+                "type": "integer"
+              },
+              "slideId": {
+                "minimum": 0,
                 "type": "integer"
               }
             },
@@ -906,14 +914,22 @@
             "type": "array"
           },
           "target": {
-            "description": "The part the steps act on, as in the inspect tool's target, for example {\"slide\": 3} (counted from 1). The kit goes there first, so the ids the inspect tool listed for that part work.",
+            "description": "The part the steps act on, as in the inspect tool's target: {\"slideId\": 260} (the slide's `id` as inspect lists it; it names the same slide after slides are added, deleted or moved) or {\"slide\": 3} (counted from 1; whatever slide is third then). The kit goes there first, so the ids the inspect tool listed for that part work.",
             "properties": {
               "page": {
                 "minimum": 1,
                 "type": "integer"
               },
+              "pageId": {
+                "minimum": 0,
+                "type": "integer"
+              },
               "slide": {
                 "minimum": 1,
+                "type": "integer"
+              },
+              "slideId": {
+                "minimum": 0,
                 "type": "integer"
               }
             },

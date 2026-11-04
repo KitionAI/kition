@@ -11,8 +11,17 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Compiles in the test signing keys and accepts `env: "test"` licences. Development, CI and
+# staging builds only: a release binary holds no test key.
+test-licences = []
+
 [dependencies]
 base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 ed25519-dalek = { version = "2.2", default-features = false }
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+# This crate's own tests sign and verify test licences.
+kition-license = { path = ".", features = ["test-licences"] }

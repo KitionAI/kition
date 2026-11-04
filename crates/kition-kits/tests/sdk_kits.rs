@@ -326,13 +326,13 @@ async fn the_agent_checks_previews_and_exports_a_fig_design() {
     assert!(target["path"].as_str().is_some_and(|path| path.starts_with("layer:")), "{target}");
 
     // The diagnostic's layer, drawn by the kit on whole pixels, then twice the size.
-    let layer = call("fig_inspect", json!({ "path": "work/Screen.kfig", "target": target })).await;
+    let layer = call("fig_inspect", json!({ "path": "work/Screen.kfig", "target": target, "preview": true })).await;
     let [preview] = layer.previews.as_slice() else { panic!("one preview: {}", layer.previews.len()) };
     assert_eq!(png_size(&preview.png), (41, 41), "{}", preview.caption);
     assert!(preview.caption.contains("layer:"), "{}", preview.caption);
-    let doubled = call("fig_inspect", json!({ "path": "work/Screen.kfig", "target": target, "scale": 2 })).await;
+    let doubled = call("fig_inspect", json!({ "path": "work/Screen.kfig", "target": target, "scale": 2, "preview": true })).await;
     assert_eq!(png_size(&doubled.previews[0].png), (82, 82));
-    let page = call("fig_inspect", json!({ "path": "work/Screen.kfig", "target": { "page": 1 }, "maxSize": 64 })).await;
+    let page = call("fig_inspect", json!({ "path": "work/Screen.kfig", "target": { "page": 1 }, "maxSize": 64, "preview": true })).await;
     let (width, height) = png_size(&page.previews[0].png);
     assert!(width.max(height) <= 64, "{width} x {height}");
     assert!(page.previews[0].caption.contains("part 1"));

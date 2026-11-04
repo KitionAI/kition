@@ -1,6 +1,15 @@
 // Copied from kition-sdk crates/kition-license/src/lib.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! # kition-license
 //!
+//! Two formats live here:
+//!
+//! - [`kition1`]: **the licence of Kition One and Kition Server**, `KITION1.<payload>.<signature>`
+//!   (docs/platform/licence-format.md). New code uses only this.
+//! - The crate root: the older SDK key (below), kept while Kition Server's `selfhost` check and
+//!   Kition Cloud's `collab` exchange still read it. Its `embed`, `script`, `headless` and `mcp`
+//!   forms are deprecated: the kits are free in every form and need no key (D13); they are to be
+//!   removed with their last callers.
+//!
 //! Offline licence keys for Kition's kits as an SDK (Kition platform docs/platform/licence.md). A key is
 //! `base64url(payload JSON) "." base64url(Ed25519 signature)`, the signature taken over the ASCII
 //! bytes of the first segment. Kition Console signs keys; this crate verifies them against public
@@ -19,6 +28,8 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 extern crate alloc;
+
+pub mod kition1;
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -43,7 +54,9 @@ pub struct PublicKey {
 /// Empty until the owner generates the production key pair (Kition platform docs/platform/licence.md, section 6).
 pub const PINNED_KEYS: &[PublicKey] = &[];
 
-/// How the kits are delivered: the licence names the forms it covers.
+/// How the kits are delivered: the licence names the forms it covers. `Embed`, `Script`,
+/// `Headless` and `Mcp` are deprecated (the kits need no key); only `Collab` and `Selfhost` still
+/// matter, until Server and Cloud move to [`kition1`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Form {
     /// `@kition/embed` in a web page.

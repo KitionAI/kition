@@ -35,10 +35,15 @@ import {
   type RoomLinkResult,
   type RoomMembersResult,
   type RoomOpenResult,
+  type OpenScope,
+  type RoomResolveResult,
+  type SaveAuthor,
+  type SaveBeginResult,
   type SnapshotGetResult,
   type SnapshotPreference,
 } from './protocol'
 import type { ConnectionState, SyncTransport, TransportFactory } from './transport'
+import type { SaveFailure, SaveState, SaveTrigger } from './saveMachine'
 
 export type { ConnectionState } from './transport'
 
@@ -99,6 +104,8 @@ export class SyncClient {
   private stateListeners = new Set<(state: ConnectionState) => void>()
   private roomsListeners = new Set<(docId: string, room: RoomListing | null) => void>()
   private accountListeners = new Set<(settings: AccountSettings) => void>()
+  private resolvedListeners = new Set<(docId: string) => void>()
+  private saveListeners = new Map<string, Set<(save: SaveState) => void>>()
   private reconnectAttempt = 0
   private reconnectTimer: unknown
   private closed = false
@@ -117,6 +124,50 @@ export class SyncClient {
   /** The handshake result from the most recent successful `sync/hello`. */
   get principal() {
     return this.hello?.principal
+  }
+
+  /**
+   * The scope of an open-token connection (protocol 1.10, RM1), from the most recent handshake:
+   * its one file generation and role; `undefined` for any other connection or before the first.
+   */
+  get open(): OpenScope | undefined {
+    const open = this.hello?.open
+    return open && typeof open.file === 'string' && typeof open.docKey === 'string' ? open : undefined
+  }
+
+  /**
+   * The room of this open-token connection's file generation (protocol 1.10, `room/resolve`);
+   * `claim: true` asks for the seed claim when it has none (an editor only, RM5).
+   */
+  resolveRoom(claim = false): Promise<RoomResolveResult> {
+    return this.request('room/resolve', () => (claim ? { claim: true } : {}), (value) => ({ docId: typeof value.docId === 'string' ? value.docId : null, claimed: value.claimed === true, save: (value.save ?? null) as SaveState | null }))
+  }
+
+  /**
+   * Starts a save of `docId`'s room (protocol 1.10, `save/begin`, D3): answers the change to write
+   * and its authors, with the room in `force-save` by this session; `conflict` while another runs.
+   */
+  saveBegin(docId: string, trigger: SaveTrigger): Promise<SaveBeginResult> {
+    return this.request('save/begin', () => ({ docId, trigger }), (value) => ({ save: value.save as SaveState, seq: value.seq as number, authors: (value.authors ?? []) as SaveAuthor[], receipt: typeof value.receipt === 'string' ? value.receipt : '' }))
+  }
+
+  /** Ends this session's save of `seq` (protocol 1.10, `save/end`): the `version` it wrote, or why it failed. */
+  async saveEnd(docId: string, seq: number, outcome: { version: string } | { error: SaveFailure }): Promise<void> {
+    await this.request('save/end', () => ({ docId, seq, ...('version' in outcome ? { version: outcome.version } : { version: null, error: outcome.error }) }), () => undefined)
+  }
+
+  /** Hears `docId`'s room save state change (protocol 1.10, `save/changed`). */
+  onSave(docId: string, listener: (save: SaveState) => void): () => void {
+    let listeners = this.saveListeners.get(docId)
+    if (!listeners) this.saveListeners.set(docId, (listeners = new Set()))
+    listeners.add(listener)
+    return () => listeners.delete(listener)
+  }
+
+  /** Hears the connection's file generation get its room (protocol 1.10, `room/resolved`). */
+  onRoomResolved(listener: (docId: string) => void): () => void {
+    this.resolvedListeners.add(listener)
+    return () => this.resolvedListeners.delete(listener)
   }
 
   /**
@@ -661,6 +712,14 @@ export class SyncClient {
       const docId = params.docId as string
       const room = (params.room ?? null) as RoomListing | null
       for (const listener of this.roomsListeners) listener(docId, room)
+      return
+    }
+    if (method === 'save/changed') {
+      if (typeof params.docId === 'string') for (const listener of this.saveListeners.get(params.docId) ?? []) listener(params.save as SaveState)
+      return
+    }
+    if (method === 'room/resolved') {
+      if (typeof params.docId === 'string') for (const listener of this.resolvedListeners) listener(params.docId)
       return
     }
     if (method === 'account/changed') {

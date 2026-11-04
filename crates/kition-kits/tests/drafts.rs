@@ -6,7 +6,7 @@
 //! since the draft forked. Merge and discard are never tools.
 //!
 //! Each kit is tested when its headless executable is found (`KITION_KIT_<KIT>_BINARY`, or a
-//! debug build in the sibling kit checkout): Sheet keeps replica drafts, Film file drafts.
+//! debug build in the sibling kit checkout): Sheet and Film keep replica drafts.
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -34,14 +34,14 @@ const CASES: &[Case] = &[
         step: || json!({ "command": "cell.set", "params": { "cell": "C2", "input": "99" } }),
         mode: "replica",
     },
-    // Film declares drafts (`agent.drafts`) and has no object model, so its drafts are copies of
-    // the file (KHP A27).
+    // Film serves its object model and replica since engine contract 2 (kition-film ae0c33d), so
+    // its drafts are replica drafts too.
     Case {
         kit: "film",
         prefix: "film",
         fixture: "Edit.kfilm",
         step: || json!({ "command": "file.newColorMatte", "params": { "color": "#0000ff", "seconds": 1 } }),
-        mode: "file",
+        mode: "replica",
     },
 ];
 

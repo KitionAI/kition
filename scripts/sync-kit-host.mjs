@@ -103,6 +103,10 @@ files.push({ source: 'packages/extensions/sandbox/panel.html', out: 'public/exte
 for (const name of ['extension.json', 'extension.mjs', 'panel.html']) {
   files.push({ source: `examples/extensions/title-case/${name}`, out: `e2e/fixtures/extensions/title-case/${name}`, binary: true })
 }
+// A copied crate's manifest from its features (or, without any, its dependencies) on: Kition writes
+// the [package] and [lints] sections itself.
+const manifestSections = (text) =>
+  text.slice(Math.min(...['[features]', '[dependencies]'].map((heading) => text.indexOf(heading)).filter((at) => at >= 0)))
 // The Rust KDM (crates/kition-kdm): its sources and tests, unchanged, so they run against this
 // workspace's dependency features (serde_json `preserve_order`), with a manifest written here.
 const rustKdm = 'crates/kition-kdm'
@@ -129,7 +133,7 @@ files.push({
   source: `${rustKdm}/Cargo.toml`,
   out: `${rustKdm}/Cargo.toml`,
   rewrite: (text) => {
-    const dependencies = text.slice(text.indexOf('[dependencies]'))
+    const dependencies = manifestSections(text)
     return `# Copied from kition-sdk ${rustKdm} by scripts/sync-kit-host.mjs; change it there, not here.
 [package]
 name = "kition-kdm"
@@ -162,7 +166,7 @@ files.push({
   source: `${rustLicense}/Cargo.toml`,
   out: `${rustLicense}/Cargo.toml`,
   rewrite: (text) => {
-    const dependencies = text.slice(text.indexOf('[dependencies]'))
+    const dependencies = manifestSections(text)
     return `# Copied from kition-sdk ${rustLicense} by scripts/sync-kit-host.mjs; change it there, not here.
 [package]
 name = "kition-license"

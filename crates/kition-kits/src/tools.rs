@@ -18,6 +18,7 @@
 mod errors;
 mod export;
 pub mod model;
+mod outside;
 pub mod schemas;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -228,15 +229,15 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
         KitToolSpec {
             name: tool_name(kit, Action::Inspect),
             description: format!(
-                "Open a {noun} ({}) in {name} and report {}. By default it also attaches a rendered preview to the next turn so you can see it. With `target` (for example {{\"slide\": 3}}) it previews only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
+                "Open a {noun} ({}) in {name} and report {}. With `preview: true` it also attaches a rendered preview to the next turn, for when you need to see it (layout, overlaps, colours); without it, it answers JSON only. With `target` (for example {{\"slide\": 3}}) it looks at only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit. Use it before and after editing.",
                 agent.formats, agent.reports
             ),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "path": path_property(kit),
-                    "preview": { "type": "boolean", "description": "Attach a rendered preview image. Defaults to true." },
-                    "target": { "type": "object", "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1) previews it and lists its objects; a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 }, "path": { "type": "string" }, "objectId": { "type": "string" }, "range": { "type": "string" }, "sheet": { "type": "string" }, "paragraphs": { "type": "array", "items": { "type": "integer" } } } },
+                    "preview": { "type": "boolean", "description": "Attach a rendered preview image of what you look at. Defaults to false: pass true when you need to see it (layout, overlaps, colours)." },
+                    "target": { "type": "object", "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1), or {\"slideId\": 260} or {\"pageId\": 7} (the part's `id` as inspect lists it, which stays the same when parts are added, deleted or moved), lists its objects (and previews it with `preview: true`); a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). Kits that cannot render a part fall back to the whole document.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 }, "slideId": { "type": "integer", "minimum": 0 }, "pageId": { "type": "integer", "minimum": 0 }, "path": { "type": "string" }, "objectId": { "type": "string" }, "range": { "type": "string" }, "sheet": { "type": "string" }, "paragraphs": { "type": "array", "items": { "type": "integer" } } } },
                     "scale": { "type": "number", "exclusiveMinimum": 0, "maximum": 2, "description": "Preview pixels per document unit, up to 2 (default 1), for kits that render previews themselves." },
                     "maxSize": { "type": "integer", "minimum": 16, "maximum": 4096, "description": "The most preview pixels on the longer side." },
                     "draft": draft_property()
@@ -287,7 +288,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
                         }
                     },
                     "save": { "type": "boolean", "description": "Save the file after the steps. Defaults to true; a draft is never saved." },
-                    "target": { "type": "object", "description": "The part the steps act on, as in the inspect tool's target, for example {\"slide\": 3} (counted from 1). The kit goes there first, so the ids the inspect tool listed for that part work.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 } } },
+                    "target": { "type": "object", "description": "The part the steps act on, as in the inspect tool's target: {\"slideId\": 260} (the slide's `id` as inspect lists it; it names the same slide after slides are added, deleted or moved) or {\"slide\": 3} (counted from 1; whatever slide is third then). The kit goes there first, so the ids the inspect tool listed for that part work.", "properties": { "slide": { "type": "integer", "minimum": 1 }, "page": { "type": "integer", "minimum": 1 }, "slideId": { "type": "integer", "minimum": 0 }, "pageId": { "type": "integer", "minimum": 0 } } },
                     "preview": { "type": "boolean", "description": "Attach a rendered preview of the whole document. Defaults to false; use the inspect tool with a target to look at one part." },
                     "draft": draft_property()
                 },
@@ -477,7 +478,7 @@ pub fn linked_file_prompt(path: &str) -> Option<String> {
     Some(
         [
             format!("Current linked {}: `{}`, open in {}.", kit.agent.noun, path.trim(), kit.name),
-            format!("Call {inspect} on this path to see {} and a rendered preview before describing or changing it.", kit.agent.reports),
+            format!("Call {inspect} on this path to see {} (and, with `preview: true`, a rendered preview) before describing or changing it.", kit.agent.reports),
             format!(
                 "To edit it, find command ids with {commands} (search by keywords such as {}), then call {run} with the steps. {run} saves the file and returns a new preview; check it, call {check} to list what the kit finds wrong, and fix or undo (`edit.undo`) when the result is wrong.",
                 kit.agent.queries
@@ -543,7 +544,8 @@ fn document_summary_json(view: &DocumentView) -> Value {
 }
 
 /// A `target.slide` or `target.page` that is not a whole number from 1 is an error: dropped, it
-/// left inspect on the whole document and run on whatever part the kit was on.
+/// left inspect on the whole document and run on whatever part the kit was on. So is a
+/// `target.slideId` or `target.pageId` that is not a whole number.
 fn check_target_part(input: &Value) -> Result<(), KitToolError> {
     let Some(target) = input.get("target") else {
         return Ok(());
@@ -553,6 +555,12 @@ fn check_target_part(input: &Value) -> Result<(), KitToolError> {
             && value.as_u64().is_none_or(|n| n < 1)
         {
             return Err(KitToolError::invalid(format!("`target.{key}` is {value}: {key}s are counted from 1 here (the first is 1)")));
+        }
+        let id = format!("{key}Id");
+        if let Some(value) = target.get(&id)
+            && value.as_u64().is_none()
+        {
+            return Err(KitToolError::invalid(format!("`target.{id}` is {value}: it is the `id` the inspect tool lists for a {key}, a whole number")));
         }
     }
     Ok(())
@@ -564,6 +572,47 @@ fn target_part(input: &Value) -> Option<u64> {
     target.get("slide").or_else(|| target.get("page")).and_then(Value::as_u64).filter(|n| *n >= 1)
 }
 
+/// `target.slideId` or `target.pageId`: a part by its stable id, which names the same slide or
+/// page after parts are added, deleted or moved, where a number names whatever is at that place.
+fn target_part_id(input: &Value) -> Option<u64> {
+    let target = input.get("target")?;
+    target.get("slideId").or_else(|| target.get("pageId")).and_then(Value::as_u64)
+}
+
+/// How to address an inspected part again: by its stable id when the kit lists one (`id` of
+/// `slide.inspect` or `page.inspect`), since a number names whatever is at that place after
+/// parts are added, deleted or moved.
+fn come_back(input: &Value, objects: &Value) -> String {
+    let key = if input.get("target").and_then(|t| t.get("page").or_else(|| t.get("pageId"))).is_some() { "page" } else { "slide" };
+    match objects.get("id").and_then(Value::as_u64) {
+        Some(id) => format!(
+            "to come back to it later, pass `target: {{\"{key}Id\": {id}}}` to the run tool: it names this {key} even after {key}s are added, deleted or moved, where `{{\"{key}\": n}}` names whatever {key} is n-th by then."
+        ),
+        None => "to come back to it later, pass the same `target` to the run tool.".to_owned(),
+    }
+}
+
+/// Goes to the `target` part, by number or by id: its number (counted from 1) and the document
+/// there. `Ok(None)` without a part target, or when the kit has no `slide.go` or `page.go`.
+async fn resolve_part(kits: &KitManager, view: &DocumentView, input: &Value) -> Result<Option<(u64, DocumentView)>, KitToolError> {
+    if let Some(part) = target_part(input) {
+        return Ok(go_to_part(kits, view, part).await?.map(|moved| (part, moved)));
+    }
+    let Some(id) = target_part_id(input) else { return Ok(None) };
+    let mut params = Map::new();
+    params.insert("id".into(), json!(id));
+    let Some(executed) = part_command(kits, view, ["slide.go", "page.go"], params, &format!("part id {id}: ")).await? else {
+        return Ok(None);
+    };
+    let index = executed
+        .result
+        .as_ref()
+        .and_then(|r| r.get("index"))
+        .and_then(Value::as_u64)
+        .ok_or_else(|| KitToolError::invalid(format!("cannot go to part id {id}: the kit did not say which part it is; use `target: {{\"slide\": n}}`")))?;
+    Ok(Some((index + 1, executed.document)))
+}
+
 /// What the kit's render command ([`KitAgent::render`]) draws for an inspect call: a diagnostic's
 /// target (`target.path` or `target.objectId`, passed on as the kit reported it), else one slide
 /// or page (`slide`, counted from 0), else the document framed to its content (KHP A39); at
@@ -571,12 +620,12 @@ fn target_part(input: &Value) -> Option<u64> {
 /// its screenshot instead.
 ///
 /// [`KitAgent::render`]: crate::KitAgent::render
-fn render_params(input: &Value) -> Option<Map<String, Value>> {
+fn render_params(input: &Value, part: Option<u64>) -> Option<Map<String, Value>> {
     let mut params = Map::new();
     let target = input.get("target").filter(|target| target.get("path").or_else(|| target.get("objectId")).is_some());
     if let Some(target) = target {
         params.insert("target".into(), target.clone());
-    } else if let Some(part) = target_part(input) {
+    } else if let Some(part) = part {
         params.insert("slide".into(), json!(part - 1));
     }
     let scale = input.get("scale").filter(|scale| scale.is_number());
@@ -769,31 +818,40 @@ async fn nearest_commands(kits: &KitManager, view: &DocumentView, id: &str) -> S
 
 /// Goes to one slide or page (`{index}` counted from 0) through the kit's `slide.go` or
 /// `page.go`, so that its commands, which address the part being edited, address this one.
-/// The first of `commands` the kit has, run with `{index: part - 1}`: `Ok(None)` when it has none
-/// of them, the kit's error when it has one and refuses (a part past the end), so a missing part
-/// is said and never quietly replaced by the whole document or the part the kit was on.
-async fn part_command(kits: &KitManager, view: &DocumentView, commands: [&str; 2], part: u64) -> Result<Option<crate::manager::ExecuteView>, KitToolError> {
+/// The first of `commands` the kit has, run with `params` (`{index: part - 1}` or `{id}`): `Ok(None)`
+/// when it has none of them, the kit's error when it has one and refuses (a part past the end, an
+/// unknown id), so a missing part is said and never quietly replaced by the whole document or the
+/// part the kit was on.
+async fn part_command(
+    kits: &KitManager,
+    view: &DocumentView,
+    commands: [&str; 2],
+    params: Map<String, Value>,
+    context: &str,
+) -> Result<Option<crate::manager::ExecuteView>, KitToolError> {
     for command in commands {
-        let mut params = Map::new();
-        params.insert("index".into(), json!(part - 1));
-        match kits.execute(Caller::Agent, view.kit_id, &view.document_id, command, params).await {
+        match kits.execute(Caller::Agent, view.kit_id, &view.document_id, command, params.clone()).await {
             Ok(executed) => return Ok(Some(executed)),
             Err(KitError::Kit { reason: Some(kition_kit_protocol::ErrorReason::CommandNotFound), .. }) => {}
-            Err(error) => {
-                return Err(KitToolError::from(error).context(&format!("part {part} (counted from 1): ")));
-            }
+            Err(error) => return Err(KitToolError::from(error).context(context)),
         }
     }
     Ok(None)
 }
 
+fn part_index(part: u64) -> Map<String, Value> {
+    Map::from_iter([("index".to_owned(), json!(part - 1))])
+}
+
 async fn go_to_part(kits: &KitManager, view: &DocumentView, part: u64) -> Result<Option<DocumentView>, KitToolError> {
-    Ok(part_command(kits, view, ["slide.go", "page.go"], part).await?.map(|executed| executed.document))
+    let context = format!("part {part} (counted from 1): ");
+    Ok(part_command(kits, view, ["slide.go", "page.go"], part_index(part), &context).await?.map(|executed| executed.document))
 }
 
 async fn part_objects(kits: &KitManager, view: &DocumentView, part: u64) -> Result<Option<Value>, KitToolError> {
     model::warm(kits, view).await;
-    Ok(part_command(kits, view, ["slide.inspect", "page.inspect"], part).await?.and_then(|executed| executed.result))
+    let context = format!("part {part} (counted from 1): ");
+    Ok(part_command(kits, view, ["slide.inspect", "page.inspect"], part_index(part), &context).await?.and_then(|executed| executed.result))
 }
 
 async fn preview(kits: &KitManager, kit: &KitDefinition, view: &DocumentView) -> Vec<Preview> {
@@ -837,7 +895,32 @@ pub async fn call_with(kits: &KitManager, name: &str, input: &Value, options: Ca
     {
         return Some(Err(error));
     }
-    Some(match action {
+    // A file the agent edits headless (no draft, no open editor): changes made outside its calls.
+    let watched = if draft || !matches!(action, Action::Inspect | Action::Run | Action::Check | Action::Query | Action::Batch) {
+        None
+    } else {
+        match kit_path(input, kit) {
+            Ok(path) if live(kits, kit, &path).await.is_none() => kits.resolve(&path).ok().map(|file| (path, file)),
+            _ => None,
+        }
+    };
+    let mut notice = None;
+    if let Some((path, file)) = &watched
+        && matches!(action, Action::Inspect | Action::Run)
+        && outside::known(file)
+        && let Ok(view) = kits.open(Caller::Agent, path).await
+        && let Some(found) = outside::changed(file, path, &view.summary)
+    {
+        outside::remember(file, Some(&view.summary));
+        if matches!(action, Action::Run) {
+            let mut refused = KitToolError::new(ErrorCode::Failed, format!("{} Nothing was run; run it again with the right target.", found.summary));
+            refused.retryable = true;
+            refused.output = Some(json!({ "changedOutside": found.detail }));
+            return Some(Err(refused));
+        }
+        notice = Some(found);
+    }
+    let answer = match action {
         Action::Inspect => inspect(kits, kit, input, draft).await,
         Action::Commands => commands(kits, kit, input).await,
         Action::Run if draft => run_on_draft(kits, kit, input).await,
@@ -848,7 +931,18 @@ pub async fn call_with(kits: &KitManager, name: &str, input: &Value, options: Ca
         Action::Check => check(kits, kit, input, draft).await,
         Action::Export => export::export(kits, kit, input, draft).await,
         Action::Create => create(kits, kit, input).await,
-    })
+    };
+    if let Some((_, file)) = &watched {
+        let summary = answer.as_ref().ok().and_then(|out| out.output.get("summary").or_else(|| out.output["document"].get("summary"))).and_then(Value::as_str);
+        outside::remember(file, summary);
+    }
+    Some(answer.map(|mut out| {
+        if let Some(found) = notice {
+            out.summary = format!("{}\n{}", found.summary, out.summary);
+            out.output["changedOutside"] = found.detail;
+        }
+        out
+    }))
 }
 
 /// The open editor of `path`, which a draft needs: drafts live in the person's editor (standard
@@ -1089,7 +1183,7 @@ async fn draft_state(kits: &KitManager, kit: &'static KitDefinition, input: &Val
 
 async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, draft: bool) -> KitToolResult {
     let path = kit_path(input, kit)?;
-    let wants_preview = input.get("preview").and_then(Value::as_bool) != Some(false);
+    let wants_preview = input.get("preview").and_then(Value::as_bool) == Some(true); // A55: previews on request
     // An explicit `draft: true` needs the editor; the run's default falls back to the file.
     let explicit = input.get("draft").and_then(Value::as_bool) == Some(true);
     if reads_headless_draft(kits, kit, &path, draft, explicit).await {
@@ -1115,7 +1209,7 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
     }
     if let Some(document) = open {
         let mut answer = kits.bridge().call(&document, "inspect", json!({})).await?;
-        let rendered = match render_params(input) {
+        let rendered = match render_params(input, target_part(input)) {
             Some(params) if wants_preview => live_rendered_preview(kits, kit, &document, params).await,
             _ => None,
         };
@@ -1135,13 +1229,16 @@ async fn inspect(kits: &KitManager, kit: &'static KitDefinition, input: &Value, 
 /// `<prefix>_inspect` on a document the headless kit holds: the file, or the agent's headless
 /// draft of it (`draft`). Both go to the `target` part, render, and answer content the same way.
 async fn inspect_view(kits: &KitManager, kit: &'static KitDefinition, input: &Value, path: &str, mut view: DocumentView, draft: bool) -> KitToolResult {
-    let wants_preview = input.get("preview").and_then(Value::as_bool) != Some(false);
-    if let Some(part) = target_part(input)
-        && let Some(moved) = go_to_part(kits, &view, part).await?
-    {
-        view = moved;
-    }
-    let rendered = match render_params(input) {
+    let wants_preview = input.get("preview").and_then(Value::as_bool) == Some(true); // A55: previews on request
+    let part = match resolve_part(kits, &view, input).await? {
+        Some((part, moved)) => {
+            view = moved;
+            Some(part)
+        }
+        None => None,
+    };
+    // A kit without slide.go or page.go can still render a numbered part (its render command takes it).
+    let rendered = match render_params(input, part.or_else(|| target_part(input))) {
         Some(params) if wants_preview => rendered_preview(kits, kit, &view, params).await,
         _ => None,
     };
@@ -1155,7 +1252,7 @@ async fn inspect_view(kits: &KitManager, kit: &'static KitDefinition, input: &Va
     if let Some(content) = part_content(kits, &view, input).await {
         answer["content"] = content;
     }
-    if let Some(part) = target_part(input)
+    if let Some(part) = part
         && let Some(objects) = part_objects(kits, &view, part).await?
     {
         // The part, not the whole document's outline again.
@@ -1164,11 +1261,12 @@ async fn inspect_view(kits: &KitManager, kit: &'static KitDefinition, input: &Va
             answer["path"] = Value::String(path.to_owned());
             answer["draft"] = Value::Bool(true);
         }
+        let back = come_back(input, &objects);
         answer["part"] = objects;
         lean_objects(&mut answer["part"]);
         answer["edit"] = json!(format!(
             "Edit these objects by their `id` with {} and a command (find commands with {}), for example text.set {{\"id\": <id>, \"text\": \"...\"}}; commands keep formatting. \
-                 The kit is now on this part; to come back to it later, pass the same `target` to the run tool. \
+                 The kit is now on this part; {back} \
                  Commands count slides and pages from 0: this part ({part}, counted from 1) is `index` {}. The query and batch tools take these ids too.",
             tool_name(kit, Action::Run),
             tool_name(kit, Action::Commands),
@@ -1566,10 +1664,11 @@ async fn run_steps(kits: &KitManager, kit: &KitDefinition, input: &Value) -> Kit
     // Whether the document held unsaved edits before the call: a failed run puts it back as it
     // was (KHP A53), by reopening the file when it had none, else by undoing the run's steps.
     let was_dirty = view.dirty;
-    if let Some(part) = target_part(input) {
-        view = go_to_part(kits, &view, part)
+    if target_part(input).is_some() || target_part_id(input).is_some() {
+        view = resolve_part(kits, &view, input)
             .await?
-            .ok_or_else(|| KitToolError::invalid(format!("cannot go to part {part} of `{path}` (the kit has no slide.go or page.go)")))?;
+            .map(|(_, moved)| moved)
+            .ok_or_else(|| KitToolError::invalid(format!("cannot go to that part of `{path}` (the kit has no slide.go or page.go)")))?;
     }
     let mut done = Vec::new();
     for (index, step) in steps.iter().enumerate() {
@@ -1829,6 +1928,26 @@ mod tests {
     }
 
     #[test]
+    fn a_part_id_is_a_whole_number_and_inspect_says_to_come_back_by_it() {
+        crate::definitions::fixture_kits();
+        for bad in [json!({"slideId": "260"}), json!({"pageId": -1}), json!({"slideId": 2.5})] {
+            let Err(error) = check_target_part(&json!({ "target": bad })) else {
+                panic!("{bad} is refused");
+            };
+            assert!(error.message.contains("whole number"), "{}", error.message);
+        }
+        assert!(check_target_part(&json!({"target": {"slideId": 260}})).is_ok());
+        assert_eq!(target_part_id(&json!({"target": {"slideId": 260}})), Some(260));
+        assert_eq!(target_part(&json!({"target": {"slideId": 260}})), None);
+        let by_number = json!({"target": {"slide": 3}});
+        let back = come_back(&by_number, &json!({"id": 260, "shapes": []}));
+        assert!(back.contains(r#"`target: {"slideId": 260}`"#) && back.contains("deleted"), "{back}");
+        let back = come_back(&json!({"target": {"page": 2}}), &json!({"id": 7}));
+        assert!(back.contains(r#"{"pageId": 7}"#), "{back}");
+        assert!(come_back(&by_number, &json!({"shapes": []})).contains("the same `target`"));
+    }
+
+    #[test]
     fn run_refuses_the_export_command() {
         crate::definitions::fixture_kits();
         let effect = kit("kit.effect");
@@ -1995,9 +2114,9 @@ mod tests {
     #[test]
     fn the_default_preview_is_the_kit_s_render_framed_to_the_content() {
         crate::definitions::fixture_kits();
-        let params = render_params(&json!({ "path": "a.kfig", "preview": true })).unwrap_or_default();
+        let params = render_params(&json!({ "path": "a.kfig", "preview": true }), None).unwrap_or_default();
         assert_eq!(Value::Object(params), json!({ "scale": 1 }), "the document at scale 1 (KHP A39)");
-        let doubled = render_params(&json!({ "path": "a.kfig", "scale": 2 })).unwrap_or_default();
+        let doubled = render_params(&json!({ "path": "a.kfig", "scale": 2 }), None).unwrap_or_default();
         assert_eq!(doubled.get("scale"), Some(&json!(2)));
     }
 

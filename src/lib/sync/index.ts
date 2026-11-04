@@ -13,6 +13,13 @@ export { SyncClient, type SnapshotStart, type SyncClientOptions, type SyncToken 
 export type { Bin, Frame } from './framing'
 export {
   HEADLESS_CAPABILITY,
+  OPEN_ROOMS_CAPABILITY,
+  type OpenScope,
+  type RoomResolveResult,
+  type RoomResolvedParams,
+  type SaveAuthor,
+  type SaveBeginResult,
+  type SaveChangedParams,
   SYNC_PROTOCOL,
   SyncRpcError,
   type AgentRunResult,
@@ -55,6 +62,8 @@ export {
   type SnapshotPreference,
 } from './protocol'
 export { DocumentLeases, SyncLeases, leaseHolder, scopesCollide, type LeaseHold } from './leases'
+export { initialSaveState, mustSave, saveTransition, type SaveEvent, type SaveFailure, type SaveOutcome, type SaveState, type SaveStatus, type SaveTrigger } from './saveMachine'
+export { classifySaveError, runSave, type SaveRun, type SaveRunOptions } from './saveRun'
 export { startRelay, type Relay, type RelayOptions, type RelayReplica, type RelaySync } from './relay'
 export type { ReplicaVersions } from './replicaVersions'
 export type { ConnectionState, SyncTransport, TransportFactory } from './transport'

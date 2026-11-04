@@ -6,6 +6,8 @@
  * (the wire's `{"$bin": n}` markers are an encoding detail `./framing` and `./client` handle).
  */
 
+import type { SaveFailure, SaveState, SaveTrigger } from './saveMachine'
+
 export const SYNC_PROTOCOL = 'kition-sync/1'
 
 /**
@@ -17,8 +19,12 @@ export type Role = 'owner' | 'editor' | 'commenter' | 'viewer'
 /** Roles by what they allow: `viewer` < `commenter` < `editor` < `owner`. */
 export const ROLE_RANK: Record<Role, number> = { viewer: 0, commenter: 1, editor: 2, owner: 3 }
 
-/** `error.data.code` (never the JSON-RPC `code`/`message`, which are for logs and people). */
-export type ErrorCode = 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'invalid' | 'unavailable' | 'rate-limited'
+/**
+ * `error.data.code` (never the JSON-RPC `code`/`message`, which are for logs and people).
+ * `collab-limit`: the room is at the server's limit of people co-editing at once
+ * (`error.data.limit`); the person can still open, edit, and save alone.
+ */
+export type ErrorCode = 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'invalid' | 'unavailable' | 'rate-limited' | 'collab-limit'
 
 export type ClientInfo = { name: string; version: string }
 export type ServerInfo = { name: string; version: string }
@@ -28,7 +34,26 @@ export type Principal = { id: string; name: string }
 export type Presence = { principalId: string; name: string; color: string; state: unknown }
 
 export type HelloParams = { protocol: string; token: string; client: ClientInfo; capabilities: string[] }
-export type HelloResult = { server: ServerInfo; principal: Principal; capabilities: string[] }
+export type HelloResult = { server: ServerInfo; principal: Principal; capabilities: string[]; open?: OpenScope }
+
+/** The capability a server lists when it takes open tokens and keeps one room per file generation (protocol 1.10, `KitCollab 1.4`). */
+export const OPEN_ROOMS_CAPABILITY = 'open-rooms'
+
+/**
+ * What an open-token connection reaches (protocol 1.10, managed-collab.md RM1): exactly one file
+ * generation's room, `(tenant, iss, file, docKey)`, at the role its permissions grant (never `owner`).
+ */
+export type OpenScope = { tenant: string; iss: string; file: string; docKey: string; role: Exclude<Role, 'owner'>; perms: { edit: boolean; comment: boolean; download: boolean; share: boolean; export: boolean } }
+
+/**
+ * `room/resolve` (protocol 1.10, open-token connections): the room of the connection's file
+ * generation (`docId`, or `null`), and with `claim` the seed claim when there is none (RM5):
+ * `claimed` is true for exactly one editor at a time, for 60 seconds.
+ */
+export type RoomResolveParams = { claim?: boolean }
+export type RoomResolveResult = { docId: string | null; claimed: boolean; save: SaveState | null }
+/** `room/resolved` (server to client, protocol 1.10): the connection's file generation now has a room. */
+export type RoomResolvedParams = { docId: string }
 
 /**
  * Catch-up is by the room's own server sequence, not a KDM version, so the server never needs a
@@ -186,6 +211,21 @@ export type LeaseReleaseParams = { docId: string; scope: string }
 /** Server to client, notification: replaces the room's lease list. */
 export type LeaseChangedParams = { docId: string; leases: Lease[] }
 
+/** `save/begin` (protocol 1.10, D3): an editor of a joined room starts a save. */
+export type SaveBeginParams = { docId: string; trigger: SaveTrigger }
+/** Someone whose changes a save holds. */
+export type SaveAuthor = { principalId: string; name: string }
+/**
+ * The room's state after the call (`force-save` by the caller, or unchanged for a clean room), the
+ * change to write, who made the changes since the last version (the server's own log), and the
+ * server's signed save receipt of those (I6), which the host verifies and takes the authors from.
+ */
+export type SaveBeginResult = { save: SaveState; seq: number; authors: SaveAuthor[]; receipt: string }
+/** `save/end` (protocol 1.10): the save of `seq` wrote `version`, or failed with `error`. */
+export type SaveEndParams = { docId: string; seq: number; version: string | null; error?: SaveFailure }
+/** `save/changed` (server to client, protocol 1.10): after every transition. */
+export type SaveChangedParams = { docId: string; save: SaveState }
+
 /** The capability a server lists in `sync/hello` when it runs kits headless (protocol 1.7, section 8a). */
 export const HEADLESS_CAPABILITY = 'headless'
 
@@ -214,6 +254,21 @@ export type AgentRunResult = { seq: number | null; result: unknown }
 export class SyncRpcError extends Error {
   constructor(readonly code: number, message: string, readonly data?: unknown) {
     super(message)
+  }
+
+  /**
+   * The room a `room/create` refused `conflict` names (protocol 1.10, RM6): an open-token
+   * connection's file generation already has that room, which the caller joins instead.
+   */
+  get boundDocId(): string | undefined {
+    const data = this.data as { docId?: unknown } | undefined
+    return this.reason === 'conflict' && typeof data?.docId === 'string' ? data.docId : undefined
+  }
+
+  /** The limit of people co-editing at once a `collab-limit` error names (`error.data.limit`). */
+  get collabLimit(): number | undefined {
+    const data = this.data as { limit?: unknown } | undefined
+    return this.reason === 'collab-limit' && typeof data?.limit === 'number' ? data.limit : undefined
   }
 
   /** This error's [[ErrorCode]], when it carries one. */

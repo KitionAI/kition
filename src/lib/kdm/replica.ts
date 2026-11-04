@@ -105,6 +105,8 @@ export class Replica {
   private busy = false
   /** Set between `beginUndoGroup` and `endUndoGroup`. */
   private grouping = false
+  /** The open undo group's run, which its undo steps carry (rule M12b). */
+  private readonly runs: Runs = { current: null, next: 1, replaying: false, popped: null }
   /**
    * Set when a shallow replica refused an import (`newer-schema`) after the engine applied it: the
    * engine cannot rebuild a shallow document at an earlier version, so the replica refuses every
@@ -147,7 +149,7 @@ export class Replica {
   ) {
     this.docIdBytes = docIdBytes.slice()
     doc.setPeerId(actor)
-    this.undoManagers = histories(doc)
+    this.undoManagers = histories(doc, this.runs)
   }
 
   /** A new, empty document. Only one replica creates a document; others `load` it. */
@@ -620,12 +622,32 @@ export class Replica {
 
   /** Undoes the last transaction of `scope` on this replica, like `undo` for the person. */
   undoIn(scope: UndoScope): boolean {
-    return this.history(scope, () => this.undoManagers[checkScope(scope)].undo())
+    const manager = () => this.undoManagers[checkScope(scope)]
+    return this.history(scope, () => this.replayRun(() => manager().topUndoValue(), () => manager().undo()))
   }
 
   /** Redoes the last undone transaction of `scope`, like `redo` for the person. */
   redoIn(scope: UndoScope): boolean {
-    return this.history(scope, () => this.undoManagers[checkScope(scope)].redo())
+    const manager = () => this.undoManagers[checkScope(scope)]
+    return this.history(scope, () => this.replayRun(() => manager().topRedoValue(), () => manager().redo()))
+  }
+
+  /**
+   * One undo (or redo) of a run (rule M12b): the top step, and every step under it of the same undo
+   * group, which an import split. Each undo or redo step it makes carries the run on.
+   */
+  private replayRun(top: () => unknown, step: () => boolean): boolean {
+    this.runs.replaying = true
+    try {
+      const run = runOf(top())
+      const any = step()
+      let did = any
+      while (did && run !== null && runOf(top()) === run) did = step()
+      return any
+    } finally {
+      this.runs.replaying = false
+      this.runs.popped = null
+    }
   }
 
   /** Whether `undo` has a transaction of the person to undo. */
@@ -653,8 +675,9 @@ export class Replica {
   /**
    * Starts an undo group: the transactions until `endUndoGroup` undo and redo as one step. Groups
    * do not nest (`invalid-value`). An undo or a redo ends the open group first, so undo while
-   * grouping reverts the group as one step. An import that changes what the group changed splits
-   * it in two undo steps: the transactions before the import and those after it. A group spans
+   * grouping reverts the group as one step. It stays one undo step when other replicas' changes
+   * arrive while it is open, also when they touch what the group changed (rule M12b): one undo
+   * takes back all of it and keeps their changes. A group spans
    * both undo scopes (M12a): the person's transactions in it are one person step, and an agent's
    * are one agent step.
    */
@@ -673,6 +696,8 @@ export class Replica {
       throw errors.engine(engineMessage(error))
     }
     this.grouping = true
+    this.runs.current = this.runs.next
+    this.runs.next += 1
   }
 
   /** Ends the open undo group; does nothing when none is open. */
@@ -840,7 +865,7 @@ export class Replica {
     doc.setPeerId(this.actor)
     freeHistories(this.undoManagers)
     this.doc = doc
-    this.undoManagers = histories(doc)
+    this.undoManagers = histories(doc, this.runs)
     // No undo history is left to protect registers from.
     this.importedRegisters.clear()
     this.keptRegisters.clear()
@@ -876,6 +901,7 @@ export class Replica {
     this.undoManagers.person.groupEnd()
     this.undoManagers.agent.groupEnd()
     this.grouping = false
+    this.runs.current = null
   }
 
   /**
@@ -1038,11 +1064,27 @@ const commitOrigin = (kind: OriginKind): string => undoScopeOf(kind) ?? kind
 /** A replica's undo histories, one per undo scope (M12a). */
 type Histories = Record<UndoScope, UndoManager>
 
-/** The undo history of `scope`: it skips the other scope's transactions, and its undo and redo, as another replica's. */
-const undoManagerOf = (doc: LoroDoc, scope: UndoScope): UndoManager =>
-  new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT, scope === 'person' ? 'agent' : 'person', ENGINE_UNDO] })
+/**
+ * The undo group runs of a replica (rule M12b): `current` is the open group's, which each new undo
+ * step takes; while an undo or redo replays (`replaying`), the step it makes takes the run of the
+ * step it popped (`popped`), so a run undone stays one run to redo.
+ */
+type Runs = { current: number | null; next: number; replaying: boolean; popped: number | null }
 
-const histories = (doc: LoroDoc): Histories => ({ person: undoManagerOf(doc, 'person'), agent: undoManagerOf(doc, 'agent') })
+const runOf = (value: unknown): number | null => (typeof value === 'number' ? value : null)
+
+/** The undo history of `scope`: it skips the other scope's transactions, and its undo and redo, as another replica's. */
+const undoManagerOf = (doc: LoroDoc, scope: UndoScope, runs: Runs): UndoManager =>
+  new UndoManager(doc, {
+    mergeInterval: 0,
+    excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT, scope === 'person' ? 'agent' : 'person', ENGINE_UNDO],
+    onPush: () => ({ value: (runs.replaying ? runs.popped : runs.current) ?? null, cursors: [] }),
+    onPop: (_isUndo, meta) => {
+      runs.popped = runOf(meta?.value)
+    },
+  })
+
+const histories = (doc: LoroDoc, runs: Runs): Histories => ({ person: undoManagerOf(doc, 'person', runs), agent: undoManagerOf(doc, 'agent', runs) })
 
 const freeHistories = (histories: Histories): void => {
   histories.person.free()

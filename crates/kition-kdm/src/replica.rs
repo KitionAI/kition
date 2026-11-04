@@ -6,8 +6,8 @@ use std::sync::{Arc, Mutex};
 
 use loro::event::Diff;
 use loro::{
-    ContainerID, Counter, ExportMode, IdSpan, Index, LoroDoc, LoroError, LoroValue, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer,
-    VersionRange, VersionVector,
+    ContainerID, Counter, ExportMode, IdSpan, Index, LoroDoc, LoroError, LoroValue, PeerID, ToJson, TreeID, TreeParentId, UndoItemMeta, UndoManager,
+    ValueOrContainer, VersionRange, VersionVector,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -189,7 +189,7 @@ impl Replica {
 
     fn attach(doc: LoroDoc, doc_id: DocId, schema: Arc<Schema>, actor: ActorId) -> Result<Self> {
         doc.set_peer_id(actor.get()).map_err(engine)?;
-        let undo = Histories::new(&doc);
+        let undo = Histories::new(&doc, Arc::new(Mutex::new(Runs::default())));
         Ok(Self {
             doc,
             doc_id,
@@ -416,7 +416,7 @@ impl Replica {
             if self.doc.is_shallow() { shallow_fork_at(&self.doc, version)? } else { self.doc.fork_at(&self.doc.vv_to_frontiers(version)).map_err(engine)? };
         crate::marks::configure(&doc, &self.schema);
         doc.set_peer_id(self.actor.get()).map_err(engine)?;
-        self.undo = Histories::new(&doc);
+        self.undo = Histories::new(&doc, self.undo.runs.clone());
         self.doc = doc;
         // No undo history is left to protect registers from.
         self.imported_registers.clear();
@@ -579,8 +579,9 @@ impl Replica {
         let mut others: Vec<(Register, Option<LoroValue>, Option<Option<UndoScope>>)> =
             self.others_registers().into_iter().map(|(register, value)| (register, value, None)).collect();
         others.extend(self.other_scopes_registers(scope).into_iter().map(|(register, value, by)| (register, value, Some(by))));
+        let runs = self.undo.runs.clone();
         let manager = self.undo.of(scope);
-        let (done, changed, registers) = observe_changes(&self.doc, || if undo { manager.undo() } else { manager.redo() }.map_err(engine));
+        let (done, changed, registers) = observe_changes(&self.doc, || replay_run(manager, &runs, undo).map_err(engine));
         self.changed.extend(changed);
         let done = done?;
         for register in &registers {
@@ -742,10 +743,11 @@ impl Replica {
 
     /// Starts an undo group: the transactions until [`Replica::end_undo_group`] undo and redo as
     /// one step. Groups do not nest ([`KdmError::InvalidValue`]). An undo or a redo ends the open
-    /// group first, so undo while grouping reverts the group as one step. An import that changes
-    /// what the group changed splits it in two undo steps: the transactions before the import and
-    /// those after it. A group spans both undo scopes (M12a): the person's transactions in it are
-    /// one person step, and an agent's are one agent step.
+    /// group first, so undo while grouping reverts the group as one step. It stays one undo step
+    /// when other replicas' changes arrive while it is open, also when they touch what the group
+    /// changed (rule M12b): one undo takes back all of it and keeps their changes. A group spans
+    /// both undo scopes (M12a): the person's transactions in it are one person step, and an
+    /// agent's are one agent step.
     pub fn begin_undo_group(&mut self) -> Result<()> {
         if self.grouping {
             return Err(KdmError::InvalidValue { ty: "$undo".into(), field: "group".into(), reason: "is already open".into() });
@@ -756,6 +758,7 @@ impl Replica {
             return Err(engine(error));
         }
         self.grouping = true;
+        self.undo.runs.lock().map_err(|_| KdmError::Engine("the undo runs are poisoned".into()))?.open();
         Ok(())
     }
 
@@ -765,6 +768,9 @@ impl Replica {
             self.undo.person.group_end();
             self.undo.agent.group_end();
             self.grouping = false;
+            if let Ok(mut runs) = self.undo.runs.lock() {
+                runs.current = None;
+            }
         }
     }
 
@@ -939,11 +945,62 @@ fn shallow_fork_at(doc: &LoroDoc, version: &VersionVector) -> Result<LoroDoc> {
 struct Histories {
     person: UndoManager,
     agent: UndoManager,
+    runs: Arc<Mutex<Runs>>,
+}
+
+/// The undo group runs of a replica (rule M12b): `current` is the open group's, which each new
+/// undo step takes; while an undo or redo replays, the step it makes takes the run of the step it
+/// popped, so a run undone stays one run to redo.
+#[derive(Default)]
+struct Runs {
+    current: Option<i64>,
+    next: i64,
+    replaying: bool,
+    popped: Option<i64>,
+}
+
+impl Runs {
+    fn open(&mut self) {
+        self.next += 1;
+        self.current = Some(self.next);
+    }
+}
+
+fn run_of(value: &LoroValue) -> Option<i64> {
+    match value {
+        LoroValue::I64(run) => Some(*run),
+        _ => None,
+    }
+}
+
+/// One undo (or redo) of a run (M12b): the top step, and every step under it of the same undo
+/// group, which an import split.
+fn replay_run(manager: &mut UndoManager, runs: &Arc<Mutex<Runs>>, undo: bool) -> std::result::Result<bool, LoroError> {
+    let top = |manager: &UndoManager| if undo { manager.top_undo_value() } else { manager.top_redo_value() }.as_ref().and_then(run_of);
+    let set = |replaying: bool| {
+        if let Ok(mut runs) = runs.lock() {
+            runs.replaying = replaying;
+            runs.popped = None;
+        }
+    };
+    set(true);
+    let run = top(manager);
+    let step = |manager: &mut UndoManager| if undo { manager.undo() } else { manager.redo() };
+    let result = (|| {
+        let any = step(manager)?;
+        let mut did = any;
+        while did && run.is_some() && top(manager) == run {
+            did = step(manager)?;
+        }
+        Ok(any)
+    })();
+    set(false);
+    result
 }
 
 impl Histories {
-    fn new(doc: &LoroDoc) -> Self {
-        Self { person: undo_manager(doc, UndoScope::Person), agent: undo_manager(doc, UndoScope::Agent) }
+    fn new(doc: &LoroDoc, runs: Arc<Mutex<Runs>>) -> Self {
+        Self { person: undo_manager(doc, UndoScope::Person, &runs), agent: undo_manager(doc, UndoScope::Agent, &runs), runs }
     }
 
     fn get(&self, scope: UndoScope) -> &UndoManager {
@@ -962,9 +1019,21 @@ impl Histories {
 }
 
 /// The undo history of `scope` on a replica's document.
-fn undo_manager(doc: &LoroDoc, scope: UndoScope) -> UndoManager {
+fn undo_manager(doc: &LoroDoc, scope: UndoScope, runs: &Arc<Mutex<Runs>>) -> UndoManager {
     let mut undo = UndoManager::new(doc);
     undo.set_merge_interval(0);
+    // Each step carries the run of its undo group (M12b).
+    let pushing = runs.clone();
+    undo.set_on_push(Some(Box::new(move |_, _, _| {
+        let run = pushing.lock().ok().and_then(|runs| if runs.replaying { runs.popped } else { runs.current });
+        UndoItemMeta { value: run.map_or(LoroValue::Null, LoroValue::I64), cursors: Vec::new() }
+    })));
+    let popping = runs.clone();
+    undo.set_on_pop(Some(Box::new(move |_, _, meta| {
+        if let Ok(mut runs) = popping.lock() {
+            runs.popped = run_of(&meta.value);
+        }
+    })));
     undo.add_exclude_origin_prefix(ROLLBACK);
     // `system` transactions (repairs, migrations) are not undo steps: undo skips them like
     // changes from another replica, and they survive the undo of earlier transactions.

@@ -890,7 +890,8 @@ fn redo_while_grouping_ends_the_group_first() {
 }
 
 #[test]
-fn an_import_that_changes_what_the_group_changed_splits_the_group_into_two_undo_steps() {
+fn an_import_that_changes_what_the_group_changed_keeps_the_group_one_undo_step() {
+    // Rule M12b.
     let mut replica = replica();
     let (_, shape) = page_with_shape(&mut replica);
     let mut other = Replica::load(schema(), &replica.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
@@ -904,11 +905,36 @@ fn an_import_that_changes_what_the_group_changed_splits_the_group_into_two_undo_
     replica.end_undo_group();
     let state = |replica: &Replica| ["x", "y", "kind", "fill"].map(|field| replica.get(&shape, field).unwrap());
     assert!(replica.undo().unwrap());
-    assert_eq!(state(&replica), [json!(1), json!(20), json!("rect"), json!("#111")]);
+    assert_eq!(state(&replica), [json!(10), json!(20), json!("rect"), json!("#111")]);
+    // Redo puts the whole group back as one step too, keeping the other replica's change.
+    assert!(replica.redo().unwrap());
+    assert_eq!(state(&replica), [json!(1), json!(2), json!("ellipse"), json!("#111")]);
     assert!(replica.undo().unwrap());
     assert_eq!(state(&replica), [json!(10), json!(20), json!("rect"), json!("#111")]);
     replica.begin_undo_group().unwrap();
     replica.end_undo_group();
+}
+
+#[test]
+fn two_undo_groups_split_by_imports_stay_two_steps() {
+    // Rule M12b: runs are per group; an import inside one never joins it to the next.
+    let mut replica = replica();
+    let (_, shape) = page_with_shape(&mut replica);
+    let mut other = Replica::load(schema(), &replica.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
+    let since = other.version();
+    replica.begin_undo_group().unwrap();
+    replica.transact(&person(), |tx| tx.set(&shape, "x", json!(1))).unwrap();
+    other.transact(&person(), |tx| tx.set(&shape, "fill", json!("#222"))).unwrap();
+    replica.import_changes(&other.export_changes(&since).unwrap()).unwrap();
+    replica.transact(&person(), |tx| tx.set(&shape, "x", json!(2))).unwrap();
+    replica.end_undo_group();
+    replica.begin_undo_group().unwrap();
+    replica.transact(&person(), |tx| tx.set(&shape, "y", json!(5))).unwrap();
+    replica.end_undo_group();
+    assert!(replica.undo().unwrap());
+    assert_eq!([replica.get(&shape, "x").unwrap(), replica.get(&shape, "y").unwrap()], [json!(2), json!(20)]);
+    assert!(replica.undo().unwrap());
+    assert_eq!([replica.get(&shape, "x").unwrap(), replica.get(&shape, "fill").unwrap()], [json!(10), json!("#222")]);
 }
 
 #[test]
