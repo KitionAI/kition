@@ -65,7 +65,8 @@
   },
   "firstRun": {
     "seeding": "Configurando tu espacio de trabajo…",
-    "seedError": "No se pudieron preparar los archivos iniciales: {{message}}",
+    "seedError": "No se pudieron preparar los archivos iniciales. Vuelve a intentarlo o sigue trabajando sin ellos.",
+    "seedRetry": "Reintentar",
     "dialogLabel": "Primeros pasos",
     "eyebrow": "Primeros pasos",
     "progress": "Paso {{step}} de 3",

@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-seed-error-toast
+feature: kition.platform.release-checks
+intent: >-
+  When setting up the Getting Started files fails on first run, the toast says so in plain words,
+  never shows the internal error text (that goes to the log), and offers Retry, which runs the
+  workspace's first-run setup again.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan reports/2026-11-04-ui-design-review.md (U3)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/app/Shell.spec.ts, -t, "reports a failed Getting Started setup in plain words"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-04"
+timeout_s: 60

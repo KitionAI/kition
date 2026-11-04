@@ -65,7 +65,8 @@
   },
   "firstRun": {
     "seeding": "Setting up your workspace…",
-    "seedError": "Couldn't set up your Getting Started files: {{message}}",
+    "seedError": "Couldn't set up your Getting Started files. Try again, or keep working without them.",
+    "seedRetry": "Retry",
     "dialogLabel": "Getting started",
     "eyebrow": "Getting started",
     "progress": "Step {{step}} of 3",

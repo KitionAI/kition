@@ -65,7 +65,8 @@
   },
   "firstRun": {
     "seeding": "Configuration de votre espace de travail…",
-    "seedError": "Impossible de préparer les fichiers de démarrage : {{message}}",
+    "seedError": "Impossible de préparer les fichiers de démarrage. Réessayez, ou continuez sans eux.",
+    "seedRetry": "Réessayer",
     "dialogLabel": "Bien démarrer",
     "eyebrow": "Bien démarrer",
     "progress": "Étape {{step}} sur 3",

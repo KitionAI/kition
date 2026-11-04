@@ -65,7 +65,8 @@
   },
   "firstRun": {
     "seeding": "Configurando seu workspace…",
-    "seedError": "Não foi possível preparar os arquivos iniciais: {{message}}",
+    "seedError": "Não foi possível preparar os arquivos iniciais. Tente novamente ou continue trabalhando sem eles.",
+    "seedRetry": "Tentar novamente",
     "dialogLabel": "Primeiros passos",
     "eyebrow": "Primeiros passos",
     "progress": "Etapa {{step}} de 3",

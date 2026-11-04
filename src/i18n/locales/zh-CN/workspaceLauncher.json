@@ -65,7 +65,8 @@
   },
   "firstRun": {
     "seeding": "正在为你准备工作区…",
-    "seedError": "示例文件准备失败：{{message}}",
+    "seedError": "示例文件准备失败。可以重试，或者先不用它们继续工作。",
+    "seedRetry": "重试",
     "dialogLabel": "入门指南",
     "eyebrow": "入门指南",
     "progress": "第 {{step}} 步，共 3 步",

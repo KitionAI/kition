@@ -337,44 +337,60 @@ export function AppShell() {
     }
   }, [])
 
+  // The internal error goes to the log, not the toast: the person gets plain words and a Retry
+  // that runs the first-run setup of that workspace again.
+  const retryFirstRunRef = useRef<(path: string) => void>(() => undefined)
+  const reportFirstRunError = useCallback((err: unknown, path: string) => {
+    console.error('[first-run] setting up Getting Started failed', err)
+    toast.error(tLauncher('firstRun.seedError'), {
+      action: { label: tLauncher('firstRun.seedRetry'), onClick: () => retryFirstRunRef.current(path) },
+    })
+  }, [tLauncher])
+
   const seedFirstRun = useCallback(async (path: string): Promise<string> => {
     try {
       return await maybeSeedOnboardingPack(path)
     } catch (err) {
-      toast.error(tLauncher('firstRun.seedError', { message: (err as Error).message }))
+      reportFirstRunError(err, path)
       return ''
     }
-  }, [tLauncher])
+  }, [reportFirstRunError])
 
   const prepareFirstRun = useCallback(async (path: string) => {
     let migratedPath = ''
     try {
       migratedPath = await reconcileOnboardingWelcome()
     } catch (err) {
-      toast.error(tLauncher('firstRun.seedError', { message: (err as Error).message }))
+      reportFirstRunError(err, path)
     }
     return {
       migratedPath,
       welcomePath: await seedFirstRun(path),
     }
-  }, [seedFirstRun, tLauncher])
+  }, [seedFirstRun, reportFirstRunError])
+
+  const runFirstRun = useCallback(async (path: string) => {
+    const { migratedPath, welcomePath } = await prepareFirstRun(path)
+    if (welcomePath) {
+      markWorkspaceOnboardingPending(path)
+      notifyWorkspaceReload(welcomePath, true)
+      setOnboardingOpen(true)
+    } else if (migratedPath) {
+      notifyWorkspaceReload(migratedPath, true)
+    }
+  }, [prepareFirstRun, notifyWorkspaceReload])
+
+  useEffect(() => {
+    retryFirstRunRef.current = (path) => void runFirstRun(path)
+  }, [runFirstRun])
 
   const seedAttemptedRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!vaultsLoaded || !activeVaultPath) return
     if (seedAttemptedRef.current.has(activeVaultPath)) return
     seedAttemptedRef.current.add(activeVaultPath)
-    void (async () => {
-      const { migratedPath, welcomePath } = await prepareFirstRun(activeVaultPath)
-      if (welcomePath) {
-        markWorkspaceOnboardingPending(activeVaultPath)
-        notifyWorkspaceReload(welcomePath, true)
-        setOnboardingOpen(true)
-      } else if (migratedPath) {
-        notifyWorkspaceReload(migratedPath, true)
-      }
-    })()
-  }, [vaultsLoaded, activeVaultPath, prepareFirstRun, notifyWorkspaceReload])
+    void runFirstRun(activeVaultPath)
+  }, [vaultsLoaded, activeVaultPath, runFirstRun])
 
   useEffect(() => {
     if (!vaultsLoaded || !activeVaultPath) {

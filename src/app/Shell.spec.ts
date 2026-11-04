@@ -20,7 +20,23 @@ const mocks = vi.hoisted(() => ({
   setActiveVault: vi.fn(),
   refreshVaults: vi.fn(),
   WorkspaceScreen: vi.fn(() => null),
+  maybeSeedOnboardingPack: vi.fn(),
+  reconcileOnboardingWelcome: vi.fn(),
+  toastError: vi.fn(),
 }))
+
+vi.mock('@/features/onboarding/maybeSeedOnboardingPack', () => ({
+  maybeSeedOnboardingPack: mocks.maybeSeedOnboardingPack,
+}))
+
+vi.mock('@/features/onboarding/reconcileOnboardingWelcome', () => ({
+  reconcileOnboardingWelcome: mocks.reconcileOnboardingWelcome,
+}))
+
+vi.mock('@kition/tessera-ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kition/tessera-ui')>()
+  return { ...actual, toast: { ...actual.toast, error: mocks.toastError } }
+})
 
 vi.mock('@/services/portalAccount', () => ({
   restorePortalAccountSession: mocks.restorePortalAccountSession,
@@ -125,6 +141,11 @@ describe('AppShell portal restore', () => {
     mocks.readWorkspaceDocument.mockReset()
     mocks.writeWorkspaceDocument.mockReset()
     mocks.WorkspaceScreen.mockClear()
+    mocks.maybeSeedOnboardingPack.mockReset()
+    mocks.maybeSeedOnboardingPack.mockResolvedValue('')
+    mocks.reconcileOnboardingWelcome.mockReset()
+    mocks.reconcileOnboardingWelcome.mockResolvedValue('')
+    mocks.toastError.mockReset()
     window.history.replaceState(null, '', '/documents')
   })
 
@@ -209,6 +230,42 @@ describe('AppShell portal restore', () => {
     await act(async () => {
       root?.unmount()
     })
+    container.remove()
+  })
+
+  it('reports a failed Getting Started setup in plain words, keeps the internal error out of the toast, and offers Retry', async () => {
+    const failure = new Error('not used')
+    mocks.maybeSeedOnboardingPack.mockRejectedValueOnce(failure).mockResolvedValueOnce('')
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(AppShell))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    const [title, options] = mocks.toastError.mock.calls[0] as [string, { description?: string; action?: { label: string; onClick: () => void } } | undefined]
+    expect(title).not.toContain('not used')
+    expect(options?.description ?? '').not.toContain('not used')
+    expect(options?.action?.label).toBeTruthy()
+    expect(logged).toHaveBeenCalledWith(expect.any(String), failure)
+
+    await act(async () => {
+      options!.action!.onClick()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mocks.maybeSeedOnboardingPack).toHaveBeenCalledTimes(2)
+    expect(mocks.maybeSeedOnboardingPack).toHaveBeenLastCalledWith('/tmp/kition-vault')
+
+    logged.mockRestore()
+    await act(async () => root?.unmount())
     container.remove()
   })
 })
