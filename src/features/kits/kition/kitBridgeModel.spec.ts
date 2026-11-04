@@ -12,6 +12,16 @@ function connection(capabilities: string[]) {
 
 // Case: regressions/issue-bridge-model-schema.
 describe('bridgeModel', () => {
+  // Case: regressions/issue-agent-design-schema.
+  it('supplies the Design schema to agent queries and batches', async () => {
+    const kit = connection(['model'])
+    const model = bridgeModel(kit.connection, 'kit.design')!
+    await model.describe()
+    await model.batch({ ops: [], load: [{ target: 'root' }] })
+    expect(kit.describe.mock.calls[0]![0]).toMatchObject({ kit: 'kit.design', schemaVersion: 1, root: 'Design' })
+    expect(kit.batch.mock.calls[0]![0]).toMatchObject({ schema: { kit: 'kit.design', root: 'Design' } })
+  })
+
   it("sends the kit's registered schema with the agent's describe and batch, which a kit whose engine does not describe its own needs (Fig, Vector)", async () => {
     const kit = connection(['model'])
     const model = bridgeModel(kit.connection, 'kit.fig')!

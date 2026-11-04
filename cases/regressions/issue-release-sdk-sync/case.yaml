@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-release-sdk-sync
+feature: kition.extensions.kit-scripts
+intent: >-
+  The bundled Cube scripting types must match the SDK generator, including its source
+  header, so host synchronization checks pass for the released kit catalogue.
+layer: golden
+source:
+  kind: probe
+  from: scripts/sync-kit-host.mjs
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [node, scripts/sync-kit-host.mjs, --check]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"

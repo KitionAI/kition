@@ -65,6 +65,7 @@
     "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/workspace/lib/workspacePersistence.spec.ts",
     "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-document-flow.spec.ts --workers=1",
     "test:agent:stable": "pnpm run test:agent:unit && pnpm run test:agent:e2e",
+    "test:kit-agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/interaction/agent-adaptation.spec.ts --workers=1",
     "test:desktop:unit": "vitest run --config tooling/vitest.config.ts src/services/desktop.spec.ts src/services/desktopBootstrap.spec.ts src/services/portalAccount.spec.ts src/services/desktopClient/tauriBridge.spec.ts src-tauri/scripts",
     "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-bundled-assets.spec.ts e2e/desktop-image-copy.spec.ts e2e/desktop-image-import.spec.ts e2e/desktop-image-paste.spec.ts e2e/desktop-selection-translation.spec.ts e2e/desktop-shortcuts.spec.ts e2e/settings-desktop.spec.ts e2e/settings-desktop-network.spec.ts",
     "lint": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --quiet --ignore-path .gitignore",

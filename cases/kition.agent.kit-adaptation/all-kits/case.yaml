@@ -1,0 +1,24 @@
+format: 1
+id: kition.agent.kit-adaptation/all-kits
+feature: kition.agent.kit-adaptation
+intent: >-
+  Every kit in kits/sdks.json must pass the complete live agent bridge matrix with
+  its real packaged editor and engine; missing packages fail, including optional
+  kits in this explicitly requested full run. No model or external service is called.
+layer: corpus
+direction: ai
+source:
+  kind: synthetic
+  from: e2e/interaction/agent-adaptation.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, test:kit-agent:e2e]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 600
+since: "2026-10-31"

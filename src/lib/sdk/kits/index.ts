@@ -6,6 +6,7 @@ import type { KitDescriptor } from '../kits'
 import { boardKit } from './board'
 import { cadKit } from './cad'
 import { cubeKit } from './cube'
+import { designKit } from './design'
 import { effectKit } from './effect'
 import { figKit } from './fig'
 import { filmKit } from './film'
@@ -18,9 +19,9 @@ import { tableKit } from './table'
 import { vectorKit } from './vector'
 import { docKit } from './doc'
 
-export { boardKit, cadKit, cubeKit, effectKit, figKit, filmKit, noteKit, pdfKit, photoKit, sheetKit, slideKit, tableKit, vectorKit, docKit }
+export { boardKit, cadKit, cubeKit, designKit, effectKit, figKit, filmKit, noteKit, pdfKit, photoKit, sheetKit, slideKit, tableKit, vectorKit, docKit }
 
 /** Every generated kit's descriptor, by kit id. */
 export const KITS: Readonly<Record<string, KitDescriptor>> = Object.fromEntries(
-  [docKit, slideKit, sheetKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit, boardKit, noteKit, cubeKit, figKit].map((kit) => [kit.id, kit]),
+  [docKit, slideKit, sheetKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit, boardKit, noteKit, cubeKit, figKit, designKit].map((kit) => [kit.id, kit]),
 )

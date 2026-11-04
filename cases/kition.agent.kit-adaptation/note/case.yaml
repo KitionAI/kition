@@ -1,0 +1,23 @@
+format: 1
+id: kition.agent.kit-adaptation/note
+feature: kition.agent.kit-adaptation
+intent: >-
+  Note agent edits use their own undo/redo, errors preserve state, a draft never
+  saves over the live file, and read-only access rejects both commands and batches.
+layer: golden
+direction: ai
+source:
+  kind: synthetic
+  from: e2e/interaction/agent-adaptation.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/interaction/agent-adaptation.spec.ts, --grep, "@ai-kit-note", --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-31"
