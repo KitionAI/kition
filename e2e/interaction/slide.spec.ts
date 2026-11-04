@@ -63,7 +63,7 @@ hostMatrix({
   ready: (kit) => expect(kit.getByTestId('slides-status')).toHaveText(/^Slide \d+ of \d+$/, { timeout: 60_000 }),
   shown: async (kit) => Number(/(\d+)\D*$/.exec((await kit.getByTestId('slides-status').textContent()) ?? '')?.[1] ?? -1),
   saved: slidesOf,
-  edit: (kit) => kit.getByTestId('slides-add-slide').click(),
+  edit: (kit) => kit.getByTestId('slides-cmd-slide.new').click(),
   focus: (kit) => kit.getByTestId('slides-canvas-region').click({ position: { x: 20, y: 20 } }),
   create: { group: 'Visual', name: 'Untitled slide.kslide', count: 1 },
   agent: { command: 'slide.new', params: {} },

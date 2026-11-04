@@ -114,10 +114,10 @@ test('syncs a slide file across one person\'s two devices: synced on one, listed
 
     // She adds a slide on the desktop, and one on the laptop: both converge with both slides.
     await pageA.keyboard.press('Escape')
-    await kitB.getByTestId('slides-add-slide').click()
+    await kitB.getByTestId('slides-cmd-slide.new').click()
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 3$/)
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 3$/, { timeout: 10_000 })
-    await a.kit.getByTestId('slides-add-slide').click()
+    await a.kit.getByTestId('slides-cmd-slide.new').click()
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 4$/)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 4$/, { timeout: 10_000 })
     await expect.poll(() => sameReplicas(pageA, 'Keynote.kslide', pageB, 'Keynote.kslide'), { timeout: 30_000 }).toBe('same')
