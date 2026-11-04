@@ -99,4 +99,14 @@ describe('WorkflowIndexPage onboarding workflow preparation', () => {
     expect(container.querySelector('[data-testid="workflow-index-empty"]')).not.toBeNull()
     expect(onSelectWorkflow).not.toHaveBeenCalled()
   })
+
+  it('explains in the empty state what a workflow does and how to start one', async () => {
+    vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
+    await mount('Projects/Customer Requests.ktable')
+
+    const empty = container.querySelector('[data-testid="workflow-index-empty"]')
+    expect(empty?.querySelector('h2')?.textContent).toBe('No workflows yet')
+    expect(empty?.querySelector('[data-testid="workflow-index-empty-description"]')?.textContent).toMatch(/template/i)
+    expect(empty?.querySelector('[data-testid="workflow-index-create"]')).not.toBeNull()
+  })
 })

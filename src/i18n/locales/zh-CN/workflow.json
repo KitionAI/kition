@@ -459,6 +459,7 @@
         "loading": "正在加载工作流",
         "emptyFiltered": "当前筛选下没有匹配的工作流。",
         "emptyNone": "暂无工作流",
+        "emptyNoneDescription": "工作流会在表格里发生变化时替你做事：新增记录、记录改动或到了设定时间。可以从模板开始、让 AI 生成，或者一步步自己搭建。",
         "flowWhen": "当",
         "flowThen": "则",
         "actionSendEmail": "发送邮件",

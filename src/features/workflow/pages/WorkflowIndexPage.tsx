@@ -244,9 +244,12 @@ export function WorkflowIndexPage({
         ) : (
           <div
             data-testid="workflow-index-empty"
-            className="flex flex-col items-center justify-center h-full gap-3 text-center text-muted-foreground"
+            className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center text-muted-foreground"
           >
-            <div className="text-sm">{t('panels.home.list.emptyNone')}</div>
+            <h2 className="text-base font-semibold text-foreground">{t('panels.home.list.emptyNone')}</h2>
+            <p data-testid="workflow-index-empty-description" className="max-w-sm text-sm">
+              {t('panels.home.list.emptyNoneDescription')}
+            </p>
             <Button
               variant="primary"
               size="sm"

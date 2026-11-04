@@ -459,6 +459,7 @@
         "loading": "Chargement des flux de travail",
         "emptyFiltered": "Aucun flux de travail ne correspond à cette vue.",
         "emptyNone": "Aucun flux de travail pour l'instant",
+        "emptyNoneDescription": "Un workflow travaille pour vous quand quelque chose se passe dans une table : un nouvel enregistrement, une modification ou une heure prévue. Partez d'un modèle, décrivez-le à l'IA ou construisez-le étape par étape.",
         "flowWhen": "QUAND",
         "flowThen": "ALORS",
         "actionSendEmail": "Envoyer un e-mail",

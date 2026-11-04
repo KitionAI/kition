@@ -459,6 +459,7 @@
         "loading": "Carregando fluxos de trabalho",
         "emptyFiltered": "Nenhum fluxo de trabalho corresponde a esta visualização.",
         "emptyNone": "Ainda não há fluxos de trabalho",
+        "emptyNoneDescription": "Um fluxo de trabalho faz o trabalho por você quando algo acontece em uma tabela: um novo registro, uma alteração ou um horário definido. Comece com um modelo, descreva-o para a IA ou monte-o passo a passo.",
         "flowWhen": "QUANDO",
         "flowThen": "ENTÃO",
         "actionSendEmail": "Enviar e-mail",

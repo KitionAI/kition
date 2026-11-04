@@ -459,6 +459,7 @@
         "loading": "Loading workflows",
         "emptyFiltered": "No workflows match this view.",
         "emptyNone": "No workflows yet",
+        "emptyNoneDescription": "A workflow does work for you when something happens in a table: a new record, a change, or a set time. Start from a template, describe it to AI, or build it step by step.",
         "flowWhen": "WHEN",
         "flowThen": "THEN",
         "actionSendEmail": "Send email",

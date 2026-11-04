@@ -459,6 +459,7 @@
         "loading": "Cargando flujos de trabajo",
         "emptyFiltered": "Ningún flujo de trabajo coincide con esta vista.",
         "emptyNone": "Aún no hay flujos de trabajo",
+        "emptyNoneDescription": "Un flujo de trabajo actúa por ti cuando algo ocurre en una tabla: un registro nuevo, un cambio o una hora programada. Empieza con una plantilla, descríbelo a la IA o constrúyelo paso a paso.",
         "flowWhen": "CUANDO",
         "flowThen": "ENTONCES",
         "actionSendEmail": "Enviar correo",
