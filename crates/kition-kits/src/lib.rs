@@ -8,7 +8,6 @@ pub mod bridge;
 pub mod definitions;
 pub mod drafts;
 pub mod grants;
-pub mod license;
 pub mod manager;
 pub mod mcp;
 pub mod resources;

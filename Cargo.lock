@@ -3531,7 +3531,6 @@ dependencies = [
  "kition-kdm",
  "kition-kit-host",
  "kition-kit-protocol",
- "kition-license",
  "rand 0.9.5",
  "serde",
  "serde_json",

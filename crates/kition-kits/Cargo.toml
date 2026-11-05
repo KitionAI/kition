@@ -13,7 +13,6 @@ workspace = true
 
 [dependencies]
 kition-kdm = { path = "../kition-kdm" }
-kition-license = { path = "../kition-license" }
 kition-kit-host = { path = "../kition-kit-host" }
 kition-kit-protocol = { path = "../kition-kit-protocol", features = ["tokio"] }
 
