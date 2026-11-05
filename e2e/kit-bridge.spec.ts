@@ -29,7 +29,7 @@ async function drawingFixture() {
 
 /** The runtime's bridge requests, one JSON-RPC message per server-sent event, as `bridge.rs` sends them. */
 function bridgeEvents(file: string) {
-  const messages = [
+  return events([
     { jsonrpc: '2.0', method: 'bridge.ready', params: { session: 7 } },
     { jsonrpc: '2.0', id: 1, method: 'kit/documents', params: {} },
     { jsonrpc: '2.0', id: 2, method: 'kit/call', params: { path: file, kit: 'kit.vector', tool: 'commands', arguments: { query: 'ellipse' } } },
@@ -37,7 +37,15 @@ function bridgeEvents(file: string) {
     { jsonrpc: '2.0', id: 4, method: 'kit/preview', params: { path: file, maxSize: 200 } },
     { jsonrpc: '2.0', id: 5, method: 'kit/call', params: { path: file, kit: 'kit.vector', tool: 'run', arguments: { steps: [{ command: 'no.such.command' }], save: false } } },
     { jsonrpc: '2.0', id: 6, method: 'kit/call', params: { path: 'other.kvector', kit: 'kit.vector', tool: 'inspect', arguments: {} } },
-  ]
+  ])
+}
+
+/** The agent takes its own step back: edit.undo runs as the agent, in the agent's scope. */
+function undoEvents(file: string) {
+  return events([{ jsonrpc: '2.0', id: 7, method: 'kit/call', params: { path: file, kit: 'kit.vector', tool: 'run', arguments: { steps: [{ command: 'edit.undo' }], save: false } } }])
+}
+
+function events(messages: unknown[]) {
   return messages.map((message) => `data: ${JSON.stringify(message)}\n\n`).join('')
 }
 
@@ -53,12 +61,20 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     let streams = 0
+    let releaseUndo = () => {}
+    const undoReleased = new Promise<void>((resolve) => (releaseUndo = resolve))
+    const stream = { status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } }
     await page.route('**/v1/kits/bridge', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback()
       streams += 1
-      // The first stream carries the requests; a reconnect is told there is nothing more.
-      if (streams > 1) return route.fulfill({ status: 204, body: '' })
-      await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' }, body: bridgeEvents('Logo.kvector') })
+      // The first stream carries the requests; the first reconnect carries the agent's undo once the
+      // test has looked at the edit; later reconnects are told there is nothing more.
+      if (streams === 1) return route.fulfill({ ...stream, body: bridgeEvents('Logo.kvector') })
+      if (streams === 2) {
+        await undoReleased
+        return route.fulfill({ ...stream, body: undoEvents('Logo.kvector') })
+      }
+      await route.fulfill({ status: 204, body: '' })
     })
     const posted: Array<{ session: string | null; message: Record<string, unknown> }> = []
     await page.route('**/v1/kits/bridge?**', async (route) => {
@@ -85,13 +101,20 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
 
     const commands = (await answer(2)).message.result as { commands: Array<{ id: string; description: string | null }>; total: number }
     expect(commands.commands.map((command) => command.id)).toContain('shape.ellipse')
-    expect(commands.commands.find((command) => command.id === 'shape.ellipse')?.description).toContain('Params:')
+    // AX14: the description says what the command does in a sentence, not a title or a parameter dump.
+    const ellipse = commands.commands.find((command) => command.id === 'shape.ellipse')?.description ?? ''
+    expect(ellipse).toMatch(/^[A-Z].{20,}/)
+    expect(ellipse.trim().split(/\s+/).length).toBeGreaterThanOrEqual(4)
+    expect(ellipse).not.toContain('Params:')
+    expect(ellipse.toLowerCase()).toContain('ellipse')
 
     // The edit runs in the open editor: it shows at once, unsaved, marked as the agent's.
     const run = (await answer(3)).message.result as { completed: Array<{ command: string; changed: boolean }>; saved: boolean; document: { dirty: boolean; canUndo: boolean } }
     expect(run.completed).toEqual([{ command: 'shape.ellipse', changed: true, result: expect.anything() }])
     expect(run.saved).toBe(false)
-    expect(run.document).toMatchObject({ dirty: true, canUndo: true })
+    // The step is the agent's (KitAgent A7, KitModel 1.1 M12a): the person's history, which
+    // `canUndo` reports, has nothing of theirs to undo.
+    expect(run.document).toMatchObject({ dirty: true, canUndo: false })
     await expect(view.getByTestId('vector-status')).toContainText('2 objects')
     await expect(view.getByTestId(marks.unsaved)).toBeVisible()
     await expect(view.getByTestId(marks.agent)).toBeVisible()
@@ -104,10 +127,14 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     expect((await answer(5)).message.error).toMatchObject({ message: expect.stringContaining('no.such.command') })
     expect((await answer(6)).message.error).toMatchObject({ message: expect.stringContaining('not open in a kit editor') })
 
-    // The agent's edit joined the undo history: the person undoes it like their own.
-    await view.getByRole('button', { name: 'Undo' }).click()
+    // The agent's undo takes back only its own step (A7, M12a); the person's Undo keeps it, so
+    // theirs stays off.
+    releaseUndo()
+    const undone = (await answer(7)).message.result as { completed: Array<{ command: string; changed: boolean }>; document: { canUndo: boolean } }
+    expect(undone.completed).toEqual([{ command: 'edit.undo', changed: true, result: expect.anything() }])
+    expect(undone.document.canUndo).toBe(false)
     await expect(view.getByTestId('vector-status')).toContainText('1 objects')
-    await expect(view.getByTestId(marks.agent)).toHaveCount(0)
+    await expect(view.getByRole('button', { name: 'Undo' })).toBeDisabled()
   } finally {
     await host.dispose()
   }
