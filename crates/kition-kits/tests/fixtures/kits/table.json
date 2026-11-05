@@ -20,7 +20,7 @@
       "extensions": [
         "ktable"
       ],
-      "mime": "application/vnd.kition.table+zip",
+      "mime": "application/vnd.kition.table+sqlite3",
       "role": "edit"
     }
   ],
