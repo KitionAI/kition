@@ -5,17 +5,19 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const templateRoot = path.join(repoRoot, 'public', 'templates', 'receipt-ocr-database')
+// The Table kit's receipt pictures (kition-table web/src/templates/receiptSamples.json, drawn by its
+// web/scripts/render-receipts.mjs), copied here with the same names.
 const sourceNames = [
-  'strong flour.png',
-  'Receipt_California.png',
-  'openai.png',
-  'food business center.png',
-  'Mcdonalds receipt.png',
-  'gas_prices.png',
-  'homedepot_receipt3.png',
-  'starbucks_receipt.png',
-  'shell_gas.png',
-  'Arco gasoline.png',
+  'hearth-and-grain-bakery.jpg',
+  'lantern-row-bistro.jpg',
+  'cirruslane-invoice.png',
+  'greencrate-market.jpg',
+  'birch-and-bun-burgers.jpg',
+  'tallpine-fuel.webp',
+  'benchmark-hardware.jpg',
+  'morning-harbor-coffee.jpg',
+  'suncrest-station.jpg',
+  'redrock-gasoline.jpg',
 ]
 
 function readWebPDimensions(bytes) {
@@ -70,7 +72,7 @@ const assets = sourceNames.map((sourceName, index) => {
 
 const manifest = {
   templateId: 'receipt-ocr-database',
-  source: 'Original Kition Cloud gpt-image-2 generation',
+  source: 'Rendered by kition-table web/scripts/render-receipts.mjs (Kition)',
   assetCount: assets.length,
   totalSizeBytes: assets.reduce((sum, asset) => sum + asset.sizeBytes, 0),
   assets,
