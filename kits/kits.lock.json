@@ -62,12 +62,12 @@
   },
   "effect": {
     "repository": "KitionAI/kition-effect",
-    "version": "0.3.24",
-    "tag": "package-v0.3.24",
-    "asset": "kition-effect-0.3.24.tgz",
-    "size": 16542055,
-    "sha256": "046a69851af5c52b87094995a31ecdaeca45fa2cbf760076b67fb9b6d27723c4",
-    "commit": "facd6bc9b5ffa3b2b250f30836d67ee7495d28a9",
+    "version": "0.3.25",
+    "tag": "package-v0.3.25",
+    "asset": "kition-effect-0.3.25.tgz",
+    "size": 16567817,
+    "sha256": "4c277f61481026994f5fed628d830d5a2fbe512d8d653fabcd63c43b3856e7cb",
+    "commit": "f1af5bb1e14995446e75c641b9b7575c6159ec41",
     "sdkCommit": "69a18a4beb3b1ac225a8d574685963c5a299d503",
     "tesseraCommit": "eba11c9a24aa6123a3d82a8c1e7064480bacb1ad",
     "fontsCommit": "7c594d2b4cde74f0548a357331baef045d12d2ce"
