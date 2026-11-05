@@ -1,6 +1,6 @@
 format: 1
 kit: kition
-updated: "2026-11-04"
+updated: "2026-11-05"
 golden_budget_s: 600
 features:
   - id: kition.kits.doc-page-view
@@ -313,3 +313,11 @@ features:
       - kition.platform.open-source-notices/rust-crates
       - kition.platform.open-source-notices/licenses-view
     since: "2026-10-31"
+  - id: kition.kits.table-host
+    title: Host features (scenarios, triggers, attachments) read and write table files through the Table kit's commands
+    direction: [function, data-safety]
+    priority: P1
+    status: has
+    paths: [crates/kition-tableclient/**]
+    cases: [regressions/issue-attachment-mime-type]
+    since: "2026-11-05"

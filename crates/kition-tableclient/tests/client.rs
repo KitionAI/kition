@@ -202,6 +202,10 @@ async fn host_features_write_closed_files_through_the_kit() {
         attachment.is_object() || attachment.is_array(),
         "{attachment}"
     );
+    assert_eq!(
+        attachment["mimeType"], "text/plain",
+        "the attachment keeps the MIME type it was put with: {attachment}"
+    );
     assert!(
         client
             .records("crm/Missing.ktable", "1")

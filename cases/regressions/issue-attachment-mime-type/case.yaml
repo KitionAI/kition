@@ -1,0 +1,21 @@
+format: 1
+id: regressions/issue-attachment-mime-type
+feature: kition.kits.table-host
+intent: >-
+  A file the host stores in a table (put_attachment) keeps the MIME type it was put with. The host
+  sent `mime_type` where the Table kit's `attachments.put` takes `mimeType`, so every attachment a
+  host feature stored lost its type without a word; the kit now refuses the unknown key (rule E7a)
+  and the host sends the key the kit names.
+layer: golden
+source:
+  kind: probe
+  from: "kition-table unknown-parameter adoption 2026-11-05 (kit-table refused `mime_type`, did you mean `mimeType`)"
+  licence: Apache-2.0
+input: []
+steps:
+  - cargo-test: { package: kition-tableclient, test: client, filter: host_features_write_closed_files_through_the_kit, env: { KITION_KIT_TABLE_BINARY: "../kition-table/target/debug/kit-table" } }
+expected:
+  - actual: out:exit
+    compare: exit
+since: "2026-11-05"
+tags: [headless]

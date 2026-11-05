@@ -693,7 +693,7 @@ impl TableClient {
             json!({
                 "tableId": engine_id(table_id),
                 "name": name,
-                "mime_type": mime,
+                "mimeType": mime,
                 "data": base64::engine::general_purpose::STANDARD.encode(bytes),
             }),
             Some(write_as),
