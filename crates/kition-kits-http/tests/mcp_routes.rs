@@ -97,7 +97,7 @@ fn vector_binary() -> Option<PathBuf> {
         return Some(PathBuf::from(path));
     }
     let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
-        "../../../kition-vector/target/debug/kit-vector{}",
+        "../../../kition-vector/target/debug/kition-vector{}",
         std::env::consts::EXE_SUFFIX
     ));
     sibling.is_file().then_some(sibling)
@@ -130,7 +130,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
         let manifest = kition_kits::definitions::manifest_beside(&binary)?;
         Some((binary, KitDefinition::from_manifest_text(&manifest).ok()?))
     }) else {
-        eprintln!("skipped: build kit-vector (cargo build -p kit-vector in its repository)");
+        eprintln!("skipped: build kition-vector (cargo build -p kition-vector in its repository)");
         return;
     };
     let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));

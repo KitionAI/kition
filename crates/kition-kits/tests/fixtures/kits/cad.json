@@ -76,7 +76,7 @@
     }
   },
   "headless": {
-    "executable": "kit-cad",
+    "executable": "kition-cad",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

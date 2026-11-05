@@ -85,7 +85,7 @@
     }
   },
   "headless": {
-    "executable": "kit-sheet",
+    "executable": "kition-sheet",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

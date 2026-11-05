@@ -51,7 +51,7 @@ fn binary(kit: &str) -> Option<PathBuf> {
         return Some(PathBuf::from(path));
     }
     let sibling =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(format!("kition-{kit}/target/debug/kit-{kit}{}", std::env::consts::EXE_SUFFIX));
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(format!("kition-{kit}/target/debug/kition-{kit}{}", std::env::consts::EXE_SUFFIX));
     sibling.is_file().then_some(sibling)
 }
 
@@ -107,7 +107,7 @@ async fn an_agent_drafts_headless_and_the_person_merges() {
     let mut tested = 0;
     for case in CASES {
         let Some(executable) = binary(case.kit) else {
-            eprintln!("skipped {}: build kit-{} or set KITION_KIT_{}_BINARY", case.kit, case.kit, case.kit.to_uppercase());
+            eprintln!("skipped {}: build kition-{} or set KITION_KIT_{}_BINARY", case.kit, case.kit, case.kit.to_uppercase());
             continue;
         };
         tested += 1;

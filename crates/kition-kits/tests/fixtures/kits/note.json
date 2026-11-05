@@ -161,7 +161,7 @@
     }
   },
   "headless": {
-    "executable": "kit-note",
+    "executable": "kition-note",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

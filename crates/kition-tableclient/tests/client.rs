@@ -2,7 +2,7 @@
 //! written as a host feature (never an undo step), saved, and reported to workflow triggers.
 //!
 //! Runs when the kit's executable is found: `KITION_KIT_TABLE_BINARY`, or a debug build in the
-//! sibling checkout (`../kition-table/target/debug/kit-table`). Otherwise it is skipped.
+//! sibling checkout (`../kition-table/target/debug/kition-table`). Otherwise it is skipped.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -19,7 +19,7 @@ fn executable() -> Option<PathBuf> {
         return Some(PathBuf::from(path));
     }
     let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../kition-table/target/debug/kit-table")
+        .join("../../../kition-table/target/debug/kition-table")
         .with_extension(std::env::consts::EXE_EXTENSION);
     sibling.is_file().then_some(sibling)
 }
@@ -50,7 +50,7 @@ fn table_kit(executable: &std::path::Path) -> &'static kition_kits::KitDefinitio
 async fn host_features_write_closed_files_through_the_kit() {
     let Some(executable) = executable() else {
         eprintln!(
-            "skipped: build kit-table (cargo build -p kit-table in ../kition-table) or set KITION_KIT_TABLE_BINARY"
+            "skipped: build kition-table (cargo build -p kition-table in ../kition-table) or set KITION_KIT_TABLE_BINARY"
         );
         return;
     };
@@ -245,7 +245,7 @@ async fn agent_adds(
 #[tokio::test(flavor = "multi_thread")]
 async fn triggers_resume_after_a_restart_without_dropping_or_replaying_edits() {
     let Some(executable) = executable() else {
-        eprintln!("skipped: no kit-table executable");
+        eprintln!("skipped: no kition-table executable");
         return;
     };
     let kit = table_kit(&executable);

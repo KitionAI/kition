@@ -238,7 +238,7 @@
     }
   },
   "headless": {
-    "executable": "kit-cube",
+    "executable": "kition-cube",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

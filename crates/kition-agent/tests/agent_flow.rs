@@ -1872,7 +1872,7 @@ async fn the_agent_runs_a_kit_tool_the_model_asks_for() {
         return;
     };
     let bin = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
-    let launcher = bin.path().join("kit-vector-mock.sh");
+    let launcher = bin.path().join("kition-vector-mock.sh");
     std::fs::write(
         &launcher,
         format!(

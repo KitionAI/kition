@@ -1,10 +1,10 @@
 // Copied from kition-sdk crates/kition-kits/tests/sdk_kits.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! The kits built on the Kition SDK, through the runtime's kit manager as the agent uses them:
 //! open a real file, find commands, run one, save, and render a preview, each over the Kit
-//! Protocol to the kit's own headless executable (`kit-<kit>`, from `kition-headless`).
+//! Protocol to the kit's own headless executable (`kition-<kit>`, from `kition-headless`).
 //!
 //! Each kit is tested when its executable is found: `KITION_KIT_<KIT>_BINARY`, or a debug build
-//! in the sibling kit checkout (`../kition-<kit>/target/debug/kit-<kit>`). Otherwise it is skipped,
+//! in the sibling kit checkout (`../kition-<kit>/target/debug/kition-<kit>`). Otherwise it is skipped,
 //! and so is a sibling build older than its fixture: the fixture changed with the kit Kition pins,
 //! and a build from before may not read it.
 
@@ -150,7 +150,7 @@ fn binary(id: &str, fixture: &Path) -> Executable {
     }
     let name = id.trim_start_matches("kit.");
     let sibling =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(format!("kition-{name}/target/debug/kit-{name}{}", std::env::consts::EXE_SUFFIX));
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(format!("kition-{name}/target/debug/kition-{name}{}", std::env::consts::EXE_SUFFIX));
     if !sibling.is_file() {
         Executable::Missing
     } else if older(&sibling, fixture) {
@@ -191,7 +191,7 @@ async fn the_agent_edits_files_of_every_sdk_kit_through_its_headless_executable(
             Executable::Found(executable) => executable,
             Executable::Missing => {
                 eprintln!(
-                    "skipped {}: build it (cargo build -p kit-{} in its repository) or set {}",
+                    "skipped {}: build it (cargo build -p kition-{} in its repository) or set {}",
                     case.kit,
                     case.kit.trim_start_matches("kit."),
                     variable(case.kit)
@@ -200,7 +200,7 @@ async fn the_agent_edits_files_of_every_sdk_kit_through_its_headless_executable(
             }
             Executable::Stale(executable) => {
                 eprintln!(
-                    "skipped {}: {} is older than its fixture; rebuild it (cargo build -p kit-{}) or set {}",
+                    "skipped {}: {} is older than its fixture; rebuild it (cargo build -p kition-{}) or set {}",
                     case.kit,
                     executable.display(),
                     case.kit.trim_start_matches("kit."),
@@ -284,7 +284,7 @@ async fn the_agent_checks_previews_and_exports_a_fig_design() {
     let executable = match binary("kit.fig", &fixture) {
         Executable::Found(executable) => executable,
         Executable::Missing | Executable::Stale(_) => {
-            eprintln!("skipped kit.fig: build kit-fig (cargo build -p kit-fig in kition-fig) or set {}", variable("kit.fig"));
+            eprintln!("skipped kit.fig: build kition-fig (cargo build -p kition-fig in kition-fig) or set {}", variable("kit.fig"));
             return;
         }
     };
@@ -395,7 +395,7 @@ async fn the_agent_reads_and_edits_a_fig_design_through_its_object_model() {
     let executable = match binary("kit.fig", &fixture) {
         Executable::Found(executable) => executable,
         Executable::Missing | Executable::Stale(_) => {
-            eprintln!("skipped kit.fig: build kit-fig (cargo build -p kit-fig in kition-fig) or set {}", variable("kit.fig"));
+            eprintln!("skipped kit.fig: build kition-fig (cargo build -p kition-fig in kition-fig) or set {}", variable("kit.fig"));
             return;
         }
     };
@@ -491,7 +491,7 @@ async fn the_agent_reads_the_libraries_a_fig_design_links() {
     let executable = match binary("kit.fig", &fixtures.join("App.kfig")) {
         Executable::Found(executable) => executable,
         Executable::Missing | Executable::Stale(_) => {
-            eprintln!("skipped kit.fig: build kit-fig (cargo build -p kit-fig in kition-fig) or set {}", variable("kit.fig"));
+            eprintln!("skipped kit.fig: build kition-fig (cargo build -p kition-fig in kition-fig) or set {}", variable("kit.fig"));
             return;
         }
     };

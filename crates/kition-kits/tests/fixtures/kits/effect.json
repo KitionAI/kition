@@ -105,7 +105,7 @@
     }
   },
   "headless": {
-    "executable": "kit-effect",
+    "executable": "kition-effect",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

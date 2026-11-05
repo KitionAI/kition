@@ -95,7 +95,7 @@ workspace, the shell, and the agent; each kit owns one editing domain.
               | Kit Protocol (JSON-RPC 2.0, local socket or named pipe)
               v                                     v
      +-------------------+   +-------------------+
-     | kit-photo         |   | kit-pdf           |  ...
+     | kition-photo      |   | kition-pdf        |  ...
      | (headless)        |   | (headless)        |
      | engine + server   |   | engine + server   |
      +-------------------+   +-------------------+
@@ -202,7 +202,7 @@ kition-<kit>/                    one kit repository, the same layout for every k
   crates/render/<name>           rendering, rasterising, printing
   crates/support/<name>          geometry, color, fonts, text, test helpers
   bindings/wasm/                 kition-<kit>-sdk: the in-page engine (KitDocument)
-  bindings/headless/             kit-<kit>: the agent's headless executable
+  bindings/headless/             kition-<kit>: the agent's headless executable
   web/                           the kit's editor (Kit UI protocol)
   kit.json                       manifest (KHP)
   NOTICE, LICENSE                Apache-2.0 and upstream attribution
@@ -248,7 +248,7 @@ accepts only first-party kits:
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
-| 1 | `KitionAI/kition-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks) |
+| 1 | `KitionAI/kition-photo` repository: `kition-kit-server`, `apps/kition-photo` with a `headless` backend over the upstream automation engine, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks) |
 | 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.kphoto`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab |
 | 3a | In-page editing with `kit.photo` ([kit-sdk.md](kit-sdk.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
 | 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a; its code removed 2026-10-28 |
@@ -264,10 +264,10 @@ agent use a headless kit built from its repository, name the executable with
 
 ```bash
 # In the kition-photo repository
-cargo build -p kit-photo
+cargo build -p kition-photo
 
 # In this repository
-KITION_KIT_PHOTO_BINARY="$HOME/<path-to>/kition-photo/target/debug/kit-photo" pnpm dev
+KITION_KIT_PHOTO_BINARY="$HOME/<path-to>/kition-photo/target/debug/kition-photo" pnpm dev
 ```
 
 The runtime crate `kition-kits` starts a headless kit on first use with the

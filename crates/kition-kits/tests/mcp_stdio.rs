@@ -69,13 +69,13 @@ async fn serves_tools_errors_and_resources_over_stdio() {
         }
     }
     // The mock stands in for the Vector kit: a kits folder holds Vector's manifest and, beside
-    // it, a `kit-vector` that starts the mock as `kit.vector`.
+    // it, a `kition-vector` that starts the mock as `kit.vector`.
     let kits = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let vector = kits.path().join("vector-ui");
     std::fs::create_dir_all(&vector).unwrap_or_else(|err| panic!("{err}"));
     std::fs::copy(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/kits/vector.json"), vector.join("kit.json"))
         .unwrap_or_else(|err| panic!("{err}"));
-    let launcher = vector.join(format!("kit-vector{}", std::env::consts::EXE_SUFFIX));
+    let launcher = vector.join(format!("kition-vector{}", std::env::consts::EXE_SUFFIX));
     std::fs::write(&launcher, format!("#!/bin/sh\nexec '{}' \"$@\"\n", mock.display())).unwrap_or_else(|err| panic!("{err}"));
     #[cfg(unix)]
     {

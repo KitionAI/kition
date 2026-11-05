@@ -82,7 +82,7 @@
     }
   },
   "headless": {
-    "executable": "kit-board",
+    "executable": "kition-board",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

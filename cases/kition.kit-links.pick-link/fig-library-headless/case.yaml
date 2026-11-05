@@ -24,6 +24,6 @@ expected:
     compare: exit
     value: 0
 tags: [headless]
-requires: [kit-fig]
+requires: [kition-fig]
 timeout_s: 60
 since: "2026-10-28"

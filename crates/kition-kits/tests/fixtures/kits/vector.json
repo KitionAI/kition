@@ -86,7 +86,7 @@
     }
   },
   "headless": {
-    "executable": "kit-vector",
+    "executable": "kition-vector",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

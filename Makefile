@@ -35,10 +35,10 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
 KIT_E2E := e2e/html-embedded.spec.ts e2e/slide-embedded.spec.ts e2e/doc-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/note-embedded.spec.ts e2e/note-history.spec.ts e2e/cube-embedded.spec.ts e2e/fig-embedded.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kit-files.spec.ts e2e/kit-print.spec.ts e2e/kdm-smoke.spec.ts
-PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
-# The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
+PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kition-photo
+# The SDK kits' headless executables for the agent (kition-film, kition-vector, ...), from kition-headless.
 SDK_KITS := film vector effect design cad slide doc sheet pdf table board note html cube fig
-kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kit-$(1)
+kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kition-$(1)
 SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
 KIT_BINARY_ENV := KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" $(foreach kit,$(SDK_KITS),KITION_KIT_$(shell echo $(kit) | tr a-z A-Z)_BINARY="$(call kit_binary,$(kit))")
@@ -73,11 +73,11 @@ kit-fetch:
 # The headless Photo kit the agent uses (photo_inspect, photo_commands, photo_run; each kit's
 # tools are <prefix>_inspect, _commands, and _run).
 $(PHOTO_BINARY):
-	@cd "$(KIT_PHOTO_REPO)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p kit-photo
+	@cd "$(KIT_PHOTO_REPO)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p kition-photo
 
 kit-photo-binary: $(PHOTO_BINARY)
 
-# kit-film, kit-vector, kit-effect, kit-design, kit-cad, kit-slide, kit-doc, kit-sheet, kit-pdf, kit-table, kit-board, kit-note, kit-cube, kit-fig: the kit's own document over the Kit Protocol.
+# kition-film, kition-vector, kition-effect, kition-design, kition-cad, kition-slide, kition-doc, kition-sheet, kition-pdf, kition-table, kition-board, kition-note, kition-cube, kition-fig: the kit's own document over the Kit Protocol.
 $(SDK_BINARIES):
 	@cd "$(abspath $(dir $@)/../..)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p $(notdir $@)
 

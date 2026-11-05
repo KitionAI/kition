@@ -35,7 +35,7 @@ The kit's native executable still exists, but only `headless`: the runtime
 starts it for the agent and for conversions. It never shows a window. For a
 kit on the SDK the executable is the same `KitDocument` the page runs, served
 over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
-(`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
+(`apps/kition-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
 `design_*`, `cad_*`, `slide_*`, `doc_*`, `sheet_*`, `pdf_*`).
@@ -133,7 +133,7 @@ kit repository (for example KitionAI/kition-photo, standalone)
   crates/kition-<kit>-sdk         the kit's SDK: its engine behind KitDocument, as WebAssembly
   web/                            the kit's own editor on @kition/kit-editor; with the engine,
                                   the kit package (web/scripts/build-engine.sh, pnpm build)
-  apps/kit-<kit>                  the headless Kit Protocol executable (agent)
+  apps/kition-<kit>               the headless Kit Protocol executable (agent)
   NOTICE                          credits the upstream project the kit derives from, if any
 
 Kition (this repository)
@@ -258,7 +258,7 @@ without a crash instead of expecting random bytes to be refused.
 
 The kit package's build (`scripts/build-kit-ui.sh <kit>`, through the kit's
 `web/scripts/build-engine.sh`) builds the engine into `engine/`. It needs
-`wasm-pack` and a Rust toolchain new enough for the kit; kit-photo needs 1.95,
+`wasm-pack` and a Rust toolchain new enough for the kit; kition-photo needs 1.95,
 and the script handles macOS `rust-lld`'s library path. The output, about
 20 MB for Photo, is not committed.
 
@@ -275,7 +275,7 @@ stay portable.
 The headless executable must also reload a document from disk when the file
 changed since it read it and nothing is unsaved there. Otherwise the agent
 edits a stale copy and its save overwrites the person's work. See
-`PhotoHeadless::open` and `file_times` in kit-photo.
+`PhotoHeadless::open` and `file_times` in kition-photo.
 
 ## 4. Kits In Kition (Standard 6.1)
 
@@ -467,7 +467,7 @@ table editor of its own. Kition's host features (workflows, form and email
 sync, the scenario builder, the workspace tree) read and write tables through
 the host table client, `crates/kition-tableclient`: through the Kit AI bridge
 when an editor has the file open, so the edit arrives live, and through the
-headless `kit-table` otherwise. Its writes carry a `system:<feature>` origin
+headless `kition-table` otherwise. Its writes carry a `system:<feature>` origin
 and never join the person's undo; workflow triggers read
 `table.changes.since` from a cursor kept per file in the workspace
 (`.kition/tables/changes.json`), so a restart neither drops nor repeats
@@ -514,7 +514,7 @@ normal kit: `.kboard` files open in its own editor in `KitFrame`, and its Rust
 engine (`kition_board_sdk`, `BoardDocument`) and editor live in its
 repository, published and pinned like every other kit. The create menu's Board
 item makes an empty board with the engine in the page, and the agent's
-`board_*` tools run on the headless `kit-board` for files no editor has open
+`board_*` tools run on the headless `kition-board` for files no editor has open
 (found from its `kit.json`). `e2e/board-embedded.spec.ts` (in
 `make kit-e2e`) covers what Kition adds around the kit: opening, drawing,
 saving through Kition, and creating a board; the editor's own behavior is
@@ -531,7 +531,7 @@ view, shading, and selection are session state that never makes the file
 dirty. It exports glTF/GLB, OBJ, STL, and PNG renders, and places glTF, OBJ,
 and STL files into a scene. The create menu's Cube item makes the starter
 scene (a cube, a light, and a camera) with the engine in the page, and the
-agent's `cube_*` tools run on the headless `kit-cube`, with rotations in
+agent's `cube_*` tools run on the headless `kition-cube`, with rotations in
 degrees and Z up. Its features and defaults are checked against Blender as a
 reference application only (the kit is a clean-room Apache-2.0
 implementation). `e2e/cube-embedded.spec.ts` (in `make kit-e2e`) covers opening,
@@ -545,7 +545,7 @@ interface design and prototyping kit: `.kfig` files open in its own editor in
 worker. The engine also imports `.fig` and `.sketch` files; Kition opens only
 `.kfig` in the kit. The create menu's Fig item makes `Untitled fig.kfig`
 (one 1440 x 1024 frame) with the engine in the page, and the agent's `fig_*`
-tools run on the headless `kit-fig` (`view.describe`, `document.check`, and
+tools run on the headless `kition-fig` (`view.describe`, `document.check`, and
 the object model's `model.*`). Fig is on engine contract 2: a design is a
 KDM replica of schema `kit.fig` v2 (kition-fig `docs/kdm.md`; v2 adds the
 libraries a design uses, `Library` objects in `Fig.libraries`), carried inside
@@ -588,7 +588,7 @@ features that go through the kit:
 
 - The agent changes a note only with `note_run` (find its commands with
   `note_commands`): through the Kit AI bridge when an editor has the file
-  open, and through the headless `kit-note` otherwise (found from its
+  open, and through the headless `kition-note` otherwise (found from its
   `kit.json`). Its edits to an existing note arrive as a draft,
   reviewed in `KitDraftReview` or `HeadlessDraftReview`. `document_write` and
   `apply_patch` refuse a note; `document_read`, `document_search`, and
@@ -697,14 +697,14 @@ Kit repository:
    one exists, errors first, each code covered by a synthetic test. Agents
    reach it as `<prefix>_check`, embeds as `editor.check()` (Slide's
    and Sheet's `bindings/wasm/src/check.rs` are the examples).
-3. Add the headless executable `apps/kit-<kit>`:
+3. Add the headless executable `apps/kition-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
-   Add `"headless": { "executable": "kit-<kit>", "protocol": "kition-kit/1" }`
+   Add `"headless": { "executable": "kition-<kit>", "protocol": "kition-kit/1" }`
    to `kit.json`. `SANDBOXED` lists commands whose file parameters the
    engine reads through lent files (otherwise commands naming files are
    refused for the agent); `VOLATILE` lists `inspect()` keys that are session
    state, so `view.describe` survives a save. Pass the conformance suite:
-   `cargo run -p kition-kit-conformance -- --kit <kit-<kit>> --manifest kit.json
+   `cargo run -p kition-kit-conformance -- --kit <kition-<kit>> --manifest kit.json
    --fixture <file> --edit-command <id> --edit-params '<json>'`, 13/13.
 
 Kition runtime and desktop:
@@ -1073,7 +1073,7 @@ budget records it here until it is fixed.
 - the contract (kition-sdk `docs/platform/reference/contract.md`); CI builds the example for wasm32.
 
 Kits pin it by commit (`kition-sdk = { git = "https://github.com/KitionAI/kition-sdk", rev = … }`)
-with `net.git-fetch-with-cli = true`. Kit-photo and kit-film use it. The host
+with `net.git-fetch-with-cli = true`. Kition-photo and kition-film use it. The host
 side (`src/features/kits/sdk/`) stays in Kition and is kept portable by
 `check:deps`.
 

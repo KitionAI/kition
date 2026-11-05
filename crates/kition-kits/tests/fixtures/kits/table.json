@@ -90,7 +90,7 @@
     }
   },
   "headless": {
-    "executable": "kit-table",
+    "executable": "kition-table",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

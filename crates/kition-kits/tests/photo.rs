@@ -1,8 +1,8 @@
 // Copied from kition-sdk crates/kition-kits/tests/photo.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! The runtime against a real `kit-photo` build. Runs only when both are set:
+//! The runtime against a real `kition-photo` build. Runs only when both are set:
 //!
 //! ```sh
-//! KITION_KIT_PHOTO_BINARY=<kit-photo>/target/debug/kit-photo \
+//! KITION_KIT_PHOTO_BINARY=<kition-photo>/target/debug/kition-photo \
 //! KITION_KIT_PHOTO_FIXTURE=<a layered .psd> cargo test -p kition-kits --test photo
 //! ```
 

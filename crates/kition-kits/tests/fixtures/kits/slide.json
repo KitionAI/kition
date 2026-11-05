@@ -128,7 +128,7 @@
     }
   },
   "headless": {
-    "executable": "kit-slide",
+    "executable": "kition-slide",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

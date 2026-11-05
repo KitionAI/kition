@@ -116,7 +116,7 @@
     }
   },
   "headless": {
-    "executable": "kit-fig",
+    "executable": "kition-fig",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

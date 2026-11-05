@@ -4,7 +4,7 @@
 //! Kition has no table engine of its own. Every request goes to the Table kit, as the agent's
 //! table tools do: to the live editor through the Kit AI bridge when a renderer window has the
 //! file open (the edit joins that document, and the person sees it at once), and to the headless
-//! `kit-table` otherwise, which saves the file. Writes carry a `system:<feature>` origin
+//! `kition-table` otherwise, which saves the file. Writes carry a `system:<feature>` origin
 //! (`asOrigin`), so they never join the person's undo. One queue per path keeps the host's own
 //! requests to a file in order.
 //!
@@ -35,7 +35,7 @@ pub const TABLE_EXTENSION: &str = "ktable";
 #[error("{message}")]
 pub struct TableError {
     pub message: String,
-    /// The Table kit is not installed in this build (no `kit-table`).
+    /// The Table kit is not installed in this build (no `kition-table`).
     pub unavailable: bool,
     /// The file or the table, record, or field it names does not exist.
     pub not_found: bool,

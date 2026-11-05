@@ -146,7 +146,7 @@
     }
   },
   "headless": {
-    "executable": "kit-photo",
+    "executable": "kition-photo",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

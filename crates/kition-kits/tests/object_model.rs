@@ -32,7 +32,7 @@ fn mock_binary() -> Option<PathBuf> {
 /// A launcher that starts the mock kit as `kit.vector` for `.kvector` files.
 fn as_vector(dir: &Path, mock: &Path) -> PathBuf {
     use std::os::unix::fs::PermissionsExt;
-    let script = dir.join("kit-vector-mock.sh");
+    let script = dir.join("kition-vector-mock.sh");
     std::fs::write(&script, format!("#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector exec '{}' \"$@\"\n", mock.display()))
         .unwrap_or_else(|err| panic!("{err}"));
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));

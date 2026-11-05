@@ -67,9 +67,9 @@ export type WorkspaceDraftsOptions = {
   serverArgs?: string[]
   /** The workspace folder the agent's server works in. */
   workspace: string
-  /** Kit executables by kit (`{ slide: 'bin/kit-slide' }`), passed as `--kit`. */
+  /** Kit executables by kit (`{ slide: 'bin/kition-slide' }`), passed as `--kit`. */
   kits?: Record<string, string>
-  /** A folder of `kit-<kit>` executables (`--kits-dir`). */
+  /** A folder of `kition-<kit>` executables (`--kits-dir`). */
   kitsDir?: string
   env?: NodeJS.ProcessEnv
 }

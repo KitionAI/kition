@@ -9,11 +9,11 @@ intent: >-
 layer: golden
 source:
   kind: probe
-  from: "kition-table unknown-parameter adoption 2026-11-05 (kit-table refused `mime_type`, did you mean `mimeType`)"
+  from: "kition-table unknown-parameter adoption 2026-11-05 (kition-table refused `mime_type`, did you mean `mimeType`)"
   licence: Apache-2.0
 input: []
 steps:
-  - cargo-test: { package: kition-tableclient, test: client, filter: host_features_write_closed_files_through_the_kit, env: { KITION_KIT_TABLE_BINARY: "../kition-table/target/debug/kit-table" } }
+  - cargo-test: { package: kition-tableclient, test: client, filter: host_features_write_closed_files_through_the_kit, env: { KITION_KIT_TABLE_BINARY: "../kition-table/target/debug/kition-table" } }
 expected:
   - actual: out:exit
     compare: exit

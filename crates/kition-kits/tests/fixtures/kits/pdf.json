@@ -80,7 +80,7 @@
     }
   },
   "headless": {
-    "executable": "kit-pdf",
+    "executable": "kition-pdf",
     "protocol": "kition-kit/1",
     "features": [
       "view.describe",

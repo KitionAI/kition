@@ -7,7 +7,7 @@
 //! - a kits folder holding one folder per kit with its `kit.json` (Kition's `public/kits`, a
 //!   `--kits-dir`);
 //! - a headless executable: its `kit.json` is the nearest one above it whose
-//!   `headless.executable` names it (a kit repository's `target/debug/kit-<name>`), so the
+//!   `headless.executable` names it (a kit repository's `target/debug/kition-<name>`), so the
 //!   definition is the one the executable was built from.
 //!
 //! What the agent's tools say about a kit comes from the manifest's `agent.describe`,
@@ -42,7 +42,7 @@ pub struct KitDefinition {
     /// documents (`files.create`, images pasted into a note). They are only ever new files:
     /// `write_file` never replaces an existing one with them.
     pub exports: &'static [&'static str],
-    /// The executable `kit.json` names (`headless.executable`), for example `kit-photo`.
+    /// The executable `kit.json` names (`headless.executable`), for example `kition-photo`.
     pub executable: Option<&'static str>,
     /// `kit.json` `version`, which a server of this one kit reports as its own (KHP A34).
     pub version: &'static str,
@@ -380,7 +380,7 @@ pub fn discover(sources: &KitSources) -> Vec<Found> {
         .collect()
 }
 
-/// The `kit-<name>` executables on `PATH` for kits found without one, by the name their
+/// The `kition-<name>` executables on `PATH` for kits found without one, by the name their
 /// manifest gives (`headless.executable`).
 pub fn on_path(found: &mut [Found]) {
     let Some(path) = std::env::var_os("PATH") else {
