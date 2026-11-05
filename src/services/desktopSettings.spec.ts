@@ -185,7 +185,7 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
   it('fills missing display / notifications / hooks branches with defaults', async () => {
     const { normalizeDesktopSettings } = await import('./desktopSettings')
     const result = normalizeDesktopSettings({})
-    expect(result.general.theme).toBe('light')
+    expect(result.general.theme).toBe('auto')
     expect(result.display).toEqual({
       zoomLevel: 1,
       density: 'normal',
@@ -205,17 +205,27 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     expect(result.hooks).toEqual([])
   })
 
-  it('defaults fresh installs to the light theme', async () => {
+  it('follows the system theme on fresh installs', async () => {
+    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
+      matches: query === '(prefers-color-scheme: dark)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
     const { createDefaultDesktopSettings, loadDesktopSettings, applyDesktopAppearance } = await import('./desktopSettings')
-    expect(createDefaultDesktopSettings().general.theme).toBe('light')
+    expect(createDefaultDesktopSettings().general.theme).toBe('auto')
 
     const settings = await loadDesktopSettings()
-    expect(settings.general.theme).toBe('light')
+    expect(settings.general.theme).toBe('auto')
 
     applyDesktopAppearance(settings.general.theme)
-    expect(document.documentElement.dataset.desktopThemeMode).toBe('light')
-    expect(document.documentElement.dataset.desktopTheme).toBe('light')
-    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(document.documentElement.dataset.desktopThemeMode).toBe('auto')
+    expect(document.documentElement.dataset.desktopTheme).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
   it('keeps a saved dark theme after reloading settings', async () => {

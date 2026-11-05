@@ -193,6 +193,18 @@ features:
     cases:
       - regressions/issue-command-output
     since: "2026-10-28"
+  - id: kition.shell.theme
+    title: The app follows the system's light or dark appearance until the person picks one
+    direction: [function]
+    priority: P1
+    status: has
+    paths:
+      - src/services/desktopSettings.ts
+      - public/theme-bootstrap.js
+      - e2e/theme-bootstrap.spec.ts
+    cases:
+      - regressions/issue-theme-default-system
+    since: "2026-11-05"
   - id: kition.kit-protocol.theme
     title: Kits follow Kition's colour scheme at open and on every switch (`ui/theme`, UI-H6)
     direction: [function, fidelity]

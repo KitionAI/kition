@@ -231,8 +231,8 @@ function createDefaultModelSettings(): DesktopModelSettings {
 export function createDefaultDesktopSettings(): DesktopSettingsState {
   return {
     general: {
-      // Light is the product default per docs/design.md; dark stays a first-class option.
-      theme: 'light',
+      // A fresh install follows the system's light or dark appearance; the person can pin either.
+      theme: 'auto',
       // North America is the default market. Existing on-disk preferences are preserved by
       // loadDesktopSettings() - only fresh installs see this value.
       language: 'en-US',
@@ -518,11 +518,7 @@ function normalizeDesktopThemeMode(themeMode?: string): DesktopThemeMode {
     return themeMode
   }
 
-  if (themeMode === 'system') {
-    return 'auto'
-  }
-
-  return 'light'
+  return 'auto'
 }
 
 function buildProviderSecretStorageKey(

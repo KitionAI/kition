@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test'
 
-for (const theme of ['light', 'dark'] as const) {
-  test(`applies the ${theme === 'light' ? 'default light' : 'saved dark'} background before the application module loads`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: 'dark' })
-    if (theme === 'dark') {
+// A new user follows the system (here light, then dark); a saved theme wins over the system.
+for (const { name, system, saved, mode, theme } of [
+  { name: 'the light system', system: 'light', saved: null, mode: 'auto', theme: 'light' },
+  { name: 'the dark system', system: 'dark', saved: null, mode: 'auto', theme: 'dark' },
+  { name: 'a saved dark theme', system: 'light', saved: 'dark', mode: 'dark', theme: 'dark' },
+] as const) {
+  test(`applies ${name}'s background before the application module loads`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: system })
+    if (saved) {
       await page.addInitScript(() => {
         localStorage.setItem('kition.desktop.theme.bootstrap.v1', 'dark')
       })
@@ -17,7 +22,7 @@ for (const theme of ['light', 'dark'] as const) {
     const root = page.locator('html')
     if (theme === 'dark') await expect(root).toHaveClass(/dark/)
     else await expect(root).not.toHaveClass(/dark/)
-    await expect(root).toHaveAttribute('data-desktop-theme-mode', theme)
+    await expect(root).toHaveAttribute('data-desktop-theme-mode', mode)
     await expect(root).toHaveAttribute('data-desktop-theme', theme)
 
     const firstFrame = await root.evaluate((element) => {

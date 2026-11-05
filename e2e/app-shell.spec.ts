@@ -1182,7 +1182,9 @@ test.describe('app shell navigation', () => {
 
     await page.goto('/')
     await expect(page.getByTestId('first-run-activation')).toBeVisible()
-    await expect(page.locator('html')).toHaveAttribute('data-desktop-theme-mode', 'light')
+    // A fresh install follows the system, which is light here.
+    await expect(page.locator('html')).toHaveAttribute('data-desktop-theme-mode', 'auto')
+    await expect(page.locator('html')).toHaveAttribute('data-desktop-theme', 'light')
     await expect(page.locator('html')).not.toHaveClass(/dark/)
 
     await page.setViewportSize({ width: 420, height: 720 })
