@@ -198,7 +198,7 @@ export interface Media extends ModelObject {
 /** Every command of kit.doc, by id, with its parameters. */
 export interface DocCommands extends CommandMap {
   /** Type Text. Types text at the caret, replacing the selection, with the formatting at the caret; use para.insert or para.text to write whole paragraphs by index. Params: {"text": string}. Changes the document. */
-  "text.insert": { text?: string }
+  "text.insert": { /** read by the command beside its listed parameters */ raw?: boolean; text?: string }
   /** New Paragraph. Splits the paragraph at the caret into two (Enter); the new paragraph takes the style's next style. Params: {}. Changes the document. */
   "text.newParagraph": Record<string, never>
   /** Line Break. Inserts a line break (Shift+Enter) at the caret, staying in the same paragraph. Params: {}. Changes the document. */
@@ -254,7 +254,7 @@ export interface DocCommands extends CommandMap {
   /** Page Down. Moves the caret down by one screen; extend grows the selection. Params: {"extend"?: bool}. */
   "caret.pageDown": { extend?: boolean }
   /** Set Caret. Puts the caret at a position (a document position, as document.selection answers) or at a point on a page, optionally extending the selection. Params: {"pos": Pos, "extend"?: bool} | {"page": n, "x": pt, "y": pt}. */
-  "caret.set": { extend?: boolean; /** a position as document.selection answers */ pos?: { off?: number; path?: Array<number>; story?: Json } }
+  "caret.set": { /** in one of several forms of the parameters */ extend?: boolean; /** in one of several forms of the parameters */ page?: number; /** a position as document.selection answers */ pos?: { off?: number; path?: Array<number>; story?: Json }; /** read by the command beside its listed parameters */ story?: Json; /** points; in one of several forms of the parameters */ x?: number; /** points; in one of several forms of the parameters */ y?: number }
   /** Select All. Selects the whole body of the document (Ctrl+A). Params: {}. */
   "select.all": Record<string, never>
   /** Select Range. Selects from an anchor position to a focus position (positions as document.selection answers). Params: {"anchor": Pos, "focus": Pos}. */
@@ -266,13 +266,13 @@ export interface DocCommands extends CommandMap {
   /** Select Paragraph. Selects the paragraph at the caret. Params: {}. */
   "select.paragraph": Record<string, never>
   /** Select Line. Selects the line the caret is on. Params: {}. */
-  "select.line": Record<string, never>
+  "select.line": { /** read by the command beside its listed parameters */ extend?: boolean }
   /** Select Text. Finds a text in the document and selects its first (or nth) occurrence; the usual way to target words before formatting them. Params: {"text": string, "occurrence"?: n}. */
-  "select.text": { occurrence?: number; text?: string }
+  "select.text": { occurrence?: number; /** read by the command beside its listed parameters */ story?: Json; text?: string }
   /** Collapse Selection. Collapses the selection to the caret. Params: {}. */
-  "select.collapse": Record<string, never>
+  "select.collapse": { /** read by the command beside its listed parameters */ end?: boolean }
   /** Column Selection. Makes a rectangular (column) selection between two positions or two page points, as Alt+drag does. Params: {"anchor": Pos, "focus": Pos} | {"from": {"page": n, "x": pt, "y": pt}, "to": {"page": n, "x": pt, "y": pt}, "story"?: StoryRef} | {"on"?: bool} (no corners: toggle column selection mode, where the arrow keys extend the block). */
-  "select.column": { /** a position as document.selection answers */ anchor?: { off?: number; path?: Array<number>; story?: string }; /** a position as document.selection answers */ focus?: { off?: number; path?: Array<number>; story?: string } }
+  "select.column": { /** a position as document.selection answers */ anchor?: { off?: number; path?: Array<number>; story?: string }; /** a position as document.selection answers */ focus?: { off?: number; path?: Array<number>; story?: string }; /** in one of several forms of the parameters */ from?: { page?: number; x?: number; y?: number }; /** in one of several forms of the parameters */ on?: boolean; /** StoryRef; in one of several forms of the parameters */ story?: Json; /** in one of several forms of the parameters */ to?: { page?: number; x?: number; y?: number } }
   /** Undo. Undoes the last step of the caller's own scope (an agent undoes its own edits, not the person's). Params: {"scope"?: "person"|"agent"}. Changes the document. */
   "edit.undo": { scope?: "person" | "agent" }
   /** Redo. Redoes the last undone step of the caller's own scope. Params: {"scope"?: "person"|"agent"}. Changes the document. */
@@ -300,15 +300,15 @@ export interface DocCommands extends CommandMap {
   /** Clear All. Empties the Office clipboard. Params: {}. */
   "edit.clearClipboard": Record<string, never>
   /** Find. Finds the next occurrence of a text (with case, whole-word or regex options) after the caret and selects it; answers where it is. Params: {"text": string, "matchCase"?: bool, "wholeWord"?: bool, "regex"?: bool}. */
-  "edit.find": { matchCase?: boolean; regex?: boolean; text?: string; wholeWord?: boolean }
+  "edit.find": { matchCase?: boolean; regex?: boolean; text?: string; wholeWord?: boolean; /** read by the command beside its listed parameters */ with?: string }
   /** Advanced Find. Finds every occurrence of a text in the main text, the selection or the headers and footers, and answers them all. Params: {"text"?: string, "matchCase"?: bool, "wholeWord"?: bool, "regex"?: bool, "in"?: "main|selection", "highlight"?: bool}. */
-  "edit.advancedFind": { highlight?: boolean; in?: "main" | "selection"; matchCase?: boolean; regex?: boolean; text?: string; wholeWord?: boolean }
+  "edit.advancedFind": { highlight?: boolean; in?: "main" | "selection"; matchCase?: boolean; regex?: boolean; text?: string; wholeWord?: boolean; /** read by the command beside its listed parameters */ with?: string }
   /** Find Next. Selects the next occurrence of the last search. Params: {}. */
   "edit.findNext": Record<string, never>
   /** Find Previous. Selects the previous occurrence of the last search. Params: {}. */
   "edit.findPrevious": Record<string, never>
   /** Replace. Replaces the next occurrence of a text after the caret with another text. Params: {"text": string, "with": string}. Changes the document. */
-  "edit.replace": { text?: string; with?: string }
+  "edit.replace": { /** read by the command beside its listed parameters */ matchCase?: boolean; /** read by the command beside its listed parameters */ regex?: boolean; text?: string; /** read by the command beside its listed parameters */ wholeWord?: boolean; with?: string }
   /** Replace All. Replaces every occurrence of a text in the document (case, whole-word or regex options) and answers how many changed. Params: {"text": string, "with": string, "matchCase"?: bool, "wholeWord"?: bool, "regex"?: bool}. Changes the document. */
   "edit.replaceAll": { matchCase?: boolean; regex?: boolean; text?: string; wholeWord?: boolean; with?: string }
   /** Go To. Moves the caret to a page, a bookmark or a paragraph (by index). Params: {"page"?: n, "bookmark"?: string, "paragraph"?: n}. */
@@ -328,33 +328,33 @@ export interface DocCommands extends CommandMap {
   /** Underline. Sets underline on the selection with a style (single, double, thick, dotted, wave, words...); without value it toggles. Params: {"value"?: bool, "style"?: "single|double|thick|dotted|dash|dotDash|dotDotDash|wave|words"}. Changes the document. */
   "format.underline": { style?: "single" | "double" | "thick" | "dotted" | "dash" | "dotDash" | "dotDotDash" | "wave" | "words"; value?: boolean }
   /** Double Underline. Toggles double underline on the selection. Params: {}. Changes the document. */
-  "format.doubleUnderline": Record<string, never>
+  "format.doubleUnderline": { /** read by the command beside its listed parameters */ style?: string; /** read by the command beside its listed parameters */ value?: boolean }
   /** Underline Words Only. Toggles underlining of words only (not the spaces) on the selection. Params: {}. Changes the document. */
-  "format.wordUnderline": Record<string, never>
+  "format.wordUnderline": { /** read by the command beside its listed parameters */ style?: string; /** read by the command beside its listed parameters */ value?: boolean }
   /** Strikethrough. Sets strikethrough on the selection; without value it toggles. Params: {"value"?: bool}. Changes the document. */
   "format.strikethrough": { value?: boolean }
   /** Character Border. Sets a border around the selected characters; without value it toggles. Params: {"value"?: bool}. Changes the document. */
   "format.border": { value?: boolean }
   /** Double Strikethrough. Toggles double strikethrough on the selection. Params: {}. Changes the document. */
-  "format.doubleStrikethrough": Record<string, never>
+  "format.doubleStrikethrough": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Subscript. Toggles subscript on the selection. Params: {}. Changes the document. */
-  "format.subscript": Record<string, never>
+  "format.subscript": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Superscript. Toggles superscript on the selection. Params: {}. Changes the document. */
-  "format.superscript": Record<string, never>
+  "format.superscript": { /** read by the command beside its listed parameters */ value?: boolean }
   /** All Caps. Toggles showing the selection in capital letters, without changing the letters stored. Params: {}. Changes the document. */
-  "format.allCaps": Record<string, never>
+  "format.allCaps": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Small Caps. Toggles small capitals on the selection. Params: {}. Changes the document. */
-  "format.smallCaps": Record<string, never>
+  "format.smallCaps": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Hidden. Toggles hidden text on the selection; hidden text does not show or print unless marks are shown. Params: {}. Changes the document. */
-  "format.hidden": Record<string, never>
+  "format.hidden": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Outline. Toggles the outline text effect on the selection. Params: {}. Changes the document. */
-  "format.outline": Record<string, never>
+  "format.outline": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Shadow. Toggles the shadow text effect on the selection. Params: {}. Changes the document. */
-  "format.shadow": Record<string, never>
+  "format.shadow": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Emboss. Toggles the emboss text effect on the selection. Params: {}. Changes the document. */
-  "format.emboss": Record<string, never>
+  "format.emboss": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Engrave. Toggles the engrave text effect on the selection. Params: {}. Changes the document. */
-  "format.engrave": Record<string, never>
+  "format.engrave": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Font. Sets the font family of the selection. Params: {"name": string}. Changes the document. */
   "format.font": { name?: string }
   /** Font Size. Sets the font size in points of the selection. Params: {"size": number}. Changes the document. */
@@ -388,7 +388,7 @@ export interface DocCommands extends CommandMap {
   /** Set Character Formatting. Sets several character properties of the selection in one call (font, size, colour, bold, italic, underline...); the general form of the format.* commands. Params: {"props": CharProps}. Changes the document. */
   "format.set": { /** character properties as format.state answers them (font, size, bold, italic, color...) */ props?: { [key: string]: Json } }
   /** Font Dialog. Answers the selection's character formatting as the Font dialog shows it. Params: {}. */
-  "format.fontDialog": Record<string, never>
+  "format.fontDialog": { /** read by the command beside its listed parameters */ name?: string }
   /** Formatting at Selection. Answers the character and paragraph formatting at the selection (font, size, bold, italic, style, alignment...), as the ribbon shows it. Params: {}. */
   "format.state": Record<string, never>
   /** Align Left. Aligns the selected paragraphs to the left. Params: {}. Changes the document. */
@@ -398,11 +398,11 @@ export interface DocCommands extends CommandMap {
   /** Align Right. Aligns the selected paragraphs to the right. Params: {}. Changes the document. */
   "para.alignRight": Record<string, never>
   /** Justify. Justifies the selected paragraphs between the margins. Params: {}. Changes the document. */
-  "para.justify": Record<string, never>
+  "para.justify": { /** read by the command beside its listed parameters */ jc?: string }
   /** Distributed. Distributes the characters of the selected paragraphs evenly across the line. Params: {}. Changes the document. */
   "para.distribute": Record<string, never>
   /** Alignment. Sets the alignment of the selected paragraphs by name, as seen on the page (left, center, right, justify, distribute) or in reading order (start, end). Params: {"value": "left|center|right|justify|distribute (as seen on the page) | start|end (reading direction)"}. Changes the document. */
-  "para.align": { value?: "left" | "center" | "right" | "justify" | "distribute (as seen on the page)" | "start" | "end (reading direction)" }
+  "para.align": { /** read by the command beside its listed parameters */ jc?: string; value?: "left" | "center" | "right" | "justify" | "distribute (as seen on the page)" | "start" | "end (reading direction)" }
   /** Right-to-Left Text Direction. Makes the selected paragraphs right to left (true) or left to right (false). Params: {"value"?: bool (false = left to right)}. Changes the document. */
   "para.rtl": { /** false = left to right */ value?: boolean }
   /** Left-to-Right Text Direction. Makes the selected paragraphs left to right (true) or right to left (false). Params: {"value"?: bool (false = right to left)}. Changes the document. */
@@ -418,7 +418,7 @@ export interface DocCommands extends CommandMap {
   /** Indents. Sets the left, right and first-line indents of the selected paragraphs in points (a negative first line is hanging). Params: {"left"?: pt, "right"?: pt, "firstLine"?: pt (negative = hanging)}. Changes the document. */
   "para.indents": { /** points; negative = hanging */ firstLine?: number; /** points */ left?: number; /** points */ right?: number }
   /** Line and Paragraph Spacing. Sets the line spacing of the selected paragraphs as a multiple, as at least some points, or as exactly some points. Params: {"value": number (multiple) } | {"atLeast": pt} | {"exactly": pt}. Changes the document. */
-  "para.lineSpacing": { /** multiple */ value?: number }
+  "para.lineSpacing": { /** points; in one of several forms of the parameters */ atLeast?: number; /** points; in one of several forms of the parameters */ exactly?: number; /** multiple; in one of several forms of the parameters */ value?: number }
   /** Single Spacing. Sets single line spacing on the selected paragraphs. Params: {}. Changes the document. */
   "para.single": Record<string, never>
   /** Double Spacing. Sets double line spacing on the selected paragraphs. Params: {}. Changes the document. */
@@ -434,19 +434,19 @@ export interface DocCommands extends CommandMap {
   /** Apply Style. Applies a paragraph style (by name or id, such as Heading 1 or Quote) to the selected paragraphs; styles.list names them. Params: {"style": string (name or id)}. Changes the document. */
   "para.style": { /** name or id */ style?: string }
   /** Normal Style. Applies the Normal style to the selected paragraphs. Params: {}. Changes the document. */
-  "para.normal": Record<string, never>
+  "para.normal": { /** read by the command beside its listed parameters */ style?: string }
   /** Heading 1. Applies the Heading 1 style to the selected paragraphs. Params: {}. Changes the document. */
-  "para.heading1": Record<string, never>
+  "para.heading1": { /** read by the command beside its listed parameters */ style?: string }
   /** Heading 2. Applies the Heading 2 style to the selected paragraphs. Params: {}. Changes the document. */
-  "para.heading2": Record<string, never>
+  "para.heading2": { /** read by the command beside its listed parameters */ style?: string }
   /** Heading 3. Applies the Heading 3 style to the selected paragraphs. Params: {}. Changes the document. */
-  "para.heading3": Record<string, never>
+  "para.heading3": { /** read by the command beside its listed parameters */ style?: string }
   /** Bullets. Makes the selected paragraphs a bulleted list (with a bullet kind or character), or removes the bullets with off. Params: {"kind"?: "bullet" | single char, "off"?: bool}. Changes the document. */
   "para.bullets": { /** "bullet", or a single bullet character */ kind?: string; off?: boolean }
   /** Numbering. Makes the selected paragraphs a numbered list in a format (1., 1), A., a., i., outline), or removes numbering with off. Params: {"kind"?: "numbered|numberedParen|upperLetter|lowerLetter|lowerRoman|outline", "off"?: bool}. Changes the document. */
   "para.numbering": { kind?: "numbered" | "numberedParen" | "upperLetter" | "lowerLetter" | "lowerRoman" | "outline"; off?: boolean }
   /** Multilevel List. Applies a multilevel list (legal or outline numbering) to the selected paragraphs. Params: {"kind"?: "legal|outline"}. Changes the document. */
-  "para.multilevel": { kind?: "legal" | "outline" }
+  "para.multilevel": { kind?: "legal" | "outline"; /** read by the command beside its listed parameters */ off?: boolean }
   /** Change List Level. Sets the list level (0 to 8) of the selected list paragraphs. Params: {"level": 0-8}. Changes the document. */
   "para.listLevel": { /** 0 to 8 */ level?: number }
   /** Restart at 1. Restarts the numbering of the list at the caret from 1. Params: {}. Changes the document. */
@@ -458,19 +458,19 @@ export interface DocCommands extends CommandMap {
   /** Sort. Sorts the selected paragraphs alphabetically, ascending or descending. Params: {"descending"?: bool}. Changes the document. */
   "para.sort": { descending?: boolean }
   /** Keep with Next. Toggles keep-with-next on the selected paragraphs so they stay on the page with the following one. Params: {}. Changes the document. */
-  "para.keepNext": Record<string, never>
+  "para.keepNext": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Keep Lines Together. Toggles keeping all lines of the selected paragraphs on one page. Params: {}. Changes the document. */
-  "para.keepLines": Record<string, never>
+  "para.keepLines": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Page Break Before. Toggles a page break before the selected paragraphs. Params: {}. Changes the document. */
-  "para.pageBreakBefore": Record<string, never>
+  "para.pageBreakBefore": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Widow/Orphan Control. Toggles widow and orphan control on the selected paragraphs. Params: {}. Changes the document. */
-  "para.widowControl": Record<string, never>
+  "para.widowControl": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Asian Typography. Sets East Asian typography options of the selected paragraphs: line-breaking rules, word wrap and punctuation compression. Params: {"kinsoku"?: bool (East Asian line-breaking rules), "wordWrap"?: bool (false: Latin words may break at any character), "overflowPunct"?: bool (hanging punctuation), "topLinePunct"?: bool (compress punctuation at the start of a line), "autoSpaceDE"?: bool (space between Asian and Latin text), "autoSpaceDN"?: bool (space between Asian text and numbers)} ? flags left out stay as they are; returns the flags at the caret. Changes the document. */
   "para.asianTypography": { /** space between Asian and Latin text */ autoSpaceDE?: boolean; /** space between Asian text and numbers */ autoSpaceDN?: boolean; /** East Asian line-breaking rules */ kinsoku?: boolean; /** hanging punctuation */ overflowPunct?: boolean; /** compress punctuation at the start of a line */ topLinePunct?: boolean; /** false: Latin words may break at any character */ wordWrap?: boolean }
   /** Tabs. Replaces, sets or clears tab stops (position, alignment, leader) of the selected paragraphs. Params: {"tabs"?: [TabStop] (replace the direct stops), "set"?: [TabStop], "clear"?: [pt], "clearAll"?: bool, "default"?: pt} where TabStop = {"pos": pt, "align"?: "left|center|right|decimal|bar", "leader"?: "none|dot|hyphen|underscore|middleDot"}. Changes the document. */
   "para.tabs": { clear?: Array<number>; clearAll?: boolean; /** points */ default?: number; /** [TabStop] */ set?: Array<Json>; /** [TabStop] (replace the direct stops); replace the direct stops */ tabs?: Array<Json> }
   /** Outline Level. Steps the outline level of the selected paragraphs. Params: {}. Changes the document. */
-  "para.outlineLevel": Record<string, never>
+  "para.outlineLevel": { /** read by the command beside its listed parameters */ level?: number }
   /** Set Paragraph Formatting. Sets several paragraph properties of the selected paragraphs in one call (alignment, indents, spacing, line spacing, keep options...). Params: {"props": ParaProps}. Changes the document. */
   "para.set": { /** paragraph properties as para.dialog answers them (alignment, indents, spacing...) */ props?: { [key: string]: Json } }
   /** Paragraph Settings. Answers the selected paragraph's formatting as the Paragraph dialog shows it. Params: {}. */
@@ -494,7 +494,7 @@ export interface DocCommands extends CommandMap {
   /** Apply Styles. Opens the Apply Styles box in the editor, or applies a style by name when given. Params: {"style"?: string (name or id)}. */
   "styles.apply": { /** name or id */ style?: string }
   /** Add to Style Gallery. Adds the selection's style to the Styles gallery. Params: {}. Changes the document. */
-  "styles.addToGallery": Record<string, never>
+  "styles.addToGallery": { /** read by the command beside its listed parameters */ style?: string; /** read by the command beside its listed parameters */ value?: boolean }
   /** Define New Multilevel List. Defines a new multilevel list (number format, text, start, indents per level) and applies it to the selected paragraphs. Params: {"levels": [{"format"?: "decimal|lowerLetter|upperLetter|lowerRoman|upperRoman|decimalZero|ordinal|bullet|none", "text"?: "%1.%2." (%n = level n's number; the bullet character for bullet), "start"?: n, "restartAfter"?: 0-8 (0 = never; omit = the level above), "style"?: paragraph style linked to the level | null, "align"?: "left|center|right", "alignedAt"?: pt, "indentAt"?: pt, "follow"?: "tab|space|nothing", "tabAt"?: pt | null, "font"?: string | null, "bold"?: bool, "italic"?: bool, "color"?: "RRGGBB" | null, "legal"?: bool}, ...] (index = level, up to 9; fields left out keep the base list's), "num"?: list id to change in place (default: a new list), "apply"?: bool (default true: number the selected paragraphs), "name"?: string}. Changes the document. */
   "list.define": { /** default true: number the selected paragraphs */ apply?: boolean; /** [{"format"?: "decimal|lowerLetter|upperLetter|lowerRoman|upperRoman|decimalZero|ordinal|bullet|none", "text"?: "%1.%2." (%n = level n's number; the bullet character for bullet), "start"?: n, "restartAfter"?: 0-8 (0 = never; omit = the level above), "style"?: paragraph style linked to the level | null, "align"?: "left|center|right", "alignedAt"?: pt, "indentAt"?: pt, "follow"?: "tab|space|nothing", "tabAt"?: pt | null, "font"?: string | null, "bold"?: bool, "italic"?: bool, "color"?: "RRGGBB" | null, "legal"?: bool}, ...] (index = level, up to 9; fields left out keep the base list's); %n = level n's number; the bullet character for bullet; 0 = never; omit = the level above; index = level, up to 9; fields left out keep the base list's */ levels?: Array<Json>; name?: string; /** list id to change in place (default: a new list) */ num?: number }
   /** List Definition. Answers a list's definition (each level's format, text and indents); default: the list at the caret. Params: {"num"?: list id (default: the caret's list)} ? {"num", "levels": [as list.define]}. */
@@ -506,7 +506,7 @@ export interface DocCommands extends CommandMap {
   /** Clear Formatting Level. Clears one formatting layer at the selection (paragraph style, paragraph formatting, character style or character formatting). Params: {"level": "paragraphStyle|paragraphFormatting|characterStyle|characterFormatting"}. Changes the document. */
   "styles.inspectorClear": { level?: "paragraphStyle" | "paragraphFormatting" | "characterStyle" | "characterFormatting" }
   /** Show/Hide ?. Shows or hides formatting marks (paragraph marks, spaces, tabs) in the editor. Params: {}. */
-  "view.marks": Record<string, never>
+  "view.marks": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Print Layout. Switches the editor to Print Layout, showing pages as they print. Params: {}. */
   "view.printLayout": Record<string, never>
   /** Web Layout. Switches the editor to Web Layout, without page breaks. Params: {}. */
@@ -518,39 +518,39 @@ export interface DocCommands extends CommandMap {
   /** Read Mode. Switches the editor to Read Mode. Params: {}. */
   "view.readMode": Record<string, never>
   /** Focus. Switches the editor to Focus mode, hiding the ribbon. Params: {}. */
-  "view.focus": Record<string, never>
+  "view.focus": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Ruler. Shows or hides the ruler in the editor. Params: {}. */
-  "view.ruler": Record<string, never>
+  "view.ruler": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Gridlines. Shows or hides the page gridlines in the editor. Params: {"value"?: bool}. */
   "view.gridlines": { value?: boolean }
   /** View Gridlines. Shows or hides gridlines for table cells without borders in the editor. Params: {"value"?: bool}. */
   "table.viewGridlines": { value?: boolean }
   /** Navigation Pane. Shows or hides the Navigation pane (headings) in the editor. Params: {}. */
-  "view.navigationPane": Record<string, never>
+  "view.navigationPane": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Zoom. Sets the editor zoom to a percentage (10 to 500) or to page width, one page or multiple pages. Params: {"value": percent (10-500) | "pageWidth" | "onePage" | "multiplePages"}. */
   "view.zoom": { value?: Json }
   /** 100%. Sets the editor zoom to 100%. Params: {}. */
-  "view.zoom100": Record<string, never>
+  "view.zoom100": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Zoom In. Zooms the editor in one step. Params: {}. */
-  "view.zoomIn": Record<string, never>
+  "view.zoomIn": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Zoom Out. Zooms the editor out one step. Params: {}. */
-  "view.zoomOut": Record<string, never>
+  "view.zoomOut": { /** read by the command beside its listed parameters */ value?: boolean }
   /** One Page. Zooms the editor to show one whole page. Params: {}. */
-  "view.onePage": Record<string, never>
+  "view.onePage": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Multiple Pages. Zooms the editor to show several pages side by side. Params: {}. */
-  "view.multiplePages": Record<string, never>
+  "view.multiplePages": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Page Width. Zooms the editor to the page width. Params: {}. */
-  "view.pageWidth": Record<string, never>
+  "view.pageWidth": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Switch Modes. Switches the editor between dark and light page colours. Params: {}. */
-  "view.darkMode": Record<string, never>
+  "view.darkMode": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Styles Pane. Shows or hides the Styles pane in the editor. Params: {}. */
-  "view.stylesPane": Record<string, never>
+  "view.stylesPane": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Comments Pane. Shows or hides the Comments pane in the editor. Params: {}. */
-  "view.commentsPane": Record<string, never>
+  "view.commentsPane": { /** read by the command beside its listed parameters */ value?: boolean }
   /** New Window. Opens a second editor window on the same document. Params: {}. */
   "view.newWindow": Record<string, never>
   /** Split. Splits the editor window into two panes on the same document, or removes the split. Params: {}. */
-  "view.split": Record<string, never>
+  "view.split": { /** read by the command beside its listed parameters */ value?: boolean }
   /** View State. Answers the editor's view settings: view mode, zoom, panes, marks, ruler and gridlines. Params: {}. */
   "view.state": Record<string, never>
   /** Page Break. Inserts a page break at the caret so the following text starts on a new page. Params: {}. Changes the document. */
@@ -570,7 +570,7 @@ export interface DocCommands extends CommandMap {
   /** Link. Turns the selection into a hyperlink to a URL, or inserts linked text at the caret. Params: {"url": string, "text"?: string}. Changes the document. */
   "insert.link": { text?: string; url?: string }
   /** Remove Hyperlink. Removes the hyperlink at the caret or selection, keeping its text. Params: {}. Changes the document. */
-  "insert.removeLink": Record<string, never>
+  "insert.removeLink": { /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ url?: string }
   /** Bookmark. Adds a named bookmark at the selection, for edit.goto and cross-references. Params: {"name": string}. Changes the document. */
   "insert.bookmark": { name?: string }
   /** Header. Sets the header of the current section from text or a preset layout. Params: {"text"?: string, "preset"?: "blank|blankThree|title"}. Changes the document. */
@@ -602,9 +602,9 @@ export interface DocCommands extends CommandMap {
   /** WordArt. Inserts decorative WordArt text, optionally warped by a preset. Params: {"text"?: string, "warp"?: preset (textArchUp, textWave1, textInflate...)}. Changes the document. */
   "insert.wordArt": { text?: string; warp?: Json }
   /** Text from File. Inserts the text of a file at the caret. Params: {"path": string}. Changes the document. */
-  "insert.textFromFile": { path?: Json }
+  "insert.textFromFile": { path?: Json; /** read by the command beside its listed parameters */ text?: string }
   /** Equation. Inserts an equation at the caret from linear format, LaTeX or a built-in equation (Pythagoras, quadratic...), and puts the caret in it. Params: {"linear"?: string, "latex"?: string, "builtin"?: "pythagoras|area|quadratic|binomial|expansion|euler|derivative|taylor|gaussian|fourier|trig1|trig2|normal|bayes", "display"?: bool, "edit"?: bool (default true)}. Changes the document. */
-  "insert.equation": { builtin?: "pythagoras" | "area" | "quadratic" | "binomial" | "expansion" | "euler" | "derivative" | "taylor" | "gaussian" | "fourier" | "trig1" | "trig2" | "normal" | "bayes"; display?: boolean; /** default true */ edit?: boolean; latex?: string; linear?: string }
+  "insert.equation": { builtin?: "pythagoras" | "area" | "quadratic" | "binomial" | "expansion" | "euler" | "derivative" | "taylor" | "gaussian" | "fourier" | "trig1" | "trig2" | "normal" | "bayes"; display?: boolean; /** default true */ edit?: boolean; /** read by the command beside its listed parameters */ id?: string; latex?: string; linear?: string }
   /** Edit Equation. Puts the caret into the equation at the selection, optionally at a position inside it. Params: {"pos"?: {"path": [[node, child]...], "off": n}}. */
   "equation.edit": { pos?: { off?: number; path?: Array<Json> } }
   /** Leave Equation. Leaves the equation, putting the caret after it (or before it). Params: {"before"?: bool}. */
@@ -612,7 +612,7 @@ export interface DocCommands extends CommandMap {
   /** Type in Equation. Types text into the equation at the caret; linear-format input builds structures. Params: {"text": string}. Changes the document. */
   "equation.type": { text?: string }
   /** Insert Structure. Inserts a structure (fraction, script, radical...) into the equation by gallery id, linear format or LaTeX. Params: {"id"?: string (see equation.gallery), "linear"?: string, "latex"?: string}. Changes the document. */
-  "equation.insertStructure": { /** see equation.gallery */ id?: string; latex?: string; linear?: string }
+  "equation.insertStructure": { /** read by the command beside its listed parameters */ builtin?: string; /** see equation.gallery */ id?: string; latex?: string; linear?: string }
   /** Insert Symbol. Inserts a math symbol into the equation at the caret. Params: {"char": string}. Changes the document. */
   "equation.insertSymbol": { char?: string }
   /** Move in Equation. Moves the caret inside the equation (left, right, up, down, home, end, next or previous slot). Params: {"dir": "left|right|up|down|home|end|next|prev"}. */
@@ -636,7 +636,7 @@ export interface DocCommands extends CommandMap {
   /** Equation Number. Adds or removes a number on the display equation. Params: {"value"?: bool}. Changes the document. */
   "equation.number": { value?: boolean }
   /** Set Equation. Replaces the equation at the selection with linear-format or LaTeX input. Params: {"linear"?: string, "latex"?: string}. Changes the document. */
-  "equation.set": { latex?: string; linear?: string }
+  "equation.set": { /** read by the command beside its listed parameters */ builtin?: string; /** read by the command beside its listed parameters */ id?: string; latex?: string; linear?: string }
   /** Equation Info. Answers the equation at the selection as linear format and LaTeX, with its structure. Params: {}. */
   "equation.get": Record<string, never>
   /** Equation Gallery. Lists the equation structures with their ids for equation.insertStructure. Params: {}. */
@@ -658,15 +658,15 @@ export interface DocCommands extends CommandMap {
   /** Line Numbers. Turns line numbers in the margin off, continuous, or restarting each page or section. Params: {"value": "none|continuous|restartPage|restartSection"}. Changes the document. */
   "layout.lineNumbers": { value?: "none" | "continuous" | "restartPage" | "restartSection" }
   /** Hyphenation. Toggles automatic hyphenation for the document. Params: {}. Changes the document. */
-  "layout.hyphenation": Record<string, never>
+  "layout.hyphenation": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Page Setup. Sets the current section's page setup in one call (size, orientation, margins, columns, headers...). Params: {"section"?: SectionProps}. Changes the document. */
   "layout.pageSetup": { /** section properties as layout.pageSetup answers them (page size, margins, orientation...) */ section?: { [key: string]: Json } }
   /** Vertical Alignment. Steps the current section's vertical alignment of text on the page (top, centre, justified, bottom). Params: {}. Changes the document. */
-  "layout.verticalAlign": Record<string, never>
+  "layout.verticalAlign": { /** read by the command beside its listed parameters */ value?: string }
   /** Different First Page. Toggles a different header and footer on the first page of the current section. Params: {}. Changes the document. */
-  "layout.differentFirstPage": Record<string, never>
+  "layout.differentFirstPage": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Different Odd & Even Pages. Toggles different headers and footers on odd and even pages. Params: {}. Changes the document. */
-  "layout.differentOddEven": Record<string, never>
+  "layout.differentOddEven": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Format Page Numbers. Sets the page number format (1, i, I, a, A) and starting number of the current section. Params: {"format"?: "decimal|lowerRoman|upperRoman|lowerLetter|upperLetter", "start"?: n}. Changes the document. */
   "layout.pageNumberFormat": { format?: "decimal" | "lowerRoman" | "upperRoman" | "lowerLetter" | "upperLetter"; start?: number }
   /** Section Properties. Answers the current section's page properties: size, orientation, margins, columns and header settings. Params: {}. */
@@ -716,7 +716,7 @@ export interface DocCommands extends CommandMap {
   /** Table Row Height. Sets the height in points of the selected rows, as at least or exactly that height. Params: {"height": pt, "rule"?: "atLeast|exact"}. Changes the document. */
   "table.rowHeight": { /** points */ height?: number; rule?: "atLeast" | "exact" }
   /** Repeat Header Rows. Toggles repeating the selected header rows at the top of every page the table runs onto. Params: {}. Changes the document. */
-  "table.repeatHeader": Record<string, never>
+  "table.repeatHeader": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Sort. Sorts the rows of the table at the caret by a column (0-based), ascending or descending, optionally keeping a header row. Params: {"column"?: n, "descending"?: bool, "header"?: bool}. Changes the document. */
   "table.sort": { column?: number; descending?: boolean; header?: boolean }
   /** Convert to Text. Converts the table at the caret to text with tabs, commas or paragraphs between cells. Params: {"separator"?: "tab|comma|paragraph"}. Changes the document. */
@@ -754,7 +754,7 @@ export interface DocCommands extends CommandMap {
   /** Delete. Deletes a comment by id, the comment at the caret, or all comments. Params: {"id"?: n, "all"?: bool}. Changes the document. */
   "review.deleteComment": { all?: boolean; id?: number }
   /** Resolve. Marks the comment at the caret as resolved. Params: {}. Changes the document. */
-  "review.resolveComment": Record<string, never>
+  "review.resolveComment": { /** read by the command beside its listed parameters */ id?: number; /** read by the command beside its listed parameters */ value?: boolean }
   /** Next. Moves to the next comment and answers it. Params: {}. */
   "review.nextComment": Record<string, never>
   /** Previous. Moves to the previous comment and answers it. Params: {}. */
@@ -766,13 +766,13 @@ export interface DocCommands extends CommandMap {
   /** Add Comment. Starts a comment thread on the selection with text and an author. Params: {"text": string, "author"?: string (principal id), "name"?: string, "created"?: string (ISO 8601 UTC)} ? {thread} (on the selection, or the word at the caret). Changes the document. */
   "comment.add": { /** principal id */ author?: string; /** ISO 8601 UTC */ created?: string; name?: string; text?: string }
   /** Reply to Comment. Adds a reply to a comment thread by its thread id. Params: {"thread": string, "text": string, "author"?: string, "name"?: string, "created"?: string} ? {thread, comment}. Changes the document. */
-  "comment.reply": { author?: string; created?: string; name?: string; text?: string; thread?: string }
+  "comment.reply": { author?: string; created?: string; /** read by the command beside its listed parameters */ id?: number; name?: string; text?: string; thread?: string }
   /** Resolve Comment Thread. Marks a comment thread as resolved, or reopens it. Params: {"thread": string, "resolved"?: bool}. Changes the document. */
   "comment.resolve": { resolved?: boolean; thread?: string }
   /** Delete Comment. Deletes a comment thread, or one reply in it. Params: {"thread": string, "comment"?: string (a reply; omitted or the first comment: the whole thread)}. Changes the document. */
   "comment.delete": { /** a reply; omitted or the first comment: the whole thread */ comment?: string; thread?: string }
   /** Go to Comment. Moves the caret to a comment thread's anchor. Params: {"thread": string}. */
-  "comment.goto": { thread?: string }
+  "comment.goto": { /** read by the command beside its listed parameters */ bookmark?: string; /** read by the command beside its listed parameters */ page?: number; /** read by the command beside its listed parameters */ paragraph?: number; thread?: string }
   /** Track Changes. Turns Track Changes on or off; without value it toggles. Tracked edits are kept as revisions to accept or reject. Params: {"value"?: bool (omit to toggle)}. Changes the document. */
   "review.trackChanges": { /** omit to toggle */ value?: boolean }
   /** Accept All Changes. Accepts every tracked change in the document. Params: {}. Changes the document. */
@@ -788,13 +788,13 @@ export interface DocCommands extends CommandMap {
   /** Previous Change. Moves to the previous tracked change and answers it. Params: {}. */
   "review.previousChange": Record<string, never>
   /** Display for Review. Steps how revisions display in the editor (simple, all markup, no markup, original). Params: {}. */
-  "review.markup": Record<string, never>
+  "review.markup": { /** read by the command beside its listed parameters */ value?: string }
   /** Track Changes Options. Sets which revisions show in the editor (comments, ink, insertions and deletions, formatting, balloons). Params: {"comments"?: bool, "ink"?: bool, "insertionsDeletions"?: bool, "formatting"?: bool, "balloons"?: "revisions|inline|commentsAndFormatting", "insertMark"?: "underline|doubleUnderline|bold|italic|strikethrough|colorOnly|none", "insertColor"?: "byAuthor" | "RRGGBB", "deleteMark"?: "strikethrough|doubleStrikethrough|hidden|caret|hash|underline|colorOnly", "deleteColor"?: "byAuthor" | "RRGGBB", "changedLines"?: "outside|left|right|none", "changedLinesColor"?: "auto" | "RRGGBB", "trackFormatting"?: bool} ? the options (omit all to read them). */
   "review.trackingOptions": { balloons?: "revisions" | "inline" | "commentsAndFormatting"; changedLines?: "outside" | "left" | "right" | "none"; changedLinesColor?: "auto" | "RRGGBB"; comments?: boolean; deleteColor?: "byAuthor" | "RRGGBB"; deleteMark?: "strikethrough" | "doubleStrikethrough" | "hidden" | "caret" | "hash" | "underline" | "colorOnly"; formatting?: boolean; ink?: boolean; insertColor?: "byAuthor" | "RRGGBB"; insertMark?: "underline" | "doubleUnderline" | "bold" | "italic" | "strikethrough" | "colorOnly" | "none"; insertionsDeletions?: boolean; trackFormatting?: boolean }
   /** Word Count. Answers the document's (or selection's) pages, words, characters, paragraphs and lines, optionally counting text boxes. Params: {"includeTextBoxes"?: bool}. */
   "review.wordCount": { includeTextBoxes?: boolean }
   /** Reviewing Pane. Lists the tracked changes with their kind, author, date and text. Params: {}. */
-  "review.changes": Record<string, never>
+  "review.changes": { /** read by the command beside its listed parameters */ description?: string; /** read by the command beside its listed parameters */ props?: { [key: string]: Json } }
   /** Spelling & Grammar. Answers the first spelling or grammar issue from the caret onward, with suggestions; changes nothing. Params: {}. */
   "review.spelling": Record<string, never>
   /** Proofing Issues. Lists every spelling and grammar issue in the document with its position and suggestions. Params: {}. */
@@ -804,13 +804,13 @@ export interface DocCommands extends CommandMap {
   /** Add to Dictionary. Adds a word (default: the word at the caret) to the dictionary so it is no longer flagged. Params: {"word"?: string}. */
   "review.addToDictionary": { word?: string }
   /** Ignore All. Ignores every occurrence of the flagged word at the caret in this document. Params: {}. */
-  "review.ignoreAll": Record<string, never>
+  "review.ignoreAll": { /** read by the command beside its listed parameters */ word?: string }
   /** Change. Replaces the flagged word at the caret with a suggestion text. Params: {"text": string}. Changes the document. */
   "review.applySuggestion": { text?: string }
   /** Check Spelling as You Type. Toggles checking spelling as you type in the editor. Params: {}. */
-  "review.proofing": Record<string, never>
+  "review.proofing": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Thesaurus. Answers synonyms for the word at the caret. Params: {}. */
-  "review.thesaurus": Record<string, never>
+  "review.thesaurus": { /** read by the command beside its listed parameters */ word?: string }
   /** Caret for Presence. Answers the caret and selection as object-model positions (object, field, offset), for showing it to collaborators. Params: {} ? {caret: {object, field, offset} | null, anchor: {object, field, offset} | null, selection: [object], page: n} (the caret, the selection's other end when something is selected, and the paragraphs it covers, as replica positions and object ids; null and [] before the document has a replica). */
   "presence.caret": Record<string, never>
   /** Locate Carets. Answers page positions for given object-model caret positions, for drawing collaborators' carets. Params: {"places": [{"caret": {object, field, offset}, "anchor"?: {object, field, offset}}]} ? [{caret: {page, x, y, height} | null, rects: [{page, x, y, width, height}]}] (each person's caret and selection in this view, in page points; null and [] for what this view does not show). */
@@ -844,7 +844,7 @@ export interface DocCommands extends CommandMap {
   /** Inspect Document. Answers the document's structure: pages, sections, paragraphs by index with their styles and short text, the selection and counts; with text true it includes each paragraph's full text. Use document.text for all the text. Params: {"text"?: bool}. */
   "document.inspect": { text?: boolean }
   /** Document Text. Answers the document's whole body text as plain text, one paragraph per line; read this before editing, since inspect alone shows little content. Params: {}. */
-  "document.text": Record<string, never>
+  "document.text": { /** read by the command beside its listed parameters */ story?: Json }
   /** Paragraph Details. Answers one paragraph's details by its path (index from document.inspect): text, runs with formatting, style and paragraph properties. Params: {"path": [n], "story"?: Story}. */
   "document.paragraph": { path?: Array<number>; /** "body", or {"part": n} for a header, footer, note, comment or text box story */ story?: Json }
   /** Selection. Answers the selection: its anchor and focus positions, the selected text and the formatting there. Params: {}. */
@@ -862,7 +862,7 @@ export interface DocCommands extends CommandMap {
   /** Fonts. Sets the theme's heading and body fonts. Params: {"heading": string, "body"?: string}. Changes the document. */
   "design.themeFonts": { body?: string; heading?: string }
   /** Colors. Steps the theme's colour palette to the next one. Params: {}. Changes the document. */
-  "design.themeColors": Record<string, never>
+  "design.themeColors": { /** read by the command beside its listed parameters */ name?: string }
   /** Style Set. Applies a style set (basic, lines, shaded, casual, centered, minimalist, title) that restyles headings and body text. Params: {"name": "default|basic|lines|shaded|casual|centered|minimalist|title"}. Changes the document. */
   "design.styleSet": { name?: "default" | "basic" | "lines" | "shaded" | "casual" | "centered" | "minimalist" | "title" }
   /** Paragraph Spacing. Applies a document-wide paragraph spacing preset (none, compact, tight, open, relaxed, double). Params: {"value": "default|none|compact|tight|open|relaxed|double"}. Changes the document. */
@@ -902,9 +902,9 @@ export interface DocCommands extends CommandMap {
   /** Select Recipients. Sets the mail merge recipients from CSV text, a file, or rows, with their field names. Params: {"csv"?: string, "path"?: string, "rows"?: [{field: value}] | [[value]], "fields"?: [string] (column order; required with array rows)}. */
   "mailings.recipients": { csv?: string; /** column order; required with array rows */ fields?: Array<string>; path?: Json; /** [{field: value}] or [[value]] */ rows?: Array<Json> }
   /** Edit Recipient List. Replaces the mail merge recipient rows or fields. Params: {"rows"?: [{field: value}] | [[value]], "fields"?: [string]}. */
-  "mailings.editRecipients": { fields?: Array<string>; /** [{field: value}] or [[value]] */ rows?: Array<Json> }
+  "mailings.editRecipients": { /** read by the command beside its listed parameters */ csv?: string; fields?: Array<string>; path?: Json; /** [{field: value}] or [[value]] */ rows?: Array<Json> }
   /** Insert Merge Field. Inserts a merge field for a recipient field at the caret. Params: {"field": string}. Changes the document. */
-  "mailings.insertField": { field?: string }
+  "mailings.insertField": { field?: string; /** read by the command beside its listed parameters */ instr?: string; /** read by the command beside its listed parameters */ result?: string }
   /** Address Block. Inserts an address block merge field at the caret. Params: {}. Changes the document. */
   "mailings.addressBlock": Record<string, never>
   /** Greeting Line. Inserts a greeting line merge field at the caret. Params: {}. Changes the document. */
@@ -914,15 +914,15 @@ export interface DocCommands extends CommandMap {
   /** Match Fields. Answers how the document's merge fields match the recipient fields. Params: {}. */
   "mailings.matchFields": Record<string, never>
   /** Highlight Merge Fields. Toggles highlighting of merge fields in the editor. Params: {}. */
-  "mailings.highlightFields": Record<string, never>
+  "mailings.highlightFields": { /** read by the command beside its listed parameters */ color?: string; /** read by the command beside its listed parameters */ value?: boolean }
   /** Preview Results. Toggles previewing the merge results with a recipient's data in place of the fields. Params: {}. Changes the document. */
-  "mailings.preview": Record<string, never>
+  "mailings.preview": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Next Record. Shows the next recipient's data in the merge preview. Params: {}. Changes the document. */
   "mailings.next": Record<string, never>
   /** Previous Record. Shows the previous recipient's data in the merge preview. Params: {}. Changes the document. */
   "mailings.previous": Record<string, never>
   /** Find Recipient. Moves the merge preview to a recipient. Params: {}. Changes the document. */
-  "mailings.findRecipient": Record<string, never>
+  "mailings.findRecipient": { /** read by the command beside its listed parameters */ text?: string }
   /** Check for Errors. Checks the merge for missing fields or recipients and answers the problems. Params: {}. */
   "mailings.checkErrors": Record<string, never>
   /** Finish & Merge. Merges the document with every recipient (or a range of records) into one merged document, optionally saved to a path. Params: {"path"?: string (save the merged document), "from"?: n, "to"?: n}. Changes the document. */
@@ -1022,17 +1022,17 @@ export interface DocCommands extends CommandMap {
   /** Change Shape. Changes the selected shape to another preset kind, keeping its size and text. Params: {"kind": string}. Changes the document. */
   "shape.change": { kind?: string }
   /** Describe Drawing Objects. Answers drawing objects (shapes, pictures, text boxes, charts, ink, groups) with ids, geometry, frame, fill, stroke and text; default: the selected shapes, else all. Params: {"ids"?: [id]} (default: the selected shapes, else every shape). */
-  "drawing.describe": { ids?: Array<number> }
+  "drawing.describe": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<number> }
   /** Insert Drawing Object. Inserts a floating drawing object (shape, text box or chart) with geometry, a frame in page points, placement, fill, stroke and text; answers its id. Params: {"kind"?: "shape"|"textBox"|"chart", "geometry"?: {"preset", "adjust"?}, "frame"?: {x,y,w,h,rot?,flipH?,flipV?} (points on page "placement.page"; without x/y the object goes in line at the caret), "placement"?: {"page"?}, "fill"?, "stroke"?, "text"?, "chart"?: {kind?, title?, categories?, series?: [{name, values, color?}], legend?, dataLabels?, gridlines?, xTitle?, yTitle?}}. Changes the document. */
-  "drawing.insert": { /** {kind?, title?, categories?, series?: [{name, values, color?}], legend?, dataLabels?, gridlines?, xTitle?, yTitle?} */ chart?: { categories?: Json; dataLabels?: Json; gridlines?: Json; kind?: Json; legend?: Json; series?: Array<{ color?: string; name?: string; values?: Json }>; title?: string; xTitle?: Json; yTitle?: Json }; /** the shape's fill */ fill?: Json; /** {x,y,w,h,rot?,flipH?,flipV?} (points on page "placement.page"; without x/y the object goes in line at the caret); points on page "placement.page"; without x/y the object goes in line at the caret */ frame?: { flipH?: Json; flipV?: Json; h?: number; rot?: Json; w?: number; x?: number; y?: number }; /** {"preset", "adjust"?} */ geometry?: { adjust?: Json; preset?: string }; kind?: "shape" | "textBox" | "chart"; placement?: { page?: number }; /** the outline: {color?, width? (pt), dash?} or {none: true} */ stroke?: { [key: string]: Json }; text?: string }
+  "drawing.insert": { /** read by the command beside its listed parameters */ body?: { [key: string]: Json }; /** {kind?, title?, categories?, series?: [{name, values, color?}], legend?, dataLabels?, gridlines?, xTitle?, yTitle?} */ chart?: { categories?: Json; dataLabels?: Json; gridlines?: Json; kind?: Json; legend?: Json; series?: Array<{ color?: string; name?: string; values?: Json }>; title?: string; xTitle?: Json; yTitle?: Json }; /** the shape's fill */ fill?: Json; /** {x,y,w,h,rot?,flipH?,flipV?} (points on page "placement.page"; without x/y the object goes in line at the caret); points on page "placement.page"; without x/y the object goes in line at the caret */ frame?: { flipH?: Json; flipV?: Json; h?: number; rot?: Json; w?: number; x?: number; y?: number }; /** {"preset", "adjust"?} */ geometry?: { adjust?: Json; preset?: string }; kind?: "shape" | "textBox" | "chart"; /** read by the command beside its listed parameters */ page?: number; /** read by the command beside its listed parameters */ paragraphs?: Array<Json>; placement?: { page?: number }; /** the outline: {color?, width? (pt), dash?} or {none: true} */ stroke?: { [key: string]: Json }; text?: string; /** read by the command beside its listed parameters */ warp?: { [key: string]: Json } }
   /** Delete Drawing Objects. Deletes drawing objects by their ids from drawing.describe. Params: {"ids": [id]}. Changes the document. */
-  "drawing.delete": { ids?: Array<number> }
+  "drawing.delete": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<number> }
   /** Transform Drawing Objects. Moves, resizes, rotates or flips drawing objects by id, to a frame or by offsets. Params: {"ids": [id], "frame"? | "dx"?, "dy"?, "rotateBy"?, "flipH"?, "flipV"?}. Changes the document. */
-  "drawing.transform": { dy?: number; /** flip horizontally */ flipH?: boolean; /** flip vertically */ flipV?: boolean; ids?: Array<number>; rotateBy?: Json }
+  "drawing.transform": { /** read by the command beside its listed parameters */ dx?: number; dy?: number; /** flip horizontally */ flipH?: boolean; /** flip vertically */ flipV?: boolean; /** read by the command beside its listed parameters */ frame?: { [key: string]: Json }; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<number>; rotateBy?: Json }
   /** Format Drawing Objects. Changes the fill, stroke or geometry of drawing objects by id. Params: {"ids": [id], "fill"?, "stroke"?, "geometry"?}. Changes the document. */
-  "drawing.format": { /** the shape's fill */ fill?: Json; /** {preset, adjust?: {adj...: value}} or {paths: [...]} */ geometry?: { [key: string]: Json }; ids?: Array<number>; /** the outline: {color?, width? (pt), dash?} or {none: true} */ stroke?: { [key: string]: Json } }
+  "drawing.format": { /** read by the command beside its listed parameters */ effects?: { [key: string]: Json }; /** the shape's fill */ fill?: Json; /** {preset, adjust?: {adj...: value}} or {paths: [...]} */ geometry?: { [key: string]: Json }; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<number>; /** the outline: {color?, width? (pt), dash?} or {none: true} */ stroke?: { [key: string]: Json } }
   /** Set Drawing Object Text. Replaces the text of a drawing object, as plain text or as formatted paragraphs. Params: {"id", "text"? | "paragraphs"?}. Changes the document. */
-  "drawing.text": { /** an id */ id?: Json }
+  "drawing.text": { /** read by the command beside its listed parameters */ body?: { [key: string]: Json }; /** an id */ id?: Json; /** read by the command beside its listed parameters */ paragraphs?: Array<Json>; /** read by the command beside its listed parameters */ text?: Json; /** read by the command beside its listed parameters */ warp?: { [key: string]: Json } }
   /** Reconnect Connector. Moves one end of a connector to another object's connection site or to a point. Params: {"id", "end": "start" | "end", "to"?: id, "site"?: n, "point"?: [x, y]}. Changes the document. */
   "drawing.reconnect": { end?: "start" | "end"; /** an id */ id?: Json; point?: Array<number>; site?: number; /** an id */ to?: number }
   /** Connect Drawing Objects. Draws a connector between two drawing objects, straight, bent or curved. Params: {"from": id, "to": id, "fromSite"?, "toSite"?, "geometry"?: {"preset": "straightConnector1"|"bentConnector3"|"curvedConnector3"}} (floating shapes). Changes the document. */
@@ -1044,9 +1044,9 @@ export interface DocCommands extends CommandMap {
   /** Arrange Drawing Objects. Moves floating drawing objects to the front, back, or one step in the stacking order. Params: {"ids": [id], "order": "front"|"back"|"forward"|"backward"} (floating objects; an inline one has no place in the stack). Changes the document. */
   "drawing.arrange": { ids?: Array<number>; order?: "front" | "back" | "forward" | "backward" }
   /** Chart. Inserts a chart (column, bar, line, pie...) with categories and series values at the caret. Params: {"type"?: "column"|"stackedColumn"|"percentColumn"|"bar"|"stackedBar"|"percentBar"|"line"|"lineMarkers"|"stackedLine"|"area"|"stackedArea"|"pie"|"doughnut"|"scatter"|"radar"}. Changes the document. */
-  "insert.chart": { type?: "column" | "stackedColumn" | "percentColumn" | "bar" | "stackedBar" | "percentBar" | "line" | "lineMarkers" | "stackedLine" | "area" | "stackedArea" | "pie" | "doughnut" | "scatter" | "radar" }
+  "insert.chart": { /** read by the command beside its listed parameters */ kind?: string; type?: "column" | "stackedColumn" | "percentColumn" | "bar" | "stackedBar" | "percentBar" | "line" | "lineMarkers" | "stackedLine" | "area" | "stackedArea" | "pie" | "doughnut" | "scatter" | "radar" }
   /** Change Chart. Changes a chart by id: kind, title, legend, data labels, gridlines, axis titles and series. Params: {"id", "kind"?, "title"?: text|null, "legend"?: "top"|"bottom"|"left"|"right"|"topRight"|null, "dataLabels"?, "gridlines"?, "xTitle"?, "yTitle"?, "categories"?, "series"?: [{name, values, color?}]}. Changes the document. */
-  "drawing.chart": { categories?: Array<Json>; dataLabels?: boolean; gridlines?: boolean; /** an id */ id?: Json; /** chart type */ kind?: string; legend?: Json; /** [{name, values, color?}] */ series?: Array<{ color?: string; name?: string; values?: Json }>; title?: Json; xTitle?: Json; yTitle?: Json }
+  "drawing.chart": { categories?: Array<Json>; /** read by the command beside its listed parameters */ dataLabelPosition?: string; dataLabels?: boolean; gridlines?: boolean; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** chart type */ kind?: string; legend?: Json; /** [{name, values, color?}] */ series?: Array<{ color?: string; name?: string; values?: Json }>; /** read by the command beside its listed parameters */ seriesFormat?: { [key: string]: Json }; title?: Json; /** read by the command beside its listed parameters */ xAxis?: { [key: string]: Json }; xTitle?: Json; /** read by the command beside its listed parameters */ yAxis?: { [key: string]: Json }; yTitle?: Json }
   /** Select. Switches the editor back to selecting objects from an ink tool. Params: {}. */
   "draw.select": Record<string, never>
   /** Draw Shape. Selects a shape preset to draw next in the editor, or none. Params: {"preset": DrawingML preset | null}. */
@@ -1060,7 +1060,7 @@ export interface DocCommands extends CommandMap {
   /** Highlighter. Selects the highlighter ink tool in the editor with a colour and width. Params: {"color"?: "RRGGBB", "width"?: pt}. */
   "draw.highlighter": { /** like RRGGBB */ color?: string; /** points */ width?: number }
   /** Draw State. Answers the editor's current ink tool, colour and width. Params: {}. */
-  "draw.state": Record<string, never>
+  "draw.state": { /** read by the command beside its listed parameters */ page?: number; /** read by the command beside its listed parameters */ x?: number; /** read by the command beside its listed parameters */ y?: number }
   /** Draw Ink. Draws one ink stroke through points on a page (page points, at most 5000) with a tool, colour and width. Params: {"page": n, "points": [[x, y], ...] (page points, at most 5000), "tool"?: "pen|pencil|highlighter", "color"?: "RRGGBB", "width"?: pt}. Changes the document. */
   "draw.stroke": { /** like RRGGBB */ color?: string; page?: number; /** page points, at most 5000 */ points?: Array<Array<number>>; tool?: "pen" | "pencil" | "highlighter"; /** points */ width?: number }
   /** Erase Ink. Deletes the ink stroke at a point on a page. Params: {"page": n, "x": pt, "y": pt}. Changes the document. */
@@ -1068,9 +1068,9 @@ export interface DocCommands extends CommandMap {
   /** Hide Ink. Hides or shows ink in the editor. Params: {"value"?: bool}. */
   "review.hideInk": { value?: boolean }
   /** Draw Ink Strokes. Adds ink strokes (pen, pencil or highlighter) through points in page points. Params: {"strokes": [{"tool"?: "pen"|"pencil"|"highlighter", "color"?, "width"?: pt, "points": [[x, y, pressure?], ...]}], "placement"?: {"page"}} (page points; members left out take the current pen). Changes the document. */
-  "drawing.ink": { placement?: { page?: number }; /** [{"tool"?: "pen"|"pencil"|"highlighter", "color"?, "width"?: pt, "points": [[x, y, pressure?], ...]}] */ strokes?: Array<{ color?: string; points?: Array<Json>; tool?: "pen" | "pencil" | "highlighter"; width?: number }> }
+  "drawing.ink": { /** read by the command beside its listed parameters */ page?: number; placement?: { page?: number }; /** [{"tool"?: "pen"|"pencil"|"highlighter", "color"?, "width"?: pt, "points": [[x, y, pressure?], ...]}] */ strokes?: Array<{ color?: string; points?: Array<Json>; tool?: "pen" | "pencil" | "highlighter"; width?: number }> }
   /** Erase Ink. Deletes the ink strokes a path or a circle touches. Params: {"path": [[x, y], ...] | "x", "y", "radius"?: pt, "placement"?: {"page"}} (deletes the strokes the path touches). Changes the document. */
-  "drawing.erase": { /** [x, y] page points */ path?: Array<Array<number>>; placement?: { page?: number }; /** points */ radius?: number; y?: number }
+  "drawing.erase": { /** read by the command beside its listed parameters */ page?: number; /** [x, y] page points */ path?: Array<Array<number>>; placement?: { page?: number }; /** points */ radius?: number; y?: number }
   /** Repeat. Repeats the last editing action (F4) at the caret or selection. Params: {}. */
   "edit.repeat": Record<string, never>
   /** Record Macro. Starts recording commands into a named macro; calling it again stops and saves the recording. Params: {"name"?: string} (call again to stop). */
@@ -1100,7 +1100,7 @@ export interface DocCommands extends CommandMap {
   /** Save as Template. Saves the document as a template to a path. Params: {"path": string}. */
   "file.saveTemplate": { path?: Json }
   /** AutoSave. Toggles AutoSave for the document. Params: {}. Changes the document. */
-  "file.autosave": Record<string, never>
+  "file.autosave": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Check Compatibility. Answers features that older Word versions cannot show. Params: {}. */
   "file.compatibility": Record<string, never>
   /** Share. Answers how to share the document. Params: {}. */
@@ -1128,7 +1128,7 @@ export interface DocCommands extends CommandMap {
   /** Cell Margins. Sets the default cell margins of the table at the caret in points. Params: {"top"?, "left"?, "bottom"?, "right"? (pt)}. Changes the document. */
   "table.cellMargins": { bottom?: number; left?: number; /** pt */ right?: number; top?: number }
   /** Border Painter. Toggles the border painter tool in the editor. Params: {}. Changes the document. */
-  "table.borderPainter": Record<string, never>
+  "table.borderPainter": { /** read by the command beside its listed parameters */ color?: string; /** read by the command beside its listed parameters */ kind?: string; /** read by the command beside its listed parameters */ width?: number }
   /** Set Numbering Value. Sets the number of the list item at the caret, renumbering the items after it. Params: {"value": n}. Changes the document. */
   "para.setNumberingValue": { value?: number }
   /** Define New Bullet. Defines a bullet character and applies it to the selected list paragraphs. Params: {"char": string}. Changes the document. */
@@ -1138,15 +1138,15 @@ export interface DocCommands extends CommandMap {
   /** Language. Sets the proofing language of the selection, or marks it not to be proofed. Params: {"lang": "en-US|en-GB|fr-FR|...", "noProof"?: bool}. Changes the document. */
   "review.language": { /** for example en-US, en-GB, fr-FR */ lang?: string; noProof?: boolean }
   /** Show Markup. Toggles showing revision markup in the editor. Params: {}. */
-  "review.showMarkup": Record<string, never>
+  "review.showMarkup": { /** read by the command beside its listed parameters */ value?: boolean }
   /** Editor. Answers the Editor pane's summary of spelling, grammar and refinement issues. Params: {}. */
   "review.editor": Record<string, never>
   /** Select Text with Similar Formatting. Selects all text with the same formatting as the selection. Params: {}. */
   "select.similar": Record<string, never>
   /** Extend Selection. Turns on extend mode in the editor, so caret moves grow the selection. Params: {}. */
-  "select.extend": Record<string, never>
+  "select.extend": { /** read by the command beside its listed parameters */ extend?: boolean }
   /** Effects. Steps the theme's effects to the next preset. Params: {}. Changes the document. */
-  "design.effects": Record<string, never>
+  "design.effects": { /** read by the command beside its listed parameters */ name?: string }
   /** Immersive Reader. Switches the editor to Immersive Reader. Params: {}. */
   "view.immersive": Record<string, never>
   /** Vertical. Sets page movement in the editor to vertical scrolling. Params: {}. */
@@ -1156,7 +1156,7 @@ export interface DocCommands extends CommandMap {
   /** Read Aloud. Starts reading the document aloud from the caret, optionally skipping citations. Params: {"skipCitations"?: bool}. */
   "review.readAloud": { skipCitations?: boolean }
   /** Play/Pause. Pauses or resumes reading aloud. Params: {}. */
-  "readAloud.playPause": Record<string, never>
+  "readAloud.playPause": { /** read by the command beside its listed parameters */ skipCitations?: boolean }
   /** Next Sentence. Moves reading aloud to the next sentence. Params: {}. */
   "readAloud.next": Record<string, never>
   /** Previous Sentence. Moves reading aloud to the previous sentence. Params: {}. */
@@ -1164,7 +1164,7 @@ export interface DocCommands extends CommandMap {
   /** Stop Reading. Stops reading the document aloud. Params: {}. */
   "readAloud.stop": Record<string, never>
   /** Reading Speed. Sets the reading-aloud speed from 0.5 to 3 (1 is normal). Params: {"value": number (0.5...3, 1 = normal)}. */
-  "readAloud.speed": { /** 0.5...3, 1 = normal */ value?: number }
+  "readAloud.speed": { /** read by the command beside its listed parameters */ rate?: number; /** 0.5...3, 1 = normal */ value?: number }
   /** Skip Citations and Bibliography. Sets whether reading aloud skips citations and the bibliography. Params: {"value"?: bool}. */
   "readAloud.skipCitations": { value?: boolean }
   /** Read Aloud Status. Answers whether reading aloud is running, its speed and the sentence it is on. Params: {}. */

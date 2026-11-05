@@ -226,9 +226,9 @@ export interface TableCommands extends CommandMap {
   /** transact. Runs several table operations (creates, updates, deletes) as one atomic step that undoes together. Params: the params of the data-document route POST /transact: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
   "table.transact": { ops: Array<Json>; /** system:<name> writes as a host feature, outside the undo history. Agents leave it out. */ asOrigin?: string }
   /** undo. Takes back the last step of the data document's own history (use edit.undo for scoped undo). Params: the params of the data-document route POST /undo: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.undo": { [key: string]: never }
+  "table.undo": { /** Whose step: the person's or the agent's. By default the scope of whoever runs it (an agent undoes only its own steps). */ scope?: "person" | "agent" }
   /** redo. Puts back the last undone step of the data document's own history. Params: the params of the data-document route POST /redo: its ids (tableId, ...), query values, and body fields; asOrigin? (system:<name>) writes as a host feature, outside the undo history. Changes the document. */
-  "table.redo": { [key: string]: never }
+  "table.redo": { /** Whose step: the person's or the agent's. By default the scope of whoever runs it (an agent undoes only its own steps). */ scope?: "person" | "agent" }
   /** historyState. Reads whether there is a step to undo or redo, and their labels. Params: the params of the data-document route GET /history-state: its ids (tableId, ...), query values, and body fields. */
   "table.historyState": { [key: string]: never }
   /** dashboards.list. Lists the dashboards with their ids, titles and widgets. Params: the params of the data-document route GET /dashboards: its ids (tableId, ...), query values, and body fields. */

@@ -232,7 +232,7 @@ export interface FigCommands extends CommandMap {
   /** Create branch. Creates a branch: a separate copy of the file to work on, opened in a new tab; answers its id, name and tab index. Params: {name?}  a copy of the file to work on separately, opened in a new tab; it remembers the file as it is now (its base); in a live session it stays yours ? {id, name, index (its tab)}. Changes the document. */
   "branch.create": { name?: string }
   /** Export. Exports layers (default the selection, else the page) as PNG, JPEG, SVG, PDF, WebP, Android Vector Drawable or the whole .fig, at a scale with print options; answers the data. Params: {ids? (default selection, else the page), format? (png|jpg|svg|pdf|webp|xml (an Android Vector Drawable, with `warnings` for what it changed or left out), or fig: the whole file as .fig, experimental, with `warnings` for what was left out; other apps may not open every file), scale? (default 1) | size? (2x|512w|512h or {by: scale|width|height, value}: a scale, or a width or height in pixels), path? (else returns base64 `data`), bleed? (PDF: points, or with a unit: "3mm", "0.125in", "9pt"), cropMarks?, bleedMarks?, cmyk? (PDF print options), svgIdAttribute? (SVG ids, XML android:name), vdCompat? (XML: bestEffort (default: approximate with a warning)|exact (leave out what can't be exact, with a warning)|ignore (no warnings))}. */
-  "file.export": { bleed?: Json; bleedMarks?: boolean; cmyk?: boolean; cropMarks?: boolean; format?: "png" | "jpg" | "svg" | "pdf" | "webp" | "xml" | "fig"; /** default selection, else the page */ ids?: Array<Json>; scale?: number; svgIdAttribute?: boolean; vdCompat?: boolean }
+  "file.export": { bleed?: Json; bleedMarks?: boolean; cmyk?: boolean; cropMarks?: boolean; format?: "png" | "jpg" | "svg" | "pdf" | "webp" | "xml" | "fig"; /** default selection, else the page */ ids?: Array<Json>; scale?: number; /** 2x|512w|512h or {by: scale|width|height, value}: a scale, or a width or height in pixels; one of several alternative parameters */ size?: number; svgIdAttribute?: boolean; vdCompat?: boolean }
   /** Export frames to PDF. Exports every top-level frame of a page, in reading order, as one PDF with optional bleed, marks and CMYK. Params: {path?, page? (page id, default the current page), bleed? (PDF: points, or with a unit: "3mm", "0.125in", "9pt"), cropMarks?, bleedMarks?, cmyk? (PDF print options)}  every top-level frame in reading order, one PDF page each; returns base64 `data` without a path. */
   "file.exportFramesPdf": { bleed?: Json; bleedMarks?: boolean; cmyk?: boolean; cropMarks?: boolean; /** page id, default the current page */ page?: number }
   /** Export selection as SVG. Exports the selected or given layers as SVG markup or to a file. Params: {ids?, path?}. */
@@ -246,29 +246,29 @@ export interface FigCommands extends CommandMap {
   /** Redo. Redoes the last undone step in a scope (the person's or the agent's; default the caller's). Params: {scope?: "person"|"agent"} (default: the scope of who runs it). Changes the document. */
   "edit.redo": { scope?: "person" | "agent" }
   /** Cut. Removes the selected or given layers and puts them on the clipboard. Params: {ids?}. Changes the document. */
-  "edit.cut": { ids?: Array<Json> }
+  "edit.cut": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Copy. Copies the selected or given layers to the clipboard without changing the design. Params: {ids?}. */
-  "edit.copy": { ids?: Array<Json> }
+  "edit.copy": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Paste. Pastes the clipboard into a parent (default the current page or frame) at x, y; a copied main component pastes as an instance. Params: {parent?, x?, y? (page coordinates of the pasted top-left)}  a copied main component pastes as an instance of it within its file (cut ones, and pastes into other files, keep the component). Changes the document. */
   "edit.paste": { /** an id (a number, or its digits as text) */ parent?: Json; x?: number; /** page coordinates of the pasted top-left */ y?: number }
   /** Paste over selection. Pastes the clipboard on top of the selection, at the same position. Params: {}. Changes the document. */
-  "edit.pasteOver": Record<string, never>
+  "edit.pasteOver": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Paste to replace. Replaces the selected or given layers with the clipboard's content, in their places. Params: {ids?}. Changes the document. */
-  "edit.pasteReplace": { ids?: Array<Json> }
+  "edit.pasteReplace": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Duplicate. Duplicates the selected or given layers, offset by dx, dy (or repeating the last duplicate's offset); answers the copies. Params: {ids?, dx?, dy? (page offset; default: the offset of the last duplicate when ids are its copies, still selected; else top-level frames to the right with a 100 gap, everything else in place)}  a main component's copy is an instance of it (a variant stays a new variant in its set). Changes the document. */
-  "edit.duplicate": { dx?: number; /** page offset; default: the offset of the last duplicate when ids are its copies, still selected; else top-level frames to the right with a 100 gap, everything else in place */ dy?: number; ids?: Array<Json> }
+  "edit.duplicate": { dx?: number; /** page offset; default: the offset of the last duplicate when ids are its copies, still selected; else top-level frames to the right with a 100 gap, everything else in place */ dy?: number; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; /** read by the command beside its listed parameters */ style?: string; /** read by the command beside its listed parameters */ variable?: string }
   /** Delete. Deletes the selected or given layers. Params: {ids?}. Changes the document. */
-  "edit.delete": { ids?: Array<Json> }
+  "edit.delete": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Find and replace. Finds text in text layers (or layer names) and replaces it, selecting the matches by default; answers the count. Params: {find, replace? (text layers), layerNames? (bool), select? (default true)}. Changes the document. */
-  "edit.findReplace": { find?: string; layerNames?: boolean; replace?: string; select?: boolean }
+  "edit.findReplace": { find?: string; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; layerNames?: boolean; replace?: string; select?: boolean }
   /** Copy properties. Copies a layer's fills, strokes, effects and text style so edit.pasteProperties can apply them. Params: {id?}. */
-  "edit.copyProperties": { /** an id */ id?: Json }
+  "edit.copyProperties": { /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Paste properties. Applies the copied properties (fills, strokes, effects, text style) to the selected or given layers. Params: {ids?}. Changes the document. */
-  "edit.pasteProperties": { ids?: Array<Json> }
+  "edit.pasteProperties": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Pick color. Picks the colour under the eyedropper and optionally applies it to the selection. Params: {apply?}. */
-  "edit.pickColor": { apply?: boolean }
+  "edit.pickColor": { apply?: boolean; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Set default properties. Makes a layer's properties the defaults for new layers of its kind. Params: {id?}. */
-  "edit.setDefaultProperties": { /** an id */ id?: Json }
+  "edit.setDefaultProperties": { /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Select all. Selects every layer on the current page (or in the current frame). Params: {}. */
   "select.all": Record<string, never>
   /** Select matching layers. Selects the layers that match the selected one in kind and properties. Params: {}. */
@@ -330,11 +330,11 @@ export interface FigCommands extends CommandMap {
   /** Group selection. Groups the selected or given layers, optionally naming the group. Params: {ids?, name?}. Changes the document. */
   "object.group": { ids?: Array<Json>; name?: string }
   /** Ungroup selection. Ungroups the selected or given groups, keeping their children in place. Params: {ids?}. Changes the document. */
-  "object.ungroup": { ids?: Array<Json> }
+  "object.ungroup": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Remove frame. Removes the selected frames, keeping their children in place. Params: {ids?}. Changes the document. */
   "object.removeFrame": { ids?: Array<Json> }
   /** Resize to fit. Resizes frames, sections and components to fit their contents without moving the contents. Params: {ids?} (frames, sections and components shrink or grow to their contents; the contents stay put). Changes the document. */
-  "object.resizeToFit": { ids?: Array<Json> }
+  "object.resizeToFit": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ maxLines?: number; /** read by the command beside its listed parameters */ minSize?: number; /** read by the command beside its listed parameters */ orphans?: boolean }
   /** Add auto layout. Adds auto layout (horizontal, vertical or grid) to the selected or given frames, or wraps other layers in an auto-layout frame. Params: {ids?, direction?: "horizontal|vertical|grid"}. Changes the document. */
   "layout.add": { direction?: "horizontal" | "vertical" | "grid"; ids?: Array<Json> }
   /** Remove auto layout. Removes auto layout from the selected or given frames, keeping their children where they are. Params: {ids?}. Changes the document. */
@@ -358,9 +358,9 @@ export interface FigCommands extends CommandMap {
   /** Restore main component. Restores a deleted main component from one of its instances, in that instance's place. Params: {id?}  (an instance whose main was deleted becomes the main again, in its place). Changes the document. */
   "component.restoreMain": { /** an id */ id?: Json }
   /** Use as mask. Uses the bottom selected layer as a mask for the layers above it in a group. Params: {ids?}. Changes the document. */
-  "object.mask": { ids?: Array<Json> }
+  "object.mask": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Release mask. Releases a mask so the layers above it are no longer clipped. Params: {ids?}. Changes the document. */
-  "object.releaseMask": { ids?: Array<Json> }
+  "object.releaseMask": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Set as thumbnail. Sets a frame as the file's thumbnail. Params: {id?}. Changes the document. */
   "object.setThumbnail": { /** an id */ id?: Json }
   /** Bring to front. Brings the selected or given layers to the front of their parent. Params: {ids?}. Changes the document. */
@@ -396,7 +396,7 @@ export interface FigCommands extends CommandMap {
   /** Flatten. Flattens boolean groups into plain vector layers of their result. Params: {ids?}. Changes the document. */
   "bool.flatten": { ids?: Array<Json> }
   /** Rasterize selection. Replaces the selected or given layers with an image of them at a scale (default 2). Params: {ids?, scale? (default 2)}. Changes the document. */
-  "object.rasterize": { ids?: Array<Json>; /** default 2 */ scale?: number }
+  "object.rasterize": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** default 2 */ scale?: number }
   /** Show/Hide selection. Shows, hides or toggles the visibility of the selected or given layers. Params: {ids?, visible?}. Changes the document. */
   "object.toggleVisible": { ids?: Array<Json>; visible?: boolean }
   /** Lock/Unlock selection. Locks, unlocks or toggles the lock of the selected or given layers. Params: {ids?, locked?}. Changes the document. */
@@ -418,21 +418,21 @@ export interface FigCommands extends CommandMap {
   /** Move to page. Moves the selected or given layers to another page. Params: {ids?, page}. Changes the document. */
   "object.moveToPage": { ids?: Array<Json>; page?: number }
   /** Select children. Selects the children of the selected layers. Params: {}. */
-  "select.children": Record<string, never>
+  "select.children": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Select parent. Selects the parent of the selected layers. Params: {}. */
-  "select.parent": Record<string, never>
+  "select.parent": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Select next sibling. Selects the next sibling of the selected layer. Params: {}. */
-  "select.next": Record<string, never>
+  "select.next": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Select previous sibling. Selects the previous sibling of the selected layer. Params: {}. */
-  "select.previous": Record<string, never>
+  "select.previous": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Bold. Toggles bold on the selected or given text layers (or the selected text range). Params: {ids?}. Changes the document. */
-  "text.bold": { ids?: Array<Json> }
+  "text.bold": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Italic. Toggles italic on the selected or given text layers (or the selected text range). Params: {ids?}. Changes the document. */
-  "text.italic": { ids?: Array<Json> }
+  "text.italic": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Underline. Toggles underline on the selected or given text layers (or the selected text range). Params: {ids?}. Changes the document. */
-  "text.underline": { ids?: Array<Json> }
+  "text.underline": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Strikethrough. Toggles strikethrough on the selected or given text layers (or the selected text range). Params: {ids?}. Changes the document. */
-  "text.strikethrough": { ids?: Array<Json> }
+  "text.strikethrough": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Create link. Makes the selected or given text (or text range) a hyperlink to url. Params: {url, ids?}. Changes the document. */
   "text.link": { ids?: Array<Json>; url?: string }
   /** Bulleted list. Turns the selected or given text's paragraphs into a bulleted list (or back to plain text). Params: {ids?}  while editing: the selected paragraphs. Changes the document. */
@@ -440,57 +440,57 @@ export interface FigCommands extends CommandMap {
   /** Numbered list. Turns the selected or given text's paragraphs into a numbered list (or back to plain text). Params: {ids?}  while editing: the selected paragraphs. Changes the document. */
   "text.numberList": { ids?: Array<Json> }
   /** Text align left. Aligns the text of the selected or given text layers to the left. Params: {ids?}. Changes the document. */
-  "text.alignLeft": { ids?: Array<Json> }
+  "text.alignLeft": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Text align center. Centres the text of the selected or given text layers. Params: {ids?}. Changes the document. */
-  "text.alignCenter": { ids?: Array<Json> }
+  "text.alignCenter": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Text align right. Aligns the text of the selected or given text layers to the right. Params: {ids?}. Changes the document. */
-  "text.alignRight": { ids?: Array<Json> }
+  "text.alignRight": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Text align justified. Justifies the text of the selected or given text layers. Params: {ids?}. Changes the document. */
-  "text.alignJustify": { ids?: Array<Json> }
+  "text.alignJustify": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Increase font size. Increases the font size of the selected or given text layers by one step. Params: {ids?}. Changes the document. */
-  "text.sizeUp": { ids?: Array<Json> }
+  "text.sizeUp": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Decrease font size. Decreases the font size of the selected or given text layers by one step. Params: {ids?}. Changes the document. */
-  "text.sizeDown": { ids?: Array<Json> }
+  "text.sizeDown": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Increase font weight. Moves the selected or given text to the next heavier font weight available. Params: {ids?}. Changes the document. */
-  "text.weightUp": { ids?: Array<Json> }
+  "text.weightUp": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Decrease font weight. Moves the selected or given text to the next lighter font weight available. Params: {ids?}. Changes the document. */
-  "text.weightDown": { ids?: Array<Json> }
+  "text.weightDown": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Increase line height. Increases the line height of the selected or given text layers by one step. Params: {ids?}. Changes the document. */
-  "text.lineHeightUp": { ids?: Array<Json> }
+  "text.lineHeightUp": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Decrease line height. Decreases the line height of the selected or given text layers by one step. Params: {ids?}. Changes the document. */
-  "text.lineHeightDown": { ids?: Array<Json> }
+  "text.lineHeightDown": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Increase letter spacing. Increases the letter spacing of the selected or given text layers by one step. Params: {ids?}. Changes the document. */
-  "text.trackingUp": { ids?: Array<Json> }
+  "text.trackingUp": { /** read by the command beside its listed parameters */ fromGesture?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Decrease letter spacing. Decreases the letter spacing of the selected or given text layers by one step. Params: {ids?}. Changes the document. */
-  "text.trackingDown": { ids?: Array<Json> }
+  "text.trackingDown": { /** read by the command beside its listed parameters */ fromGesture?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Original case. Sets the selected or given text back to its original case (no case transform). Params: {ids?}. Changes the document. */
-  "text.caseOriginal": { ids?: Array<Json> }
+  "text.caseOriginal": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Uppercase. Displays the selected or given text in uppercase. Params: {ids?}. Changes the document. */
-  "text.caseUpper": { ids?: Array<Json> }
+  "text.caseUpper": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Lowercase. Displays the selected or given text in lowercase. Params: {ids?}. Changes the document. */
-  "text.caseLower": { ids?: Array<Json> }
+  "text.caseLower": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Title case. Displays the selected or given text in title case. Params: {ids?}. Changes the document. */
-  "text.caseTitle": { ids?: Array<Json> }
+  "text.caseTitle": { ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Missing fonts. Answers the font families the document uses that aren't installed, with the layers that use them. Params: {}  fonts the open document names that aren't installed (text layers, styled ranges, text styles, font family variables); the app shows them ? {families: [{family, layers}]}. */
-  "text.missingFonts": Record<string, never>
+  "text.missingFonts": { /** read by the command beside its listed parameters */ text?: string }
   /** Align left. Aligns the selected or given layers to their left edge (or a single layer to its parent). Params: {ids?}. Changes the document. */
-  "align.left": { ids?: Array<Json> }
+  "align.left": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Align horizontal centers. Aligns the selected or given layers on their horizontal centres. Params: {ids?}. Changes the document. */
-  "align.hcenter": { ids?: Array<Json> }
+  "align.hcenter": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Align right. Aligns the selected or given layers to their right edge. Params: {ids?}. Changes the document. */
-  "align.right": { ids?: Array<Json> }
+  "align.right": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Align top. Aligns the selected or given layers to their top edge. Params: {ids?}. Changes the document. */
-  "align.top": { ids?: Array<Json> }
+  "align.top": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Align vertical centers. Aligns the selected or given layers on their vertical centres. Params: {ids?}. Changes the document. */
-  "align.vcenter": { ids?: Array<Json> }
+  "align.vcenter": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Align bottom. Aligns the selected or given layers to their bottom edge. Params: {ids?}. Changes the document. */
-  "align.bottom": { ids?: Array<Json> }
+  "align.bottom": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Distribute horizontal spacing. Spaces the selected or given layers evenly horizontally, or by a fixed spacing. Params: {ids?, spacing?}. Changes the document. */
-  "distribute.horizontal": { ids?: Array<Json>; spacing?: number }
+  "distribute.horizontal": { /** read by the command beside its listed parameters */ fromGesture?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; spacing?: number }
   /** Distribute vertical spacing. Spaces the selected or given layers evenly vertically, or by a fixed spacing. Params: {ids?, spacing?}. Changes the document. */
-  "distribute.vertical": { ids?: Array<Json>; spacing?: number }
+  "distribute.vertical": { /** read by the command beside its listed parameters */ fromGesture?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; spacing?: number }
   /** Tidy up. Tidies the selected layers into an evenly spaced grid, or by a fixed spacing. Params: {ids?, spacing?}. Changes the document. */
-  "arrange.tidy": { ids?: Array<Json>; spacing?: number }
+  "arrange.tidy": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; spacing?: number }
   /** Pack horizontal. Packs the selected layers side by side horizontally with no gaps. Params: {ids?}. Changes the document. */
   "arrange.packH": { ids?: Array<Json> }
   /** Pack vertical. Packs the selected layers one above another vertically with no gaps. Params: {ids?}. Changes the document. */
@@ -498,13 +498,13 @@ export interface FigCommands extends CommandMap {
   /** Round to pixels. Rounds the position and size of the selected or given layers to whole pixels. Params: {ids?}. Changes the document. */
   "arrange.roundToPixels": { ids?: Array<Json> }
   /** Join selection. Joins the selected vector layers' open paths (or the selected points in vector edit mode). Params: {ids?} (in vector edit mode: joins the selected points). Changes the document. */
-  "vector.join": { ids?: Array<Json> }
+  "vector.join": { /** read by the command beside its listed parameters */ code?: string; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ link?: string }
   /** Smooth join selection. Joins the selected open paths or points with a smooth curve. Params: {ids?} (in vector edit mode: joins the selected points smoothly). Changes the document. */
-  "vector.smoothJoin": { ids?: Array<Json> }
+  "vector.smoothJoin": { /** read by the command beside its listed parameters */ code?: string; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ link?: string }
   /** Delete and heal selection. Deletes the selected vector points and heals the path across the gap. Params: {vertices?} (default the selected points of every edited layer). Changes the document. */
   "vector.deleteHeal": { vertices?: Array<number> }
   /** Simplify vector. Reduces the points of the selected or given vector layers within a tolerance. Params: {ids?, tolerance?}. Changes the document. */
-  "vector.simplify": { ids?: Array<Json>; tolerance?: number }
+  "vector.simplify": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; tolerance?: number }
   /** Reverse path direction. Reverses the path direction of the selected or given vector layers. Params: {ids?}. Changes the document. */
   "vector.reverse": { ids?: Array<Json> }
   /** Offset path. Offsets the paths of the selected or given vector layers outward (or inward for negative offset). Params: {ids?, offset}. Changes the document. */
@@ -558,7 +558,7 @@ export interface FigCommands extends CommandMap {
   /** Pencil. Chooses the Pencil tool in the editor; use vector.create to make a path directly. Params: {}. */
   "tool.pencil": Record<string, never>
   /** Text. Chooses the Text tool in the editor; use text.create to add text directly. Params: {}. */
-  "tool.text": Record<string, never>
+  "tool.text": { /** read by the command beside its listed parameters */ text?: string }
   /** Comment. Chooses the Comment tool in the editor; use comment.add to add a comment directly. Params: {}. */
   "tool.comment": Record<string, never>
   /** Shape builder. Chooses the Shape builder tool in the editor; the design is unchanged. Params: {}. */
@@ -586,7 +586,7 @@ export interface FigCommands extends CommandMap {
   /** Place image. Places an image from base64 or a path as a new image layer, or adds it as a fill on an existing layer. Params: {data? (base64 of the image), name? (the image's name), x?, y?, width?, height?, parent?, target? (an existing layer: the image is added on top of its fills instead of making a layer), index? (with `target`: fill `index` becomes the image in place, keeping its opacity, blend and visibility and, when it is an image already, its scale mode, tile scale, rotation and adjustments), mode? (fill|fit|crop|tile)} ? {id, image, width, height, imageProfile (its embedded colour profile; null: taken as sRGB)}. Changes the document. */
   "image.place": { data?: string; height?: number; /** a position counted from 0 (the first is 0); with `target`: fill `index` becomes the image in place, keeping its opacity, blend and visibility and, when it is an image already, its scale mode, tile scale, rotation and adjustments */ index?: number; mode?: "fill" | "fit" | "crop" | "tile"; /** the image's name */ name?: string; /** an id (a number, or its digits as text) */ parent?: Json; /** an id (a number, or its digits as text) */ target?: Json; width?: number; x?: number; y?: number }
   /** Swap orientation. Swaps the width and height of the selected or given frames (portrait and landscape). Params: {ids?} (portrait ? landscape: width and height trade places). Changes the document. */
-  "frame.swapOrientation": { ids?: Array<Json> }
+  "frame.swapOrientation": { /** read by the command beside its listed parameters */ anchor?: string; /** read by the command beside its listed parameters */ height?: number; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ width?: number }
   /** List frame presets. Answers the device and paper frame presets with their sizes, for frame.create. Params: {}. */
   "frame.presets": Record<string, never>
   /** Paste design layers. Pastes layers copied from another design app (clipboard HTML or design data) into a parent at x, y. Params: {html? (the clipboard's HTML), data? (instead of html: base64 of the clipboard's design data, at most 256 MB), parent?, x?, y?}  layers copied from another design app (a .fig canvas in the clipboard's HTML), read like a .fig file (best effort, with `warnings`), pasted as edit.paste pastes. Changes the document. */
@@ -598,7 +598,7 @@ export interface FigCommands extends CommandMap {
   /** Remove from selection. Removes the layers ids from the selection. Params: {ids}. */
   "select.remove": { ids?: Array<Json> }
   /** Layers at a point. Answers every layer under a page point, front-most first, with its id, name, type and depth. Params: {x, y (page coordinates)} ? {layers: [{id, name, type, depth}]} (every layer under the point, front-most first; what the context menu's Select layer lists). */
-  "select.layersAt": { x?: number; /** page coordinates */ y?: number }
+  "select.layersAt": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ item?: string; /** read by the command beside its listed parameters */ value?: string; x?: number; /** page coordinates */ y?: number }
   /** Select area. Selects the layers inside a marquee rectangle (adding or including nested layers as asked); answers the selection. Params: {x, y, width, height (page units; a marquee from x, y), add? (toggle like a Shift marquee), deep? (nested layers, like Cmd/Ctrl)} ? {selection}; with no box: draw one from the keyboard in the app (arrows move it, Cmd/Ctrl+arrows or Shift+arrows size it, Enter selects, Escape cancels). */
   "select.area": { add?: boolean; deep?: boolean; /** page units; a marquee from x, y */ height?: number; width?: number; x?: number; y?: number }
   /** Select layers by name. Selects the layers whose names match a query on the current page or every page. Params: {query, page? (default current; "all" for every page)}. */
@@ -608,13 +608,13 @@ export interface FigCommands extends CommandMap {
   /** Resize by nudge. Grows or shrinks the selection by dw, dh times the nudge amount, top-left fixed. Params: {dw, dh, big?} (grow or shrink the selection by the nudge amount, top-left fixed). Changes the document. */
   "transform.nudgeSize": { big?: boolean; dh?: number; dw?: number }
   /** Opacity from number keys. Sets the selection's opacity from typed digits, as the number keys do (1 is 10%, 0 is 100%, two digits a percentage). Params: {digits ("1"..."9": 10%...90%, "0": 100%; two digits: that percentage, "45" is 45%), ids?}. Changes the document. */
-  "object.opacityKeys": { digits?: string; ids?: Array<Json> }
+  "object.opacityKeys": { digits?: string; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Set properties. Sets properties of a layer: name, visibility, lock, opacity, blend, position, size, rotation, fills, strokes, effects, corner radius, constraints, auto layout and text fields. Params: name, visible, locked, opacity (0-1), blend, x, y (relative to the parent frame; groups don't count), width, height, rotation (degrees), fills (paints or colours; gradients as {type: linearGradient|radialGradient|angularGradient|diamondGradient, stops: ["#hex", ...], from?, to?} too), fill (colour, or "none"/null: no fill), strokes, stroke (colour, or "none"/null: no stroke), strokeWeight, strokeAlign (inside|center|outside), strokeSides [t,r,b,l], strokeTopWeight / strokeRightWeight / strokeBottomWeight / strokeLeftWeight (one side; turns on individual strokes), strokeCap / startCap / endCap, strokeJoin, miterAngle (degrees: sharper joins bevel; or miterLimit as a ratio), dashes [..], widthProfile (preset uniform|wedge|taper|eye|rounded|pinch, [[t, scale], ...] or null), brush (preset id, {preset, spacing, sizeJitter, rotationJitter, scatter, seed} or null), cornerRadius (n or [tl,tr,br,bl]), cornerSmoothing (0-1), effects, clip, isMask, layout (null|horizontal|vertical|grid|{...}), gap, crossGap, padding (n or [t,r,b,l]), paddingTop/Right/Bottom/Left, mainAlign (min|center|max, or the auto gaps spaceBetween|spaceAround|spaceEvenly), crossAlign (min|center|max|baseline: first text baselines, horizontal layouts), contentAlign (wrapped lines: auto = packed where crossAlign says | spaceBetween), wrap (rows of a horizontal layout, columns of a vertical one), strokesIncluded (the frame's inside stroke takes up space), reverseZ (canvas stacking: true = first on top), columnGap / rowGap (aliases of gap / crossGap), gridColumns, gridRows, columnTracks / rowTracks ([120 | "1fr" | "auto" | {sizing, value}]), gridColumn / gridRow (0-based cell anchor, null = auto), gridColumnSpan, gridRowSpan, gridAlignH / gridAlignV (a grid child's alignment in its cell: min|center|max, auto/null = the frame's), sizingH / sizingV (fixed|hug|fill), absolute (ignore auto layout; follows constraints), minWidth, maxWidth, minHeight, maxHeight (null removes), constraints {horizontal, vertical}, grids, exports, characters, fontFamily, fontStyle, fontSize, lineHeight (auto|px|"150%"), letterSpacing (px|"2%"), textAlign (left|center|right|justified), textAlignVertical, textAutoResize (widthAndHeight|height|none|truncate), textDecoration, textDecorationStyle (solid|dotted|wavy), textDecorationThickness / textDecorationOffset (auto|px|"10%" of the font size; the offset runs from the baseline down to an underline's top edge), textDecorationSkipInk (underlines break around descenders), textDecorationColor (colour, or auto/null: the text's), textCase (original|upper|lower|title|smallCaps), paragraphSpacing, paragraphIndent, listStyle (none|bulleted|numbered; with start/end: the paragraphs those chars touch), indentation (list nesting level 0-8, same range rule), listSpacing (px between list items, in place of paragraphSpacing), hangingPunctuation, hangingList (markers outside the box), leadingTrim (vertical trim: none|capHeight), maxLines, features ({tag: bool}, e.g. {"liga": false, "tnum": true}), fontVariations / variationSettings ({axis: number}, e.g. {"wght": 550, "wdth": 85}; null = none), path (a vector's SVG path data: replaces its geometry, keeping the layer, its paints, styles and bindings; width/height in the same call scale it as node.create does; its own box goes at the layer's x/y, or with x/y given, at x + its left edge and y + its top as node.create places it), pointCount, innerRadius, arcStart, arcSweep, arcInner, booleanOperation (a boolean group's operation, or an operand's own; null: the group's), operandOperation (a layer in a boolean group: how it combines with the operands below it; null: the group's), constrainProportions, description, interactions, overflow, pluginData {k: v}. Changes the document. */
   "node.set": { /** The layer to change (default the selection). */ id?: number; /** The layers to change (default the selection). */ ids?: Array<number>; /** The properties to set: name, visible, locked, opacity (0-1), blend, x, y (relative to the parent frame; groups don't count), width, height, rotation (degrees), fills (paints or colours; gradients as {type: linearGradient|radialGradient|angularGradient|diamondGradient, stops: ["#hex", ...], from?, to?} too), fill (colour, or "none"/null: no fill), strokes, stroke (colour, or "none"/null: no stroke), strokeWeight, strokeAlign (inside|center|outside), strokeSides [t,r,b,l], strokeTopWeight / strokeRightWeight / strokeBottomWeight / strokeLeftWeight (one side; turns on individual strokes), strokeCap / startCap / endCap, strokeJoin, miterAngle (degrees: sharper joins bevel; or miterLimit as a ratio), dashes [..], widthProfile (preset uniform|wedge|taper|eye|rounded|pinch, [[t, scale], ...] or null), brush (preset id, {preset, spacing, sizeJitter, rotationJitter, scatter, seed} or null), cornerRadius (n or [tl,tr,br,bl]), cornerSmoothing (0-1), effects, clip, isMask, layout (null|horizontal|vertical|grid|{...}), gap, crossGap, padding (n or [t,r,b,l]), paddingTop/Right/Bottom/Left, mainAlign (min|center|max, or the auto gaps spaceBetween|spaceAround|spaceEvenly), crossAlign (min|center|max|baseline: first text baselines, horizontal layouts), contentAlign (wrapped lines: auto = packed where crossAlign says | spaceBetween), wrap (rows of a horizontal layout, columns of a vertical one), strokesIncluded (the frame's inside stroke takes up space), reverseZ (canvas stacking: true = first on top), columnGap / rowGap (aliases of gap / crossGap), gridColumns, gridRows, columnTracks / rowTracks ([120 | "1fr" | "auto" | {sizing, value}]), gridColumn / gridRow (0-based cell anchor, null = auto), gridColumnSpan, gridRowSpan, gridAlignH / gridAlignV (a grid child's alignment in its cell: min|center|max, auto/null = the frame's), sizingH / sizingV (fixed|hug|fill), absolute (ignore auto layout; follows constraints), minWidth, maxWidth, minHeight, maxHeight (null removes), constraints {horizontal, vertical}, grids, exports, characters, fontFamily, fontStyle, fontSize, lineHeight (auto|px|"150%"), letterSpacing (px|"2%"), textAlign (left|center|right|justified), textAlignVertical, textAutoResize (widthAndHeight|height|none|truncate), textDecoration, textDecorationStyle (solid|dotted|wavy), textDecorationThickness / textDecorationOffset (auto|px|"10%" of the font size; the offset runs from the baseline down to an underline's top edge), textDecorationSkipInk (underlines break around descenders), textDecorationColor (colour, or auto/null: the text's), textCase (original|upper|lower|title|smallCaps), paragraphSpacing, paragraphIndent, listStyle (none|bulleted|numbered; with start/end: the paragraphs those chars touch), indentation (list nesting level 0-8, same range rule), listSpacing (px between list items, in place of paragraphSpacing), hangingPunctuation, hangingList (markers outside the box), leadingTrim (vertical trim: none|capHeight), maxLines, features ({tag: bool}, e.g. {"liga": false, "tnum": true}), fontVariations / variationSettings ({axis: number}, e.g. {"wght": 550, "wdth": 85}; null = none), path (a vector's SVG path data: replaces its geometry, keeping the layer, its paints, styles and bindings; width/height in the same call scale it as node.create does; its own box goes at the layer's x/y, or with x/y given, at x + its left edge and y + its top as node.create places it), pointCount, innerRadius, arcStart, arcSweep, arcInner, booleanOperation (a boolean group's operation, or an operand's own; null: the group's), operandOperation (a layer in a boolean group: how it combines with the operands below it; null: the group's), constrainProportions, description, interactions, overflow, pluginData {k: v} */ props: { [key: string]: Json } }
   /** Get layer. Answers one layer's properties by id: its type, geometry, paints, effects, layout and children. Params: {id}. */
   "node.get": { /** an id */ id?: Json }
   /** Move layer into. Moves layers into another parent at an index among its children. Params: {ids?, parent, index? (final position among parent's children, bottom first; default top)}. Changes the document. */
-  "node.reparent": { ids?: Array<Json>; /** a position counted from 0 (the first is 0); final position among parent's children, bottom first; default top */ index?: number; /** an id (a number, or its digits as text) */ parent?: Json }
+  "node.reparent": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** a position counted from 0 (the first is 0); final position among parent's children, bottom first; default top */ index?: number; /** an id (a number, or its digits as text) */ parent?: Json }
   /** Reorder layer. Moves a layer to an index among its siblings. Params: {id, index}. Changes the document. */
   "node.reorder": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Add fill. Adds a fill paint (default light grey, white for frames) on top of the selected or given layers' fills. Params: {ids?, paint? (default #D9D9D9 or white for frames)}. Changes the document. */
@@ -626,15 +626,15 @@ export interface FigCommands extends CommandMap {
   /** Remove stroke. Removes the stroke at index from the selected or given layers. Params: {ids?, index}. Changes the document. */
   "stroke.remove": { ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Set fill. Sets the fill at index (default the top one) of the selected or given layers to a paint or colour, with opacity, visibility and blend. Params: {ids?, index?, paint | color, opacity?, visible?, blend?}. Changes the document. */
-  "fill.set": { blend?: string; ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; opacity?: number; visible?: boolean }
+  "fill.set": { blend?: string; /** one of several alternative parameters */ color?: string; ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; opacity?: number; /** one of several alternative parameters */ paint?: Json; visible?: boolean }
   /** Set stroke. Sets the stroke at index of the selected or given layers to a paint or colour, with opacity, visibility and blend. Params: {ids?, index?, paint | color, opacity?, visible?, blend?}. Changes the document. */
-  "stroke.set": { blend?: string; ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; opacity?: number; visible?: boolean }
+  "stroke.set": { blend?: string; /** one of several alternative parameters */ color?: string; ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; opacity?: number; /** one of several alternative parameters */ paint?: Json; visible?: boolean }
   /** Copy fill. Copies one fill of a layer (default the top one) so fill.paste can apply it. Params: {id?, index? (default the top fill)}. */
   "fill.copy": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0); default the top fill */ index?: number }
   /** Paste fill. Pastes the copied fill onto the selected or given layers, replacing the fill at index or adding one. Params: {ids?, index? (replace the fill there; without: add one)}. Changes the document. */
   "fill.paste": { ids?: Array<Json>; /** a position counted from 0 (the first is 0); replace the fill there; without: add one */ index?: number }
   /** Copy stroke. Copies one stroke of a layer with its weight, alignment, caps, joins and dashes so stroke.paste can apply it. Params: {id?, index? (default the top stroke)}  its paint and the stroke's weight, alignment, sides, caps, joins and dashes. */
-  "stroke.copy": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0); default the top stroke */ index?: number }
+  "stroke.copy": { /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0); default the top stroke */ index?: number }
   /** Paste stroke. Pastes the copied stroke with its settings onto the selected or given layers, replacing or adding one. Params: {ids?, index? (replace the stroke there; without: add one)}  the copied stroke's settings come with its paint. Changes the document. */
   "stroke.paste": { ids?: Array<Json>; /** a position counted from 0 (the first is 0); replace the stroke there; without: add one */ index?: number }
   /** Pattern fill. Fills the selected or given layers with a pattern of a source layer, with tiling, scale, spacing and alignment. Params: {source (layer id), ids?, index? (default the top fill), tile? (grid|horizontalHex|verticalHex), scale? (1 = the source's size), spacing? [x, y], align? (start|center|end), opacity?}  the source layer tiled; it updates as the source changes. Changes the document. */
@@ -642,15 +642,15 @@ export interface FigCommands extends CommandMap {
   /** Width profile. Sets a variable width profile (a preset or points of scale along the path) on the selected strokes. Params: {ids?, preset?: "uniform|wedge|taper|eye|rounded|pinch", points?: [[t (0-1 along each subpath), scale (? stroke weight)]] (instead of preset)} ? none = uniform. Changes the document. */
   "stroke.widthProfile": { ids?: Array<Json>; /** [[t (0-1 along each subpath), scale (? stroke weight)]] (instead of preset); 0-1 along each subpath; ? stroke weight; instead of preset */ points?: Array<Array<Json>>; preset?: "uniform" | "wedge" | "taper" | "eye" | "rounded" | "pinch" }
   /** Brush. Applies a stretched or scattered brush preset to the selected strokes, with spacing and jitter, or clears it. Params: {ids?, preset (taper|ink|ribbon|bristle: stretched along the path; dots|stars|confetti|leaves: scattered along it | null: plain), spacing? (? weight), sizeJitter? (0-1), rotationJitter? (0-1), scatter? (0-4 ? weight), seed?}  layers without a stroke get a black one. Changes the document. */
-  "stroke.brush": { ids?: Array<Json>; /** taper|ink|ribbon|bristle: stretched along the path; dots|stars|confetti|leaves: scattered along it | null: plain */ preset?: string; rotationJitter?: number; scatter?: number; seed?: number; sizeJitter?: number; /** ? weight */ spacing?: number }
+  "stroke.brush": { /** read by the command beside its listed parameters */ fromGesture?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** taper|ink|ribbon|bristle: stretched along the path; dots|stars|confetti|leaves: scattered along it | null: plain */ preset?: string; rotationJitter?: number; scatter?: number; seed?: number; sizeJitter?: number; /** ? weight */ spacing?: number }
   /** Add effect. Adds an effect (drop shadow, inner shadow, layer or background blur, noise, texture, glass) to the selected or given layers. Params: {ids?, type? (dropShadow|innerShadow|layerBlur|backgroundBlur|noise|texture|glass), effect? {..}}. Changes the document. */
-  "effect.add": { ids?: Array<Json>; type?: "dropShadow" | "innerShadow" | "layerBlur" | "backgroundBlur" | "noise" | "texture" | "glass" }
+  "effect.add": { /** read by the command beside its listed parameters */ effect?: { [key: string]: Json }; ids?: Array<Json>; type?: "dropShadow" | "innerShadow" | "layerBlur" | "backgroundBlur" | "noise" | "texture" | "glass" }
   /** Remove effect. Removes the effect at index from the selected or given layers. Params: {ids?, index}. Changes the document. */
   "effect.remove": { ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Set effect. Changes the effect at index on the selected or given layers. Params: {ids?, index, effect {..}}. Changes the document. */
-  "effect.set": { ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number }
+  "effect.set": { /** read by the command beside its listed parameters */ effect?: { [key: string]: Json }; ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Copy effect. Copies one effect of a layer (default the top one) so effect.paste can apply it. Params: {id?, index? (default the top effect)}. */
-  "effect.copy": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0); default the top effect */ index?: number }
+  "effect.copy": { /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0); default the top effect */ index?: number }
   /** Paste effect. Pastes the copied effect onto the selected or given layers, replacing the effect at index or adding one. Params: {ids?, index? (replace the effect there; without: add one)}. Changes the document. */
   "effect.paste": { ids?: Array<Json>; /** a position counted from 0 (the first is 0); replace the effect there; without: add one */ index?: number }
   /** Add layout grid. Adds a layout grid (grid, columns or rows) to the selected or given frames. Params: {ids?, grid? {kind: grid|columns|rows, ..}}. Changes the document. */
@@ -658,13 +658,13 @@ export interface FigCommands extends CommandMap {
   /** Remove layout grid. Removes the layout grid at index from the selected or given frames. Params: {ids?, index}. Changes the document. */
   "grid.remove": { ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Add export setting. Adds an export setting (size, suffix, format, PDF bleed) to the selected or given layers, used by file.exportLayers. Params: {ids?, setting? {size: 2x|512w|512h|{by: scale|width|height, value}, suffix?, format?: png|jpg|svg|pdf|webp|xml (Android Vector Drawable), bleed? (PDF: points, or with a unit: "3mm", "0.125in", "9pt"), cropMarks?, bleedMarks?, cmyk? (PDF print options), vdCompat? (XML: bestEffort|exact|ignore)}} (without a setting: 1x, then one scale step up with an "@2x"-style suffix). Changes the document. */
-  "export.add": { ids?: Array<Json> }
+  "export.add": { ids?: Array<Json>; /** read by the command beside its listed parameters */ setting?: { [key: string]: Json } }
   /** Edit export setting. Edits the export setting at index on the selected or given layers: size, suffix, format and PDF options. Params: {ids?, index, size? (2x|512w|512h|{by, value}), suffix?, format? (png|jpg|svg|pdf|webp|xml: Android Vector Drawable), bleed? (PDF: points, or with a unit: "3mm", "0.125in", "9pt"), cropMarks?, bleedMarks?, cmyk? (PDF print options), vdCompat? (XML: bestEffort|exact|ignore)}. Changes the document. */
   "export.update": { bleed?: Json; bleedMarks?: boolean; cmyk?: boolean; cropMarks?: boolean; format?: "png" | "jpg" | "svg" | "pdf" | "webp" | "xml"; ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; /** 2x|512w|512h|{by, value} */ size?: number; suffix?: string; vdCompat?: boolean }
   /** Remove export setting. Removes the export setting at index from the selected or given layers. Params: {ids?, index}. Changes the document. */
   "export.remove": { ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Run several commands. Runs a list of commands as one undo step (later steps can refer to earlier results with as); use it for multi-step edits. Params: {label?, commands: [{command, params, as?}]} (one undo step). Changes the document. */
-  "command.batch": { /** [{command, params, as?}] */ commands?: Array<{ as?: Json; command?: Json; params?: Json }>; label?: string }
+  "command.batch": { /** [{command, params, as?}] */ commands?: Array<{ as?: Json; command?: Json; params?: Json }>; /** read by the command beside its listed parameters */ fuel?: number; label?: string; /** read by the command beside its listed parameters */ plugin?: string; /** read by the command beside its listed parameters */ x?: number; /** read by the command beside its listed parameters */ y?: number }
   /** Repeat last command. Repeats the last command on the current selection. Params: {}. Changes the document. */
   "edit.repeat": Record<string, never>
   /** Move fill. Moves a fill from one index to another in the fill list of the selected or given layers (bottom first). Params: {ids?, from, to} (indices in the fill list, bottom first). Changes the document. */
@@ -676,7 +676,7 @@ export interface FigCommands extends CommandMap {
   /** Move layout grid. Moves a layout grid from one index to another in the selected or given frames. Params: {ids?, from, to} (indices in the layout grid list, bottom first). Changes the document. */
   "grid.move": { from?: number; ids?: Array<Json>; to?: number }
   /** Selection colors. Answers the colours used by the selection (descendants and text ranges included) with the paint slots that use each. Params: {ids?} ? {colors: [{paint, targets}]}; includes descendants and text ranges. */
-  "selection.colors": { ids?: Array<Json> }
+  "selection.colors": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Change selection color. Replaces the paint in given fill or stroke slots (from selection.colors) with a new paint. Params: {targets: [{id, fills, index, range: [start,end] | null}], paint}. Changes the document. */
   "selection.setPaint": { paint?: Json; /** [{id, fills, index, range: [start,end] | null}] */ targets?: Array<{ fills?: Json; id?: Json; index?: number; range?: Json }> }
   /** Apply selection color style. Applies a colour style to the given fill or stroke slots (from selection.colors). Params: {targets, style}; applies the color style to matching fill/stroke lists (text ranges keep typography). Changes the document. */
@@ -688,23 +688,23 @@ export interface FigCommands extends CommandMap {
   /** Select layers with color. Selects the layers that own the given paint slots; answers their ids. Params: {targets} ? {ids}; selects the layers owning these paint slots. */
   "selection.selectColor": { targets?: Array<{ [key: string]: Json }> }
   /** Spacing. Sets the horizontal and/or vertical spacing between the selected or given layers. Params: {ids?, horizontal?, vertical?, fromGesture?} (page units; fromGesture uses the interaction snapshot). Changes the document. */
-  "arrange.spacing": { fromGesture?: boolean; horizontal?: number; ids?: Array<Json>; vertical?: number }
+  "arrange.spacing": { fromGesture?: boolean; horizontal?: number; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; vertical?: number }
   /** Reorder selection. Moves one selected layer into another's visual slot (or swaps them) without changing the hierarchy. Params: {ids?, source, target, swap?, fromGesture?} (insert at target's visual slot; no hierarchy changes). Changes the document. */
   "arrange.reorder": { fromGesture?: boolean; ids?: Array<Json>; /** an id (a number, or its digits as text) */ source?: Json; swap?: boolean; /** an id (a number, or its digits as text) */ target?: Json }
   /** Move. Moves the selected or given layers by dx, dy page units. Params: {ids?, dx, dy}  (page units). Changes the document. */
-  "transform.move": { dx?: number; dy?: number; ids?: Array<Json> }
+  "transform.move": { dx?: number; dy?: number; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Move to. Moves the selected or given layers so their top-left is at page coordinates x, y. Params: {ids?, x, y} (page coordinates of the selection's top-left). Changes the document. */
   "transform.moveTo": { ids?: Array<Json>; x?: number; y?: number }
   /** Rotate. Rotates the selected or given layers by degrees about a pivot (default the rotation origin or centre). Params: {ids?, degrees, cx?, cy? (pivot, page coords; default the selection's rotation origin, else its centre)}. Changes the document. */
   "transform.rotate": { cx?: number; /** pivot, page coords; default the selection's rotation origin, else its centre */ cy?: number; degrees?: number; ids?: Array<Json> }
   /** Move rotation origin. Shows, hides or toggles the draggable rotation origin of the selection; not saved. Params: {on? (default: toggles)} ? shows the selection's rotation origin to drag (Escape hides it); not saved. */
-  "transform.rotationOrigin": { on?: boolean }
+  "transform.rotationOrigin": { /** read by the command beside its listed parameters */ fuel?: number; on?: boolean; /** read by the command beside its listed parameters */ plugin?: string; /** read by the command beside its listed parameters */ x?: number; /** read by the command beside its listed parameters */ y?: number }
   /** Set rotation origin. Sets the point the selection rotates about (or resets it to the centre) while the selection lasts. Params: {x, y (page coords) | reset: true} ? the point the selection turns about (default its centre); kept while the selection lasts, not saved. */
-  "transform.setRotationOrigin": { x?: number; y?: number }
+  "transform.setRotationOrigin": { /** read by the command beside its listed parameters */ fuel?: number; /** read by the command beside its listed parameters */ plugin?: string; /** one of several alternative parameters */ reset?: boolean; x?: number; y?: number }
   /** Scale. Scales the selected or given layers by a factor about a pivot, scaling strokes, effects and text too (as the Scale tool does). Params: {ids?, factor, cx?, cy? (pivot; default top-left)} ? scales size, strokes, effects, text (the K tool). Changes the document. */
   "transform.scale": { cx?: number; /** pivot; default top-left */ cy?: number; factor?: number; ids?: Array<Json> }
   /** Resize. Resizes the selected or given layers to a width and/or height, keeping an anchor point fixed. Params: {ids?, width?, height?, anchor? (tl|t|tr|l|c|r|bl|b|br)}. Changes the document. */
-  "transform.resize": { anchor?: "tl" | "t" | "tr" | "l" | "c" | "r" | "bl" | "b" | "br"; height?: number; ids?: Array<Json>; width?: number }
+  "transform.resize": { anchor?: "tl" | "t" | "tr" | "l" | "c" | "r" | "bl" | "b" | "br"; height?: number; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; width?: number }
   /** Convert to group. Converts the selected or given frames into groups in place, dropping frame-only properties like auto layout and fills. Params: {ids?} (frames become groups in place, their layers staying where they are; what only a frame has goes: auto layout, fills, strokes, corner radius, clipping, layout grids, guides and scrolling. Groups are left alone; instances, main components, layers inside instances and empty frames are refused). Changes the document. */
   "object.convertToGroup": { ids?: Array<Json> }
   /** Convert to frame. Converts the selected or given groups or sections into frames of the same box in place. Params: {ids?} (groups become frames of the same box in place, their layers staying where they are: no fill, not clipping; sections become frames that keep their fill and don't clip. Frames are left alone; instances, main components, layers inside instances and sections holding sections are refused). Changes the document. */
@@ -714,19 +714,19 @@ export interface FigCommands extends CommandMap {
   /** Wrap in new section. Wraps the selected or given top-level layers in a new section with some room around them. Params: {ids?, name?} (layers on the page or in a section; the section wraps them with some room). Changes the document. */
   "object.wrapInSection": { ids?: Array<Json>; name?: string }
   /** Set fill rule. Sets the fill rule (non-zero or even-odd) of a vector layer or one of its filled regions. Params: {ids? | id?, region? (a filled area of a vector; every area when left out), rule: nonZero|evenOdd}. Changes the document. */
-  "vector.fillRule": { region?: number; rule?: "nonZero" | "evenOdd" }
+  "vector.fillRule": { /** an id; one of several alternative parameters */ id?: Json; /** one of several alternative parameters */ ids?: Array<Json>; region?: number; rule?: "nonZero" | "evenOdd" }
   /** Reverse loop. Reverses the direction of one loop of a vector's filled region, which changes how the area fills. Params: {ids? | id?, region, loop} (a loop of a filled area; its direction flips, which changes how the area fills). Changes the document. */
-  "vector.reverseLoop": { loop?: number; region?: number }
+  "vector.reverseLoop": { /** an id; one of several alternative parameters */ id?: Json; /** one of several alternative parameters */ ids?: Array<Json>; loop?: number; region?: number }
   /** Hide/Show section contents. Hides or shows the contents of the selected or given sections (a hidden section shows only its name and outline). Params: {ids?, hidden? (default: hide unless all are hidden)} (a hidden section shows only its name and outline; its layers aren't drawn or hit). Changes the document. */
   "section.toggleContents": { /** default: hide unless all are hidden */ hidden?: boolean; ids?: Array<Json> }
   /** Resolve change. Marks changed ready-for-dev frames and sections as resolved, back to Ready for dev, with a reason. Params: {ids?, reason?} (ready-for-dev frames and sections that changed since they were marked go back to Ready for dev; the reason is kept). Changes the document. */
-  "dev.resolveChange": { ids?: Array<Json>; reason?: string }
+  "dev.resolveChange": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; reason?: string }
   /** Compare changes. Answers what changed in a ready-for-dev frame or section since it was marked (or since a saved version). Params: {id? (default the first selected layer), version? (a version id from version.list: compare with that saved version instead; any top-level frame or section), show? (open the compare view in the app)} ? {id, name, changed, snapshot, added, removed, modified, truncated, version: {id, name, time} | null, changes: [{id, name, type, change: added|removed|changed, depth, layers, properties?: [{section, property, before, after, text}]}]}  what changed in a ready-for-dev frame or section since it was marked, or since the version (`snapshot` is false when that isn't known: a file from before snapshots were kept). */
   "dev.compare": { /** an id; default the first selected layer */ id?: Json; show?: boolean; version?: string }
   /** Focus view. Shows only one top-level frame or section on the canvas (or the next or previous ready-for-dev one); answers which. Params: {id? (a top-level frame or section; default the selection), direction?: next|previous (the next ready-for-dev one, across pages)} ? {id, name, page, index, count}  show only that layer on the canvas (Escape or `dev.unfocus` ends it). */
   "dev.focus": { /** the next ready-for-dev one, across pages */ direction?: "next" | "previous"; /** an id (a number, or its digits as text) */ id?: Json }
   /** Exit focus view. Leaves focus view so the whole page shows again. Params: {} ? {focused: false}. */
-  "dev.unfocus": Record<string, never>
+  "dev.unfocus": { /** read by the command beside its listed parameters */ direction?: string; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Set grid track size. Sets the sizing (fixed, hug or fill) of one column or row track of a grid auto layout. Params: {ids?, axis: columns|rows, index (0-based), sizing: fixed|hug|fill, value? (fixed: px, default the track's current size; fill: fr, default 1)}. Changes the document. */
   "layout.setTrack": { axis?: "columns" | "rows"; ids?: Array<Json>; /** a position counted from 0 (the first is 0); 0-based */ index?: number; sizing?: "fixed" | "hug" | "fill"; value?: number }
   /** Export layers. Exports the selected layers (or every layer with export settings) by their export settings, or their assets, as files or a zip. Params: {ids? (default the selection, else every layer on the page with export settings), assets? (true: the Inspect tab's assets in and under them instead: layers with export settings, icons as SVG, images as PNG), dir? (folder to write into; else each file comes back as base64 `data`), zip? (no dir: the files come back together as one base64 zip `data` instead), bleed? (PDF: points, or with a unit: "3mm", "0.125in", "9pt"), cropMarks?, bleedMarks?, cmyk? (PDF print options): for every PDF instead of each setting's own, vdCompat? (bestEffort|exact|ignore: for every XML instead of each setting's own)}  every layer once per export setting, named `<layer><suffix>.<format>` ("@2x" when a scaled export has no suffix; repeats get " 2"; slashes in a layer name make folders). Returns {files: [{name, id, bytes, path | data, warnings (XML only)}], skipped (layers without settings), data? (zip)}. */
@@ -734,13 +734,13 @@ export interface FigCommands extends CommandMap {
   /** List versions. Answers the file's version history, oldest first, with names, descriptions and times. Params: {}  the version history, oldest first: [{id, index, name, description, time (Unix seconds), auto?, previewing?}]. */
   "version.list": Record<string, never>
   /** Restore version. Replaces the design with a saved version in one undo step, keeping the current state in the history first. Params: {id | index}  replace the design with the version (one undo step; the file name and the comments stay; the design as it was is kept in the history first, unless a version of it was just saved or restored). Changes the document. */
-  "version.restore": Record<string, never>
+  "version.restore": { /** an id; one of several alternative parameters */ id?: Json; /** a position counted from 0 (the first is 0); one of several alternative parameters */ index?: number }
   /** Rename version. Renames a version (an autosave with a title becomes a named version). Params: {id | index, name, description?}  a titled autosave becomes a named version. Changes the document. */
-  "version.rename": { description?: string; name?: string }
+  "version.rename": { description?: string; /** an id; one of several alternative parameters */ id?: Json; /** a position counted from 0 (the first is 0); one of several alternative parameters */ index?: number; name?: string }
   /** Delete version. Deletes a version from the file's history. Params: {id | index}. Changes the document. */
-  "version.delete": Record<string, never>
+  "version.delete": { /** an id; one of several alternative parameters */ id?: Json; /** a position counted from 0 (the first is 0); one of several alternative parameters */ index?: number }
   /** View version. Shows a saved version on the canvas read-only in place of the document; version.exitPreview goes back. Params: {id | index}  show the version on the canvas in place of the document (read-only; `version.restore` keeps it, `version.exitPreview` goes back). */
-  "version.preview": Record<string, never>
+  "version.preview": { /** an id; one of several alternative parameters */ id?: Json; /** a position counted from 0 (the first is 0); one of several alternative parameters */ index?: number }
   /** Autosave version. Saves an automatic checkpoint when there are changes since the last version. Params: {}  save an automatic checkpoint when the document has unsaved changes since the last version (with `pref.autoSave` on: changes made since it was opened); the app does this every 30 minutes; keeps the newest 20 autosaves ? {saved, version?}. Changes the document. */
   "version.autosave": Record<string, never>
   /** Back to current version. Ends a version preview and shows the current document again. Params: {}  end a version preview. */
@@ -748,7 +748,7 @@ export interface FigCommands extends CommandMap {
   /** Add page. Adds a page (a name starting with a hyphen adds a divider). Params: {name?} (a name starting with a hyphen adds a divider). Changes the document. */
   "page.add": { name?: string }
   /** Go to page. Switches to a page by id or index. Params: {id | index}. */
-  "page.select": Record<string, never>
+  "page.select": { /** an id; one of several alternative parameters */ id?: Json; /** a position counted from 0 (the first is 0); one of several alternative parameters */ index?: number }
   /** Rename page. Renames a page (default the current one). Params: {id?, name} (an empty page named with a leading hyphen becomes a divider). Changes the document. */
   "page.rename": { /** an id */ id?: Json; name?: string }
   /** Delete page. Deletes a page (default the current one) with its layers. Params: {id?}. Changes the document. */
@@ -756,21 +756,21 @@ export interface FigCommands extends CommandMap {
   /** Duplicate page. Duplicates a page (default the current one) with its layers. Params: {id?}. Changes the document. */
   "page.duplicate": { /** an id */ id?: Json }
   /** Move page. Moves a page to an index in the page list. Params: {id?, index}. Changes the document. */
-  "page.move": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number }
+  "page.move": { /** read by the command beside its listed parameters */ fuel?: number; /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; /** read by the command beside its listed parameters */ plugin?: string; /** read by the command beside its listed parameters */ x?: number; /** read by the command beside its listed parameters */ y?: number }
   /** Page background. Sets a page's canvas background colour. Params: {id?, color}. Changes the document. */
   "page.setBackground": { color?: string; /** an id */ id?: Json }
   /** List pages. Answers the file's pages with their ids, names and which is current. Params: {}. */
   "page.list": Record<string, never>
   /** Add guide. Adds a vertical or horizontal ruler guide at an offset on a frame or the page; answers its index. Params: {vertical (bool), offset, frame? | page?} ? {index}. Changes the document. */
-  "guide.add": { offset?: number; vertical?: boolean }
+  "guide.add": { /** one of several alternative parameters */ frame?: number; offset?: number; /** one of several alternative parameters */ page?: number; vertical?: boolean }
   /** Move guide. Moves a ruler guide to a new offset. Params: {index, offset, frame? | page?}. Changes the document. */
-  "guide.move": { /** a position counted from 0 (the first is 0) */ index?: number; offset?: number }
+  "guide.move": { /** one of several alternative parameters */ frame?: number; /** read by the command beside its listed parameters */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; offset?: number; /** one of several alternative parameters */ page?: number }
   /** Remove guide. Removes a ruler guide (default the selected one). Params: {index?, frame? | page?} (no index: the selected guide). Changes the document. */
-  "guide.remove": { /** a position counted from 0 (the first is 0) */ index?: number }
+  "guide.remove": { /** one of several alternative parameters */ frame?: number; /** a position counted from 0 (the first is 0) */ index?: number; /** one of several alternative parameters */ page?: number }
   /** Select guide. Selects a ruler guide so it can be deleted or nudged, deselecting layers. Params: {index?, frame? | page?}  a ruler guide to delete or nudge (deselects layers; no index: none). */
-  "guide.select": { /** a position counted from 0 (the first is 0) */ index?: number }
+  "guide.select": { /** one of several alternative parameters */ frame?: number; /** a position counted from 0 (the first is 0) */ index?: number; /** one of several alternative parameters */ page?: number }
   /** Remove all guides. Removes all ruler guides from a frame or the page. Params: {frame? | page?}. Changes the document. */
-  "guide.clear": Record<string, never>
+  "guide.clear": { /** one of several alternative parameters */ frame?: number; /** read by the command beside its listed parameters */ id?: Json; /** one of several alternative parameters */ page?: number }
   /** Dev Mode. Switches the editor into or out of Dev Mode; the design is unchanged. Params: {}. */
   "view.devMode": Record<string, never>
   /** Choose tool. Chooses an editor tool by name; the design is unchanged. Prefer the shape and node commands to create layers directly. Params: {tool: move|scale|hand|frame|section|slice|rectangle|line|arrow|ellipse|polygon|star|pen|pencil|text|comment|shapeBuilder | on boards: sticky|shape|connector|marker|highlighter|eraser|stamp}. */
@@ -784,13 +784,13 @@ export interface FigCommands extends CommandMap {
   /** Text on a path. Chooses the text-on-path tool: a click on a path puts new text on it. Params: {}  a click on a shape's or vector's path puts new text on it. */
   "tool.textOnPath": Record<string, never>
   /** Text on path. Puts a text layer on a vector or shape path, starting at a fraction along it, optionally flipped. Params: {text? (text layer), path? (vector or shape layer; default: the selected text and other layer), start? (0..1 along the path), flip?}  the text follows the path and takes its effects and its fills when one shows, and the path layer is removed ? {id}. Changes the document. */
-  "text.onPath": { flip?: boolean; /** vector or shape layer; default: the selected text and other layer */ path?: string; /** 0..1 along the path */ start?: number; /** text layer */ text?: string }
+  "text.onPath": { flip?: boolean; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** vector or shape layer; default: the selected text and other layer */ path?: string; /** 0..1 along the path */ start?: number; /** text layer */ text?: string }
   /** Text path options. Sets where text on a path starts and whether it is flipped. Params: {start? (0..1 along the path), flip?, ids?}  for text on a path. Changes the document. */
-  "text.pathOptions": { flip?: boolean; ids?: Array<Json>; /** 0..1 along the path */ start?: number }
+  "text.pathOptions": { flip?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** 0..1 along the path */ start?: number; /** read by the command beside its listed parameters */ text?: string }
   /** Remove text from path. Takes text off its path, back to a line of auto-width text. Params: {ids?}  text on a path back to a line of auto-width text. Changes the document. */
   "text.removeFromPath": { ids?: Array<Json> }
   /** Small caps. Displays the selected or given text in small caps. Params: {ids?}. Changes the document. */
-  "text.caseSmallCaps": { ids?: Array<Json> }
+  "text.caseSmallCaps": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Letter case. Sets the letter case display (original, upper, lower, title, small caps) of the selected or given text. Params: {case: original|upper|lower|title|smallCaps, ids?}. Changes the document. */
   "text.case": { case?: "original" | "upper" | "lower" | "title" | "smallCaps"; ids?: Array<Json> }
   /** Decoration. Sets the text decoration (none, underline, strikethrough) of the selected or given text. Params: {decoration: none|underline|strikethrough, ids?}. Changes the document. */
@@ -798,11 +798,11 @@ export interface FigCommands extends CommandMap {
   /** List style. Sets the list style (none, bulleted, numbered) of the selected or given text's paragraphs. Params: {style: none|bulleted|numbered, ids?}  while editing: the selected paragraphs. Changes the document. */
   "text.listStyle": { ids?: Array<Json>; style?: "none" | "bulleted" | "numbered" }
   /** Paragraph indent. Sets the paragraph indent in pixels of the selected or given text. Params: {indent (px), ids?}. Changes the document. */
-  "text.paragraphIndent": { ids?: Array<Json>; indent?: number }
+  "text.paragraphIndent": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; indent?: number; /** read by the command beside its listed parameters */ text?: string }
   /** Paragraph spacing. Sets the spacing between paragraphs in pixels of the selected or given text. Params: {spacing (px), ids?}. Changes the document. */
-  "text.paragraphSpacing": { ids?: Array<Json>; /** px */ spacing?: number }
+  "text.paragraphSpacing": { /** read by the command beside its listed parameters */ fromGesture?: boolean; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; /** px */ spacing?: number; /** read by the command beside its listed parameters */ text?: string }
   /** Max lines. Limits the selected or given text to a number of lines, truncating the rest (0 for no limit). Params: {lines (0 = no limit; truncates: auto-height text hugs up to that many lines, other text becomes a truncating box), ids?}. Changes the document. */
-  "text.maxLines": { ids?: Array<Json>; lines?: number }
+  "text.maxLines": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; lines?: number; /** read by the command beside its listed parameters */ text?: string }
   /** OpenType features. Turns OpenType features on or off (or back to the font default) on the selected or given text. Params: {features: {tag: bool | null (font default)}, replace? (clear others first), id?/ids?}. Changes the document. */
   "text.setFeatures": { /** {tag: bool | null (font default)}; font default */ features?: { tag?: Json }; replace?: boolean }
   /** Variable font axes. Sets variable-font axis values (or back to the style default) on the selected or given text. Params: {variations: {axis: number | null (style default)}, replace? (clear others first), id?/ids?}; while editing: the selected range. Changes the document. */
@@ -810,13 +810,13 @@ export interface FigCommands extends CommandMap {
   /** Preview text change. Previews what a text style or font command would do on the canvas without an undo step; text.endPreview restores. Params: {command: style.apply|library.applyStyle|text.setVariations|text.style, params}  shows what the command would do on the canvas without an undo step (a hovered font family or style, text style or named instance, a dragged axis slider), in place of an earlier preview; text.endPreview or any other command ends it, so running the command for real commits it as one undo step. */
   "text.preview": { command?: "style.apply" | "library.applyStyle" | "text.setVariations" | "text.style"; params?: { [key: string]: Json } }
   /** End text preview. Ends a text preview, putting the document back as it was. Params: {}  puts the document back as it was before text.preview ? {ended}. */
-  "text.endPreview": Record<string, never>
+  "text.endPreview": { /** read by the command beside its listed parameters */ text?: string }
   /** Set text. Replaces the characters of a text layer (default the selected one). Params: {id?, characters}. Changes the document. */
   "text.set": { characters?: string; /** an id */ id?: Json }
   /** Style text range. Styles a character range of a text layer: font family, style, weight, size, line height, letter spacing, decoration, case, link and fills. Params: {id?, start?, end?, fontFamily?, fontStyle?, fontWeight?, fontSize?, lineHeight?, letterSpacing?, textDecoration?, textCase?, hyperlink?, textFills?}. Changes the document. */
   "text.style": { end?: number; fontFamily?: string; fontSize?: number; fontStyle?: string; fontWeight?: number; hyperlink?: Json; /** an id */ id?: Json; letterSpacing?: Json; lineHeight?: Json; start?: number; textCase?: "original" | "upper" | "lower" | "title" | "smallCaps"; textDecoration?: "none" | "underline" | "strikethrough"; textFills?: Array<{ [key: string]: Json }> }
   /** Edit text. Starts editing a text layer with the caret at a character index (default all selected). Params: {id, caret? (char index; default select all)}. */
-  "text.edit.begin": { caret?: number; /** an id */ id?: Json }
+  "text.edit.begin": { caret?: number; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; /** read by the command beside its listed parameters */ text?: string }
   /** Type text. Types text at the caret of the text being edited, replacing the selected range. Params: {text}. Changes the document. */
   "text.edit.insert": { text?: string }
   /** Text key. Presses an editing key (backspace, arrows, home, end, enter, tab and more) in the text being edited. Params: {key: Backspace|Delete|Left|Right|Up|Down|Home|End|Enter|Tab|Escape|SelectAll, shift?, alt?, cmd?}  in a list, Tab nests the item and Shift+Tab, Enter on an empty item or Backspace at its start move it out. Changes the document. */
@@ -828,21 +828,21 @@ export interface FigCommands extends CommandMap {
   /** Set caret. Moves the caret of the text being edited to a character index, optionally extending the selection. Params: {index, extend?}. */
   "text.edit.caret": { extend?: boolean; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Select word. Selects the word at a character index in the text being edited. Params: {index}. */
-  "text.edit.selectWord": { /** a position counted from 0 (the first is 0) */ index?: number }
+  "text.edit.selectWord": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; /** read by the command beside its listed parameters */ text?: string }
   /** Select line. Selects the line at a character index in the text being edited. Params: {index}. */
-  "text.edit.selectLine": { /** a position counted from 0 (the first is 0) */ index?: number }
+  "text.edit.selectLine": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; /** read by the command beside its listed parameters */ text?: string }
   /** Compose text (IME). Shows IME composition text at the caret (empty cancels); text.edit.insert commits it. Params: {text (empty = cancel), cursor? (chars into text)}; shown at the caret, committed by text.edit.insert. */
   "text.edit.preedit": { cursor?: number; /** empty = cancel */ text?: string }
   /** Text selection. Answers the caret and selected range of the text being edited. Params: {}. */
   "text.edit.selection": Record<string, never>
   /** Stop editing text. Stops editing text and commits what was typed, leaving the text layer selected. Params: {}. */
-  "text.edit.end": Record<string, never>
+  "text.edit.end": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; /** read by the command beside its listed parameters */ text?: string }
   /** List fonts. Answers the available font families, or one family's styles with their OpenType features and variation axes. Params: {family? (list its styles), style?, features? (the face's OpenType features), axes? (the face's variation axes and named instances)}. */
   "text.fonts": { axes?: boolean; /** list its styles */ family?: string; features?: boolean; style?: string }
   /** Fit text to fonts. Measures auto-sizing text boxes again in their current fonts (for example after a missing font arrived); answers the layers refitted. Params: {ids? (these layers and the text in them; default: the whole document)}  auto-sizing text measures its box again, e.g. a box measured in a fallback font while its family was missing ? {refitted: [ids whose size changed]}. Changes the document. */
-  "text.refit": { /** these layers and the text in them; default: the whole document */ ids?: Array<Json> }
+  "text.refit": { /** read by the command beside its listed parameters */ id?: Json; /** these layers and the text in them; default: the whole document */ ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Document colours. Answers the solid colours used on a page, most used first. Params: {page?, limit? (default 21)} ? solid colours used on the page, most used first. */
-  "paint.documentColors": { limit?: number; page?: number }
+  "paint.documentColors": { /** read by the command beside its listed parameters */ id?: Json; limit?: number; page?: number }
   /** Create style. Creates a paint, text, effect or grid style from a layer (default the first selected) or a value; answers its id. Params: {type: paint|text|effect|grid, name, from? (node id; default first selected), description?, value? (paints/effects/grids/text style JSON)}. Changes the document. */
   "style.create": { description?: string; /** an id (a number, or its digits as text) */ from?: Json; name?: string; type?: "paint" | "text" | "effect" | "grid"; value?: Json }
   /** Apply style. Applies a style by id or name to the selected or given layers (fill or stroke for paint styles, a range for text styles). Params: {ids?, style (id or name), target? (fill|stroke; paint styles), start?, end? (text styles: these chars; while editing text, the selected chars)}. Changes the document. */
@@ -856,15 +856,15 @@ export interface FigCommands extends CommandMap {
   /** Duplicate style. Duplicates a style right below it; answers the new id. Params: {style} ? {id} (right below it, named "<name> copy"). Changes the document. */
   "style.duplicate": { style?: string }
   /** Move styles. Moves styles before another style or into a folder. Params: {styles: [string] (style ids), before? (style id; default: the end), folder? ("Brand/Blog"; "" = no folder: the styles are renamed into it)}. Changes the document. */
-  "style.move": { /** an id (a number, or its digits as text) */ before?: Json; folder?: string; /** style ids */ styles?: Array<string> }
+  "style.move": { /** an id (a number, or its digits as text) */ before?: Json; folder?: string; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** style ids */ styles?: Array<string> }
   /** Rename style folder. Renames a style folder, renaming the styles in it. Params: {folder ("Brand/Blog"), name ("Brand/News")} (renames the styles in it). Changes the document. */
-  "style.renameFolder": { folder?: string; /** "Brand/News" */ name?: string }
+  "style.renameFolder": { folder?: string; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** "Brand/News" */ name?: string }
   /** Delete style. Deletes a style; layers using it keep their values. Params: {style}. Changes the document. */
   "style.delete": { style?: string }
   /** List styles. Answers the file's styles, optionally of one type, with their ids, names and values. Params: {type?}. */
   "style.list": { type?: "paint" | "text" | "effect" | "grid" }
   /** Create variable collection. Creates a variable collection with mode names; answers its id. Params: {name, modes? [names]}. Changes the document. */
-  "variable.createCollection": { name?: string }
+  "variable.createCollection": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ modes?: Array<Json>; name?: string; /** read by the command beside its listed parameters */ server?: string }
   /** Add mode. Adds a mode to a variable collection, optionally duplicating another mode's values. Params: {collection, name, from? (mode id or name to duplicate; default: the default mode)}. Changes the document. */
   "variable.addMode": { /** an id (a number, or its digits as text) */ collection?: Json; /** an id (a number, or its digits as text) */ from?: Json; name?: string }
   /** Create variable. Creates a colour, number, string or boolean variable in a collection with values per mode; answers its id. Params: {collection, name, type: color|number|string|boolean, value? (the default mode's value), values?: {modeName: value} (instead of value: one per mode), description?}. Changes the document. */
@@ -872,11 +872,11 @@ export interface FigCommands extends CommandMap {
   /** Set variable value. Sets a variable's value (or an alias to another variable) in a mode. Params: {variable, mode? (name or id; default first), value: json (a value of the variable's type, or {alias: variable} of the same type, no loops)}. Changes the document. */
   "variable.set": { /** an id (a number, or its digits as text) */ mode?: Json; /** a value of the variable's type, or {alias: variable} of the same type, no loops */ value?: Json; /** an id (a number, or its digits as text) */ variable?: Json }
   /** Delete variable. Deletes a variable; bound layers keep their values. Params: {variable} (bound layers keep their values; variables aliasing it take its values). Changes the document. */
-  "variable.delete": { /** an id (a number, or its digits as text) */ variable?: Json }
+  "variable.delete": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** an id (a number, or its digits as text) */ variable?: Json }
   /** Bind variable. Binds a variable to a field of the selected or given layers (a paint colour, effect value, layout size, text property) or unbinds it. Params: {ids?, field (fill|stroke (first paint)|fills/<i>/color|strokes/<i>/color|fills/<i>/stops/<j>/color (gradient stops)|effects/<i>/<offsetX|offsetY|radius|startRadius|spread|color>|layoutGrids/<i>/<size|count|gutter|offset>|componentProperties/<name> (instances: boolean/text properties; variant properties take string variables naming a value)|width|height|opacity (percent)|cornerRadius|gap|paddingHorizontal|characters|visible|fontSize...; list indices bottom first), variable (null unbinds)}. Changes the document. */
   "variable.bind": { field?: string; ids?: Array<Json>; /** an id (a number, or its digits as text) */ variable?: Json }
   /** Set variable mode. Sets which mode of a collection frames or the page use (null for the inherited mode). Params: {ids? (frames/page), collection, mode (id or name; null: Auto, inherited from the parent)}. Changes the document. */
-  "variable.setMode": { /** an id (a number, or its digits as text) */ collection?: Json; /** frames/page */ ids?: Array<Json>; mode?: Json }
+  "variable.setMode": { /** an id (a number, or its digits as text) */ collection?: Json; /** read by the command beside its listed parameters */ id?: Json; /** frames/page */ ids?: Array<Json>; mode?: Json }
   /** List variables. Answers the file's variable collections, modes and variables with their values. Params: {}. */
   "variable.list": Record<string, never>
   /** Adjust image. Adjusts the image paints of the selected or given layers with a preset or filters (exposure, contrast, saturation, temperature and more). Params: {ids?, target? (fill|stroke, default fill), index? (default every image paint), preset? (vivid|muted|warm|cool|blackAndWhite|fade|reset, or the name of a preset saved in the file), filters? ({exposure, contrast, saturation, temperature, tint, highlights, shadows}: each -1..1, applied over the preset)}  sets the adjustments of the layers' image paints; returns {changed}. Changes the document. */
@@ -886,11 +886,11 @@ export interface FigCommands extends CommandMap {
   /** Delete image preset. Deletes a saved image adjustment preset from the file. Params: {name}. Changes the document. */
   "image.deletePreset": { name?: string }
   /** Image presets. Answers the built-in and saved image adjustment presets with their filters. Params: {} ? {builtIn: [{id, label, filters}], saved: [{name, filters}]}. */
-  "image.presets": Record<string, never>
+  "image.presets": { /** read by the command beside its listed parameters */ id?: Json }
   /** Edit variable. Edits a variable's name, description, scopes and whether it is hidden from publishing. Params: {variable, name?, description?, scopes? ([scope ids]; null or ["ALL_SCOPES"] = every supported property, [] = hidden from pickers), hiddenFromPublishing? (left out when the file is published as a library), codeSyntax?: {WEB?, iOS?, ANDROID?: name code uses ("" clears)}}. Changes the document. */
-  "variable.update": { /** {WEB?, iOS?, ANDROID?: name code uses ("" clears)}; "" clears */ codeSyntax?: { ANDROID?: Json; WEB?: Json; iOS?: Json }; description?: string; hiddenFromPublishing?: boolean; name?: string; scopes?: Json; /** an id (a number, or its digits as text) */ variable?: Json }
+  "variable.update": { /** {WEB?, iOS?, ANDROID?: name code uses ("" clears)}; "" clears */ codeSyntax?: { ANDROID?: Json; WEB?: Json; iOS?: Json }; description?: string; hiddenFromPublishing?: boolean; /** read by the command beside its listed parameters */ library?: string; name?: string; scopes?: Json; /** an id (a number, or its digits as text) */ variable?: Json }
   /** Duplicate variable. Duplicates a variable; answers the new id. Params: {variable} ? {id}. Changes the document. */
-  "variable.duplicate": { /** an id (a number, or its digits as text) */ variable?: Json }
+  "variable.duplicate": { /** read by the command beside its listed parameters */ id?: Json; /** an id (a number, or its digits as text) */ variable?: Json }
   /** Rename mode. Renames a mode of a variable collection. Params: {collection, mode, name}. Changes the document. */
   "variable.renameMode": { /** an id (a number, or its digits as text) */ collection?: Json; /** an id (a number, or its digits as text) */ mode?: Json; name?: string }
   /** Delete mode. Deletes a mode from a variable collection (a collection keeps at least one). Params: {collection, mode} (a collection keeps at least one mode). Changes the document. */
@@ -904,7 +904,7 @@ export interface FigCommands extends CommandMap {
   /** Reset variable override. Resets an extended collection's overridden variable so it follows the inherited value again. Params: {variable (a variable of an extended collection inherited from the collection it extends), mode? (id or name; every overridden mode when omitted)}  the value follows the inherited one again. Changes the document. */
   "variable.resetOverride": { /** an id (a number, or its digits as text) */ mode?: Json; /** an id (a number, or its digits as text) */ variable?: Json }
   /** Export variables. Exports variable collections as the local variables JSON (for variable.import) or as CSS custom properties. Params: {collections?: [string] (ids or names; default every collection of this file, not library copies), format? (json (default): the local variables JSON that variable.import reads | css: custom properties, the default mode on :root and each other mode on [data-<collection>="<mode>"]; numbers in px unless layers or scopes use them as opacity or font weight | tailwind: a Tailwind CSS v4 stylesheet, the default mode as an @theme block named the way inspect.code's tailwind utilities read them: --color-*, --radius-*, --text-*, --spacing-*, --font-*, unique per file) | dart: a Dart file for Flutter, a class of constants per collection and mode (Color, double, String, bool), aliases resolved), path? (write it there)}  ? {text}, or {path} when written. */
-  "variable.export": { /** ids or names; default every collection of this file, not library copies */ collections?: Array<string>; format?: "json" | "css" }
+  "variable.export": { /** ids or names; default every collection of this file, not library copies */ collections?: Array<string>; /** a Dart file for Flutter; one of several alternative parameters */ dart?: Json; format?: "json" | "css" }
   /** Import variables. Imports variable collections and variables from local variables JSON (an object, text or a path). Params: {variables (the local variables JSON, as variable.export writes it: an object, JSON text or a path; `variableCollections` and `variables` under `meta` or at the top level)}  collections join this file's collection of the same name (values by mode name; new modes and variables are added, a variable of another type is skipped), others are added  ? {collections (added), variables (added), updated, warnings (also when it holds no variables, or fewer than its collections list)}. Changes the document. */
   "variable.import": { variables?: Json }
   /** Add variant. Adds a variant to a component set by duplicating one, named by a property value. Params: {id? (component set, variant, or a main component not in a set yet: it becomes a set of itself and the new variant), property?, value?}  (duplicates the variant; `property`=`value` names the new one). Changes the document. */
@@ -912,23 +912,23 @@ export interface FigCommands extends CommandMap {
   /** Create instance. Creates an instance of a component (or a set's default variant) at x, y in a parent; answers its id. Params: {component (component or set: its default variant), x?, y?, parent?}. Changes the document. */
   "instance.create": { /** an id (a number, or its digits as text) */ component?: Json; /** an id (a number, or its digits as text) */ parent?: Json; x?: number; y?: number }
   /** Place instance. Places an instance of a component centred at a page point, inside the frame under it. Params: {component, x, y (page point: the instance is centred there, inside the frame under it; auto layout frames insert by position)}. Changes the document. */
-  "instance.place": { /** an id (a number, or its digits as text) */ component?: Json; x?: number; /** page point: the instance is centred there, inside the frame under it; auto layout frames insert by position */ y?: number }
+  "instance.place": { /** an id (a number, or its digits as text) */ component?: Json; /** read by the command beside its listed parameters */ fuel?: number; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ plugin?: string; x?: number; /** page point: the instance is centred there, inside the frame under it; auto layout frames insert by position */ y?: number }
   /** Expose nested instance. Exposes a nested instance's properties on its main component's instances (or stops). Params: {id? (an instance inside a main component), exposed? (default true)} ? its properties then show on the main's instances. Changes the document. */
   "component.exposeInstance": { exposed?: boolean; /** an id; an instance inside a main component */ id?: Json }
   /** Exposed nested instances. Answers the nested instances whose properties an instance exposes. Params: {id? (instance)} ? the nested instance copies whose properties it exposes. */
-  "instance.exposed": { /** an id; instance */ id?: Json }
+  "instance.exposed": { /** an id; instance */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Make slot. Makes a frame inside a main component a slot that instances can fill with any content. Params: {id? (a frame inside a main component), name? (the slot property's name; the frame's by default), preferred?: [string] (component or set ids)}  (its instances take any content there). Changes the document. */
   "component.makeSlot": { /** an id; a frame inside a main component */ id?: Json; /** the slot property's name; the frame's by default */ name?: string; /** component or set ids */ preferred?: Array<string> }
   /** Remove slot. Turns a slot frame back into an ordinary frame; instances lose their own content in it. Params: {id? (a slot frame of a main component)}  (instances lose their own content in it). Changes the document. */
   "component.removeSlot": { /** an id; a slot frame of a main component */ id?: Json }
   /** Insert into slot. Inserts an instance of a component into a slot of an instance, optionally clearing the slot first. Params: {id? (a slot inside an instance, or the instance with `slot`), slot? (slot property name), component, index? (child index; on top when omitted), replace? (clear the slot first)}. Changes the document. */
-  "instance.slotInsert": { /** an id (a number, or its digits as text) */ component?: Json; /** an id; a slot inside an instance, or the instance with `slot` */ id?: Json; /** a position counted from 0 (the first is 0); child index; on top when omitted */ index?: number; replace?: boolean; slot?: string }
+  "instance.slotInsert": { /** an id (a number, or its digits as text) */ component?: Json; /** an id; a slot inside an instance, or the instance with `slot` */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0); child index; on top when omitted */ index?: number; replace?: boolean; slot?: string }
   /** Reset slot. Resets an instance's slot back to its main component's default content. Params: {id? (a slot inside an instance, or the instance with `slot`), slot?}  (back to the main's default content). Changes the document. */
-  "instance.resetSlot": { /** an id; a slot inside an instance, or the instance with `slot` */ id?: Json; slot?: string }
+  "instance.resetSlot": { /** an id; a slot inside an instance, or the instance with `slot` */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; slot?: string }
   /** Reset override. Resets one group of overrides (fills, text, size and more) or all overrides of an instance. Params: {id?, group? (fills|strokes|effects|opacity|visible|name|corners|characters|textStyle|padding|gap|alignment|grids|exports|interactions|size|position|modes|component|props|slot; all when omitted)}. Changes the document. */
   "component.resetOverride": { group?: string; /** an id */ id?: Json }
   /** Swap instance. Swaps the selected or given instances to another component. Params: {ids?, component}. Changes the document. */
-  "instance.swap": { /** an id (a number, or its digits as text) */ component?: Json; ids?: Array<Json> }
+  "instance.swap": { /** an id (a number, or its digits as text) */ component?: Json; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Swap instance at point. Swaps the instance at a page point to another component, as dropping from the Assets panel with Alt does. Params: {component (component or set: its default variant), x, y (page point)}  swaps the instance there (preferring one showing the same component set; Alt-drop from the Assets panel); only text layers keep their overrides (by matching names). Changes the document. */
   "instance.swapAt": { /** an id (a number, or its digits as text) */ component?: Json; x?: number; /** page point */ y?: number }
   /** Set instance properties. Sets component property values on the selected or given instances (variant properties switch variants). Params: {ids?, properties: {name: value}} (variant properties switch variants). Changes the document. */
@@ -940,13 +940,13 @@ export interface FigCommands extends CommandMap {
   /** Delete component property. Deletes a component property from a component or set. Params: {id? (component or set), name}. Changes the document. */
   "component.deleteProperty": { /** an id; component or set */ id?: Json; name?: string }
   /** Bind layer to property. Binds a layer's visibility, text, swapped component or slot to a component property (or unbinds it). Params: {layer?, property (null/"" unbinds), field?: visible|characters|mainComponent|slot}. Changes the document. */
-  "component.bindProperty": { field?: "visible" | "characters" | "mainComponent" | "slot"; layer?: number; property?: Json }
+  "component.bindProperty": { field?: "visible" | "characters" | "mainComponent" | "slot"; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; layer?: number; property?: Json }
   /** Component properties. Answers the properties of a component, set or instance with their types and values. Params: {id? (component, set or instance)}. */
   "component.properties": { /** an id; component, set or instance */ id?: Json }
   /** List components. Answers the file's components with their type, page, instance count, Assets panel folder and library. Params: {} ? [{id, name, type, page, instances, folder (the Assets panel's folders: page, frames, slash names), label, library?}]. */
   "component.list": Record<string, never>
   /** Publish library. Publishes the file's components, sets, styles and variable collections as a library (all or exactly the given ones). Params: {description?, include? [component/set ids, style ids, variable collection ids or names: exactly these], exclude? [same]}  publishes this file's components, component sets, styles and variable collections (by default all but names starting with . or _, or what the last publish offered; variables hidden from publishing stay out unless something published uses them) as a new library version; save the file so other files see it. Changes the document. */
-  "library.publish": { description?: string }
+  "library.publish": { description?: string; /** read by the command beside its listed parameters */ include?: Array<Json> }
   /** List libraries. Answers the enabled libraries with versions and updates, and this file's published library, optionally with their assets. Params: {assets? (also list each library's components, styles, variable collections and variables, and what this file can publish)}  ? enabled libraries (version, updates, errors) and this file's published library. */
   "library.list": { assets?: boolean }
   /** Add library. Enables a library from a published .kfig file or a share link so its components, styles and variables can be used. Params: {path (.kfig file published as a library, or a share link of a file on a server: a view link is enough; where the app lends library files, a workspace path relative to this file's folder, or from the workspace root with a leading /)}. Changes the document. */
@@ -954,11 +954,11 @@ export interface FigCommands extends CommandMap {
   /** Swap library. Re-points every instance, style and variable copied from one library to the same-named ones in another. Params: {from (an enabled library: id, name or path), to (another enabled library)}  re-points every component instance, style and variable copied from `from` to the published one of the same name in `to` (instances keep their overrides) ? {components, styles, variables, unmatched: [names still from `from`], removed (nothing of `from` is used any more: it was removed)}. Changes the document. */
   "library.swap": { /** an id (a number, or its digits as text) */ from?: Json; /** an id (a number, or its digits as text) */ to?: Json }
   /** Remove library. Disables a library; copies still in use stay. Params: {id (library id, name or path)}  (copies still in use stay; unused ones are dropped). Changes the document. */
-  "library.remove": { /** an id; library id, name or path */ id?: Json }
+  "library.remove": { /** an id; library id, name or path */ id?: Json; /** read by the command beside its listed parameters */ library?: string }
   /** Library updates. Answers the library components, styles and variables that have newer published versions. Params: {}  ? the components, styles, variable collections and variables with a newer published version, and variables new to a library collection this file extends (listed without an `id`: no copy yet). */
   "library.updates": Record<string, never>
   /** Accept library updates. Pulls in updated library components, styles and variables; instances keep their overrides. Params: {ids?: [string] (library ids; all when omitted)}  pulls updated components, styles, variable collections and variables in (instances keep their overrides; bound layers follow). Changes the document. */
-  "library.acceptUpdates": { /** library ids; all when omitted */ ids?: Array<string> }
+  "library.acceptUpdates": { /** read by the command beside its listed parameters */ collection?: string; /** library ids; all when omitted */ ids?: Array<string>; /** read by the command beside its listed parameters */ library?: string; /** read by the command beside its listed parameters */ name?: string }
   /** Place library component. Places an instance of a published library component at a page point (default the view's centre). Params: {library (id, name or path), component (id or name of a published component, set or variant), x?, y? (page point; default the view's centre)}. Changes the document. */
   "library.place": { /** an id (a number, or its digits as text) */ component?: Json; /** an id (a number, or its digits as text) */ library?: Json; x?: number; /** page point; default the view's centre */ y?: number }
   /** Swap instance to library component. Copies a library component in and swaps the instance at a page point to it. Params: {library, component (id or name of a published component, set or variant), x, y (page point)}  copies the component in and swaps the instance there to it (as instance.swapAt). Changes the document. */
@@ -980,7 +980,7 @@ export interface FigCommands extends CommandMap {
   /** Add interaction. Adds a prototype interaction to a layer: a trigger (click, hover, drag, key, delay and more), actions and a transition. Params: {id?, trigger? {type: onClick|onHover|onPress|onDrag|mouseEnter|mouseLeave|mouseDown|mouseUp|afterDelay {ms}|keyPress {key (a key or a combination: Shift+K, Ctrl+Alt+Delete; or a controller button: Gamepad A|B|X|Y|LB|RB|LT|RT|View|Menu|LS|RS|Up|Down|Left|Right|Home)}}, action?: {type: navigate {preserveScroll?}|back|scrollTo {offset? [x, y] (where the layer ends up from the top-left)}|openOverlay {position?, anchor? screen|triggerInside|triggerOutside (default screen; the trigger ones measure the position preset on the layer that opens the overlay: outside puts top presets above it and bottom presets below it, edges lined up), offset? [x, y] (position manual: the overlay's top-left from the top-left of the layer that opens it; without it, right below that layer), close_on_outside? (default true), background?}|swapOverlay|closeOverlay|openUrl {url}|changeTo|setVariable {variable, value | expression (text, e.g. "count + 1")}|setVariableMode {collection, mode}|conditional {blocks [{condition? | expression? (text, e.g. "count >= 3"), actions}]}, dest?}, actions? [..], transition? {type: instant|dissolve|smartAnimate|moveIn|moveOut|push|slideIn|slideOut, direction?: left|right|top|bottom}, durationMs?, easing? linear|easeIn|easeOut|easeInOut|easeInBack|easeOutBack|easeInOutBack|gentle|quick|bouncy|slow|{customBezier {x1, y1, x2, y2}}|{customSpring {mass, stiffness, damping}}}, delayMs? (mouse enter, leave, down and up: how long after the gesture the actions run, up to 600000), dest? (a frame id: with id alone, a click that navigates there)} ? or {id, dest} for a click-navigate. Returns {index}. Changes the document. */
   "proto.interaction.add": { /** The action it runs: {type, ...} as the notes say: {id?, trigger? {type: onClick|onHover|onPress|onDrag|mouseEnter|mouseLeave|mouseDown|mouseUp|afterDelay {ms}|keyPress {key (a key or a combination: Shift+K, Ctrl+Alt+Delete; or a controller button: Gamepad A|B|X|Y|LB|RB|LT|RT|View|Menu|LS|RS|Up|Down|Left|Right|Home)}}, action?: {type: navigate {preserveScroll?}|back|scrollTo {offset? [x, y] (where the layer ends up from the top-left)}|openOverlay {position?, anchor? screen|triggerInside|triggerOutside (default screen; the trigger ones measure the position preset on the layer that opens the overlay: outside puts top presets above it and bottom presets below it, edges lined up), offset? [x, y] (position manual: the overlay's top-left from the top-left of the layer that opens it; without it, right below that layer), close_on_outside? (default true), background?}|swapOverlay|closeOverlay|openUrl {url}|changeTo|setVariable {variable, value | expression (text, e.g. "count + 1")}|setVariableMode {collection, mode}|conditional {blocks [{condition? | expression? (text, e.g. "count >= 3"), actions}]}, dest?}, actions? [..], transition? {type: instant|dissolve|smartAnimate|moveIn|moveOut|push|slideIn|slideOut, direction?: left|right|top|bottom}, durationMs?, easing? linear|easeIn|easeOut|easeInOut|easeInBack|easeOutBack|easeInOutBack|gentle|quick|bouncy|slow|{customBezier {x1, y1, x2, y2}}|{customSpring {mass, stiffness, damping}}}, delayMs? (mouse enter, leave, down and up: how long after the gesture the actions run, up to 600000), dest? (a frame id: with id alone, a click that navigates there)} ? or {id, dest} for a click-navigate. Returns {index} */ action?: { [key: string]: Json }; /** Several actions, in order (instead of action). */ actions?: Array<{ [key: string]: Json }>; /** Mouse enter, leave, down and up: how long after the gesture the actions run, up to 600000. */ delayMs?: number; /** A frame id: with id alone, a click that navigates there. */ dest?: number; durationMs?: number; /** A named easing, or {customBezier {x1, y1, x2, y2}} or {customSpring {mass, stiffness, damping}}. */ easing?: Json; /** The layer the interaction is on (default the selection). */ id?: number; /** {type: instant|dissolve|smartAnimate|moveIn|moveOut|push|slideIn|slideOut, direction?: left|right|top|bottom}. */ transition?: { [key: string]: Json }; /** What starts it: {type: onClick|onHover|onPress|onDrag|mouseEnter|mouseLeave|mouseDown|mouseUp|afterDelay {ms}|keyPress {key}} (default onClick). */ trigger?: { [key: string]: Json } }
   /** Remove all interactions. Removes every prototype interaction from the selected or given layers. Params: {ids?}. Changes the document. */
-  "proto.interaction.clear": { ids?: Array<Json> }
+  "proto.interaction.clear": { /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json> }
   /** Remove interaction. Removes the prototype interaction at index from a layer. Params: {id?, index}. Changes the document. */
   "proto.interaction.remove": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number }
   /** Edit interaction. Replaces or patches the prototype interaction at index: trigger, actions, transition, duration, easing and delay. Params: {id?, index, interaction {..}} replaces it; or patch fields: {id?, index, trigger?, action? (first action), actions?, transition?, durationMs?, easing?, delayMs?}. Changes the document. */
@@ -988,83 +988,83 @@ export interface FigCommands extends CommandMap {
   /** Add flow starting point. Adds a prototype flow starting at a top-level frame (default the selection). Params: {start? (top-level frame id; default selection), name?}. Changes the document. */
   "proto.flow.add": { name?: string; /** top-level frame id; default selection */ start?: number }
   /** Rename flow. Renames a prototype flow and sets its description. Params: {start, name?, description?}. Changes the document. */
-  "proto.flow.rename": { description?: string; name?: string; start?: number }
+  "proto.flow.rename": { description?: string; /** read by the command beside its listed parameters */ id?: Json; name?: string; start?: number }
   /** Remove flow. Removes a prototype flow starting point. Params: {start}. Changes the document. */
   "proto.flow.remove": { start?: number }
   /** Prototype settings. Sets the prototype's device, background, rotation, device colour and custom size. Params: {device? (a device name, "Custom size" or "None"), background?, rotation?: portrait|landscape (or 0 or 90; phones and tablets turn), color? (one of the device's colours by name), width?, height? (the custom size's screen, 1?10000 points; picks "Custom size"), responsive?: bool (frames resize to the screen and their constraints and auto layout respond)}. Changes the document. */
   "proto.settings": { background?: string; /** one of the device's colours by name */ color?: string; device?: string; /** the custom size's screen, 1?10000 points; picks "Custom size" */ height?: number; /** frames resize to the screen and their constraints and auto layout respond */ responsive?: boolean; rotation?: Json; width?: number }
   /** Present. Opens the prototype presenter from a frame (default the selected frame or first flow). Params: {start? (frame id; default: the selected frame, else the first flow, else the first frame)}. */
-  "proto.present": { /** frame id; default: the selected frame, else the first flow, else the first frame */ start?: number }
+  "proto.present": { /** read by the command beside its listed parameters */ id?: Json; /** frame id; default: the selected frame, else the first flow, else the first frame */ start?: number }
   /** Open prototype preview. Opens a floating live prototype preview over the canvas from a frame. Params: {start? (frame id; default as proto.present)}  a floating preview pane over the canvas that follows edits live. */
-  "proto.preview": { /** frame id; default as proto.present */ start?: number }
+  "proto.preview": { /** read by the command beside its listed parameters */ id?: Json; /** frame id; default as proto.present */ start?: number }
   /** Close prototype preview. Closes the floating prototype preview. Params: {}. */
-  "proto.closePreview": Record<string, never>
+  "proto.closePreview": { /** read by the command beside its listed parameters */ force?: boolean; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ index?: number }
   /** Presentation options. Sets how the presenter sizes the prototype and whether it shows the device frame, hotspot hints and inspect. Params: {scale? fit|fitWidth|fill|actual, deviceFrame? bool, hotspotHints? bool, inspect? bool}  how the presenter sizes the prototype (Fit scales down to fit, Fit width fills the width, Fill covers the window, Actual shows it at 100%), whether it draws the device, whether a click where nothing reacts flashes the hotspots (on by default) and whether the Inspect panel shows the properties of the layer under the pointer; kept for later presentations. */
-  "proto.presentOptions": Record<string, never>
+  "proto.presentOptions": { /** read by the command beside its listed parameters */ deviceFrame?: boolean; /** read by the command beside its listed parameters */ hotspotHints?: boolean; /** read by the command beside its listed parameters */ inspect?: boolean; /** read by the command beside its listed parameters */ scale?: string }
   /** Notice before leaving for a link. Sets whether a presented prototype warns before opening a website link. Params: {show? (default true; false skips it)}  whether a presented prototype's Open link to a website first says that it leaves the prototype, with Open link and Cancel; kept with the preferences ? {shown}. */
   "proto.linkNotice": { show?: boolean }
   /** Add prototype action. Adds an action to a prototype interaction, at a path inside conditionals. Params: {id?, index (interaction), path? (where it goes: [n] appends to an interaction with n actions, [i, b, j] inside block b of the conditional i; default: after the last action), action {type: ..., as proto.interaction.add; setVariable takes `expression` text, conditional blocks take `expression` or `condition`}} ? {path}. Changes the document. */
-  "proto.action.add": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0); interaction */ index?: number; /** where it goes: [n] appends to an interaction with n actions, [i, b, j] inside block b of the conditional i; default: after the last action */ path?: string }
+  "proto.action.add": { /** read by the command beside its listed parameters */ action?: { [key: string]: Json }; /** an id */ id?: Json; /** a position counted from 0 (the first is 0); interaction */ index?: number; /** where it goes: [n] appends to an interaction with n actions, [i, b, j] inside block b of the conditional i; default: after the last action */ path?: string }
   /** Edit prototype action. Replaces the prototype action at a path in an interaction. Params: {id?, index, path [action, block, action, ...], action {...}}  replaces the action there. Changes the document. */
-  "proto.action.set": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number }
+  "proto.action.set": { /** read by the command beside its listed parameters */ action?: { [key: string]: Json }; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; /** read by the command beside its listed parameters */ path?: Array<Json> }
   /** Remove prototype action. Removes the prototype action at a path (an interaction keeps at least one). Params: {id?, index, path}  (an interaction keeps at least one action: remove the interaction instead). Changes the document. */
   "proto.action.remove": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; path?: string }
   /** Reorder prototype action. Moves a prototype action to another index in the same list. Params: {id?, index, path, to (its new index in the same list)} ? {path}. Changes the document. */
   "proto.action.move": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; path?: string; to?: number }
   /** Add else if / else. Adds an else-if (with a condition) or else block to a conditional prototype action. Params: {id?, index, path (a conditional action), else?: bool (add the else block; default: an else if before it), expression? (text, e.g. "count >= 3") | condition? (expression JSON); default condition: the first variable equal to its value} ? {block}. Changes the document. */
-  "proto.conditional.addBlock": { /** add the else block; default: an else if before it */ else?: boolean; expression?: string; /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; /** a conditional action */ path?: string }
+  "proto.conditional.addBlock": { /** (expression JSON); default condition: the first variable equal to its value; one of several alternative parameters */ condition?: Json; /** add the else block; default: an else if before it */ else?: boolean; expression?: string; /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; /** a conditional action */ path?: string }
   /** Edit condition. Edits the condition of a block of a conditional prototype action. Params: {id?, index, path (a conditional action), block, expression (text) | condition (expression JSON)}  the condition must give true or false. Changes the document. */
-  "proto.conditional.setCondition": { block?: number; expression?: string; /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; /** a conditional action */ path?: string }
+  "proto.conditional.setCondition": { block?: number; /** expression JSON; one of several alternative parameters */ condition?: Json; expression?: string; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0) */ index?: number; /** a conditional action */ path?: string; /** read by the command beside its listed parameters */ text?: string }
   /** Remove if / else if / else. Removes a block of a conditional prototype action. Params: {id?, index, path (a conditional action), block}  removing the if when only an else (or nothing) is left removes the whole conditional action ? {removedAction}. Changes the document. */
   "proto.conditional.removeBlock": { block?: number; /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; /** a conditional action */ path?: string }
   /** Evaluate prototype expression. Evaluates a prototype expression (variables, modes, arithmetic) on a layer and answers its value. Params: {expression (text, e.g. "count + 1", "accent[Dark]", "mode(Theme) == 'Dark'") | expr (expression JSON), id? (the layer it runs on: variables resolve in its modes; default: the document's default modes)} ? {value, type, text}  without changing anything. */
-  "proto.evaluate": { expression?: string; /** an id; the layer it runs on: variables resolve in its modes; default: the document's default modes */ id?: Json }
+  "proto.evaluate": { /** expression JSON; one of several alternative parameters */ expr?: Json; expression?: string; /** an id; the layer it runs on: variables resolve in its modes; default: the document's default modes */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ text?: string }
   /** Add comment. Adds a comment thread at a page point, optionally pinned to a layer; answers its id. Params: {x, y, text, page?, author?, anchor? (node id to pin to; true = innermost frame under the point)}. Changes the document. */
   "comment.add": { anchor?: Json; author?: string; page?: number; text?: string; x?: number; y?: number }
   /** Reply to comment. Replies to a comment thread. Params: {id, text, author?}. Changes the document. */
   "comment.reply": { author?: string; /** an id */ id?: Json; text?: string }
   /** Edit comment. Edits the first message or a reply of a comment thread. Params: {id, text, reply? (index; omit for the first message), author?}. Changes the document. */
-  "comment.edit": { author?: string; /** an id */ id?: Json; reply?: number; text?: string }
+  "comment.edit": { author?: string; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; /** read by the command beside its listed parameters */ link?: string; reply?: number; text?: string }
   /** React to comment. Adds, removes or toggles an emoji reaction on a comment or reply. Params: {id, emoji, reply? (index; omit for the first message), on? (default: toggle), author?}. Changes the document. */
-  "comment.react": { author?: string; emoji?: string; /** an id */ id?: Json; on?: boolean; reply?: number }
+  "comment.react": { author?: string; emoji?: string; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; /** read by the command beside its listed parameters */ link?: string; on?: boolean; reply?: number }
   /** Resolve comment. Resolves (or reopens) a comment thread. Params: {id, resolved? (default true)}. Changes the document. */
   "comment.resolve": { /** an id */ id?: Json; resolved?: boolean }
   /** Move comment. Moves a comment pin to a page point, pinned to a layer or the page. Params: {id, x, y, anchor? (default true: pin to the innermost frame under the point; false: to the page; or a node id)}. Changes the document. */
-  "comment.move": { anchor?: Json; /** an id */ id?: Json; x?: number; y?: number }
+  "comment.move": { anchor?: Json; /** an id */ id?: Json; /** read by the command beside its listed parameters */ link?: string; x?: number; y?: number }
   /** Delete comment. Deletes a comment thread or one reply. Params: {id, reply? (index: delete one reply; omit to delete the thread), author?}. Changes the document. */
   "comment.delete": { author?: string; /** an id */ id?: Json; reply?: number }
   /** Mark comment as read. Marks a comment thread (or every thread) read or unread. Params: {id? | link? (omit: every thread), read? (default true; false marks it unread), author?}. */
   "comment.markRead": { author?: string; /** an id; omit: every thread; one of several alternative parameters */ id?: Json; link?: string; read?: boolean }
   /** Open comment. Opens a comment thread and zooms or centres the view on it. Params: {id | link, view? (fit: zoom to the thread's frame, default; center: centre the pin; keep), author?}. */
-  "comment.open": { author?: string; view?: "fit" | "center" | "keep" }
+  "comment.open": { author?: string; /** an id; one of several alternative parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** one of several alternative parameters */ link?: Json; /** read by the command beside its listed parameters */ maxLines?: number; /** read by the command beside its listed parameters */ minSize?: number; /** read by the command beside its listed parameters */ orphans?: boolean; view?: "fit" | "center" | "keep" }
   /** Next comment. Opens the next or previous comment thread in the filtered list. Params: {id? (the thread to step from; omitted: the first or last), dir? (1 next, -1 previous; default 1), page?, filter?, sort?, query? (the list, as comment.list), author?}. */
   "comment.next": { author?: string; dir?: 1 | -1; filter?: "all" | "open" | "resolved" | "mine" | "unread"; /** an id; the thread to step from; omitted: the first or last */ id?: Json; page?: number; query?: string; sort?: "date" | "page" }
   /** Zoom to comments. Zooms the view to fit comment threads on the current page. Params: {ids (comment ids on the current page)}. */
-  "comment.zoom": { /** comment ids on the current page */ ids?: Array<Json> }
+  "comment.zoom": { /** read by the command beside its listed parameters */ id?: Json; /** comment ids on the current page */ ids?: Array<Json>; /** read by the command beside its listed parameters */ maxLines?: number; /** read by the command beside its listed parameters */ minSize?: number; /** read by the command beside its listed parameters */ orphans?: boolean }
   /** Copy link to comment. Answers a link to a comment thread. Params: {id}. */
-  "comment.link": { /** an id */ id?: Json }
+  "comment.link": { /** an id */ id?: Json; /** read by the command beside its listed parameters */ link?: string }
   /** People in comments. Answers the people taking part in the file's comments. Params: {}. */
   "comment.people": Record<string, never>
   /** List comments. Answers comment threads on a page or every page, filtered, sorted and searched. Params: {page? (default: current; "all" for every page), filter? (all|open|resolved|mine|unread; default all), sort? (date|page; default date), query? (search text), frame? (a top-level frame id), resolved? (false hides resolved ones), author? (whose threads and read state)}. */
   "comment.list": { author?: string; filter?: "all" | "open" | "resolved" | "mine" | "unread"; /** a top-level frame id */ frame?: number; /** default: current; "all" for every page */ page?: number; query?: string; resolved?: boolean; sort?: "date" | "page" }
   /** Edit vector. Enters vector edit mode on layers (default the selection), converting shapes to vectors. Params: {id? | ids?} (default the selection; several layers are edited at once, the first active; converts shapes to vectors). */
-  "vector.edit.begin": Record<string, never>
+  "vector.edit.begin": { /** an id; one of several alternative parameters */ id?: Json; /** one of several alternative parameters */ ids?: Array<Json> }
   /** Done editing. Leaves vector edit mode. Params: {}. */
   "vector.edit.end": Record<string, never>
   /** Vector edit state. Answers the vector edit overlay and the edited layer's vector network: points, segments, handles and regions. Params: {} ? page-space overlay plus the local network. */
   "vector.edit.state": Record<string, never>
   /** Vector edit tool. Chooses the tool used in vector edit mode (move, pen, bend, paint, lasso, cut, eraser, width). Params: {tool: move|pen|bend|paint|lasso|cut|eraser|width}. */
-  "vector.edit.tool": { tool?: "move" | "pen" | "bend" | "paint" | "lasso" | "cut" | "eraser" | "width" }
+  "vector.edit.tool": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; tool?: "move" | "pen" | "bend" | "paint" | "lasso" | "cut" | "eraser" | "width" }
   /** Select points. Selects points, segments, handles or regions in vector edit mode. Params: {vertices?: [i, ...], segments?: [i, ...], handles?: [[segment, start], ...], regions?: [i, ...] (filled regions, with their points), id? (an edited layer, made active), add?}. */
   "vector.edit.select": { add?: boolean; handles?: Array<Array<number>>; /** an id; an edited layer, made active */ id?: Json; /** [i]; filled regions, with their points */ regions?: Array<number>; /** [i] */ segments?: Array<number>; /** [i] */ vertices?: Array<number> }
   /** Select all points. Selects every point of the edited vector layers. Params: {} (in every edited layer). */
-  "vector.edit.selectAll": Record<string, never>
+  "vector.edit.selectAll": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** Move points. Moves points of the edited vectors by dx, dy local units (default the selected points). Params: {vertices?, dx, dy} (local units; default the selected points of every edited layer). Changes the document. */
   "vector.edit.moveVertices": { dx?: number; dy?: number; vertices?: Array<number> }
   /** Nudge points. Nudges the selected points by dx, dy page units. Params: {dx, dy} (page units; the selected points of every edited layer). Changes the document. */
   "vector.edit.nudge": { dx?: number; dy?: number }
   /** Point position. Moves the selected points so their top-left is at x, y in the parent's coordinates. Params: {x?, y?} (the selected points' top-left, in the parent's coordinates). Changes the document. */
-  "vector.edit.position": { x?: number; y?: number }
+  "vector.edit.position": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; x?: number; y?: number }
   /** Set handle. Places one handle of a segment at local x, y, optionally breaking its mirroring. Params: {segment, start (bool), x, y (local), independent?}. Changes the document. */
   "vector.edit.setHandle": { independent?: boolean; segment?: number; /** bool */ start?: number; x?: number; /** local */ y?: number }
   /** Move handles. Moves the selected (or given) handles by dx, dy page units. Params: {dx, dy (page units), handles?: [[segment, start], ...] (default the selected handles), independent?}. Changes the document. */
@@ -1078,17 +1078,17 @@ export interface FigCommands extends CommandMap {
   /** Add point. Adds a point on a segment at parameter t. Params: {segment, t (0..1)}. Changes the document. */
   "vector.edit.addVertex": { segment?: number; t?: number }
   /** Delete points. Deletes points and segments (default the selection) of the edited vectors. Params: {vertices?, segments?} (default the selection in every edited layer). Changes the document. */
-  "vector.edit.delete": { segments?: Array<number>; vertices?: Array<number> }
+  "vector.edit.delete": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; segments?: Array<number>; vertices?: Array<number> }
   /** Point corner radius. Sets the corner radius of points. Params: {radius, vertices?}. Changes the document. */
   "vector.edit.cornerRadius": { radius?: number; vertices?: Array<number> }
   /** Point stroke cap. Sets the stroke cap (round, square, arrows and more) where the stroke ends at points. Params: {cap: none|round|square|lineArrow|triangleArrow|reversedTriangle|circleFilled|diamondFilled|null (the layer's), vertices?} ? where the stroke ends at these points. Changes the document. */
-  "vector.edit.strokeCap": { cap?: Json; vertices?: Array<number> }
+  "vector.edit.strokeCap": { cap?: Json; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; vertices?: Array<number> }
   /** Point stroke join. Sets how the stroke turns (miter, bevel, round) at points. Params: {join: miter|bevel|round|null (the layer's), vertices?} ? how the stroke turns at these points. Changes the document. */
-  "vector.edit.strokeJoin": { join?: Json; vertices?: Array<number> }
+  "vector.edit.strokeJoin": { /** read by the command beside its listed parameters */ code?: string; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; join?: Json; /** read by the command beside its listed parameters */ link?: string; vertices?: Array<number> }
   /** Paint bucket. Fills or unfills the closed areas under page points, as the paint bucket does. Params: {x, y} | {points: [[x, y], ...]} (page points: fills or unfills the closed area under the first, and does the same to the areas under the rest, like a drag). Changes the document. */
-  "vector.edit.paint": { x?: number; y?: number }
+  "vector.edit.paint": { /** in one of several forms of the parameters */ points?: Array<Array<number>>; /** in one of several forms of the parameters */ x?: number; /** in one of several forms of the parameters */ y?: number }
   /** Cut path. Cuts paths at a segment point or vertex, or along a line between two page points. Params: {segment, t?} | {vertex} | {from: [x, y], to: [x, y]} (page: cuts every path the line crosses; parts that come apart move to layers of their own). Changes the document. */
-  "vector.edit.cut": { segment?: number; t?: number }
+  "vector.edit.cut": { /** in one of several forms of the parameters */ from?: Array<number>; segment?: number; t?: number; /** in one of several forms of the parameters */ to?: Array<number>; /** in one of several forms of the parameters */ vertex?: Json }
   /** Erase. Erases the parts of paths a brush of radius passes over along page points. Params: {points: [[x, y], ...] (page), radius? (page units, default 8)} ? removes the parts of paths the brush passes over. Changes the document. */
   "vector.edit.erase": { /** page */ points?: Array<Array<number>>; /** page units, default 8 */ radius?: number }
   /** Connect points. Connects two points with a straight segment. Params: {a, b} (adds a straight segment). Changes the document. */
@@ -1100,13 +1100,13 @@ export interface FigCommands extends CommandMap {
   /** End pen path. Ends the current pen path. Params: {}. */
   "vector.edit.penEnd": Record<string, never>
   /** Selected points' bounds. Answers the bounds of the selected points in the parent's coordinates and on the page. Params: {} ? {x, y (top-left in the parent's coordinates), width, height (in the vector's axes), corners (page), points}. */
-  "vector.edit.bounds": Record<string, never>
+  "vector.edit.bounds": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number }
   /** Resize points. Scales the selected points' box to a width and height, about its centre or top-left. Params: {width?, height?, center? (about the centre; default keeps the top-left)} ? scales the selected points' box in the vector's axes. Changes the document. */
-  "vector.edit.resize": { center?: boolean; height?: number; width?: number }
+  "vector.edit.resize": { center?: boolean; height?: number; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; width?: number }
   /** Rotate points. Rotates the selected points by an angle about a page pivot (default their box centre). Params: {angle (degrees, counter-clockwise), cx?, cy? (page pivot; default the box centre)}. Changes the document. */
   "vector.edit.rotate": { /** degrees, counter-clockwise */ angle?: number; cx?: number; /** page pivot; default the box centre */ cy?: number }
   /** Transform points. Transforms points (default the selected ones) by a page-space affine matrix. Params: {matrix: [a, b, c, d, e, f] (page space), vertices? (default the selected points)}. Changes the document. */
-  "vector.edit.transform": { /** [a, b, c, d, e, f]; page space */ matrix?: Array<number>; vertices?: Array<number> }
+  "vector.edit.transform": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ index?: number; /** [a, b, c, d, e, f]; page space */ matrix?: Array<number>; vertices?: Array<number> }
   /** Width point. Adds, moves, resizes or removes a variable-width point on the edited path's stroke. Params: {action?: add|set|remove, index?, t? (0-1 along the path), width? (px), scale? (? stroke weight, instead of width), side?: left|right (only that side of the path changes)} ? add needs t (width defaults to the current one); set moves or resizes point `index`; with `side` only that side of the path changes (looking along it): `width` is then the distance from the centre line to that edge and `scale` that side's scale (? stroke weight, as if both sides were that wide). Changes the document. */
   "vector.edit.widthPoint": { action?: "add" | "set" | "remove"; /** a position counted from 0 (the first is 0) */ index?: number; /** ? stroke weight, instead of width */ scale?: number; /** only that side of the path changes */ side?: "left" | "right"; t?: number; width?: number }
   /** Shape builder regions. Answers the regions the shape builder sees among the selected or given layers, with their paths, sources and covering paints. Params: {ids?} ? {sources (bottom to top), regions: [{index, path (SVG, page), sources (top-most first), parts: [{id, stroke}] (the fills and outlined strokes covering it, top-most first), bounds [x, y, w, h], point [x, y] inside}]} ? visible strokes take part as their outlined areas, so stroked lines and open paths split regions. */
@@ -1124,7 +1124,7 @@ export interface FigCommands extends CommandMap {
   /** Inspect assets. Answers the layers in and under the selection to hand over as files: those with export settings, icons and images. Params: {ids? (default the selection)} ? {assets: [{id, name, kind: export|icon|image, exports}]}  the layers in and under them to hand over as files: those with export settings, icons (small, vector shapes only; SVG) and images (PNG). Export them with `file.exportLayers {assets: true}`. */
   "inspect.assets": { /** default the selection */ ids?: Array<Json> }
   /** Inspect properties. Answers a layer's inspect properties (layout, auto layout, typography, fills, strokes, effects) as sections of rows. Params: {id?, colorFormat?: hex|rgb|css|hsl|hsb (default hex)} ? {sections: [{title, rows: [{label, value, color?, token?}]}]}  layout (positions from the frame around the layer), auto layout, typography, fills, strokes and effects, with style and variable names. */
-  "inspect.properties": { colorFormat?: "hex" | "rgb" | "css" | "hsl" | "hsb"; /** an id */ id?: Json }
+  "inspect.properties": { colorFormat?: "hex" | "rgb" | "css" | "hsl" | "hsb"; /** an id */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ target?: string }
   /** Component code. Answers a component's code in a language with its properties as parameters. Params: {id? (component, set or instance; default the selection), language?: react|leptos|vue|swiftui|compose|arkui (default react)} ? {component, name, set, properties: [{name, param, type, default, value? (instances)}], definition, usage? (instances; the connected snippet when the component is connected to code), connected: {importPath, name, template, import, code} | null}. */
   "inspect.componentCode": { /** an id; component, set or instance; default the selection */ id?: Json; /** default react */ language?: "react" | "leptos" | "vue" | "swiftui" | "compose" | "arkui" }
   /** Component playground. Answers what a component looks like and its code for given property values, without changing the design. Params: {id? (an instance, a component or a component set; default the selection), properties? {name: value} (variant, boolean, text and instance-swap properties, as instance.setProperties takes them), language? css|html|react|leptos|vue|swiftui|compose|arkui (default react), path? (write the preview there as a PNG), scale? (the PNG's, default 2)} ? {component, properties: [{name, type, options?, value}], language, code, width, height, path?}  the component with those property values, tried on a copy: its code and its look. Nothing in the document changes. */
@@ -1144,15 +1144,15 @@ export interface FigCommands extends CommandMap {
   /** Remove annotation. Removes one or every annotation from a layer. Params: {id?, index? (omit: every annotation on the layer)}. Changes the document. */
   "annotation.remove": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0); omit: every annotation on the layer */ index?: number }
   /** List annotations. Answers the annotations on layers or a page, optionally of one category. Params: {ids? | id? (those layers), page? (page id, or "all"; default the current page), category? (id or name, or "none": only those)} ? {annotations: [{id, name, index, label, category?: {id, name, color}, properties: [{property, label, value (null when the layer has none), token?, color?}]}]}. */
-  "annotation.list": { category?: string; /** an id; those layers; one of several alternative parameters */ id?: Json; /** those layers; one of several alternative parameters */ ids?: Array<Json>; /** page id, or "all"; default the current page */ page?: number }
+  "annotation.list": { /** read by the command beside its listed parameters */ assets?: boolean; category?: string; /** an id; those layers; one of several alternative parameters */ id?: Json; /** those layers; one of several alternative parameters */ ids?: Array<Json>; /** page id, or "all"; default the current page */ page?: number; /** read by the command beside its listed parameters */ query?: string; /** read by the command beside its listed parameters */ server?: string }
   /** Annotation categories. Answers the annotation categories with their colours and use counts. Params: {} ? {categories: [{id, name, color, count (annotations in it, every page)}]}. */
   "annotation.categories": Record<string, never>
   /** Add annotation category. Adds an annotation category with a name and colour; answers its id. Params: {name, color? (default the first unused colour)} ? {id}. Changes the document. */
   "annotation.addCategory": { /** default the first unused colour */ color?: string; name?: string }
   /** Edit annotation category. Renames or recolours an annotation category. Params: {id (id or name), name?, color?}  (rename and/or recolour). Changes the document. */
-  "annotation.editCategory": { color?: string; /** an id; id or name */ id?: Json; name?: string }
+  "annotation.editCategory": { /** read by the command beside its listed parameters */ assets?: boolean; color?: string; /** an id; id or name */ id?: Json; name?: string; /** read by the command beside its listed parameters */ page?: string; /** read by the command beside its listed parameters */ query?: string; /** read by the command beside its listed parameters */ server?: string }
   /** Delete annotation category. Deletes an annotation category; its annotations stay uncategorised. Params: {id (id or name)} ? {id, uncategorized (how many annotations were in it)}  (its annotations stay, without a category). Changes the document. */
-  "annotation.removeCategory": { /** an id; id or name */ id?: Json }
+  "annotation.removeCategory": { /** read by the command beside its listed parameters */ assets?: boolean; /** an id; id or name */ id?: Json; /** read by the command beside its listed parameters */ page?: string; /** read by the command beside its listed parameters */ query?: string; /** read by the command beside its listed parameters */ server?: string }
   /** Add dev resource. Adds a developer link (URL and name) to a layer; answers its index. Params: {id? (default the first selected layer), url (http or https), name? (default the URL without its scheme)}  a link for developers on the layer; an instance also shows its main component's ? {id, index}. Changes the document. */
   "devResource.add": { /** an id; default the first selected layer */ id?: Json; /** default the URL without its scheme */ name?: string; /** http or https */ url?: string }
   /** Edit dev resource. Edits a layer's own developer link at index. Params: {id?, index (of the layer's own), url?, name?}  ? {id, index}. Changes the document. */
@@ -1164,13 +1164,13 @@ export interface FigCommands extends CommandMap {
   /** Add measurement. Keeps a measurement on the canvas between two layers or across one side of a layer. Params: {from? (default the first selected layer), to? (a layer on the same page), side? (top|right|bottom|left)}  keeps a measurement on the canvas: between `from` and `to`, across one side of `from`, or (neither) to the layer around it; Dev Mode draws it and it follows the layers ? {from, index, lines}. Changes the document. */
   "devMode.addMeasurement": { /** an id (a number, or its digits as text) */ from?: Json; side?: "top" | "right" | "bottom" | "left"; /** an id (a number, or its digits as text) */ to?: Json }
   /** Remove measurement. Removes one or every kept measurement starting from a layer. Params: {from? (default the first selected layer), index? (omit: every measurement starting from the layer)}  ? {removed}. Changes the document. */
-  "devMode.removeMeasurement": { /** an id (a number, or its digits as text) */ from?: Json; /** a position counted from 0 (the first is 0); omit: every measurement starting from the layer */ index?: number }
+  "devMode.removeMeasurement": { /** an id (a number, or its digits as text) */ from?: Json; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** a position counted from 0 (the first is 0); omit: every measurement starting from the layer */ index?: number }
   /** List measurements. Answers the kept measurements on a page, with their lines and labels. Params: {page? (default the current page), id? (only those from or to this layer)}  ? [{from, fromName, index, to?, toName?, side?, labels, lines: [{x0, y0, x1, y1, label, dashed}]}] (page space). */
-  "devMode.measurements": { /** an id; only those from or to this layer */ id?: Json; /** default the current page */ page?: number }
+  "devMode.measurements": { /** an id; only those from or to this layer */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** default the current page */ page?: number }
   /** Measure distances. Answers the distance lines from the selection to another layer (default its parent), as Alt-hover shows. Params: {ids? (default selection), to? (layer id; default the parent)} ? {lines: [{x0, y0, x1, y1, label, dashed}]} (page space; what Alt-hover shows). */
-  "measure.distances": { /** default selection */ ids?: Array<Json>; /** an id (a number, or its digits as text) */ to?: Json }
+  "measure.distances": { /** read by the command beside its listed parameters */ id?: Json; /** default selection */ ids?: Array<Json>; /** an id (a number, or its digits as text) */ to?: Json }
   /** Measure auto layout padding. Answers the padding and gap lines of an auto layout frame, as Shift+Alt-hover shows. Params: {id? (an auto layout frame or a child; default the selection)} ? {frame, lines} (padding and gaps; what Shift+Alt-hover shows). */
-  "measure.padding": { /** an id; an auto layout frame or a child; default the selection */ id?: Json }
+  "measure.padding": { /** an id; an auto layout frame or a child; default the selection */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json> }
   /** List branches. Answers the file's branches, oldest first, with their names, times and states. Params: {}  the branches of the file shown (or of the file a branch tab belongs to), oldest first ? [{id, name, time (Unix seconds), state: active|merged|archived, index? (its open tab)}]. */
   "branch.list": Record<string, never>
   /** Update from main. Brings the main file's changes since the branch was made into the branch, with conflict resolutions. Params: {id?, resolutions? ({<conflict key>: "branch" | "main"})}  bring the main file's changes since the branch was made into the branch (a version in its history); refused while a conflict has no resolution. Not undoable (the branch tab's undo history starts over) ? {updated, changes, conflicts}. Changes the document. */
@@ -1188,35 +1188,35 @@ export interface FigCommands extends CommandMap {
   /** Widget menu. Picks an item (toggle or colour) from a widget's property menu. Params: {id (a widget or a layer in one), item (see widget.list), value? (a toggle: on or off, default the opposite of now; a colour: one of its options), fuel?} picks an item of the widget's property menu: the plugin is called back; one undo step ? like widget.insert. Changes the document. */
   "widget.menu": { fuel?: number; /** an id; a widget or a layer in one */ id?: Json; /** see widget.list */ item?: number; value?: Json }
   /** List widgets. Answers the widgets in the file with their plugin, state, targets, fields and menu. Params: {} ? {widgets: [{id, plugin, name, page, state, targets, fields, menu}]}. */
-  "widget.list": Record<string, never>
+  "widget.list": { /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** read by the command beside its listed parameters */ item?: string; /** read by the command beside its listed parameters */ value?: string }
   /** Fill copies with data. Repeats a frame once per data row, filling named text layers, fills and visibility from each row. Params: {id (the frame to repeat), rows: [{<layer name>: text | {text?, fill? (#rrggbb), visible?, fit? (true or text.fit's {maxLines?, minSize?, orphans?}: size the text to its box)}, name? (the copy's name)}] (every layer with that name in the copy; up to 500 rows), gap? (between copies, placed in a row to the right; default 100), formats? ([{name?, width, height}]: each row once per size, the copy resized so its auto layout reflows and named <name>-<format name>; e.g. feed 1080?1350, story 1080?1920, square 1080?1080), dir? (export each copy there as <name>.<format>), format? (png|jpg|webp|svg|pdf; default png), scale? (default 1)}  one undo step  ? {ids (the copies, in row order), missing (keys no layer is named), files? (paths written, one per copy: same file names get a numbered suffix), errors? ([{id, path, error}] for exports that failed; the copies stay)}. Changes the document. */
   "data.fill": { dir?: "right" | "down"; format?: { [key: string]: Json }; formats?: { [key: string]: Json }; gap?: number; /** an id; the frame to repeat */ id?: Json; /** #rrggbb; true or text.fit's {maxLines?, minSize?, orphans?}: size the text to its box; the copy's name; every layer with that name in the copy; up to 500 rows */ rows?: Array<{ name?: string }>; /** default 1 */ scale?: number }
   /** Fit text to its box. Shrinks the font of text layers so their text fits the box, within a minimum size and line limit. Params: {ids? (text layers; default the selection), maxLines? (default: no limit but the box height), minSize? (smallest font size, px; default 60% of the current), orphans? (avoid a one-word last line; default true)}  needs a fixed width (fixed or auto-height text)  ? {fitted: [{id, fontSize, lines, fits, orphan}]}. Changes the document. */
   "text.fit": { /** text layers; default the selection */ ids?: Array<Json>; maxLines?: number; minSize?: number; orphans?: boolean }
   /** Sticky note. Adds a sticky note with text and colour on a board; answers its id. Params: {x, y (its top-left, in the parent), text?, color? (yellow|orange|red|pink|violet|blue|green|gray or hex; default the sticky tool's), author? (a name, or false for none; default yours), parent?} ? {id, text}. Changes the document. */
-  "board.sticky": { author?: Json; /** yellow|orange|red|pink|violet|blue|green|gray or hex; default the sticky tool's */ color?: string; /** an id (a number, or its digits as text) */ parent?: Json; text?: string; x?: number; /** its top-left, in the parent */ y?: number }
+  "board.sticky": { author?: Json; /** yellow|orange|red|pink|violet|blue|green|gray or hex; default the sticky tool's */ color?: string; /** read by the command beside its listed parameters */ id?: Json; /** an id (a number, or its digits as text) */ parent?: Json; text?: string; x?: number; /** its top-left, in the parent */ y?: number }
   /** Next sticky note. Adds a sticky of the same colour beside another (right, below, left or above). Params: {id? (a sticky; default the selected or edited one), side?: right|below|left|above (default right), edit? (start typing in it; default false)} ? {id, text}  a sticky of the same colour beside it. Changes the document. */
   "board.nextSticky": { edit?: boolean; /** an id; a sticky; default the selected or edited one */ id?: Json; /** default right */ side?: "right" | "below" | "left" | "above" }
   /** Shape with text. Adds a shape with text (rectangle, ellipse, diamond, speech bubble and more) on a board. Params: {shape: rectangle|roundedRectangle|ellipse|diamond|triangle|speechBubble|chevron, x, y, width?, height? (default 160), text?, color?, parent?} ? {id, text}. Changes the document. */
-  "board.shape": { color?: string; /** default 160 */ height?: number; /** an id (a number, or its digits as text) */ parent?: Json; shape?: "rectangle" | "roundedRectangle" | "ellipse" | "diamond" | "triangle" | "speechBubble" | "chevron"; text?: string; width?: number; x?: number; y?: number }
+  "board.shape": { color?: string; /** default 160 */ height?: number; /** read by the command beside its listed parameters */ id?: Json; /** an id (a number, or its digits as text) */ parent?: Json; shape?: "rectangle" | "roundedRectangle" | "ellipse" | "diamond" | "triangle" | "speechBubble" | "chevron"; text?: string; width?: number; x?: number; y?: number }
   /** Connector. Connects two layers or page points with a straight, elbow or curved connector with caps. Params: {from, to (each a layer id or {x, y} on the page), fromSide?, toSide? (auto|top|right|bottom|left), style?: straight|elbow|curved, startCap?, endCap? (none|lineArrow|triangleArrow|circleFilled|diamondFilled...; default an arrow at the end), label?} ? {id, label?}  a line that follows the layers it joins. Changes the document. */
-  "board.connector": { endCap?: string; from?: Json; fromSide?: "auto" | "top" | "right" | "bottom" | "left"; label?: string; startCap?: string; style?: "straight" | "elbow" | "curved"; to?: Json; toSide?: "auto" | "top" | "right" | "bottom" | "left" }
+  "board.connector": { endCap?: string; from?: Json; fromSide?: "auto" | "top" | "right" | "bottom" | "left"; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; label?: string; startCap?: string; style?: "straight" | "elbow" | "curved"; to?: Json; toSide?: "auto" | "top" | "right" | "bottom" | "left" }
   /** Reattach connector. Moves one end of a connector to another layer or a free page point. Params: {id? (a connector; default the selection), end: from|to, target (a layer id, or {x, y} on the page to leave the end free), side? (auto|top|right|bottom|left)} ? {id}  moves one end of a connector. Changes the document. */
   "board.reattach": { end?: "from" | "to"; /** an id; a connector; default the selection */ id?: Json; side?: "auto" | "top" | "right" | "bottom" | "left"; target?: Json }
   /** Connector label. Sets (or removes) a connector's label text. Params: {id (a connector; default the selection), text (empty removes it)} ? {id, label}. Changes the document. */
-  "board.label": { /** an id; a connector; default the selection */ id?: Json; /** empty removes it */ text?: string }
+  "board.label": { /** an id; a connector; default the selection */ id?: Json; /** read by the command beside its listed parameters */ ids?: Array<Json>; /** empty removes it */ text?: string }
   /** Stamp. Places a stamp badge (thumbs up, heart, +1, star, question, check) on a board. Params: {x, y (its centre on the page), stamp: thumbsUp|heart|plusOne|star|question|check} ? {id}  a badge with your name on hover. Changes the document. */
-  "board.stamp": { stamp?: "thumbsUp" | "heart" | "plusOne" | "star" | "question" | "check"; x?: number; /** its centre on the page */ y?: number }
+  "board.stamp": { /** read by the command beside its listed parameters */ id?: Json; stamp?: "thumbsUp" | "heart" | "plusOne" | "star" | "question" | "check"; x?: number; /** its centre on the page */ y?: number }
   /** Marker stroke. Draws a marker or highlighter stroke from SVG path data or points on a board. Params: {path? (SVG path data on the page), points?: [[x,y]] (instead of path), highlighter? (wide and see-through), color?, select? (default true)} ? {id}. Changes the document. */
   "board.ink": { color?: string; highlighter?: boolean; path?: string; /** instead of path */ points?: Array<Array<number>>; select?: boolean }
   /** Board color. Sets the board colour of stickies, shapes, connectors and ink. Params: {ids?, color (a board colour name or hex)}  stickies and shapes take it as their fill, connectors and ink as their line. Changes the document. */
   "board.setColor": { /** a board colour name or hex */ color?: string; ids?: Array<Json> }
   /** Board style. Sets board styles: shape kind and font size of shapes, connector style and caps. Params: {ids?, shape? (shapes with text), fontSize? (their text), style?: straight|elbow|curved, startCap?, endCap? (connectors)}. Changes the document. */
-  "board.setStyle": { endCap?: string; fontSize?: number; ids?: Array<Json>; shape?: string; startCap?: string; style?: "straight" | "elbow" | "curved" }
+  "board.setStyle": { endCap?: string; fontSize?: number; /** read by the command beside its listed parameters */ id?: Json; ids?: Array<Json>; shape?: string; startCap?: string; style?: "straight" | "elbow" | "curved"; /** read by the command beside its listed parameters */ text?: string }
   /** Sticky note. Chooses the sticky note tool; use board.sticky to add one directly. Params: {color?} (a click places a sticky and starts typing in it). */
-  "tool.sticky": { color?: string }
+  "tool.sticky": { color?: string; /** read by the command beside its listed parameters */ id?: Json; /** read by the command beside its listed parameters */ target?: string }
   /** Shapes. Chooses the board shape tool; use board.shape to add one directly. Params: {shape?} (a click places a shape with text). */
-  "tool.shape": { shape?: string }
+  "tool.shape": { /** read by the command beside its listed parameters */ id?: Json; shape?: string; /** read by the command beside its listed parameters */ target?: string; /** read by the command beside its listed parameters */ text?: string }
   /** Connector. Chooses the connector tool; use board.connector to connect directly. Params: {style?: straight|elbow|curved} (drag from one object to another). */
   "tool.connector": { style?: "straight" | "elbow" | "curved" }
   /** Marker. Chooses the marker tool; use board.ink to draw directly. Params: {color?}. */
@@ -1226,25 +1226,25 @@ export interface FigCommands extends CommandMap {
   /** Eraser. Chooses the board eraser that removes marker and highlighter strokes. Params: {} (drag over marker and highlighter strokes to remove them). */
   "tool.eraser": Record<string, never>
   /** Stamp. Chooses the stamp tool; use board.stamp to place one directly. Params: {stamp?} (a click places the stamp). */
-  "tool.stamp": { stamp?: string }
+  "tool.stamp": { /** read by the command beside its listed parameters */ id?: Json; stamp?: string; /** read by the command beside its listed parameters */ target?: string }
   /** Timer. Starts, pauses, resumes, extends or stops the board's countdown timer; answers its state. Params: {action: start|pause|resume|add|stop, minutes? (start: default 5; add: default 1; up to 1440)} ? the timer's state (as board.timerState)  one countdown per board, the same for everyone in a live session. Changes the document. */
   "board.timer": { action?: "start" | "pause" | "resume" | "add" | "stop"; minutes?: number }
   /** Timer state. Answers the board timer's state and time left. Params: {} ? {state: off|running|paused|done, left (ms), text (m:ss), ends? (ms since 1970, while running)}. */
-  "board.timerState": Record<string, never>
+  "board.timerState": { /** read by the command beside its listed parameters */ text?: string }
   /** Voting session. Runs a voting session: starts it, casts or retracts a vote, ends or clears it. Params: {action: start|cast|retract|end|clear, votes? (start: per person, 1?99, default 3), on? (start: all|stickies|selection; default all), ids? (start with on: selection; default the selection), id (cast, retract: the object), voter? (default you)} ? the vote's state (as board.voteResults)  one vote at a time; others' votes show once it ends. Changes the document. */
   "board.vote": { action?: "start" | "cast" | "retract" | "end" | "clear"; /** an id; cast, retract: the object */ id?: Json; /** start with on: selection; default the selection */ ids?: Array<Json>; on?: "all" | "stickies" | "selection"; voter?: string; votes?: number }
   /** Voting results. Answers the voting session's state, your votes and, once ended, the ranked results. Params: {voter?} ? {state: off|running|ended, votesPerPerson, on, by, left (your votes left), mine [{id, votes}], voters, results? [{id, name, votes, rank}] (once ended, most votes first)}. */
-  "board.voteResults": { voter?: string }
+  "board.voteResults": { /** read by the command beside its listed parameters */ id?: Json; voter?: string }
   /** Table. Adds a table of rows and columns (optionally filled from cells) on a board. Params: {rows?, columns? (default 3 ? 3, or the size of `cells`; at most 50 ? 20), cells? ([[text...]...] row by row), x?, y? (its top-left on the page; default centred in the view)} ? {id, rows, columns, cells: [[text id...]...]}. Changes the document. */
   "board.table": { cells?: Array<Array<Json>>; /** default 3 ? 3, or the size of `cells`; at most 50 ? 20 */ columns?: number; rows?: number; x?: number; /** its top-left on the page; default centred in the view */ y?: number }
   /** Edit table. Adds or removes a row or column of a board table. Params: {id? (a table or a layer in one; default the selection), action: addRow|addColumn|removeRow|removeColumn, index? (where the new one goes, or which one goes; default the last)} ? {id, rows, columns, cells}. Changes the document. */
   "board.tableEdit": { action?: "addRow" | "addColumn" | "removeRow" | "removeColumn"; /** an id; a table or a layer in one; default the selection */ id?: Json; /** a position counted from 0 (the first is 0); where the new one goes, or which one goes; default the last */ index?: number }
   /** Board template. Places a board template's sections, stickies, shapes and connectors; answers the ids. Params: {name (a template id from board.templates), x?, y? (its top-left on the page; default centred in the view)} ? {name, ids}  its sections, stickies, shapes, connectors and text, selected. Changes the document. */
-  "board.template": { /** a template id from board.templates */ name?: string; x?: number; /** its top-left on the page; default centred in the view */ y?: number }
+  "board.template": { /** read by the command beside its listed parameters */ id?: Json; /** a template id from board.templates */ name?: string; /** read by the command beside its listed parameters */ text?: string; x?: number; /** its top-left on the page; default centred in the view */ y?: number }
   /** List board templates. Answers the board templates with their names, descriptions and sizes. Params: {} ? [{id, name, description, width, height}]. */
-  "board.templates": Record<string, never>
+  "board.templates": { /** read by the command beside its listed parameters */ id?: Json }
   /** Render preview. Renders a page, a part, or a diagnostic's target layer of the design as a PNG preview, framed to that content; answers the image with its size, scale and bounds. Use it to look at the result of an edit. Params: {page? (counted from 1; default the current page), slide? (a page counted from 0), target? {path: "layer:<id>", page?} (a diagnostic's target), scale? (up to 2, default 1), maxSize? (pixels on the longer side, up to 4096, default 2048)} ? {png (base64), mimeType, width, height, scale, page, bounds}. */
-  "file.render": { /** The most pixels on the longer side, 1 to 4096; default 2048. A larger area is drawn at a smaller scale. */ maxSize?: number; /** The page to draw, counted from 1; default the current page. */ page?: number; /** Device pixels per canvas unit, above 0 and up to 2; default 1. */ scale?: number; /** The page to draw, counted from 0 (what hosts send for one part of a document). */ slide?: number; /** A diagnostic's target: `path` `layer:<id>` draws that layer where it is on its page, `page` (from 1) a page. */ target?: { [key: string]: Json } }
+  "file.render": { /** read by the command beside its listed parameters */ commands?: Array<Json>; /** read by the command beside its listed parameters */ id?: Json; /** The most pixels on the longer side, 1 to 4096; default 2048. A larger area is drawn at a smaller scale. */ maxSize?: number; /** The page to draw, counted from 1; default the current page. */ page?: number; /** Device pixels per canvas unit, above 0 and up to 2; default 1. */ scale?: number; /** The page to draw, counted from 0 (what hosts send for one part of a document). */ slide?: number; /** A diagnostic's target: `path` `layer:<id>` draws that layer where it is on its page, `page` (from 1) a page. */ target?: { [key: string]: Json } }
 }
 
 /** A Fig file opened with `openDocument<Fig, FigCommands>`. */

@@ -397,7 +397,7 @@ export interface DesignCommands extends CommandMap {
   /** Document Presets. Lists the document presets (page sizes and settings) that file.new accepts. Params: {}. */
   "file.presets": Record<string, never>
   /** Open. Opens a .kdesign or .idml file from a path; fonts in a Document Fonts folder beside it load too. Params: {path} ? .kdesign or .idml; the fonts in a `Document Fonts` folder beside it load first ? {index, documentFonts: faces loaded, warnings: font files skipped}. Changes the document. */
-  "file.open": { path?: Json }
+  "file.open": { /** read by the command beside its listed parameters */ base64?: string; /** read by the command beside its listed parameters */ name?: string; path?: Json }
   /** Open Bytes. Opens a document from base64 bytes (Kition Design JSON or an IDML package) under a name. Params: {name, base64} ? Kition Design JSON or an IDML package. Changes the document. */
   "file.openBytes": { base64?: string; name?: string }
   /** Save. Saves the document to its path, or to the given path, as .kdesign. Params: {path?}. Changes the document. */
@@ -423,25 +423,25 @@ export interface DesignCommands extends CommandMap {
   /** Export Selection as Snippet. Exports the selected items with their stories, styles and images as a .kdesign snippet, to a path or as base64. Params: {path?} ? the selected items (with their stories, styles and images) as a .kdesign snippet; no path: {base64}. */
   "snippet.export": { path?: Json }
   /** Import Options: Styles. Reads a document's paragraph and character styles before importing them, listing the names and conflicts; changes nothing. Params: {path | base64, name} ? {paragraph: [name], character: [name], conflicts: [name]} ? the styles a Word/RTF file brings (for styleMap / styleConflicts). */
-  "place.styles": { name?: string }
+  "place.styles": { /** one of several alternative parameters */ base64?: Json; name?: string; /** one of several alternative parameters */ path?: Json }
   /** Place Snippet. Places a snippet's items on a spread, at their own positions unless x and y are given. Params: {path | base64, spread?, x?, y?} ? items keep their positions unless x/y given (top-left). Changes the document. */
-  "snippet.place": { spread?: Json; x?: number; y?: number }
+  "snippet.place": { /** one of several alternative parameters */ base64?: Json; /** read by the command beside its listed parameters */ name?: string; /** one of several alternative parameters */ path?: Json; spread?: Json; x?: number; y?: number }
   /** Load Place Cursor. Loads a graphic into the place cursor so place.drop puts it on the page. Params: {path | base64, name?} ? load a graphic into the place cursor (then click/drag with the placeGun tool). Changes the document. */
-  "place.load": { name?: string }
+  "place.load": { /** one of several alternative parameters */ base64?: Json; name?: string; /** one of several alternative parameters */ path?: Json }
   /** Place Loaded Graphic. Places the loaded graphic at a point, into a rectangle, or into a frame. Params: {spread?, x, y, rect?: [x0,y0,x1,y1], frame?: id}. Changes the document. */
   "place.drop": { /** an id */ frame?: number; /** [x0, y0, x1, y1] */ rect?: Array<number>; spread?: Json; x?: number; y?: number }
   /** Place. Places a graphic or text file (by path or base64) on a spread or into a frame, at a position and size, with the page of a PDF. Params: {path?|base64?, name?, frame?: id (place into), spread?, x?, y?, width?, pdfPage?: n (1-based, Image Import Options), pdfCrop?: crop|trim|bleed|art|media, layoutPage?: n (IDML / .kdesign: that page's objects as a group)} ? places an image (into the selected empty frame if any); text files (.txt, .docx, .rtf, .md) and Excel workbooks (.xlsx, as a table) go into the insertion point, the selected frame or a new frame on `page`/`rect` ? {autoflow?: adds pages with threaded frames until the text fits, removeStyles?, styleMap?: {imported name: document style}, styleConflicts?: useExisting|redefine|autoRename}. Changes the document. */
-  "file.place": { /** an id; place into */ frame?: number; /** IDML / .kdesign: that page's objects as a group */ layoutPage?: number; name?: string; pdfCrop?: "crop" | "trim" | "bleed" | "art" | "media"; /** 1-based, Image Import Options */ pdfPage?: number; spread?: Json; width?: number; x?: number; y?: number }
+  "file.place": { /** read by the command beside its listed parameters */ autoflow?: boolean; /** one of several alternative parameters */ base64?: Json; /** an id; place into */ frame?: number; /** read by the command beside its listed parameters */ height?: number; /** IDML / .kdesign: that page's objects as a group */ layoutPage?: number; name?: string; /** read by the command beside its listed parameters */ page?: number; /** one of several alternative parameters */ path?: Json; pdfCrop?: "crop" | "trim" | "bleed" | "art" | "media"; /** 1-based, Image Import Options */ pdfPage?: number; /** read by the command beside its listed parameters */ rect?: Array<Json>; spread?: Json; width?: number; x?: number; y?: number }
   /** Export IDML. Writes the document as an IDML package to a path, or answers it as base64. Params: {path?, embedImages?: true} ? writes an IDML package to `path`, or returns {base64} without a path. */
-  "file.exportIdml": { embedImages?: boolean; path?: Json }
+  "file.exportIdml": { dir?: Json; embedImages?: boolean; /** read by the command beside its listed parameters */ idml?: boolean; /** read by the command beside its listed parameters */ instructions?: string; path?: Json; /** read by the command beside its listed parameters */ pdf?: boolean }
   /** Open IDML. Opens an IDML package (path or base64) as a new document. Params: {path | base64, name?} ? opens an IDML package as a new document (linked images are read next to the file or from its Links/ folder; the fonts in a `Document Fonts` folder beside it load first) ? {index, documentFonts, warnings}. Changes the document. */
-  "file.openIdml": { name?: string }
+  "file.openIdml": { /** one of several alternative parameters */ base64?: Json; dir?: Json; /** read by the command beside its listed parameters */ idml?: boolean; /** read by the command beside its listed parameters */ instructions?: string; name?: string; /** one of several alternative parameters */ path?: Json; /** read by the command beside its listed parameters */ pdf?: boolean }
   /** Export PDF. Exports pages (default all) to PDF with a preset, marks and bleed, to a path or as base64. Params: {path?, pages?: "1-3,5" | [1,3] (1-based positions; default all), flatten?: high|medium|low|ppi (Transparency Flattener: spreads with transparency are rasterised), spreads?: bool, fullScreen?: bool, bookmarksPanel?: bool, pageLayout?: single|continuous|twoUp|twoUpCover|twoUpContinuous, view?: fitPage|fitWidth|actual, advanceSeconds?: number (interactive PDF), bleed?: bool (document bleed), marks?: bool | {crop?, bleed?, pageInfo?, weight?, offset?}, standard?: "none"|"x4"|"a2b", compressImages?: bool, tagged?: bool (structure tree: stories as paragraphs, figures with alt text), media?: bool (interactive: embed placed video and sound), title?, author?} ? {path, bytes, pages, warnings} (no path: {base64, ...}). Changes the document. */
-  "file.exportPdf": { /** interactive PDF */ advanceSeconds?: number; author?: string; /** document bleed */ bleed?: boolean; bookmarksPanel?: boolean; compressImages?: boolean; /** Transparency Flattener: spreads with transparency are rasterised */ flatten?: "high" | "medium" | "low" | "ppi"; fullScreen?: boolean; marks?: Json; /** interactive: embed placed video and sound */ media?: boolean; pageLayout?: "single" | "continuous" | "twoUp" | "twoUpCover" | "twoUpContinuous"; pages?: Json; path?: Json; spreads?: boolean; standard?: "none" | "x4" | "a2b"; /** structure tree: stories as paragraphs, figures with alt text */ tagged?: boolean; title?: string; view?: "fitPage" | "fitWidth" | "actual" }
+  "file.exportPdf": { /** interactive PDF */ advanceSeconds?: number; author?: string; /** document bleed */ bleed?: boolean; bookmarksPanel?: boolean; compressImages?: boolean; /** Transparency Flattener: spreads with transparency are rasterised */ flatten?: "high" | "medium" | "low" | "ppi"; fullScreen?: boolean; marks?: Json; /** interactive: embed placed video and sound */ media?: boolean; pageLayout?: "single" | "continuous" | "twoUp" | "twoUpCover" | "twoUpContinuous"; pages?: Json; path?: Json; spreads?: boolean; standard?: "none" | "x4" | "a2b"; /** read by the command beside its listed parameters */ story?: number; /** structure tree: stories as paragraphs, figures with alt text */ tagged?: boolean; title?: string; view?: "fitPage" | "fitWidth" | "actual" }
   /** Export EPUB (Reflowable). Exports a reflowable EPUB with title, author, language and cover, to a path or as base64. Params: {path?, title?, author?, language?: "en", cover?: bool (the first page as the cover image), fixedLayout?: bool (pre-paginated: each page as an image with its text)} ? {path, bytes} (no path: {base64, bytes}). Changes the document. */
   "file.exportEpub": { author?: string; /** the first page as the cover image */ cover?: boolean; /** pre-paginated: each page as an image with its text */ fixedLayout?: boolean; /** like en */ language?: string; path?: Json; title?: string }
   /** Export EPUB (Fixed Layout). Exports a fixed-layout (pre-paginated) EPUB, to a path or as base64. Params: {path?, title?, author?, language?} ? pre-paginated EPUB ? {path, bytes} (no path: {base64, bytes}). Changes the document. */
-  "file.exportFixedEpub": { author?: string; language?: string; path?: Json; title?: string }
+  "file.exportFixedEpub": { author?: string; /** read by the command beside its listed parameters */ cover?: boolean; /** read by the command beside its listed parameters */ fixedLayout?: boolean; language?: string; path?: Json; title?: string }
   /** Print Booklet. Exports printer spreads for a booklet (saddle stitch or two-up) as PDF. Params: {path?, type?: saddleStitch|twoUpConsecutive, spaceBetween? (pt)} ? printer spreads as PDF (pages imposed in booklet order) ? {path, bytes, sheets} (no path: {base64, ...}). Changes the document. */
   "file.printBooklet": { path?: Json; /** points */ spaceBetween?: number; type?: "saddleStitch" | "twoUpConsecutive" }
   /** Export HTML. Exports one self-contained HTML page with inline styles and embedded images. Params: {path?, title?, language?} ? one self-contained page (styles inline, images embedded), stories and graphics in reading order ? {path, bytes} (no path: {text, bytes}). Changes the document. */
@@ -449,17 +449,17 @@ export interface DesignCommands extends CommandMap {
   /** Export Text. Exports a story's text as plain text, RTF or Tagged Text. Params: {path?, format?: "txt"|"rtf"|"tagged" (Tagged Text; default from the path, else txt), story?, frame?} ? the story being edited or of the selected frame ? {path, bytes} (no path: {text, bytes}). Changes the document. */
   "file.exportText": { /** Tagged Text; default from the path, else txt */ format?: "txt" | "rtf" | "tagged"; frame?: number; path?: Json; /** a story id from document.inspect */ story?: number }
   /** Export Image. Exports pages (default all) as PNG or JPEG images at a resolution, to a folder or as base64. Params: {format?: png|jpeg (default png), pages?: "1-3,5" | [1,3] (1-based; default all), ppi?: 72 (pixels per inch: 72 = one pixel per point), background?: paper|transparent (PNG only; default paper), quality?: 1..100 (JPEG, default 90), bleed?: bool, sizes?: bool (every size: the first page of the original and of each alternate layout, instead of `pages`)} ? {format, files: [{page, layout (its alternate layout's name, null in the original), base64, width, height}]}. Changes the document. */
-  "file.exportImage": { /** PNG only; default paper */ background?: "paper" | "transparent"; bleed?: boolean; /** default png */ format?: "png" | "jpeg"; pages?: Json; /** pixels per inch: 72 = one pixel per point */ ppi?: number; /** 1 to 100; JPEG, default 90 */ quality?: number; /** every size: the first page of the original and of each alternate layout, instead of `pages` */ sizes?: boolean }
+  "file.exportImage": { /** PNG only; default paper */ background?: "paper" | "transparent"; bleed?: boolean; /** default png */ format?: "png" | "jpeg"; pages?: Json; /** pixels per inch: 72 = one pixel per point */ ppi?: number; /** 1 to 100; JPEG, default 90 */ quality?: number; /** every size: the first page of the original and of each alternate layout, instead of `pages` */ sizes?: boolean; /** read by the command beside its listed parameters */ story?: number }
   /** Undo. Undoes the last step of the caller's own scope (an agent undoes its own edits, not the person's). Params: {"scope":"person|agent"?}. Changes the document. */
-  "edit.undo": { scope?: "person" | "agent" }
+  "edit.undo": { scope?: "person" | "agent"; /** read by the command beside its listed parameters */ story?: number }
   /** Redo. Redoes the last undone step of the caller's own scope. Params: {"scope":"person|agent"?}. Changes the document. */
-  "edit.redo": { scope?: "person" | "agent" }
+  "edit.redo": { scope?: "person" | "agent"; /** read by the command beside its listed parameters */ story?: number }
   /** Select. Selects objects by id, adding to the selection or selecting their content when asked. Params: {ids: [id], add?: bool, content?: bool}. Changes the document. */
   "selection.set": { add?: boolean; content?: boolean; ids?: Array<number> }
   /** Toggle Selection. Adds an object to the selection, or removes it if it is selected. Params: {id}. Changes the document. */
   "selection.toggle": { /** an id */ id?: Json }
   /** Select All. Selects all items on the active spreads, or all text when editing a story. Params: {} ? all items on the active spreads, or all text in the story. Changes the document. */
-  "edit.selectAll": Record<string, never>
+  "edit.selectAll": { /** read by the command beside its listed parameters */ story?: number }
   /** Deselect All. Clears the selection; no object stays selected. Params: {}. Changes the document. */
   "edit.deselectAll": Record<string, never>
   /** Clear. Deletes the selected items (or the given ids), or the selected text. Params: {ids?} ? delete selected items (or the selected text). Changes the document. */
@@ -485,9 +485,9 @@ export interface DesignCommands extends CommandMap {
   /** Delete Endnote. Deletes an endnote's reference and text, by its story and id. Params: {story, id} ? removes the reference and its text. Changes the document. */
   "endnote.delete": { /** an id */ id?: Json; /** a story id from document.inspect */ story?: number }
   /** Endnotes. Lists the endnotes in numbering order with their story, id, number and text. Params: {} ? [{story, id, number, text}] in numbering order. */
-  "endnote.list": Record<string, never>
+  "endnote.list": { /** read by the command beside its listed parameters */ number?: string }
   /** Document Endnote Options. Sets endnote numbering style, start, prefix and suffix, heading and styles. Params: {style?: arabic|upperRoman|lowerRoman|upperLetters|lowerLetters, startAt?, prefix?, suffix?, heading?, headingStyle?, paraStyle?, separator?} ? the options. Changes the document. */
-  "endnote.options": { heading?: string; /** a paragraph style name */ headingStyle?: string; /** a paragraph style name */ paraStyle?: string; prefix?: string; separator?: string; startAt?: number; style?: "arabic" | "upperRoman" | "lowerRoman" | "upperLetters" | "lowerLetters"; suffix?: string }
+  "endnote.options": { heading?: string; /** a paragraph style name */ headingStyle?: string; /** a paragraph style name */ paraStyle?: string; prefix?: string; separator?: string; startAt?: number; style?: "arabic" | "upperRoman" | "lowerRoman" | "upperLetters" | "lowerLetters"; suffix?: string; /** read by the command beside its listed parameters */ text?: string }
   /** New Note. Adds an editorial note (not printed) with text and author at the insertion point; answers its story and id. Params: {text, author?} ? at the insertion point ? {story, id}. Changes the document. */
   "note.new": { author?: string; text?: string }
   /** Edit Note. Changes a note's text or author. Params: {story, id, text?, author?}. Changes the document. */
@@ -499,19 +499,19 @@ export interface DesignCommands extends CommandMap {
   /** Notes. Lists the notes in story order with their position, author and text. Params: {} ? [{story, id, at, author, text}] in story order. */
   "note.list": Record<string, never>
   /** Create Frame. Creates a frame on a spread from a rectangle [x0, y0, x1, y1] in spread coordinates, with a shape and content type (graphic, text, unassigned); answers its id. Params: {spread?, rect: [x0,y0,x1,y1] (spread coords), shape?: rectangle|ellipse|polygon, content?: graphic|text|unassigned, sides?: 6, text?: string, caret?: bool, vertical?: bool (text: a new vertical story)}. Changes the document. */
-  "frame.create": { caret?: boolean; content?: "graphic" | "text" | "unassigned"; /** [x0, y0, x1, y1]; spread coords */ rect?: Array<number>; shape?: "rectangle" | "ellipse" | "polygon"; sides?: number; spread?: Json; text?: string; /** text: a new vertical story */ vertical?: boolean }
+  "frame.create": { caret?: boolean; content?: "graphic" | "text" | "unassigned"; /** [x0, y0, x1, y1]; spread coords */ rect?: Array<number>; shape?: "rectangle" | "ellipse" | "polygon"; sides?: number; spread?: Json; /** read by the command beside its listed parameters */ starInset?: number; text?: string; /** text: a new vertical story */ vertical?: boolean }
   /** Create Line. Creates a straight line between two points on a spread; answers its id. Params: {spread?, a: [x,y], b: [x,y]}. Changes the document. */
   "line.create": { a?: Array<number>; b?: Array<number>; spread?: Json }
   /** Move. Moves objects (default: the selection) by dx and dy points, optionally as a copy or to another spread. Params: {dx, dy, copy?: bool, ids?, toSpread?}. Changes the document. */
   "transform.move": { copy?: boolean; dx?: number; dy?: number; ids?: Array<Json>; toSpread?: Json }
   /** Resize. Resizes objects from one rectangle to another, scaling content when asked. Params: {from: rect, to: rect, content?: bool (scale content), distribute?: bool (Live Distribute: objects keep their size, their centres spread with the bounds), ids?}. Changes the document. */
-  "transform.resize": { /** scale content */ content?: boolean; /** Live Distribute: objects keep their size, their centres spread with the bounds */ distribute?: boolean; /** [x0, y0, x1, y1] in points */ from?: Array<number>; ids?: Array<Json>; /** [x0, y0, x1, y1] in points */ to?: Array<number> }
+  "transform.resize": { /** read by the command beside its listed parameters */ axis?: string; /** read by the command beside its listed parameters */ by?: string; /** scale content */ content?: boolean; /** Live Distribute: objects keep their size, their centres spread with the bounds */ distribute?: boolean; /** [x0, y0, x1, y1] in points */ from?: Array<number>; ids?: Array<Json>; /** read by the command beside its listed parameters */ spacing?: number; /** [x0, y0, x1, y1] in points */ to?: Array<number> }
   /** Rotate. Rotates objects by an angle in degrees, counter-clockwise, about their centre. Params: {angle (degrees, CCW), ids?}. Changes the document. */
   "transform.rotate": { /** degrees, CCW */ angle?: number; ids?: Array<Json> }
   /** Scale. Scales objects by sx and sy about the selection centre. Params: {sx, sy, ids?} (about the selection centre). Changes the document. */
   "transform.scale": { ids?: Array<Json>; /** horizontal scale factor */ sx?: number; /** vertical scale factor */ sy?: number }
   /** Transform Again. Repeats the last transform (or sequence of transforms) on the selection. Params: {individually?: bool, sequence?: bool, ids?} ? repeat the last transform (or the whole sequence applied to this selection), on the selection as a whole or on each object about its own centre. Changes the document. */
-  "transform.again": { ids?: Array<Json>; individually?: boolean; sequence?: boolean }
+  "transform.again": { /** read by the command beside its listed parameters */ copy?: boolean; ids?: Array<Json>; individually?: boolean; sequence?: boolean }
   /** Clear Transformations. Removes rotation, shear and scaling from objects, keeping their centre. Params: {ids?} ? remove rotation, shear and scaling (the object keeps its centre). Changes the document. */
   "transform.clear": { ids?: Array<Json> }
   /** Shear. Shears objects by an angle in degrees. Params: {angle (degrees), ids?}. Changes the document. */
@@ -527,13 +527,13 @@ export interface DesignCommands extends CommandMap {
   /** Arrange. Moves objects to the front, forward, backward or to the back of the stacking order. Params: {to: front|forward|backward|back, ids?}. Changes the document. */
   "object.arrange": { ids?: Array<Json>; to?: "front" | "forward" | "backward" | "back" }
   /** Bring to Front. Brings the selection to the front. Params: {}. Changes the document. */
-  "object.bringToFront": Record<string, never>
+  "object.bringToFront": { /** read by the command beside its listed parameters */ to?: string }
   /** Bring Forward. Brings the selection one step forward. Params: {}. Changes the document. */
-  "object.bringForward": Record<string, never>
+  "object.bringForward": { /** read by the command beside its listed parameters */ to?: string }
   /** Send Backward. Sends the selection one step backward. Params: {}. Changes the document. */
-  "object.sendBackward": Record<string, never>
+  "object.sendBackward": { /** read by the command beside its listed parameters */ to?: string }
   /** Send to Back. Sends the selection to the back. Params: {}. Changes the document. */
-  "object.sendToBack": Record<string, never>
+  "object.sendToBack": { /** read by the command beside its listed parameters */ to?: string }
   /** Group. Groups objects (default: the selection) into one group. Params: {ids?}. Changes the document. */
   "object.group": { ids?: Array<Json> }
   /** Ungroup. Splits groups back into their objects. Params: {ids?}. Changes the document. */
@@ -551,7 +551,7 @@ export interface DesignCommands extends CommandMap {
   /** Fill. Sets objects' fill to a swatch with a tint from 0 to 1. Params: {swatch, tint?: 0..1, ids?}. Changes the document. */
   "object.fill": { ids?: Array<Json>; /** a swatch name */ swatch?: string; /** 0 to 1 */ tint?: number }
   /** Stroke. Sets objects' stroke: swatch, tint, weight, alignment, stroke type, caps and joins, gap colour. Params: {swatch?, tint?, weight?, align?: center|inside|outside, type?: {kind:...}, cap?: butt|round|projecting, join?: miter|round|bevel, miterLimit?, start?, end?: none|simple|simpleWide|triangle|triangleWide|barbed|curved|circle|circleSolid|square|squareSolid|bar, gapSwatch?, gapTint?, gapOverprint?: bool, ids?}. Changes the document. */
-  "object.stroke": { align?: "center" | "inside" | "outside"; cap?: "butt" | "round" | "projecting"; end?: "none" | "simple" | "simpleWide" | "triangle" | "triangleWide" | "barbed" | "curved" | "circle" | "circleSolid" | "square" | "squareSolid" | "bar"; gapOverprint?: boolean; /** a swatch name */ gapSwatch?: string; /** percent */ gapTint?: number; ids?: Array<Json>; join?: "miter" | "round" | "bevel"; miterLimit?: number; start?: number; /** a swatch name */ swatch?: string; /** percent from 0 to 100 */ tint?: number; /** {kind:...} */ type?: { kind?: Json }; weight?: number }
+  "object.stroke": { align?: "center" | "inside" | "outside"; cap?: "butt" | "round" | "projecting"; /** read by the command beside its listed parameters */ edge?: string; end?: "none" | "simple" | "simpleWide" | "triangle" | "triangleWide" | "barbed" | "curved" | "circle" | "circleSolid" | "square" | "squareSolid" | "bar"; gapOverprint?: boolean; /** a swatch name */ gapSwatch?: string; /** percent */ gapTint?: number; ids?: Array<Json>; join?: "miter" | "round" | "bevel"; miterLimit?: number; start?: number; /** a swatch name */ swatch?: string; /** percent from 0 to 100 */ tint?: number; /** read by the command beside its listed parameters */ to?: string; /** {kind:...} */ type?: { kind?: Json }; weight?: number }
   /** Opacity. Sets objects' opacity from 0 to 1 and blend mode. Params: {opacity: 0..1, blend?: normal|multiply|..., ids?}. Changes the document. */
   "object.opacity": { /** normal|multiply|... */ blend?: string; ids?: Array<Json>; /** 0 to 1 */ opacity?: number }
   /** Drop Shadow. Turns a drop shadow on or off and sets its distance, angle, opacity, size, spread and colour. Params: {on?: bool, distance?, angle?, globalLight?: bool, opacity?, size?, spread? (%), color? (swatch), ids?}. Changes the document. */
@@ -561,7 +561,7 @@ export interface DesignCommands extends CommandMap {
   /** Outer Glow. Turns an outer glow on or off and sets its opacity, size, spread and colour. Params: {on?: bool, opacity?, size?, spread? (%), color?, ids?}. Changes the document. */
   "object.outerGlow": { color?: string; ids?: Array<Json>; on?: boolean; opacity?: number; size?: number; spread?: Json }
   /** Object Export Options. Sets objects' export options: tagged-PDF artifact, rasterising for EPUB and HTML, alignment. Params: {ids?, artifact?: bool (tagged PDF decoration), rasterize?: bool (EPUB/HTML image), align?: left|center|right|"", pageBreakBefore?: bool, altText?}. Changes the document. */
-  "object.exportOptions": { align?: "left" | "center" | "right" | ""; altText?: string; /** tagged PDF decoration */ artifact?: boolean; ids?: Array<Json>; pageBreakBefore?: boolean; /** EPUB/HTML image */ rasterize?: boolean }
+  "object.exportOptions": { align?: "left" | "center" | "right" | ""; altText?: string; /** tagged PDF decoration */ artifact?: boolean; /** read by the command beside its listed parameters */ edge?: string; ids?: Array<Json>; pageBreakBefore?: boolean; /** EPUB/HTML image */ rasterize?: boolean; /** read by the command beside its listed parameters */ to?: string }
   /** Inner Glow. Turns an inner glow on or off and sets its opacity, size, choke, source and colour. Params: {on?: bool, opacity?, size?, choke? (%), center?: bool (glow from the centre), color?, ids?}. Changes the document. */
   "object.innerGlow": { /** glow from the centre */ center?: boolean; /** percent */ choke?: number; color?: string; ids?: Array<Json>; on?: boolean; opacity?: number; size?: number }
   /** Bevel and Emboss. Turns bevel and emboss on or off with size, depth, angle, highlight and shadow. Params: {on?: bool, size?, depth? (%), angle?, globalLight?: bool, highlight?, highlightOpacity?, shadow?, shadowOpacity?, ids?}. Changes the document. */
@@ -569,7 +569,7 @@ export interface DesignCommands extends CommandMap {
   /** Satin. Turns a satin effect on or off with opacity, angle, distance, size and colour. Params: {on?: bool, opacity?, angle?, distance?, size?, invert?: bool, color?, ids?}. Changes the document. */
   "object.satin": { angle?: number; color?: string; /** points */ distance?: number; ids?: Array<Json>; invert?: boolean; on?: boolean; opacity?: number; size?: number }
   /** Directional Feather. Turns a directional feather on or off with widths per side. Params: {on?: bool, widths?: [top, left, bottom, right] | number, ids?}. Changes the document. */
-  "object.directionalFeather": { ids?: Array<Json>; on?: boolean; widths?: Json }
+  "object.directionalFeather": { ids?: Array<Json>; on?: boolean; /** read by the command beside its listed parameters */ story?: number; widths?: Json }
   /** Basic Feather. Sets a basic feather width on objects (0 turns it off). Params: {width (0 = off), ids?}. Changes the document. */
   "object.feather": { ids?: Array<Json>; /** 0 = off */ width?: number }
   /** Content. Sets what a frame holds: graphic, text or unassigned. Params: {type: graphic|text|unassigned, ids?}. Changes the document. */
@@ -583,7 +583,7 @@ export interface DesignCommands extends CommandMap {
   /** Fitting. Fits a frame's graphic: fill or fit proportionally, fit content to frame, centre, or frame to content. Params: {mode: fillProportionally|fitProportionally|fitContentToFrame|centerContent|fitFrameToContent, ids?}. Changes the document. */
   "object.fit": { ids?: Array<Json>; mode?: "fillProportionally" | "fitProportionally" | "fitContentToFrame" | "centerContent" | "fitFrameToContent" }
   /** Frame Fitting Options. Sets a frame's fitting options: auto-fit, fitting, alignment reference and crop amounts. Params: {autoFit?: bool, fitting?: none|fillProportionally|fitProportionally|fitContentToFrame|centerContent, align?: 0..8 (reference point, 4 = centre), crop?: n | [t, l, b, r] (negative adds space), ids?}. Changes the document. */
-  "object.fittingOptions": { /** 0 to 8; reference point, 4 = centre */ align?: number; autoFit?: boolean; crop?: Json; fitting?: "none" | "fillProportionally" | "fitProportionally" | "fitContentToFrame" | "centerContent"; ids?: Array<Json> }
+  "object.fittingOptions": { /** 0 to 8; reference point, 4 = centre */ align?: number; autoFit?: boolean; crop?: Json; /** read by the command beside its listed parameters */ edge?: string; fitting?: "none" | "fillProportionally" | "fitProportionally" | "fitContentToFrame" | "centerContent"; ids?: Array<Json>; /** read by the command beside its listed parameters */ to?: string }
   /** Rename. Renames an object by id. Params: {id, name}. Changes the document. */
   "object.rename": { /** an id */ id?: Json; name?: string }
   /** Step and Repeat. Makes copies of the selection a number of times at a dx, dy offset, or as a grid of rows and columns. Params: {count?: 1..1000, dx?, dy?, rows?, columns?, ids?} ? copies of the selection (or ids) offset by (dx, dy); with rows/columns, a grid of at most 1000 cells, and at most 1000 item copies including group contents. Changes the document. */
@@ -609,7 +609,7 @@ export interface DesignCommands extends CommandMap {
   /** Clipping Path. Makes a clipping path for a placed graphic from its alpha channel or detected edges, with a threshold. Params: {type?: alpha|edges (default alpha), threshold?: 0?255 (alpha: opaque above; edges: darker than 255 ? threshold counts; default 25), tolerance?: px (2), ids?} ? traces the placed graphic and makes the outline the frame (Convert Clipping Path to Frame). Changes the document. */
   "object.clippingPath": { ids?: Array<Json>; threshold?: number; /** pixels; 2 */ tolerance?: number; /** default alpha */ type?: "alpha" | "edges" }
   /** Primary Text Frame. Makes the selected text frame's story the primary text frame, or turns that off. Params: {on?: bool (default: toggle), ids?} ? the selected text frame's story becomes the primary story (Smart Text Reflow adds and removes pages for it). Changes the document. */
-  "object.primaryTextFrame": { ids?: Array<Json>; /** default: toggle */ on?: boolean }
+  "object.primaryTextFrame": { ids?: Array<Json>; /** default: toggle */ on?: boolean; /** read by the command beside its listed parameters */ what?: string }
   /** Attributes. Sets objects' print attributes: overprint fill, stroke and gap, and non-printing. Params: {overprintFill?, overprintStroke?, overprintGap?, nonprinting?: bool, ids?} ? Attributes panel. Changes the document. */
   "object.attributes": { ids?: Array<Json>; nonprinting?: boolean; overprintFill?: boolean; overprintGap?: boolean; overprintStroke?: boolean }
   /** Global Light. Sets the light angle shared by effects that use global light. Params: {angle} ? the light angle shared by shadows that use Global Light. Changes the document. */
@@ -625,7 +625,7 @@ export interface DesignCommands extends CommandMap {
   /** Move to Layer. Moves objects to a layer. Params: {layer, ids?}. Changes the document. */
   "object.setLayer": { ids?: Array<Json>; layer?: number }
   /** Thread Text Frames. Threads a text frame's story into another frame (or a new frame drawn on a spread). Params: {from: text frame id, to?: frame id (an empty or text frame), spread?, rect?: [x0,y0,x1,y1] (a new text frame there, spread coords), page?: n (1-based: a new text frame on the page's margins), side?: out|in (default out: the frame follows `from`; in: it goes before `from`), keepLoaded?: bool (load the text cursor again from the frame), autoflow?: bool (Shift-click: then add pages with frames on their margins, threaded, until the story fits)} ? continue a story in another frame; a text frame's own text joins the story. Changes the document. */
-  "frame.thread": { /** Shift-click: then add pages with frames on their margins, threaded, until the story fits */ autoflow?: boolean; /** an object id from document.inspect or object.list */ from?: number; /** load the text cursor again from the frame */ keepLoaded?: boolean; /** 1-based: a new text frame on the page's margins */ page?: number; /** [x0, y0, x1, y1]; a new text frame there, spread coords */ rect?: Array<number>; /** default out: the frame follows `from`; in: it goes before `from` */ side?: "out" | "in"; spread?: Json; /** an object id from document.inspect or object.list */ to?: number }
+  "frame.thread": { /** read by the command beside its listed parameters */ at?: number; /** Shift-click: then add pages with frames on their margins, threaded, until the story fits */ autoflow?: boolean; /** an object id from document.inspect or object.list */ from?: number; /** load the text cursor again from the frame */ keepLoaded?: boolean; /** read by the command beside its listed parameters */ orientation?: string; /** 1-based: a new text frame on the page's margins */ page?: number; /** read by the command beside its listed parameters */ position?: string; /** [x0, y0, x1, y1]; a new text frame there, spread coords */ rect?: Array<number>; /** default out: the frame follows `from`; in: it goes before `from` */ side?: "out" | "in"; spread?: Json; /** read by the command beside its listed parameters */ spreadGuide?: boolean; /** an object id from document.inspect or object.list */ to?: number }
   /** Break Thread. Breaks a text frame's thread after it (or before it); the following frames lose the story. Params: {frame: text frame id, side?: out|in (default out: break after the frame; in: before it)} ? the frames after the break become an empty story; the text stays and may overset. Changes the document. */
   "frame.unthread": { /** an object id from document.inspect or object.list */ frame?: number; /** default out: break after the frame; in: before it */ side?: "out" | "in" }
   /** Show Text Threads. Shows or hides the lines between threaded text frames in the editor. Params: {on?: bool (default: toggle)} ? lines between the threaded frames of the selected frames' stories ? {on}. Changes the document. */
@@ -697,9 +697,9 @@ export interface DesignCommands extends CommandMap {
   /** Convert to Button. Turns objects into buttons that go to a page, the first, last, next or previous page, or a URL. Params: {ids?, action: page|firstPage|lastPage|nextPage|previousPage|url|none, page?, url?} ? the selected objects act on release in interactive PDF. Changes the document. */
   "button.set": { action?: "page" | "firstPage" | "lastPage" | "nextPage" | "previousPage" | "url" | "none"; ids?: Array<Json>; page?: number; url?: string }
   /** Convert to Object. Turns buttons back into ordinary objects. Params: {ids?}. Changes the document. */
-  "button.clear": { ids?: Array<Json> }
+  "button.clear": { /** read by the command beside its listed parameters */ action?: string; ids?: Array<Json> }
   /** Convert to Form Field. Turns objects into form fields (text field, check box, combo box, list box, signature) with name, value and options. Params: {ids?, kind: textField|checkBox|comboBox|listBox|signature, name?, value?, options?: [string], multiline?, required?, fontSize?} ? interactive PDF form fields. Changes the document. */
-  "form.set": { /** points */ fontSize?: number; ids?: Array<Json>; kind?: "textField" | "checkBox" | "comboBox" | "listBox" | "signature"; multiline?: boolean; name?: string; options?: Array<string>; required?: boolean; value?: string }
+  "form.set": { /** read by the command beside its listed parameters */ autoflow?: boolean; /** points */ fontSize?: number; ids?: Array<Json>; /** read by the command beside its listed parameters */ keepLoaded?: boolean; kind?: "textField" | "checkBox" | "comboBox" | "listBox" | "signature"; multiline?: boolean; name?: string; options?: Array<string>; required?: boolean; value?: string }
   /** Convert to Object. Turns form fields back into ordinary objects. Params: {ids?} ? no longer a form field. Changes the document. */
   "form.clear": { ids?: Array<Json> }
   /** Form Fields. Lists the form fields with their ids, kinds, names, values and options. Params: {} ? [{id, kind, name, value, options}]. */
@@ -735,11 +735,11 @@ export interface DesignCommands extends CommandMap {
   /** Delete Condition. Deletes a condition; the text it was applied to stays and shows. Params: {name} ? the text it was applied to stays (shown). Changes the document. */
   "condition.delete": { name?: string }
   /** Apply Condition. Applies a condition to the selected text, or removes it. Params: {name, on?: bool (default true), only?: bool (remove the others)} ? to the selected text; `name: null` with `only` removes all. Changes the document. */
-  "condition.apply": { name?: string; /** default true */ on?: boolean; /** remove the others */ only?: boolean }
+  "condition.apply": { name?: string; /** default true */ on?: boolean; /** remove the others */ only?: boolean; /** read by the command beside its listed parameters */ story?: number }
   /** New Library. Creates an empty object library, saved to a path when given. Params: {path?} ? an empty Object Library (saved to `path` when given). Changes the document. */
   "library.new": { path?: Json }
   /** Open Library. Opens an object library from a path or JSON and answers its items. Params: {path | json} ? {items}. Changes the document. */
-  "library.open": Record<string, never>
+  "library.open": { /** one of several alternative parameters */ json?: Json; /** one of several alternative parameters */ path?: Json }
   /** Library Items. Lists the library's items with their indexes, names and descriptions. Params: {} ? [{index, name, description}]. */
   "library.list": Record<string, never>
   /** Library Contents. Answers the library as JSON text, to save where there is no file system. Params: {} ? the library as JSON text (to save where there's no file system). */
@@ -747,13 +747,13 @@ export interface DesignCommands extends CommandMap {
   /** Add Item. Adds the selection to the library as an item; answers its index. Params: {name?, description?} ? the selection ? {index}. Changes the document. */
   "library.add": { description?: string; name?: string }
   /** Place Item. Places a library item on a spread at its original position or at x, y. Params: {index, spread?, x?, y?} ? at its original position unless x/y (top-left) are given. Changes the document. */
-  "library.place": { /** a position counted from 0 (the first is 0) */ index?: number; spread?: Json; x?: number; y?: number }
+  "library.place": { /** read by the command beside its listed parameters */ base64?: string; /** a position counted from 0 (the first is 0) */ index?: number; spread?: Json; x?: number; y?: number }
   /** Delete Item. Deletes a library item by index. Params: {index}. Changes the document. */
   "library.remove": { /** a position counted from 0 (the first is 0) */ index?: number }
   /** Collect. Puts objects (default: the selection) onto the Content Collector conveyor. Params: {ids? (default: the selection)} ? each object onto the Content Collector conveyor ? {count}. Changes the document. */
-  "conveyor.collect": { /** default: the selection */ ids?: Array<Json> }
+  "conveyor.collect": { /** default: the selection */ ids?: Array<Json>; /** read by the command beside its listed parameters */ to?: string }
   /** Place. Places an item from the conveyor on a spread, keeping it on the conveyor when asked. Params: {index? (0), spread?, x?, y?, keep?: bool (stay on the conveyor)} ? the Content Placer: the collected object at x/y (top-left). Changes the document. */
-  "conveyor.place": { /** a position counted from 0 (the first is 0); 0 */ index?: number; /** stay on the conveyor */ keep?: boolean; spread?: Json; x?: number; y?: number }
+  "conveyor.place": { /** read by the command beside its listed parameters */ base64?: string; /** a position counted from 0 (the first is 0); 0 */ index?: number; /** stay on the conveyor */ keep?: boolean; spread?: Json; x?: number; y?: number }
   /** Conveyor. Lists the items on the conveyor. Params: {} ? [name]. */
   "conveyor.list": Record<string, never>
   /** Clear Conveyor. Removes every item from the conveyor. Params: {}. Changes the document. */
@@ -773,19 +773,19 @@ export interface DesignCommands extends CommandMap {
   /** Unlink. Unlinks a story from its parent. Params: {story}. Changes the document. */
   "story.unlink": { /** a story id from document.inspect */ story?: number }
   /** Insert Math Expression. Inserts a math expression typeset from LaTeX at the text insertion point or at a position. Params: {latex, size?: points (12), x?, y?, spread?} ? at the text insertion point (inline), else as a frame; or {id, latex} to edit one. Changes the document. */
-  "math.insert": { /** a LaTeX expression */ latex?: string; size?: number; spread?: Json; x?: number; y?: number }
+  "math.insert": { /** read by the command beside its listed parameters */ id?: Json; /** a LaTeX expression */ latex?: string; size?: number; spread?: Json; x?: number; y?: number }
   /** Math Expression SVG. Typesets a LaTeX expression and answers its SVG and size without placing it. Params: {latex, size?} ? {svg, width, height} ? typeset without placing. */
   "math.svg": { /** a LaTeX expression */ latex?: string; size?: number }
   /** Media Options. Sets placed media options: play on page load, loop, controls and poster. Params: {ids?, playOnPageLoad?, loop?, controls?, poster?: {path | base64+name} | null (placeholder)} ? for placed video and sound. Changes the document. */
-  "media.options": { controls?: boolean; ids?: Array<Json>; loop?: boolean; playOnPageLoad?: boolean; poster?: Json }
+  "media.options": { controls?: boolean; ids?: Array<Json>; loop?: boolean; playOnPageLoad?: boolean; poster?: Json; /** read by the command beside its listed parameters */ what?: string }
   /** Media. Answers a media object's kind, name and playback options. Params: {id?} ? {kind, name, playOnPageLoad, loop, controls, poster}. */
   "media.get": { /** an id */ id?: Json }
   /** Object Layers. Lists the layers of the selected placed PDF with their visibility. Params: {id?} ? [{name, visible, default}] ? the layers of the selected placed PDF. */
   "object.pdfLayers": { /** an id */ id?: Json }
   /** Object Layer Options. Hides layers of placed PDFs by name. Params: {ids?, hidden: [layer name]} ? layers of placed PDFs to hide ([] = the file's own settings). Changes the document. */
-  "object.layerOptions": { /** [layer name] */ hidden?: Array<Json>; ids?: Array<Json> }
+  "object.layerOptions": { /** [layer name] */ hidden?: Array<Json>; ids?: Array<Json>; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ what?: string }
   /** Liquid Page Rule. Sets the liquid layout rule (scale, re-centre, guide or object based) for pages. Params: {rule: off|scale|reCenter|guideBased|objectBased, pages?: [1-based] (default: all)}. Changes the document. */
-  "liquid.pageRule": { /** [1-based] (default: all); default: all */ pages?: Array<Json>; rule?: "off" | "scale" | "reCenter" | "guideBased" | "objectBased" }
+  "liquid.pageRule": { /** [1-based] (default: all); default: all */ pages?: Array<Json>; rule?: "off" | "scale" | "reCenter" | "guideBased" | "objectBased"; /** read by the command beside its listed parameters */ story?: number }
   /** Object Liquid Settings. Sets objects' liquid layout constraints: resize and pin to edges. Params: {ids?, resizeWidth?, resizeHeight?, pinTop?, pinBottom?, pinLeft?, pinRight?} ? for object-based pages. Changes the document. */
   "liquid.object": { ids?: Array<Json>; pinBottom?: boolean; pinLeft?: boolean; pinRight?: boolean; pinTop?: boolean; resizeHeight?: boolean; resizeWidth?: boolean }
   /** Convert to Liquid Guide. Makes a guide a liquid guide, or not. Params: {spread?, page, index, on?: bool (default true)}. Changes the document. */
@@ -803,73 +803,73 @@ export interface DesignCommands extends CommandMap {
   /** Delete Tag. Deletes an XML tag; tagged objects are untagged. Params: {name} ? tagged objects are untagged. Changes the document. */
   "xml.deleteTag": { name?: string }
   /** Tag Text. Tags the selected text as an inline element, or untags it. Params: {tag | null (untag)} ? the selected text becomes an inline element. Changes the document. */
-  "xml.tagText": { /** untag; one of several alternative parameters */ null?: Json; tag?: string }
+  "xml.tagText": { /** untag; one of several alternative parameters */ null?: Json; tag?: string; /** read by the command beside its listed parameters */ what?: string }
   /** Tag Frame. Tags frames (default: the selection) with an XML tag, creating it if new, or untags them. Params: {tag (made if new), ids? (default: the selection)} ? `tag: null` untags. Changes the document. */
-  "xml.tag": { /** default: the selection */ ids?: Array<Json>; tag?: string }
+  "xml.tag": { /** default: the selection */ ids?: Array<Json>; tag?: string; /** read by the command beside its listed parameters */ what?: string }
   /** Map Styles to Tags. Maps a paragraph style to an XML tag for export. Params: {style: paragraph style, tag | null} ? that style's paragraphs export as `<tag>` elements and import back with it. Changes the document. */
-  "xml.mapStyle": { style?: string }
+  "xml.mapStyle": { /** one of several alternative parameters */ null?: Json; style?: string; /** one of several alternative parameters */ tag?: Json }
   /** Structure. Answers the XML structure in reading order: elements with tags, ids, kinds and text. Params: {} ? {root, elements: [{tag, id, kind, text?}]} in reading order. */
   "xml.structure": Record<string, never>
   /** Export XML. Exports the tagged content as XML, to a path or as text. Params: {path?} ? the tagged content in reading order ? {path, bytes} (no path: {text}). Changes the document. */
   "file.exportXml": { path?: Json }
   /** Load DTD. Loads a DTD for validation and adds a tag for each element it declares. Params: {path | text} ? keep the DTD for validation and add a tag for each declared element; the root takes the first element's name unless already named ? {elements}. Changes the document. */
-  "xml.loadDtd": Record<string, never>
+  "xml.loadDtd": { /** one of several alternative parameters */ path?: Json; /** one of several alternative parameters */ text?: string }
   /** Delete DTD. Removes the loaded DTD. Params: {}. Changes the document. */
   "xml.deleteDtd": Record<string, never>
   /** Validate from Root Element. Validates the XML structure against the loaded DTD and answers the problems. Params: {} ? check the structure (as exported) against the loaded DTD ? {valid, problems: [{path, message}]}. */
   "xml.validate": Record<string, never>
   /** Import XML. Imports XML, putting each element's content into the next frame with that tag. Params: {path | text} ? each element's content goes into the next text frame with that tag (child elements of mapped tags become paragraphs in their style) ? {placed, unmatched}. Changes the document. */
-  "file.importXml": Record<string, never>
+  "file.importXml": { /** one of several alternative parameters */ path?: Json; /** one of several alternative parameters */ text?: string }
   /** Stroke Styles. Lists the stroke styles with their kinds. Params: {} ? [{name, kind}]. */
   "strokeStyle.list": Record<string, never>
   /** New Stroke Style. Creates a stroke style of stripes, dashes or dots. Params: {name, type: stripes|dash|dot, bands?: [[start, width] (fractions of the weight)], pattern?: [dash, gap, ...] (pt)} ? apply with object.stroke {type: {kind: "style", name}}. Changes the document. */
-  "strokeStyle.new": { /** fractions of the weight */ bands?: Array<Array<number>>; name?: string; /** [dash, gap]; pt */ pattern?: Array<number>; type?: "stripes" | "dash" | "dot" }
+  "strokeStyle.new": { /** fractions of the weight */ bands?: Array<Array<number>>; name?: string; /** [dash, gap]; pt */ pattern?: Array<number>; /** read by the command beside its listed parameters */ story?: number; type?: "stripes" | "dash" | "dot" }
   /** Delete Stroke Style. Deletes a stroke style; strokes using it become solid. Params: {name} ? strokes using it become solid. Changes the document. */
   "strokeStyle.delete": { name?: string }
   /** Run Script. Runs a command script (lines of command ids with JSON parameters, or a JSON array) as one undo step. Params: {text} ? command script lines (`command.id {json}`, JSON lines or a JSON array; `$N.path` refers to earlier results) ? {results, steps}. Changes the document. */
   "script.run": { text?: string }
   /** Convert Selection to Multi-State Object. Turns objects (or one group's objects) into a multi-state object. Params: {ids? (default: the selection; one group's objects or several objects become states)} ? {id, states}. Changes the document. */
-  "states.create": { /** default: the selection; one group's objects or several objects become states */ ids?: Array<Json> }
+  "states.create": { /** read by the command beside its listed parameters */ id?: Json; /** default: the selection; one group's objects or several objects become states */ ids?: Array<Json>; /** read by the command beside its listed parameters */ what?: string }
   /** Object States. Lists a multi-state object's states and the active one. Params: {id?} ? {states, active}. */
   "states.list": { /** an id */ id?: Json }
   /** Show State. Shows one state of a multi-state object by index or name. Params: {id?, index? | name?}. Changes the document. */
-  "states.show": { /** an id */ id?: Json }
+  "states.show": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0); one of several alternative parameters */ index?: number; /** one of several alternative parameters */ name?: string }
   /** State Options. Renames a state of a multi-state object. Params: {id?, index, name}. Changes the document. */
   "states.rename": { /** an id */ id?: Json; /** a position counted from 0 (the first is 0) */ index?: number; name?: string }
   /** Release State to Objects. Releases a multi-state object back to a plain group. Params: {id?} ? back to a plain group (every state shows). Changes the document. */
   "states.release": { /** an id */ id?: Json }
   /** Page Transition. Sets a page transition (blinds, box, dissolve...) for pages, a spread, or all. Params: {pages?: [1-based] | spread? | all?: bool, kind: blinds|box|comb|cover|dissolve|fade|push|split|uncover|wipe|zoomIn|zoomOut|none, duration?: seconds (1), horizontal?: bool} ? for interactive PDF. Changes the document. */
-  "page.transition": { /** seconds; 1 */ duration?: number; horizontal?: boolean; kind?: "blinds" | "box" | "comb" | "cover" | "dissolve" | "fade" | "push" | "split" | "uncover" | "wipe" | "zoomIn" | "zoomOut" | "none"; /** pages counted from 1 */ pages?: Array<number> }
+  "page.transition": { /** one of several alternative parameters */ all?: boolean; /** seconds; 1 */ duration?: number; horizontal?: boolean; kind?: "blinds" | "box" | "comb" | "cover" | "dissolve" | "fade" | "push" | "split" | "uncover" | "wipe" | "zoomIn" | "zoomOut" | "none"; /** pages counted from 1 */ pages?: Array<number>; /** one of several alternative parameters */ spread?: Json; /** read by the command beside its listed parameters */ story?: number }
   /** Page Transitions. Lists the page transitions by spread. Params: {} ? [{spread, kind, duration, horizontal}]. */
   "page.transitions": Record<string, never>
   /** Type on a Path. Puts text on a path, with a start distance, flip and alignment. Params: {id: path, text?, start?: distance along the path, flip?, align?: baseline|ascender|descender|center} ? {story} ? the text cursor goes into it. Changes the document. */
-  "type.onPath": { align?: "baseline" | "ascender" | "descender" | "center"; flip?: boolean; id?: string; /** distance along the path in points */ start?: number; text?: string }
+  "type.onPath": { align?: "baseline" | "ascender" | "descender" | "center"; /** read by the command beside its listed parameters */ edge?: string; flip?: boolean; id?: string; /** distance along the path in points */ start?: number; text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Type on a Path Options. Changes type on a path's start, flip and alignment, or removes it. Params: {id?, start?, flip?, align?: baseline|ascender|descender|center, delete?: true (Delete Type from Path)}. Changes the document. */
-  "type.pathOptions": { align?: "baseline" | "ascender" | "descender" | "center"; /** Delete Type from Path */ delete?: boolean; flip?: boolean; /** an id */ id?: Json; start?: number }
+  "type.pathOptions": { align?: "baseline" | "ascender" | "descender" | "center"; /** Delete Type from Path */ delete?: boolean; /** read by the command beside its listed parameters */ edge?: string; flip?: boolean; /** an id */ id?: Json; start?: number; /** read by the command beside its listed parameters */ to?: string }
   /** Generate QR Code. Generates a QR code object for a URL, text, SMS, email or vCard. Params: {type?: url|text|sms|email|vcard (default url), content (url/text), number?, message?, to?, subject?, body?, name?, phone?, email?, org?, url?, color? (swatch, [Black]), rect? (new object; else into the selected frame, or re-encode a selected code), spread?} ? {id, content}. Changes the document. */
   "object.qrCode": { body?: string; /** swatch, [Black] */ color?: string; /** the URL or text */ content?: string; email?: string; message?: string; name?: string; number?: string; org?: string; phone?: string; /** [x0, y0, x1, y1] in points */ rect?: Array<number>; spread?: Json; subject?: string; /** the recipient */ to?: string; type?: string; url?: string }
   /** First Object Above. Selects the frontmost object on the spread. Params: {} ? the frontmost object on the spread (layers included). Changes the document. */
-  "select.firstAbove": Record<string, never>
+  "select.firstAbove": { /** read by the command beside its listed parameters */ what?: string }
   /** Next Object Above. Selects the next object above the selection in the stacking order. Params: {}. Changes the document. */
-  "select.nextAbove": Record<string, never>
+  "select.nextAbove": { /** read by the command beside its listed parameters */ what?: string }
   /** Next Object Below. Selects the next object below the selection in the stacking order. Params: {}. Changes the document. */
-  "select.nextBelow": Record<string, never>
+  "select.nextBelow": { /** read by the command beside its listed parameters */ what?: string }
   /** Last Object Below. Selects the backmost object on the spread. Params: {} ? the backmost object on the spread. Changes the document. */
-  "select.lastBelow": Record<string, never>
+  "select.lastBelow": { /** read by the command beside its listed parameters */ what?: string }
   /** Container. Selects the group or frame that holds the selection. Params: {} ? the group or frame holding the selection. Changes the document. */
-  "select.container": Record<string, never>
+  "select.container": { /** read by the command beside its listed parameters */ what?: string }
   /** Content. Selects the graphic inside a frame, or the first object in a group. Params: {} ? the graphic in a frame, or the first object in a group. Changes the document. */
-  "select.content": Record<string, never>
+  "select.content": { /** read by the command beside its listed parameters */ what?: string }
   /** Next Object in Group. Selects the next object in the selection's group. Params: {}. Changes the document. */
-  "select.nextInGroup": Record<string, never>
+  "select.nextInGroup": { /** read by the command beside its listed parameters */ what?: string }
   /** Previous Object in Group. Selects the previous object in the selection's group. Params: {}. Changes the document. */
-  "select.previousInGroup": Record<string, never>
+  "select.previousInGroup": { /** read by the command beside its listed parameters */ what?: string }
   /** Convert Shape. Converts objects to another shape (rectangle, rounded rectangle, ellipse, triangle, polygon, line...). Params: {to: rectangle|roundedRectangle|beveledRectangle|inverseRoundedRectangle|ellipse|triangle|polygon|line|orthogonalLine|openPath|closedPath, ids?}. Changes the document. */
   "object.convertShape": { ids?: Array<Json>; to?: "rectangle" | "roundedRectangle" | "beveledRectangle" | "inverseRoundedRectangle" | "ellipse" | "triangle" | "polygon" | "line" | "orthogonalLine" | "openPath" | "closedPath" }
   /** Package. Packages the document into a new folder with its fonts, links, and optionally IDML, PDF and instructions. Params: {dir: folder to create, idml?: true, pdf?: false, instructions?: text} ? the document (its placed files relinked to Links/), Links/, the font files that draw its text in Document Fonts/ (fallback fonts included; unless their licence restricts it), an IDML copy, an optional PDF and a report ? {dir, files, report}. Changes the document. */
   "file.package": { /** folder to create */ dir?: Json; idml?: boolean; instructions?: string; pdf?: boolean }
   /** Copy Link(s) To. Copies placed files to a folder and relinks the document to the copies. Params: {dir, assets?: [asset ids] (default: all)} ? write the placed files to `dir` and relink to the copies ? {copied}. Changes the document. */
-  "links.copyTo": { /** [asset ids] (default: all); default: all */ assets?: Array<Json>; dir?: Json }
+  "links.copyTo": { /** read by the command beside its listed parameters */ asset?: number; /** [asset ids] (default: all); default: all */ assets?: Array<Json>; dir?: Json; path?: Json; /** read by the command beside its listed parameters */ story?: number }
   /** Printers. Lists the printers and the default one. Params: {} ? {printers: [names], default}. */
   "file.printers": Record<string, never>
   /** Print. Prints pages or spreads to a printer with copies, marks and bleed; dryRun only answers what would print. Params: {printer?, copies?: 1, pages?: "1-3,5", spreads?, marks?, bleed?, dryRun?: bool (only return the spool command)} ? {printer, copies, pages, command}. Changes the document. */
@@ -883,7 +883,7 @@ export interface DesignCommands extends CommandMap {
   /** Select Word. Selects the word at a point in a frame. Params: {frame, point}. Changes the document. */
   "text.selectWord": { frame?: number; /** [x, y] in points */ point?: Array<number> }
   /** Select Text. Selects text in a story between two byte offsets, as find.find reports them. Params: {story, anchor, focus} (UTF-8 byte offsets into the story text, as find.find reports them: ? or ? counts 2 or 3). Changes the document. */
-  "text.select": { /** a text position */ anchor?: number; /** a text position */ focus?: number; /** a story id from document.inspect */ story?: number }
+  "text.select": { /** a text position */ anchor?: number; /** a text position */ focus?: number; /** a story id from document.inspect */ story?: number; /** read by the command beside its listed parameters */ what?: string }
   /** Type. Types text at the caret, replacing the selected text, with typographer's quotes unless raw. Params: {text, raw?: bool (no typographer's quotes)} ? replaces the selected text. Changes the document. */
   "text.insert": { /** no typographer's quotes */ raw?: boolean; text?: string }
   /** Delete Text. Deletes the selected text, or a character (or word) before or after the caret. Params: {forward?: bool, word?: bool}. Changes the document. */
@@ -893,29 +893,29 @@ export interface DesignCommands extends CommandMap {
   /** Select Frame. Leaves text editing and selects the frame instead. Params: {}. Changes the document. */
   "text.exitToFrame": Record<string, never>
   /** Story Column Direction. Sets a story's column progression to left to right or right to left. Params: {story?, direction: leftToRight|rightToLeft} ? column progression, independent of paragraph direction. Changes the document. */
-  "story.setDirection": { direction?: "leftToRight" | "rightToLeft"; /** a story id from document.inspect */ story?: number }
+  "story.setDirection": { direction?: "leftToRight" | "rightToLeft"; /** read by the command beside its listed parameters */ frame?: Json; /** a story id from document.inspect */ story?: number }
   /** Set Story Text. Replaces a story's whole text; the story is found by its id from document.inspect. Params: {story, text} ? replace a story's whole text. Changes the document. */
   "story.setText": { /** a story id from document.inspect */ story?: number; text?: string }
   /** Edit Story. Replaces a byte range of a story's text, keeping the surrounding formatting. Params: {story, start, end, text} ? replace a byte range keeping surrounding formatting. Changes the document. */
   "story.replaceRange": { end?: number; start?: number; /** a story id from document.inspect */ story?: number; text?: string }
   /** Get Story. Answers a story's text, frames, paragraphs, direction and whether it is overset; the way to read text. Params: {story? | frame?} ? text, frames, paragraphs, vertical, overset. */
-  "story.get": Record<string, never>
+  "story.get": { /** one of several alternative parameters */ frame?: number; /** read by the command beside its listed parameters */ lines?: number; /** one of several alternative parameters */ story?: Json }
   /** Fill with Placeholder Text. Fills a text frame with placeholder text. Params: {frame?}. Changes the document. */
-  "type.fillWithPlaceholder": { frame?: number }
+  "type.fillWithPlaceholder": { frame?: number; /** read by the command beside its listed parameters */ story?: number }
   /** Character Formatting. Sets character attributes on the selected text: font family and style, size, leading, tracking, colour and more. Params: {attrs: {fontFamily?, fontStyle?, size?, leading?: {kind:auto}|{kind:points,value}, tracking?, kerning?, hScale?, vScale?, baselineShift?, fill?, capitalization?, underline?, ...}}. Changes the document. */
   "type.char": { /** {fontFamily?, fontStyle?, size?, leading?: {kind:auto}|{kind:points,value}, tracking?, kerning?, hScale?, vScale?, baselineShift?, fill?, capitalization?, underline?, ...} */ attrs?: { baselineShift?: Json; capitalization?: Json; fill?: Json; fontFamily?: Json; fontStyle?: Json; hScale?: Json; kerning?: Json; leading?: Json; size?: number; tracking?: Json; underline?: Json; vScale?: Json } }
   /** Paragraph Formatting. Sets paragraph attributes on the selected paragraphs: alignment, indents, spacing, drop caps and more. Params: {attrs: {align?, leftIndent?, firstLineIndent?, spaceBefore?, spaceAfter?, dropCapLines?, hyphenate?, composer?, tabs?, ruleAbove?/ruleBelow?: {on?, weight?, color?, tint?, columnWidth?, offset?, leftIndent?, rightIndent?} (only the named rule fields change), ...}}. Changes the document. */
   "type.para": { /** {align?, leftIndent?, firstLineIndent?, spaceBefore?, spaceAfter?, dropCapLines?, hyphenate?, composer?, tabs?, ruleAbove?/ruleBelow?: {on?, weight?, color?, tint?, columnWidth?, offset?, leftIndent?, rightIndent?} (only the named rule fields change), ...}; only the named rule fields change */ attrs?: { align?: Json; composer?: Json; dropCapLines?: Json; firstLineIndent?: Json; hyphenate?: Json; leftIndent?: Json; spaceAfter?: Json; spaceBefore?: Json; tabs?: Json } }
   /** Align. Sets the alignment of the selected paragraphs by name. Params: {align: left|center|right|leftJustified|...}. Changes the document. */
-  "type.align": { /** left|center|right|leftJustified|... */ align?: string }
+  "type.align": { /** left|center|right|leftJustified|... */ align?: string; /** read by the command beside its listed parameters */ edge?: string; /** read by the command beside its listed parameters */ raw?: boolean; /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Align Left. Aligns the selected paragraphs to the left. Params: {}. Changes the document. */
-  "type.alignLeft": Record<string, never>
+  "type.alignLeft": { /** read by the command beside its listed parameters */ edge?: string; /** read by the command beside its listed parameters */ raw?: boolean; /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Align Center. Centres the selected paragraphs. Params: {}. Changes the document. */
-  "type.alignCenter": Record<string, never>
+  "type.alignCenter": { /** read by the command beside its listed parameters */ edge?: string; /** read by the command beside its listed parameters */ raw?: boolean; /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Align Right. Aligns the selected paragraphs to the right. Params: {}. Changes the document. */
-  "type.alignRight": Record<string, never>
+  "type.alignRight": { /** read by the command beside its listed parameters */ edge?: string; /** read by the command beside its listed parameters */ raw?: boolean; /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Justify Left. Justifies the selected paragraphs with the last line aligned left. Params: {}. Changes the document. */
-  "type.justify": Record<string, never>
+  "type.justify": { /** read by the command beside its listed parameters */ edge?: string; /** read by the command beside its listed parameters */ raw?: boolean; /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Bold. Toggles bold on the selected text. Params: {}. Changes the document. */
   "type.bold": Record<string, never>
   /** Italic. Toggles italic on the selected text. Params: {}. Changes the document. */
@@ -931,7 +931,7 @@ export interface DesignCommands extends CommandMap {
   /** Kenten. Turns emphasis dots (kenten) on the selected characters on or off. Params: {on?: bool} ? emphasis dots over the selected characters (toggles by default). Changes the document. */
   "type.kenten": { on?: boolean }
   /** Warichu. Turns warichu (inline split lines) on the selected text on or off, with lines, size, spacing and alignment. Params: {on?: bool, lines?: int, size?: number, lineSpacing?: number, align?: auto|left|center|right|justify, charsBeforeBreak?: int, charsAfterBreak?: int} ? set the selection as an inline note in smaller lines inside one line height (toggles by default). Changes the document. */
-  "type.warichu": { align?: "auto" | "left" | "center" | "right" | "justify"; charsAfterBreak?: number; charsBeforeBreak?: number; lineSpacing?: number; lines?: number; on?: boolean; size?: number }
+  "type.warichu": { align?: "auto" | "left" | "center" | "right" | "justify"; charsAfterBreak?: number; charsBeforeBreak?: number; /** read by the command beside its listed parameters */ edge?: string; lineSpacing?: number; lines?: number; on?: boolean; /** read by the command beside its listed parameters */ raw?: boolean; size?: number; /** read by the command beside its listed parameters */ text?: string; /** read by the command beside its listed parameters */ to?: string }
   /** Story Direction. Makes the stories of the text selection or selected frames vertical or horizontal. Params: {vertical: bool} ? the stories of the text selection or the selected frames: vertical lines run top to bottom and follow each other right to left, in every frame of the thread. Changes the document. */
   "type.storyDirection": { vertical?: boolean }
   /** Increase Point Size. Increases the selected text's point size by one step. Params: {}. Changes the document. */
@@ -949,7 +949,7 @@ export interface DesignCommands extends CommandMap {
   /** List Composite Fonts. Lists the composite font definitions. Params: {} ? composite font definitions. */
   "style.compositeFont.list": Record<string, never>
   /** Set Composite Font. Creates or replaces a composite font: per character set, a family, style, relative size and scale. Params: {name, entries: [{name?, characters?, family, style?, relativeSize?, horizontalScale?, verticalScale?, baselineShift?, scaleOption?}]} ? replaces a composite font definition; empty characters selects the base entry. Changes the document. */
-  "style.compositeFont.set": { /** [{name?, characters?, family, style?, relativeSize?, horizontalScale?, verticalScale?, baselineShift?, scaleOption?}] */ entries?: Array<{ baselineShift?: Json; characters?: Json; family?: string; horizontalScale?: Json; name?: string; relativeSize?: Json; scaleOption?: Json; style?: string; verticalScale?: Json }>; name?: string }
+  "style.compositeFont.set": { /** read by the command beside its listed parameters */ autoflow?: boolean; /** [{name?, characters?, family, style?, relativeSize?, horizontalScale?, verticalScale?, baselineShift?, scaleOption?}] */ entries?: Array<{ baselineShift?: Json; characters?: Json; family?: string; horizontalScale?: Json; name?: string; relativeSize?: Json; scaleOption?: Json; style?: string; verticalScale?: Json }>; /** read by the command beside its listed parameters */ keepLoaded?: boolean; name?: string; /** read by the command beside its listed parameters */ story?: number }
   /** Export Tagging. Sets the HTML or EPUB tag and class a style exports as. Params: {style, character?: bool, tag?: p|h1...h6|blockquote|pre|li|... (span|em|strong|code|sup|sub... for characters; "" = automatic), class?} ? the tagging. Changes the document. */
   "style.exportTag": { character?: boolean; class?: string; style?: string; tag?: string }
   /** Apply Paragraph Style. Applies a paragraph style to the selected paragraphs, clearing local overrides when asked. Params: {name, clearOverrides?: bool}. Changes the document. */
@@ -981,9 +981,9 @@ export interface DesignCommands extends CommandMap {
   /** Move to Group. Moves paragraph or character styles into a style group. Params: {kind: paragraph|character, names: [style names], group: "Heads" | "Heads/Display" | "" (out of any group)} ? styles are named Group/Name; every use is renamed ? {renamed: {old: new}}. Changes the document. */
   "style.group": { /** out of any group */ group?: "Heads" | "Heads/Display" | ""; kind?: "paragraph" | "character"; /** [style names] */ names?: Array<Json> }
   /** Load Swatches. Loads colour swatches from an .ase file, replacing the existing ones when asked. Params: {path?|base64?, replace?: bool} ? colour swatches from a swatch exchange (.ase) file; names already in the document are kept unless `replace` ? {added, replaced}. Changes the document. */
-  "swatch.load": { replace?: boolean }
+  "swatch.load": { /** one of several alternative parameters */ base64?: Json; /** one of several alternative parameters */ path?: Json; replace?: boolean }
   /** Save Swatches for Exchange. Saves colour swatches to an .ase file or as base64. Params: {path?, names?: [swatch names] (default: all colour swatches)} ? {base64} or writes `path` (.ase). Changes the document. */
-  "swatch.save": { /** [swatch names] (default: all colour swatches); default: all colour swatches */ names?: Array<Json>; path?: Json }
+  "swatch.save": { /** [swatch names] (default: all colour swatches); default: all colour swatches */ names?: Array<Json>; path?: Json; /** read by the command beside its listed parameters */ story?: number }
   /** Apply Color. Applies a colour (hex, CMYK or RGB) to objects' fill or stroke without making a swatch. Params: {color: "#rrggbb"|{c,m,y,k}(0..100)|[r,g,b](0..255), target?: fill|stroke, ids?} ? an unnamed colour (not in the Swatches panel until Add to Swatches) on the selection. Changes the document. */
   "object.color": { /** #rrggbb or a swatch name */ color?: string; ids?: Array<Json>; target?: "fill" | "stroke" }
   /** Add to Swatches. Adds a colour (default: the selection's fill) to the swatches under a new name. Params: {swatch?: name (default: the selection's fill), target?: fill|stroke, name?: new name} ? makes an unnamed colour a swatch. Changes the document. */
@@ -995,7 +995,7 @@ export interface DesignCommands extends CommandMap {
   /** Ink Manager. Answers the inks: whether each spot ink prints as process, and its alias. Params: {} ? {allToProcess, inks: [{name, process: bool (printed as process), alias?}]} ? the spot inks. */
   "ink.list": Record<string, never>
   /** Ink Manager. Sets ink options: all to process, one ink to process, or an ink alias. Params: {allToProcess?: bool, ink?: spot swatch, toProcess?: bool, alias?: spot swatch | null} ? output: spots to process, ink aliases. Changes the document. */
-  "ink.options": { alias?: Json; allToProcess?: boolean; ink?: string; toProcess?: boolean }
+  "ink.options": { alias?: Json; allToProcess?: boolean; ink?: string; /** read by the command beside its listed parameters */ story?: number; toProcess?: boolean }
   /** New Color Group. Creates a colour group in the Swatches panel and moves swatches into it. Params: {name?, swatches?: [names]} ? a Swatches panel folder (the swatches move into it) ? {name}. Changes the document. */
   "swatch.newColorGroup": { name?: string; /** [names] */ swatches?: Array<Json> }
   /** Move to Color Group. Moves swatches into a colour group, or to the top level with null. Params: {swatches: [names], group: name | null (top level)}. Changes the document. */
@@ -1007,69 +1007,69 @@ export interface DesignCommands extends CommandMap {
   /** New Cell Style. Creates a table cell style with fill, tint, insets and paragraph style, or from the target cell. Params: {name, fromSelection?: bool (the target cell's look), fill?, tint?, insets?: n|[t,l,b,r], vj?: top|center|bottom|justify, stroke?: {weight, color, tint?}, paragraphStyle?} ? {name}. Changes the document. */
   "style.cell.create": { fill?: string; /** the target cell's look */ fromSelection?: boolean; insets?: Json; name?: string; paragraphStyle?: string; /** {weight, color, tint?} */ stroke?: { color?: string; tint?: Json; weight?: number }; /** percent from 0 to 100 */ tint?: number; vj?: "top" | "center" | "bottom" | "justify" }
   /** Apply Cell Style. Applies a cell style to the target cells, or the whole table. Params: {name, story?, table?} ? the target cells (the whole table when the cursor is in it). Changes the document. */
-  "style.cell.apply": { name?: string; /** a story id from document.inspect */ story?: number; table?: number }
+  "style.cell.apply": { /** read by the command beside its listed parameters */ cols?: number; name?: string; /** read by the command beside its listed parameters */ rows?: number; /** a story id from document.inspect */ story?: number; table?: number }
   /** Cell Style Options. Changes a cell style; cells using it follow. Params: {name, ...same as style.cell.create} ? cells using the style follow. Changes the document. */
   "style.cell.edit": { name?: string }
   /** New Table Style. Creates a table style with cell styles for header, body, footer and columns, and borders. Params: {name, header?, body?, footer?, leftColumn?, rightColumn?: cell style names, border?: {weight, color}, altRows?: {first, firstColor, next, nextColor}, spaceBefore?, spaceAfter?} ? {name}. Changes the document. */
-  "style.table.create": { /** {first, firstColor, next, nextColor} */ altRows?: { first?: Json; firstColor?: Json; next?: Json; nextColor?: Json }; body?: string; border?: { color?: string; weight?: number }; /** a cell style name */ footer?: string; /** a cell style name */ header?: string; /** a cell style name */ leftColumn?: string; name?: string; /** a cell style name */ rightColumn?: string; spaceAfter?: number; spaceBefore?: number }
+  "style.table.create": { /** {first, firstColor, next, nextColor} */ altRows?: { first?: Json; firstColor?: Json; next?: Json; nextColor?: Json }; /** read by the command beside its listed parameters */ basedOn?: string; body?: string; border?: { color?: string; weight?: number }; /** a cell style name */ footer?: string; /** a cell style name */ header?: string; /** a cell style name */ leftColumn?: string; name?: string; /** a cell style name */ rightColumn?: string; spaceAfter?: number; spaceBefore?: number }
   /** Apply Table Style. Applies a table style to a table. Params: {name, story?, table?}. Changes the document. */
-  "style.table.apply": { name?: string; /** a story id from document.inspect */ story?: number; table?: number }
+  "style.table.apply": { /** read by the command beside its listed parameters */ cols?: number; name?: string; /** read by the command beside its listed parameters */ rows?: number; /** a story id from document.inspect */ story?: number; table?: number }
   /** Table Style Options. Changes a table style; tables using it follow. Params: {name, ...same as style.table.create} ? tables using the style follow. Changes the document. */
   "style.table.edit": { name?: string }
   /** Create Table. Creates a table at the text insertion point with body rows, columns, header and footer rows and width. Params: {rows?: body rows (4), cols? (4), headerRows? (0), footerRows? (0), width?} ? at the text insertion point. Changes the document. */
-  "table.insert": { cols?: number; footerRows?: number; headerRows?: number; rows?: number; width?: number }
+  "table.insert": { cols?: number; /** read by the command beside its listed parameters */ columns?: number; footerRows?: number; headerRows?: number; rows?: number; width?: number }
   /** Convert Text to Table. Converts the selected paragraphs into a table, splitting columns at tabs or commas. Params: {columnSeparator?: tab|comma} ? selected paragraphs become rows. Changes the document. */
-  "table.convertFromText": { columnSeparator?: "tab" | "comma" }
+  "table.convertFromText": { columnSeparator?: "tab" | "comma"; /** read by the command beside its listed parameters */ width?: number }
   /** Convert Table to Text. Converts the table at the caret into tab-separated paragraphs. Params: {} ? cells separated by tabs, rows by paragraphs. Changes the document. */
-  "table.convertToText": Record<string, never>
+  "table.convertToText": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Insert Row. Inserts rows above or below the target cell's row. Params: {where?: above|below, count? (1)}. Changes the document. */
-  "table.insertRow": { /** 1 */ count?: number; where?: "above" | "below" }
+  "table.insertRow": { /** read by the command beside its listed parameters */ cols?: number; /** 1 */ count?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number; where?: "above" | "below" }
   /** Insert Row Above. Inserts rows above the target cell's row. Params: {count?}. Changes the document. */
   "table.insertRowAbove": { count?: number }
   /** Insert Row Below. Inserts rows below the target cell's row. Params: {count?}. Changes the document. */
   "table.insertRowBelow": { count?: number }
   /** Insert Column. Inserts columns left or right of the target cell's column, with a width. Params: {where?: left|right, count? (1), width?}. Changes the document. */
-  "table.insertColumn": { /** 1 */ count?: number; where?: "left" | "right"; width?: number }
+  "table.insertColumn": { /** read by the command beside its listed parameters */ cols?: number; /** 1 */ count?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number; where?: "left" | "right"; width?: number }
   /** Insert Column Left. Inserts columns to the left of the target cell's column. Params: {count?}. Changes the document. */
   "table.insertColumnLeft": { count?: number }
   /** Insert Column Right. Inserts columns to the right of the target cell's column. Params: {count?}. Changes the document. */
   "table.insertColumnRight": { count?: number }
   /** Delete Row. Deletes the rows of the target cells. Params: {} ? the rows of the target cells. Changes the document. */
-  "table.deleteRow": Record<string, never>
+  "table.deleteRow": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Delete Column. Deletes the columns of the target cells. Params: {} ? the columns of the target cells. Changes the document. */
-  "table.deleteColumn": Record<string, never>
+  "table.deleteColumn": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Delete Table. Deletes the table at the caret. Params: {}. Changes the document. */
-  "table.delete": Record<string, never>
+  "table.delete": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Merge Cells. Merges the target cell range into one cell. Params: {} ? merge the target cell range. Changes the document. */
-  "table.merge": Record<string, never>
+  "table.merge": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Drag Rows or Columns. Moves selected whole rows or columns by dragging them from one point to another. Params: {frame, from: [x, y], to: [x, y]} ? selected whole rows (or columns) dragged from `from` move to the row (column) at `to`; otherwise a text drag. Changes the document. */
   "table.dropCells": { frame?: number; from?: Array<number>; to?: Array<number> }
   /** Convert Cell to Graphic Cell. Turns the target cell into a graphic cell holding an image, fitted proportionally or to fill. Params: {path | base64+name, fit?: proportional|fill (default proportional)} ? an image in the target cell (its text is kept but hidden). Changes the document. */
-  "table.placeGraphic": { /** default proportional */ fit?: "proportional" | "fill" }
+  "table.placeGraphic": { /** read by the command beside its listed parameters */ cols?: number; /** default proportional */ fit?: "proportional" | "fill"; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Convert Cell to Text Cell. Turns graphic cells back into text cells. Params: {} ? drop the target cells' graphics. Changes the document. */
-  "table.textCell": Record<string, never>
+  "table.textCell": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Move Row. Moves a row (0-based; default the target row) to another position. Params: {from?, to} (0-based; from defaults to the target row) ? like dragging a row. Changes the document. */
-  "table.moveRow": { /** a row counted from 0 */ from?: number; /** a row counted from 0 */ to?: number }
+  "table.moveRow": { /** read by the command beside its listed parameters */ cols?: number; /** a row counted from 0 */ from?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number; /** a row counted from 0 */ to?: number }
   /** Move Column. Moves a column (0-based; default the target column) to another position. Params: {from?, to} (0-based; from defaults to the target column). Changes the document. */
-  "table.moveColumn": { /** a column counted from 0 */ from?: number; /** a column counted from 0 */ to?: number }
+  "table.moveColumn": { /** read by the command beside its listed parameters */ cols?: number; /** a column counted from 0 */ from?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number; /** a column counted from 0 */ to?: number }
   /** Sort. Sorts the body rows by a column (0-based; default the target cell's), ascending or descending. Params: {column?: 0-based (default: the target cell's), descending?: bool} ? body rows by that column's text (numbers numerically). Changes the document. */
-  "table.sortRows": { column?: number; descending?: boolean }
+  "table.sortRows": { /** read by the command beside its listed parameters */ cols?: number; column?: number; descending?: boolean; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Unmerge Cells. Unmerges the target merged cell. Params: {}. Changes the document. */
-  "table.unmerge": Record<string, never>
+  "table.unmerge": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Split Cell Horizontally. Splits the target cell into two, one above the other. Params: {} ? the target cell becomes two, one above the other. Changes the document. */
-  "table.splitHorizontally": Record<string, never>
+  "table.splitHorizontally": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Split Cell Vertically. Splits the target cell into two, side by side. Params: {} ? the target cell becomes two, side by side. Changes the document. */
-  "table.splitVertically": Record<string, never>
+  "table.splitVertically": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Cell Options. Sets the target cells' fill, tint, insets, vertical justification and text. Params: {fill?: swatch, tint?, insets?: n | [t,l,b,r], vj?: top|center|bottom|justify, text?, stroke?: {weight?, color?, tint?, type?: solid|dashed|dotted, edges?: all|outer|inner|top|left|bottom|right}}. Changes the document. */
   "table.setCell": { fill?: string; insets?: Json; /** {weight?, color?, tint?, type?: solid|dashed|dotted, edges?: all|outer|inner|top|left|bottom|right} */ stroke?: { color?: string; edges?: "all" | "outer" | "inner" | "top" | "left" | "bottom" | "right"; tint?: Json; type?: "solid" | "dashed" | "dotted"; weight?: number }; text?: string; /** percent from 0 to 100 */ tint?: number; vj?: "top" | "center" | "bottom" | "justify" }
   /** Row Height. Sets the target rows' height in points, at least or exactly. Params: {height, mode?: atLeast|exactly}. Changes the document. */
-  "table.setRowHeight": { height?: number; mode?: "atLeast" | "exactly" }
+  "table.setRowHeight": { /** read by the command beside its listed parameters */ cols?: number; height?: number; mode?: "atLeast" | "exactly"; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Column Width. Sets the target columns' width in points. Params: {width}. Changes the document. */
-  "table.setColumnWidth": { width?: number }
+  "table.setColumnWidth": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number; width?: number }
   /** Distribute Columns Evenly. Gives the selected columns equal widths. Params: {}. Changes the document. */
-  "table.distributeColumns": Record<string, never>
+  "table.distributeColumns": { /** read by the command beside its listed parameters */ cols?: number; /** read by the command beside its listed parameters */ rows?: number; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ table?: number }
   /** Distribute Rows Evenly. Gives rows equal fixed heights. Params: {story?, table?, rows?: [a,b]} ? equal fixed heights preserving the selected rows' composed total height; may overset cell text; unmerge row-spanning cells first. Changes the document. */
-  "table.distributeRows": { /** [a, b] */ rows?: Array<number>; /** a story id from document.inspect */ story?: number; table?: number }
+  "table.distributeRows": { /** read by the command beside its listed parameters */ cols?: number; /** [a, b] */ rows?: Array<number>; /** a story id from document.inspect */ story?: number; table?: number }
   /** Table Options. Sets table options: direction, border, spacing before and after, header and footer rows and repeats, alternating fills. Params: {direction?: leftToRight|rightToLeft, border?: {weight?, color?, tint?, type?}, spaceBefore?, spaceAfter?, headerRows?, footerRows?, repeatHeader?, repeatFooter?, altRows?: {first, firstColor, firstTint, next, nextColor, nextTint, skipFirst, skipLast} | null, altCols?: ... | null}. Changes the document. */
   "table.options": { altCols?: Json; altRows?: Json; /** {weight?, color?, tint?, type?} */ border?: { color?: string; tint?: Json; type?: Json; weight?: number }; direction?: "leftToRight" | "rightToLeft"; footerRows?: number; headerRows?: number; repeatFooter?: boolean; repeatHeader?: boolean; spaceAfter?: number; spaceBefore?: number }
   /** Select Cells. Selects cells, rows, columns or a whole table by story, table and row and column ranges. Params: {story?, table?, rows?: [a,b], cols?: [a,b], what?: cell|row|column|table}. Changes the document. */
@@ -1095,7 +1095,7 @@ export interface DesignCommands extends CommandMap {
   /** Move Pages. Moves a page from one index to another. Params: {from, to}. Changes the document. */
   "layout.pages.move": { /** a page counted from 0 */ from?: number; /** a page counted from 0 */ to?: number }
   /** Duplicate Spread. Duplicates a spread with its items. Params: {spread}. Changes the document. */
-  "layout.pages.duplicateSpread": { spread?: Json }
+  "layout.pages.duplicateSpread": { spread?: Json; /** read by the command beside its listed parameters */ to?: string }
   /** Apply Parent to Pages. Applies a parent spread to pages, or none. Params: {pages: [index], parent: "A"|null}. Changes the document. */
   "layout.pages.applyParent": { pages?: Array<number>; parent?: "A" | "null" }
   /** New Parent. Creates a parent spread with a prefix and name. Params: {prefix?, name?: "Parent"}. Changes the document. */
@@ -1103,7 +1103,7 @@ export interface DesignCommands extends CommandMap {
   /** Edit Parents. Shows or hides parent spreads on the canvas for editing. Params: {on: bool} ? show parent spreads on the canvas. Changes the document. */
   "layout.parents.edit": { on?: boolean }
   /** Margins and Columns. Sets pages' margins and columns. Params: {pages?: [index] (default all), margins?: number|{top,bottom,inside,outside}, columns?, gutter?, adjustLayout?: bool (objects follow the margins)}. Changes the document. */
-  "layout.marginsAndColumns": { /** objects follow the margins */ adjustLayout?: boolean; columns?: number; /** points */ gutter?: number; margins?: Json; /** default all */ pages?: Array<number> }
+  "layout.marginsAndColumns": { /** objects follow the margins */ adjustLayout?: boolean; columns?: number; /** points */ gutter?: number; margins?: Json; /** default all */ pages?: Array<number>; /** read by the command beside its listed parameters */ story?: number }
   /** Document Setup. Sets the document's page size, page count, start page, facing pages, binding, bleed and slug. Params: {width?, height?, pages?: count, startPage?: n, facingPages?, binding?: leftToRight|rightToLeft, intent?: print|web|mobile, bleed?, slug?: n | [top, bottom, inside, outside], adjustLayout?: bool (objects follow the new page size)} ? the document setup. Changes the document. */
   "layout.documentSetup": { /** objects follow the new page size */ adjustLayout?: boolean; binding?: "leftToRight" | "rightToLeft"; /** points */ bleed?: number; facingPages?: boolean; height?: number; intent?: "print" | "web" | "mobile"; pages?: number; slug?: Json; startPage?: number; width?: number }
   /** Add Page to Spread. Adds a page (1-based) to a spread (0-based). Params: {page (1-based), spread (0-based)} ? the page joins that spread (up to 10 pages; the spread stops shuffling). Changes the document. */
@@ -1133,7 +1133,7 @@ export interface DesignCommands extends CommandMap {
   /** Set Active Layer. Makes a layer the active layer for new objects. Params: {id}. Changes the document. */
   "layer.activate": { /** an id */ id?: Json }
   /** Override All Parent Page Items. Overrides parent items on a page (0-based) so they can be edited there; answers the copies' ids. Params: {page (0-based), ids?: parent items (default: all on the page's parent page)} ? {ids} the page's editable copies. Changes the document. */
-  "layout.overrideParentItems": { /** object ids; default: the selection */ ids?: Array<number>; /** 0-based */ page?: number }
+  "layout.overrideParentItems": { /** object ids; default: the selection */ ids?: Array<number>; /** 0-based */ page?: number; /** read by the command beside its listed parameters */ story?: number }
   /** Remove All Local Overrides. Deletes a page's overridden parent copies so the parent items show again. Params: {page (0-based)} ? deletes the page's overridden copies; the parent items show again. Changes the document. */
   "layout.removeOverrides": { /** 0-based */ page?: number }
   /** Detach All Objects from Parent. Detaches a page's overridden copies from the parent, making them ordinary items. Params: {page (0-based)} ? the page's overridden copies become ordinary items. Changes the document. */
@@ -1141,7 +1141,7 @@ export interface DesignCommands extends CommandMap {
   /** Transparency Blend Space. Sets the colour space (CMYK or RGB) transparency is composited in for output. Params: {space: cmyk|rgb} ? the colour space transparency is composited in for output. Changes the document. */
   "edit.transparencyBlendSpace": { space?: "cmyk" | "rgb" }
   /** Preferences. Sets application preferences: hidden characters, typographer's quotes, polygon sides, stroke scaling and more. Params: {showHiddenCharacters?, typographersQuotes?, polygonSides?, starInset?, scaleStrokes?, dimensionsIncludeStroke?, transformationsAreTotals?, absolutePageNumbers?, highlightHj?, highlightKeeps?, highlightCustomTracking?, highlightSubstitutedFonts?, richBlackOutput?, favoriteFonts?: [family], showFontNamesInEnglish?} ? all application preferences. Changes the document. */
-  "prefs.set": { absolutePageNumbers?: boolean; dimensionsIncludeStroke?: boolean; favoriteFonts?: Array<string>; highlightCustomTracking?: boolean; highlightHj?: boolean; highlightKeeps?: boolean; highlightSubstitutedFonts?: boolean; polygonSides?: number; richBlackOutput?: boolean; scaleStrokes?: boolean; showFontNamesInEnglish?: boolean; showHiddenCharacters?: boolean; starInset?: number; transformationsAreTotals?: boolean; typographersQuotes?: boolean }
+  "prefs.set": { absolutePageNumbers?: boolean; dimensionsIncludeStroke?: boolean; favoriteFonts?: Array<string>; highlightCustomTracking?: boolean; highlightHj?: boolean; highlightKeeps?: boolean; highlightSubstitutedFonts?: boolean; polygonSides?: number; richBlackOutput?: boolean; scaleStrokes?: boolean; showFontNamesInEnglish?: boolean; showHiddenCharacters?: boolean; starInset?: number; /** read by the command beside its listed parameters */ story?: number; transformationsAreTotals?: boolean; typographersQuotes?: boolean }
   /** Document Preferences. Sets document preferences: units, keyboard increments, guide colours, glyph fallback and black overprint. Params: {horizontalUnits?, verticalUnits?: points|picas|inches|millimeters|..., keyboardIncrement? (pt), baselineGrid?: {start, increment, relativeTo, color, viewThreshold}, grid?: {horizontal, vertical, subdivisions, color, inBack}, pasteboard?: [h, v], marginColor?, columnColor?, bleedColor?, slugColor?: [r, g, b], advancedType?: {superscriptSize, superscriptPosition, subscriptSize, subscriptPosition} (%), overprintBlack?, glyphFallback? (draw characters the font lacks from fallback fonts; off: as the font's missing-glyph box)} ? those settings. Changes the document. */
   "document.preferences": { /** {superscriptSize, superscriptPosition, subscriptSize, subscriptPosition} (%); % */ advancedType?: { subscriptPosition?: Json; subscriptSize?: Json; superscriptPosition?: Json; superscriptSize?: Json }; /** {start, increment, relativeTo, color, viewThreshold} */ baselineGrid?: { color?: string; increment?: Json; relativeTo?: Json; start?: number; viewThreshold?: Json }; /** a colour */ bleedColor?: string; /** a colour */ columnColor?: string; glyphFallback?: boolean; /** {horizontal, vertical, subdivisions, color, inBack} */ grid?: { color?: string; horizontal?: Json; inBack?: Json; subdivisions?: Json; vertical?: Json }; /** points, millimetres, inches... */ horizontalUnits?: string; /** points */ keyboardIncrement?: number; /** a colour */ marginColor?: string; overprintBlack?: boolean; /** [h, v] */ pasteboard?: Array<Json>; /** [r, g, b] */ slugColor?: Array<number>; /** points|picas|inches|millimeters|... */ verticalUnits?: string }
   /** Inspect Document. Answers the document's structure: pages, spreads, items with ids, stories with overset, styles, swatches and the selection. Use story.get for text. Params: {} ? pages, spreads, items, stories (with overset), styles, swatches, selection. */
@@ -1149,7 +1149,7 @@ export interface DesignCommands extends CommandMap {
   /** List Documents. Lists the open documents with their indexes. Params: {}. */
   "document.list": Record<string, never>
   /** Select Tool. Selects an editor tool (selection, direct selection, type, frame...). Params: {tool: selection|directSelection|type|rectangleFrame|...}. Changes the document. */
-  "tool.select": { /** selection|directSelection|type|rectangleFrame|... */ tool?: string }
+  "tool.select": { /** selection|directSelection|type|rectangleFrame|... */ tool?: string; /** read by the command beside its listed parameters */ what?: string }
   /** List Tools. Lists the editor tools. Params: {}. */
   "tool.list": Record<string, never>
   /** History. Answers the undo and redo history. Params: {}. */
@@ -1163,7 +1163,7 @@ export interface DesignCommands extends CommandMap {
   /** Change All. Replaces every match of text (or a GREP pattern) with new text, in a scope; answers how many changed. Params: {find, change, grep?, caseSensitive?, wholeWord?, scope?, story?, first?: bool (change only the first match), attrs?: {character attributes applied to changed text}} ? {count}. Changes the document. */
   "find.change": { attrs?: { [key: string]: Json }; caseSensitive?: boolean; change?: string; find?: string; /** change only the first match */ first?: boolean; grep?: boolean; scope?: string; /** a story id from document.inspect */ story?: number; wholeWord?: boolean }
   /** Find Next. Selects the next match of a text after the caret. Params: {find, grep?, ...} ? selects the next match after the caret. Changes the document. */
-  "find.next": { find?: string; grep?: boolean }
+  "find.next": { /** read by the command beside its listed parameters */ caseSensitive?: boolean; find?: string; grep?: boolean; /** read by the command beside its listed parameters */ scope?: string; /** read by the command beside its listed parameters */ story?: number; /** read by the command beside its listed parameters */ wholeWord?: boolean }
   /** Text Variables. Lists the text variables with their types and values. Params: {} ? [{index, name, type, ..., value (page 1)}]. */
   "variables.list": Record<string, never>
   /** Define Text Variable. Defines a text variable (custom, last page number, chapter number, file name, dates, running header...). Params: {name, type: custom|lastPageNumber|chapterNumber|fileName|creationDate|modificationDate|outputDate|runningHeader, text?, format?, style?, use?: firstOnPage|lastOnPage, character?, section?, extension?, before?, after?} ? creates or replaces by name. Changes the document. */
@@ -1173,15 +1173,15 @@ export interface DesignCommands extends CommandMap {
   /** Insert Variable. Inserts a text variable at the text insertion point. Params: {name} ? at the text insertion point. Changes the document. */
   "variables.insert": { name?: string }
   /** Table of Contents. Generates a table of contents from paragraph styles with levels, a title and page numbers, in a new frame. Params: {entries: [{style, level?: 1}] | styles: [names], title?: "Contents", pageNumbers?: true, page?: 1-based page for a new frame (its margins), rect?: [x0,y0,x1,y1] (spread coords)} ? {story, entries}. Changes the document. */
-  "toc.generate": { entries?: Array<{ [key: string]: Json }>; /** a page counted from 1 */ page?: number; pageNumbers?: boolean; /** [x0, y0, x1, y1]; spread coords */ rect?: Array<number>; /** like Contents */ title?: string }
+  "toc.generate": { entries?: Array<{ [key: string]: Json }>; /** a page counted from 1 */ page?: number; pageNumbers?: boolean; /** [x0, y0, x1, y1]; spread coords */ rect?: Array<number>; /** [names]; one of several alternative parameters */ styles?: Array<Json>; /** like Contents */ title?: string }
   /** Update Table of Contents. Regenerates the existing table of contents. Params: {} ? regenerate the existing table of contents. Changes the document. */
-  "toc.update": Record<string, never>
+  "toc.update": { /** read by the command beside its listed parameters */ asset?: number }
   /** Table of Contents Entries. Answers the table-of-contents entries for styles (level, text, page) without changing the document. Params: {entries | styles} ? [{level, text, page}] without changing the document. */
-  "toc.entries": Record<string, never>
+  "toc.entries": { /** one of several alternative parameters */ entries?: Json; /** one of several alternative parameters */ styles?: Json }
   /** Insert Footnote. Inserts a footnote reference at the insertion point with its text; the caret moves into the footnote. Params: {text?} ? a footnote reference at the insertion point; the caret moves into the new footnote's text. Changes the document. */
   "footnote.insert": { text?: string }
   /** Document Footnote Options. Sets footnote numbering, styles, spacing and layout options. Params: {style?: arabic|upperRoman|lowerRoman|upperLetters|lowerLetters|symbols, startAt?, restart?: never|page|spread|section, prefix?, suffix?, affixIn?: none|reference|text|both, refPosition?: superscript|subscript|normal|otSuperscript, refCharStyle?, paraStyle?, separator?, spaceBefore?, spaceBetween?, firstBaseline?, firstBaselineMin?, spanColumns?, rule?: {on, weight, color, tint, width, offset, leftIndent}} ? the options (no params: just read them). Changes the document. */
-  "footnote.options": { affixIn?: "none" | "reference" | "text" | "both"; firstBaseline?: string; /** points */ firstBaselineMin?: number; /** a paragraph style name */ paraStyle?: string; prefix?: string; /** a character style name */ refCharStyle?: string; refPosition?: "superscript" | "subscript" | "normal" | "otSuperscript"; restart?: "never" | "page" | "spread" | "section"; /** {on, weight, color, tint, width, offset, leftIndent} */ rule?: { color?: string; leftIndent?: Json; offset?: number; on?: Json; tint?: Json; weight?: number; width?: number }; separator?: string; spaceBefore?: number; /** points */ spaceBetween?: number; spanColumns?: boolean; startAt?: number; style?: "arabic" | "upperRoman" | "lowerRoman" | "upperLetters" | "lowerLetters" | "symbols"; suffix?: string }
+  "footnote.options": { affixIn?: "none" | "reference" | "text" | "both"; firstBaseline?: string; /** points */ firstBaselineMin?: number; /** a paragraph style name */ paraStyle?: string; prefix?: string; /** a character style name */ refCharStyle?: string; refPosition?: "superscript" | "subscript" | "normal" | "otSuperscript"; restart?: "never" | "page" | "spread" | "section"; /** {on, weight, color, tint, width, offset, leftIndent} */ rule?: { color?: string; leftIndent?: Json; offset?: number; on?: Json; tint?: Json; weight?: number; width?: number }; separator?: string; spaceBefore?: number; /** points */ spaceBetween?: number; spanColumns?: boolean; startAt?: number; style?: "arabic" | "upperRoman" | "lowerRoman" | "upperLetters" | "lowerLetters" | "symbols"; suffix?: string; /** read by the command beside its listed parameters */ text?: string }
   /** Footnotes. Lists footnotes in story order with their story, id, anchor and text. Params: {story?} ? [{story, id, index, anchor, text}] in story order. */
   "footnote.list": { /** a story id from document.inspect */ story?: number }
   /** Set Footnote Text. Replaces a footnote's text, by its story and id. Params: {story, id, text} ? replaces the footnote's text. Changes the document. */
@@ -1191,7 +1191,7 @@ export interface DesignCommands extends CommandMap {
   /** Go to Footnote Reference. Moves the caret from footnote text to just after its reference. Params: {} ? from footnote text, puts the caret after the footnote's reference. Changes the document. */
   "footnote.goToReference": Record<string, never>
   /** Insert Cross-Reference. Inserts a cross-reference to a text anchor or paragraph in a format at the insertion point. Params: {anchor? | paragraph?: text to find (first paragraph containing it) | story? + para? (0-based), format?: name (default Full Paragraph & Page Number)} ? at the insertion point; the text updates itself as the destination moves. Changes the document. */
-  "xref.insert": { /** default Full Paragraph & Page Number */ format?: string }
+  "xref.insert": { /** read by the command beside its listed parameters */ anchor?: { [key: string]: Json }; /** default Full Paragraph & Page Number */ format?: string; /** read by the command beside its listed parameters */ para?: { [key: string]: Json }; /** read by the command beside its listed parameters */ paragraph?: string; /** read by the command beside its listed parameters */ story?: number }
   /** New Hyperlink Destination. Creates a named text anchor (hyperlink destination) at the insertion point. Params: {name} ? a text anchor at the insertion point. Changes the document. */
   "anchor.create": { name?: string }
   /** Cross-References. Lists the cross-references with their position, target, format and text. Params: {} ? [{story, pos, target, format, text}]. */
@@ -1205,17 +1205,17 @@ export interface DesignCommands extends CommandMap {
   /** Set Cross-Reference Format. Changes a cross-reference's format. Params: {story, index, format}. Changes the document. */
   "xref.setFormat": { format?: string; /** a position counted from 0 (the first is 0) */ index?: number; /** a story id from document.inspect */ story?: number }
   /** New Page Reference. Adds an index page reference for topics (default: the selected text) or a see/see also reference. Params: {topics?: [level 1..4] | topic?: "Level 1 > Level 2" (default: the selected text), sort?: [keys], range?: currentPage|toEndOfStory|suppressPageRange|nextParagraphs|see|seeAlso, paragraphs?: n, target?: topic for see/seeAlso} ? a marker at the insertion point. Changes the document. */
-  "index.addReference": { paragraphs?: number; range?: "currentPage" | "toEndOfStory" | "suppressPageRange" | "nextParagraphs" | "see" | "seeAlso"; /** [keys] */ sort?: Array<Json>; target?: string; /** topic levels 1 to 4 */ topics?: Array<string> }
+  "index.addReference": { paragraphs?: number; range?: "currentPage" | "toEndOfStory" | "suppressPageRange" | "nextParagraphs" | "see" | "seeAlso"; /** [keys] */ sort?: Array<Json>; target?: string; /** like Level 1 > Level 2; default: the selected text; one of several alternative parameters */ topic?: string; /** topic levels 1 to 4 */ topics?: Array<string> }
   /** Index Page References. Lists the index page references with their topics and pages. Params: {} ? [{story, pos, topics, range, page}]. */
   "index.list": Record<string, never>
   /** Generate Index. Generates an index with a title, section headings and run-in option in a new frame. Params: {title?: "Index", sectionHeadings?: true, runIn?: false, page?: 1-based page for a new frame, rect?: [x0,y0,x1,y1]} ? replaces the existing index ? {story, entries}. Changes the document. */
   "index.generate": { /** a page counted from 1 */ page?: number; /** [x0, y0, x1, y1] */ rect?: Array<number>; runIn?: boolean; sectionHeadings?: boolean; /** like Index */ title?: string }
   /** Update Index. Regenerates the existing index. Params: {} ? regenerate the existing index. Changes the document. */
-  "index.update": Record<string, never>
+  "index.update": { /** read by the command beside its listed parameters */ asset?: number }
   /** Insert Anchored Object. Anchors objects in a story at a text position, inline or above line, with offsets. Params: {ids, story?, pos? (default: the text insertion point), position?: inline|aboveLine|custom, yOffset?, align?: left|center|right, spaceBefore?, spaceAfter?, xRelative?/yRelative?: anchor|textFrame|columnEdge|pageMargin|pageEdge, xOffset?, objectPoint?/refPoint?: 0..8, keepWithinColumn?} ? moves the items into the text. Changes the document. */
-  "anchored.insert": { align?: "left" | "center" | "right"; ids?: Array<Json>; keepWithinColumn?: boolean; /** a text position */ pos?: number; position?: "inline" | "aboveLine" | "custom"; spaceAfter?: number; spaceBefore?: number; /** a story id from document.inspect */ story?: number; /** points */ xOffset?: number; /** points */ yOffset?: number }
+  "anchored.insert": { align?: "left" | "center" | "right"; /** read by the command beside its listed parameters */ edge?: string; ids?: Array<Json>; keepWithinColumn?: boolean; /** a text position */ pos?: number; position?: "inline" | "aboveLine" | "custom"; spaceAfter?: number; spaceBefore?: number; /** a story id from document.inspect */ story?: number; /** read by the command beside its listed parameters */ to?: string; /** points */ xOffset?: number; /** points */ yOffset?: number }
   /** Anchored Object Options. Changes an anchored object's position and offsets. Params: {story?, index? (default: the object at the insertion point), position?: inline|aboveLine|custom, yOffset?, align?: left|center|right, spaceBefore?, spaceAfter?, xRelative?/yRelative?: anchor|textFrame|columnEdge|pageMargin|pageEdge, xOffset?, objectPoint?/refPoint?: 0..8, keepWithinColumn?}. Changes the document. */
-  "anchored.options": { align?: "left" | "center" | "right"; /** a position counted from 0 (the first is 0); default: the object at the insertion point */ index?: number; keepWithinColumn?: boolean; position?: "inline" | "aboveLine" | "custom"; spaceAfter?: number; spaceBefore?: number; /** a story id from document.inspect */ story?: number; /** points */ xOffset?: number; /** points */ yOffset?: number }
+  "anchored.options": { align?: "left" | "center" | "right"; /** read by the command beside its listed parameters */ edge?: string; /** a position counted from 0 (the first is 0); default: the object at the insertion point */ index?: number; keepWithinColumn?: boolean; position?: "inline" | "aboveLine" | "custom"; spaceAfter?: number; spaceBefore?: number; /** a story id from document.inspect */ story?: number; /** read by the command beside its listed parameters */ to?: string; /** points */ xOffset?: number; /** points */ yOffset?: number }
   /** Release. Releases an anchored object back onto the page. Params: {story?, index? (default: the object at the insertion point)} ? puts the object back on the page where it is now and removes it from the text. Changes the document. */
   "anchored.release": { /** a position counted from 0 (the first is 0); default: the object at the insertion point */ index?: number; /** a story id from document.inspect */ story?: number }
   /** Anchored Objects. Lists anchored objects with their story, position and size. Params: {story?} ? [{story, index, pos, position, size}]. */
@@ -1229,9 +1229,9 @@ export interface DesignCommands extends CommandMap {
   /** Delete All Guides on Spread. Deletes every guide on a spread. Params: {spread?}. Changes the document. */
   "guide.deleteAll": { spread?: Json }
   /** Guides. Lists the guides on a spread with their orientation and position. Params: {spread?} ? [{page, index, orientation, position, spread}]. */
-  "guide.list": { spread?: Json }
+  "guide.list": { /** read by the command beside its listed parameters */ orientation?: string; spread?: Json }
   /** Create Guides. Creates rows and columns of guides with gutters, fitted to the margins or the page. Params: {rows?: 0..1000, columns?: 0..1000, rowGutter?: 12, columnGutter?: 12, fitTo?: margins|page, removeExisting?: false, spread?, page? (index in the spread; default all pages)} ? at most 10000 guides per command. Changes the document. */
-  "layout.createGuides": { columnGutter?: number; /** 0 to 1000 */ columns?: number; fitTo?: "margins" | "page"; /** index in the spread; default all pages */ page?: number; removeExisting?: boolean; rowGutter?: number; /** 0 to 1000 */ rows?: number; spread?: Json }
+  "layout.createGuides": { columnGutter?: number; /** 0 to 1000 */ columns?: number; fitTo?: "margins" | "page"; /** index in the spread; default all pages */ page?: number; removeExisting?: boolean; rowGutter?: number; /** 0 to 1000 */ rows?: number; spread?: Json; /** read by the command beside its listed parameters */ story?: number }
   /** Links. Lists placed graphics' links with their status (ok, modified, missing, embedded), size and uses. Params: {} ? [{asset, name, path, status: ok|modified|missing|embedded, pixels, uses: [{id, page, ppi}]}]. */
   "links.list": Record<string, never>
   /** Relink. Points every placement of a graphic at another file. Params: {asset, path} ? use another file for every placement of the graphic. Changes the document. */
@@ -1239,7 +1239,7 @@ export interface DesignCommands extends CommandMap {
   /** Relink to Folder. Relinks graphics to files of the same name in a folder, optionally with another extension. Params: {dir?: folder to look in (default: each link's own folder), extension?: e.g. "tif" (Relink File Extension), assets?: [ids], missingOnly?: bool (default true with `dir`)} ? {relinked, notFound: [names]}. Changes the document. */
   "links.relinkFolder": { /** [ids] */ assets?: Array<Json>; /** folder to look in (default: each link's own folder); default: each link's own folder */ dir?: Json; /** a file extension such as tif */ extension?: string; /** default true with `dir` */ missingOnly?: boolean }
   /** Update Link. Reloads modified links from their files (one or all). Params: {asset?} ? reload modified links from their files (all when no asset). Changes the document. */
-  "links.update": { asset?: number }
+  "links.update": { asset?: number; /** read by the command beside its listed parameters */ story?: number }
   /** Embed Link. Embeds a linked graphic in the document. Params: {asset} ? keep only the copy in the document. Changes the document. */
   "links.embed": { asset?: number }
   /** Go To Link. Selects the frames showing a linked graphic. Params: {asset} ? selects the frames showing the graphic. Changes the document. */
@@ -1267,25 +1267,25 @@ export interface DesignCommands extends CommandMap {
   /** Change. Replaces a misspelled word at a story range. Params: {story, start, end, to}. Changes the document. */
   "spelling.change": { end?: number; start?: number; /** a story id from document.inspect */ story?: number; /** the replacement word */ to?: string }
   /** Select Data Source. Selects a data merge source (CSV or spreadsheet by path or bytes) and answers its fields and records. Params: {path | bytes|base64, name, delimiter?: comma|tab|semicolon, sheet?} ? {fields, records, warnings}. Changes the document. */
-  "data.source.select": { delimiter?: "comma" | "tab" | "semicolon"; name?: string; sheet?: string }
+  "data.source.select": { /** one of several alternative parameters */ base64?: Json; /** one of several alternative parameters */ bytes?: Json; delimiter?: "comma" | "tab" | "semicolon"; name?: string; /** one of several alternative parameters */ path?: Json; sheet?: string; /** read by the command beside its listed parameters */ what?: string }
   /** Update Data Source. Re-reads the linked data merge source. Params: {} ? re-read the linked file. Changes the document. */
-  "data.source.update": Record<string, never>
+  "data.source.update": { /** read by the command beside its listed parameters */ asset?: number }
   /** Remove Data Source. Removes the data merge source; placeholders stay. Params: {} ? drop the source; placeholders stay. Changes the document. */
   "data.source.remove": Record<string, never>
   /** Data Fields. Answers data fields (name, kind, uses) from inline data or the linked source. Params: {csv? | rows? | path? | bytes?, name?} ? [{name, kind, uses}]; no params reads the linked source and does not attach one. */
-  "data.fields": { name?: string }
+  "data.fields": { /** read by the command beside its listed parameters */ base64?: string; /** one of several alternative parameters */ bytes?: Json; /** one of several alternative parameters */ csv?: Json; /** read by the command beside its listed parameters */ delimiter?: string; name?: string; /** one of several alternative parameters */ path?: Json; /** one of several alternative parameters */ rows?: number; /** read by the command beside its listed parameters */ sheet?: string }
   /** Insert Field. Inserts a data field placeholder (text, image, QR or hyperlink) in a story or on an item. Params: {field, role?: text|image|qr|hyperlink, story?, at?, end?, item?} ? {id}. Changes the document. */
   "data.placeholder.add": { /** [x, y] in points */ at?: Array<number>; end?: number; field?: string; item?: number; role?: "text" | "image" | "qr" | "hyperlink"; /** a story id from document.inspect */ story?: number }
   /** Remove Field. Removes a data field placeholder. Params: {id}. Changes the document. */
   "data.placeholder.remove": { /** an id */ id?: Json }
   /** Data Merge Options. Sets data merge options: records, layout per page, spacing, insets and image fitting. Params: {records?, one?, range?, perPage?, arrange?, insets?, columnSpacing?, rowSpacing?, fitting?, center?, linkImages?, limit?}. Changes the document. */
-  "data.options": { arrange?: string; center?: boolean; /** points */ columnSpacing?: number; fitting?: string; insets?: Json; limit?: number; linkImages?: boolean; one?: number; perPage?: string; range?: string; records?: string; /** points */ rowSpacing?: number }
+  "data.options": { arrange?: string; center?: boolean; /** points */ columnSpacing?: number; fitting?: string; insets?: Json; limit?: number; linkImages?: boolean; one?: number; perPage?: string; range?: string; records?: string; /** points */ rowSpacing?: number; /** read by the command beside its listed parameters */ to?: string }
   /** Preview Record. Fills the template with one record for preview, for this session only. Params: {record?: n} ? fill the template with that record (session only). */
   "data.preview": { record?: number }
   /** Stop Preview. Restores the unfilled template after a preview. Params: {} ? restore the unfilled template. Changes the document. */
   "data.preview.stop": Record<string, never>
   /** Create Merged Document. Creates a merged document from data and the template with the merge options. Params: {csv? | rows? | path? | bytes?, name?, records?, one?, range?, perPage?, arrange?, insets?, columnSpacing?, rowSpacing?, fitting?, center?, linkImages?, limit?} ? {records, pages, missingImages, oversetStories, warnings}. Changes the document. */
-  "data.merge": { arrange?: string; center?: boolean; /** points */ columnSpacing?: number; fitting?: string; insets?: Json; limit?: number; linkImages?: boolean; name?: string; one?: number; perPage?: string; range?: string; records?: string; /** points */ rowSpacing?: number }
+  "data.merge": { arrange?: string; /** one of several alternative parameters */ bytes?: Json; center?: boolean; /** points */ columnSpacing?: number; /** one of several alternative parameters */ csv?: Json; fitting?: string; insets?: Json; limit?: number; linkImages?: boolean; name?: string; one?: number; /** one of several alternative parameters */ path?: Json; perPage?: string; range?: string; records?: string; /** points */ rowSpacing?: number; /** one of several alternative parameters */ rows?: number }
   /** New Hyperlink. Creates a hyperlink from the selected text or objects to a URL, email or page. Params: {url? | email? | page? (1-based), name?, ids?} ? from the selected text, or the selected frames. Changes the document. */
   "hyperlink.create": { email?: string; ids?: Array<Json>; name?: string; /** 1-based; one of several alternative parameters */ page?: number; /** 1-based; one of several alternative parameters */ url?: string }
   /** Delete Hyperlink. Deletes a hyperlink by id. Params: {id}. Changes the document. */

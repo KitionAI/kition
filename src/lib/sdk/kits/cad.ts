@@ -227,7 +227,7 @@ export interface CadCommands extends CommandMap {
   /** New Drawing... Opens a new empty drawing as a further document and makes it current; metric picks millimetre units and the ISO template instead of inches. Params: {metric?: bool}. Changes the document. */
   "new": { metric?: boolean }
   /** Open... Opens a DXF or DWG drawing, from a path or from base64 data with a name, as a further document and makes it current. Params: {path} | {data: base64, name}. Changes the document. */
-  "open": { path?: Json }
+  "open": { /** base64; in one of several forms of the parameters */ data?: Json; /** in one of several forms of the parameters */ name?: string; /** in one of several forms of the parameters */ path?: Json }
   /** Close. Closes the drawing at the given document index, or the current one, without saving it. Params: {index?}. Changes the document. */
   "close": { /** a position counted from 0 (the first is 0) */ index?: number }
   /** Close All. Closes every open drawing without saving, leaving no current document. Changes the document. */
@@ -243,7 +243,7 @@ export interface CadCommands extends CommandMap {
   /** Audit. Checks the drawing's database for errors (dangling references, bad handles, invalid tables) and, with fix, repairs them; answers each issue found. Params: {fix?: bool} ? {errors, fixed, issues: [{kind, location, handle?, message, fix}], message}. Changes the document. */
   "audit": { fix?: boolean }
   /** Recover... Opens a damaged drawing from a path or base64 data, repairs what audit finds, and answers the new document's index with the issues fixed. Params: {path} | {data: base64, name} ? {index, errors, fixed, issues, message}. Changes the document. */
-  "recover": { path?: Json }
+  "recover": { /** base64; in one of several forms of the parameters */ data?: Json; /** in one of several forms of the parameters */ name?: string; /** in one of several forms of the parameters */ path?: Json }
   /** Undo. Undoes the last step of the caller's undo scope (person or agent), as the U command does. Params: {scope?: "person"|"agent"}. Changes the document. */
   "u": { scope?: "person" | "agent" }
   /** Undo. Undoes the last count steps of the caller's undo scope, or of the given person or agent scope. Params: {count?: n, scope?: "person"|"agent"}. Changes the document. */
@@ -268,8 +268,8 @@ export interface CadCommands extends CommandMap {
   "selectall": Record<string, never>
   /** Deselect All. Clears the selection so no object is selected, and answers the selection count. Params: {}. */
   "ai_deselect": Record<string, never>
-  /** Select. Sets or extends the selection by handles, a window or crossing box, or a pick point, or clears it; answers the selected handles. Params: {handles: [hex]} | {window: [[x,y],[x,y]], crossing?: bool} | {at: [x,y]} | {clear: true} | {add?: bool}. */
-  "select": { handles?: Array<string> }
+  /** Select. Sets or extends the selection by handles, a window or crossing box, or a pick point, or clears it; answers the selected handles. Params: {handles: [hex]} | {window: [[x,y],[x,y]], crossing?: bool} | {at: [x,y]} | {fence: [[x,y],...]} | {clear: true} | {add?: bool}. */
+  "select": { /** in one of several forms of the parameters */ add?: boolean; /** in one of several forms of the parameters */ at?: Array<number>; /** in one of several forms of the parameters */ clear?: boolean; /** in one of several forms of the parameters */ crossing?: boolean; /** in one of several forms of the parameters */ fence?: Array<Array<number>>; /** in one of several forms of the parameters */ handles?: Array<string>; /** in one of several forms of the parameters */ window?: Array<Array<number>> }
   /** Quick Select... Selects objects by type and a property comparison (equals, differs, greater, less, wildcard), new, appended or excluded, over the drawing or the selection. Params: {type?: "Line"|"Circle"|..., property?, operator?: "="|"!="|">"|"<"|"*" (wildcard), value?, mode?: new|append|exclude, applyTo?: drawing|selection, layer?: string (a layer name), color?} ? selected handles. */
   "qselect": { applyTo?: "drawing" | "selection"; color?: string; /** a layer name */ layer?: string; mode?: "new" | "append" | "exclude"; /** wildcard */ operator?: "=" | "!=" | ">" | "<" | "*"; property?: string; type?: string; value?: Json }
   /** Quick Select Properties. Answers the object types in the drawing or selection with their counts, and the properties and operators Quick Select offers for a type. Params: {applyTo?: drawing|selection, type?} ? object types with counts and the properties available for `type`. */
@@ -291,7 +291,7 @@ export interface CadCommands extends CommandMap {
   /** Zoom Object. Zooms the view to fit the given objects, or the selection. Params: {handles?}. */
   "zoom.object": { handles?: Array<string> }
   /** Pan. Moves the view by a delta, from one point to another, or to a new centre, without changing the zoom. Params: {delta: [dx,dy]} | {from, to} | {center}. */
-  "pan": { /** [dx, dy] */ delta?: Array<number> }
+  "pan": { /** in one of several forms of the parameters */ center?: Json; /** [dx, dy]; in one of several forms of the parameters */ delta?: Array<number>; /** in one of several forms of the parameters */ from?: Json; /** in one of several forms of the parameters */ to?: Json }
   /** Pan Left. Pans the view a step to the left. */
   "pan.left": Record<string, never>
   /** Pan Right. Pans the view a step to the right. */
@@ -314,34 +314,34 @@ export interface CadCommands extends CommandMap {
   "layout.set": { name?: string }
   /** Line. Draws connected line segments through the given points, closing back to the first point when closed is set. Params: {points: [[x,y],...], closed?: bool}. Changes the document. */
   "line": { closed?: boolean; points?: Array<Array<number>> }
-  /** Polyline. Draws one lightweight polyline through the vertices, each a point or a point with bulge and start and end widths, optionally closed. Params: {vertices: [[x,y] | {p:[x,y], bulge, startWidth, endWidth}], closed?, width?}. Changes the document. */
-  "pline": { closed?: boolean; /** [[x,y] | {p:[x,y], bulge, startWidth, endWidth}] */ vertices?: Array<Json>; width?: number }
+  /** Polyline. Draws one lightweight polyline through the vertices, each a point or a point with bulge and start and end widths, optionally closed. Params: {vertices: [[x,y] | {p:[x,y], bulge, startWidth, endWidth}], closed?, width?} | {points: [[x,y] | {p:[x,y], bulge, startWidth, endWidth}], closed?, width?} (points: another name for vertices). Changes the document. */
+  "pline": { /** in one of several forms of the parameters */ closed?: boolean; /** [[x,y] | {p:[x,y], bulge, startWidth, endWidth}]; in one of several forms of the parameters */ points?: Array<Json>; /** [[x,y] | {p:[x,y], bulge, startWidth, endWidth}]; in one of several forms of the parameters */ vertices?: Array<Json>; /** in one of several forms of the parameters */ width?: number }
   /** Circle. Draws a circle from a centre and radius or diameter, two diameter end points, or three points on it. Params: {center, radius} | {center, diameter} | {p1, p2} | {p1, p2, p3}. Changes the document. */
-  "circle": { center?: Array<number>; radius?: number }
+  "circle": { center?: Array<number>; /** in one of several forms of the parameters */ diameter?: Json; /** in one of several forms of the parameters */ p1?: Json; /** in one of several forms of the parameters */ p2?: Json; /** in one of several forms of the parameters */ p3?: Json; /** in one of several forms of the parameters */ radius?: number }
   /** Arc. Draws an arc through three points, from a centre, radius and start and end angles, or from start, centre and end points. Params: {p1, p2, p3} | {center, radius, start, end (degrees)} | {start, center, end}. Changes the document. */
-  "arc": { p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
-  /** Rectangle. Draws a closed rectangular polyline from two corners, dimensions or an area, with optional rotation, fillet or chamfer corners, width, elevation and thickness. Params: {p1, p2 | dimensions: [l, w] (p2 picks the quadrant) | area + length|breadth, rotation? (deg), fillet?, chamfer?: [d1, d2], width?, elevation?, thickness?}. Changes the document. */
-  "rectang": { /** [d1, d2] */ chamfer?: Array<number>; elevation?: number; fillet?: number; p1?: Array<number>; /** deg */ rotation?: number; thickness?: number; width?: number }
+  "arc": { /** in one of several forms of the parameters */ center?: Json; /** degrees; in one of several forms of the parameters */ end?: number; p1?: Array<number>; p2?: Array<number>; p3?: Array<number>; /** in one of several forms of the parameters */ radius?: number; /** in one of several forms of the parameters */ start?: number }
+  /** Rectangle. Draws a closed rectangular polyline from two corners, dimensions or an area, with optional rotation, fillet or chamfer corners, width, elevation and thickness. Params: {p1, p2?: [x,y] (the opposite corner; with dimensions it picks the quadrant), dimensions?: [l, w], area?: number, length?: number, breadth?: number (area with length or breadth), rotation? (deg), fillet?, chamfer?: [d1, d2], width?, elevation?, thickness?}. Changes the document. */
+  "rectang": { area?: number; /** area with length or breadth */ breadth?: number; /** [d1, d2] */ chamfer?: Array<number>; /** [l, w] */ dimensions?: Array<Json>; elevation?: number; fillet?: number; length?: number; p1?: Array<number>; /** the opposite corner; with dimensions it picks the quadrant */ p2?: Array<number>; /** deg */ rotation?: number; thickness?: number; width?: number }
   /** Polygon. Draws a regular closed polygon with the given number of sides, inscribed in or circumscribed about a circle, or from one edge. Params: {sides, center, radius, inscribed?: bool, angle?: deg to a vertex (inscribed) or edge midpoint (default: bottom edge horizontal)} | {sides, edge: [[x,y],[x,y]]}. Changes the document. */
-  "polygon": { angle?: number; center?: Array<number>; inscribed?: boolean; radius?: number; sides?: number }
+  "polygon": { angle?: number; center?: Array<number>; /** in one of several forms of the parameters */ edge?: Array<Array<number>>; /** in one of several forms of the parameters */ inscribed?: boolean; /** in one of several forms of the parameters */ radius?: number; sides?: number }
   /** Ellipse. Draws an ellipse, or an elliptical arc with start and end angles, from a centre, a major axis vector and a minor-to-major ratio. Params: {center, major: [dx,dy], ratio, start?, end? (degrees)}. Changes the document. */
   "ellipse": { center?: Array<number>; /** degrees */ end?: number; /** [dx, dy] */ major?: Array<number>; ratio?: number; start?: number }
   /** Point. Draws a point object at a location, or one at each of the given points, in the current point style. Params: {at: [x,y]} | {points: [...]}. Changes the document. */
-  "point": { at?: Array<number> }
-  /** Multiple Point. Draws a point object at each of the given points in the current point style. Params: {points: [...]}. Changes the document. */
-  "point.multiple": { points?: Array<Json> }
+  "point": { /** in one of several forms of the parameters */ at?: Array<number>; /** in one of several forms of the parameters */ points?: Array<Json> }
+  /** Multiple Point. Draws a point object at each of the given points in the current point style. Params: {points: [...]} | {at: [x,y]}. Changes the document. */
+  "point.multiple": { /** in one of several forms of the parameters */ at?: Array<number>; /** in one of several forms of the parameters */ points?: Array<Json> }
   /** Construction Line. Draws an infinite construction line through two points, at an angle, horizontal or vertical, bisecting an angle, or offset from a line. Params: {base, through} | {base, angle (degrees)} | {base, hor|ver: true} | {vertex, start, end} (bisect) | {handle, distance, side} | {handle, through} (offset). Changes the document. */
-  "xline": { base?: Array<number>; through?: Array<number> }
+  "xline": { /** degrees; in one of several forms of the parameters */ angle?: number; base?: Array<number>; /** in one of several forms of the parameters */ end?: number; /** one of several alternative parameters; in one of several forms of the parameters */ hor?: boolean; /** in one of several forms of the parameters */ start?: number; through?: Array<number>; /** one of several alternative parameters; in one of several forms of the parameters */ ver?: boolean; /** in one of several forms of the parameters */ vertex?: Json }
   /** Ray. Draws a semi-infinite ray starting at a base point and passing through a second point. Params: {base, through}. Changes the document. */
   "ray": { base?: Array<number>; through?: Array<number> }
   /** Spline. Draws a spline through fit points with optional end tangents, from control vertices, or converts a polyline into a spline. Params: {fit: [[x,y],...], closed?, knots?: chord|sqrt|uniform, startTangent?, endTangent? ([dx,dy]), tolerance?} | {control: [...], degree?} | {object: handle|true, handles?} (polyline to spline). Changes the document. */
-  "spline": { closed?: boolean; endTangent?: Array<number>; fit?: Array<Array<number>>; knots?: "chord" | "sqrt" | "uniform"; startTangent?: Array<number>; tolerance?: number }
+  "spline": { /** in one of several forms of the parameters */ closed?: boolean; /** in one of several forms of the parameters */ control?: Array<Json>; /** in one of several forms of the parameters */ degree?: Json; endTangent?: Array<number>; /** in one of several forms of the parameters */ fit?: Array<Array<number>>; /** in one of several forms of the parameters */ handles?: Json; /** in one of several forms of the parameters */ knots?: "chord" | "sqrt" | "uniform"; /** in one of several forms of the parameters */ object?: "handle" | "true"; startTangent?: Array<number>; tolerance?: number }
   /** Donut. Draws a filled ring as a wide closed polyline, from a centre and inside and outside diameters. Params: {center, inside, outside}. Changes the document. */
   "donut": { center?: Array<number>; inside?: number; outside?: number }
   /** Single Line Text. Draws single-line text at a point with optional height, rotation and justification, in the current text style. Params: {at, text, height?, rotation? (degrees), justify?: L|C|R|M|TL|TC|TR|ML|MC|MR|BL|BC|BR}. Changes the document. */
   "text": { at?: Array<number>; height?: number; justify?: "L" | "C" | "R" | "M" | "TL" | "TC" | "TR" | "ML" | "MC" | "MR" | "BL" | "BC" | "BR"; /** degrees */ rotation?: number; text?: string }
-  /** Multiline Text. Draws multiline text at a point with optional height, wrap width, attachment, rotation, style and line spacing. Params: {at, text, height?, width?, attach?: 1..9 | justify?: TL..BR, rotation?, style?, lineSpacing?, lineSpacingExact?}. Changes the document. */
-  "mtext": { at?: Array<number>; attach?: number; height?: number; lineSpacing?: number; lineSpacingExact?: boolean; rotation?: number; style?: string; text?: string; width?: number }
+  /** Multiline Text. Draws multiline text at a point with optional height, wrap width, attachment, rotation, style and line spacing. Params: {at, text, height?, width?, attach?: 1..9, justify?: TL..BR (instead of attach), rotation?, style?, lineSpacing?, lineSpacingExact?}. Changes the document. */
+  "mtext": { at?: Array<number>; attach?: number; height?: number; /** TL..BR (instead of attach); instead of attach */ justify?: Json; lineSpacing?: number; lineSpacingExact?: boolean; rotation?: number; style?: string; text?: string; width?: number }
   /** Start, Center, End. Draws a counter-clockwise arc from a start point about a centre to the angle of an end point. Params: {start, center, end}. Changes the document. */
   "arc.sce": { center?: Array<number>; end?: number; start?: number }
   /** Start, Center, Angle. Draws an arc from a start point about a centre through an included angle; positive angles go counter-clockwise. Params: {start, center, angle (degrees, + = CCW)}. Changes the document. */
@@ -360,34 +360,34 @@ export interface CadCommands extends CommandMap {
   "arc.csa": { /** degrees */ angle?: number; center?: Array<number>; start?: number }
   /** Center, Start, Length. Draws an arc about a centre from a start point with the given chord length. Params: {center, start, length (chord)}. Changes the document. */
   "arc.csl": { center?: Array<number>; length?: number; start?: number }
-  /** Continue. Draws an arc tangent to the end of the last line or arc drawn, to an end point, or from a start point and direction. Params: {end} (tangent from the last line/arc) | {start, direction, end}. Changes the document. */
-  "arc.continue": { end?: number }
+  /** Continue. Draws an arc tangent to the end of the last line or arc drawn, to an end point, or from a start point and direction. Params: {end} | {start, direction, end} (with only end, the arc continues tangent from the last line or arc). Changes the document. */
+  "arc.continue": { /** in one of several forms of the parameters */ direction?: Json; /** in one of several forms of the parameters */ end?: number; /** in one of several forms of the parameters */ start?: number }
   /** Center, Diameter. Draws a circle from its centre point and diameter. Params: {center, diameter}. Changes the document. */
   "circle.cd": { center?: Array<number>; diameter?: number }
-  /** 2 Points. Draws a circle whose diameter runs between two points. Params: {p1, p2}. Changes the document. */
-  "circle.2p": { p1?: Array<number>; p2?: Array<number> }
-  /** 3 Points. Draws the circle that passes through three points. Params: {p1, p2, p3}. Changes the document. */
-  "circle.3p": { p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
+  /** 2 Points. Draws a circle whose diameter runs between two points. Params: {p1, p2} | {center, diameter}. Changes the document. */
+  "circle.2p": { /** in one of several forms of the parameters */ center?: Json; /** in one of several forms of the parameters */ diameter?: Json; p1?: Array<number>; p2?: Array<number> }
+  /** 3 Points. Draws the circle that passes through three points. Params: {p1, p2, p3} | {center, diameter}. Changes the document. */
+  "circle.3p": { /** in one of several forms of the parameters */ center?: Json; /** in one of several forms of the parameters */ diameter?: Json; p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
   /** Tan, Tan, Radius. Draws a circle of a given radius tangent to two lines, circles, arcs or polyline segments, the solution nearest the pick points. Params: {h1, p1, h2, p2, radius} (lines, circles, arcs, polyline segments; nearest solution to the picks). Changes the document. */
   "circle.ttr": { h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number>; radius?: number }
   /** Tan, Tan, Tan. Draws a circle tangent to three lines, circles, arcs or polyline segments, the solution nearest the three pick points. Params: {h1, p1, h2, p2, h3, p3}. Changes the document. */
   "circle.ttt": { h1?: string; h2?: string; h3?: string; p1?: Array<number>; p2?: Array<number>; p3?: Array<number> }
   /** Axis, End. Draws an ellipse from the two end points of one axis and half the length of the other, as a distance or a third point. Params: {p1, p2, distance} | {p1, p2, p3} (axis endpoints, then half the other axis). Changes the document. */
-  "ellipse.axis": { distance?: number; p1?: Array<number>; p2?: Array<number> }
+  "ellipse.axis": { distance?: number; p1?: Array<number>; p2?: Array<number>; /** in one of several forms of the parameters */ p3?: Json }
   /** Elliptical Arc. Draws an elliptical arc between start and end angles, from a centre, major axis and ratio or from axis end points and a distance. Params: {center, major: [dx,dy], ratio, start, end (degrees)} | {p1, p2, distance, start, end}. Changes the document. */
-  "ellipse.arc": { center?: Array<number>; /** degrees */ end?: number; /** [dx, dy] */ major?: Array<number>; ratio?: number; start?: number }
+  "ellipse.arc": { center?: Array<number>; /** in one of several forms of the parameters */ distance?: Json; /** degrees; in one of several forms of the parameters */ end?: number; /** [dx, dy]; in one of several forms of the parameters */ major?: Array<number>; /** in one of several forms of the parameters */ p1?: Json; /** in one of several forms of the parameters */ p2?: Json; ratio?: number; /** in one of several forms of the parameters */ start?: number }
   /** Divide. Places points or block references at equal intervals that split an object into the given number of segments, optionally aligned to it. Params: {handle, segments, block?, align?: bool}. Changes the document. */
   "divide": { align?: boolean; block?: string; handle?: string; segments?: number }
   /** Measure. Places points or block references along an object at every given length, from one end, optionally aligned to it. Params: {handle, length, block?, align?: bool, from?: [x,y] (end to start at)}. Changes the document. */
   "measure": { align?: boolean; block?: string; /** end to start at */ from?: Array<number>; handle?: string; length?: number }
-  /** Rectangular. Draws a revision cloud of arcs from a rectangle, a polygon, a freehand path or an existing object, with optional arc length and style. Params: {p1, p2} | {points: [...]} | {freehand: [...]} | {handle}, arcLength?, style?: normal|calligraphy, reverse?. Changes the document. */
-  "revcloud": { p1?: Array<number>; p2?: Array<number> }
-  /** Polygonal. Draws a revision cloud of arcs along the closed polygon through the given points. Params: {points: [[x,y],...], arcLength?}. Changes the document. */
-  "revcloud.polygonal": { arcLength?: number; points?: Array<Array<number>> }
-  /** Freehand. Draws a revision cloud of arcs along a freehand path through the given points. Params: {freehand: [[x,y],...], arcLength?}. Changes the document. */
-  "revcloud.freehand": { arcLength?: number; freehand?: Array<Array<number>> }
+  /** Rectangular. Draws a revision cloud of arcs from a rectangle, a polygon, a freehand path or an existing object, with optional arc length and style. Params: {p1?: [x,y], p2?: [x,y] (a rectangle), points?: [[x,y],...] (a polygon), freehand?: [[x,y],...], handle? (an object to turn into a cloud), arcLength?: number, style?: normal|calligraphy, reverse?: bool} (one of p1 with p2, points, freehand or handle). Changes the document. */
+  "revcloud": { arcLength?: number; freehand?: Array<Array<number>>; /** an object to turn into a cloud */ handle?: Json; p1?: Array<number>; p2?: Array<number>; /** a polygon */ points?: Array<Array<number>>; reverse?: boolean; style?: "normal" | "calligraphy" }
+  /** Polygonal. Draws a revision cloud of arcs along the closed polygon through the given points. Params: {points?: [[x,y],...], freehand?: [[x,y],...], handle? (an object to turn into a cloud), arcLength?: number, style?: normal|calligraphy, reverse?: bool} (one of points, freehand or handle). Changes the document. */
+  "revcloud.polygonal": { arcLength?: number; freehand?: Array<Array<number>>; /** an object to turn into a cloud */ handle?: Json; points?: Array<Array<number>>; reverse?: boolean; style?: "normal" | "calligraphy" }
+  /** Freehand. Draws a revision cloud of arcs along a freehand path through the given points. Params: {freehand?: [[x,y],...], points?: [[x,y],...], handle? (an object to turn into a cloud), arcLength?: number, style?: normal|calligraphy, reverse?: bool} (one of freehand, points or handle). Changes the document. */
+  "revcloud.freehand": { arcLength?: number; freehand?: Array<Array<number>>; /** an object to turn into a cloud */ handle?: Json; points?: Array<Array<number>>; reverse?: boolean; style?: "normal" | "calligraphy" }
   /** Wipeout. Draws a wipeout that masks the objects behind it, from points or a closed polyline, or sets whether wipeout frames show. Params: {points: [[x,y],...]} | {handle (closed polyline), erase?: bool} | {frames: on|off|display}. Changes the document. */
-  "wipeout": { points?: Array<Array<number>> }
+  "wipeout": { /** in one of several forms of the parameters */ erase?: boolean; /** in one of several forms of the parameters */ frames?: "on" | "off" | "display"; /** closed polyline; in one of several forms of the parameters */ handle?: Json; /** in one of several forms of the parameters */ points?: Array<Array<number>> }
   /** 3D Polyline. Draws a 3D polyline of straight segments through points with optional z values, optionally closed. Params: {points: [[x,y,z?],...], closed?}. Changes the document. */
   "3dpoly": { closed?: boolean; /** [[x,y,z?],...] */ points?: Array<Json> }
   /** Multiline. Draws a multiline as two parallel offset polylines through the points, with scale, justification and an optional close. Params: {points, scale?, justification?: top|zero|bottom, closed?} (two offset polylines). Changes the document. */
@@ -397,19 +397,19 @@ export interface CadCommands extends CommandMap {
   /** Control Vertices. Draws a spline from control vertices with the given degree (default 3), optionally closed. Params: {control: [[x,y],...], degree?: 1..10 (default 3), closed?}. Changes the document. */
   "spline.cv": { closed?: boolean; control?: Array<Array<number>>; /** 1 to 10; default 3 */ degree?: number }
   /** Center Mark. Draws centre marks with centre lines on the CENTER linetype for the given circles and arcs. Params: {handle | handles} (circles/arcs; lines on the CENTER linetype). Changes the document. */
-  "centermark": Record<string, never>
+  "centermark": { /** one of several alternative parameters */ handle?: Json; /** one of several alternative parameters */ handles?: Json }
   /** Center Line. Draws a centre line midway between two lines, on the CENTER linetype. Params: {h1, h2} (two lines). Changes the document. */
   "centerline": { h1?: string; h2?: string }
   /** Linear. Draws a horizontal, vertical or rotated linear dimension between two points, or an associative one for an object, with the line at a point. Params: {p1, p2, at, rotation? (degrees; default: horizontal/vertical from `at`), text?} | {object: hex, at} (associative). Changes the document. */
-  "dimlinear": { at?: Array<number>; p1?: Array<number>; p2?: Array<number>; /** degrees; default: horizontal/vertical from `at` */ rotation?: number; text?: string }
+  "dimlinear": { at?: Array<number>; /** a colour such as #rrggbb; in one of several forms of the parameters */ object?: string; p1?: Array<number>; p2?: Array<number>; /** degrees; default: horizontal/vertical from `at`; in one of several forms of the parameters */ rotation?: number; /** in one of several forms of the parameters */ text?: string }
   /** Aligned. Draws a dimension parallel to the line between two points, its dimension line through a point, with optional override text. Params: {p1, p2, at, text?}. Changes the document. */
   "dimaligned": { at?: Array<number>; p1?: Array<number>; p2?: Array<number>; text?: string }
   /** Radius. Draws a radius dimension for an arc or circle, or from a centre and a point on the curve. Params: {handle, at?} | {center, point}. Changes the document. */
-  "dimradius": { at?: Array<number>; handle?: string }
+  "dimradius": { at?: Array<number>; /** in one of several forms of the parameters */ center?: Json; handle?: string; /** in one of several forms of the parameters */ point?: Json }
   /** Diameter. Draws a diameter dimension for an arc or circle, or from a centre and a point on the curve. Params: {handle, at?} | {center, point}. Changes the document. */
-  "dimdiameter": { at?: Array<number>; handle?: string }
+  "dimdiameter": { at?: Array<number>; /** in one of several forms of the parameters */ center?: Json; handle?: string; /** in one of several forms of the parameters */ point?: Json }
   /** Angular. Draws an angular dimension from a vertex and two points, between two lines, or for an arc, with its arc through a point. Params: {vertex, p1, p2, at} | {lines: [hex, hex], at} | {arc: hex, at} (associative). Changes the document. */
-  "dimangular": { at?: Array<number>; p1?: Array<number>; p2?: Array<number>; vertex?: Array<number> }
+  "dimangular": { /** a colour such as #rrggbb; in one of several forms of the parameters */ arc?: string; at?: Array<number>; /** in one of several forms of the parameters */ lines?: Array<string>; p1?: Array<number>; p2?: Array<number>; vertex?: Array<number> }
   /** Arc Length. Draws an arc length dimension for an arc or polyline arc segment, its line through a point. Params: {handle, at}. Changes the document. */
   "dimarc": { at?: Array<number>; handle?: string }
   /** Ordinate. Draws an ordinate dimension giving a feature point's x or y datum value, with its leader to a point. Params: {feature, leader, xtype?: bool}. Changes the document. */
@@ -420,8 +420,8 @@ export interface CadCommands extends CommandMap {
   "dimbaseline": { points?: Array<Json> }
   /** Quick Dimension. Draws a continuous series of linear dimensions across the end points of the given objects, horizontal or vertical, at a point. Params: {handles?, at: [x,y], vertical?: bool}. Changes the document. */
   "qdim": { at?: Array<number>; handles?: Array<string>; vertical?: boolean }
-  /** Dimension. Draws a dimension between two points with its line at a point, choosing the dimension kind from the geometry. Params: {p1, p2, at}. Changes the document. */
-  "dim": { at?: Array<number>; p1?: Array<number>; p2?: Array<number> }
+  /** Dimension. Draws a dimension between two points with its line at a point, choosing the dimension kind from the geometry. Params: {p1, p2, at, rotation? (degrees; default: horizontal/vertical from `at`), text?} | {object: hex, at} (associative). Changes the document. */
+  "dim": { at?: Array<number>; /** a colour such as #rrggbb; in one of several forms of the parameters */ object?: string; p1?: Array<number>; p2?: Array<number>; /** degrees; default: horizontal/vertical from `at`; in one of several forms of the parameters */ rotation?: number; /** in one of several forms of the parameters */ text?: string }
   /** Multileader. Draws a multileader from an arrow point through vertices to a landing, with mtext or a block, straight, spline or no leader. Params: {points: [[arrow], ..., [landing]] ([location] with leaderType none), text?, leaderType?: straight|spline|none, block?: name, blockAttach?: center|insertion}. Changes the document. */
   "mleader": { block?: string; blockAttach?: "center" | "insertion"; leaderType?: "straight" | "spline" | "none"; /** [[arrow], ..., [landing]] ([location] with leaderType none); [location] with leaderType none */ points?: Array<Json>; text?: string }
   /** Leader. Draws a leader line through the given points, with optional annotation text at its end. Params: {points: [[x,y]...], text?}. Changes the document. */
@@ -449,9 +449,9 @@ export interface CadCommands extends CommandMap {
   /** Dimension Space. Spaces parallel linear or angular dimensions evenly from a base dimension, by the given spacing or DIMDLI. Params: {base: hex, handles: [hex], spacing?: number (default DIMDLI)}. Changes the document. */
   "dimspace": { /** a colour such as #rrggbb */ base?: string; handles?: Array<string>; /** default DIMDLI */ spacing?: number }
   /** Hatch... Fills areas around internal points, or inside closed objects, with a hatch pattern at a scale and angle, optionally associative. Params: {points?: [[x,y]] (internal points) | handles?: [hex] (closed objects), pattern?: "ANSI31", scale?, angle? (degrees), associative?}. Changes the document. */
-  "hatch": { /** degrees */ angle?: number; associative?: boolean; /** like ANSI31 */ pattern?: string; points?: Array<Array<Json>>; scale?: number }
+  "hatch": { /** degrees */ angle?: number; associative?: boolean; /** closed objects; one of several alternative parameters */ handles?: Array<string>; /** like ANSI31 */ pattern?: string; points?: Array<Array<Json>>; scale?: number }
   /** Gradient... Fills areas around internal points, or inside closed objects, with a two-colour gradient at an angle. Params: {points? | handles?, color1?, color2?, angle?}. Changes the document. */
-  "gradient": { angle?: number; color1?: Json; color2?: Json }
+  "gradient": { angle?: number; color1?: Json; color2?: Json; /** one of several alternative parameters */ handles?: Json; /** one of several alternative parameters */ points?: Json }
   /** Boundary... Creates a closed polyline along the boundary of the area around each internal point. Params: {points: [[x,y]]}. Changes the document. */
   "boundary": { points?: Array<Array<number>> }
   /** Region. Converts the given closed objects, or the selection, into regions. Params: {handles?}. Changes the document. */
@@ -468,10 +468,10 @@ export interface CadCommands extends CommandMap {
   "attdef": { at?: Array<number>; default?: string; height?: number; invisible?: boolean; prompt?: string; tag?: string }
   /** Single... Sets attribute values on one block reference by tag, and answers which changed and which tags were unknown. Params: {handle, values: {TAG: value} (tags in any case)} ? {changed, unknownTags?}. Changes the document. */
   "attedit": { handle?: string; /** tags in any case */ values?: { TAG?: Json } }
-  /** Global. Finds and replaces text in attribute values across block references filtered by block, tag and value, and answers how many changed. Params: {find, replace?, block?, tag?, value? (wildcard specifications, default *), handles? (default: every block reference in the current space)} ? {changed}. Changes the document. */
-  "-attedit": { block?: string; find?: string; handles?: Array<string>; replace?: string; tag?: string; value?: Json }
-  /** Write Block. Writes a block, or the given objects with a base point, to a new drawing file at a path. Params: {path, name? | handles?, base?}. Changes the document. */
-  "wblock": { base?: Array<number>; path?: Json }
+  /** Global. Finds and replaces text in attribute values across block references filtered by block, tag and value, and answers how many changed. Params: {find, replace?, block?, tag?, value? (wildcard specifications, default *), handle? (one block reference), handles? (default: every block reference in the current space)} ? {changed}. Changes the document. */
+  "-attedit": { block?: string; find?: string; /** one block reference */ handle?: Json; handles?: Array<string>; replace?: string; tag?: string; value?: Json }
+  /** Write Block. Writes a block, or the given objects with a base point, to a new drawing file at a path. Params: {path, name?: string (a block to write), handles? (objects to write instead of a block), base?}. Changes the document. */
+  "wblock": { base?: Array<number>; /** objects to write instead of a block */ handles?: Json; /** a block to write */ name?: string; path?: Json }
   /** Base. Sets the drawing's insertion base point ($INSBASE) used when it is inserted as a block. Params: {at: [x,y]}. Changes the document. */
   "base": { at?: Array<number> }
   /** Purge. Removes unused named items of one or every type (blocks, layers, styles and more) and zero-length or empty objects, matching names. Params: {type?: all|blocks|dimstyles|groups|layers|linetypes|mleaderstyles|tablestyles|textstyles|zerolength|emptytext (default all: every named type), names?: "A*,B" (default *)} ? purged. Changes the document. */
@@ -482,12 +482,12 @@ export interface CadCommands extends CommandMap {
   "battman": { name?: string }
   /** Attribute Display. Sets how attributes display (normal, all on or all off) through ATTMODE, and answers the new value. Params: {mode: "normal" | "on" | "off"} (sets ATTMODE to 1 / 2 / 0) ? {attmode}. Changes the document. */
   "attdisp": { mode?: "normal" | "on" | "off" }
-  /** Synchronize Attributes. Updates every reference of a block so its attributes match the block's current attribute definitions. Params: {name} or {handle} (a reference of the block) ? {block, references}. Changes the document. */
-  "attsync": { name?: string }
+  /** Synchronize Attributes. Updates every reference of a block so its attributes match the block's current attribute definitions. Params: {name} | {handle} (a reference of the block) ? {block, references}. Changes the document. */
+  "attsync": { /** in one of several forms of the parameters */ handle?: Json; /** in one of several forms of the parameters */ name?: string }
   /** Erase. Erases the given objects, or the selection, from the drawing. Params: {handles?: [hex]} (default: selection). Changes the document. */
   "erase": { handles?: Array<string> }
   /** Move. Moves the given objects, or the selection, by a delta or from a base point to a target point. Params: {handles?, from?: [x,y], to?: [x,y] | delta: [dx,dy]}. Changes the document. */
-  "move": { from?: Array<number>; handles?: Array<string>; to?: Array<number> }
+  "move": { /** [dx, dy]; one of several alternative parameters */ delta?: Array<number>; from?: Array<number>; handles?: Array<string>; to?: Array<number> }
   /** Copy. Copies the given objects, or the selection, by a delta or from a point to a point, once or count times. Params: {handles?, delta: [dx,dy] | from,to, count?: n}. Changes the document. */
   "copy": { count?: number; delta?: Array<number>; handles?: Array<string>; to?: Array<number> }
   /** Rotate. Rotates the given objects, or the selection, about a base point by an angle in degrees, optionally keeping the originals. Params: {handles?, base: [x,y], angle (degrees), copy?: bool}. Changes the document. */
@@ -501,13 +501,13 @@ export interface CadCommands extends CommandMap {
   /** Offset. Creates a copy of an object offset by a distance towards a side point, on the source or current layer, optionally erasing it. Params: {handle, distance, side: [x,y], erase?: bool, layer?: "source"|"current"}. Changes the document. */
   "offset": { distance?: number; erase?: boolean; handle?: string; layer?: "source" | "current"; side?: Array<number> }
   /** Trim. Trims an object at its cutting edges where it is picked, fenced or crossed, in quick or standard mode. Params: {handle, pick: [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]], edges?: [hex], edgeMode?: "extend"|"none", mode?: "quick"|"standard"}. Changes the document. */
-  "trim": { edgeMode?: "extend" | "none"; edges?: Array<string>; handle?: string; mode?: "quick" | "standard"; pick?: Array<number> }
+  "trim": { /** one of several alternative parameters */ crossing?: Array<Array<number>>; edgeMode?: "extend" | "none"; edges?: Array<string>; /** one of several alternative parameters */ fence?: Array<Array<number>>; handle?: string; mode?: "quick" | "standard"; pick?: Array<number> }
   /** Extend. Extends an object to its boundary edges at the end that is picked, fenced or crossed. Params: {handle, pick: [x,y] | fence: [[x,y],...] | crossing: [[x,y],[x,y]], edges?: [hex], edgeMode?: "extend"|"none"}. Changes the document. */
-  "extend": { edgeMode?: "extend" | "none"; edges?: Array<string>; handle?: string; pick?: Array<number> }
-  /** Fillet. Joins two lines, arcs or circles with a tangent arc of a radius, optionally trimming them, or fillets every polyline corner. Params: {h1, p1, h2, p2, radius?, trim?: bool} (lines, arcs, circles) | {handle, polyline: true, radius?}. Changes the document. */
-  "fillet": { h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number>; radius?: number; trim?: boolean }
-  /** Chamfer. Bevels the corner between two lines by two distances or a length and angle, optionally trimming, or chamfers every polyline corner. Params: {h1, p1, h2, p2, d1?, d2? | length, angle (degrees), trim?: bool} | {handle, polyline: true, d1?, d2? | length, angle}. Changes the document. */
-  "chamfer": { /** degrees */ angle?: number; d1?: number; h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number>; trim?: boolean }
+  "extend": { /** one of several alternative parameters */ crossing?: Array<Array<number>>; edgeMode?: "extend" | "none"; edges?: Array<string>; /** one of several alternative parameters */ fence?: Array<Array<number>>; handle?: string; pick?: Array<number> }
+  /** Fillet. Joins two lines, arcs or circles with a tangent arc of a radius, optionally trimming them, or fillets every polyline corner. Params: {h1, p1, h2, p2, radius?, trim?: bool} | {handle, polyline: true, radius?} (the first fillets lines, arcs and circles; the second every corner of a polyline). Changes the document. */
+  "fillet": { h1?: string; h2?: string; /** in one of several forms of the parameters */ handle?: Json; p1?: Array<number>; p2?: Array<number>; /** in one of several forms of the parameters */ polyline?: boolean; /** in one of several forms of the parameters */ radius?: number; /** in one of several forms of the parameters */ trim?: boolean }
+  /** Chamfer. Bevels the corner between two lines by two distances or a length and angle, optionally trimming, or chamfers every polyline corner. Params: {h1, p1, h2, p2, d1?, d2?, length?, angle? (degrees), trim?: bool} | {handle, polyline: true, d1?, d2?, length?, angle?} (distances d1 and d2, or length with angle). Changes the document. */
+  "chamfer": { /** degrees; in one of several forms of the parameters */ angle?: number; d1?: number; /** in one of several forms of the parameters */ d2?: Json; h1?: string; h2?: string; /** in one of several forms of the parameters */ handle?: Json; /** in one of several forms of the parameters */ length?: Json; p1?: Array<number>; p2?: Array<number>; /** in one of several forms of the parameters */ polyline?: boolean; /** in one of several forms of the parameters */ trim?: boolean }
   /** Explode. Breaks the given compound objects (blocks, polylines, dimensions, hatches), or the selection, into their component objects. Params: {handles?}. Changes the document. */
   "explode": { handles?: Array<string> }
   /** Bring to Front. Moves the given objects, or the selection, to the front of the draw order. Params: {handles?}. Changes the document. */
@@ -529,45 +529,45 @@ export interface CadCommands extends CommandMap {
   /** Polar Array. Copies the given objects, or the selection, a number of times about a centre over an angle, optionally rotating them. Params: {handles?, center, count, angle? (degrees, default 360), rotate?: bool}. Changes the document. */
   "arraypolar": { /** degrees, default 360 */ angle?: number; center?: Array<number>; count?: number; handles?: Array<string>; rotate?: boolean }
   /** Polyline. Edits polylines: close, open, join, width, fit, spline, decurve, reverse, linetype generation, or edit one vertex. Params: {handle | handles, option: close|open|join|width|fit|spline|decurve|reverse|ltypegen|vertex, width?, handles2? (join), fuzz?, action?: move|insert|straighten|width, index?, to?, startWidth?, endWidth?, convert?: bool}. Changes the document. */
-  "pedit": { action?: "move" | "insert" | "straighten" | "width"; convert?: boolean; endWidth?: number; fuzz?: number; handles2?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; option?: "close" | "open" | "join" | "width" | "fit" | "spline" | "decurve" | "reverse" | "ltypegen" | "vertex"; startWidth?: number; to?: Array<number>; width?: number }
+  "pedit": { action?: "move" | "insert" | "straighten" | "width"; convert?: boolean; endWidth?: number; fuzz?: number; /** one of several alternative parameters */ handle?: Json; /** one of several alternative parameters */ handles?: Json; handles2?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; option?: "close" | "open" | "join" | "width" | "fit" | "spline" | "decurve" | "reverse" | "ltypegen" | "vertex"; startWidth?: number; to?: Array<number>; width?: number }
   /** Spline. Edits a spline: close, open, reverse, refit, purge fit data, convert to a polyline, or move a fit or control point. Params: {handle, option: close|open|reverse|refit|purge|polyline|move, fit?, index?, to?, precision?}. Changes the document. */
   "splinedit": { fit?: Array<Array<Json>>; handle?: string; /** a position counted from 0 (the first is 0) */ index?: number; option?: "close" | "open" | "reverse" | "refit" | "purge" | "polyline" | "move"; precision?: number; to?: Array<number> }
   /** Lengthen. Changes an object's length at the picked end by a delta, percent, total or to a point, or alone measures its length. Params: {handle, pick?: [x,y] (end), delta? | deltaAngle? (deg) | percent? | total? | totalAngle? (deg) | to?: [x,y]} ({handle} alone measures). Changes the document. */
-  "lengthen": { handle?: string; /** end */ pick?: Array<number> }
+  "lengthen": { /** one of several alternative parameters */ delta?: Json; /** deg; one of several alternative parameters */ deltaAngle?: Json; handle?: string; /** one of several alternative parameters */ percent?: Json; /** end */ pick?: Array<number>; /** one of several alternative parameters */ to?: Array<number>; /** one of several alternative parameters */ total?: Json; /** deg; one of several alternative parameters */ totalAngle?: Json }
   /** Align. Moves and rotates objects so one or two source points meet destination points, optionally scaling them to fit. Params: {handles?, s1, d1, s2?, d2?, scale?: bool}. Changes the document. */
   "align": { d1?: Array<number>; d2?: Array<number>; handles?: Array<string>; s1?: Array<number>; s2?: Array<number>; scale?: boolean }
   /** Blend. Draws a spline that joins the picked ends of two open curves with tangent or smooth continuity. Params: {h1, p1, h2, p2, continuity?: tangent|smooth}. Changes the document. */
   "blend": { continuity?: "tangent" | "smooth"; h1?: string; h2?: string; p1?: Array<number>; p2?: Array<number> }
   /** Reverse. Reverses the vertex order of the given lines, polylines, 3D polylines and splines. Params: {handles?} (lines, polylines, 3D polylines, splines). Changes the document. */
   "reverse": { handles?: Array<string> }
-  /** Copy Nested Objects. Copies objects nested inside a block reference, the one nearest a pick or all, out into the drawing by a delta or points. Params: {handle (block reference), pick?: [x,y] (nearest nested object; default all), delta? | from,to}. Changes the document. */
-  "ncopy": { handle?: string; /** nearest nested object; default all */ pick?: Array<number>; to?: Array<number> }
+  /** Copy Nested Objects. Copies objects nested inside a block reference, the one nearest a pick or all, out into the drawing by a delta or points. Params: {handle (block reference), pick?: [x,y] (nearest nested object; default all), delta?: [dx,dy], from?: [x,y], to?: [x,y]} (delta, or from with to). Changes the document. */
+  "ncopy": { /** [dx, dy] */ delta?: Array<number>; from?: Array<number>; handle?: string; /** nearest nested object; default all */ pick?: Array<number>; to?: Array<number> }
   /** Change Space. Moves the given objects between model space and a layout's paper space through a viewport, keeping their apparent size. Params: {handles?, to?: "model" | layout name, viewport?: handle}. Changes the document. */
   "chspace": { handles?: Array<string>; to?: string; viewport?: string }
   /** Flatten Objects. Flattens the given objects, or the selection, onto z = 0, turning 3D polylines into 2D polylines. Params: {handles?} (z = 0, 3D polylines become polylines). Changes the document. */
   "flatten": { handles?: Array<string> }
-  /** Path Array. Copies the given objects, or the selection, along a path object, a count of copies or at a spacing, optionally aligned to it. Params: {handles?, path (handle), count? (default 6) | spacing?, align?: bool (default true)}. Changes the document. */
-  "arraypath": { /** default true */ align?: boolean; count?: number; handles?: Array<string>; /** handle */ path?: string }
+  /** Path Array. Copies the given objects, or the selection, along a path object, a count of copies or at a spacing, optionally aligned to it. Params: {handles?, path (handle), count? (default 6), spacing?: number (instead of count), align?: bool (default true)}. Changes the document. */
+  "arraypath": { /** default true */ align?: boolean; count?: number; handles?: Array<string>; /** handle */ path?: string; /** instead of count */ spacing?: number }
   /** Edit Text... Replaces the contents of a text, mtext, attribute definition, or a dimension's override text. Params: {handle, text} (text, mtext, attribute definitions, dimension text override). Changes the document. */
   "textedit": { handle?: string; text?: string }
   /** Group. Makes a named or anonymous group of the given objects, or the selection, and answers its name and members. Params: {name? (default: an unnamed group *A1, *A2...), description?, handles? (default the selection), selectable?: bool (default true)} ? {name, members}. Changes the document. */
   "group": { description?: string; handles?: Array<string>; /** default: an unnamed group *A1, *A2... */ name?: string; /** default true */ selectable?: boolean }
   /** Ungroup. Dissolves the named groups, or every group holding one of the given or selected objects, and answers the groups removed. Params: {name?: "G1" | "G1,G2" | [names]} | {handles?} (default the selection: every group holding one of the objects) ? {ungrouped: [names]}. Changes the document. */
-  "ungroup": { name?: Json }
+  "ungroup": { /** in one of several forms of the parameters */ handles?: Json; name?: Json }
   /** Group Edit. Adds objects to a group, removes them, or renames it, and answers its members; removing every member deletes the group. Params: {name, add?: [handles], remove?: [handles], rename?: new name} ? {name, members}. Removing every member deletes the group. Changes the document. */
   "groupedit": { /** [handles] */ add?: Array<Json>; name?: string; /** [handles] */ remove?: Array<Json>; rename?: string }
   /** List Groups. Answers every group in the drawing with its name, description, selectability, whether it is unnamed, and its member handles. Params: {} ? {groups: [{name, description, selectable, unnamed, members: [handles]}]}. */
   "groups.list": Record<string, never>
-  /** Grip Stretch. Stretches one grip of the given objects to a point, or with mode move moves the objects from a grip, optionally copying them. Params: {handle?, handles?, index, to} (stretch the grip) | {handles?, index, baseHandle?, to, mode: "move", copy?} (move about the grip). Changes the document. */
-  "grip.move": { handle?: string; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
+  /** Grip Stretch. Stretches one grip of the given objects to a point, or with mode move moves the objects from a grip, optionally copying them. Params: {handle?, handles?, index, to} | {handles?, index, base?: [x,y], baseHandle?, to, mode: "move", copy?} (the first stretches the grip; the second moves about it). Changes the document. */
+  "grip.move": { /** in one of several forms of the parameters */ base?: Array<number>; /** in one of several forms of the parameters */ baseHandle?: Json; /** in one of several forms of the parameters */ copy?: boolean; handle?: string; handles?: Array<string>; /** a position counted from 0 (the first is 0); in one of several forms of the parameters */ index?: number; /** like move; in one of several forms of the parameters */ mode?: string; to?: Array<number> }
   /** Grip Stretch. Stretches the grip at an index of the given objects to a target point, as dragging a grip does. Params: {handle?, handles?, index, to}. Changes the document. */
   "grip.stretch": { handle?: string; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
-  /** Grip Rotate. Rotates the given objects about a base point or a grip, by an angle or towards a point, optionally copying them. Params: {handles?, base | baseHandle+index, angle (degrees) | to, copy?}. Changes the document. */
-  "grip.rotate": { angle?: number; copy?: boolean; handles?: Array<string> }
-  /** Grip Scale. Scales the given objects about a base point or a grip, by a factor or towards a point, optionally copying them. Params: {handles?, base | baseHandle+index, factor | to, copy?}. Changes the document. */
-  "grip.scale": { copy?: boolean; handles?: Array<string> }
-  /** Grip Mirror. Mirrors the given objects about the line from a base point or grip to a second point, optionally copying them. Params: {handles?, base | baseHandle+index, to (second mirror point), copy?}. Changes the document. */
-  "grip.mirror": { copy?: boolean; handles?: Array<string>; to?: Array<number> }
+  /** Grip Rotate. Rotates the given objects about a base point or a grip, by an angle or towards a point, optionally copying them. Params: {handles?, base?: [x,y], baseHandle?, index?, angle? (degrees), to?: [x,y], copy?: bool} (the base point: base, or baseHandle with index; the angle: angle, or to). Changes the document. */
+  "grip.rotate": { angle?: number; base?: Array<number>; baseHandle?: Json; copy?: boolean; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
+  /** Grip Scale. Scales the given objects about a base point or a grip, by a factor or towards a point, optionally copying them. Params: {handles?, base?: [x,y], baseHandle?, index?, factor?: number, to?: [x,y], copy?: bool} (the base point: base, or baseHandle with index; the scale: factor, or to). Changes the document. */
+  "grip.scale": { base?: Array<number>; baseHandle?: Json; copy?: boolean; factor?: number; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
+  /** Grip Mirror. Mirrors the given objects about the line from a base point or grip to a second point, optionally copying them. Params: {handles?, base?: [x,y], baseHandle?, index?, to (second mirror point), copy?: bool} (the first mirror point: base, or baseHandle with index). Changes the document. */
+  "grip.mirror": { base?: Array<number>; baseHandle?: Json; copy?: boolean; handles?: Array<string>; /** a position counted from 0 (the first is 0) */ index?: number; to?: Array<number> }
   /** Layers. Answers every layer with its properties, whether it is current and in use, and the saved layer states, as the Layer Properties Manager shows. Params: {} ? layers, states (typed -LAYER: option prompts). Changes the document. */
   "layer": Record<string, never>
   /** New Layer. Creates a layer with a name and optional colour, linetype and lineweight, optionally making it current. Params: {name, color?, linetype?, lineweight? (mm), current?: bool}. Changes the document. */
@@ -640,10 +640,10 @@ export interface CadCommands extends CommandMap {
   "vports.3": { arrangement?: "right" | "left" | "above" | "below" | "vertical" | "horizontal"; layout?: string; p1?: Array<number>; p2?: Array<number> }
   /** 4 Viewports. Creates four equal viewports on a layout over two corners, by default the printable area. Params: {p1?, p2?, layout?}. Changes the document. */
   "vports.4": { layout?: string; p1?: Array<number>; p2?: Array<number> }
-  /** Viewport Properties. Sets layout viewport properties: scale, view height and centre, lock, layer freeze and thaw, and per-layer colour overrides. Params: {handle? (default: selected viewports), scale?: paper units per model unit | "1:50", viewHeight?, center?: [x,y], locked?, freeze?: [layer], thaw?: [layer], colors?: {layer: color | null}}. Changes the document. */
-  "viewport.set": { center?: Array<number>; /** {layer: color | null} */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; handle?: string; locked?: boolean; scale?: Json; /** [layer] */ thaw?: Array<Json>; viewHeight?: number }
-  /** Viewport Layer Freeze. Freezes or thaws layers and overrides layer colours in one layout viewport only. Params: {handle?, freeze?: [layer], thaw?: [layer], colors?: {layer: color ("red" | 1..255 | "r,g,b") | null to clear}} (typed: option prompts). Changes the document. */
-  "vplayer": { /** {layer: color ("red" | 1..255 | "r,g,b") | null to clear}; "red" | 1..255 | "r,g,b" */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; handle?: string; /** [layer] */ thaw?: Array<Json> }
+  /** Viewport Properties. Sets layout viewport properties: scale, view height and centre, lock, layer freeze and thaw, and per-layer colour overrides. Params: {handle? (default: selected viewports), handles?, scale?: paper units per model unit | "1:50", viewHeight?, center?: [x,y], locked?, freeze?: [layer], thaw?: [layer], colors?: {layer: color | null}}. Changes the document. */
+  "viewport.set": { center?: Array<number>; /** {layer: color | null} */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; handle?: string; handles?: Json; locked?: boolean; scale?: Json; /** [layer] */ thaw?: Array<Json>; viewHeight?: number }
+  /** Viewport Layer Freeze. Freezes or thaws layers and overrides layer colours in one layout viewport only. Params: {handle?, handles?, scale?: paper units per model unit | "1:50", viewHeight?, center?: [x,y], locked?: bool, freeze?: [layer], thaw?: [layer], colors?: {layer: color ("red" | 1..255 | "r,g,b") | null to clear}} (typed: option prompts). Changes the document. */
+  "vplayer": { center?: Array<number>; /** {layer: color ("red" | 1..255 | "r,g,b") | null to clear}; "red" | 1..255 | "r,g,b" */ colors?: { layer?: Json }; /** [layer] */ freeze?: Array<Json>; handle?: string; handles?: Json; locked?: boolean; /** paper units per model unit | "1:50" */ scale?: Json; /** [layer] */ thaw?: Array<Json>; viewHeight?: Json }
   /** Page Setup Manager... Sets a layout's page setup: paper, orientation, margins, plot area, scale or fit, centring, lineweights and plot style table. Params: {layout?: current, paper?: "A4"|"A3"|"Letter"|"ANSI B"|..., width?, height? (mm), landscape?, margins?: [l,b,r,t] mm, lineweights?, plotArea?, scale?, scaleToFit?, center?, plotStyleTable?: "monochrome.ctb"|"grayscale.ctb"|"default.ctb"|"None"|..., displayPlotStyles?: bool}. Changes the document. */
   "pagesetup": { center?: boolean; displayPlotStyles?: boolean; /** mm */ height?: number; landscape?: boolean; layout?: string; lineweights?: boolean; margins?: Array<number>; paper?: string; plotArea?: string; plotStyleTable?: string; scale?: number; scaleToFit?: boolean; width?: number }
   /** Print... Plots a layout or model space to PDF, on a paper and orientation, at a scale or fitted, written to a path or answered as base64. Params: {path? (else returns base64 `data`), layout?: current|"Model", paper?, landscape?, fit?: bool, scale?, lineweights?: bool}. */
@@ -660,8 +660,8 @@ export interface CadCommands extends CommandMap {
   "stylesmanager": { /** default */ action?: "list" | "get" | "new" | "set" | "delete" | "load" | "save"; description?: string; from?: string; /** new */ kind?: "colorDependent" | "named"; name?: string; /** load/save; save without one returns `text` */ path?: Json; /** set, named tables */ removeStyle?: string; /** {name, color?: "#rrggbb"|null, grayscale?, screening?: 0-100, linetype?: name|null, lineweight?: mm|null, end?, join?, fill?, description?} (set); set */ style?: { color?: Json; description?: Json; end?: number; fill?: Json; grayscale?: Json; join?: Json; linetype?: Json; lineweight?: Json; name?: string; screening?: Json }; /** load */ text?: string }
   /** Properties. Answers the properties of the given objects, or the selection: type, handle, layer, colour, linetype, bounds and geometry. Params: {handles?} ? properties of the selection. */
   "properties": { handles?: Array<string> }
-  /** Set Properties. Sets properties of the given objects, or the selection: layer, colour, linetype, lineweight, scale, transparency, visibility and geometry fields. Params: {handles?, layer?: string (a layer name), color?, linetype?, lineweight?, ltscale?, transparency?: "ByLayer" | "ByBlock" | 0..90, visible?, <geometry fields: radius, center, start, end, text, height, rotation...>}. Changes the document. */
-  "properties.set": { center?: Array<number>; color?: string; end?: number; handles?: Array<string>; height?: number; /** a layer name */ layer?: string; linetype?: string; lineweight?: Json; ltscale?: number; start?: number; text?: string; transparency?: Json; visible?: boolean }
+  /** Set Properties. Sets properties of the given objects, or the selection: layer, colour, linetype, lineweight, scale, transparency, visibility and geometry fields. Params: {handles?, layer?: string (a layer name), color?, linetype?, lineweight?, ltscale?: number, transparency?: "ByLayer" | "ByBlock" | 0..90, visible?: bool, dimStyle?: string (a dimension style name), start?: [x,y], end?: [x,y], length?: number (a line's), angle?: number (degrees; a line's, or a hatch pattern's), center?: [x,y], radius?: number, diameter?: number, circumference?: number, area?: number, startAngle?: number (degrees), endAngle?: number (degrees), text?: string, textOverride?: string (a dimension's), height?: number, rotation?: number (degrees), widthFactor?: number, width?: number (a polyline's or text frame's), position?: [x,y] (text), closed?: bool, scale?: number (a block's or hatch pattern's), pattern?: string (a hatch pattern name)}. Changes the document. */
+  "properties.set": { /** degrees; a line's, or a hatch pattern's */ angle?: number; area?: number; center?: Array<number>; circumference?: number; closed?: boolean; color?: string; diameter?: number; /** a dimension style name */ dimStyle?: string; end?: Array<number>; /** degrees */ endAngle?: number; handles?: Array<string>; height?: number; /** a layer name */ layer?: string; /** a line's */ length?: number; linetype?: string; lineweight?: Json; ltscale?: number; /** a hatch pattern name */ pattern?: string; /** text */ position?: Array<number>; radius?: number; /** degrees */ rotation?: number; /** a block's or hatch pattern's */ scale?: number; start?: Array<number>; /** degrees */ startAngle?: number; text?: string; /** a dimension's */ textOverride?: string; transparency?: Json; visible?: boolean; /** a polyline's or text frame's */ width?: number; widthFactor?: number }
   /** Match Properties. Copies the layer, colour, linetype, lineweight and other properties of a source object onto the target objects. Params: {source, targets: [hex]}. Changes the document. */
   "matchprop": { source?: string; targets?: Array<string> }
   /** Color... Sets the current colour for new objects: ByLayer, ByBlock, a colour name, an index 1 to 255 or an r,g,b triple. Params: {color: "ByLayer" | "red" | 1..255 | "r,g,b"}. Changes the document. */
@@ -715,7 +715,7 @@ export interface CadCommands extends CommandMap {
   /** List. Answers a text listing of the given or selected objects' database properties, as the LIST command prints them. Params: {handles?}. */
   "list": { handles?: Array<string> }
   /** Area. Measures the area and perimeter of a closed polygon through points, or of a closed object. Params: {points: [[x,y],...]} | {handle}. */
-  "area": { points?: Array<Array<number>> }
+  "area": { /** in one of several forms of the parameters */ handle?: Json; /** in one of several forms of the parameters */ points?: Array<Array<number>> }
   /** Time. Answers the drawing's revision and the number of edits recorded in this session as a message. */
   "time": Record<string, never>
   /** Status. Answers a text report of the drawing's object count, limits, extents, current layer and settings, as STATUS prints it. */
@@ -748,8 +748,8 @@ export interface CadCommands extends CommandMap {
   "qpmode": { on?: boolean }
   /** Selection Cycling. Turns selection cycling of overlapping objects on or off, or toggles it with no value, and answers the new state. Params: {on?: bool}. */
   "selectioncycling": { on?: boolean }
-  /** Object Snap. Turns running object snaps on or off and sets their modes by name or OSMODE bits; answers the state and the active modes. Params: {on?: bool, modes?: ["end","mid",...] | osmode?: n}. */
-  "osnap": { modes?: Array<string>; on?: boolean }
+  /** Object Snap. Turns running object snaps on or off and sets their modes by name or OSMODE bits; answers the state and the active modes. Params: {on?: bool, modes?: ["end","mid",...], osmode?: n (instead of modes)}. */
+  "osnap": { modes?: Array<string>; on?: boolean; /** instead of modes */ osmode?: number }
   /** Drafting Settings... Sets drafting settings (snap and grid spacing, polar angle, major grid lines) and answers every drafting setting. Params: {snapunit?: [x,y], gridunit?: [x,y], polarang? (degrees), gridmajor?}. */
   "dsettings": { gridmajor?: number; gridunit?: Array<number>; polarang?: number; snapunit?: Array<number> }
   /** Set Variable. Sets a system variable by name to a value, as SETVAR does. Params: {name, value}. Changes the document. */
@@ -764,12 +764,12 @@ export interface CadCommands extends CommandMap {
   "find": { find?: string; matchCase?: boolean; replace?: string; wholeWord?: boolean }
   /** Region/Mass Properties. Answers the area, perimeter, centroid and moments of inertia of each given or selected closed object. Params: {handles?}. */
   "massprop": { handles?: Array<string> }
-  /** Measure Geometry. Measures a distance, a radius, an angle or an area, taking the parameters of dist, radius.measure, angle.measure or area. Params: {mode: distance|radius|angle|area, ...}. */
-  "measuregeom": { mode?: string }
+  /** Measure Geometry. Measures a distance, a radius, an angle or an area, taking the parameters of dist, radius.measure, angle.measure or area. Params: {mode: distance|radius|angle|area, p1?: [x,y], p2?: [x,y] (distance, angle), vertex?: [x,y] (angle), handle?, handles? (radius, area), points?: [[x,y],...] (area)}. */
+  "measuregeom": { handle?: Json; /** radius, area */ handles?: Json; mode?: string; p1?: Array<number>; /** distance, angle */ p2?: Array<number>; /** area */ points?: Array<Array<number>>; /** angle */ vertex?: Array<number> }
   /** Radius. Answers the radius and diameter of an arc or circle. Params: {handle}. */
   "radius.measure": { handle?: string }
   /** Angle. Measures the angle at a vertex between two points, or between two lines, in degrees. Params: {vertex, p1, p2} | {h1, h2}. */
-  "angle.measure": { p1?: Array<number>; p2?: Array<number>; vertex?: Array<number> }
+  "angle.measure": { /** in one of several forms of the parameters */ h1?: Json; /** in one of several forms of the parameters */ h2?: Json; p1?: Array<number>; p2?: Array<number>; vertex?: Array<number> }
   /** Table... Draws a table at a point with rows and columns, row height and column width, and optional cell texts, title and header row. Params: {at: [x,y], rows (data rows), cols, rowHeight?, colWidth?, cells?: [[text]], title?: text, header?: [text]}. Changes the document. */
   "table": { at?: Array<number>; cells?: Array<Array<string>>; colWidth?: number; cols?: number; header?: Array<string>; rowHeight?: number; /** data rows */ rows?: number; title?: string }
   /** Set Table Cell. Sets the text of one cell of a table, by row and column. Params: {handle, row, col, text}. Changes the document. */
@@ -821,21 +821,21 @@ export interface CadCommands extends CommandMap {
   /** Hide All Constraint Bars. Hides the constraint bars of every constrained object. Changes the document. */
   "constraintbar.hideall": Record<string, never>
   /** Dimensional Constraint. Adds a dimensional constraint (linear, aligned, horizontal, vertical, angular, radius or diameter) with a value or expression and re-solves. Params: {type: linear|aligned|horizontal|vertical|angular|radius|diameter, h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dimconstraint": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; type?: "linear" | "aligned" | "horizontal" | "vertical" | "angular" | "radius" | "diameter" }
+  "dimconstraint": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; type?: "linear" | "aligned" | "horizontal" | "vertical" | "angular" | "radius" | "diameter"; /** one of several alternative parameters */ value?: Json }
   /** Aligned. Adds an aligned distance constraint between two points or along a line, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcaligned": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dcaligned": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Horizontal. Adds a horizontal distance constraint between two points, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dchorizontal": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dchorizontal": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Vertical. Adds a vertical distance constraint between two points, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcvertical": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dcvertical": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Angular. Adds an angular constraint between two lines or on an arc, with a value or expression in degrees, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcangular": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dcangular": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Radius. Adds a radius constraint to an arc or circle, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcradius": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dcradius": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Diameter. Adds a diameter constraint to an arc or circle, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dcdiameter": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dcdiameter": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Linear. Adds a horizontal or vertical distance constraint between two points, with a value or expression, and re-solves. Params: {h1, p1?, h2?, p2?, expr? | value?, name?}. Changes the document. */
-  "dclinear": { h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json }
+  "dclinear": { /** one of several alternative parameters */ expr?: Json; h1?: string; h2?: string; name?: string; p1?: Json; p2?: Json; /** one of several alternative parameters */ value?: Json }
   /** Dynamic Dimensions. Shows or hides the dynamic dimensional constraints of the given objects, or of every object. Params: {mode?: show|hide|showall|hideall, handles?}. Changes the document. */
   "dcdisplay": { handles?: Array<string>; mode?: "show" | "hide" | "showall" | "hideall" }
   /** Show All Dynamic Dimensions. Shows every dynamic dimensional constraint in the drawing. Changes the document. */
@@ -844,8 +844,8 @@ export interface CadCommands extends CommandMap {
   "dcdisplay.hideall": Record<string, never>
   /** Delete Constraints. Deletes the constraints on the given or selected objects, or the constraints with the given ids. Params: {handles? | ids?: [n]}. Changes the document. */
   "delconstraint": { /** one of several alternative parameters */ handles?: Array<number>; /** one of several alternative parameters */ ids?: Array<number> }
-  /** Parameters Manager. Lists the constraint parameters, sets one by name to a value or expression (creating a user parameter), or deletes one, then re-solves. Params: {} lists; {name, expr | value, description?} sets (new name = user parameter) and re-solves; {delete: name}. Changes the document. */
-  "parameters": Record<string, never>
+  /** Parameters Manager. Lists the constraint parameters, sets one by name to a value or expression (creating a user parameter), or deletes one, then re-solves. Params: {name?: string, expr?: string, value?: number, description?: string, delete?: string (a parameter name)} (no keys lists the parameters; name with expr or value sets one, a new name making a user parameter, and re-solves; delete removes one). Changes the document. */
+  "parameters": { /** a parameter name */ delete?: string; description?: string; expr?: string; name?: string; value?: number }
   /** Constraint Settings. Sets constraint inference, distance and angle tolerances, auto-constrain types, and constraint bar and dimension visibility. Params: {infer?, distanceTolerance?, angleTolerance?, autoTypes?: [names], barsVisible?, barTransparency?, dimsVisible?}. Changes the document. */
   "constraintsettings": { angleTolerance?: number; /** [names] */ autoTypes?: Array<Json>; barTransparency?: number; barsVisible?: boolean; dimsVisible?: boolean; distanceTolerance?: number; infer?: boolean }
   /** Inspect Constraints. Answers the drawing's constraints, their glyph anchors, the parameters, the constraint settings and whether everything is satisfied. Params: {} ? constraints, glyph anchors, parameters, settings. */
