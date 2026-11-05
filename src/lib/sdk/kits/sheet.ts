@@ -656,9 +656,9 @@ export interface SheetCommands extends CommandMap {
   /** Remove Duplicates. Deletes table rows that repeat earlier rows in the chosen columns (default: all columns). Params: {table?, columns?}. Changes the document. */
   "table.removeDuplicates": { columns?: number; /** a table name; default: the table at the active cell */ table?: string }
   /** From Text/CSV. Imports CSV or delimited text (from a path or inline text) into a new sheet as a table. Params: {path | text, delimiter?: ",", sheet?: new sheet name} ? imports into a new sheet as a table. Changes the document. */
-  "data.fromTextCsv": { /** like , */ delimiter?: string; /** one of several alternative parameters */ path?: string; sheet?: Json; /** one of several alternative parameters */ text?: string }
+  "data.fromTextCsv": { /** like , */ delimiter?: string; /** one of several alternative parameters */ path?: Json; sheet?: Json; /** one of several alternative parameters */ text?: string }
   /** Get Data. Imports CSV, TSV or a JSON array of objects (from a path or inline text) into a new sheet as a table. Params: {path | text} (CSV/TSV/JSON array of objects) ? new sheet table. Changes the document. */
-  "data.getData": { /** one of several alternative parameters */ path?: string; /** one of several alternative parameters */ text?: string }
+  "data.getData": { /** one of several alternative parameters */ path?: Json; /** one of several alternative parameters */ text?: string }
   /** From Table/Range. Copies a table or range (default: the current region) to a new sheet as a table. Params: {range?} ? copies the table/range to a new sheet as a table. Changes the document. */
   "data.fromTableRange": { /** cells in A1 notation such as B2 or B2:D10, optionally with a sheet (Sheet2!A1); default: the selection */ range?: string }
   /** Queries & Connections. Lists the tables imported from text or files, with their sources. Params: {} ? imported tables. */
