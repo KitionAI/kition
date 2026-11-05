@@ -13,7 +13,7 @@ source:
 input: []
 steps:
   - exec:
-      cmd: [pnpm, check:notices]
+      cmd: [pnpm, "check:notices"]
 expected:
   - actual: out:exec
     compare: exit

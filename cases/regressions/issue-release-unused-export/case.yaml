@@ -12,7 +12,7 @@ source:
 input: []
 steps:
   - exec:
-      cmd: [pnpm, check:knip]
+      cmd: [pnpm, "check:knip"]
 expected:
   - actual: out:exec
     compare: exit

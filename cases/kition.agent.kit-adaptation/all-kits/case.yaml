@@ -14,7 +14,7 @@ source:
 input: []
 steps:
   - exec:
-      cmd: [pnpm, test:kit-agent:e2e]
+      cmd: [pnpm, "test:kit-agent:e2e"]
 expected:
   - actual: out:exec
     compare: exit
