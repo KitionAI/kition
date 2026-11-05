@@ -71,7 +71,7 @@ for (const [index, scenario] of cases.entries()) {
         execute('time.set', { time: step.time })
         compareValues(normalizeInfo(execute('comp.info')), normalizeInfo(expected.info), `${location}/composition`)
         const properties = step.queries.map(({ fields = ['value', 'animated'], expected: asserted, ...query }) => {
-          const value = execute('prop.get', { ...query, time: step.time, timeBase: 'comp' })
+          const value = execute('prop.get', { ...query, time: step.time })
           const projected = Object.fromEntries(fields.map(field => [field, field === 'expressionError' ? Boolean(value[field]) : value[field] ?? null]))
           // Mathematical expectations additionally detect an inert or silently disabled expression.
           for (const [field, expected] of Object.entries(asserted ?? {})) compareValues(projected[field], expected, `${location}/asserted/${field}`)
