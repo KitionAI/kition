@@ -9,7 +9,7 @@
 //! [`USAGE`] for every option.
 //!
 //! Like every form of Kition Kits, it is free on any machine, servers included, and needs no
-//! licence key (kition-sdk docs/platform/licence.md, D13): only collaboration does.
+//! licence key: only collaboration is paid.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

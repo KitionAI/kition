@@ -3,8 +3,7 @@
 // packages/kit-host), in src/features/kits/host/, of the standard's kit.json schema
 // (schemas/kit.schema.json), in contracts/kit/kit.schema.json for the conformance suite,
 // of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, of the KDM's Rust crate
-// (crates/kition-kdm), in crates/kition-kdm/, of the licence verifier (crates/kition-license), in
-// crates/kition-license/, and of the sync client for kition-sync/1 and its
+// (crates/kition-kdm), in crates/kition-kdm/, of the sync client for kition-sync/1 and its
 // replica relay (packages/sync/src/*.ts), in src/lib/sync/, of the object model's page side
 // (@kition/sdk, packages/sdk/src and its generated kits), in src/lib/sdk/, and of the extension
 // host (@kition/extensions, packages/extensions/src with its built worker runtime), in
@@ -150,39 +149,6 @@ workspace = true
 ${dependencies}`
   },
 })
-// The licence verifier (crates/kition-license), which kition-kits-mcp checks SDK licence keys
-// with: its sources, tests, and test vectors, unchanged, with a manifest written here.
-const rustLicense = 'crates/kition-license'
-for (const dir of ['src', 'tests']) {
-  for (const name of fs.readdirSync(path.join(sdk, rustLicense, dir)).filter((name) => name.endsWith('.rs')).sort()) {
-    const source = `${rustLicense}/${dir}/${name}`
-    files.push({ source, out: source, rewrite: (text) => header(source) + text })
-  }
-}
-files.push({ source: `${rustLicense}/tests/vectors.json`, out: `${rustLicense}/tests/vectors.json`, binary: true })
-files.push({ source: 'clippy.toml', out: `${rustLicense}/clippy.toml`, binary: true })
-files.push({ source: 'rustfmt.toml', out: `${rustLicense}/rustfmt.toml`, binary: true })
-files.push({
-  source: `${rustLicense}/Cargo.toml`,
-  out: `${rustLicense}/Cargo.toml`,
-  rewrite: (text) => {
-    const dependencies = manifestSections(text)
-    return `# Copied from kition-sdk ${rustLicense} by scripts/sync-kit-host.mjs; change it there, not here.
-[package]
-name = "kition-license"
-description = "Offline Kition SDK licence keys: an Ed25519-signed JSON payload, verified against pinned public keys with no network."
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
-publish.workspace = true
-
-[lints]
-workspace = true
-
-${dependencies}`
-  },
-})
 // The Kit Host Protocol's host side and the kits' MCP server (crates/kition-kit-protocol,
 // kition-kit-host, kition-kit-mock, kition-kits, with kition-kits-mcp): their sources, tests, and
 // fixtures, unchanged but for the schemas' place (kition-sdk `schemas/`, here `contracts/kit/`),
@@ -257,8 +223,6 @@ const copyDirs = [
   { dir: `${rustKdm}/src`, ext: '.rs' },
   { dir: `${rustKdm}/tests`, ext: '.rs' },
   { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
-  { dir: `${rustLicense}/src`, ext: '.rs' },
-  { dir: `${rustLicense}/tests`, ext: '.rs' },
   ...rustKitDirs,
 ]
 const copies = new Set(files.map((file) => file.out))
