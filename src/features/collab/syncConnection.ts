@@ -1,6 +1,6 @@
 /**
  * The window's one connection to the sync server: a `SyncClient` made on first use, and only when
- * there is a server URL and a Kition Pro session (`collabSettings.ts`). Its connection state is a
+ * there is a server URL and a signed-in Kition account (`collabSettings.ts`). Its connection state is a
  * store the indicators read.
  */
 import { useSyncExternalStore } from 'react'
@@ -15,7 +15,7 @@ export type CollabConnectionState = ConnectionState | 'off'
 /** Why a co-editing action cannot run: not set up, or the server cannot be reached. */
 export class CollabUnavailableError extends Error {
   constructor(readonly reason: 'off' | 'unreachable') {
-    super(reason === 'off' ? 'co-editing needs a Kition Pro session and a sync server' : 'the sync server cannot be reached')
+    super(reason === 'off' ? 'co-editing needs a signed-in Kition account and a sync server' : 'the sync server cannot be reached')
   }
 }
 
@@ -37,7 +37,7 @@ function webSocketTransport(url: string): SyncTransport {
   return socket as unknown as SyncTransport
 }
 
-/** Whether this window may co-edit: a sync server URL and a Kition Pro session. */
+/** Whether this window may co-edit: a sync server URL and a signed-in Kition account. */
 export async function collabConfigured() {
   return Boolean(syncServerUrl()) && Boolean(await loadCollabToken())
 }

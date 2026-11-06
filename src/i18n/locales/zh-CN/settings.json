@@ -115,7 +115,7 @@
   },
   "collab": {
     "paneTitle": "协同编辑",
-    "paneDescription": "通过同步服务器与他人一起编辑共享文档。协同编辑需要 Kition Pro 账户。",
+    "paneDescription": "通过同步服务器与他人一起编辑共享文档。协同编辑需要 Kition 账户。",
     "serverSection": "同步服务器",
     "serverUrlTitle": "同步服务器地址",
     "serverUrlDescription": "同步服务器的 WebSocket 地址（wss://…）。留空即关闭协同编辑。",

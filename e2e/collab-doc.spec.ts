@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodeDocDocument = { save(name?: string): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
@@ -64,10 +64,10 @@ async function typeAtDocEnd(page: Page, kit: FrameLocator, text: string) {
 test('co-edits a Doc document between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
   test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -202,10 +202,10 @@ async function formatBodyRange(page: Page, kit: FrameLocator, from: number, coun
 test('two windows typing and formatting one paragraph at once keep both texts and both formats', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
   test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -272,7 +272,7 @@ test('two windows typing and formatting one paragraph at once keep both texts an
   }
 })
 
-test('without a Kition Pro session a Doc document opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
+test('without a signed-in Kition account a Doc document opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
   test.setTimeout(120_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.

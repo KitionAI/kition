@@ -4,7 +4,7 @@ import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
 import {
   DEV_PRINCIPALS,
-  kitionProSkipReason,
+  kitionServerSkipReason,
   kitPackageHasReplicaInfo,
   openSharedLink,
   openTabMenu,
@@ -13,10 +13,10 @@ import {
   sameReplicas,
   shareFromTab,
   signedIn,
-  startKitionPro,
+  startKitionServer,
   syncNetwork,
   useSyncServer,
-} from './helpers/kitionPro'
+} from './helpers/kitionServer'
 
 type NodeSheetDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument } }>('sheet', 'kition_sheet_sdk')
@@ -97,10 +97,10 @@ async function liveTo(pageA: Page, pathA: string, pageB: Page, pathB: string, ba
 test('co-edits a workbook between two windows: live, formulas that follow their rows, and merging edits made offline, in one cell too', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
   test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_sdk'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -190,7 +190,7 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
   }
 })
 
-test('without a Kition Pro session a workbook opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
+test('without a signed-in Kition account a workbook opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
   test.setTimeout(120_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.

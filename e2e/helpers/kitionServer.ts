@@ -1,8 +1,8 @@
 /**
- * The Kition Pro sync server (`kition-pro-server`, a private sibling checkout `../kition-pro`, or
- * `KITION_PRO_REPO`) for co-editing end-to-end tests: built once with cargo, run in memory on a
+ * The Kition Server (`kition-server`, a private sibling checkout `../kition-server`, or
+ * `KITION_SERVER_REPO`) for co-editing end-to-end tests: built once with cargo, run in memory on a
  * free port with its development tokens, and stopped after the test. Specs skip when the
- * checkout or the Rust toolchain is missing (`kitionProSkipReason`).
+ * checkout or the Rust toolchain is missing (`kitionServerSkipReason`).
  */
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -12,9 +12,9 @@ import path from 'node:path'
 import { expect, type BrowserContext, type Page, type WebSocketRoute } from '@playwright/test'
 import { VersionVector } from 'loro-crdt'
 
-const repo = process.env.KITION_PRO_REPO || path.resolve(process.cwd(), '..', 'kition-pro')
+const repo = process.env.KITION_SERVER_REPO || path.resolve(process.cwd(), '..', 'kition-server')
 
-/** The development principals `config/dev.toml` declares; Alice and Bob have Kition Pro. */
+/** The development principals `config/dev.toml` declares; Alice and Bob have the Pro plan. */
 export const DEV_PRINCIPALS = { alice: 'dev-alice', bob: 'dev-bob', carol: 'dev-carol' } as const
 
 /** Where cargo is: on PATH, or rustup's default install. */
@@ -31,25 +31,25 @@ function cargo() {
 }
 
 /** Why the server cannot run here, or `null` when it can. */
-export function kitionProSkipReason() {
-  if (!existsSync(path.join(repo, 'Cargo.toml'))) return `no kition-pro checkout at ${path.relative(process.cwd(), repo) || repo} (set KITION_PRO_REPO)`
-  if (!cargo()) return 'no Rust toolchain (cargo) to build kition-pro-server'
+export function kitionServerSkipReason() {
+  if (!existsSync(path.join(repo, 'Cargo.toml'))) return `no kition-server checkout at ${path.relative(process.cwd(), repo) || repo} (set KITION_SERVER_REPO)`
+  if (!cargo()) return 'no Rust toolchain (cargo) to build kition-server'
   return null
 }
 
 let built: string | null = null
 
-/** Builds `kition-pro-server` once per test worker; answers its executable. */
+/** Builds `kition-server` once per test worker; answers its executable. */
 function build() {
   if (built) return built
   const target = process.env.CARGO_TARGET_DIR || path.join(repo, 'target')
-  execFileSync(cargo()!, ['build', '-p', 'kition-pro-server'], { cwd: repo, stdio: 'inherit', timeout: 600_000 })
-  built = path.join(target, 'debug', 'kition-pro-server')
+  execFileSync(cargo()!, ['build', '-p', 'kition-server'], { cwd: repo, stdio: 'inherit', timeout: 600_000 })
+  built = path.join(target, 'debug', 'kition-server')
   return built
 }
 
 const CONFIG = `listen = "127.0.0.1:0"
-public_url = "http://kition-pro.test"
+public_url = "http://kition-server.test"
 
 [auth]
 mode = "dev"
@@ -76,21 +76,21 @@ pro = false
 mode = "memory"
 `
 
-export type KitionProServer = { url: string; stop: () => Promise<void> }
+export type KitionServer = { url: string; stop: () => Promise<void> }
 
 /** Starts a fresh in-memory server; `dir` holds its configuration (a test's output folder). */
-export async function startKitionPro(dir: string): Promise<KitionProServer> {
+export async function startKitionServer(dir: string): Promise<KitionServer> {
   const executable = build()
   await fs.mkdir(dir, { recursive: true })
-  const config = path.join(dir, 'kition-pro.toml')
+  const config = path.join(dir, 'kition-server.toml')
   await fs.writeFile(config, CONFIG)
   const child: ChildProcess = spawn(executable, ['--config', config, '--memory'], { cwd: repo, env: { ...process.env, RUST_LOG: 'info', NO_COLOR: '1' }, stdio: ['ignore', 'pipe', 'pipe'] })
   const port = await new Promise<number>((resolve, reject) => {
     let output = ''
-    const timer = setTimeout(() => reject(new Error(`kition-pro-server did not start:\n${output}`)), 30_000)
+    const timer = setTimeout(() => reject(new Error(`kition-server did not start:\n${output}`)), 30_000)
     const read = (chunk: Buffer) => {
       output += chunk.toString()
-      // "kition-pro-server listening on /v1/sync addr=127.0.0.1:<port> storage=..."
+      // "kition-server listening on /v1/sync addr=127.0.0.1:<port> storage=..."
       const match = output.replace(/\u001b\[[0-9;]*m/g, '').match(/addr=127\.0\.0\.1:(\d+)/)
       if (match) {
         clearTimeout(timer)
@@ -101,7 +101,7 @@ export async function startKitionPro(dir: string): Promise<KitionProServer> {
     child.stderr?.on('data', read)
     child.on('exit', (code) => {
       clearTimeout(timer)
-      reject(new Error(`kition-pro-server exited (${code}):\n${output}`))
+      reject(new Error(`kition-server exited (${code}):\n${output}`))
     })
   })
   return {
@@ -124,7 +124,7 @@ export function portalSession(token: string) {
 }
 
 /**
- * The workspace options for a person signed in to Kition Pro with `token`: the stored session, and
+ * The workspace options for a person signed in to Kition with `token`: the stored session, and
  * the runtime confirming it when the app restores it at start.
  */
 export function signedIn(token: string) {

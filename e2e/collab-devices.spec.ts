@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openTabMenu, replicaCounters, sameReplicas, signedIn, startKitionPro, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openTabMenu, replicaCounters, sameReplicas, signedIn, startKitionServer, useSyncServer } from './helpers/kitionServer'
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
@@ -65,10 +65,10 @@ async function openSyncedDocuments(page: Page) {
 test('syncs a slide file across one person\'s two devices: synced on one, listed and opened on the other, edited on both', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   // One person (Alice), two devices: two browser contexts, each with its own workspace.
   const laptop = await browser.newContext()
   const desktop = await browser.newContext()

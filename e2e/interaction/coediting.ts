@@ -1,14 +1,14 @@
 /**
  * Host matrix row H13 (co-editing) for the kits without a collab-<kit> spec: Alice shares a file,
  * Bob opens the link, an edit goes each way live, then both edit while Bob is offline and the two
- * windows converge when he is back. It needs a kition-pro checkout beside Kition (or
- * KITION_PRO_REPO) and Rust, and skips plainly without them.
+ * windows converge when he is back. It needs a kition-server checkout beside Kition (or
+ * KITION_SERVER_REPO) and Rust, and skips plainly without them.
  */
 import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { openInKitFrame, openKitWorkspace, type KitModes } from '../helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from '../helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from '../helpers/kitionServer'
 import { tags } from './support'
 
 export type CoEditCase = {
@@ -34,10 +34,10 @@ const activeKit = (page: Page) => page.frameLocator('[data-testid="kit-frame"][d
 export function coEditing(c: CoEditCase) {
   test(`H13: a ${c.kit} file co-edited in two windows converges, live and after an offline edit`, tags(c.kit, ['H13'], true), async ({ browser, baseURL }, testInfo) => {
     test.skip(!kitPackageHasReplicaInfo(c.kit, c.module), `the ${c.kit} kit package has no replica info`)
-    const unavailable = kitionProSkipReason()
+    const unavailable = kitionServerSkipReason()
     test.skip(Boolean(unavailable), unavailable ?? '')
     test.setTimeout(360_000)
-    const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+    const server = await startKitionServer(testInfo.outputPath('kition-server'))
     const alice = await browser.newContext()
     const bob = await browser.newContext()
     const bobNetwork = await syncNetwork(bob)

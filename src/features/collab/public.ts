@@ -1,5 +1,5 @@
 /**
- * Co-editing documents with other people through a sync server (`kition-sync/1`, Kition Pro): kit
+ * Co-editing documents with other people through a sync server (`kition-sync/1`, Kition Server or Kition Cloud): kit
  * documents (notes and tables among them). Off without a sync server URL and a Kition
  * Pro session: then nothing here connects or sends anything. See `collabRelays.ts` (what is
  * relayed, and when), `startRelay` in `@/lib/sync` (how), `collabDocuments.ts` (which documents), and

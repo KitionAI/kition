@@ -270,7 +270,7 @@ export function AppShell() {
     void restorePortalAccountSession().catch(() => {})
   }, [])
 
-  // Co-editing follows the open kit documents; it stays off without a sync server and a Kition Pro session.
+  // Co-editing follows the open kit documents; it stays off without a sync server and a signed-in Kition account.
   useEffect(() => startCollab(), [])
   const collabAvailable = useCollabAvailable()
 

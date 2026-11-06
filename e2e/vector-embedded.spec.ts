@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { kitEngine, openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
-import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
+import { kitPackageHasReplicaInfo } from './helpers/kitionServer'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }

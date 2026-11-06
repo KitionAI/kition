@@ -35,7 +35,7 @@ export function requestOpenSharedDocument() {
   window.dispatchEvent(new Event(OPEN_SHARED_EVENT))
 }
 
-/** Whether this window may co-edit (a sync server and a Kition Pro session); follows changes. */
+/** Whether this window may co-edit (a sync server and a signed-in Kition account); follows changes. */
 export function useCollabAvailable() {
   const [available, setAvailable] = useState(false)
   useEffect(() => {
@@ -54,8 +54,8 @@ export function useCollabAvailable() {
 function useErrorText() {
   const { t } = useTranslation('workspace')
   return useCallback((error: unknown) => {
-    if (error instanceof CollabUnavailableError) return t(error.reason === 'off' ? 'collab.needsPro' : 'collab.unreachable')
-    if (error instanceof SyncRpcError && error.reason === 'forbidden') return t('collab.needsPro')
+    if (error instanceof CollabUnavailableError) return t(error.reason === 'off' ? 'collab.needsAccount' : 'collab.unreachable')
+    if (error instanceof SyncRpcError && error.reason === 'forbidden') return t('collab.needsAccount')
     if (error instanceof SyncRpcError && error.reason === 'not-found') return t('collab.linkNotFound')
     return error instanceof Error ? error.message : String(error)
   }, [t])

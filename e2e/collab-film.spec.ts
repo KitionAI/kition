@@ -4,7 +4,7 @@ import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
 import { filmAddEdit, filmClips } from './helpers/film'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 const CLIP = path.join(process.cwd(), 'e2e', 'fixtures', 'film', 'bars.mp4')
 
@@ -46,11 +46,11 @@ async function cutAt(page: Page, kit: FrameLocator, at: number) {
 test('co-edits a Film project between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Film kit editor is not built into public/kits/film-ui')
   test.skip(!kitPackageHasReplicaInfo('film', 'kition_film_sdk'), 'the Film kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh film')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
   const clip = await fs.readFile(CLIP)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -115,7 +115,7 @@ test('co-edits a Film project between two windows: live, and merging edits made 
   }
 })
 
-test('without a Kition Pro session a Film project opens and edits as before, with no sync connection', async ({ page, baseURL }) => {
+test('without a signed-in Kition account a Film project opens and edits as before, with no sync connection', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Film kit editor is not built into public/kits/film-ui')
   test.setTimeout(120_000)
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')

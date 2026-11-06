@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodeCubeDocument = { save(): Uint8Array; free(): void }
 const engine = kitEngine<{ CubeDocument: { create(name: string, width: number, height: number): NodeCubeDocument } }>('cube', 'kition_cube_sdk')
@@ -44,10 +44,10 @@ async function settledVersion(page: Page, path: string) {
 test('co-edits a 3D scene between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Cube kit editor is not built into public/kits/cube-ui')
   test.skip(!kitPackageHasReplicaInfo('cube', 'kition_cube_sdk'), 'the Cube kit package predates engine contract 2; build it with scripts/build-kit-ui.sh cube')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -123,7 +123,7 @@ test('co-edits a 3D scene between two windows: live, and merging edits made offl
   }
 })
 
-test('without a Kition Pro session a 3D scene opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
+test('without a signed-in Kition account a 3D scene opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Cube kit editor is not built into public/kits/cube-ui')
   test.setTimeout(120_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.

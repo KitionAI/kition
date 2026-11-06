@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, openSharedLink, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, openSharedLink, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 import { caretAfter, noteText, openNote, requireNoteKit } from './helpers/noteKit'
 
 /**
@@ -22,10 +22,10 @@ async function typeAfter(page: Page, kit: FrameLocator, line: string, text: stri
 
 test('co-edits a note between two windows: live text and comments, and merging text typed offline', async ({ browser, baseURL }, testInfo) => {
   requireNoteKit()
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)

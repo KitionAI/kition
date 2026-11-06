@@ -1,5 +1,5 @@
 /**
- * Co-editing settings: the sync server (`kition-sync/1`) a window connects to, and the Kition Pro
+ * Co-editing settings: the sync server (`kition-sync/1`) a window connects to, and the Kition account
  * session it connects with. Without both, co-editing is off and Kition opens no connection: a
  * free single-user Kition works exactly as before.
  */
@@ -10,7 +10,7 @@ const SERVER_URL_KEY = 'kition.collab.serverUrl.v1'
 /** This window changed the server URL (`storage` events only reach other windows). */
 const SETTINGS_CHANGED_EVENT = 'kition:collab:settings-changed'
 
-/** The local server development builds talk to (kition-pro's `--memory` mode). */
+/** The local server development builds talk to (kition-server's `--memory` mode). */
 const LOCAL_SYNC_SERVER_URL = 'ws://127.0.0.1:18300/v1/sync'
 
 /**
@@ -53,7 +53,7 @@ export function setSyncServerUrl(url: string | null) {
   window.dispatchEvent(new Event(SETTINGS_CHANGED_EVENT))
 }
 
-/** The Kition Pro session's token the sync server identifies this person by, or `null` when signed out. */
+/** The Kition account session's token the sync server identifies this person by, or `null` when signed out. */
 export async function loadCollabToken(): Promise<string | null> {
   const session = await loadStoredPortalAccountSession().catch(() => null)
   return session?.access_token || null

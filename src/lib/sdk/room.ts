@@ -52,8 +52,8 @@ import type { CommandMap, ModelObject } from './proxy'
 
 export type RoomOptions = {
   /**
-   * The sync server: its WebSocket endpoint (`wss://pro.kition.ai/v1/sync`), or its `http(s)://`
-   * address, whose root stands for `/v1/sync` (Kition Pro's endpoint).
+   * The sync server: its WebSocket endpoint (`wss://sync.kition.ai/v1/sync`), or its `http(s)://`
+   * address, whose root stands for `/v1/sync` (Kition Server's endpoint).
    */
   server: string
   /** The person's token for `sync/hello`. */
@@ -422,7 +422,7 @@ export type CreateRoomOptions = Pick<RoomOptions, 'server' | 'token' | 'tokenPro
 }
 
 /**
- * Shares a document as a new room on a sync server (`room/create`, Kition Pro: a Pro account):
+ * Shares a document as a new room on a sync server (`room/create`, Kition Cloud: a Pro account):
  * answers its `docId` and an editing share link. The person creating it is the room's owner.
  */
 export async function createRoom(options: CreateRoomOptions): Promise<{ docId: string; shareLink: string }> {

@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 describe('startCollab', () => {
-  it('never connects or reads the replica without a sync server and a Kition Pro session', async () => {
+  it('never connects or reads the replica without a sync server and a signed-in Kition account', async () => {
     writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/1', name: 'Poster.psd', kit: 'kit.photo', role: 'owner' })
     const { client, deps } = dependencies(false)
     const { connection, replica } = kitConnection(['ai', 'replica'])

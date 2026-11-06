@@ -115,7 +115,7 @@
   },
   "collab": {
     "paneTitle": "Co-editing",
-    "paneDescription": "Edit shared documents together with other people through a sync server. Co-editing needs a Kition Pro account.",
+    "paneDescription": "Edit shared documents together with other people through a sync server. Co-editing needs a Kition account.",
     "serverSection": "Sync server",
     "serverUrlTitle": "Sync server URL",
     "serverUrlDescription": "The WebSocket address of the sync server (wss://…). Leave it empty to turn co-editing off.",

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, shareViewOnlyFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, shareViewOnlyFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
@@ -73,10 +73,10 @@ async function typeIntoShape(page: Page, kit: FrameLocator, text: string) {
 test('co-edits a slide file between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -180,10 +180,10 @@ async function typeInShapeText(page: Page, kit: FrameLocator, text: string, key:
 test('two windows typing into one text box at once keep both texts', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)
@@ -234,10 +234,10 @@ test('two windows typing into one text box at once keep both texts', async ({ br
 test('a viewer of a shared slide file sees it change but cannot change it', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   try {
@@ -316,7 +316,7 @@ test('a viewer of a shared slide file sees it change but cannot change it', asyn
   }
 })
 
-test('without a Kition Pro session a slide file opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
+test('without a signed-in Kition account a slide file opens, edits, and saves as before, with no sync connection', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
   test.setTimeout(120_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.

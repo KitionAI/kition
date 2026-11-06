@@ -1,7 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { fulfillJson } from './helpers/mockApi'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, shareFromTab, signedIn, startKitionPro, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, shareFromTab, signedIn, startKitionServer, useSyncServer } from './helpers/kitionServer'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_sdk')
@@ -48,10 +48,10 @@ const peers = (page: Page) => page.locator('.document-tab-list [data-testid="col
 test("the agent's edit on a shared drawing shows the agent in every viewer's presence", async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
   test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_sdk'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(240_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   try {

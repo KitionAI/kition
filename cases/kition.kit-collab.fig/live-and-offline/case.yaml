@@ -20,6 +20,6 @@ expected:
     compare: exit
     value: 0
 tags: [browser]
-requires: [chromium, kition-pro]
+requires: [chromium, kition-server]
 timeout_s: 60
 since: "2026-10-28"

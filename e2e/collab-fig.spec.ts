@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page, type Route } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 /**
  * Fig on engine contract 2 (`kit.fig`, a design is a KDM replica): two people co-edit a `.kfig`
@@ -115,10 +115,10 @@ const call = (id: number, file: string, tool: string, args: Record<string, unkno
 test('co-edits a Fig design between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, missing)
   test.skip(!kitPackageHasReplicaInfo('fig', 'kition_fig_sdk'), 'the Fig kit package predates engine contract 2; build it with scripts/build-kit-ui.sh fig')
-  const unavailable = kitionProSkipReason()
+  const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
-  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const server = await startKitionServer(testInfo.outputPath('kition-server'))
   const alice = await browser.newContext()
   const bob = await browser.newContext()
   const bobNetwork = await syncNetwork(bob)

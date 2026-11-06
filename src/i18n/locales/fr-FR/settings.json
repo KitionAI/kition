@@ -115,7 +115,7 @@
   },
   "collab": {
     "paneTitle": "Coédition",
-    "paneDescription": "Modifiez des documents partagés avec d’autres personnes via un serveur de synchronisation. La coédition nécessite un compte Kition Pro.",
+    "paneDescription": "Modifiez des documents partagés avec d’autres personnes via un serveur de synchronisation. La coédition nécessite un compte Kition.",
     "serverSection": "Serveur de synchronisation",
     "serverUrlTitle": "URL du serveur de synchronisation",
     "serverUrlDescription": "L’adresse WebSocket du serveur de synchronisation (wss://…). Laissez-la vide pour désactiver la coédition.",

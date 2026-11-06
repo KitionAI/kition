@@ -1,6 +1,6 @@
 /**
  * A document's version history: the checkpoints this device recorded in the document store, and, for a document
- * co-edited in a Kition Pro room, the server's history when it is reachable. A checkpoint names a replica version; the
+ * co-edited in a Kition Server room, the server's history when it is reachable. A checkpoint names a replica version; the
  * document as of it is read from the open replica's own history (`stateAt`) and restored as one new change
  * (`revertTo`), never by replacing the document, so concurrent edits of others are kept.
  */
