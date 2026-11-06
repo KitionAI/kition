@@ -1,0 +1,22 @@
+format: 1
+id: kition.kits.file-writes/path-escapes
+feature: kition.kits.file-writes
+intent: >-
+  A kit editor writes files only inside the workspace through PUT /v1/kits/files: `..` from the top
+  or from inside, percent-encoded climbs, absolute paths, Kition's own store (.kition/), hidden
+  folders, a folder that links out of the workspace, and a save over a document that is a link to a
+  file outside are all refused, and nothing outside changes (KHP A29).
+layer: unit
+direction: security
+source:
+  kind: synthetic
+  from: crates/kition-kits-http/tests/kits.rs
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-kits-http, test: kits, filter: in_page_editors_save_kit_files_inside_the_workspace }
+expected:
+  - actual: out:exit
+    compare: exit
+tags: [security]
+since: "2026-11-06"

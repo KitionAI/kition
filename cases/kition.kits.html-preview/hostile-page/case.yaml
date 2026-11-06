@@ -1,0 +1,26 @@
+format: 1
+id: kition.kits.html-preview/hostile-page
+feature: kition.kits.html-preview
+intent: >-
+  A document's scripts run in the HTML kit's own engine, not as the browser's: a page that tries to
+  rename Kition's page, navigate its top window, write its storage or cookies, spoof the kit
+  handshake, call the runtime API or send data to another site reaches none of them, and the kit
+  keeps working.
+layer: golden
+direction: security
+source:
+  kind: synthetic
+  from: e2e/html-embedded.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/html-embedded.spec.ts, -g, hostile page]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+tags: [browser, security]
+requires: [chromium]
+timeout_s: 60
+since: "2026-11-06"
