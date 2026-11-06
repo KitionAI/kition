@@ -45,6 +45,19 @@ awk -v port="$API_PORT" -v sqlite_path="$RUNTIME_DIR/desktop-e2e.db" -v upload_d
 ' "$RUNTIME_CONFIG_TEMPLATE" > "$CONFIG_FILE"
 
 cargo build --quiet --manifest-path "$APP_DIR/Cargo.toml" -p kition-api
+
+# The runtime makes and reads .ktable files through the Table kit's headless program
+# (KITION_KIT_TABLE_BINARY, crates/kition-kits/src/definitions.rs). Without one it knows no
+# table kit, so the gate builds the sibling kition-table checkout's and fails if it can't.
+if [[ -z "${KITION_KIT_TABLE_BINARY:-}" ]]; then
+  TABLE_REPO="${KITION_TABLE_REPO:-$APP_DIR/../kition-table}"
+  if [[ ! -f "$TABLE_REPO/Cargo.toml" ]]; then
+    echo "[workflow-onboarding] no kition-table checkout at $TABLE_REPO (set KITION_TABLE_REPO or KITION_KIT_TABLE_BINARY)" >&2
+    exit 2
+  fi
+  cargo build --quiet --manifest-path "$TABLE_REPO/Cargo.toml" -p kition-table
+  export KITION_KIT_TABLE_BINARY="$TABLE_REPO/target/debug/kition-table"
+fi
 RUNTIME_BINARY="$APP_DIR/target/debug/kition-api"
 
 (

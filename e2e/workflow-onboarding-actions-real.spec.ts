@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
 const API_BASE = process.env.KITION_E2E_API_BASE_URL || 'http://127.0.0.1:18141/api/v1'
@@ -18,10 +19,16 @@ type EmailScenario = {
   fieldIds: string[]
 }
 
+/** The runtime's API token, from the file it writes (`KITION_API_TOKEN_FILE`, set by scripts/inspect-workflow-onboarding.sh). */
+function tokenHeader(): Record<string, string> {
+  const file = process.env.KITION_API_TOKEN_FILE
+  return file ? { 'Kition-Token': readFileSync(file, 'utf8').trim() } : {}
+}
+
 async function api<T = Json>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers || {}) },
+    headers: { 'content-type': 'application/json', ...tokenHeader(), ...(init?.headers || {}) },
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(`${init?.method || 'GET'} ${path}: ${response.status} ${JSON.stringify(payload)}`)
@@ -301,9 +308,10 @@ test.describe.serial('real onboarding workflow actions', () => {
     }))
     expect(workflow.action).toEqual(expect.objectContaining({
       type: 'send_email',
-      connectionId: '',
       to: 'sales@kition.ai',
     }))
+    // No connection is made for it: an empty connection id is left out of the saved action.
+    expect(workflow.action.connectionId ?? '').toBe('')
     expect(workflow.action.body.parts.flatMap((part: Json) => (
       part.kind === 'field_ref' ? [String(part.fieldRef.fieldId)] : []
     ))).toEqual(case3.fieldIds)
