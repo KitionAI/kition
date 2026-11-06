@@ -164,6 +164,19 @@ describe('AiModelsPane', () => {
     expect(Array.from(container.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Disconnect')).toBe(true)
   })
 
+  it('opens the custom provider form from Add custom', async () => {
+    await mount(createElement(AiModelsPane))
+    const addCustom = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.trim() === 'Add custom')!
+
+    await act(async () => { addCustom.click() })
+
+    const active = container.querySelector('.settings-provider-row.is-active')
+    expect(active?.textContent).toContain('Custom')
+    expect(container.querySelector('.settings-provider-editor-head')?.textContent).toContain('Custom')
+    expect(container.querySelector<HTMLInputElement>('input[placeholder="https://api.example.com/v1"]')).not.toBeNull()
+  })
+
   it('deletes the stored API key when a provider is disconnected', async () => {
     const actual: any = await vi.importActual('@/services/desktopSettings')
     localStorage.setItem('desktop.provider.openai.apiKey.v1', 'sk-stored')

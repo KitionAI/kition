@@ -511,7 +511,12 @@ export function AiModelsPane() {
               )
             })}
             {!visibleProviders.length ? <p className="px-3 py-4 text-sm text-muted-foreground">No providers found.</p> : null}
-            <Button size="md" variant="ghost" className="settings-provider-add"><Plus className="size-4" />{t('models.addCustom')}</Button>
+            <Button
+              size="md"
+              variant="ghost"
+              className="settings-provider-add"
+              onClick={() => { setProviderSearch(''); setActiveKind('custom') }}
+            ><Plus className="size-4" />{t('models.addCustom')}</Button>
           </aside>
           <div className="settings-provider-editor">
             <header className="settings-provider-editor-head">
