@@ -217,6 +217,8 @@ pub struct Pending {
     pub id: String,
     pub command: String,
     pub suggested_prefix: Vec<String>,
+    /// The paused call is a `web_fetch`: approved once, never as a rule.
+    pub fetch: bool,
 }
 
 const NOT_PENDING: &str = "shell approval request is no longer pending";
@@ -274,8 +276,8 @@ pub fn pending_approval(events: &[SessionEvent], call_id: &str) -> Result<Pendin
         })
         .ok_or_else(|| NOT_PENDING.to_owned())?;
     let (name, output) = output;
-    if name != "exec_command" {
-        return Err("tool call is not a shell command".into());
+    if name != "exec_command" && name != "web_fetch" {
+        return Err("tool call is not a shell command or a web fetch".into());
     }
     let command = text_field(&output, "command");
     if text_field(&output, "requires") != "approval" || command.is_empty() {
@@ -285,6 +287,7 @@ pub fn pending_approval(events: &[SessionEvent], call_id: &str) -> Result<Pendin
         id,
         command,
         suggested_prefix: string_list(&output["suggested"], "prefix"),
+        fetch: name == "web_fetch",
     })
 }
 
@@ -306,6 +309,9 @@ pub async fn resolve_approval(
         .await
         .map_err(|_| "failed to verify shell approval state".to_owned())?;
     let pending = pending_approval(&events, call_id)?;
+    if pending.fetch && decision == ALLOW_ALWAYS {
+        return Err("a web fetch is approved once; always allow is for shell commands".into());
+    }
     if decision == ALLOW_ALWAYS {
         let mut prefix = pending.suggested_prefix.clone();
         if prefix.is_empty() {
@@ -406,6 +412,7 @@ mod tests {
                 id: "approval:c1".into(),
                 command: "ls -la".into(),
                 suggested_prefix: vec!["ls".into()],
+                fetch: false,
             })
         );
         assert!(pending_approval(&paused("exec_command"), "c2").is_err());
@@ -441,10 +448,23 @@ mod tests {
     }
 
     #[test]
+    fn a_web_fetch_waits_for_approval_too() {
+        assert_eq!(
+            pending_approval(&paused("web_fetch"), "c1"),
+            Ok(Pending {
+                id: "approval:c1".into(),
+                command: "ls -la".into(),
+                suggested_prefix: vec!["ls".into()],
+                fetch: true,
+            })
+        );
+    }
+
+    #[test]
     fn only_shell_commands_wait_for_approval() {
         assert_eq!(
             pending_approval(&paused("fs_remove"), "c1"),
-            Err("tool call is not a shell command".to_owned())
+            Err("tool call is not a shell command or a web fetch".to_owned())
         );
     }
 }

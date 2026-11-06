@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-security-web-fetch
+feature: kition.agent.tool-policy
+intent: >-
+  The agent's web_fetch runs without asking only for a host the person named in their own messages of
+  the session (or approved a fetch of earlier); a fetch a document or page asked for, or any URL that
+  carries data (a long or encoded query or path part), waits for the person's approval, which is given
+  once and never saved as a rule. So an injected document cannot send workspace content out in a URL.
+layer: unit
+direction: security
+source:
+  kind: probe
+  from: commercial security review 2026-11-06 (web_fetch reached any public address without approval)
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-agent, test: agent_flow, filter: "fetch" }
+expected:
+  - actual: out:exit
+    compare: exit
+tags: [security]
+since: "2026-11-06"

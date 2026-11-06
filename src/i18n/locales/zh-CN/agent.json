@@ -17,6 +17,7 @@
   },
   "shellApproval": {
     "eyebrow": "执行 Shell 命令需要授权",
+    "fetchEyebrow": "Agent 想要访问一个网站",
     "parseFailed": "解析失败：{{error}}",
     "allowOnce": "允许一次",
     "rememberTitle": "允许并记住前缀“{{prefix}}”",

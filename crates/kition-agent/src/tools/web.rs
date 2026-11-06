@@ -282,6 +282,9 @@ pub async fn web_fetch(run: &Run, input: &Value) -> ToolResult {
     if urls.is_empty() {
         return Err("missing URL to fetch".into());
     }
+    if let Some(waiting) = needs_approval(run, &urls).await {
+        return Ok(waiting);
+    }
     let mut pages = Vec::new();
     for url in &urls {
         pages.push(fetch_page(run, url).await);
@@ -317,6 +320,40 @@ pub async fn web_fetch(run: &Run, input: &Value) -> ToolResult {
         format!("Web fetch results:\n{}", rows.join("\n")),
         output,
     ))
+}
+
+/// A fetch the person has to approve first (`fetch_policy`), as the output
+/// that pauses the turn; the resumed turn consumes the approval.
+async fn needs_approval(run: &Run, urls: &[String]) -> Option<ToolOutput> {
+    use super::fetch_policy::{self, Verdict};
+    let mut facts = None;
+    for raw in urls {
+        let Ok(url) = Url::parse(raw.trim()) else {
+            continue;
+        };
+        if run.consume_approval(&fetch_policy::command(raw)) {
+            continue;
+        }
+        if facts.is_none() {
+            let events = crate::log::read_session(&run.agent, run.session_id)
+                .await
+                .unwrap_or_default();
+            let prompt = (run.source == "user").then_some(run.prompt.as_str());
+            facts = Some(fetch_policy::facts(&events, prompt));
+        }
+        let Some(facts) = &facts else { continue };
+        if let Verdict::Ask(reason) = fetch_policy::verdict(&url, facts) {
+            let host = fetch_policy::host_of(&url).unwrap_or_default();
+            return Some(ToolOutput {
+                interrupt: Some("await_shell_approval"),
+                ..ToolOutput::new(
+                    format!("Awaiting user approval to fetch {raw}"),
+                    fetch_policy::approval_output(raw, &host, &reason),
+                )
+            });
+        }
+    }
+    None
 }
 
 pub fn extension_for_image_mime(mime: &str) -> Option<&'static str> {

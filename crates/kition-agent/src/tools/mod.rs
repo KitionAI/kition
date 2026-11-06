@@ -4,6 +4,7 @@
 pub mod apply_patch;
 pub mod documents;
 pub mod exec;
+pub mod fetch_policy;
 pub mod files;
 pub mod images;
 pub mod kits;

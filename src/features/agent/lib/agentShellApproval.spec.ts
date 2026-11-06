@@ -19,6 +19,15 @@ describe('agent shell approval contract', () => {
       .toThrow()
   })
 
+  it('resumes an approved web fetch as a fetch, not a shell command', () => {
+    const approved = buildAgentShellApprovalFollowup('allow_once', 'web_fetch https://news.example/a', 'web_fetch')
+    expect(approved).toContain('Fetch this URL again now with web_fetch: https://news.example/a')
+    expect(approved).not.toContain('shell')
+    const denied = buildAgentShellApprovalFollowup('deny', 'web_fetch https://evil.example/?d=1', 'web_fetch')
+    expect(denied).toContain('Do not fetch this URL: https://evil.example/?d=1')
+    expect(denied).not.toContain('shell')
+  })
+
   it('builds explicit resume and denial instructions', () => {
     expect(buildAgentShellApprovalFollowup('allow_once', 'git push')).toContain(
       'Retry this exact command now: git push',

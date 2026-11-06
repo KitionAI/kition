@@ -17,6 +17,7 @@
   },
   "shellApproval": {
     "eyebrow": "A execução do shell requer aprovação",
+    "fetchEyebrow": "O agente quer acessar um site",
     "parseFailed": "Falha na análise: {{error}}",
     "allowOnce": "Permitir uma vez",
     "rememberTitle": "Permitir e lembrar o prefixo \"{{prefix}}\"",

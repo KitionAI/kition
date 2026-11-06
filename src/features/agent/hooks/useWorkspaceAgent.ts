@@ -817,7 +817,7 @@ export function useWorkspaceAgent({
     decision: AgentShellApprovalDecision,
   ) => {
     void sendAgentMessage(sessionId, {
-      content: buildAgentShellApprovalFollowup(decision, request.command),
+      content: buildAgentShellApprovalFollowup(decision, request.command, request.action),
       hideUserMessage: true,
       shellApproval: {
         call_id: request.call_id,

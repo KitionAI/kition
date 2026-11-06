@@ -1,4 +1,4 @@
-import { ShieldAlertIcon as ShieldAlert, SquareTerminalIcon as SquareTerminal } from '@kition/tessera-icons/react'
+import { GlobeIcon as Globe, ShieldAlertIcon as ShieldAlert, SquareTerminalIcon as SquareTerminal } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentShellApprovalDecision,
@@ -19,7 +19,10 @@ export function AgentShellApprovalCard({
   ) => void
 }) {
   const { t } = useTranslation('agent')
-  const rememberedPrefix = request.suggested?.prefix.join(' ') || ''
+  const isFetch = request.action === 'web_fetch'
+  const rememberedPrefix = isFetch ? '' : request.suggested?.prefix.join(' ') || ''
+  const target = isFetch ? request.command.replace(/^web_fetch /, '') : request.command
+  const TargetIcon = isFetch ? Globe : SquareTerminal
 
   return (
     <section className="agent-shell-approval" data-testid="agent-shell-approval">
@@ -27,11 +30,11 @@ export function AgentShellApprovalCard({
         <span className="agent-shell-approval__icon" aria-hidden="true">
           <ShieldAlert className="size-4" />
         </span>
-        <span>{t('shellApproval.eyebrow')}</span>
+        <span>{t(isFetch ? 'shellApproval.fetchEyebrow' : 'shellApproval.eyebrow')}</span>
       </div>
       <div className="agent-shell-approval__command">
-        <SquareTerminal className="size-4 shrink-0" aria-hidden="true" />
-        <code>{request.command}</code>
+        <TargetIcon className="size-4 shrink-0" aria-hidden="true" />
+        <code>{target}</code>
       </div>
       {request.reason ? (
         <p className="agent-shell-approval__reason">{request.reason}</p>
