@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-security-shell-reads
+feature: kition.agent.tool-policy
+intent: >-
+  A read-only shell command runs without asking only inside the workspace: cat, head, grep, ls, stat
+  or find on an absolute path, the home directory, a shell variable, or a path that climbs out with
+  `..` asks the user first, so a document cannot make the agent read secrets such as ~/.ssh or
+  ~/.aws without approval and hand them to a web address (prompt injection). Deleting the workspace
+  or sending files away always asks.
+layer: unit
+direction: security
+source:
+  kind: probe
+  from: commercial security review 2026-11-06 (exec_command allowed `cat /Users/<name>/.ssh/id_rsa` with no approval)
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-agent, filter: "execpolicy::tests::reads_outside_the_workspace_need_approval" }
+expected:
+  - actual: out:exit
+    compare: exit
+tags: [security]
+since: "2026-11-06"
