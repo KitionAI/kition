@@ -18,7 +18,7 @@ use serde_json::{Map, Value, json};
 
 use crate::engine::Engine;
 use crate::store::{ActionPatch, TriggerPatch, UpdateError, WorkflowPatch, apply_patch};
-use crate::template::{field_refs, normalize_field_key, render, stringify_trigger_value};
+use crate::template::{by_field_id, field_refs, normalize_field_key, render, template_values};
 use crate::types::*;
 use crate::{cron, expr, validate};
 
@@ -568,12 +568,28 @@ async fn preview_values(
         .await
         .unwrap_or_else(|_| fallback_schema(def));
     match fields.filter(|f| !f.is_empty()) {
-        Some(fields) => fields
-            .iter()
-            .map(|(k, v)| (k.clone(), stringify_trigger_value(v)))
-            .collect(),
-        None => sample_row(def, &schema),
+        // A picked row comes keyed as the records API answers it (by field name): resolve it
+        // to the field IDs the templates name.
+        Some(fields) => template_values(fields, &schema.fields),
+        None => {
+            let mut values = sample_row(def, &schema);
+            for field in &schema.fields {
+                values.entry(field.id.clone()).or_default();
+            }
+            values
+        }
     }
+}
+
+/// The field references of `parts` that name no field of the table, once each, in order.
+fn unresolved(parts: &[&[String]]) -> Vec<String> {
+    let mut seen = Vec::new();
+    for id in parts.iter().flat_map(|missing| missing.iter()) {
+        if !seen.contains(id) {
+            seen.push(id.clone());
+        }
+    }
+    seen
 }
 
 async fn dry_run(
@@ -590,11 +606,13 @@ async fn dry_run(
         );
     };
     let values = preview_values(&state, user.user.id, &def, req.trigger_fields.as_ref()).await;
-    let (subject, _) = render(&def.action.subject, &values);
-    let (rendered, _) = render(&def.action.body, &values);
+    let (subject, subject_missing) = render(&def.action.subject, &values);
+    let (rendered, body_missing) = render(&def.action.body, &values);
+    // A reference to a field the table no longer has is named, never filled from another field.
+    let unresolved = unresolved(&[&subject_missing, &body_missing]);
     reply(
         StatusCode::OK,
-        json!({"ok": true, "input": {"to": def.action.to, "subject": subject, "body": rendered}}),
+        json!({"ok": true, "input": {"to": def.action.to, "subject": subject, "body": rendered}, "unresolved": unresolved}),
     )
 }
 
@@ -783,6 +801,52 @@ async fn run_record(
     else {
         return error(StatusCode::NOT_FOUND, "record not found");
     };
+    // A record that leaves a required trigger field empty is skipped, as the automatic runner
+    // skips it: running the action on it would write from empty values.
+    if !def.trigger.required_fields.is_empty() {
+        let schema = state
+            .engine
+            .schema(user.user.id, &req.document_path, &req.table_id)
+            .await
+            .unwrap_or_else(|_| fallback_schema(&def));
+        let missing = missing_required_field(
+            &def.trigger.required_fields,
+            &by_field_id(&record.fields, &schema.fields),
+        );
+        if !missing.is_empty() {
+            let name = schema
+                .fields
+                .iter()
+                .find(|field| field.id == missing)
+                .map_or(missing.clone(), |field| field.name.clone());
+            let now = kition_core::now_millis();
+            let run = RunRecord {
+                id: uuid::Uuid::new_v4().to_string(),
+                workflow_id: def.id.clone(),
+                trigger_event: "manual.run".into(),
+                record_id: record.id.clone(),
+                document_path: req.document_path.clone(),
+                table_id: req.table_id.clone(),
+                user_id: user.user.id,
+                trigger_fields: Some(record.fields),
+                started_at: now,
+                finished_at: now,
+                status: "skipped".into(),
+                skip_reason: format!("Required field {name} is empty"),
+                ..Default::default()
+            };
+            if let Err(err) = state.engine.runs.append(run.clone()) {
+                return reply(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    json!({"ok": false, "error": err}),
+                );
+            }
+            return reply(
+                StatusCode::OK,
+                json!({"ok": false, "error": run.skip_reason, "run": run}),
+            );
+        }
+    }
     let run = state
         .engine
         .execute(

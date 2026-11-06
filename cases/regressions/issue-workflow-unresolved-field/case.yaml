@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-workflow-unresolved-field
+feature: kition.workflow.onboarding-actions
+intent: >-
+  A workflow whose template names a field the table no longer has writes nothing and says which
+  field, and its preview lists the field as unresolved; it used to write a "{id}" placeholder into
+  the new or updated record.
+layer: corpus
+source:
+  kind: probe
+  from: docs/kition-onboarding-core-scenarios.csv (WF-SCENE-004, WF-SCENE-005 negative branches)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [bash, scripts/inspect-workflow-onboarding.sh, -g, "WF-SCENE-00[45]"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-06"
+tags: [browser, slow]
+requires: [chromium]

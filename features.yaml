@@ -1,6 +1,6 @@
 format: 1
 kit: kition
-updated: "2026-11-05"
+updated: "2026-11-06"
 golden_budget_s: 600
 features:
   - id: kition.kits.doc-page-view
@@ -77,12 +77,13 @@ features:
     since: "2026-10-31"
   - id: kition.kits.html-preview
     title: HTML previews run canvas interactions after the edited source is ready
-    direction: [function, data-safety]
+    direction: [function, data-safety, security]
     priority: P1
     status: has
     paths:
       - e2e/html-embedded.spec.ts
     cases:
+      - kition.kits.html-preview/hostile-page
       - regressions/issue-release-html-source-ready
     since: "2026-10-31"
   - id: kition.kit-collab.sheet
@@ -321,3 +322,41 @@ features:
     paths: [crates/kition-tableclient/**]
     cases: [regressions/issue-attachment-mime-type]
     since: "2026-11-05"
+  - id: kition.agent.tool-policy
+    title: The agent's shell runs read-only commands without asking only inside the workspace
+    direction: [security, ai]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-agent/src/execpolicy.rs
+      - crates/kition-agent/src/tools/exec.rs
+    gap: web_fetch reaches any public address without approval, so workspace content an injected document names can still be sent out through a URL.
+    cases:
+      - regressions/issue-security-shell-reads
+    since: "2026-11-06"
+  - id: kition.kits.file-writes
+    title: Kit editors write files only inside the workspace
+    direction: [security, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-kits-http/**
+      - crates/kition-workspace/src/fsutil.rs
+    cases:
+      - kition.kits.file-writes/path-escapes
+    since: "2026-11-06"
+  - id: kition.workflow.onboarding-actions
+    title: The onboarding workflows run on a chosen row, skip an incomplete row, and never write placeholders
+    direction: [function, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-workflow/**
+      - e2e/workflow-onboarding-actions-real.spec.ts
+      - scripts/inspect-workflow-onboarding.sh
+    gap: The branches run on a live local runtime (scripts/inspect-workflow-onboarding.sh), which CI does not start; the mock-backed CI sweep covers the workflow pages only.
+    cases:
+      - regressions/issue-workflow-preview-field-names
+      - regressions/issue-workflow-required-field-skip
+      - regressions/issue-workflow-unresolved-field
+    since: "2026-11-06"

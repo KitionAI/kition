@@ -1,0 +1,19 @@
+format: 1
+id: regressions/issue-workflow-preview-field-names
+feature: kition.workflow.onboarding-actions
+intent: >-
+  A workflow preview of a picked row shows that row's values: the records API keys a row by field
+  name and the templates name field IDs, and the preview showed "{id}" placeholders instead of the
+  lead's values. An empty field renders empty; only a field the table lacks stays unresolved.
+layer: golden
+source:
+  kind: probe
+  from: docs/kition-onboarding-core-scenarios.csv (WF-SCENE-005)
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-workflow, filter: "template::tests::template_values_resolve_names_and_leave_only_fields_the_table_lacks_unresolved" }
+expected:
+  - actual: out:exit
+    compare: exit
+since: "2026-11-06"

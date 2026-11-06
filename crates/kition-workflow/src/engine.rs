@@ -171,6 +171,21 @@ pub struct ActionResult {
     pub connection_id: String,
 }
 
+/// The error of an action whose template names fields the trigger table does not have: it
+/// writes nothing rather than a placeholder.
+fn unresolved_error(action: &str, missing: &[String]) -> String {
+    let mut ids: Vec<&str> = Vec::new();
+    for id in missing {
+        if !ids.contains(&id.as_str()) {
+            ids.push(id);
+        }
+    }
+    format!(
+        "{action} refers to fields the table does not have: {}",
+        ids.join(", ")
+    )
+}
+
 fn action_error(message: impl Into<String>) -> ActionResult {
     ActionResult {
         status: "error".into(),
@@ -237,6 +252,28 @@ impl Engine {
         let (doc, table) = (document_path.to_owned(), table_id.to_owned());
         self.blocking(move |t| t.records(user_id, &doc, &table))
             .await
+    }
+
+    /// The trigger record's values for a template: every field of the trigger table, an empty
+    /// one as empty text, so a reference stays unresolved only when the table lacks its field.
+    async fn template_values(
+        &self,
+        def: &WorkflowDefinition,
+        rt: &RunContext,
+    ) -> HashMap<String, String> {
+        let mut values = rt.trigger_values(def);
+        let schema = self
+            .schema(
+                rt.effective_user(),
+                &def.trigger.document_path,
+                &def.trigger.table_id,
+            )
+            .await
+            .unwrap_or_default();
+        for field in &schema.fields {
+            values.entry(field.id.clone()).or_default();
+        }
+        values
     }
 
     /// Runs the workflow graph and summarizes it as a run record.
@@ -493,14 +530,16 @@ impl Engine {
                 "add_record refused: target table equals trigger table (would loop)",
             );
         }
-        let values = rt.trigger_values(def);
+        let values = self.template_values(def, rt).await;
         let mut rendered = Map::new();
+        let mut missing = Vec::new();
         for field in cfg.fields.iter() {
-            let (text, missing) = render(&field.value, &values);
-            if !missing.is_empty() {
-                tracing::warn!(workflow = %def.id, ?missing, "workflow: add_record missing template fields");
-            }
+            let (text, unresolved) = render(&field.value, &values);
+            missing.extend(unresolved);
             rendered.insert(field.field_id.clone(), Value::String(text));
+        }
+        if !missing.is_empty() {
+            return action_error(unresolved_error("add_record", &missing));
         }
         let document_path = match cfg.target_document_path.trim() {
             "" => def.trigger.document_path.trim().to_owned(),
@@ -586,17 +625,17 @@ impl Engine {
         if self.tables.is_none() {
             return action_error("update_record runner: RecordUpdater not configured");
         }
-        let values = rt.trigger_values(def);
-        let rendered = cfg
-            .fields
-            .iter()
-            .map(|f| {
-                (
-                    f.field_id.clone(),
-                    Value::String(render(&f.value, &values).0),
-                )
-            })
-            .collect();
+        let values = self.template_values(def, rt).await;
+        let mut rendered = Map::new();
+        let mut missing = Vec::new();
+        for field in cfg.fields.iter() {
+            let (text, unresolved) = render(&field.value, &values);
+            missing.extend(unresolved);
+            rendered.insert(field.field_id.clone(), Value::String(text));
+        }
+        if !missing.is_empty() {
+            return action_error(unresolved_error("update_record", &missing));
+        }
         self.update_trigger_record(def, rt, rendered, "update_record")
             .await
     }

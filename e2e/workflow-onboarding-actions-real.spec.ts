@@ -10,6 +10,8 @@ type Scenario = {
   tableId: string
   recordId: string
   expected: Record<string, unknown>
+  /** The scenario's tables, as the runtime made them (the trigger table first). */
+  tables: Json[]
 }
 
 type EmailScenario = {
@@ -66,9 +68,9 @@ async function createWorkflow(body: Json) {
   return response.workflow || response
 }
 
-async function setupLeadEmail(): Promise<EmailScenario> {
+async function setupLeadEmail(path = 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable'): Promise<EmailScenario> {
   const doc = await createDocument({
-    path: 'Getting Started/Guides/Lead Automation/Lead Follow-up.ktable',
+    path,
     tables: [{
       title: 'Leads',
       fields: [
@@ -143,14 +145,15 @@ async function setupLeadEmail(): Promise<EmailScenario> {
   }
 }
 
-async function setupExpense(): Promise<Scenario> {
+/** `required`: whether the input columns are required columns (the branch tests need rows that leave them empty). */
+async function setupExpense(required = true): Promise<Scenario> {
   const doc = await createDocument({
     path: `onboarding-expenses-${Date.now()}.ktable`,
     tables: [{
       title: 'Expenses',
       fields: [
         { title: 'Item', name: 'item', type: 'text', primary: true, required: true },
-        { title: 'Amount', name: 'amount', type: 'number', required: true },
+        { title: 'Amount', name: 'amount', type: 'number', required },
         { title: 'Status', name: 'status', type: 'single_select', options: { choices: ['Draft', 'Needs review'] } },
         { title: 'Review Note', name: 'review_note', type: 'long_text' },
       ],
@@ -180,10 +183,11 @@ async function setupExpense(): Promise<Scenario> {
   return {
     workflowId: String(workflow.id), documentPath: doc.path, tableId: String(table.id), recordId: String(record.id),
     expected: { status: 'Needs review', review_note: 'Automatically flagged because the amount is above 1000' },
+    tables: doc.tables,
   }
 }
 
-async function setupOrders(): Promise<Scenario> {
+async function setupOrders(required = true): Promise<Scenario> {
   const doc = await createDocument({
     path: `onboarding-orders-${Date.now()}.ktable`,
     tables: [
@@ -191,7 +195,7 @@ async function setupOrders(): Promise<Scenario> {
         title: 'Orders',
         fields: [
           { title: 'Order', name: 'order', type: 'text', primary: true, required: true },
-          { title: 'SKU', name: 'sku', type: 'text', required: true },
+          { title: 'SKU', name: 'sku', type: 'text', required },
           { title: 'Product Name', name: 'product_name', type: 'text' },
           { title: 'Unit Price', name: 'unit_price', type: 'number' },
           { title: 'Category', name: 'category', type: 'text' },
@@ -231,18 +235,19 @@ async function setupOrders(): Promise<Scenario> {
   return {
     workflowId: String(workflow.id), documentPath: doc.path, tableId: String(orders.id), recordId: String(order.id),
     expected: { product_name: 'Kition Keyboard', unit_price: 129, category: 'Hardware' },
+    tables: doc.tables,
   }
 }
 
-async function setupContacts(): Promise<Scenario> {
+async function setupContacts(required = true): Promise<Scenario> {
   const doc = await createDocument({
     path: `onboarding-contacts-${Date.now()}.ktable`,
     tables: [{
       title: 'Contacts',
       fields: [
         { title: 'Name', name: 'name', type: 'text', primary: true, required: true },
-        { title: 'Email', name: 'email', type: 'text', required: true },
-        { title: 'Phone', name: 'phone', type: 'text', required: true },
+        { title: 'Email', name: 'email', type: 'text', required },
+        { title: 'Phone', name: 'phone', type: 'text', required },
         { title: 'Email Domain', name: 'email_domain', type: 'text' },
         { title: 'Normalized Phone', name: 'normalized_phone', type: 'text' },
       ],
@@ -264,6 +269,7 @@ async function setupContacts(): Promise<Scenario> {
   return {
     workflowId: String(workflow.id), documentPath: doc.path, tableId: String(table.id), recordId: String(record.id),
     expected: { email_domain: 'example.com', normalized_phone: '8613800138000' },
+    tables: doc.tables,
   }
 }
 
@@ -336,5 +342,232 @@ test.describe.serial('real onboarding workflow actions', () => {
 
   test('normalizes email and phone fields deterministically', async ({ page }) => {
     await runFromExistingRow(page, contacts)
+  })
+})
+
+/** Every record of a table, as the runtime reads it. */
+async function records(path: string, tableId: string) {
+  const result = await api<{ items: Json[] }>(`/kit-tables/records?${new URLSearchParams({ path, tableId })}`)
+  return result.items
+}
+
+async function recordValues(path: string, tableId: string, recordId: string) {
+  const record = (await records(path, tableId)).find((item) => String(item.id) === String(recordId))
+  if (!record) throw new Error(`record ${recordId} is gone from ${path}`)
+  return record.values as Json
+}
+
+/** Runs a workflow on one existing record, as the Workflows page's sample row does. */
+async function runRecord(workflowId: string, documentPath: string, tableId: string, recordId: string) {
+  return api<{ ok: boolean; error?: string; run: Json }>(`/workflows/${workflowId}/run-record`, {
+    method: 'POST',
+    body: JSON.stringify({ recordId, documentPath, tableId }),
+  })
+}
+
+type QueueScenario = { workflowId: string; documentPath: string; ideas: Json; queue: Json }
+
+/** Content Pipeline: a complete content idea is copied into the publishing queue (onboarding template content-idea-to-publishing-queue). */
+async function setupContentPipeline(targetTableId?: (queue: Json) => string, title?: (ideas: Json) => Json): Promise<QueueScenario> {
+  const doc = await createDocument({
+    path: `onboarding-content-${Date.now()}-${Math.round(Math.random() * 1e6)}.ktable`,
+    tables: [
+      {
+        title: 'Content Ideas',
+        fields: [
+          { title: 'Idea', name: 'idea', type: 'text', primary: true, required: true },
+          { title: 'Channel', name: 'channel', type: 'single_select', options: { choices: ['Blog', 'Newsletter', 'Social'] } },
+          { title: 'Priority', name: 'priority', type: 'single_select', options: { choices: ['High', 'Medium', 'Low'] } },
+          { title: 'Status', name: 'status', type: 'single_select', options: { choices: ['Drafting', 'Ready'] } },
+        ],
+      },
+      {
+        title: 'Publishing Queue',
+        fields: [
+          { title: 'Title', name: 'title', type: 'text', primary: true, required: true },
+          { title: 'Channel', name: 'channel', type: 'text' },
+          { title: 'Priority', name: 'priority', type: 'text' },
+          { title: 'Source Status', name: 'source_status', type: 'text' },
+          { title: 'Automation Note', name: 'automation_note', type: 'long_text' },
+        ],
+      },
+    ],
+  })
+  const [ideas, queue] = doc.tables
+  const ref = (name: string) => ({ kind: 'field_ref', fieldRef: { nodeId: 'trigger_1', fieldId: fieldId(ideas, name) } })
+  const workflow = await createWorkflow({
+    name: 'Add a new content idea to the publishing queue', enabled: false,
+    trigger: {
+      type: 'record_created', documentPath: doc.path, tableId: String(ideas.id),
+      requiredFields: ['idea', 'channel', 'priority', 'status'].map((name) => fieldId(ideas, name)),
+    },
+    action: {
+      type: 'add_record', connectionId: '', to: '', subject: { parts: [] }, body: { parts: [] },
+      addRecord: {
+        targetDocumentPath: doc.path,
+        targetTableId: targetTableId ? targetTableId(queue) : String(queue.id),
+        fields: [
+          { fieldId: fieldId(queue, 'title'), value: { parts: [title ? title(ideas) : ref('idea')] } },
+          { fieldId: fieldId(queue, 'channel'), value: { parts: [ref('channel')] } },
+          { fieldId: fieldId(queue, 'priority'), value: { parts: [ref('priority')] } },
+          { fieldId: fieldId(queue, 'source_status'), value: { parts: [ref('status')] } },
+          { fieldId: fieldId(queue, 'automation_note'), value: { parts: [{ kind: 'text', text: 'Added automatically by workflow' }] } },
+        ],
+      },
+    },
+  })
+  return { workflowId: String(workflow.id), documentPath: doc.path, ideas, queue }
+}
+
+/** The branches the onboarding scenarios list beside their happy paths (docs/kition-onboarding-core-scenarios.csv). */
+test.describe('onboarding workflow branches', () => {
+  test('WF-SCENE-001: contact cleanup keeps the source fields, adds no record, repeats itself, and skips a row without an email', async () => {
+    const contacts = await setupContacts(false)
+    const [table] = contacts.tables
+    const first = await runRecord(contacts.workflowId, contacts.documentPath, contacts.tableId, contacts.recordId)
+    expect(first.ok).toBe(true)
+    expect(await recordValues(contacts.documentPath, contacts.tableId, contacts.recordId)).toEqual(expect.objectContaining({
+      name: 'Alex', email: 'Alex@Example.COM', phone: '+86 138-0013-8000', ...contacts.expected,
+    }))
+    const again = await runRecord(contacts.workflowId, contacts.documentPath, contacts.tableId, contacts.recordId)
+    expect(again.ok).toBe(true)
+    expect(await recordValues(contacts.documentPath, contacts.tableId, contacts.recordId)).toEqual(expect.objectContaining(contacts.expected))
+    expect(await records(contacts.documentPath, contacts.tableId)).toHaveLength(1)
+
+    // A contact without an email: the cleanup says it skipped the row and leaves the domain it had.
+    const partial = await createRecord(contacts.documentPath, String(table.id), {
+      name: 'Sam', email: '', phone: '555 0100', email_domain: 'keep.example', normalized_phone: '5550100',
+    })
+    const skipped = await runRecord(contacts.workflowId, contacts.documentPath, contacts.tableId, String(partial.id))
+    expect(skipped.ok).toBe(false)
+    expect(skipped.run.status).toBe('skipped')
+    expect(String(skipped.run.skipReason)).toContain('Email')
+    expect(await recordValues(contacts.documentPath, contacts.tableId, String(partial.id))).toEqual(expect.objectContaining({
+      email_domain: 'keep.example', normalized_phone: '5550100',
+    }))
+  })
+
+  test('WF-SCENE-002: only an amount above 1000 is flagged; lower and missing amounts stay Draft', async () => {
+    const expenses = await setupExpense(false)
+    const [table] = expenses.tables
+    const lunch = await createRecord(expenses.documentPath, String(table.id), { item: 'Team lunch', amount: 280, status: 'Draft' })
+    const cloud = await createRecord(expenses.documentPath, String(table.id), { item: 'Cloud subscription', amount: 899, status: 'Draft' })
+    const unknown = await createRecord(expenses.documentPath, String(table.id), { item: 'Taxi', status: 'Draft' })
+    for (const id of [String(lunch.id), String(cloud.id)]) {
+      const run = await runRecord(expenses.workflowId, expenses.documentPath, expenses.tableId, id)
+      expect(run.ok).toBe(false)
+      expect(run.run.status).toBe('skipped')
+      expect(String(run.run.skipReason)).toContain('filter_1')
+      expect(await recordValues(expenses.documentPath, expenses.tableId, id)).toEqual(expect.objectContaining({ status: 'Draft' }))
+      expect((await recordValues(expenses.documentPath, expenses.tableId, id)).review_note ?? '').toBe('')
+    }
+    const missing = await runRecord(expenses.workflowId, expenses.documentPath, expenses.tableId, String(unknown.id))
+    expect(missing.ok).toBe(false)
+    expect(missing.run.status).toBe('skipped')
+    expect(String(missing.run.skipReason)).toContain('Amount')
+    expect(await recordValues(expenses.documentPath, expenses.tableId, String(unknown.id))).toEqual(expect.objectContaining({ status: 'Draft' }))
+
+    const flagged = await runRecord(expenses.workflowId, expenses.documentPath, expenses.tableId, expenses.recordId)
+    expect(flagged.ok).toBe(true)
+    expect(await recordValues(expenses.documentPath, expenses.tableId, expenses.recordId)).toEqual(expect.objectContaining(expenses.expected))
+    expect(await records(expenses.documentPath, expenses.tableId)).toHaveLength(4)
+  })
+
+  test('WF-SCENE-003: an unknown SKU matches nothing and a blank SKU is skipped; neither copies or erases values', async () => {
+    const orders = await setupOrders(false)
+    const [ordersTable, catalog] = orders.tables
+    const catalogBefore = await records(orders.documentPath, String(catalog.id))
+    const unknown = await createRecord(orders.documentPath, String(ordersTable.id), { order: 'Order #1002', sku: 'ZZ-999', product_name: 'Keep me', unit_price: 5 })
+    const noMatch = await runRecord(orders.workflowId, orders.documentPath, orders.tableId, String(unknown.id))
+    expect(noMatch.ok).toBe(true)
+    const action = (noMatch.run.nodeOutcomes as Json[]).find((outcome) => outcome.kind === 'action')
+    expect(JSON.parse(String(action?.detail))).toEqual(expect.objectContaining({ matched: false, matchValue: 'ZZ-999' }))
+    expect(await recordValues(orders.documentPath, orders.tableId, String(unknown.id))).toEqual(expect.objectContaining({ product_name: 'Keep me', unit_price: 5 }))
+
+    const blank = await createRecord(orders.documentPath, String(ordersTable.id), { order: 'Order #1003', sku: '', product_name: 'Keep too' })
+    const skipped = await runRecord(orders.workflowId, orders.documentPath, orders.tableId, String(blank.id))
+    expect(skipped.ok).toBe(false)
+    expect(skipped.run.status).toBe('skipped')
+    expect(String(skipped.run.skipReason)).toContain('SKU')
+    expect(await recordValues(orders.documentPath, orders.tableId, String(blank.id))).toEqual(expect.objectContaining({ product_name: 'Keep too' }))
+    expect(await records(orders.documentPath, String(catalog.id))).toEqual(catalogBefore)
+  })
+
+  test('WF-SCENE-004: one run copies a complete idea into exactly one queue row; incomplete or failed runs add none', async () => {
+    const pipeline = await setupContentPipeline()
+    const idea = await createRecord(pipeline.documentPath, String(pipeline.ideas.id), { idea: 'Product launch announcement', channel: 'Blog', priority: 'High', status: 'Drafting' })
+    const ideaBefore = await recordValues(pipeline.documentPath, String(pipeline.ideas.id), String(idea.id))
+    const run = await runRecord(pipeline.workflowId, pipeline.documentPath, String(pipeline.ideas.id), String(idea.id))
+    expect(run.ok).toBe(true)
+    const queued = await records(pipeline.documentPath, String(pipeline.queue.id))
+    expect(queued).toHaveLength(1)
+    expect(queued[0].values).toEqual(expect.objectContaining({
+      title: 'Product launch announcement', channel: 'Blog', priority: 'High', source_status: 'Drafting',
+      automation_note: 'Added automatically by workflow',
+    }))
+    expect(await recordValues(pipeline.documentPath, String(pipeline.ideas.id), String(idea.id))).toEqual(ideaBefore)
+    expect(await records(pipeline.documentPath, String(pipeline.ideas.id))).toHaveLength(1)
+
+    // An idea without a channel is skipped, not queued half-filled.
+    const incomplete = await createRecord(pipeline.documentPath, String(pipeline.ideas.id), { idea: 'Half an idea', priority: 'Low', status: 'Drafting' })
+    const skipped = await runRecord(pipeline.workflowId, pipeline.documentPath, String(pipeline.ideas.id), String(incomplete.id))
+    expect(skipped.ok).toBe(false)
+    expect(skipped.run.status).toBe('skipped')
+    expect(String(skipped.run.skipReason)).toContain('Channel')
+    expect(await records(pipeline.documentPath, String(pipeline.queue.id))).toHaveLength(1)
+
+    // A queue that is not there: the run fails and nothing is written.
+    const broken = await setupContentPipeline(() => '999999')
+    const brokenIdea = await createRecord(broken.documentPath, String(broken.ideas.id), { idea: 'Lost idea', channel: 'Blog', priority: 'High', status: 'Ready' })
+    const failed = await runRecord(broken.workflowId, broken.documentPath, String(broken.ideas.id), String(brokenIdea.id))
+    expect(failed.ok).toBe(false)
+    expect(failed.run.status).toBe('error')
+    expect(await records(broken.documentPath, String(broken.queue.id))).toHaveLength(0)
+
+    // A field the title points at is gone: the run fails rather than writing a placeholder into the queue.
+    const dangling = await setupContentPipeline(undefined, () => ({ kind: 'field_ref', fieldRef: { nodeId: 'trigger_1', fieldId: '999999' } }))
+    const danglingIdea = await createRecord(dangling.documentPath, String(dangling.ideas.id), { idea: 'Renamed idea', channel: 'Social', priority: 'Medium', status: 'Ready' })
+    const refused = await runRecord(dangling.workflowId, dangling.documentPath, String(dangling.ideas.id), String(danglingIdea.id))
+    expect(refused.ok).toBe(false)
+    expect(String(refused.error)).toContain('999999')
+    expect(await records(dangling.documentPath, String(dangling.queue.id))).toHaveLength(0)
+  })
+
+  test('WF-SCENE-005: the lead preview shows the seeded lead exactly, names a field that is gone, and changes nothing', async () => {
+    const lead = await setupLeadEmail(`onboarding-leads-${Date.now()}.ktable`)
+    const [record] = await records(lead.documentPath, lead.tableId)
+    const before = await api<Json>(`/workflows/${lead.workflowId}`)
+    const preview = await api<Json>(`/workflows/${lead.workflowId}/dry-run`, {
+      method: 'POST',
+      body: JSON.stringify({ triggerFields: record.values }),
+    })
+    expect(preview.ok).toBe(true)
+    expect(preview.input).toEqual({
+      to: 'sales@kition.ai',
+      subject: 'New Lead Submission Notification',
+      body: [
+        'A new lead has submitted the form. Here are the details:',
+        '',
+        'First Name: John',
+        'Last Name: Doe',
+        'Work Email: john.doe@example.com',
+        'Company Name: ABC Corp',
+        'Job Title: Manager',
+        'Reason for Contact: Upgrade to Enterprise Plan',
+        'Additional Notes: Planning to scale the team and standardize its processes.',
+      ].join('\n'),
+    })
+    expect(preview.unresolved ?? []).toEqual([])
+
+    // A field the body names is gone: the preview says which one instead of filling in another.
+    const raw = before.workflow || before
+    const body = { parts: [...raw.action.body.parts, { kind: 'newline' }, { kind: 'text', text: 'Budget: ' }, { kind: 'field_ref', fieldRef: { nodeId: 'trigger_1', fieldId: '999999' } }] }
+    await api(`/workflows/${lead.workflowId}`, { method: 'PATCH', body: JSON.stringify({ action: { ...raw.action, body } }) })
+    const changed = await api<Json>(`/workflows/${lead.workflowId}`)
+    const dangling = await api<Json>(`/workflows/${lead.workflowId}/dry-run`, { method: 'POST', body: JSON.stringify({ triggerFields: record.values }) })
+    expect(dangling.unresolved).toEqual(['999999'])
+    expect(String(dangling.input.body)).not.toContain('John\nBudget')
+    expect(await api<Json>(`/workflows/${lead.workflowId}`)).toEqual(changed)
+    expect((changed.workflow || changed).enabled).toBe(false)
   })
 })

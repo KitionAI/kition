@@ -114,6 +114,20 @@ pub fn stringify_record_values(
     out
 }
 
+/// The values a template renders from one record: [`stringify_record_values`], plus an empty
+/// value for every field of the table the record leaves empty. A reference that stays
+/// unresolved is to a field the table does not have.
+pub fn template_values(
+    raw: &Map<String, Value>,
+    fields: &[FieldSchema],
+) -> HashMap<String, String> {
+    let mut out = stringify_record_values(raw, fields);
+    for field in fields {
+        out.entry(field.id.clone()).or_default();
+    }
+    out
+}
+
 /// Values supplied for a test run: text as-is, `null` empty, others JSON.
 pub fn stringify_trigger_value(value: &Value) -> String {
     match value {
@@ -204,6 +218,42 @@ mod tests {
 
     use super::*;
     use crate::types::BodyPart;
+
+    #[test]
+    fn template_values_resolve_names_and_leave_only_fields_the_table_lacks_unresolved() {
+        let field = |id: &str, name: &str| FieldSchema {
+            id: id.into(),
+            name: name.into(),
+            field_type: "text".into(),
+        };
+        let fields = vec![field("4", "First Name"), field("5", "Notes")];
+        // A record as the records API answers it: keyed by field name, an empty field left out.
+        let raw = json!({"first_name": "John"})
+            .as_object()
+            .cloned()
+            .unwrap_or_default();
+        let values = template_values(&raw, &fields);
+        let reference = |id: &str| BodyPart {
+            kind: "field_ref".into(),
+            text: String::new(),
+            field_ref: Some(FieldRef {
+                node_id: "trigger_1".into(),
+                field_id: id.into(),
+            }),
+        };
+        let template = BodyTemplate {
+            parts: vec![
+                BodyPart::text("Hi "),
+                reference("4"),
+                reference("5"),
+                reference("99"),
+            ]
+            .into(),
+        };
+        let (text, missing) = render(&template, &values);
+        assert_eq!(text, "Hi John{99}");
+        assert_eq!(missing, vec!["99".to_owned()]);
+    }
 
     #[test]
     fn renders_and_resolves_values() {
