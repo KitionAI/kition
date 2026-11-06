@@ -27,6 +27,7 @@ vi.mock('@/services/desktopSettings', async () => {
 })
 
 import { AiModelsPane } from './AiModelsPane'
+import * as desktopSettings from '@/services/desktopSettings'
 import { desktopProviderCatalog } from '@/services/desktopSettings'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -161,5 +162,38 @@ describe('AiModelsPane', () => {
     expect(cloudRow.querySelector('.settings-provider-dot')?.classList.contains('is-on')).toBe(false)
     expect(container.querySelector('[data-testid="kition-account-connect"]')?.textContent).toContain('Top up credits')
     expect(Array.from(container.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Disconnect')).toBe(true)
+  })
+
+  it('deletes the stored API key when a provider is disconnected', async () => {
+    const actual: any = await vi.importActual('@/services/desktopSettings')
+    localStorage.setItem('desktop.provider.openai.apiKey.v1', 'sk-stored')
+    vi.mocked(desktopSettings.loadDesktopSettings).mockImplementationOnce(async () => {
+      const settings = actual.createDefaultDesktopSettings()
+      settings.providers.openai.enabled = true
+      settings.providers.openai.apiKey = 'sk-stored'
+      return settings
+    })
+    vi.mocked(desktopSettings.saveDesktopSettings).mockImplementationOnce(actual.saveDesktopSettings)
+    await mount(createElement(AiModelsPane))
+    const openaiRow = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-provider-row'))
+      .find((row) => row.textContent?.includes('OpenAI'))!
+    await act(async () => { openaiRow.click() })
+    const disconnect = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.trim() === 'Disconnect')!
+    await act(async () => { disconnect.click() })
+    const confirm = container.querySelector<HTMLButtonElement>('.disconnect-dialog-actions button:last-child')!
+
+    await act(async () => {
+      confirm.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    expect(desktopSettings.saveDesktopSettings).toHaveBeenLastCalledWith(
+      expect.anything(),
+      { clearProviderSecrets: ['openai'] },
+    )
+    expect(localStorage.getItem('desktop.provider.openai.apiKey.v1')).toBeNull()
+    expect(container.querySelector('.disconnect-dialog')).toBeNull()
+    expect(container.querySelector<HTMLInputElement>('input[aria-label="API key"]')?.value).toBe('')
   })
 })

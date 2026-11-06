@@ -458,12 +458,13 @@ export function AiModelsPane() {
         ...settings,
         providers: {
           ...settings.providers,
-          [activeKind]: { ...activeProvider, enabled: false, apiKey: '', accessToken: '' },
+          [activeKind]: { ...activeProvider, enabled: false, apiKey: '', accessToken: '', refreshToken: '' },
         },
       }
-      await saveDesktopSettings(next)
-      setSettings(next)
-      setPristineSettings(next)
+      // Without clearProviderSecrets a blank key falls back to the stored one.
+      const saved = await saveDesktopSettings(next, { clearProviderSecrets: [activeKind] })
+      setSettings(saved)
+      setPristineSettings(saved)
       setConfirmDisconnect(false)
     } catch (err) {
       setDisconnectError(err instanceof Error ? err.message : t('models.unknownError'))
