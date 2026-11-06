@@ -1,9 +1,13 @@
-import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
 
 import { mockAgentTurn } from './helpers/agentStream'
 import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
+import { openInKitFrame } from './helpers/embeddedKit'
+import { configureModel } from './helpers/tableAi'
 
 test('workspace chat can auto-open saved docs and target @{mentions}', async ({ page, baseURL }) => {
   test.setTimeout(90_000)
@@ -265,6 +269,71 @@ test('workspace chat can auto-open saved docs and target @{mentions}', async ({ 
         wire_api: 'responses',
       },
     })
+  } finally {
+    await host.dispose()
+  }
+})
+
+/**
+ * AI-SCENE-001 (docs/kition-onboarding-core-scenarios.csv): with the onboarding guide open, the
+ * person asks for a five-bullet summary and a first-session checklist. Every turn is bound to the
+ * open guide; the write the agent reports targets that file only; a summary-only request writes
+ * nothing; a write that fails is shown and leaves the guide as it was.
+ */
+test('AI-SCENE-001: the agent summarizes the open onboarding guide, writes only to it, and shows a failed write', async ({ page, baseURL }) => {
+  test.setTimeout(180_000)
+  const guide = 'Getting Started/Welcome to Kition.md'
+  const original = await readFile(path.join(process.cwd(), 'public', 'onboarding', 'welcome.md'))
+  await configureModel(page)
+  let turns: Awaited<ReturnType<typeof mockAgentTurn>> | undefined
+  const routes = async (page: Page) => {
+    turns = await mockAgentTurn(page, (turn, request) => {
+      const bullets = ['- Kition keeps notes, tables, workflows and kits in one workspace.', '- Everything in Getting Started is editable.', '- Tables can fill AI fields on request.', '- Workflows react to table changes.', '- The agent works on the file you have open.'].join('\n')
+      if (request.call === 1) {
+        turn.tool('read_1', 'document_read', { path: guide }, { path: guide })
+        turn.tool('patch_1', 'apply_patch', { path: guide }, { file_ops: [{ kind: 'update', path: guide }] })
+        turn.nextStep()
+        turn.reply(`${bullets}\n\nI added a first-session checklist to the guide.`)
+        return
+      }
+      if (request.call === 2) {
+        turn.reply(bullets)
+        return
+      }
+      turn.toolError('patch_2', 'apply_patch', { path: guide }, 'The guide could not be written: permission denied.')
+      turn.nextStep()
+      turn.reply('I could not add the checklist: the guide could not be written.')
+    })
+  }
+  const { host, saves } = await openInKitFrame(page, baseURL!, guide, original, {}, { routes })
+  try {
+    await page.getByTestId('agent-floating-launcher').click()
+    const composer = page.locator('.agent-ai-composer textarea')
+    await expect(composer).toBeVisible()
+    const assistant = page.locator('.agent-message.is-assistant')
+    const changed = page.locator('.agent-changed-files')
+
+    await composer.fill('Summarize this page in five bullets and add a checklist for my first Kition session')
+    await page.locator('.agent-ai-send').click()
+    await expect(assistant.nth(0)).toContainText('I added a first-session checklist to the guide.')
+    await expect(changed).toHaveCount(1)
+    await expect(changed.first()).toContainText('Welcome to Kition')
+
+    await composer.fill('Summarize this page in five bullets')
+    await page.locator('.agent-ai-send').click()
+    await expect(assistant.nth(1)).toContainText('The agent works on the file you have open.')
+    await expect(changed).toHaveCount(1)
+
+    await composer.fill('Add the checklist again')
+    await page.locator('.agent-ai-send').click()
+    await expect(assistant.nth(2)).toContainText('could not add the checklist')
+    await expect(page.getByText('The guide could not be written: permission denied.').first()).toBeVisible()
+    await expect(changed).toHaveCount(1)
+
+    expect(turns!.requests.map((request) => request.body.active_document_path)).toEqual([guide, guide, guide])
+    // Nothing else was written: Kition saved no file, and the guide on disk is as it was.
+    expect(saves).toEqual([])
+    expect(await readFile(path.join(host.root, guide))).toEqual(original)
   } finally {
     await host.dispose()
   }

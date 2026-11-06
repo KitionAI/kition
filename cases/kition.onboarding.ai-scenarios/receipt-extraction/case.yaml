@@ -1,0 +1,20 @@
+format: 1
+id: kition.onboarding.ai-scenarios/receipt-extraction
+feature: kition.onboarding.ai-scenarios
+intent: >-
+  Receipts attached to the extraction scenario become one table row each, traced by file name with
+  the receipt attached once; every AI column is read from that row's own receipt; a receipt the model
+  cannot read stays a row to review without blocking the others; the file reopens with all of it.
+layer: golden
+source:
+  kind: synthetic
+  from: docs/kition-onboarding-core-scenarios.csv (AI-SCENE-005)
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-tableclient, filter: "scenario::receipt_flow::receipts_become_one_traceable_row_each_and_a_bad_one_does_not_block_the_rest" }
+expected:
+  - actual: out:exit
+    compare: exit
+since: "2026-11-06"
+tags: [headless]

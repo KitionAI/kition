@@ -425,7 +425,9 @@ async fn build(
         let emit = |event: Value| {
             let _ = tx.send(sse(&event));
         };
-        if let Err(message) = run(&state, &prompt, model, uploads, &emit).await {
+        if let Err(message) =
+            run(&state.tables, &state.engine, &prompt, model, uploads, &emit).await
+        {
             emit(json!({ "kind": "error", "code": "scenario.build_failed", "message": message }));
         }
         emit(json!({ "kind": "done" }));
@@ -480,7 +482,7 @@ async fn infer(
 }
 
 /// An unused `<name>.ktable` in the workspace root.
-fn unused_path(state: &ScenarioState, base: &str) -> String {
+fn unused_path(tables: &TableClient, base: &str) -> String {
     let base: String = base
         .trim()
         .chars()
@@ -498,8 +500,7 @@ fn unused_path(state: &ScenarioState, base: &str) -> String {
         base.trim().to_owned()
     };
     let taken = |path: &str| {
-        state
-            .tables
+        tables
             .kits()
             .workspace_dir()
             .is_some_and(|dir| dir.join(path).exists())
@@ -514,21 +515,21 @@ fn unused_path(state: &ScenarioState, base: &str) -> String {
 }
 
 async fn run(
-    state: &ScenarioState,
+    tables: &TableClient,
+    engine: &Engine,
     prompt: &str,
     model: Option<RuntimeModel>,
     uploads: Vec<Upload>,
     emit: &(dyn Fn(Value) + Sync),
 ) -> Result<(), String> {
-    let plan = match infer(&state.engine, model.as_ref(), prompt, &uploads).await {
+    let plan = match infer(engine, model.as_ref(), prompt, &uploads).await {
         Ok(plan) => plan,
         Err(message) => {
             emit(json!({ "kind": "error", "code": "scenario.infer_failed", "message": message }));
             return Ok(());
         }
     };
-    let tables = &state.tables;
-    let path = unused_path(state, &plan.base_name);
+    let path = unused_path(tables, &plan.base_name);
     let starter = tables
         .create_file(&path, None)
         .await
@@ -633,7 +634,8 @@ async fn run(
         for request in prepared["requests"].as_array().into_iter().flatten() {
             let record_id = request["recordId"].clone();
             match generate(
-                state,
+                tables,
+                engine,
                 &path,
                 &model,
                 prepared["output"].as_str().unwrap_or("text"),
@@ -687,7 +689,8 @@ async fn run(
 
 /// One prepared AI request run on the person's model: `{ text }` or `{ images }`.
 async fn generate(
-    state: &ScenarioState,
+    tables: &TableClient,
+    engine: &Engine,
     path: &str,
     model: &RuntimeModel,
     output: &str,
@@ -706,8 +709,7 @@ async fn generate(
                 }
                 Some("image") => {
                     if let Some(hash) = part["hash"].as_str() {
-                        let blob = state
-                            .tables
+                        let blob = tables
                             .request(path, "attachments.read", json!({ "hash": hash }), None)
                             .await
                             .map_err(|e| e.message)?;
@@ -730,8 +732,7 @@ async fn generate(
     }
     if output == "image" {
         let options = &request["options"];
-        let generated = state
-            .engine
+        let generated = engine
             .generate_images(
                 &ImageRequest {
                     prompt,
@@ -769,8 +770,7 @@ async fn generate(
             });
         }
     }
-    let answer = state
-        .engine
+    let answer = engine
         .chat_with_tools(&[message], &[], "", model, None)
         .await
         .map_err(|err| err.to_string())?;
@@ -810,5 +810,330 @@ mod tests {
         assert_eq!(plan.base_name, DEFAULT_BASE);
         assert!(plan_from(r#"{"fields":[{"name":"x","type":"blob"}]}"#).is_err());
         assert!(plan_from(r#"{"fields":[{"name":"x","type":"text","isAIField":true}]}"#).is_err());
+    }
+}
+
+/// AI-SCENE-005 (docs/kition-onboarding-core-scenarios.csv): receipts the person attaches become a
+/// table with one traceable row per receipt, each AI column read from that receipt; a receipt the
+/// model cannot read stays a reviewable row without blocking the others. The scenario runs against
+/// the Table kit's headless program and a local model that reads each receipt's own bytes.
+#[cfg(test)]
+mod receipt_flow {
+    use std::path::PathBuf;
+
+    use axum::Json;
+    use axum::routing::post;
+    use kition_core::events::EventBus;
+    use kition_kits::KitManager;
+
+    use super::*;
+    use crate::RecordInfo;
+
+    /// The Table kit's headless program: `KITION_KIT_TABLE_BINARY`, or the sibling checkout's debug build.
+    fn executable() -> Option<PathBuf> {
+        if let Some(path) =
+            std::env::var_os("KITION_KIT_TABLE_BINARY").filter(|value| !value.is_empty())
+        {
+            return Some(PathBuf::from(path));
+        }
+        let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../kition-table/target/debug/kition-table")
+            .with_extension(std::env::consts::EXE_EXTENSION);
+        sibling.is_file().then_some(sibling)
+    }
+
+    const PLAN: &str = r#"{
+      "baseName": "Receipt Archive", "tableName": "Receipts",
+      "fields": [
+        {"name": "File Name", "type": "text", "isPrimary": true},
+        {"name": "Receipt Image", "type": "attachment"},
+        {"name": "Vendor", "type": "text", "isAIField": true, "aiPrompt": "Extract the vendor name."},
+        {"name": "Address", "type": "text", "isAIField": true, "aiPrompt": "Extract the vendor address."},
+        {"name": "Category", "type": "text", "isAIField": true, "aiPrompt": "Extract the spending category."},
+        {"name": "Transaction Date", "type": "text", "isAIField": true, "aiPrompt": "Extract the transaction date in ISO format."},
+        {"name": "Total", "type": "text", "isAIField": true, "aiPrompt": "Extract the total amount."},
+        {"name": "Tax", "type": "text", "isAIField": true, "aiPrompt": "Extract the tax amount."}
+      ],
+      "views": [{"name": "Overall", "kind": "grid"}]
+    }"#;
+
+    /// A receipt as the fake model reads it: `vendor|address|category|date|total|tax`.
+    fn receipt(fields: [&str; 6]) -> Upload {
+        Upload {
+            name: format!("{}.png", fields[0].to_lowercase().replace(' ', "-")),
+            mime: "image/png".into(),
+            data: Bytes::from(fields.join("|")),
+        }
+    }
+
+    /// Every `data:` URL in a request body, decoded.
+    fn images(value: &Value, out: &mut Vec<String>) {
+        match value {
+            Value::String(text) if text.starts_with("data:") => {
+                let data = text
+                    .split_once(',')
+                    .map(|(_, data)| data)
+                    .unwrap_or_default();
+                if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(data) {
+                    out.push(String::from_utf8_lossy(&bytes).into_owned());
+                }
+            }
+            Value::Array(items) => items.iter().for_each(|item| images(item, out)),
+            Value::Object(map) => map.values().for_each(|item| images(item, out)),
+            _ => {}
+        }
+    }
+
+    /// The fake model: the scenario's plan, then each cell from the receipt it is shown. A receipt
+    /// that is not one fails, as an unreadable picture does.
+    async fn answer(Json(body): Json<Value>) -> axum::response::Response {
+        let text = body.to_string();
+        let reply = |content: &str| {
+            Json(json!({
+                "id": "test", "object": "chat.completion", "model": "test-model",
+                "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": content}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+            }))
+            .into_response()
+        };
+        if text.contains("database schema designer") {
+            return reply(PLAN);
+        }
+        let mut shown = Vec::new();
+        images(&body, &mut shown);
+        let Some(fields) = shown
+            .first()
+            .map(|receipt| receipt.split('|').map(str::to_owned).collect::<Vec<_>>())
+            .filter(|fields| fields.len() == 6)
+        else {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(json!({"error": {"message": "the picture is not a receipt"}})),
+            )
+                .into_response();
+        };
+        let column = [
+            "Vendor",
+            "Address",
+            "Category",
+            "Transaction Date",
+            "Total",
+            "Tax",
+        ]
+        .iter()
+        .position(|name| text.contains(&format!("Target field: {name}")))
+        .unwrap_or(0);
+        reply(&fields[column])
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn receipts_become_one_traceable_row_each_and_a_bad_one_does_not_block_the_rest() {
+        let Some(executable) = executable() else {
+            eprintln!(
+                "skipped: build kition-table (cargo build -p kition-table in ../kition-table) or set KITION_KIT_TABLE_BINARY"
+            );
+            return;
+        };
+        let manifest = kition_kits::definitions::manifest_beside(&executable)
+            .unwrap_or_else(|| panic!("no kit.json above {}", executable.display()));
+        let kit = kition_kits::KitDefinition::from_manifest_text(&manifest)
+            .unwrap_or_else(|error| panic!("{error}"));
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        let tables = TableClient::new(
+            KitManager::new(
+                Some(dir.path().to_path_buf()),
+                vec![(kit, Some(executable))],
+            ),
+            EventBus::default(),
+        );
+        let engine = Engine::new(dir.path().join("uploads"), None);
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .unwrap_or_else(|err| panic!("{err}"));
+        let address = listener.local_addr().unwrap_or_else(|err| panic!("{err}"));
+        tokio::spawn(async move {
+            axum::serve(
+                listener,
+                axum::Router::new().route("/v1/chat/completions", post(answer)),
+            )
+            .await
+        });
+        let model = RuntimeModel {
+            provider_type: "custom".into(),
+            model_name: "test-model".into(),
+            base_url: format!("http://{address}/v1"),
+            api_key: "test-key".into(),
+            auth_scheme: "bearer".into(),
+            wire_api: "chat_completions".into(),
+            ..RuntimeModel::default()
+        };
+
+        let bakery = [
+            "Hearth and Grain Bakery",
+            "12 Orchard Lane, Portland",
+            "Food",
+            "2026-03-04",
+            "18.40",
+            "1.47",
+        ];
+        let fuel = [
+            "Northgate Fuel",
+            "400 Ridge Road, Denver",
+            "Travel",
+            "2026-03-06",
+            "52.10",
+            "4.17",
+        ];
+        let uploads = vec![
+            receipt(bakery),
+            Upload {
+                name: "smudged.png".into(),
+                mime: "image/png".into(),
+                data: Bytes::from_static(b"\x89PNG not a receipt"),
+            },
+            receipt(fuel),
+        ];
+        let events = std::sync::Mutex::new(Vec::new());
+        let emit = |event: Value| {
+            events
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .push(event)
+        };
+        run(
+            &tables,
+            &engine,
+            "Extract vendor, address, category, date, total and tax from these receipts",
+            Some(model),
+            uploads,
+            &emit,
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+        let events = events
+            .into_inner()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert!(
+            events.iter().all(|event| event["kind"] != "error"),
+            "{events:?}"
+        );
+
+        let path = events
+            .iter()
+            .find(|event| event["kind"] == "base.created")
+            .and_then(|event| event["path"].as_str())
+            .unwrap_or_default()
+            .to_owned();
+        assert_eq!(path, "Receipt Archive.ktable");
+        // A fresh client reads the file from disk: what the scenario made survives a reload.
+        let manifest =
+            kition_kits::definitions::manifest_beside(&executable_or_panic()).unwrap_or_default();
+        let kit = kition_kits::KitDefinition::from_manifest_text(&manifest)
+            .unwrap_or_else(|error| panic!("{error}"));
+        let reopened = TableClient::new(
+            KitManager::new(
+                Some(dir.path().to_path_buf()),
+                vec![(kit, Some(executable_or_panic()))],
+            ),
+            EventBus::default(),
+        );
+        let table = reopened
+            .tables(&path)
+            .await
+            .unwrap_or_else(|err| panic!("{err}"))
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("no table"));
+        let titles: Vec<&str> = table
+            .fields
+            .iter()
+            .map(|field| field.title.as_str())
+            .collect();
+        for wanted in [
+            "File Name",
+            "Receipt Image",
+            "Vendor",
+            "Address",
+            "Category",
+            "Transaction Date",
+            "Total",
+            "Tax",
+        ] {
+            assert!(titles.contains(&wanted), "{wanted} missing from {titles:?}");
+        }
+        let key = |title: &str| {
+            table
+                .fields
+                .iter()
+                .find(|field| field.title == title)
+                .map(|field| field.name.clone())
+                .unwrap_or_default()
+        };
+        let records = reopened
+            .records(&path, &table.id)
+            .await
+            .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(records.len(), 3, "one row per receipt");
+        let row = |file: &str| {
+            records
+                .iter()
+                .find(|record| {
+                    record.values.get(&key("File Name")).and_then(Value::as_str) == Some(file)
+                })
+                .unwrap_or_else(|| panic!("no row for {file}"))
+        };
+        for record in &records {
+            assert_eq!(
+                record
+                    .values
+                    .get(&key("Receipt Image"))
+                    .and_then(Value::as_array)
+                    .map(Vec::len),
+                Some(1),
+                "each receipt is attached once"
+            );
+        }
+        let text = |record: &RecordInfo, title: &str| {
+            record
+                .values
+                .get(&key(title))
+                .map(|value| match value {
+                    Value::String(text) => text.clone(),
+                    other => other.to_string(),
+                })
+                .unwrap_or_default()
+        };
+        for (file, fields) in [
+            ("hearth-and-grain-bakery.png", bakery),
+            ("northgate-fuel.png", fuel),
+        ] {
+            let record = row(file);
+            for (title, value) in [
+                "Vendor",
+                "Address",
+                "Category",
+                "Transaction Date",
+                "Total",
+                "Tax",
+            ]
+            .iter()
+            .zip(fields)
+            {
+                assert_eq!(text(record, title), value, "{file}: {title}");
+            }
+        }
+        let smudged = row("smudged.png");
+        for title in ["Vendor", "Total"] {
+            assert_eq!(
+                text(smudged, title),
+                "",
+                "an unreadable receipt leaves {title} empty to review"
+            );
+        }
+    }
+
+    fn executable_or_panic() -> PathBuf {
+        executable().unwrap_or_else(|| panic!("no kition-table executable"))
     }
 }

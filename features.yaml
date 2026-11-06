@@ -368,3 +368,34 @@ features:
       - regressions/issue-workflow-required-field-skip
       - regressions/issue-workflow-unresolved-field
     since: "2026-11-06"
+  - id: kition.onboarding.ai-fields
+    title: The onboarding tables' AI fields run on request for the asked cell, from that row
+    direction: [ai, function, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - public/onboarding/ReadingTracker.ktable
+      - public/onboarding/product-content/**
+      - src/features/kits/kition/kitGenerate.ts
+      - e2e/onboarding-reading-ai-summary.spec.ts
+      - e2e/onboarding-product-content-ai.spec.ts
+    cases:
+      - regressions/issue-onboarding-ai-field-prompts
+      - kition.onboarding.ai-fields/product-content
+    since: "2026-11-06"
+  - id: kition.onboarding.ai-scenarios
+    title: The onboarding agent and extraction scenarios stay bound to the open file and write nothing unasked
+    direction: [ai, data-safety, security]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-tableclient/src/scenario.rs
+      - crates/kition-agent/src/catalog.rs
+      - e2e/table-agent-document-flow.spec.ts
+      - e2e/onboarding-agent-workflow-proposal.spec.ts
+    gap: The agent scenarios run on a mocked agent stream, so they test the binding and what the page writes, not what a real model chooses; the receipt extraction test needs the Table kit's headless program (sibling kition-table build or KITION_KIT_TABLE_BINARY) and skips without it; cancelling an extraction mid-way is not covered.
+    cases:
+      - kition.onboarding.ai-scenarios/agent-document
+      - kition.onboarding.ai-scenarios/agent-proposal
+      - kition.onboarding.ai-scenarios/receipt-extraction
+    since: "2026-11-06"
