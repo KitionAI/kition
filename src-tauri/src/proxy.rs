@@ -329,7 +329,9 @@ mod tests {
         assert_eq!(env["NO_PROXY"], "a.com,b.com");
         // The settings hint promises: a file in the data folder, not the
         // keychain, kept out of proxy.json, and removed when blanked.
-        let secret_file = dir.path().join("secrets/kition-desktop-proxy-password.secret");
+        let secret_file = dir
+            .path()
+            .join("secrets/kition-desktop-proxy-password.secret");
         assert!(secret_file.is_file());
         let config = fs::read_to_string(dir.path().join(FILE_NAME)).unwrap_or_default();
         assert!(!config.contains("password") && !config.contains("\"pw\""));

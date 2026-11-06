@@ -641,7 +641,9 @@ export class SyncClient {
   }
 
   private request<T>(method: string, buildParams: (out: Outgoing) => Record<string, unknown>, decode: (value: Record<string, unknown>, bins: Uint8Array[]) => T): Promise<T> {
-    if (!this.transport) return Promise.reject(disconnected())
+    // Only `sync/hello` goes out before the connection is online. Anything else sent into a closed
+    // (or not yet greeted) socket would never be answered: it fails now, as a disconnect would.
+    if (!this.transport || (this.connectionState !== 'online' && method !== 'sync/hello')) return Promise.reject(disconnected())
     const out = new Outgoing()
     const params = buildParams(out)
     const id = String(this.nextId++)

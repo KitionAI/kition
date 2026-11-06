@@ -56,7 +56,9 @@ export async function runSave(options: SaveRunOptions): Promise<SaveRun> {
     version = await options.write({ seq, authors, trigger, receipt })
   } catch (cause) {
     const error = (options.classify ?? classifySaveError)(cause)
-    await client.saveEnd(docId, seq, { error })
+    // The write's failure is the outcome. A connection that dropped meanwhile cannot report it,
+    // and needs not: the server ends a save whose connection drops (back to editing, dirty).
+    await client.saveEnd(docId, seq, { error }).catch(() => undefined)
     return { status: 'failed', error, cause }
   }
   await client.saveEnd(docId, seq, { version })
