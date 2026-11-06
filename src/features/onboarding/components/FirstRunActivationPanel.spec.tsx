@@ -10,6 +10,15 @@ vi.mock('@/features/account/hooks/useKitionAccount', () => ({
 
 import { FirstRunActivationPanel } from './FirstRunActivationPanel'
 
+const launcherLocales = import.meta.glob<{ firstRun: { configureModels: string } }>(
+  '/src/i18n/locales/*/workspaceLauncher.json',
+  { eager: true, import: 'default' },
+)
+const settingsLocales = import.meta.glob<{ models: { paneTitle: string } }>(
+  '/src/i18n/locales/*/settings.json',
+  { eager: true, import: 'default' },
+)
+
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
 let container: HTMLDivElement
@@ -71,8 +80,9 @@ describe('FirstRunActivationPanel', () => {
     expect(container.querySelector('[data-testid="first-run-continue"]')).toBeNull()
   })
 
-  it('routes bring-your-own-key users directly to AI Models', async () => {
+  it('routes bring-your-own-key users directly to AI Providers', async () => {
     await mount()
+    expect(container.querySelector('[data-testid="first-run-configure-models"]')?.textContent).toContain('Open AI Providers')
     await click('[data-testid="first-run-configure-models"]')
 
     expect(callbacks.onConfigureModels).toHaveBeenCalledTimes(1)
@@ -121,5 +131,16 @@ describe('FirstRunActivationPanel', () => {
     await act(async () => skipButton.click())
 
     expect(callbacks.onSkip).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the AI providers pane by its own title in every locale', () => {
+    const locales = Object.keys(launcherLocales)
+    expect(locales.length).toBeGreaterThan(1)
+    for (const path of locales) {
+      const settingsPath = path.replace('workspaceLauncher.json', 'settings.json')
+      const paneTitle = settingsLocales[settingsPath]?.models.paneTitle
+      expect(paneTitle, settingsPath).toBeTruthy()
+      expect(launcherLocales[path].firstRun.configureModels, path).toContain(paneTitle)
+    }
   })
 })

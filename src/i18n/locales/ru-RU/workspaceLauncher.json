@@ -92,7 +92,7 @@
       },
       "byo": {
         "title": "Подключить AI-провайдера",
-        "description": "Откройте AI Models и добавьте провайдера, которым уже пользуетесь.",
+        "description": "Откройте AI-модели и добавьте провайдера, которым уже пользуетесь.",
         "privacy": "Prompts и выбранный контекст отправляются напрямую настроенному провайдеру."
       },
       "local": {
@@ -107,7 +107,7 @@
     "startCloud": "Войти и открыть Agent",
     "agentPrompt": "Кратко изложи эту страницу приветствия и добавь ниже небольшой список первых шагов.",
     "cancelSignIn": "Отменить вход",
-    "configureModels": "Настроить AI Models",
+    "configureModels": "Открыть AI-модели",
     "startLocal": "Open welcome guide",
     "cloudCreditsEmpty": "Кредиты Kition Cloud закончились. Пополните их в Kition Account.",
     "cloudUnavailable": "Kition Account временно недоступен."

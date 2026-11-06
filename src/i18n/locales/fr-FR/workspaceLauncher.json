@@ -92,7 +92,7 @@
       },
       "byo": {
         "title": "Connecter votre fournisseur d'IA",
-        "description": "Ouvrez AI Models et ajoutez le fournisseur que vous utilisez déjà.",
+        "description": "Ouvrez Modèles d'IA et ajoutez le fournisseur que vous utilisez déjà.",
         "privacy": "Les prompts et le contexte sélectionné sont envoyés directement au fournisseur configuré."
       },
       "local": {
@@ -107,7 +107,7 @@
     "startCloud": "Se connecter et ouvrir Agent",
     "agentPrompt": "Résume cette page de bienvenue et ajoute ci-dessous une courte liste pour bien démarrer.",
     "cancelSignIn": "Annuler la connexion",
-    "configureModels": "Configurer AI Models",
+    "configureModels": "Ouvrir Modèles d'IA",
     "startLocal": "Open welcome guide",
     "cloudCreditsEmpty": "Vos crédits Kition Cloud sont épuisés. Rechargez-les depuis Kition Account.",
     "cloudUnavailable": "Kition Account est temporairement indisponible."

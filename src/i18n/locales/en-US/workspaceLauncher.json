@@ -92,7 +92,7 @@
       },
       "byo": {
         "title": "Connect your AI provider",
-        "description": "Open AI Models and add the provider you already use.",
+        "description": "Open AI Providers and connect the provider you already use.",
         "privacy": "Prompts and selected context are sent directly to the provider you configure."
       },
       "local": {
@@ -107,7 +107,7 @@
     "startCloud": "Sign in and open Agent",
     "agentPrompt": "Summarize this welcome page and write a short getting-started checklist below it.",
     "cancelSignIn": "Cancel sign-in",
-    "configureModels": "Open AI Models",
+    "configureModels": "Open AI Providers",
     "startLocal": "Open welcome guide",
     "cloudCreditsEmpty": "Your Kition Cloud credits are empty. Top up from Kition Account before starting this action.",
     "cloudUnavailable": "Kition Account is temporarily unavailable."
