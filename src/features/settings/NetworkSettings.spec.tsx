@@ -61,6 +61,14 @@ describe('NetworkSettings', () => {
     expect(testButton?.hasAttribute('disabled')).toBe(true)
   })
 
+  it('describes where the proxy password is stored without claiming keychain encryption', async () => {
+    await mount(createElement(NetworkSettings))
+    const text = container.textContent ?? ''
+    expect(text).toContain("Saved unencrypted in Kition's data folder on this device, not in the system keychain.")
+    expect(text).not.toContain('Stored encrypted')
+    expect(container.querySelector('input[type="password"]')?.getAttribute('placeholder')).not.toMatch(/encrypt/i)
+  })
+
   it('calls getProxyState on mount', async () => {
     await mount(createElement(NetworkSettings))
     expect(desktopProxy.getProxyState).toHaveBeenCalled()
