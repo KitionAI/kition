@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.sheet",
   "name": "Sheet",
-  "version": "0.4.37",
+  "version": "0.4.43",
   "license": "Apache-2.0",
   "distribution": "plugin",
   "engine": {
@@ -33,6 +33,23 @@
         "width": 1710,
         "height": 2021
       }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    },
+    {
+      "extension": "csv",
+      "mime": "text/csv",
+      "command": "file.export"
+    },
+    {
+      "extension": "html",
+      "mime": "text/html",
+      "command": "file.export"
     }
   ],
   "capabilities": [
@@ -82,6 +99,10 @@
       "covers": "cells, formulas, formatting, sorting, filtering, tables, charts, PivotTables, and more; `cell.set` enters a value or formula",
       "queries": "`cell`, `sort`, or `format`",
       "example": "cell.set"
+    },
+    "export": {
+      "command": "file.export",
+      "data": "data"
     }
   },
   "headless": {

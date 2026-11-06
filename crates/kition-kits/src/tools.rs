@@ -1971,7 +1971,7 @@ mod tests {
         assert!(file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export")));
         assert!(file_tool_hint(effect, "new project file").is_some_and(|hint| hint.contains("effect_create")));
         assert!(file_tool_hint(effect, "text layer").is_none());
-        assert!(file_tool_hint(sheet, "export csv").is_none(), "sheet exports nothing for the agent");
+        assert!(file_tool_hint(sheet, "export csv").is_some_and(|hint| hint.contains("sheet_export")), "sheet exports PDF, CSV and HTML for the agent");
     }
 
     #[test]
