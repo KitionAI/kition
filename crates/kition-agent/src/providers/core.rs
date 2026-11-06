@@ -27,8 +27,8 @@ fn offers(name: &str, facts: &TurnFacts) -> bool {
         && (name != "image_generation" || facts.hosted_images)
 }
 
-/// `exec_command` and `web_fetch` present a call that waits for the user's
-/// approval (`agent-shell-approval.schema.json#/$defs/request`) for the
+/// `exec_command` and the URL tools (`fetch_policy::URL_TOOLS`) present a
+/// call that waits for the user's approval (`agent-shell-approval.schema.json#/$defs/request`) for the
 /// approval card; other results present nothing.
 fn exec_shape() -> ToolShape {
     ToolShape {
@@ -48,12 +48,20 @@ fn exec_shape() -> ToolShape {
             if output["suggested"].is_object() {
                 meta["suggested"] = output["suggested"].clone();
             }
-            if output["action"] == "web_fetch" {
-                meta["action"] = json!("web_fetch");
+            if let Some(action) = output["action"]
+                .as_str()
+                .filter(|action| crate::tools::fetch_policy::is_url_tool(action))
+            {
+                meta["action"] = json!(action);
             }
             meta
         })),
     }
+}
+
+/// The tools whose results can wait for the user's approval.
+fn shaped(name: &str) -> bool {
+    name == "exec_command" || crate::tools::fetch_policy::is_url_tool(name)
 }
 
 impl CoreProvider {
@@ -94,13 +102,16 @@ impl Provider for CoreProvider {
 
     fn tools<'a>(&'a self, _scene: &'a TurnScene) -> BoxFuture<'a, Result<Vec<ToolDef>, String>> {
         let all = catalog::tools();
-        let names = all.iter().map(|tool| tool.name.as_str()).filter(|name| {
-            offers(name, &self.facts) && !matches!(*name, "exec_command" | "web_fetch")
-        });
+        let names = all
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .filter(|name| offers(name, &self.facts) && !shaped(name));
         let mut tools = offer(&self.factory, names);
         tools.extend(offer_shaped(
             &self.factory,
-            ["exec_command", "web_fetch"],
+            all.iter()
+                .map(|tool| tool.name.as_str())
+                .filter(|name| offers(name, &self.facts) && shaped(name)),
             &exec_shape(),
         ));
         ready(tools)
@@ -167,7 +178,7 @@ mod tests {
             .presentation_meta
             .unwrap_or_else(|| panic!("web_fetch has a presentation"));
         let waiting = json!({ "name": "web_fetch", "output":
-            crate::tools::fetch_policy::approval_output("https://evil.example/?d=1", "evil.example", "not named") });
+            crate::tools::fetch_policy::approval_output("web_fetch", "https://evil.example/?d=1", "evil.example", "not named") });
         assert_eq!(
             present(&json!({}), &waiting),
             json!({

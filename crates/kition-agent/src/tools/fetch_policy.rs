@@ -1,17 +1,28 @@
-//! When `web_fetch` asks the user first.
+//! When a tool that fetches a URL the model chose asks the user first:
+//! `web_fetch`, `web_article_save` and `save_image_asset` (`URL_TOOLS`).
 //!
-//! A page fetch can carry data out in its URL, and an instruction to fetch
+//! A request can carry data out in its URL, and an instruction to fetch
 //! can come from a document or a page rather than the person. So a fetch
 //! runs without asking only when the person named its host in their own
-//! messages of the session, or approved that host earlier in the session;
-//! a URL that carries data (a long query or path part, or one that looks
-//! encoded) always asks, whatever its host.
+//! messages of the session, or approved that host earlier in the session
+//! (with any of these tools); a URL that carries data (a long query or path
+//! part, or one that looks encoded) always asks, whatever its host. Hosts
+//! that only a hosted `web_search` returned still ask: its results cannot be
+//! told apart from document content.
 
 use std::collections::HashSet;
 
 use kition_harness::events::{ApprovalOutcome, ContentBlock, EventBody, SessionEvent};
 use serde_json::Value;
 use url::Url;
+
+/// The tools that request a URL the model chose, each approved once per call.
+pub const URL_TOOLS: [&str; 3] = ["web_fetch", "web_article_save", "save_image_asset"];
+
+/// Whether `name` is one of `URL_TOOLS`.
+pub fn is_url_tool(name: &str) -> bool {
+    URL_TOOLS.contains(&name)
+}
 
 /// A query, or one part of the path or query, longer than this carries data.
 pub const LONG_PART: usize = 200;
@@ -140,7 +151,7 @@ pub fn facts(events: &[SessionEvent], prompt: Option<&str>) -> Facts {
                 name,
                 value,
                 ..
-            } if name == "web_fetch" => {
+            } if is_url_tool(name) => {
                 let output = &value["output"];
                 if output["requires"] == "approval"
                     && let Some(host) = output["host"].as_str()
@@ -187,12 +198,13 @@ pub fn verdict(url: &Url, facts: &Facts) -> Verdict {
     ))
 }
 
-/// The output of a fetch waiting for approval; the approval card presents it
-/// (`agent-shell-approval.schema.json#/$defs/request`, `action: web_fetch`).
-pub fn approval_output(url: &str, host: &str, reason: &str) -> Value {
+/// The output of `tool`'s fetch waiting for approval; the approval card
+/// presents it (`agent-shell-approval.schema.json#/$defs/request`, `action`
+/// names the tool).
+pub fn approval_output(tool: &str, url: &str, host: &str, reason: &str) -> Value {
     serde_json::json!({
-        "action": "web_fetch",
-        "command": command(url),
+        "action": tool,
+        "command": command(tool, url),
         "decision": "prompt",
         "host": host,
         "reason": reason,
@@ -200,9 +212,9 @@ pub fn approval_output(url: &str, host: &str, reason: &str) -> Value {
     })
 }
 
-/// The approval key of a fetch, as the resumed turn consumes it.
-pub fn command(url: &str) -> String {
-    format!("web_fetch {}", url.trim())
+/// The approval key of `tool`'s fetch, as the resumed turn consumes it.
+pub fn command(tool: &str, url: &str) -> String {
+    format!("{tool} {}", url.trim())
 }
 
 #[cfg(test)]
@@ -312,7 +324,7 @@ mod tests {
                 step: 1,
                 call_id: "c1".into(),
                 name: "web_fetch".into(),
-                value: json!({ "output": approval_output("https://news.example/a", "news.example", "r") }),
+                value: json!({ "output": approval_output("web_fetch", "https://news.example/a", "news.example", "r") }),
                 content: vec![],
                 is_error: false,
                 meta: None,
@@ -347,6 +359,47 @@ mod tests {
             verdict(&url("https://news.example/b"), &facts(&rejected, None)),
             Verdict::Ask(_)
         ));
+    }
+
+    #[test]
+    fn a_host_approved_for_any_url_tool_does_not_ask_again() {
+        let events = vec![
+            message("user", "Archive the article"),
+            event(EventBody::ToolResult {
+                turn: 1,
+                step: 1,
+                call_id: "c1".into(),
+                name: "web_article_save".into(),
+                value: json!({ "output": approval_output("web_article_save", "https://news.example/a", "news.example", "r") }),
+                content: vec![],
+                is_error: false,
+                meta: None,
+                hosted: false,
+            }),
+            event(EventBody::ApprovalAsked {
+                id: "approval:c1".into(),
+                tool_name: "web_article_save".into(),
+                call_id: "c1".into(),
+                reason: String::new(),
+            }),
+            event(EventBody::ApprovalDecided {
+                id: "approval:c1".into(),
+                outcome: ApprovalOutcome::AllowedOnce,
+            }),
+        ];
+        assert_eq!(
+            verdict(&url("https://news.example/logo.png"), &facts(&events, None)),
+            Verdict::Allow
+        );
+        assert_eq!(
+            approval_output(
+                "save_image_asset",
+                "https://a.example/x.png",
+                "a.example",
+                "r"
+            )["command"],
+            "save_image_asset https://a.example/x.png"
+        );
     }
 
     #[test]

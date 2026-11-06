@@ -13,9 +13,9 @@ export type AgentShellApprovalRequest = {
   decision: "prompt"
   suggested?: AgentShellApprovalRule
   /**
-   * Present for a web fetch, whose command is `web_fetch <url>`; absent for a shell command.
+   * Present for a request to a URL, naming the tool; its command is `<tool> <url>`. Absent for a shell command.
    */
-  action?: "web_fetch"
+  action?: "web_fetch" | "web_article_save" | "save_image_asset"
 }
 
 export type AgentShellApprovalResponse = {
@@ -31,6 +31,6 @@ export type AgentShellApprovalRule = {
 }
 
 /**
- * A shell command, or a web fetch, that the agent's policy paused for the user's approval. The request is the presentation meta of the paused exec_command or web_fetch tool/result (followed by approval/asked and turn/end awaiting-approval in the session log); the response is the stream request's shell_approval, naming the paused call by its callId. A web fetch is approved once only: no suggested rule and no allow_always.
+ * A shell command, or a request to a URL the model chose (web_fetch, web_article_save, save_image_asset), that the agent's policy paused for the user's approval. The request is the presentation meta of the paused exec_command or URL-tool tool/result (followed by approval/asked and turn/end awaiting-approval in the session log); the response is the stream request's shell_approval, naming the paused call by its callId. A URL request is approved once only: no suggested rule and no allow_always.
  */
 export type AgentShellApprovalContract = AgentShellApprovalRequest

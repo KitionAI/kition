@@ -18,6 +18,8 @@
   "shellApproval": {
     "eyebrow": "La ejecución de Shell requiere aprobación",
     "fetchEyebrow": "El agente quiere consultar un sitio web",
+    "articleEyebrow": "El agente quiere guardar un artículo web",
+    "imageEyebrow": "El agente quiere descargar una imagen",
     "parseFailed": "Error de análisis: {{error}}",
     "allowOnce": "Permitir una vez",
     "rememberTitle": "Permitir y recordar el prefijo «{{prefix}}»",

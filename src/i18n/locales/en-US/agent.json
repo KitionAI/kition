@@ -18,6 +18,8 @@
   "shellApproval": {
     "eyebrow": "Shell execution requires approval",
     "fetchEyebrow": "The agent wants to fetch a website",
+    "articleEyebrow": "The agent wants to save a web article",
+    "imageEyebrow": "The agent wants to download an image",
     "parseFailed": "Parse failed: {{error}}",
     "allowOnce": "Allow once",
     "rememberTitle": "Allow and remember prefix \"{{prefix}}\"",

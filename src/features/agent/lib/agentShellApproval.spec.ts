@@ -28,6 +28,15 @@ describe('agent shell approval contract', () => {
     expect(denied).not.toContain('shell')
   })
 
+  it('resumes an approved article save or image download with its own tool', () => {
+    const article = buildAgentShellApprovalFollowup('allow_once', 'web_article_save https://news.example/a', 'web_article_save')
+    expect(article).toContain('Call web_article_save again now with this URL: https://news.example/a')
+    expect(article).not.toContain('shell')
+    const image = buildAgentShellApprovalFollowup('deny', 'save_image_asset https://evil.example/p.png', 'save_image_asset')
+    expect(image).toContain('Do not fetch this URL: https://evil.example/p.png')
+    expect(image).not.toContain('shell')
+  })
+
   it('builds explicit resume and denial instructions', () => {
     expect(buildAgentShellApprovalFollowup('allow_once', 'git push')).toContain(
       'Retry this exact command now: git push',

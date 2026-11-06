@@ -129,6 +129,11 @@ pub async fn save_image_asset(run: &Run, input: &Value) -> ToolResult {
     if url.is_empty() {
         return Err("missing image URL".into());
     }
+    if let Some(waiting) =
+        web::needs_approval(run, "save_image_asset", std::slice::from_ref(&url)).await
+    {
+        return Ok(waiting);
+    }
     let mut title = text_field(input, "title");
     if title.is_empty() {
         title = text_field(input, "filename");

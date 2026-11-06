@@ -323,7 +323,7 @@ features:
     cases: [regressions/issue-attachment-mime-type]
     since: "2026-11-05"
   - id: kition.agent.tool-policy
-    title: The agent's shell runs read-only commands without asking only inside the workspace, and it fetches only sites the person named without asking
+    title: The agent's shell runs read-only commands without asking only inside the workspace, and its URL tools (web_fetch, web_article_save, save_image_asset) reach only sites the person named without asking
     direction: [security, ai]
     priority: P0
     status: has
@@ -332,12 +332,15 @@ features:
       - crates/kition-agent/src/tools/exec.rs
       - crates/kition-agent/src/tools/fetch_policy.rs
       - crates/kition-agent/src/tools/web.rs
+      - crates/kition-agent/src/tools/images.rs
+      - crates/kition-agent/src/providers/core.rs
       - src/features/agent/components/AgentShellApprovalCard.tsx
       - src/features/agent/lib/agentShellApproval.ts
-    gap: web_article_save and image downloads by URL do not yet ask like web_fetch; a host named only in a hosted web_search result asks before it is fetched.
+    gap: A host named only in a hosted web_search result asks before it is fetched (search runs at the provider, so its results cannot be told apart from document content); research that searches then fetches asks once per new site.
     cases:
       - regressions/issue-security-shell-reads
       - regressions/issue-security-web-fetch
+      - regressions/issue-security-url-tools
     since: "2026-11-06"
   - id: kition.kits.file-writes
     title: Kit editors write files only inside the workspace

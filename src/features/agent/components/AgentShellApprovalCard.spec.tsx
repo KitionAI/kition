@@ -40,4 +40,26 @@ describe('AgentShellApprovalCard', () => {
     await act(async () => card.querySelector<HTMLButtonElement>('.agent-shell-approval__deny')!.click())
     expect(onDecision).toHaveBeenCalledWith(request, 'deny')
   })
+  it('asks about an article save and an image download by their URL, each in its own words', async () => {
+    const cases = [
+      { action: 'web_article_save' as const, url: 'https://evil.example/post', eyebrow: 'The agent wants to save a web article' },
+      { action: 'save_image_asset' as const, url: 'https://evil.example/p.png', eyebrow: 'The agent wants to download an image' },
+    ]
+    for (const { action, url, eyebrow } of cases) {
+      const request = {
+        call_id: 'c1',
+        kind: 'shell.approval' as const,
+        command: `${action} ${url}`,
+        reason: 'You have not named evil.example in this chat.',
+        requires: 'approval' as const,
+        decision: 'prompt' as const,
+        action,
+      }
+      await act(async () => root.render(createElement(AgentShellApprovalCard, { request, busy: false, onDecision: vi.fn() })))
+      const card = container.querySelector('[data-testid="agent-shell-approval"]')!
+      expect(card.textContent).toContain(eyebrow)
+      expect(card.querySelector('code')!.textContent).toBe(url)
+      expect(card.querySelector('.agent-shell-approval__remember')).toBeNull()
+    }
+  })
 })

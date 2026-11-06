@@ -18,6 +18,8 @@
   "shellApproval": {
     "eyebrow": "L'exécution shell nécessite une approbation",
     "fetchEyebrow": "L'agent veut consulter un site web",
+    "articleEyebrow": "L'agent veut enregistrer un article web",
+    "imageEyebrow": "L'agent veut télécharger une image",
     "parseFailed": "Échec de l'analyse : {{error}}",
     "allowOnce": "Autoriser une fois",
     "rememberTitle": "Autoriser et mémoriser le préfixe « {{prefix}} »",

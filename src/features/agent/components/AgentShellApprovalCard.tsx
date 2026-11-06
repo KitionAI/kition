@@ -4,6 +4,7 @@ import type {
   AgentShellApprovalDecision,
   AgentShellApprovalRequest,
 } from '@/api/agent'
+import { approvalUrl } from '../lib/agentShellApproval'
 import './AgentShellApprovalCard.css'
 
 export function AgentShellApprovalCard({
@@ -19,10 +20,15 @@ export function AgentShellApprovalCard({
   ) => void
 }) {
   const { t } = useTranslation('agent')
-  const isFetch = request.action === 'web_fetch'
-  const rememberedPrefix = isFetch ? '' : request.suggested?.prefix.join(' ') || ''
-  const target = isFetch ? request.command.replace(/^web_fetch /, '') : request.command
-  const TargetIcon = isFetch ? Globe : SquareTerminal
+  const { action } = request
+  const rememberedPrefix = action ? '' : request.suggested?.prefix.join(' ') || ''
+  const target = action ? approvalUrl(request.command, action) : request.command
+  const TargetIcon = action ? Globe : SquareTerminal
+  const eyebrow = {
+    web_fetch: 'shellApproval.fetchEyebrow',
+    web_article_save: 'shellApproval.articleEyebrow',
+    save_image_asset: 'shellApproval.imageEyebrow',
+  } as const
 
   return (
     <section className="agent-shell-approval" data-testid="agent-shell-approval">
@@ -30,7 +36,7 @@ export function AgentShellApprovalCard({
         <span className="agent-shell-approval__icon" aria-hidden="true">
           <ShieldAlert className="size-4" />
         </span>
-        <span>{t(isFetch ? 'shellApproval.fetchEyebrow' : 'shellApproval.eyebrow')}</span>
+        <span>{t(action ? eyebrow[action] : 'shellApproval.eyebrow')}</span>
       </div>
       <div className="agent-shell-approval__command">
         <TargetIcon className="size-4 shrink-0" aria-hidden="true" />

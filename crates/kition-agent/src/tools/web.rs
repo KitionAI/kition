@@ -282,7 +282,7 @@ pub async fn web_fetch(run: &Run, input: &Value) -> ToolResult {
     if urls.is_empty() {
         return Err("missing URL to fetch".into());
     }
-    if let Some(waiting) = needs_approval(run, &urls).await {
+    if let Some(waiting) = needs_approval(run, "web_fetch", &urls).await {
         return Ok(waiting);
     }
     let mut pages = Vec::new();
@@ -322,16 +322,17 @@ pub async fn web_fetch(run: &Run, input: &Value) -> ToolResult {
     ))
 }
 
-/// A fetch the person has to approve first (`fetch_policy`), as the output
-/// that pauses the turn; the resumed turn consumes the approval.
-async fn needs_approval(run: &Run, urls: &[String]) -> Option<ToolOutput> {
+/// A fetch by `tool` (one of `fetch_policy::URL_TOOLS`) the person has to
+/// approve first, as the output that pauses the turn; the resumed turn
+/// consumes the approval.
+pub(crate) async fn needs_approval(run: &Run, tool: &str, urls: &[String]) -> Option<ToolOutput> {
     use super::fetch_policy::{self, Verdict};
     let mut facts = None;
     for raw in urls {
         let Ok(url) = Url::parse(raw.trim()) else {
             continue;
         };
-        if run.consume_approval(&fetch_policy::command(raw)) {
+        if run.consume_approval(&fetch_policy::command(tool, raw)) {
             continue;
         }
         if facts.is_none() {
@@ -348,7 +349,7 @@ async fn needs_approval(run: &Run, urls: &[String]) -> Option<ToolOutput> {
                 interrupt: Some("await_shell_approval"),
                 ..ToolOutput::new(
                     format!("Awaiting user approval to fetch {raw}"),
-                    fetch_policy::approval_output(raw, &host, &reason),
+                    fetch_policy::approval_output(tool, raw, &host, &reason),
                 )
             });
         }
@@ -545,6 +546,10 @@ pub async fn web_article_save(run: &Run, input: &Value) -> ToolResult {
     let raw = text_field(input, "url");
     if raw.is_empty() {
         return Err("missing article URL".into());
+    }
+    if let Some(waiting) = needs_approval(run, "web_article_save", std::slice::from_ref(&raw)).await
+    {
+        return Ok(waiting);
     }
     let max_images = match int_field(input, "max_images") {
         n if n <= 0 => 50,

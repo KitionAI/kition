@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-security-url-tools
+feature: kition.agent.tool-policy
+intent: >-
+  Every agent tool that requests a URL the model chose (web_article_save and save_image_asset, like
+  web_fetch) runs without asking only for a host the person named in their own messages of the session
+  or approved earlier; a request a document asked for, or any URL carrying data, waits for a one-time
+  approval. So an injected document cannot send workspace content out through an article save or an
+  image download either.
+layer: unit
+direction: security
+source:
+  kind: probe
+  from: commercial security review 2026-11-06 (follow-up to regressions/issue-security-web-fetch; web_article_save and save_image_asset reached any public address without approval)
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-agent, test: agent_flow, filter: "url_tools" }
+expected:
+  - actual: out:exit
+    compare: exit
+tags: [security]
+since: "2026-11-06"

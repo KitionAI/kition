@@ -217,7 +217,8 @@ pub struct Pending {
     pub id: String,
     pub command: String,
     pub suggested_prefix: Vec<String>,
-    /// The paused call is a `web_fetch`: approved once, never as a rule.
+    /// The paused call fetches a URL (`fetch_policy::URL_TOOLS`): approved
+    /// once, never as a rule.
     pub fetch: bool,
 }
 
@@ -276,7 +277,7 @@ pub fn pending_approval(events: &[SessionEvent], call_id: &str) -> Result<Pendin
         })
         .ok_or_else(|| NOT_PENDING.to_owned())?;
     let (name, output) = output;
-    if name != "exec_command" && name != "web_fetch" {
+    if name != "exec_command" && !super::fetch_policy::is_url_tool(&name) {
         return Err("tool call is not a shell command or a web fetch".into());
     }
     let command = text_field(&output, "command");
@@ -287,7 +288,7 @@ pub fn pending_approval(events: &[SessionEvent], call_id: &str) -> Result<Pendin
         id,
         command,
         suggested_prefix: string_list(&output["suggested"], "prefix"),
-        fetch: name == "web_fetch",
+        fetch: super::fetch_policy::is_url_tool(&name),
     })
 }
 
