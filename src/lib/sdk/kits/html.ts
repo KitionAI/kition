@@ -22,7 +22,7 @@ export interface Page extends ModelObject {
 
 /** Every command of kit.html, by id, with its parameters. */
 export interface HtmlCommands extends CommandMap {
-  /** Replace HTML. Replaces the whole page with `source` (an HTML document, at most 1 MiB) as one undo step; answers `changed: false` when the source is already the same. The only way to edit the page. Params: {"source":string}. Changes the document. */
+  /** Replace HTML. Replaces the whole page with `source` (an HTML document, at most 8 MiB) as one undo step; answers `changed: false` when the source is already the same. The only way to edit the page. Params: {"source":string}. Changes the document. */
   "html.setSource": { source?: string }
   /** Click preview. Clicks the rendered page at `x`, `y` (CSS pixels from the page's top-left) so its scripts react, without changing the saved source; answers whether the rendered page changed. Params: {"x":number,"y":number}. */
   "html.click": { x?: number; y?: number }

@@ -98,14 +98,14 @@
   },
   "html": {
     "repository": "KitionAI/kition-html",
-    "version": "0.1.5",
-    "tag": "package-v0.1.5",
-    "asset": "kition-html-0.1.5.tgz",
-    "size": 19755882,
-    "sha256": "f9b185d4e46ccead26b7af1f88ce4a01c57b12024ba4c7a982bbb2fbb288e020",
-    "commit": "e6a9f117303fa848b6aad5819f97d5d1f02abf02",
-    "sdkCommit": "b0780072073dfff912b9968862655a7994e9f3de",
-    "tesseraCommit": "eba11c9a24aa6123a3d82a8c1e7064480bacb1ad",
+    "version": "0.1.6",
+    "tag": "package-v0.1.6",
+    "asset": "kition-html-0.1.6.tgz",
+    "size": 10356704,
+    "sha256": "375f2e5e260a63d45b6d9ea69237896f2d9dfc3d928ad51e23971e83567ad74a",
+    "commit": "39a768dd784dc0677d5db67ffd4969e7cf0254fd",
+    "sdkCommit": "32b0549b16bd952ea464e083f6a92e63724ce058",
+    "tesseraCommit": "c771eb2fe467a21025a97c9d0d4aeb0fd4e4de97",
     "fontsCommit": "7c594d2b4cde74f0548a357331baef045d12d2ce"
   },
   "note": {
