@@ -2,18 +2,26 @@ import { getI18nInstance } from '@/i18n'
 
 /**
  * Why a kit could not open its file, from the reason it gave: Kition's file service did not answer
- * (`unreachable`), the kit's engine could not be fetched or compiled (`engine`), or the file itself
+ * (`unreachable`), the kit's engine could not be fetched or compiled (`engine`), the file is larger
+ * than the kit opens (`tooLarge`: the kit's reason starts with `too-large:`), or the file itself
  * (`damaged`). Only the last one is the file's fault.
  */
-export type OpenFailureKind = 'unreachable' | 'engine' | 'damaged'
+export type OpenFailureKind = 'unreachable' | 'engine' | 'tooLarge' | 'damaged'
 
+const TOO_LARGE = /^too-large:/i
 const ENGINE = /\bwasm\b|webassembly|compileerror|linkerror/i
 const UNREACHABLE = /failed to fetch|networkerror|load failed|network request failed|err_connection|connection refused/i
 
 export function openFailureKind(reason: string): OpenFailureKind {
+  if (TOO_LARGE.test(reason.trim())) return 'tooLarge'
   if (ENGINE.test(reason)) return 'engine'
   if (UNREACHABLE.test(reason)) return 'unreachable'
   return 'damaged'
+}
+
+/** The size limit a `too-large:` reason names ("at most 8 MB"), in megabytes, when it names one. */
+export function openFailureLimit(reason: string): string | undefined {
+  return /\bat most (\d+(?:\.\d+)?) MB\b/i.exec(reason)?.[1]
 }
 
 const DISK_FULL = /no space left|os error 28|disk (is )?full|enospc/i

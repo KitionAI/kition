@@ -224,6 +224,7 @@ features:
       - regressions/issue-open-failure-cause
       - regressions/issue-save-error-plain
       - regressions/issue-collab-error-plain
+      - regressions/issue-html-large-file
     since: "2026-11-06"
   - id: kition.kit-protocol.theme
     title: Kits follow Kition's colour scheme at open and on every switch (`ui/theme`, UI-H6)

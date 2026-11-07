@@ -386,6 +386,14 @@ describe('KitFrame', () => {
     expect(notice?.textContent).not.toContain('may be damaged')
   })
 
+  it('says a file is larger than the kit opens, with the limit, instead of calling it damaged', async () => {
+    vi.mocked(mountKit).mockRejectedValueOnce(new Error('too-large: the page is 11.3 MB; the HTML kit opens pages of at most 8 MB'))
+    await mount()
+    const notice = container.querySelector('[data-testid="kit-open-failed"]')
+    expect(notice?.textContent).toContain('This file is larger than 8 MB, the most the TEST editor opens. It has not been changed.')
+    expect(notice?.textContent).not.toContain('may be damaged')
+  })
+
   it("has the kit forward Kition's palette key, Cmd+., and keep Cmd+K for itself", async () => {
     await mount()
     expect(opened[0].shortcuts).toContain('Cmd+.')

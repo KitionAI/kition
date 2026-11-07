@@ -195,6 +195,8 @@
     "openFailedMessage": "文件可能已损坏，或不是有效的 {{type}} 文件。文件未被修改。",
     "openUnreachableMessage": "Kition 暂时无法连接文件服务。文件没有被改动。",
     "openEngineMessage": "{{type}} 文件的编辑器没能启动。文件没有被改动。",
+    "openTooLargeMessage": "此文件超过 {{limit}} MB，超出了 {{type}} 编辑器能打开的上限。文件未被更改。",
+    "openTooLargeNoLimitMessage": "此文件超出了 {{type}} 编辑器能打开的大小。文件未被更改。",
     "tryAgain": "重试",
     "saveFailed": {
       "diskFull": "磁盘空间已满。请清理出空间后再保存。",

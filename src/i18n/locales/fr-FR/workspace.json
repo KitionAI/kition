@@ -195,6 +195,8 @@
     "openFailedMessage": "Le fichier est peut-être endommagé ou n'est pas un fichier {{type}} valide. Il n'a pas été modifié.",
     "openUnreachableMessage": "Kition ne parvient pas à joindre son service de fichiers pour le moment. Le fichier n'a pas été modifié.",
     "openEngineMessage": "L'éditeur des fichiers {{type}} n'a pas pu démarrer. Le fichier n'a pas été modifié.",
+    "openTooLargeMessage": "Ce fichier dépasse {{limit}} Mo, la taille maximale que l’éditeur {{type}} peut ouvrir. Il n’a pas été modifié.",
+    "openTooLargeNoLimitMessage": "Ce fichier est trop volumineux pour l’éditeur {{type}}. Il n’a pas été modifié.",
     "tryAgain": "Réessayer",
     "saveFailed": {
       "diskFull": "Il n'y a plus d'espace sur ce disque. Libérez de l'espace, puis enregistrez à nouveau.",

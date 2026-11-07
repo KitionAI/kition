@@ -27,7 +27,7 @@ import { kitionTheme, watchKitionTheme } from './kitionTheme'
 import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 import { openConfirmedUrl, useOpenUrlConfirmation } from './KitOpenUrlDialog'
-import { openFailureKind, saveFailureText } from './kitFailures'
+import { openFailureKind, openFailureLimit, saveFailureText } from './kitFailures'
 import { kitionFilesOption } from './kitionFiles'
 import { useWorkspacePicker, type WorkspacePickRequest } from './WorkspaceFilePicker'
 
@@ -180,7 +180,16 @@ const OPEN_FAILURE_MESSAGE = {
   damaged: 'kitEditor.openFailedMessage',
   unreachable: 'kitEditor.openUnreachableMessage',
   engine: 'kitEditor.openEngineMessage',
+  tooLarge: 'kitEditor.openTooLargeMessage',
 } as const
+
+/** The plain message for `failure`: a too-large file names the kit's limit when its reason gives one. */
+function openFailureMessage(t: (key: string, values?: Record<string, string>) => string, failure: string, type: string) {
+  const kind = openFailureKind(failure)
+  const limit = kind === 'tooLarge' ? openFailureLimit(failure) : undefined
+  if (kind === 'tooLarge' && !limit) return t('kitEditor.openTooLargeNoLimitMessage', { type })
+  return t(OPEN_FAILURE_MESSAGE[kind], limit ? { type, limit } : { type })
+}
 
 /** Shown over the frame when the kit could not open the file: which file, that it is unchanged, why in plain words, and the kit's reason under Technical details. */
 function KitOpenFailure({ path, kitName, failure, onRetry }: { path: string; kitName: string; failure: string; onRetry: () => void }) {
@@ -188,7 +197,7 @@ function KitOpenFailure({ path, kitName, failure, onRetry }: { path: string; kit
   return (
     <FileNotice
       title={t('kitEditor.openFailedTitle', { name: fileName(path) })}
-      message={t(OPEN_FAILURE_MESSAGE[openFailureKind(failure)], { type: fileTypeName(path, kitName) })}
+      message={openFailureMessage(t, failure, fileTypeName(path, kitName))}
       detail={failure}
       data-testid="kit-open-failed"
     >

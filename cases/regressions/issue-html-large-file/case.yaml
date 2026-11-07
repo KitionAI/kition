@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-html-large-file
+feature: kition.shell.error-states
+intent: >-
+  When a kit refuses a file as larger than it opens (its reason starts with `too-large:`), the
+  notice says the file is larger than the kit's limit, naming the limit when the reason gives one,
+  and that it is unchanged; it does not call the file damaged.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan reports/2026-11-06-performance-baseline.md (a 2.3 MB HTML page was called damaged)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/kits/kition/kitFailures.spec.ts, src/features/kits/kition/KitFrame.spec.tsx]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-06"
+timeout_s: 60

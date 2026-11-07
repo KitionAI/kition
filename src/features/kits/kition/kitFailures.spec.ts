@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { i18nReady } from '@/i18n'
-import { openFailureKind, saveFailureText } from './kitFailures'
+import { openFailureKind, openFailureLimit, saveFailureText } from './kitFailures'
 
 beforeAll(async () => {
   await i18nReady
@@ -21,6 +21,14 @@ describe('openFailureKind', () => {
   it("tells an editor engine that could not start from a damaged file", () => {
     expect(openFailureKind("failed to fetch Wasm: 500 Internal Server Error fetching 'http://127.0.0.1/kits/slide-ui/engine/kition_slide_sdk_bg.wasm'")).toBe('engine')
     expect(openFailureKind('CompileError: WebAssembly.instantiate(): expected magic word')).toBe('engine')
+  })
+
+  it('tells a file larger than the kit opens from a damaged file, and reads the limit', () => {
+    const reason = 'too-large: the page is 11.3 MB; the HTML kit opens pages of at most 8 MB'
+    expect(openFailureKind(reason)).toBe('tooLarge')
+    expect(openFailureLimit(reason)).toBe('8')
+    expect(openFailureKind('too-large: the drawing is over the limit')).toBe('tooLarge')
+    expect(openFailureLimit('too-large: the drawing is over the limit')).toBeUndefined()
   })
 
   it('takes any other reason as the file itself', () => {

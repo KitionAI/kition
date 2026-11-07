@@ -195,6 +195,8 @@
     "openFailedMessage": "The file may be damaged or not a valid {{type}} file. It has not been changed.",
     "openUnreachableMessage": "Kition can't reach its file service right now. The file has not been changed.",
     "openEngineMessage": "The editor for {{type}} files couldn't start. The file has not been changed.",
+    "openTooLargeMessage": "This file is larger than {{limit}} MB, the most the {{type}} editor opens. It has not been changed.",
+    "openTooLargeNoLimitMessage": "This file is larger than the {{type}} editor opens. It has not been changed.",
     "tryAgain": "Try again",
     "saveFailed": {
       "diskFull": "There is no space left on this disk. Free up some space, then save again.",

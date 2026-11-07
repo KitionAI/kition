@@ -195,6 +195,8 @@
     "openFailedMessage": "Es posible que el archivo esté dañado o que no sea un archivo {{type}} válido. No se ha modificado.",
     "openUnreachableMessage": "Kition no puede conectar ahora con su servicio de archivos. El archivo no se ha modificado.",
     "openEngineMessage": "El editor de archivos {{type}} no pudo iniciarse. El archivo no se ha modificado.",
+    "openTooLargeMessage": "Este archivo supera los {{limit}} MB, el máximo que abre el editor de {{type}}. No se ha modificado.",
+    "openTooLargeNoLimitMessage": "Este archivo es más grande de lo que abre el editor de {{type}}. No se ha modificado.",
     "tryAgain": "Reintentar",
     "saveFailed": {
       "diskFull": "No queda espacio en este disco. Libera espacio y vuelve a guardar.",
