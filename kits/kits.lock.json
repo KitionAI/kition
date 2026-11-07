@@ -170,14 +170,14 @@
   },
   "table": {
     "repository": "KitionAI/kition-table",
-    "version": "0.2.11",
-    "tag": "package-v0.2.11",
-    "asset": "kition-table-0.2.11.tgz",
-    "size": 13800942,
-    "sha256": "e07530ff9bec7a0e6ad50f466b4cdd5596fbde999133504ac9455fdc0c3c629e",
-    "commit": "fed55299f6cb4bee0f03ef069ac23dcdff5bac30",
-    "sdkCommit": "11043bf5ad5c5c7ed3ffb3874127c97e9019651e",
-    "tesseraCommit": "eba11c9a24aa6123a3d82a8c1e7064480bacb1ad",
+    "version": "0.2.12",
+    "tag": "package-v0.2.12",
+    "asset": "kition-table-0.2.12.tgz",
+    "size": 13804278,
+    "sha256": "08a36b96bcd06d6d56368960ca3d28c056656b7b1031d459a463db5b875dbe2e",
+    "commit": "91776b4fff278e74803894c6a06c959fa1810d41",
+    "sdkCommit": "b36c80f47dfac7578ece6ec37e053779db4f5e10",
+    "tesseraCommit": "c771eb2fe467a21025a97c9d0d4aeb0fd4e4de97",
     "fontsCommit": "7c594d2b4cde74f0548a357331baef045d12d2ce"
   },
   "vector": {

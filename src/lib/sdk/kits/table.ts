@@ -253,6 +253,8 @@ export interface TableCommands extends CommandMap {
   "table.changes.since": { /** Base64 of a version a previous answer gave; empty for every change. */ version?: string }
   /** preview.render. Draws a PNG preview of the table, a field or one record cell, such as the target a diagnostic names. Params: {focus?, scale?, maxSize?}: a PNG preview of the table, field, or record cell a diagnostic names (focus: the object the check answered it is about), up to scale 2 and 4096 pixels. */
   "table.preview.render": { /** A diagnostic's target, as the check answered it (named focus because the host reads a top-level target as a file): path (tables/<id>, tables/<id>/fields/<id>, tables/<id>/records/<id>/fields/<id>, or dashboards/<id>) or sheet (a table's title). Default the first table. */ focus?: { path?: string; sheet?: string }; /** Device pixels per document pixel, above 0 and up to 2; default 1. */ scale?: number; /** The longest side in pixels, 1 to 4096; default 4096. */ maxSize?: number }
+  /** Export. Answers one table as a CSV or Markdown file's bytes (base64, in data) for the host to write as a new file, without changing anything. Params: {format (csv or md), tableId?}: one table as CSV or Markdown, base64, for the host to write. */
+  "table.file.export": { /** csv, or md for a Markdown table. */ format: "csv" | "md"; /** The table to export; default the first table. */ tableId?: number }
 }
 
 /** A Table file opened with `openDocument<Base, TableCommands>`. */
