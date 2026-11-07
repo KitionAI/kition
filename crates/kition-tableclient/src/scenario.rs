@@ -425,8 +425,16 @@ async fn build(
         let emit = |event: Value| {
             let _ = tx.send(sse(&event));
         };
-        if let Err(message) =
-            run(&state.tables, &state.engine, &prompt, model, uploads, &emit).await
+        if let Err(message) = run(
+            &state.tables,
+            &state.engine,
+            &prompt,
+            model,
+            uploads,
+            &emit,
+            &|| tx.is_closed(),
+        )
+        .await
         {
             emit(json!({ "kind": "error", "code": "scenario.build_failed", "message": message }));
         }
@@ -521,6 +529,7 @@ async fn run(
     model: Option<RuntimeModel>,
     uploads: Vec<Upload>,
     emit: &(dyn Fn(Value) + Sync),
+    cancelled: &(dyn Fn() -> bool + Sync),
 ) -> Result<(), String> {
     let plan = match infer(engine, model.as_ref(), prompt, &uploads).await {
         Ok(plan) => plan,
@@ -529,7 +538,16 @@ async fn run(
             return Ok(());
         }
     };
+    if cancelled() {
+        return Ok(());
+    }
     let path = unused_path(tables, &plan.base_name);
+    // From here a cancel discards the file this run made: no half-filled table is left behind.
+    let stop = || async {
+        if let Err(error) = tables.discard_file(&path).await {
+            tracing::warn!(path = %path, error = %error, "a cancelled scenario run could not remove its file");
+        }
+    };
     let starter = tables
         .create_file(&path, None)
         .await
@@ -568,6 +586,10 @@ async fn run(
         .collect();
     let mut records = Vec::new();
     for upload in &uploads {
+        if cancelled() {
+            stop().await;
+            return Ok(());
+        }
         // Stored in the file as a blob, like an attachment uploaded to a cell.
         let attachment = tables
             .put_attachment(
@@ -612,6 +634,10 @@ async fn run(
         );
     }
     let Some(model) = model else { return Ok(()) };
+    if cancelled() {
+        stop().await;
+        return Ok(());
+    }
     let record_ids: Vec<i64> = records.iter().filter_map(|r| r.id.parse().ok()).collect();
     for field in &ai_fields {
         let field_id = field.id.parse::<i64>().unwrap_or_default();
@@ -632,6 +658,10 @@ async fn run(
         };
         let mut results = Vec::new();
         for request in prepared["requests"].as_array().into_iter().flatten() {
+            if cancelled() {
+                stop().await;
+                return Ok(());
+            }
             let record_id = request["recordId"].clone();
             match generate(
                 tables,
@@ -683,6 +713,9 @@ async fn run(
                 );
             }
         }
+    }
+    if cancelled() {
+        stop().await;
     }
     Ok(())
 }
@@ -1008,6 +1041,7 @@ mod receipt_flow {
             Some(model),
             uploads,
             &emit,
+            &|| false,
         )
         .await
         .unwrap_or_else(|err| panic!("{err}"));
@@ -1131,6 +1165,101 @@ mod receipt_flow {
                 "an unreadable receipt leaves {title} empty to review"
             );
         }
+    }
+
+    /// AI-SCENE-005, cancellation: a run the person cancels part way (the stream closed) stops and
+    /// leaves no table file behind, so no half-filled final table appears later.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_cancelled_run_leaves_no_partial_table_behind() {
+        let Some(executable) = executable() else {
+            eprintln!(
+                "skipped: build kition-table (cargo build -p kition-table in ../kition-table) or set KITION_KIT_TABLE_BINARY"
+            );
+            return;
+        };
+        let manifest = kition_kits::definitions::manifest_beside(&executable)
+            .unwrap_or_else(|| panic!("no kit.json above {}", executable.display()));
+        let kit = kition_kits::KitDefinition::from_manifest_text(&manifest)
+            .unwrap_or_else(|error| panic!("{error}"));
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        let tables = TableClient::new(
+            KitManager::new(
+                Some(dir.path().to_path_buf()),
+                vec![(kit, Some(executable))],
+            ),
+            EventBus::default(),
+        );
+        let engine = Engine::new(dir.path().join("uploads"), None);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .unwrap_or_else(|err| panic!("{err}"));
+        let address = listener.local_addr().unwrap_or_else(|err| panic!("{err}"));
+        tokio::spawn(async move {
+            axum::serve(
+                listener,
+                axum::Router::new().route("/v1/chat/completions", post(answer)),
+            )
+            .await
+        });
+        let model = RuntimeModel {
+            provider_type: "custom".into(),
+            model_name: "test-model".into(),
+            base_url: format!("http://{address}/v1"),
+            api_key: "test-key".into(),
+            auth_scheme: "bearer".into(),
+            wire_api: "chat_completions".into(),
+            ..RuntimeModel::default()
+        };
+        let uploads = vec![
+            receipt([
+                "Hearth and Grain Bakery",
+                "12 Orchard Lane, Portland",
+                "Food",
+                "2026-03-04",
+                "18.40",
+                "1.47",
+            ]),
+            receipt([
+                "Northgate Fuel",
+                "400 Ridge Road, Denver",
+                "Travel",
+                "2026-03-06",
+                "52.10",
+                "4.17",
+            ]),
+        ];
+        // The person cancels once the table file exists and its rows are being filled.
+        let made = std::sync::atomic::AtomicBool::new(false);
+        let emit = |event: Value| {
+            if event["kind"] == "base.created" {
+                made.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        };
+        let cancelled = || made.load(std::sync::atomic::Ordering::SeqCst);
+        run(
+            &tables,
+            &engine,
+            "Extract vendor, address, category, date, total and tax from these receipts",
+            Some(model),
+            uploads,
+            &emit,
+            &cancelled,
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+        assert!(
+            made.load(std::sync::atomic::Ordering::SeqCst),
+            "the run made its file before the cancel"
+        );
+        assert!(
+            !dir.path().join("Receipt Archive.ktable").exists(),
+            "a cancelled run leaves no partial table file"
+        );
+        assert!(
+            tables.table_files().is_empty(),
+            "no table file is listed after a cancel: {:?}",
+            tables.table_files()
+        );
     }
 
     fn executable_or_panic() -> PathBuf {

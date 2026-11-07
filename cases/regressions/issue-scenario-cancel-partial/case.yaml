@@ -1,0 +1,20 @@
+format: 1
+id: regressions/issue-scenario-cancel-partial
+feature: kition.onboarding.ai-scenarios
+intent: >-
+  A receipt extraction the person cancels part way (the stream closed) stops and removes the table
+  file it made, so no half-filled final table appears in the workspace later; the run used to carry
+  on in the background and leave the file.
+layer: golden
+source:
+  kind: synthetic
+  from: docs/kition-onboarding-core-scenarios.csv (AI-SCENE-005, negative branch)
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-tableclient, filter: "scenario::receipt_flow::a_cancelled_run_leaves_no_partial_table_behind" }
+expected:
+  - actual: out:exit
+    compare: exit
+since: "2026-11-06"
+tags: [headless]

@@ -887,6 +887,28 @@ impl TableClient {
         Ok(tables)
     }
 
+    /// Removes the table file `path` this client made (a scenario run cancelled part way): its
+    /// documents are closed without saving, the file is deleted, and the client forgets it.
+    pub async fn discard_file(&self, path: &str) -> TableResult<()> {
+        let kits = &self.inner.kits;
+        let workspace = kits
+            .workspace_dir()
+            .ok_or_else(|| TableError::from(KitError::NoWorkspace))?
+            .to_path_buf();
+        {
+            let queue = self.queue(path);
+            let _turn = queue.lock().await;
+            kits.close_file(path).await;
+            match std::fs::remove_file(workspace.join(path)) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(TableError::new(error.to_string())),
+            }
+        }
+        self.forget(path);
+        Ok(())
+    }
+
     /// The file's stamp, which changes whenever it is written: its modification time in
     /// milliseconds and its size. `None` when it does not exist.
     pub fn stamp(&self, path: &str) -> Option<String> {
