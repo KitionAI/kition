@@ -92,5 +92,8 @@
       "opening": "Ouverture du panneau…",
       "failed": "Le panneau n’a pas pu s’ouvrir"
     }
+  },
+  "notice": {
+    "technicalDetails": "Détails techniques"
   }
 }

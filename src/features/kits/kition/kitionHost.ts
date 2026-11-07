@@ -13,6 +13,7 @@ import {
 import { resolveKitFilesRootURL, resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { stampFromHeaders, type KitHost } from '../sdk/kitHost'
 import type { StoredReplica } from '../host/mountKit'
+import { saveFailureText } from './kitFailures'
 import { runtimeFetch } from '@/services/runtimeAuth'
 
 /**
@@ -45,8 +46,13 @@ async function stampFile(url: string) {
 export const KITION_KIT_HOST: KitHost = {
   read: (path) => readFile(resolveWorkspaceFileURL(path), path),
   stamp: (path) => stampFile(resolveWorkspaceFileURL(path)),
+  // A failed write tells the kit why in plain words (the system's error goes to the console).
   write: async (path, bytes) => {
-    await writeKitFile(path, bytes)
+    try {
+      await writeKitFile(path, bytes)
+    } catch (error) {
+      throw new Error(saveFailureText(error))
+    }
   },
   // The kit file server answers ranged reads; workers need an absolute URL. The root is signed
   // for the kit file service only (a kit is never given the API token).

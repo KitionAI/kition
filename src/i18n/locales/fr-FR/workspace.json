@@ -193,7 +193,15 @@
     "conflictsBody_other": "{{count}} modifications faites par quelqu’un d’autre au même moment n’ont pas pu être fusionnées. Elles sont conservées dans le document jusqu’à leur résolution.",
     "openFailedTitle": "Impossible d'ouvrir {{name}}",
     "openFailedMessage": "Le fichier est peut-être endommagé ou n'est pas un fichier {{type}} valide. Il n'a pas été modifié.",
+    "openUnreachableMessage": "Kition ne parvient pas à joindre son service de fichiers pour le moment. Le fichier n'a pas été modifié.",
+    "openEngineMessage": "L'éditeur des fichiers {{type}} n'a pas pu démarrer. Le fichier n'a pas été modifié.",
     "tryAgain": "Réessayer",
+    "saveFailed": {
+      "diskFull": "Il n'y a plus d'espace sur ce disque. Libérez de l'espace, puis enregistrez à nouveau.",
+      "notAllowed": "Kition n'est pas autorisé à écrire ce fichier. Vérifiez ses autorisations, puis enregistrez à nouveau.",
+      "unreachable": "Kition ne parvient pas à joindre son service de fichiers pour le moment. Vos modifications sont conservées ; réessayez dans un instant.",
+      "other": "Le fichier n'a pas pu être enregistré. Vos modifications sont conservées ; réessayez."
+    },
     "opening": "Ouverture…",
     "draft": {
       "title": "Brouillon de l'agent",
@@ -357,6 +365,9 @@
     "needsAccount": "La coédition nécessite un compte Kition et un serveur de synchronisation.",
     "unreachable": "Le serveur de synchronisation est injoignable. Vérifiez votre connexion et réessayez.",
     "linkNotFound": "Ce lien ne mène à aucun document partagé.",
+    "busy": "Le serveur de synchronisation est occupé. Patientez un instant, puis réessayez.",
+    "kitUnavailable": "Cette version de Kition ne peut pas ouvrir ce type de document.",
+    "failed": "Un problème est survenu. Réessayez.",
     "peers": "Modifient aussi : {{names}}",
     "agentPeer": "Agent",
     "status": {

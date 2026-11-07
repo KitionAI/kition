@@ -92,5 +92,8 @@
       "opening": "Opening panel…",
       "failed": "The panel could not open"
     }
+  },
+  "notice": {
+    "technicalDetails": "Technical details"
   }
 }

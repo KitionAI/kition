@@ -206,6 +206,25 @@ features:
     cases:
       - regressions/issue-theme-default-system
     since: "2026-11-05"
+  - id: kition.shell.error-states
+    title: Empty and error states say what happened in plain words and offer a next step
+    direction: [function, robustness]
+    priority: P0
+    status: has
+    paths:
+      - src/components/states.tsx
+      - src/features/kits/kition/kitFailures.ts
+      - src/features/kits/kition/KitFrame.tsx
+      - src/features/kits/kition/kitionHost.ts
+      - src/features/collab/collabErrors.ts
+      - e2e/error-states.spec.ts
+    gap: Chromium only; the co-editing dialog errors are unit-tested (no sync server in the mock sweep); the "not available in this build" view appears only in development builds without a kit's package and is not covered.
+    cases:
+      - kition.shell.error-states/all-states
+      - regressions/issue-open-failure-cause
+      - regressions/issue-save-error-plain
+      - regressions/issue-collab-error-plain
+    since: "2026-11-06"
   - id: kition.kit-protocol.theme
     title: Kits follow Kition's colour scheme at open and on every switch (`ui/theme`, UI-H6)
     direction: [function, fidelity]
@@ -393,9 +412,10 @@ features:
       - crates/kition-agent/src/catalog.rs
       - e2e/table-agent-document-flow.spec.ts
       - e2e/onboarding-agent-workflow-proposal.spec.ts
-    gap: The agent scenarios run on a mocked agent stream, so they test the binding and what the page writes, not what a real model chooses; the receipt extraction test needs the Table kit's headless program (sibling kition-table build or KITION_KIT_TABLE_BINARY) and skips without it; cancelling an extraction mid-way is not covered.
+    gap: The agent scenarios run on a mocked agent stream, so they test the binding and what the page writes, not what a real model chooses; the receipt extraction test needs the Table kit's headless program (sibling kition-table build or KITION_KIT_TABLE_BINARY) and skips without it.
     cases:
       - kition.onboarding.ai-scenarios/agent-document
       - kition.onboarding.ai-scenarios/agent-proposal
       - kition.onboarding.ai-scenarios/receipt-extraction
+      - regressions/issue-scenario-cancel-partial
     since: "2026-11-06"

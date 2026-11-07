@@ -361,6 +361,31 @@ describe('KitFrame', () => {
     expect(opened).toHaveLength(1)
   })
 
+  it('keeps the raw reason out of sight, under Technical details', async () => {
+    vi.mocked(mountKit).mockRejectedValueOnce(new Error('codec: unrecognized image format'))
+    await mount()
+    const details = container.querySelector('[data-testid="kit-open-failed"] details')
+    expect(details?.hasAttribute('open')).toBe(false)
+    expect(details?.querySelector('summary')?.textContent).toBe('Technical details')
+    expect(details?.querySelector('[data-testid="file-notice-detail"]')?.textContent).toBe('codec: unrecognized image format')
+  })
+
+  it("does not call the file damaged when Kition's file service cannot be reached", async () => {
+    vi.mocked(mountKit).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await mount()
+    const notice = container.querySelector('[data-testid="kit-open-failed"]')
+    expect(notice?.textContent).toContain("Kition can't reach its file service right now. The file has not been changed.")
+    expect(notice?.textContent).not.toContain('may be damaged')
+  })
+
+  it('does not call the file damaged when the editor itself could not start', async () => {
+    vi.mocked(mountKit).mockRejectedValueOnce(new Error("failed to fetch Wasm: 500 Internal Server Error fetching '/kits/test-ui/engine/test_bg.wasm'"))
+    await mount()
+    const notice = container.querySelector('[data-testid="kit-open-failed"]')
+    expect(notice?.textContent).toContain("The editor for TEST files couldn't start. The file has not been changed.")
+    expect(notice?.textContent).not.toContain('may be damaged')
+  })
+
   it("has the kit forward Kition's palette key, Cmd+., and keep Cmd+K for itself", async () => {
     await mount()
     expect(opened[0].shortcuts).toContain('Cmd+.')
@@ -395,6 +420,15 @@ describe('KitFrame', () => {
     expect(writes).toEqual([])
     await expect(kit.write({ path: PATH, bytes: new ArrayBuffer(1), mode: 'save' })).resolves.toMatchObject({ path: PATH })
     expect(writes).toEqual([{ path: PATH, document: PATH }])
+  })
+
+  it("tells the kit why a save failed in plain words, not the system's error", async () => {
+    await mount()
+    const { writeKitFile } = await import('@/api/kits')
+    vi.mocked(writeKitFile).mockRejectedValueOnce(Object.assign(new Error('No space left on device (os error 28)'), { response: { status: 507, data: {} } }))
+    await expect(opened[0].write({ path: PATH, bytes: new ArrayBuffer(1), mode: 'save' })).rejects.toThrow(
+      /^There is no space left on this disk\. Free up some space, then save again\.$/,
+    )
   })
 
   it('writes exports and new files as new files only, never naming a document', async () => {

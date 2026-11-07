@@ -193,7 +193,15 @@
     "conflictsBody_other": "{{count}} edits made by someone else at the same time could not be merged. They are kept in the document until they are resolved.",
     "openFailedTitle": "Could not open {{name}}",
     "openFailedMessage": "The file may be damaged or not a valid {{type}} file. It has not been changed.",
+    "openUnreachableMessage": "Kition can't reach its file service right now. The file has not been changed.",
+    "openEngineMessage": "The editor for {{type}} files couldn't start. The file has not been changed.",
     "tryAgain": "Try again",
+    "saveFailed": {
+      "diskFull": "There is no space left on this disk. Free up some space, then save again.",
+      "notAllowed": "Kition is not allowed to write this file. Check its permissions, then save again.",
+      "unreachable": "Kition can't reach its file service right now. Your changes are kept; save again in a moment.",
+      "other": "The file could not be saved. Your changes are kept; try saving again."
+    },
     "opening": "Opening…",
     "draft": {
       "title": "Agent draft",
@@ -357,6 +365,9 @@
     "needsAccount": "Co-editing needs a Kition account and a sync server.",
     "unreachable": "The sync server cannot be reached. Check your connection and try again.",
     "linkNotFound": "This link does not lead to a shared document.",
+    "busy": "The sync server is busy. Wait a moment, then try again.",
+    "kitUnavailable": "This version of Kition cannot open this kind of document.",
+    "failed": "Something went wrong. Try again.",
     "peers": "Also editing: {{names}}",
     "agentPeer": "Agent",
     "status": {

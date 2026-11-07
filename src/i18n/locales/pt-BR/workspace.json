@@ -193,7 +193,15 @@
     "conflictsBody_other": "{{count}} edições feitas por outra pessoa ao mesmo tempo não puderam ser mescladas. Elas ficam no documento até serem resolvidas.",
     "openFailedTitle": "Não foi possível abrir {{name}}",
     "openFailedMessage": "O arquivo pode estar danificado ou não ser um arquivo {{type}} válido. Ele não foi alterado.",
+    "openUnreachableMessage": "O Kition não consegue acessar o serviço de arquivos agora. O arquivo não foi alterado.",
+    "openEngineMessage": "O editor de arquivos {{type}} não pôde iniciar. O arquivo não foi alterado.",
     "tryAgain": "Tentar novamente",
+    "saveFailed": {
+      "diskFull": "Não há espaço livre neste disco. Libere espaço e salve novamente.",
+      "notAllowed": "O Kition não tem permissão para gravar este arquivo. Verifique as permissões e salve novamente.",
+      "unreachable": "O Kition não consegue acessar o serviço de arquivos agora. Suas alterações foram mantidas; salve novamente em instantes.",
+      "other": "Não foi possível salvar o arquivo. Suas alterações foram mantidas; tente salvar novamente."
+    },
     "opening": "Abrindo…",
     "draft": {
       "title": "Rascunho do agente",
@@ -357,6 +365,9 @@
     "needsAccount": "A coedição requer uma conta Kition e um servidor de sincronização.",
     "unreachable": "Não foi possível acessar o servidor de sincronização. Verifique sua conexão e tente novamente.",
     "linkNotFound": "Este link não leva a nenhum documento compartilhado.",
+    "busy": "O servidor de sincronização está ocupado. Aguarde um momento e tente novamente.",
+    "kitUnavailable": "Esta versão do Kition não abre este tipo de documento.",
+    "failed": "Algo deu errado. Tente novamente.",
     "peers": "Também editando: {{names}}",
     "agentPeer": "Agente",
     "status": {

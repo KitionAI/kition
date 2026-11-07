@@ -27,6 +27,7 @@ import { kitionTheme, watchKitionTheme } from './kitionTheme'
 import { openingView, useKitReveal } from './kitViews'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 import { openConfirmedUrl, useOpenUrlConfirmation } from './KitOpenUrlDialog'
+import { openFailureKind, saveFailureText } from './kitFailures'
 import { kitionFilesOption } from './kitionFiles'
 import { useWorkspacePicker, type WorkspacePickRequest } from './WorkspaceFilePicker'
 
@@ -126,7 +127,11 @@ async function readForKit(path: string, { path: wanted, offset, length }: Parame
 async function writeForKit(path: string, readOnly: boolean, { path: wanted, bytes, mode }: Parameters<KitHostHandlers['write']>[0]) {
   if (mode === 'save' && readOnly) throw new Error(`${path} is open read-only`)
   const target = mode === 'save' ? documentPath(wanted, path) : await unusedPath(workspacePath(wanted))
-  await writeKitFile(target, new Uint8Array(bytes), mode === 'save' ? { document: target } : {})
+  try {
+    await writeKitFile(target, new Uint8Array(bytes), mode === 'save' ? { document: target } : {})
+  } catch (error) {
+    throw new Error(saveFailureText(error))
+  }
   // Kition's own table pickers (workflows) read the saved tables.
   if (isTableFilePath(target)) notifyTableFilesChanged(target)
   return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
@@ -171,13 +176,19 @@ function useKitPackageVersion(dir: string, wanted: boolean) {
   return version
 }
 
-/** Shown over the frame when the kit could not open the file: which file, that it is unchanged, and the kit's reason. */
+const OPEN_FAILURE_MESSAGE = {
+  damaged: 'kitEditor.openFailedMessage',
+  unreachable: 'kitEditor.openUnreachableMessage',
+  engine: 'kitEditor.openEngineMessage',
+} as const
+
+/** Shown over the frame when the kit could not open the file: which file, that it is unchanged, why in plain words, and the kit's reason under Technical details. */
 function KitOpenFailure({ path, kitName, failure, onRetry }: { path: string; kitName: string; failure: string; onRetry: () => void }) {
   const { t } = useTranslation('workspace')
   return (
     <FileNotice
       title={t('kitEditor.openFailedTitle', { name: fileName(path) })}
-      message={t('kitEditor.openFailedMessage', { type: fileTypeName(path, kitName) })}
+      message={t(OPEN_FAILURE_MESSAGE[openFailureKind(failure)], { type: fileTypeName(path, kitName) })}
       detail={failure}
       data-testid="kit-open-failed"
     >

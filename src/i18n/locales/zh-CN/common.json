@@ -92,5 +92,8 @@
       "opening": "正在打开面板…",
       "failed": "无法打开面板"
     }
+  },
+  "notice": {
+    "technicalDetails": "技术详情"
   }
 }

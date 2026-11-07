@@ -193,7 +193,15 @@
     "conflictsBody_other": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
     "openFailedTitle": "无法打开 {{name}}",
     "openFailedMessage": "文件可能已损坏，或不是有效的 {{type}} 文件。文件未被修改。",
+    "openUnreachableMessage": "Kition 暂时无法连接文件服务。文件没有被改动。",
+    "openEngineMessage": "{{type}} 文件的编辑器没能启动。文件没有被改动。",
     "tryAgain": "重试",
+    "saveFailed": {
+      "diskFull": "磁盘空间已满。请清理出空间后再保存。",
+      "notAllowed": "Kition 没有写入这个文件的权限。请检查文件权限后再保存。",
+      "unreachable": "Kition 暂时无法连接文件服务。你的改动还在，请稍后再保存。",
+      "other": "文件没能保存。你的改动还在，请再试一次保存。"
+    },
     "opening": "正在打开…",
     "draft": {
       "title": "智能体草稿",
@@ -357,6 +365,9 @@
     "needsAccount": "协同编辑需要 Kition 账户和同步服务器。",
     "unreachable": "无法连接同步服务器。请检查网络连接后重试。",
     "linkNotFound": "此链接没有指向任何共享文档。",
+    "busy": "同步服务器繁忙，请稍后再试。",
+    "kitUnavailable": "这个版本的 Kition 打不开这类文档。",
+    "failed": "出了点问题，请再试一次。",
     "peers": "也在编辑：{{names}}",
     "agentPeer": "智能体",
     "status": {

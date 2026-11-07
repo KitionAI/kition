@@ -7,6 +7,7 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { FileExclamationPointIcon as FileWarning } from '@kition/tessera-icons/react'
 
+import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/cn'
 import { Button } from '@kition/tessera-ui'
 
@@ -89,7 +90,7 @@ export type FileNoticeProps = {
   title: string
   /** What happened, in plain words. */
   message: string
-  /** The raw reason (an engine or reader error), shown small below the message. */
+  /** The raw reason (an engine or reader error), kept under a collapsed "Technical details". */
   detail?: string
   /** The actions, usually Buttons. */
   children?: ReactNode
@@ -111,9 +112,20 @@ export function FileNotice({ title, message, detail, children, className, ...res
       <div className="min-w-0 space-y-1">
         <h2 className="break-words text-base font-semibold">{title}</h2>
         <p className="text-sm text-muted-foreground">{message}</p>
-        {detail ? <p className="break-words pt-1 text-xs text-muted-foreground" data-testid="file-notice-detail">{detail}</p> : null}
+        {detail ? <FileNoticeDetail detail={detail} /> : null}
       </div>
       {children}
     </div>
+  )
+}
+
+/** The raw reason behind a notice: collapsed, so the person reads the plain message first. */
+function FileNoticeDetail({ detail }: { detail: string }) {
+  const { t } = useTranslation('common')
+  return (
+    <details className="pt-1 text-xs text-muted-foreground">
+      <summary className="cursor-pointer select-none">{t('notice.technicalDetails')}</summary>
+      <p className="break-words pt-1" data-testid="file-notice-detail">{detail}</p>
+    </details>
   )
 }

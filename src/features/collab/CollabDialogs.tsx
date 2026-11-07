@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
 import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle, TextInput } from '@kition/tessera-ui'
 import { notify } from '@/lib/notify'
-import { SyncRpcError } from '@/lib/sync'
-import { collabConfigured, CollabUnavailableError } from './syncConnection'
+import { collabConfigured } from './syncConnection'
+import { collabErrorText } from './collabErrors'
 import { onCollabSettingsChanged } from './collabSettings'
 import { ShareDialog, type SharedDialogDocument } from './ShareDialog'
 import { openSharedDocument, roomRole, shareDocument, syncDocumentToMyDevices, type SharedKit } from './shareActions'
@@ -53,12 +53,7 @@ export function useCollabAvailable() {
 
 function useErrorText() {
   const { t } = useTranslation('workspace')
-  return useCallback((error: unknown) => {
-    if (error instanceof CollabUnavailableError) return t(error.reason === 'off' ? 'collab.needsAccount' : 'collab.unreachable')
-    if (error instanceof SyncRpcError && error.reason === 'forbidden') return t('collab.needsAccount')
-    if (error instanceof SyncRpcError && error.reason === 'not-found') return t('collab.linkNotFound')
-    return error instanceof Error ? error.message : String(error)
-  }, [t])
+  return useCallback((error: unknown) => collabErrorText(error, t), [t])
 }
 
 async function copyText(text: string) {

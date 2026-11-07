@@ -1,0 +1,26 @@
+format: 1
+id: kition.shell.error-states/all-states
+feature: kition.shell.error-states
+intent: >-
+  Every empty and error state a person meets says what happened in plain words and offers a next
+  step, never a raw error, and the window stays usable: an empty workspace, a failed Getting
+  Started setup, an unreachable file service, an editor engine that cannot load, a damaged file, a
+  save the disk refuses, the agent without a model, a search with no results, and an empty
+  workflow page.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan plans/2026-11-03-commercial-test-plan.md (A6)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/error-states.spec.ts, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-06"
+tags: [browser]
+requires: [chromium]
+timeout_s: 60
