@@ -396,11 +396,13 @@ features:
       - public/onboarding/ReadingTracker.ktable
       - public/onboarding/product-content/**
       - src/features/kits/kition/kitGenerate.ts
+      - src/features/kits/kition/kitActions.ts
       - e2e/onboarding-reading-ai-summary.spec.ts
       - e2e/onboarding-product-content-ai.spec.ts
     cases:
       - regressions/issue-onboarding-ai-field-prompts
       - kition.onboarding.ai-fields/product-content
+      - regressions/issue-ai-field-no-model-action
     since: "2026-11-06"
   - id: kition.onboarding.ai-scenarios
     title: The onboarding agent and extraction scenarios stay bound to the open file and write nothing unasked

@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-ai-field-no-model-action
+feature: kition.onboarding.ai-fields
+intent: >-
+  A kit whose AI field run Kition refused as `unavailable` (no model set up, or Kition Cloud
+  without a sign-in) can offer the next step: Kition serves the host action `settings.open`
+  (`section: ai`), which opens Settings at Account when Kition Cloud needs a sign-in and at Models
+  otherwise; a kit may open no other section. Before, the person saw only "Sign in to Kition
+  before using Kition Cloud models" with nothing to press.
+layer: golden
+source:
+  kind: probe
+  from: kition-plan baseline A6 error-state review (2026-11-06)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/kits/kition/kitActions.spec.ts]
+expected:
+  - actual: out:exit
+    compare: exit
+timeout_s: 60
+since: "2026-11-06"
