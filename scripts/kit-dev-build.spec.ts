@@ -1,10 +1,10 @@
-import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { afterEach, describe, expect, it } from 'vitest'
 // @ts-expect-error: a plain Node script without type declarations.
-import { buildKits, checkoutFingerprint } from './kit-dev-build.mjs'
+import { buildKits, checkoutFingerprint, withLock } from './kit-dev-build.mjs'
 
 type Part = { kit: string; part: string; built: boolean; reason?: string }
 
@@ -175,5 +175,27 @@ describe.skipIf(process.platform === 'win32')('kit-dev-build', () => {
   it('refuses a kit whose checkout is missing', async () => {
     const { root } = await setup()
     expect(() => buildKits({ root, kits: [{ name: 'note', repo: '../kition-note' }], cache: true, builders: {}, log: () => {} })).toThrow(/KIT_NOTE_REPO/)
+  })
+
+  it('runs one build at a time', async () => {
+    const { base } = await setup()
+    const lock = join(base, 'kition', 'target', 'kit-dev-build.lock')
+    const other = spawnSync('sh', ['-c', 'echo $$'], { encoding: 'utf8' })
+    const sleeper = spawnSync('sh', ['-c', 'sleep 30 >/dev/null 2>&1 & echo $!'], { encoding: 'utf8' })
+    const live = Number.parseInt(sleeper.stdout, 10)
+    try {
+      await mkdir(dirname(lock), { recursive: true })
+      await writeFile(lock, `${live}\n`)
+      expect(() => withLock(lock, () => 'built')).toThrow(/another kit build is running/)
+      // A lock left by a process that has ended is taken over.
+      await writeFile(lock, `${Number.parseInt(other.stdout, 10)}\n`)
+      expect(withLock(lock, () => 'built')).toBe('built')
+      await expect(access(lock)).rejects.toThrow()
+      // The lock is released when the build fails too.
+      expect(() => withLock(lock, () => { throw new Error('cargo build failed') })).toThrow('cargo build failed')
+      await expect(access(lock)).rejects.toThrow()
+    } finally {
+      process.kill(live)
+    }
   })
 })

@@ -761,7 +761,9 @@ editor links changed, and either part is rebuilt when its output is gone or
 was replaced (`make kit-fetch`). Ignored files and tool caches (`.vite/`,
 `__pycache__/`) do not count. Each build is recorded in
 `target/kit-dev-cache.json`: the kit's commit, whether it had uncommitted
-changes, and the paths of its package and executable.
+changes, and the paths of its package and executable. One build runs at a
+time: while one runs, a second `make kit-dev` or `make kit-dev-cache` refuses
+to start (`target/kit-dev-build.lock`).
 
 Finish with `pnpm run check`, `pnpm check:desktop`, `python3
 scripts/check-i18n.py`, the kit's e2e, `pnpm test:table:e2e`, and

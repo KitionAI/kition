@@ -11,9 +11,10 @@
 // its fingerprint changed or its output is gone or was replaced since. A kit's fingerprint is the
 // content of its files, committed or not: committing what was built rebuilds nothing. Its package also takes the kition-sdk and kition-tessera
 // checkouts its editor links, so it is rebuilt when they change. Its executable does not: the
-// kit pins kition-sdk's crates by revision in its own Cargo.toml.
+// kit pins kition-sdk's crates by revision in its own Cargo.toml. One build runs at a time
+// (target/kit-dev-build.lock): a second refuses to start while the first runs.
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -171,6 +172,47 @@ export function buildKits({ root, kits, cache, recordPath = join(root, 'target',
   return done
 }
 
+function alive(pid) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return error.code === 'EPERM'
+  }
+}
+
+/**
+ * Runs `work` holding the lock file at `path`, so that two builds never write the same kit
+ * packages at once. A lock whose process has ended is taken over; a live one is refused.
+ */
+export function withLock(path, work) {
+  mkdirSync(dirname(path), { recursive: true })
+  for (;;) {
+    try {
+      const fd = openSync(path, 'wx')
+      writeSync(fd, `${process.pid}\n`)
+      closeSync(fd)
+      break
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error
+      const holder = Number.parseInt(readFileSync(path, 'utf8'), 10)
+      if (Number.isInteger(holder) && holder !== process.pid && alive(holder)) {
+        throw new Error(`another kit build is running (process ${holder}); wait for it to finish, or stop it first`)
+      }
+      rmSync(path, { force: true })
+    }
+  }
+  try {
+    return work()
+  } finally {
+    try {
+      if (Number.parseInt(readFileSync(path, 'utf8'), 10) === process.pid) unlinkSync(path)
+    } catch {
+      // Already gone.
+    }
+  }
+}
+
 function run(command, args, options) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options })
   if (result.status !== 0) throw new Error(`${[command, ...args].join(' ')} failed (exit ${result.status ?? result.signal})`)
@@ -185,15 +227,17 @@ function main(argv) {
     return { name, repo }
   })
   if (kits.length === 0) throw new Error('usage: node scripts/kit-dev-build.mjs [--cache] <kit>=<repo> ...')
-  const done = buildKits({
-    root,
-    kits,
-    cache,
-    builders: {
-      package: (kit) => run(join(root, 'scripts', 'build-kit-ui.sh'), [kit.name], { env: { ...process.env, KIT_REPO: kit.repo } }),
-      binary: (kit) => run('cargo', ['build', '-p', `kition-${kit.name}`], { cwd: kit.repo }),
-    },
-  })
+  const done = withLock(join(root, 'target', 'kit-dev-build.lock'), () =>
+    buildKits({
+      root,
+      kits,
+      cache,
+      builders: {
+        package: (kit) => run(join(root, 'scripts', 'build-kit-ui.sh'), [kit.name], { env: { ...process.env, KIT_REPO: kit.repo } }),
+        binary: (kit) => run('cargo', ['build', '-p', `kition-${kit.name}`], { cwd: kit.repo }),
+      },
+    }),
+  )
   const built = done.filter((part) => part.built).length
   console.log(`kits: ${built} part${built === 1 ? '' : 's'} built, ${done.length - built} up to date (record: ${relative(root, join(root, 'target', 'kit-dev-cache.json'))})`)
 }

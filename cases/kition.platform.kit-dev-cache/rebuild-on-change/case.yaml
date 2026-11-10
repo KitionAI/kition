@@ -7,7 +7,9 @@ intent: >-
   checkout's index is left alone. It rebuilds both when the files change (tool caches aside), only
   the package when kition-sdk or kition-tessera changed, and a part whose output is gone or was
   replaced. After a failed executable build it still rebuilds the executable. It records each build
-  in target/kit-dev-cache.json, and make kit-dev builds every part.
+  in target/kit-dev-cache.json, and make kit-dev builds every part. One build runs at a time: a
+  second is refused while the first runs, a lock left by an ended build is taken over, and the
+  lock is released when a build fails.
 layer: golden
 source:
   kind: probe
