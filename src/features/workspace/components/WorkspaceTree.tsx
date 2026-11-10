@@ -12,7 +12,6 @@ import {
   inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,
   isDuplicableWorkspaceFormat,
-  isOrganizableWorkspaceFormat,
   isSupportedWorkspaceFormat,
   workspaceEmojiOptions,
   workspaceFolderIconColorClass,
@@ -232,7 +231,6 @@ export function WorkspaceTree({
             ? getWorkspaceItemIconColorClass(inferWorkspaceItemFormat(tableFileChild.filePath))
             : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
-        const isOrganizable = isOrganizableWorkspaceFormat(node.format)
         // A table file opens in the Table kit; expanded, it lists its tables and dashboards.
         const isTableFile = node.type === 'file'
           && !node.virtual
@@ -248,9 +246,10 @@ export function WorkspaceTree({
         const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isTableFile)
         const canDelete = !node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path)))
         const canSetIcon = !node.virtual
-        const canRename = !node.virtual && (node.type === 'folder' || isOrganizable)
+        // Every file renames and moves (a kit's too); duplicating is for notes only (see isDuplicableWorkspaceFormat).
+        const canRename = !node.virtual
         const canDuplicate = !node.virtual && node.type === 'file' && isDuplicableWorkspaceFormat(node.format)
-        const canMove = !node.virtual && (node.type === 'folder' || isOrganizable)
+        const canMove = !node.virtual
         const canAddToChat = !node.virtual && Boolean(onAddToChat)
         const canAddToNewChat = !node.virtual && Boolean(onAddToNewChat)
         const canRevealInOS = !node.virtual && Boolean(onRevealInOS)

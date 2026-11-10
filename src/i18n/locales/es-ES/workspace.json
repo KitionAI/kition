@@ -168,9 +168,8 @@
   },
   "errors": {
     "fileTypeNotDeletable": "Este tipo de archivo aún no se puede eliminar de la biblioteca de documentos.",
-    "onlyWorkspaceItemsMovable": "Solo se pueden mover documentos, tablas y pizarras aquí. Organiza los archivos de Office/PDF y similares mediante la carpeta del sistema.",
+    "saveBeforeOrganizing": "Guarda «{{name}}» antes de cambiarle el nombre o moverlo: tiene cambios sin guardar.",
     "onlyWorkspaceItemsDuplicable": "Solo se pueden duplicar documentos, tablas y pizarras aquí.",
-    "onlyWorkspaceItemsRenamable": "Solo se pueden renombrar documentos, tablas y pizarras aquí.",
     "createDocumentFailed": "No se pudo crear el documento",
     "browserDevModeOpenDirectory": "Estás en modo de desarrollo del navegador y no puedes abrir directorios nativos. Inicia la aplicación de escritorio con pnpm dev e inténtalo de nuevo.",
     "browserDevModePickDirectory": "Estás en modo de desarrollo del navegador y no puedes elegir un directorio nativo. Inicia la aplicación de escritorio con pnpm dev e inténtalo de nuevo.",

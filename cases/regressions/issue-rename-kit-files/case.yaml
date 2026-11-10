@@ -1,0 +1,30 @@
+format: 1
+id: regressions/issue-rename-kit-files
+feature: kition.workspace.organize-files
+intent: >-
+  Every workspace file, a kit's too (a sheet, a slide deck, a PDF, a table), has Rename and Move
+  in the tree's context menu and keeps its own extension when renamed; the desktop shell moves
+  any file, binary ones included. A file open in its kit with unsaved edits is left where it is,
+  with a message to save it first. The menu used to offer Rename and Move for notes, web pages
+  and boards only, and the shell refused every file but a note.
+layer: golden
+source:
+  kind: issue
+  from: owner report 2026-11-10 (many kits have no Rename in the right-click menu)
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/workspace/lib/workspaceOrganize.spec.ts, src/features/workspace/hooks/useWorkspaceTreeNodeActions.kitFiles.spec.ts, src/features/workspace/components/WorkspaceTree.spec.tsx]
+  - cargo-test:
+      package: kition-app
+      filter: workspace::files::tests::moves_and_renames_any_file_keeping_its_extension
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+timeout_s: 300
+since: "2026-11-10"

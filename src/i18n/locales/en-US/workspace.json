@@ -168,9 +168,8 @@
   },
   "errors": {
     "fileTypeNotDeletable": "This file type cannot be deleted from the document library yet.",
-    "onlyWorkspaceItemsMovable": "Only documents, tables, and boards can be moved here. Organize Office/PDF and similar files via your system folder.",
+    "saveBeforeOrganizing": "Save “{{name}}” before renaming or moving it: it is open with unsaved changes.",
     "onlyWorkspaceItemsDuplicable": "Only documents, tables, and boards can be duplicated here.",
-    "onlyWorkspaceItemsRenamable": "Only documents, tables, and boards can be renamed here.",
     "createDocumentFailed": "Failed to create document",
     "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev and try again.",
     "browserDevModePickDirectory": "You are running in browser dev mode and cannot pick a native directory. Launch the desktop app via pnpm dev and try again.",

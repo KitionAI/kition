@@ -250,4 +250,23 @@ describe('WorkspaceTree context menu', () => {
     expect(menu?.textContent).toContain('Rename')
     expect(row.querySelector('[data-tree-more-trigger]')?.getAttribute('aria-expanded')).toBe('true')
   })
+
+  it.each([
+    ['Budget.xlsx', 'xlsx'],
+    ['Deck.kslide', 'slide'],
+    ['Report.pdf', 'pdf'],
+    ['Leads.ktable', 'table'],
+  ] as const)('offers Rename and Move for a kit file (%s)', async (name, format) => {
+    const node = makeFileNode({ path: name, name, title: name.replace(/\.\w+$/, ''), format, parentPath: '' })
+    const folder = makeFileNode({ type: 'folder', path: 'archive', name: 'archive', title: 'archive', format: undefined, parentPath: '' })
+    await mount(createElement(WorkspaceTree, makeProps({ nodes: [node], moveTargets: [folder] })))
+
+    await act(async () => {
+      findRow(name).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+    })
+
+    const menu = document.body.querySelector('.document-tree-menu')
+    expect(menu?.textContent).toContain('Rename')
+    expect(menu?.textContent).toContain('Move')
+  })
 })

@@ -168,9 +168,8 @@
   },
   "errors": {
     "fileTypeNotDeletable": "此类文件暂时无法从文档库中删除。",
-    "onlyWorkspaceItemsMovable": "此处仅支持移动文档、表格和画板。Office/PDF 等文件请通过系统文件夹整理。",
+    "saveBeforeOrganizing": "“{{name}}”有未保存的修改，请先保存再重命名或移动。",
     "onlyWorkspaceItemsDuplicable": "此处仅支持复制文档、表格和画板。",
-    "onlyWorkspaceItemsRenamable": "此处仅支持重命名文档、表格和画板。",
     "createDocumentFailed": "创建文档失败",
     "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev 启动桌面应用后重试。",
     "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev 启动桌面应用后重试。",

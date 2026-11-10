@@ -73,7 +73,6 @@ const workspaceTitleExtensionPattern = new RegExp(
   `\\.(${[...new Set([...workspaceNonKitExtensions, ...kitCreateExtensions()])].join('|')})$`,
   'i',
 )
-const workspaceEditableExtensionPattern = /\.(md|markdown|kboard)$/i
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -204,10 +203,12 @@ export function renameWorkspaceDocumentPath(path: string, title: string) {
     return normalizedPath
   }
 
+  // The file keeps its own extension (any file's, not only a note's), unless the new name has it.
   const filename = normalizedPath.split('/').pop() || normalizedPath
-  const extension = filename.match(workspaceEditableExtensionPattern)?.[0] || ''
+  const extension = filename.match(/.(\.[^./]+)$/)?.[1] || ''
   const fallbackTitle = extension.toLowerCase() === '.kboard' ? 'Untitled board' : 'Untitled note'
-  const nextFilename = `${trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle}${extension}`
+  const nextTitle = trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle
+  const nextFilename = extension && nextTitle.toLowerCase().endsWith(extension.toLowerCase()) ? nextTitle : `${nextTitle}${extension}`
   const parentPath = normalizedPath.includes('/')
     ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
     : ''
@@ -225,12 +226,13 @@ export function remapWorkspaceBranchPath(path: string, sourcePath: string, targe
     return normalizedTargetPath
   }
 
-  const sourceChildPrefix = `${normalizedSourcePath.replace(workspaceEditableExtensionPattern, '')}/`
+  // A file's child pages are the folder named as the file without its extension (`workspaceTree`).
+  const sourceChildPrefix = `${getWorkspaceItemTitle(normalizedSourcePath)}/`
   if (!normalizedPath.startsWith(sourceChildPrefix)) {
     return normalizedPath
   }
 
-  const targetChildPrefix = `${normalizedTargetPath.replace(workspaceEditableExtensionPattern, '')}/`
+  const targetChildPrefix = `${getWorkspaceItemTitle(normalizedTargetPath)}/`
   return `${targetChildPrefix}${normalizedPath.slice(sourceChildPrefix.length)}`
 }
 
@@ -411,10 +413,6 @@ export function filterWorkspaceTreeItems(
 
 export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
   return format === 'markdown'
-}
-
-export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return isEditableWorkspaceFormat(format) || format === 'html' || format === 'board'
 }
 
 /**

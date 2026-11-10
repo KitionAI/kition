@@ -409,8 +409,8 @@ pub fn move_document(root: &Path, request: &Request) -> io::Result<DocumentRespo
     ensure_initialized(root)?;
     let source = resolve_safe(root, &request.str("path"), false, false)?;
     let metadata = fs::metadata(&source.absolute)?;
-    if !metadata.is_file() || !formats::is_editable(&source.relative) {
-        return Err(invalid("only editable workspace documents can be moved"));
+    if !metadata.is_file() {
+        return Err(invalid("only workspace files can be moved"));
     }
     let source_parent = parent_relative(&source.relative);
     let target_folder = if request.has("target_folder") {
@@ -418,8 +418,14 @@ pub fn move_document(root: &Path, request: &Request) -> io::Result<DocumentRespo
     } else {
         source_parent.clone()
     };
-    let requested = request.trimmed("target_name");
     let source_name = file_name(&source.relative);
+    // A new name without an extension keeps the file's own.
+    let requested = match request.trimmed("target_name") {
+        name if !name.is_empty() && extname(&name).is_empty() => {
+            format!("{name}{}", extname(&source_name))
+        }
+        name => name,
+    };
     if target_folder == source_parent && (requested.is_empty() || requested == source_name) {
         return document_response(&source.relative, &source.absolute);
     }
@@ -752,6 +758,44 @@ mod tests {
         assert_eq!(moved.content, "body");
         assert!(root.join("archive/Renamed/child.md").is_file());
         assert!(!root.join("Doc").exists());
+    }
+
+    #[test]
+    fn moves_and_renames_any_file_keeping_its_extension() {
+        let (_dir, root) = workspace();
+        fs::write(root.join("Deck.kslide"), [0x50, 0x4b, 0x03, 0x04, 0xff])
+            .unwrap_or_else(|err| panic!("{err}"));
+        fs::write(root.join("Budget.xlsx"), [0x50, 0x4b, 0x00])
+            .unwrap_or_else(|err| panic!("{err}"));
+        fs::write(root.join("Page.html"), "<p>hi</p>").unwrap_or_else(|err| panic!("{err}"));
+        fs::create_dir_all(root.join("finance")).unwrap_or_else(|err| panic!("{err}"));
+
+        // A name without an extension keeps the file's own, not a note's.
+        let renamed = move_document(
+            &root,
+            &request(json!({ "path": "Deck.kslide", "target_name": "Pitch" })),
+        )
+        .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(renamed.path, "Pitch.kslide");
+        assert_eq!(
+            fs::read(root.join("Pitch.kslide")).unwrap_or_default(),
+            vec![0x50, 0x4b, 0x03, 0x04, 0xff]
+        );
+        let moved = move_document(
+            &root,
+            &request(json!({ "path": "Budget.xlsx", "target_folder": "finance" })),
+        )
+        .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(moved.path, "finance/Budget.xlsx");
+        let page = move_document(
+            &root,
+            &request(json!({ "path": "Page.html", "target_name": "Home.html" })),
+        )
+        .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(
+            (page.path.as_str(), page.content.as_str()),
+            ("Home.html", "<p>hi</p>")
+        );
     }
 
     #[test]

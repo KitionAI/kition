@@ -168,9 +168,8 @@
   },
   "errors": {
     "fileTypeNotDeletable": "Ce type de fichier ne peut pas encore être supprimé de la bibliothèque de documents.",
-    "onlyWorkspaceItemsMovable": "Seuls les documents, tableaux et tableaux blancs peuvent être déplacés ici. Organisez les fichiers Office/PDF et similaires via votre dossier système.",
+    "saveBeforeOrganizing": "Enregistrez « {{name}} » avant de le renommer ou de le déplacer : il contient des modifications non enregistrées.",
     "onlyWorkspaceItemsDuplicable": "Seuls les documents, tableaux et tableaux blancs peuvent être dupliqués ici.",
-    "onlyWorkspaceItemsRenamable": "Seuls les documents, tableaux et tableaux blancs peuvent être renommés ici.",
     "createDocumentFailed": "Échec de la création du document",
     "browserDevModeOpenDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas ouvrir de répertoires natifs. Lancez l'application de bureau via pnpm dev et réessayez.",
     "browserDevModePickDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas choisir de répertoire natif. Lancez l'application de bureau via pnpm dev et réessayez.",

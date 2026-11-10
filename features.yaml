@@ -36,6 +36,23 @@ features:
     cases:
       - regressions/issue-kit-file-signature
     since: "2026-10-31"
+  - id: kition.workspace.organize-files
+    title: Every workspace file renames and moves from the tree, a kit's too, without losing unsaved edits
+    direction: [function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - src/features/workspace/components/WorkspaceTree.tsx
+      - src/features/workspace/components/WorkspaceTree.spec.tsx
+      - src/features/workspace/hooks/useWorkspaceTreeNodeActions.ts
+      - src/features/workspace/hooks/useWorkspaceTreeNodeActions.kitFiles.spec.ts
+      - src/features/workspace/lib/workspace.ts
+      - src/features/workspace/lib/workspaceOrganize.spec.ts
+      - src-tauri/src/workspace/files.rs
+    gap: Duplicate stays for notes only (a copy of a kit file would keep its document id), and no e2e case renames a kit file open in its tab.
+    cases:
+      - regressions/issue-rename-kit-files
+    since: "2026-11-10"
   - id: kition.search.workspace-index
     title: Full-text search indexes current workspace notes and table records without reusing another workspace's listing
     direction: [function, data-safety]

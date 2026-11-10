@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
 import { useConfirm } from '@kition/tessera-ui'
+import { openFilesWithUnsavedEdits, openWithUnsavedEdits } from '@/features/kits/public'
 import {
   syncDocumentFileDeleted,
   syncDocumentFileDuplicated,
@@ -14,7 +15,6 @@ import type { WorkspaceTab, WorkspaceTreeDropPosition, WorkspaceTreeNode } from 
 import {
   inferWorkspaceItemFormat,
   isDuplicableWorkspaceFormat,
-  isOrganizableWorkspaceFormat,
   remapWorkspaceBranchPath,
   renameWorkspaceDocumentPath,
   isSupportedWorkspaceFormat,
@@ -102,6 +102,16 @@ function getWorkspaceDeleteConfirmationMessage(
     : `"${node.title}"`
 
   return `Move ${target}${childPageSummary} to the system Trash? You can restore it from there.`
+}
+
+/**
+ * Whether `node` (a file with its child pages, or a folder) holds a file open in its kit with
+ * unsaved edits: a rename or move would open that kit again from the new path without them.
+ */
+function holdsUnsavedKitEdits(node: WorkspaceTreeNode) {
+  if (node.type === 'file' && openWithUnsavedEdits(node.path)) return true
+  const inside = `${getChildFolderPathForNode(node)}/`
+  return openFilesWithUnsavedEdits().some((path) => path.startsWith(inside))
 }
 
 export function useWorkspaceTreeNodeActions({
@@ -271,6 +281,11 @@ export function useWorkspaceTreeNodeActions({
       }
     }
 
+    if (holdsUnsavedKitEdits(draggedNode)) {
+      setError(t('errors.saveBeforeOrganizing', { name: draggedNode.title }))
+      return
+    }
+
     if (draggedNode.type === 'folder') {
       if (destinationFolder === draggedNode.path || destinationFolder.startsWith(`${draggedNode.path}/`)) {
         setError('A folder cannot be moved into its own subfolder.')
@@ -305,11 +320,6 @@ export function useWorkspaceTreeNodeActions({
       } finally {
         setSaving(false)
       }
-      return
-    }
-
-    if (!isOrganizableWorkspaceFormat(draggedNode.format)) {
-      setError(t('errors.onlyWorkspaceItemsMovable'))
       return
     }
 
@@ -409,6 +419,10 @@ export function useWorkspaceTreeNodeActions({
     if (node.virtual || !trimmed || trimmed === node.title) {
       return
     }
+    if (holdsUnsavedKitEdits(node)) {
+      setError(t('errors.saveBeforeOrganizing', { name: node.title }))
+      return
+    }
 
     setSaving(true)
     setError('')
@@ -430,11 +444,6 @@ export function useWorkspaceTreeNodeActions({
             : undefined,
         )
         setFeedback(t('feedback.renamed'))
-        return
-      }
-
-      if (!isOrganizableWorkspaceFormat(node.format)) {
-        setError(t('errors.onlyWorkspaceItemsRenamable'))
         return
       }
 
@@ -489,6 +498,10 @@ export function useWorkspaceTreeNodeActions({
       setError('A node cannot be moved into its own subfolder.')
       return
     }
+    if (holdsUnsavedKitEdits(node)) {
+      setError(t('errors.saveBeforeOrganizing', { name: node.title }))
+      return
+    }
 
     if (node.type === 'folder') {
       setSaving(true)
@@ -518,11 +531,6 @@ export function useWorkspaceTreeNodeActions({
       } finally {
         setSaving(false)
       }
-      return
-    }
-
-    if (!isOrganizableWorkspaceFormat(node.format)) {
-      setError(t('errors.onlyWorkspaceItemsMovable'))
       return
     }
 

@@ -168,9 +168,8 @@
   },
   "errors": {
     "fileTypeNotDeletable": "Este tipo de arquivo ainda não pode ser excluído da biblioteca de documentos.",
-    "onlyWorkspaceItemsMovable": "Somente documentos, tabelas e quadros podem ser movidos para cá. Organize arquivos do Office/PDF e semelhantes pela pasta do sistema.",
+    "saveBeforeOrganizing": "Salve “{{name}}” antes de renomeá-lo ou movê-lo: ele tem alterações não salvas.",
     "onlyWorkspaceItemsDuplicable": "Somente documentos, tabelas e quadros podem ser duplicados aqui.",
-    "onlyWorkspaceItemsRenamable": "Somente documentos, tabelas e quadros podem ser renomeados aqui.",
     "createDocumentFailed": "Falha ao criar o documento",
     "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev e tente novamente.",
     "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev e tente novamente.",
