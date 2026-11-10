@@ -3,7 +3,8 @@
 # ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-doc, ../kition-sheet, ../kition-pdf, ../kition-table, ../kition-board, ../kition-note, ../kition-cube, ../kition-fig); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
-#   make kit-dev      build what is missing, then run Kition with the kits
+#   make kit-dev        build every kit, then run Kition with the kits
+#   make kit-dev-cache  build only the kits that changed since their last build, then run Kition
 #   make kit-test     contract checks and the kit e2e specs
 #   make kit-uis      rebuild every kit's package (its editor and its engine)
 
@@ -43,10 +44,11 @@ SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
 KIT_BINARY_ENV := KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" $(foreach kit,$(SDK_KITS),KITION_KIT_$(shell echo $(kit) | tr a-z A-Z)_BINARY="$(call kit_binary,$(kit))")
 
-.PHONY: help kit-e2e-webkit kit-dev kit-fetch kit-uis $(addprefix kit-ui-,$(KIT_UIS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
+.PHONY: help kit-e2e-webkit kit-dev kit-dev-cache kit-dev-run kit-fetch kit-uis $(addprefix kit-ui-,$(KIT_UIS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
 
 help:
-	@echo "make kit-dev         build missing kit engines and kit executables, then run Kition (pnpm dev)"
+	@echo "make kit-dev         build every kit's package and executable, then run Kition (pnpm dev)"
+	@echo "make kit-dev-cache   the same, building only kits changed since their last build (target/kit-dev-cache.json)"
 	@echo "make kit-test        kit contract checks, then the kit e2e specs"
 	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
 	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
@@ -83,7 +85,21 @@ $(SDK_BINARIES):
 
 kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
 
-kit-dev: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS))) $(PHOTO_BINARY) $(SDK_BINARIES)
+# Each kit as <kit>=<repo> for scripts/kit-dev-build.mjs, which builds its package and executable
+# and records them in target/kit-dev-cache.json.
+KIT_DEV_KITS := $(foreach kit,$(KIT_UIS),$(kit)=$(KIT_$(shell echo $(kit) | tr a-z A-Z)_REPO))
+
+kit-dev:
+	@PATH="$(TOOLCHAIN_PATH)" node scripts/kit-dev-build.mjs $(KIT_DEV_KITS)
+	@$(MAKE) --no-print-directory kit-dev-run
+
+# Rebuilds a kit's package or executable only when its commit, its uncommitted changes, or (for the
+# package) the kition-sdk and kition-tessera checkouts its editor links changed since it was built.
+kit-dev-cache:
+	@PATH="$(TOOLCHAIN_PATH)" node scripts/kit-dev-build.mjs --cache $(KIT_DEV_KITS)
+	@$(MAKE) --no-print-directory kit-dev-run
+
+kit-dev-run:
 	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slide, Doc, Sheet, PDF, Table, Board, Note, Cube, and Fig: open a .psd, .kfilm, .kvector, .keffect, .kdesign, .dxf, .kslide, .pptx, .docx, .xlsx, .pdf, .ktable, .kboard, .md, .kcube, or .kfig, or use the New menu."
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 

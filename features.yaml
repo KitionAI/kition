@@ -138,6 +138,18 @@ features:
     cases:
       - regressions/issue-release-vite-watcher
     since: "2026-10-31"
+  - id: kition.platform.kit-dev-cache
+    title: make kit-dev-cache rebuilds only the kits whose checkout changed since their recorded build
+    direction: [performance, platform]
+    priority: P2
+    status: has
+    paths:
+      - Makefile
+      - scripts/kit-dev-build.mjs
+      - scripts/kit-dev-build.spec.ts
+    cases:
+      - kition.platform.kit-dev-cache/rebuild-on-change
+    since: "2026-11-10"
   - id: kition.platform.release-checks
     title: Release checks preserve repository and document-store invariants across platforms
     direction: [platform, robustness, data-safety]

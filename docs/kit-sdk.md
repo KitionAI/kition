@@ -751,8 +751,17 @@ Kition renderer:
     skips itself when the package is not built. Add it to `KIT_E2E` in the
     `Makefile`.
 
-`make kit-dev` builds every missing kit package and kit executable and points
-the runtime at the executables (`KITION_KIT_<KIT>_BINARY`).
+`make kit-dev` builds every kit package and kit executable and points the
+runtime at the executables (`KITION_KIT_<KIT>_BINARY`). `make kit-dev-cache`
+does the same but builds only what changed (`scripts/kit-dev-build.mjs`). It
+rebuilds a kit's package or executable when the kit's files differ from its
+last build, committed or not: committing what was built rebuilds nothing. A
+package is also rebuilt when the `kition-sdk` or `kition-tessera` checkout its
+editor links changed, and either part is rebuilt when its output is gone or
+was replaced (`make kit-fetch`). Ignored files and tool caches (`.vite/`,
+`__pycache__/`) do not count. Each build is recorded in
+`target/kit-dev-cache.json`: the kit's commit, whether it had uncommitted
+changes, and the paths of its package and executable.
 
 Finish with `pnpm run check`, `pnpm check:desktop`, `python3
 scripts/check-i18n.py`, the kit's e2e, `pnpm test:table:e2e`, and

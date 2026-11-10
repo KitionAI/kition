@@ -1,0 +1,25 @@
+format: 1
+id: kition.platform.kit-dev-cache/rebuild-on-change
+feature: kition.platform.kit-dev-cache
+intent: >-
+  make kit-dev-cache builds a kit's package and executable the first time and skips them while the
+  kit's files are unchanged, committed or not: committing what was built rebuilds nothing, and the
+  checkout's index is left alone. It rebuilds both when the files change (tool caches aside), only
+  the package when kition-sdk or kition-tessera changed, and a part whose output is gone or was
+  replaced. After a failed executable build it still rebuilds the executable. It records each build
+  in target/kit-dev-cache.json, and make kit-dev builds every part.
+layer: golden
+source:
+  kind: probe
+  from: scripts/kit-dev-build.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/kit-dev-build.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+timeout_s: 120
+since: "2026-11-10"
