@@ -147,6 +147,7 @@ features:
       - .gitattributes
       - src/services/providerModelCatalog.ts
       - src-tauri/src/workspace/docstore/lock.rs
+      - src-tauri/src/lib.rs
       - scripts/repositoryCheckout.spec.ts
       - e2e/shortcuts.spec.ts
       - e2e/app-shell.spec.ts
@@ -173,6 +174,7 @@ features:
       - regressions/issue-workflow-empty-state
       - regressions/issue-palette-backdrop
       - regressions/issue-toast-over-settings
+      - regressions/issue-release-kit-manifests
     since: "2026-10-31"
   - id: kition.agent.kit-export
     title: The agent exports a kit document to a new file (KHP A41)

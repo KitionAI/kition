@@ -70,24 +70,40 @@ fn on_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
 }
 
 /// The `kit.json` of each kit package bundled with the renderer (`kits/<kit>-ui/kit.json`).
+/// `iter` names the assets but yields them as stored, compressed in a release build; `get`
+/// answers them as served.
 fn kit_manifests<R: tauri::Runtime>(assets: tauri::AssetResolver<R>) -> Vec<String> {
-    let mut manifests: Vec<(String, String)> = assets
-        .iter()
-        .filter(|(path, _)| {
+    let paths: Vec<String> = assets.iter().map(|(path, _)| path.into_owned()).collect();
+    bundled_kit_manifests(paths, |path| {
+        assets.get(path.to_owned()).map(|asset| asset.bytes)
+    })
+}
+
+/// The manifests among the asset `paths`, in path order, each read with `read`.
+fn bundled_kit_manifests(
+    paths: impl IntoIterator<Item = String>,
+    read: impl Fn(&str) -> Option<Vec<u8>>,
+) -> Vec<String> {
+    let mut paths: Vec<String> = paths
+        .into_iter()
+        .filter(|path| {
             let path = path.trim_start_matches('/');
             path.starts_with("kits/")
                 && path.ends_with("-ui/kit.json")
                 && path.matches('/').count() == 2
         })
-        .filter_map(|(path, bytes)| {
-            Some((
-                path.into_owned(),
-                String::from_utf8(bytes.into_owned()).ok()?,
-            ))
-        })
         .collect();
-    manifests.sort();
-    manifests.into_iter().map(|(_, text)| text).collect()
+    paths.sort();
+    paths
+        .iter()
+        .filter_map(|path| match read(path).map(String::from_utf8) {
+            Some(Ok(text)) => Some(text),
+            _ => {
+                tracing::warn!(%path, "a bundled kit manifest that cannot be read");
+                None
+            }
+        })
+        .collect()
 }
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -356,4 +372,44 @@ pub fn run() {
         RunEvent::Reopen { .. } => window::show_main(app),
         _ => {}
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bundled_kit_manifests;
+
+    /// A release build stores its assets compressed: the manifests are what `read` answers, never
+    /// the stored bytes, or the runtime knows no kit and every kit save fails (`no kit edits`).
+    #[test]
+    fn kit_manifests_are_read_as_served() {
+        let paths = [
+            "/kits/sheet-ui/kit.json",
+            "/kits/note-ui/kit.json",
+            "/kits/sheet-ui/engine/kit.json",
+            "/kits/kit.json",
+            "/index.html",
+        ]
+        .map(str::to_owned);
+        let manifests = bundled_kit_manifests(paths, |path| {
+            Some(format!("{{\"path\":\"{path}\"}}").into_bytes())
+        });
+        assert_eq!(
+            manifests,
+            [
+                "{\"path\":\"/kits/note-ui/kit.json\"}",
+                "{\"path\":\"/kits/sheet-ui/kit.json\"}",
+            ]
+        );
+    }
+
+    #[test]
+    fn an_unreadable_manifest_is_skipped() {
+        let paths = ["/kits/note-ui/kit.json", "/kits/sheet-ui/kit.json"].map(str::to_owned);
+        let manifests = bundled_kit_manifests(paths, |path| {
+            path.contains("sheet")
+                .then(|| b"{}".to_vec())
+                .or(Some(vec![0x8b, 0xff]))
+        });
+        assert_eq!(manifests, ["{}"]);
+    }
 }

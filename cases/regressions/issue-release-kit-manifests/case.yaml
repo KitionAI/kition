@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-release-kit-manifests
+feature: kition.platform.release-checks
+intent: >-
+  A release build knows the kits bundled with it. It read each kit package's kit.json from the
+  assets as stored, which a release build compresses, so no manifest parsed, the runtime knew no
+  kit, and every save from a kit editor (a new sheet, a note) failed with `no kit edits`. The
+  manifests are now read as the assets are served.
+layer: golden
+source:
+  kind: issue
+  from: "desktop-api.log of the installed app, 2026-11-10: no kit edits `excel/Untitled sheet.xlsx`"
+  licence: owned
+input: []
+steps:
+  - cargo-test:
+      package: kition-app
+      filter: tests::kit_manifests_are_read_as_served
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+since: "2026-11-10"
