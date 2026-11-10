@@ -18,6 +18,7 @@ import {
   kitFileSession,
   listKitFolder,
   openKitFileSession,
+  fetchKitImage,
   readKitFile,
   releaseKitFiles,
   statKitFile,
@@ -91,6 +92,22 @@ describe('kit file grants client', () => {
     const refusal = { code: 40310, message: 'this handle was not granted to this session', data: { reason: 'file-not-granted' } }
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(refusal), { status: 403, headers: { 'content-type': 'application/json' } }))
     await expect(readKitFile(session, handle)).rejects.toMatchObject({ message: refusal.message, response: { status: 403, data: refusal } })
+  })
+
+  it('fetches a pasted picture by its web address, with its type, and passes refusals on', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(new Uint8Array([0x89, 0x50]), { status: 200, headers: { 'Content-Type': 'image/png' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const url = 'https://shimo.example/uploader/a.jpg?accessToken=x'
+    const picture = await fetchKitImage(url)
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/kits/images/fetch', expect.objectContaining({ method: 'POST', body: JSON.stringify({ url }) }))
+    expectMatchesContract({ url }, 'kits', 'fetchImageRequest')
+    expect(picture.mime).toBe('image/png')
+    expect(new Uint8Array(picture.bytes)).toEqual(new Uint8Array([0x89, 0x50]))
+
+    const refusal = { code: 40320, message: 'failed to download image: local network addresses are not allowed', data: { reason: 'not-allowed' } }
+    expectMatchesContract(refusal.data.reason, 'kits', 'fetchImageErrorReason')
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(refusal), { status: 403, headers: { 'content-type': 'application/json' } }))
+    await expect(fetchKitImage('http://127.0.0.1/a.png')).rejects.toMatchObject({ message: refusal.message, response: { status: 403, data: refusal } })
   })
 
   it('writes chunks as raw bytes, the final one with the version it replaces', async () => {

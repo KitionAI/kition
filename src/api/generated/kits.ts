@@ -88,6 +88,18 @@ export type KitsGrantFlow = "pick" | "drop" | "create" | "list" | "agent"
 export type KitsFileErrorReason = "file-not-granted" | "not-allowed" | "already-committed" | "conflict" | "unsaved-edits" | "quota" | "io-error"
 
 /**
+ * POST /v1/kits/images/fetch, only with this launch's token: the picture at url, downloaded from public addresses only (never loopback, private, or link-local addresses, checked at every redirect), at most 12 MiB. The answer is the bytes, Content-Type one of image/png, image/jpeg, image/gif, image/webp, image/svg+xml, image/avif.
+ */
+export type KitsFetchImageRequest = {
+  url: string
+}
+
+/**
+ * data.reason of a refused /v1/kits/images/fetch (Kit UI protocol section 7l): 403 not-allowed (not an http or https address, or one on this computer or the local network); 415 unsupported (not a picture); 413 quota (larger than 12 MiB); 502 io-error (the download failed).
+ */
+export type KitsFetchImageErrorReason = "not-allowed" | "unsupported" | "quota" | "io-error"
+
+/**
  * The kit manifest's files lists (K15), extensions without the dot. A grant outside them is refused not-allowed; without them every grant is.
  */
 export type KitsFilesManifest = {
@@ -596,6 +608,6 @@ export type KitsBridgeChanged = {
 }
 
 /**
- * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kition platform KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason).
+ * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kition platform KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason). POST /v1/kits/images/fetch downloads a picture a kit's person pasted by its web address (Kit UI protocol host/fetchImage, section 7l) and answers its bytes with its image Content-Type; its refusals carry fetchImageErrorReason.
  */
 export type KitsContract = KitsKitList

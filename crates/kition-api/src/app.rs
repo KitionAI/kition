@@ -174,6 +174,12 @@ pub fn router(deps: &Deps) -> Router {
         },
     ));
     let agent = crate::agent::build(deps, workflows.state.engine.store.clone());
+    let api = api.merge(crate::kit_images::router(
+        crate::kit_images::KitImagesState {
+            auth: deps.auth(),
+            web: agent.web().clone(),
+        },
+    ));
     let api = api.merge(kition_agent::router(kition_agent::AgentState {
         auth: deps.auth(),
         agent,
@@ -624,7 +630,8 @@ mod tests {
         })
         .to_string();
         let lifecycle = r#"{"event":"session_started"}"#;
-        let attacks: [(&str, &str, &str); 9] = [
+        let picture = r#"{"url":"https://example.com/a.png"}"#;
+        let attacks: [(&str, &str, &str); 10] = [
             ("POST", "/api/v1/desktop/hooks", hook.as_str()),
             ("POST", "/api/v1/desktop/hooks/lifecycle", lifecycle),
             ("GET", "/workspace-files/.kition/docs/index.json", ""),
@@ -636,6 +643,7 @@ mod tests {
                 "overwritten",
             ),
             ("PUT", "/api/v1/kits/files?path=art/new.txt", "new"),
+            ("POST", "/api/v1/kits/images/fetch", picture),
             ("GET", "/api/v1/desktop/runtime", ""),
             ("GET", "/no/such/route", ""),
         ];
@@ -699,6 +707,30 @@ mod tests {
                 headers.get("content-security-policy").map(|v| v.as_bytes()),
                 Some(&b"sandbox"[..]),
                 "{uri}"
+            );
+        }
+
+        // A kit's picture comes only from a public web address: never this API, the person's
+        // network, or a file (Kit UI protocol UI-I3).
+        for url in [
+            "http://127.0.0.1:18101/api/v1/desktop/runtime",
+            "http://localhost/a.png",
+            "http://192.168.1.10/a.png",
+            "http://[::1]/a.png",
+            "file:///etc/passwd",
+            "data:image/png;base64,iVBORw0KGgo=",
+            "a.png",
+        ] {
+            let body = serde_json::json!({ "url": url }).to_string();
+            let json = [
+                ("kition-token", token.as_str()),
+                ("content-type", "application/json"),
+            ];
+            let (status, _, answer) = send("POST", "/api/v1/kits/images/fetch", &json, &body).await;
+            assert_eq!(status, StatusCode::FORBIDDEN, "{url}: {answer}");
+            assert!(
+                answer.contains(r#""reason":"not-allowed""#),
+                "{url}: {answer}"
             );
         }
 

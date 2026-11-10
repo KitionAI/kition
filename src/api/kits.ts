@@ -93,6 +93,12 @@ export async function listKitFolder(session: string, handle: string) {
   return answer.files
 }
 
+/** A refused binary request as the other requests reject: the runtime's message, status, and `data.reason`. */
+async function refusal(response: Response) {
+  const data = await response.json().catch(() => undefined)
+  return Object.assign(new Error((data as { message?: string } | undefined)?.message ?? `Request failed (${response.status})`), { response: { status: response.status, data } })
+}
+
 /**
  * `files/read`: at most `length` bytes from `offset` (the runtime answers at most 8 MiB), the
  * file's version, and its whole size, so the caller reads on. A refusal rejects with the
@@ -102,11 +108,20 @@ export async function readKitFile(session: string, handle: string, { offset = 0,
   const query = new URLSearchParams({ session, offset: String(offset) })
   if (length !== undefined) query.set('length', String(length))
   const response = await runtimeFetch(`${resolveApiURL(`/v1/kits/grants/${encodeURIComponent(handle)}/content`)}?${query}`)
-  if (!response.ok) {
-    const data = await response.json().catch(() => undefined)
-    throw Object.assign(new Error((data as { message?: string } | undefined)?.message ?? `Request failed (${response.status})`), { response: { status: response.status, data } })
-  }
+  if (!response.ok) throw await refusal(response)
   return { bytes: await response.arrayBuffer(), version: response.headers.get('ETag') ?? '', size: Number(response.headers.get('Kition-File-Size') ?? 0) }
+}
+
+/**
+ * `host/fetchImage` (Kit UI protocol section 7l): the runtime downloads a picture the person
+ * pasted into a kit by its web address, from public addresses only, and answers its bytes and
+ * type. A refusal rejects with the runtime's status and `data.reason` (`not-allowed`,
+ * `unsupported`, `quota`, or `io-error`).
+ */
+export async function fetchKitImage(url: string) {
+  const response = await runtimeFetch(resolveApiURL('/v1/kits/images/fetch'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) })
+  if (!response.ok) throw await refusal(response)
+  return { bytes: await response.arrayBuffer(), mime: (response.headers.get('Content-Type') ?? '').split(';')[0].trim() }
 }
 
 /**

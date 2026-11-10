@@ -23,3 +23,4 @@ mod workspace;
 
 pub use routes::{AgentState, router};
 pub use run::{Agent, AgentConfig, HookDispatch, SmtpConfigurator, WorkflowPrompt};
+pub use tools::web::{ImageAsset, ImageFetchError, MAX_IMAGE_BYTES, fetch_image};

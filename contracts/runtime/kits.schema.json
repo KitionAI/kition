@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/kits.schema.json",
   "title": "Kition Kits",
-  "description": "GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kition platform KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason).",
+  "description": "GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kition platform KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason). POST /v1/kits/images/fetch downloads a picture a kit's person pasted by its web address (Kit UI protocol host/fetchImage, section 7l) and answers its bytes with its image Content-Type; its refusals carry fetchImageErrorReason.",
   "$ref": "#/$defs/kitList",
   "$defs": {
     "kitId": {
@@ -208,6 +208,29 @@
         "io-error"
       ],
       "description": "data.reason of a refused /v1/kits/grants request (KitFiles section 10): 403 file-not-granted (unknown, expired, released, or foreign handle or session, or a right the handle lacks) and not-allowed (outside the workspace, a hidden path or a link out of it, an extension outside the kit's manifest, a write in a read-only session); 409 already-committed, conflict (a create that would replace a file, or a stale expected version), and unsaved-edits; 413 quota; 500 io-error. Malformed parameters are 400 with data.reason null."
+    },
+    "fetchImageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/images/fetch, only with this launch's token: the picture at url, downloaded from public addresses only (never loopback, private, or link-local addresses, checked at every redirect), at most 12 MiB. The answer is the bytes, Content-Type one of image/png, image/jpeg, image/gif, image/webp, image/svg+xml, image/avif.",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "fetchImageErrorReason": {
+      "enum": [
+        "not-allowed",
+        "unsupported",
+        "quota",
+        "io-error"
+      ],
+      "description": "data.reason of a refused /v1/kits/images/fetch (Kit UI protocol section 7l): 403 not-allowed (not an http or https address, or one on this computer or the local network); 415 unsupported (not a picture); 413 quota (larger than 12 MiB); 502 io-error (the download failed)."
     },
     "filesManifest": {
       "type": "object",

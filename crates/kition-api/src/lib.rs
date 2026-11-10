@@ -3,6 +3,7 @@
 mod adapters;
 mod agent;
 mod app;
+mod kit_images;
 mod server;
 mod system;
 mod workflows;

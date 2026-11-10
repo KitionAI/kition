@@ -1,0 +1,23 @@
+format: 1
+id: kition.kits.fetch-image/reasons
+feature: kition.kits.fetch-image
+intent: >-
+  Kition answers a kit's host/fetchImage with the picture's bytes and type from POST
+  /v1/kits/images/fetch (as its contract describes), and passes a refusal on to the kit with the
+  runtime's reason (not-allowed, unsupported, quota, io-error), any other failure as io-error, so
+  the kit can tell the person why a pasted picture was not kept.
+layer: unit
+direction: function
+source:
+  kind: synthetic
+  from: src/api/kits.spec.ts, src/features/kits/kition/kitFetchImage.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/api/kits.spec.ts, src/features/kits/kition/kitFetchImage.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-10"

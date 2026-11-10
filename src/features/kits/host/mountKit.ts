@@ -7,8 +7,10 @@
 import {
   KIT_UI_PROTOCOL,
   KitPeer,
+  FETCH_IMAGE_TYPES,
   KitRpcError,
   LEASE_HELD_REASON,
+  isFetchableUrl,
   isGeneratePurpose,
   isOpenableUrl,
   isReady,
@@ -70,6 +72,8 @@ export { HOST_SERVICES, SERVICE_ERROR_REASONS, parseCommentAnchor, parseServiceP
 export type { KitCommentAnchor, KitHostService, KitHostServices, KitPerson, KitServiceErrorReason, KitServiceParams, KitServiceResult, KitShownThread } from './protocol'
 export type { KitLinkRef, KitLinksPickParams, KitOpenErrorReason, KitOpenParams, KitOpenResult, KitPickedLink } from './protocol'
 export { isOpenableUrl, linkPathFrom, openErrorReason, parseLinkRef, parseLinksPickParams, parseOpenParams, OPEN_ERROR_REASONS, OPEN_URL_SCHEMES } from './protocol'
+export type { KitFetchImageErrorReason, KitFetchImageResult, KitFetchImageType } from './protocol'
+export { FETCH_IMAGE_ERROR_REASONS, FETCH_IMAGE_TYPES, fetchImageErrorReason, isFetchableUrl } from './protocol'
 export type { DocumentState, DraftComparison, DraftInfo, DraftOrigin, DraftSummary, InitializeResult, KitConflict, KitDocumentInit, KitLease, KitPeerPresence, KitPresence, KitPresenceCaret, KitSchemaReport, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
@@ -166,6 +170,15 @@ export type KitHostHandlers = {
    * it: others are refused as `not-allowed` before (OP7).
    */
   openUrl?: (params: Params<'host/openUrl'>) => Result<'host/openUrl'>
+  /**
+   * `host/fetchImage`: download a picture the person pasted or dropped by its web address
+   * (capability `fetch-image`, section 7l), from public addresses only: never the person's
+   * computer or local network, at every redirect. Only `https:` and `http:` reach it, and only
+   * for a document the kit may edit; an answer whose `mime` is not in `FETCH_IMAGE_TYPES` is
+   * refused as `unsupported`. Refuse with `KitRpcError(-32000, …, { reason })`, `reason` one of
+   * `FETCH_IMAGE_ERROR_REASONS`.
+   */
+  fetchImage?: (params: Params<'host/fetchImage'>) => Result<'host/fetchImage'>
   /**
    * `links/pick`: the host's chooser of existing workspace files to link (capability `links-pick`,
    * section 7i; UI-N2 to UI-N4), never copied. The params arrive checked (`parseLinksPickParams`);
@@ -351,6 +364,7 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
   if (handlers.openUrl) capabilities.push('open-url')
   const readOnly = options.document.readOnly === true
   if (handlers.pickLinks && !readOnly) capabilities.push('links-pick')
+  if (handlers.fetchImage && !readOnly) capabilities.push('fetch-image')
   const actions = Object.entries(handlers.actions ?? {}).filter(([, run]) => typeof run === 'function')
   capabilities.push(...actions.map(([id]) => `${HOST_ACTION_CAPABILITY_PREFIX}${id}`))
   // Only what the document's permissions allow is offered and served (UI-V4).
@@ -419,6 +433,14 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       if (!isOpenableUrl(params?.url)) throw new KitRpcError(-32000, `a host opens only https:, http:, and mailto: addresses`, { reason: 'not-allowed' })
       const answer = await handlers.openUrl({ url: params.url })
       return { opened: answer?.opened !== false }
+    })
+    peer.handle('host/fetchImage', async (params) => {
+      if (!handlers.fetchImage) unsupported('host/fetchImage')
+      if (readOnly) throw new KitRpcError(-32000, 'a read-only document fetches no pictures', { reason: 'read-only' })
+      if (!isFetchableUrl(params?.url)) throw new KitRpcError(-32000, 'a host fetches only https: and http: addresses', { reason: 'not-allowed' })
+      const answer = await handlers.fetchImage({ url: params.url })
+      if (!(answer?.bytes instanceof ArrayBuffer) || !(FETCH_IMAGE_TYPES as readonly string[]).includes(answer.mime)) throw new KitRpcError(-32000, `${params.url} is not a picture`, { reason: 'unsupported' })
+      return { bytes: answer.bytes, mime: answer.mime }
     })
     peer.handle('links/pick', async (params) => {
       if (!handlers.pickLinks) unsupported('links/pick')

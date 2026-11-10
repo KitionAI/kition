@@ -414,6 +414,21 @@ features:
     cases:
       - kition.kits.host-protocol/handles-only
     since: "2026-11-10"
+  - id: kition.kits.fetch-image
+    title: A kit keeps a picture pasted by its web address; Kition's runtime downloads it from public addresses only (Kit UI protocol host/fetchImage)
+    direction: [security, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - crates/kition-api/src/kit_images.rs
+      - crates/kition-agent/src/tools/web.rs
+      - src/api/kits.ts
+      - src/features/kits/kition/kitFetchImage.ts
+      - src/features/kits/kition/KitFrame.tsx
+    cases:
+      - kition.kits.fetch-image/public-only
+      - kition.kits.fetch-image/reasons
+    since: "2026-11-10"
   - id: kition.workflow.onboarding-actions
     title: The onboarding workflows run on a chosen row, skip an incomplete row, and never write placeholders
     direction: [function, data-safety]

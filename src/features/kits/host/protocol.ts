@@ -184,7 +184,7 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`, `links-pick`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`, `links-pick`, `fetch-image`. */
   capabilities: string[]
   /**
    * The capability sets this host serves (Kition platform `docs/platform/index.md` section 3, minor version 1.5), such as
@@ -720,6 +720,44 @@ export function openErrorReason(error: unknown): KitOpenErrorReason | null {
   return (OPEN_ERROR_REASONS as readonly string[]).includes(reason as string) ? (reason as KitOpenErrorReason) : null
 }
 
+/**
+ * Fetching a picture (capability `fetch-image`, section 7l, minor version 2.8): a picture the
+ * person pasted or dropped by its web address (an `<img>` in pasted HTML). The kit loads nothing
+ * from the network (UI-K1), so the host downloads it, from public addresses only, and answers its
+ * bytes; the kit keeps them as it keeps a pasted file. `mime` is one of `FETCH_IMAGE_TYPES`.
+ */
+export type KitFetchImageResult = { bytes: ArrayBuffer; mime: KitFetchImageType }
+
+/** The pictures a host answers `host/fetchImage` with; any other response is refused as `unsupported`. */
+export const FETCH_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/avif'] as const
+export type KitFetchImageType = (typeof FETCH_IMAGE_TYPES)[number]
+
+/**
+ * The reasons a `host/fetchImage` is refused (`error.data.reason` of a `-32000`): `not-allowed`
+ * (not an `https:` or `http:` address, or one on the person's computer or local network),
+ * `unsupported` (not a picture), `quota` (larger than the host keeps), `io-error` (the download
+ * failed), `read-only` (the document is read-only).
+ */
+export const FETCH_IMAGE_ERROR_REASONS = ['not-allowed', 'unsupported', 'quota', 'io-error', 'read-only'] as const
+export type KitFetchImageErrorReason = (typeof FETCH_IMAGE_ERROR_REASONS)[number]
+
+/** Whether `url` is an absolute `https:` or `http:` address, the only ones a host fetches. */
+export function isFetchableUrl(url: unknown): url is string {
+  if (typeof url !== 'string' || !url) return false
+  try {
+    return ['https:', 'http:'].includes(new URL(url).protocol)
+  } catch {
+    return false
+  }
+}
+
+/** The reason a `host/fetchImage` was refused, from the error the host answered; `null` for any other failure. */
+export function fetchImageErrorReason(error: unknown): KitFetchImageErrorReason | null {
+  if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
+  const reason = (error.data as { reason?: unknown }).reason
+  return (FETCH_IMAGE_ERROR_REASONS as readonly string[]).includes(reason as string) ? (reason as KitFetchImageErrorReason) : null
+}
+
 /** The reason a `host/generate` or `host/action` was refused, from the error the host answered; `null` for any other failure. */
 export function hostRequestErrorReason(error: unknown): KitGenerateErrorReason | KitActionErrorReason | null {
   if (!(error instanceof KitRpcError) || error.code !== -32000 || typeof error.data !== 'object' || error.data === null) return null
@@ -839,6 +877,8 @@ export type KitToHost = {
   'links/pick': [KitLinksPickParams, { links: KitPickedLink[] }]
   /** Asks the host for one of its services (capability `service:<id>`, section 7k); only from a person's gesture. */
   'host/service': [KitServiceParams, KitServiceResult]
+  /** Downloads a picture the person pasted or dropped by its web address (capability `fetch-image`, section 7l). */
+  'host/fetchImage': [{ url: string }, KitFetchImageResult]
 }
 
 /** Notifications the kit sends. */

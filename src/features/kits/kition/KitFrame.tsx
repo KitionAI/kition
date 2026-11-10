@@ -19,6 +19,7 @@ import { bridgeModel } from './kitBridgeModel'
 import { setKitDraft } from './kitDrafts'
 import { kitionActions } from './kitActions'
 import { kitionGenerate } from './kitGenerate'
+import { kitionFetchImage } from './kitFetchImage'
 import { KitDraftControls } from './KitDraftReview'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { followKitFileChanges } from './kitFileChanges'
@@ -269,6 +270,16 @@ function relayShortcut(key: { key: string; code: string; meta?: boolean; ctrl?: 
   window.dispatchEvent(new KeyboardEvent('keydown', { key: key.key, code: key.code, metaKey: key.meta, ctrlKey: key.ctrl, shiftKey: key.shift, altKey: key.alt, bubbles: true }))
 }
 
+/**
+ * Kition's own requests a kit may make: what it generates with the person's models (Kit UI
+ * protocol section 7j), Kition's features it offers controls for (7j: run a workflow on a record,
+ * start a design from one), and pictures pasted by their web address (7l). None for a preview or
+ * a read-only document, which the kit cannot write an answer into.
+ */
+function kitionRequests(path: string, writable: boolean): Pick<KitHostHandlers, 'generate' | 'actions' | 'fetchImage'> {
+  return writable ? { generate: (params) => kitionGenerate(params), actions: kitionActions(path), fetchImage: kitionFetchImage } : {}
+}
+
 function linkHandlers(latest: { current: { onOpenLink?: (params: KitOpenParams) => Promise<KitOpenResult>; askUrl: (url: string) => Promise<boolean> } }): Pick<KitHostHandlers, 'open' | 'openUrl'> {
   const { onOpenLink } = latest.current
   return {
@@ -377,12 +388,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
             },
             notify: showKitNotice,
             draftChanged: (info) => setKitDraft(path, info),
-            // The person's models for what the kit generates (Kit UI protocol section 7j): not for a
-            // preview or a read-only document, which the kit cannot write an answer into.
-            generate: preview || openedReadOnly ? undefined : (params) => kitionGenerate(params),
-            // Kition's features a kit offers controls for (section 7j): run a workflow on a record,
-            // start a design from one.
-            actions: preview || openedReadOnly ? undefined : kitionActions(path),
+            ...kitionRequests(path, !preview && !openedReadOnly),
             ...collab?.handlers,
             shortcut: relayShortcut,
           },

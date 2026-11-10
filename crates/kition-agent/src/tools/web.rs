@@ -16,6 +16,11 @@ use crate::run::{
 use crate::workspace::{parent_folder, sanitize_filename};
 
 const MAX_REDIRECTS: usize = 5;
+/// The largest picture `fetch_image` downloads.
+pub const MAX_IMAGE_BYTES: usize = 12 << 20;
+const LOCAL_ADDRESSES: &str = "local network addresses are not allowed";
+const NOT_HTTP: &str = "only http/https URLs are supported";
+const INVALID_URL: &str = "invalid URL";
 const BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15";
 
 fn is_public(ip: IpAddr) -> bool {
@@ -51,12 +56,12 @@ fn is_public(ip: IpAddr) -> bool {
 /// address.
 pub async fn check_public_url(url: &Url) -> Result<(), String> {
     if !matches!(url.scheme(), "http" | "https") {
-        return Err("only http/https URLs are supported".into());
+        return Err(NOT_HTTP.into());
     }
-    let host = url.host_str().ok_or("invalid URL")?;
+    let host = url.host_str().ok_or(INVALID_URL)?;
     let host = host.trim_start_matches('[').trim_end_matches(']');
     if host.eq_ignore_ascii_case("localhost") || host.to_lowercase().ends_with(".localhost") {
-        return Err("local network addresses are not allowed".into());
+        return Err(LOCAL_ADDRESSES.into());
     }
     let port = url.port_or_known_default().unwrap_or(80);
     let addresses: Vec<IpAddr> = match host.parse::<IpAddr>() {
@@ -68,7 +73,7 @@ pub async fn check_public_url(url: &Url) -> Result<(), String> {
             .collect(),
     };
     if addresses.is_empty() || addresses.iter().any(|ip| !is_public(*ip)) {
-        return Err("local network addresses are not allowed".into());
+        return Err(LOCAL_ADDRESSES.into());
     }
     Ok(())
 }
@@ -88,7 +93,7 @@ pub async fn get_public(
     timeout: Duration,
     max_bytes: usize,
 ) -> Result<Fetched, String> {
-    let mut url = Url::parse(raw.trim()).map_err(|_| "invalid URL".to_owned())?;
+    let mut url = Url::parse(raw.trim()).map_err(|_| INVALID_URL.to_owned())?;
     for _ in 0..=MAX_REDIRECTS {
         check_public_url(&url).await?;
         let response = http
@@ -375,20 +380,72 @@ pub struct ImageAsset {
     pub extension: &'static str,
 }
 
-/// Downloads a public image (at most 12 MB).
-pub async fn fetch_image(http: &reqwest::Client, raw: &str) -> Result<ImageAsset, String> {
+/// Why `fetch_image` kept no picture; `reason` names it as kits are told (Kit UI protocol
+/// section 7l).
+#[derive(Debug)]
+pub enum ImageFetchError {
+    /// Not an http(s) address, or one on this computer or the local network, at any redirect.
+    NotAllowed(String),
+    /// The response is not a picture of a supported type (its type).
+    NotAnImage(String),
+    /// Larger than `MAX_IMAGE_BYTES`.
+    TooLarge,
+    /// The download failed.
+    Failed(String),
+}
+
+impl ImageFetchError {
+    pub fn reason(&self) -> &'static str {
+        match self {
+            Self::NotAllowed(_) => "not-allowed",
+            Self::NotAnImage(_) => "unsupported",
+            Self::TooLarge => "quota",
+            Self::Failed(_) => "io-error",
+        }
+    }
+}
+
+impl std::fmt::Display for ImageFetchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotAllowed(error) | Self::Failed(error) => {
+                write!(f, "failed to download image: {error}")
+            }
+            Self::NotAnImage(mime) => write!(f, "response is not a supported image type: {mime}"),
+            Self::TooLarge => write!(f, "image is larger than {} MB", MAX_IMAGE_BYTES >> 20),
+        }
+    }
+}
+
+impl From<ImageFetchError> for String {
+    fn from(error: ImageFetchError) -> Self {
+        error.to_string()
+    }
+}
+
+/// Downloads a public image (at most `MAX_IMAGE_BYTES`; a larger one is refused, never cut).
+pub async fn fetch_image(http: &reqwest::Client, raw: &str) -> Result<ImageAsset, ImageFetchError> {
     let fetched = get_public(
         http,
         raw,
         "image/avif,image/webp,image/png,image/jpeg,image/gif,image/svg+xml;q=0.8,*/*;q=0.5",
         "KitionAgent/1.0",
         Duration::from_secs(30),
-        12 << 20,
+        MAX_IMAGE_BYTES + 1,
     )
     .await
-    .map_err(|error| format!("failed to download image: {error}"))?;
+    .map_err(|error| {
+        if [LOCAL_ADDRESSES, NOT_HTTP, INVALID_URL].contains(&error.as_str()) {
+            ImageFetchError::NotAllowed(error)
+        } else {
+            ImageFetchError::Failed(error)
+        }
+    })?;
+    if fetched.body.len() > MAX_IMAGE_BYTES {
+        return Err(ImageFetchError::TooLarge);
+    }
     if fetched.body.is_empty() {
-        return Err("image response was empty".into());
+        return Err(ImageFetchError::Failed("the response was empty".into()));
     }
     let mut mime = fetched
         .content_type
@@ -400,8 +457,8 @@ pub async fn fetch_image(http: &reqwest::Client, raw: &str) -> Result<ImageAsset
     if mime.is_empty() || mime == "application/octet-stream" {
         mime = kition_ai::engine::sniff_mime(&fetched.body).to_owned();
     }
-    let extension = extension_for_image_mime(&mime)
-        .ok_or_else(|| format!("response is not a supported image type: {mime}"))?;
+    let extension =
+        extension_for_image_mime(&mime).ok_or_else(|| ImageFetchError::NotAnImage(mime.clone()))?;
     Ok(ImageAsset {
         data: fetched.body,
         mime,
@@ -642,7 +699,9 @@ pub async fn web_article_save(run: &Run, input: &Value) -> ToolResult {
                     }
                 }
             }
-            Err(error) => warnings.push(json!({ "url": absolute.as_str(), "reason": error })),
+            Err(error) => {
+                warnings.push(json!({ "url": absolute.as_str(), "reason": error.to_string() }))
+            }
         }
     }
     let rendered = rewrite_images(&content, &map);
@@ -720,6 +779,22 @@ mod tests {
         }
         let public = Url::parse("https://93.184.216.34/").unwrap_or_else(|err| panic!("{err}"));
         assert!(check_public_url(&public).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn refuses_pictures_from_local_or_non_web_addresses_as_not_allowed() {
+        let http = reqwest::Client::new();
+        for raw in [
+            "http://127.0.0.1:18101/a.png",
+            "http://10.0.0.1/a.png",
+            "ftp://example.com/a.png",
+            "not an address",
+        ] {
+            match fetch_image(&http, raw).await {
+                Err(error) => assert_eq!(error.reason(), "not-allowed", "{raw}: {error}"),
+                Ok(_) => panic!("{raw} was fetched"),
+            }
+        }
     }
 
     #[test]

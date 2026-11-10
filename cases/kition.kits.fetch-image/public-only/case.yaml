@@ -1,0 +1,23 @@
+format: 1
+id: kition.kits.fetch-image/public-only
+feature: kition.kits.fetch-image
+intent: >-
+  The runtime downloads a kit's pasted picture only for Kition's renderer with this launch's token,
+  and only from a public web address: an address on this computer (the runtime's own API, localhost,
+  ::1), on the local network, or with any scheme but http and https is refused not-allowed before
+  any request, so a pasted web page cannot reach the local API or the person's network through a kit.
+layer: unit
+direction: security
+source:
+  kind: synthetic
+  from: crates/kition-api/src/app.rs, crates/kition-agent/src/tools/web.rs
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-api, filter: "app::tests::callers_without_the_launch_token_reach_nothing" }
+  - cargo-test: { package: kition-agent, filter: "tools::web::tests::refuses_pictures_from_local_or_non_web_addresses_as_not_allowed" }
+expected:
+  - actual: out:exit
+    compare: exit
+tags: [security]
+since: "2026-11-10"
