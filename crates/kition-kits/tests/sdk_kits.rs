@@ -1,4 +1,5 @@
 // Copied from kition-sdk crates/kition-kits/tests/sdk_kits.rs by scripts/sync-kit-host.mjs; change it there, not here.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! The kits built on the Kition SDK, through the runtime's kit manager as the agent uses them:
 //! open a real file, find commands, run one, save, and render a preview, each over the Kit
 //! Protocol to the kit's own headless executable (`kition-<kit>`, from `kition-headless`).

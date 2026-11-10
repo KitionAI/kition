@@ -14,6 +14,13 @@ pub trait RequestMethod {
     type Result: Serialize + DeserializeOwned + Send;
 }
 
+/// A request the kit sends to the host on the host connection (section 5.1).
+pub trait HostServiceMethod {
+    const NAME: &'static str;
+    type Params: Serialize + DeserializeOwned + Send + Sync;
+    type Result: Serialize + DeserializeOwned + Send;
+}
+
 /// A notification method.
 pub trait NotificationMethod {
     const NAME: &'static str;
@@ -59,14 +66,45 @@ requests! {
     DocumentOpen = "document.open" (DocumentOpenParams) -> DocumentState;
     DocumentList = "document.list" (Empty) -> DocumentListResult;
     DocumentActivate = "document.activate" (DocumentRef) -> Empty;
-    DocumentSave = "document.save" (DocumentRef) -> DocumentUriResult;
-    DocumentSaveAs = "document.saveAs" (DocumentSaveAsParams) -> DocumentUriResult;
-    DocumentExport = "document.export" (DocumentExportParams) -> DocumentUriResult;
+    DocumentSave = "document.save" (DocumentRef) -> DocumentWritten;
+    DocumentSaveAs = "document.saveAs" (DocumentSaveAsParams) -> DocumentWritten;
+    DocumentExport = "document.export" (DocumentExportParams) -> DocumentWritten;
     DocumentClose = "document.close" (DocumentCloseParams) -> Empty;
+    /// Host: reads the document's file again, dropping its unsaved edits (a conflict, section 5).
+    DocumentReload = "document.reload" (DocumentRef) -> DocumentState;
     CommandsList = "commands.list" (CommandsListParams) -> CommandsListResult;
     CommandsExecute = "commands.execute" (CommandsExecuteParams) -> CommandsExecuteResult;
     ViewScreenshot = "view.screenshot" (ViewScreenshotParams) -> Image;
     ViewDescribe = "view.describe" (DocumentRef) -> ViewDescribeResult;
+    /// Optional: a kit with the capability `document-text` (`KitText 1.0`).
+    DocumentText = "document.text" (DocumentTextParams) -> DocumentTextResult;
+}
+
+macro_rules! host_services {
+    ($($(#[$doc:meta])* $ty:ident = $name:literal ($params:ty) -> $result:ty;)*) => {
+        $(
+            $(#[$doc])*
+            pub enum $ty {}
+            impl HostServiceMethod for $ty {
+                const NAME: &'static str = $name;
+                type Params = $params;
+                type Result = $result;
+            }
+        )*
+        /// Every request method a kit sends to its host.
+        pub const HOST_SERVICES: &[&str] = &[$($name),*];
+    };
+}
+
+host_services! {
+    FilesStat = "files.stat" (FileRef) -> FileStat;
+    FilesRead = "files.read" (FilesReadParams) -> FilesReadResult;
+    /// A folder handle's files.
+    FilesList = "files.list" (FileRef) -> FilesListResult;
+    FilesWrite = "files.write" (FilesWriteParams) -> FilesWriteResult;
+    FilesCreate = "files.create" (FilesCreateParams) -> FileStat;
+    FilesResolve = "files.resolve" (FilesResolveParams) -> FileStat;
+    FilesRelease = "files.release" (FilesReleaseParams) -> Empty;
 }
 
 notifications! {
@@ -86,11 +124,13 @@ notifications! {
     Progress = "kit.progress" (ProgressParams);
     /// Kit to all clients.
     Log = "kit.log" (LogParams);
+    /// Host to kit: the handles expired or were revoked.
+    FilesRevoked = "files.revoked" (FilesReleaseParams);
 }
 
 /// Whether only the `host` role may send this method (protocol section 1).
 pub fn is_host_only(method: &str) -> bool {
-    matches!(method, "kit.shutdown" | "kit.setPreferences" | "document.activate" | "document.didChangeOnDisk")
+    matches!(method, "kit.shutdown" | "kit.setPreferences" | "document.activate" | "document.didChangeOnDisk" | "document.reload")
 }
 
 #[cfg(test)]
@@ -109,7 +149,7 @@ mod tests {
 
     #[test]
     fn method_names_are_unique() {
-        let mut names: Vec<_> = REQUESTS.iter().chain(NOTIFICATIONS).collect();
+        let mut names: Vec<_> = REQUESTS.iter().chain(NOTIFICATIONS).chain(HOST_SERVICES).collect();
         let count = names.len();
         names.sort();
         names.dedup();

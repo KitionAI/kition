@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn ready_line_matches_the_documented_bytes() {
         let line = ReadyLine::default().to_line();
-        assert_eq!(line, "{\"type\":\"ready\",\"protocolVersion\":1}\n");
+        assert_eq!(line, "{\"type\":\"ready\",\"protocolVersion\":2}\n");
         assert_eq!(ReadyLine::parse(&line), Some(ReadyLine::default()));
         assert_eq!(ReadyLine::parse(r#"{"type":"other","protocolVersion":1}"#), None);
         assert_eq!(ReadyLine::parse("ready"), None);

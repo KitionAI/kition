@@ -168,6 +168,24 @@ mod tests {
         assert_eq!(bytes.last(), Some(&b'\n'));
     }
 
+    /// The async reader, as kits read (moved with `kition-kit-server`'s own framing).
+    #[cfg(feature = "tokio")]
+    #[tokio::test]
+    async fn async_reads_split_lines_and_skip_bad_ones() {
+        let mut reader = tokio::io::BufReader::with_capacity(4, &b"{\"a\":1}\n\xff\n{\"b\":2}\r\n{}"[..]);
+        let mut line = Vec::new();
+        let mut out = Vec::new();
+        loop {
+            match read_frame_async(&mut reader, &mut line).await {
+                Ok(Some(frame)) => out.push(Some(frame)),
+                Ok(None) => break,
+                Err(error) if error.is_recoverable() => out.push(None),
+                Err(error) => panic!("{error}"),
+            }
+        }
+        assert_eq!(out, vec![Some("{\"a\":1}".to_owned()), None, Some("{\"b\":2}".to_owned()), Some("{}".to_owned())]);
+    }
+
     #[test]
     fn skips_oversized_lines_and_continues() {
         let mut input = vec![b'x'; MAX_MESSAGE_BYTES + 1];

@@ -429,6 +429,10 @@ export type KitsDocumentView = {
   canUndo: boolean
   canRedo: boolean
   /**
+   * The file changed on disk under unsaved edits: the next save fails with data.reason file_conflict until the document is reloaded or saved to another file (Kit Host Protocol section 5).
+   */
+  conflict: boolean
+  /**
    * Increments whenever the kit reports a change, including agent edits.
    */
   version: number

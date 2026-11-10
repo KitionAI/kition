@@ -101,6 +101,8 @@ export class SyncClient {
   private changesListeners = new Map<string, Set<(notice: ChangeNotice) => void>>()
   private presenceListeners = new Map<string, Set<(peers: Presence[]) => void>>()
   private accessListeners = new Map<string, Set<(role: Role | null) => void>>()
+  /** This person's role in each joined room, as its last join or `room/access` said. */
+  private roles = new Map<string, Role>()
   private stateListeners = new Set<(state: ConnectionState) => void>()
   private roomsListeners = new Set<(docId: string, room: RoomListing | null) => void>()
   private accountListeners = new Set<(settings: AccountSettings) => void>()
@@ -259,12 +261,14 @@ export class SyncClient {
     } while (page.more)
     const result: RoomJoinResult = { ...page, changes, ...(snapshot ? { snapshot } : {}), ...(shallow ? { shallow } : {}) }
     this.joined.add(docId)
+    this.roles.set(docId, result.role)
     this.bumpSeq(docId, result.seq)
     return result
   }
 
   leave(docId: string): void {
     this.joined.delete(docId)
+    this.roles.delete(docId)
     this.leases.left(docId)
     this.sendNotification('room/leave', () => ({ docId }))
   }
@@ -535,12 +539,18 @@ export class SyncClient {
   }
 
   /** Re-joins every room this client had joined, each with the highest `seq` it last saw for it
-   * (never re-fetching history it already has), and delivers whatever catch-up changes come back. */
+   * (never re-fetching history it already has), and delivers whatever catch-up changes come back.
+   * A role that changed while the connection was down (a host's new open token, an owner's change
+   * whose `room/access` notice could not arrive) is reported to `onAccess` listeners. */
   private async rejoinAll(): Promise<void> {
     const docIds = [...this.joined]
     await Promise.allSettled(
       docIds.map(async (docId) => {
+        const before = this.roles.get(docId)
         const result = await this.join(docId, undefined, {})
+        if (before !== undefined && result.role !== before) {
+          for (const listener of this.accessListeners.get(docId) ?? []) listener(result.role)
+        }
         for (const changes of result.changes) this.emitChanges(docId, { changes })
       }),
     )
@@ -705,7 +715,10 @@ export class SyncClient {
       const role = (params.role ?? null) as Role | null
       if (role === null) {
         this.joined.delete(docId)
+        this.roles.delete(docId)
         this.leases.left(docId)
+      } else {
+        this.roles.set(docId, role)
       }
       for (const listener of this.accessListeners.get(docId) ?? []) listener(role)
       return

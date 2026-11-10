@@ -17,6 +17,7 @@ import {
   parseOpenParams,
   parsePresence,
   parseSchemaReport,
+  type AiRunParams,
   type AiRunResult,
   type AiStep,
   type DocumentState,
@@ -281,11 +282,16 @@ export type KitConnection = {
    * `draft` checks the agent's draft. A kit without the capability answers no diagnostics here.
    */
   check: (options?: { draft?: boolean }) => Promise<KitDiagnostic[]>
-  /** The Kit AI bridge; `draft` (capability `draft`) works on the agent's draft instead of the live document. */
+  /**
+   * The Kit AI bridge; `draft` (capability `draft`) works on the agent's draft instead of the live
+   * document. `run`'s steps are the agent's, or with `origin: 'system'` (protocol 2.7) the host's
+   * own change, recorded with `originLabel` (`host` when absent) and no undo step in any history.
+   * Only the host's own features send `origin`, never a model's call.
+   */
   ai: {
     inspect: (options?: { draft?: boolean }) => Promise<Record<string, unknown>>
     commands: (query: string) => Promise<Array<Record<string, unknown>>>
-    run: (steps: AiStep[], save: boolean, options?: { draft?: boolean }) => Promise<AiRunResult>
+    run: (steps: AiStep[], save: boolean, options?: Pick<AiRunParams, 'draft' | 'origin' | 'originLabel'>) => Promise<AiRunResult>
     preview: (maxSize: number, options?: { draft?: boolean }) => Promise<{ png: string }>
   }
   /**
@@ -559,7 +565,14 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     ai: {
       inspect: (options) => peer.request('ai/inspect', options?.draft ? { draft: true } : {}),
       commands: (query) => peer.request('ai/commands', { query }),
-      run: (steps, save, options) => peer.request('ai/run', options?.draft ? { steps, save, draft: true } : { steps, save }),
+      run: (steps, save, options) =>
+        peer.request('ai/run', {
+          steps,
+          save,
+          ...(options?.draft ? { draft: true } : {}),
+          ...(options?.origin ? { origin: options.origin } : {}),
+          ...(options?.originLabel != null ? { originLabel: options.originLabel } : {}),
+        }),
       preview: (maxSize, options) => peer.request('ai/preview', options?.draft ? { maxSize, draft: true } : { maxSize }),
     },
     draft: {

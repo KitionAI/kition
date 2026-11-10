@@ -3428,7 +3428,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -3499,6 +3498,7 @@ dependencies = [
  "jsonschema",
  "kition-core",
  "kition-http",
+ "kition-kit-host",
  "kition-kit-protocol",
  "kition-kits",
  "kition-store",

@@ -16,7 +16,12 @@ pub enum ErrorReason {
     DocumentDirty,
     UnsupportedFormat,
     IoError,
-    UriNotGranted,
+    FileNotGranted,
+    FileConflict,
+    FileAlreadyCommitted,
+    FileUnsavedEdits,
+    FileNotAllowed,
+    FileQuota,
     CommandNotFound,
     CommandDisabled,
     InvalidParams,
@@ -24,7 +29,7 @@ pub enum ErrorReason {
 }
 
 impl ErrorReason {
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 18] = [
         Self::Unauthorized,
         Self::NotInitialized,
         Self::RoleForbidden,
@@ -33,7 +38,12 @@ impl ErrorReason {
         Self::DocumentDirty,
         Self::UnsupportedFormat,
         Self::IoError,
-        Self::UriNotGranted,
+        Self::FileNotGranted,
+        Self::FileConflict,
+        Self::FileAlreadyCommitted,
+        Self::FileUnsavedEdits,
+        Self::FileNotAllowed,
+        Self::FileQuota,
         Self::CommandNotFound,
         Self::CommandDisabled,
         Self::InvalidParams,
@@ -51,7 +61,12 @@ impl ErrorReason {
             Self::DocumentDirty => -32011,
             Self::UnsupportedFormat => -32012,
             Self::IoError => -32013,
-            Self::UriNotGranted => -32014,
+            Self::FileNotGranted => -32014,
+            Self::FileConflict => -32015,
+            Self::FileAlreadyCommitted => -32016,
+            Self::FileUnsavedEdits => -32017,
+            Self::FileNotAllowed => -32018,
+            Self::FileQuota => -32019,
             Self::CommandNotFound => -32020,
             Self::CommandDisabled => -32021,
             Self::InvalidParams => -32022,
@@ -73,7 +88,12 @@ impl ErrorReason {
             Self::DocumentDirty => "document has unsaved changes",
             Self::UnsupportedFormat => "unsupported format",
             Self::IoError => "read or write failed",
-            Self::UriNotGranted => "uri not granted",
+            Self::FileNotGranted => "file not granted",
+            Self::FileConflict => "the file changed since it was read",
+            Self::FileAlreadyCommitted => "the file was already committed",
+            Self::FileUnsavedEdits => "the file is open with unsaved edits",
+            Self::FileNotAllowed => "the host does not allow this file",
+            Self::FileQuota => "the host's write cap was reached",
             Self::CommandNotFound => "command not found",
             Self::CommandDisabled => "command disabled",
             Self::InvalidParams => "invalid command parameters",
@@ -88,8 +108,21 @@ pub struct ErrorData {
     pub reason: ErrorReason,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+    /// `invalid_params`: one entry per wrong parameter, each an object `{ path, message,
+    /// expected? }` ([`InvalidParam`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub errors: Option<Vec<Value>>,
+}
+
+/// One entry of an `invalid_params` error's `data.errors` (section 10).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InvalidParam {
+    /// A JSON Pointer into the command's params: `/type`, `/fields/0/type`.
+    pub path: String,
+    pub message: String,
+    /// What the command takes there, in words: `one of "text", "number", …`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected: Option<String>,
 }
 
 /// A JSON-RPC 2.0 error object.

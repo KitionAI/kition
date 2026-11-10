@@ -26,4 +26,3 @@ jsonschema = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["io-util"] }
-url = { workspace = true }

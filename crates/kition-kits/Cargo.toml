@@ -35,6 +35,10 @@ test-kits = []
 name = "kition-kits-mcp"
 path = "src/bin/kition-kits-mcp.rs"
 
+[[bin]]
+name = "kition-kits"
+path = "src/bin/kition-kits.rs"
+
 [dev-dependencies]
 jsonschema = { version = "0.58", default-features = false }
 tempfile = "3"

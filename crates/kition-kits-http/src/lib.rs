@@ -165,8 +165,14 @@ pub fn app_error(error: KitError) -> AppError {
         KitError::Model { .. } => (400, 40002),
         KitError::Kit { reason, .. } => match reason {
             Some(ErrorReason::DocumentNotFound) => (404, 40401),
-            Some(ErrorReason::UriNotGranted) => (403, 40301),
+            Some(ErrorReason::FileNotGranted | ErrorReason::FileNotAllowed) => (403, 40301),
             Some(ErrorReason::DocumentDirty) => (409, 40903),
+            Some(
+                ErrorReason::FileConflict
+                | ErrorReason::FileAlreadyCommitted
+                | ErrorReason::FileUnsavedEdits,
+            ) => (409, 40906),
+            Some(ErrorReason::FileQuota) => (413, 41301),
             Some(_) | None => (400, 40001),
         },
     };
@@ -396,7 +402,7 @@ async fn write_file(
     Ok(ok(json!({ "path": query.path, "bytes": body.len() })))
 }
 
-// File grants (Kition platform `KitFiles 1.0`, `grants.rs`): the renderer serves a kit's `files/*`
+// File grants (Kition platform `KitFiles 1.1`, `kition_kit_host::files`): the renderer serves a kit's `files/*`
 // requests through these routes. A grant session is bound to a kit, the person, and the
 // document its editor opened; handles are bound to their session. No answer names a path.
 
@@ -405,8 +411,8 @@ const MAX_CHUNK_BYTES: usize = 64 << 20;
 
 /// Maps a refused file request to a status; `data.reason` is the KitFiles reason (section 10),
 /// `null` for malformed parameters.
-fn file_error(error: kition_kits::grants::FileError) -> AppError {
-    use kition_kits::grants::FileError;
+fn file_error(error: kition_kit_host::files::FileError) -> AppError {
+    use kition_kit_host::files::FileError;
     let (status, code) = match &error {
         FileError::NotGranted(_) => (403, 40310),
         FileError::NotAllowed(_) => (403, 40311),
@@ -459,7 +465,7 @@ struct OpenGrantSessionBody {
     #[serde(default)]
     document: Option<String>,
     #[serde(default)]
-    files: kition_kits::grants::FilesManifest,
+    files: kition_kit_host::files::FilesManifest,
     #[serde(default)]
     read_only: bool,
 }
@@ -473,7 +479,7 @@ async fn open_grant_session(
     let session = state
         .kits
         .grants()
-        .open_session(kition_kits::grants::SessionRequest {
+        .open_session(kition_kit_host::files::SessionRequest {
             kit: &body.kit,
             principal: &caller.principal,
             document: body.document.as_deref(),
@@ -520,8 +526,8 @@ enum PersonFlow {
 struct GrantBody {
     session: String,
     path: String,
-    kind: kition_kits::grants::Kind,
-    rights: Vec<kition_kits::grants::Right>,
+    kind: kition_kit_host::files::Kind,
+    rights: Vec<kition_kit_host::files::Right>,
     #[serde(default)]
     accept: Vec<String>,
     flow: PersonFlow,
@@ -534,8 +540,8 @@ async fn grant_file(
     JsonBody(body): JsonBody<GrantBody>,
 ) -> AppResult<Response> {
     let flow = match body.flow {
-        PersonFlow::Pick => kition_kits::grants::Flow::Pick,
-        PersonFlow::Drop => kition_kits::grants::Flow::Drop,
+        PersonFlow::Pick => kition_kit_host::files::Flow::Pick,
+        PersonFlow::Drop => kition_kit_host::files::Flow::Drop,
     };
     let stat = state
         .kits
@@ -543,7 +549,7 @@ async fn grant_file(
         .grant(
             &body.session,
             &caller.principal,
-            kition_kits::grants::GrantRequest {
+            kition_kit_host::files::GrantRequest {
                 path: &body.path,
                 kind: body.kind,
                 rights: &body.rights,
@@ -709,7 +715,7 @@ async fn write_chunk(
             &query.session,
             &caller.principal,
             &handle,
-            kition_kits::grants::WriteChunk {
+            kition_kit_host::files::WriteChunk {
                 bytes: &body,
                 offset: query.offset,
                 last: query.last,

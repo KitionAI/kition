@@ -1,4 +1,5 @@
 // Copied from kition-sdk crates/kition-kits/tests/object_model.rs by scripts/sync-kit-host.mjs; change it there, not here.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! The object-model tools (`<prefix>_query`, `<prefix>_batch`) and structured error codes,
 //! against the mock kit standing in for Kition Vector (`KITION_KIT_MOCK_AS`): on the headless
 //! kit, and on a live editor through the Kit AI bridge, including drafts and read-only refusals.

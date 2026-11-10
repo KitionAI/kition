@@ -21,6 +21,7 @@ static GENERIC: KitDefinition = KitDefinition {
     base_name: "Untitled <kit>",
     exports: &[],
     executable: None,
+    protocol: None,
     version: "<version>",
     manifest: "{}",
     agent: KitAgent {

@@ -44,6 +44,9 @@ pub struct KitDefinition {
     pub exports: &'static [&'static str],
     /// The executable `kit.json` names (`headless.executable`), for example `kition-photo`.
     pub executable: Option<&'static str>,
+    /// The Kit Host Protocol the executable speaks (`headless.protocol`), for example
+    /// `kition-kit/2`; a host launches only a kit that speaks its own.
+    pub protocol: Option<&'static str>,
     /// `kit.json` `version`, which a server of this one kit reports as its own (KHP A34).
     pub version: &'static str,
     /// The manifest as it was found, served as `khp://kits/<id>/kit.json` (KHP K20).
@@ -220,6 +223,7 @@ impl KitDefinition {
             base_name: leak(base_name),
             exports: leak_all(exports.into_iter().map(leak).collect()),
             executable: manifest.pointer("/headless/executable").and_then(Value::as_str).map(|name| leak(name.to_owned())),
+            protocol: manifest.pointer("/headless/protocol").and_then(Value::as_str).map(|protocol| leak(protocol.to_owned())),
             version: leak(text_or(manifest, "version", "0.0.0")),
             manifest: leak(source),
             agent: KitAgent {
@@ -297,14 +301,35 @@ impl KitSources {
 }
 
 /// The `kit.json` an executable was built from, as its text: the nearest one above it whose
-/// `headless.executable` is the executable's name.
+/// `headless.executable` is the executable's name (a kit repository's `target/debug/`), else, in
+/// an SDK bundle (`bin/<platform>/kition-<kit>`), the bundle's `kits/<kit>/kit.json` that names it.
 pub fn manifest_beside(executable: &Path) -> Option<String> {
     let name = executable.file_stem()?.to_str()?;
-    executable.ancestors().skip(1).take(5).find_map(|folder| {
-        let text = std::fs::read_to_string(folder.join("kit.json")).ok()?;
+    let names_it = |path: &Path| {
+        let text = std::fs::read_to_string(path).ok()?;
         let manifest: Value = serde_json::from_str(&text).ok()?;
         (manifest.pointer("/headless/executable").and_then(Value::as_str) == Some(name)).then_some(text)
+    };
+    executable.ancestors().skip(1).take(5).find_map(|folder| names_it(&folder.join("kit.json"))).or_else(|| {
+        let kits = executable.parent()?.parent()?.parent()?.join("kits");
+        std::fs::read_dir(kits).ok()?.flatten().find_map(|entry| names_it(&entry.path().join("kit.json")))
     })
+}
+
+/// The SDK bundle's name for this machine's platform, its `bin/<platform>/` (`darwin-arm64`,
+/// `linux-x64`, `win32-x64`), as `tools/sdk-bundle.mjs` names it.
+pub fn bundle_platform() -> String {
+    let os = match std::env::consts::OS {
+        "macos" => "darwin",
+        "windows" => "win32",
+        other => other,
+    };
+    let arch = match std::env::consts::ARCH {
+        "aarch64" => "arm64",
+        "x86_64" => "x64",
+        other => other,
+    };
+    format!("{os}-{arch}")
 }
 
 /// A kit found, with its headless executable when there is one.
@@ -378,6 +403,75 @@ pub fn discover(sources: &KitSources) -> Vec<Found> {
             }
         })
         .collect()
+}
+
+/// The kits a program's options and the environment declare, the same for `kition-kits serve` and
+/// `kition-kits-mcp`: `executables` (`--kit`) and the environment's `KITION_KIT_<KIT>_BINARY`,
+/// each with the manifest it was built from (in a kit repository, or in an SDK bundle); the kit
+/// folders in `kits_dir`, each with its executable beside its `kit.json` when installed. For kits
+/// found without an executable, the one their `kit.json` names in the bundle's
+/// `bin/<platform>/` beside `kits_dir`, beside the running program, and on the PATH.
+pub fn found(executables: &[PathBuf], kits_dir: Option<&Path>) -> Vec<Found> {
+    for executable in executables.iter().filter(|executable| !executable.is_file()) {
+        eprintln!("kition-kits: --kit {}: no such file", executable.display());
+    }
+    let mut executables = executables.to_vec();
+    executables.extend(KitSources::executables_from_env());
+    if let Some(dir) = kits_dir {
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let manifest = std::fs::read_to_string(entry.path().join("kit.json")).ok().and_then(|text| serde_json::from_str::<Value>(&text).ok());
+            if let Some(name) = manifest.as_ref().and_then(|manifest| manifest.pointer("/headless/executable")).and_then(Value::as_str) {
+                let executable = entry.path().join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+                if executable.is_file() {
+                    executables.push(executable);
+                }
+            }
+        }
+    }
+    let mut found = discover(&KitSources { manifests: Vec::new(), kits_dir: kits_dir.map(Path::to_path_buf), executables });
+    if let Some(bin) = kits_dir.and_then(Path::parent).map(|bundle| bundle.join("bin").join(bundle_platform())) {
+        in_folder(&mut found, &bin);
+    }
+    if let Some(own) = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf)) {
+        in_folder(&mut found, &own);
+    }
+    on_path(&mut found);
+    found
+}
+
+/// Why a found kit has no executable, for the person starting the program: where it was looked
+/// for. `None` for a kit that has one.
+pub fn missing(found: &Found) -> Option<String> {
+    let (kit, executable) = found;
+    if executable.is_some() {
+        return None;
+    }
+    Some(match kit.executable {
+        None => format!("{} ({}) names no headless executable in its kit.json", kit.id, kit.name),
+        Some(name) => format!(
+            "{} ({}) has no executable: no {name} from --kit or {}, in the bundle's bin/{}/, beside this program, or on the PATH",
+            kit.id,
+            kit.name,
+            env_variable(kit.id),
+            bundle_platform()
+        ),
+    })
+}
+
+/// `KITION_KIT_<KIT>_BINARY` for `kit.<kit>`.
+fn env_variable(id: &str) -> String {
+    let (prefix, suffix) = EXECUTABLE_VARIABLE;
+    format!("{prefix}{}{suffix}", id.rsplit('.').next().unwrap_or(id).to_uppercase())
+}
+
+/// The executable each found kit's `kit.json` names, in `folder` (an SDK bundle's
+/// `bin/<platform>/`, beside `kition-kits` itself), for kits found without one.
+pub fn in_folder(found: &mut [Found], folder: &Path) {
+    for (kit, executable) in found.iter_mut().filter(|(_, executable)| executable.is_none()) {
+        let Some(name) = kit.executable else { continue };
+        let candidate = folder.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+        *executable = candidate.is_file().then_some(candidate);
+    }
 }
 
 /// The `kition-<name>` executables on `PATH` for kits found without one, by the name their

@@ -1,8 +1,9 @@
-// Copied from kition-sdk crates/kition-kits/src/grants.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! File grants for kits (Kition platform `KitFiles 1.0`): the runtime's grant table and the files
-//! it serves through them.
+// Copied from kition-sdk crates/kition-kit-host/src/files.rs by scripts/sync-kit-host.mjs; change it there, not here.
+//! File grants for kits (Kition platform `KitFiles 1.1`): a host's grant table and the files it
+//! serves through them, to kit editor pages (Kit UI `files/*`) and to headless kits (Kit Host
+//! Protocol `files.*`, [`crate::KitFiles`]).
 //!
-//! A **session** is one kit editor page (or, later, one headless connection or agent run). It is
+//! A **session** is one kit editor page or one headless host connection. It is
 //! bound to a kit, a person (the principal), the document it opened, and the kit manifest's
 //! `files` lists (K15). A **handle** (`fh_` and 128 random bits, FA1) names a file or a folder
 //! with a set of rights (`read`, `create`, `write`, FA2). The table maps each handle to its
@@ -60,6 +61,11 @@ pub enum Flow {
     List,
     /// A file an agent's command names (`KitAgent` A28): `write` only when approved (FA13).
     Agent,
+    /// The document file the host opens in a headless kit, or saves it to (Kit Host Protocol
+    /// `document.open`, `saveAs`, `export`): the host chose it, under the kit's formats.
+    Document,
+    /// A file a document refers to, resolved from its stored path (`files.resolve`, E5): `read`.
+    Lent,
 }
 
 /// The kit manifest's `files` lists (K15): extensions without the dot.
@@ -289,9 +295,17 @@ struct Grant {
     staging: Option<Staging>,
     staged: u64,
     written: u64,
+    /// A file the host keeps itself, which may be hidden (an agent's drafts under `.kition/`).
+    own: bool,
 }
 
 impl Grant {
+    /// The real path while, links followed, it is still inside the workspace (and not hidden,
+    /// but for the host's own files).
+    fn reach(&self, workspace: &Path) -> Option<PathBuf> {
+        reach(workspace, &self.path, self.own)
+    }
+
     fn has(&self, right: Right) -> bool {
         self.rights.contains(&right)
     }
@@ -492,7 +506,7 @@ impl GrantStore {
         if rights.is_empty() {
             return Err(FileError::BadParams("rights lists at least one right".into()));
         }
-        if matches!(request.flow, Flow::Create | Flow::List) {
+        if matches!(request.flow, Flow::Create | Flow::List | Flow::Document | Flow::Lent) {
             return Err(FileError::BadParams("flow is pick, drop, or agent".into()));
         }
         let path = self.confine(request.path)?;
@@ -594,7 +608,7 @@ impl GrantStore {
             let creating = grant.has(Right::Create) && grant.kind == Kind::File;
             if grant.kind == Kind::File
                 && (!creating || grant.committed)
-                && let Some(metadata) = still_inside(&workspace, &grant.path).and_then(|real| std::fs::metadata(real).ok()).filter(std::fs::Metadata::is_file)
+                && let Some(metadata) = grant.reach(&workspace).and_then(|real| std::fs::metadata(real).ok()).filter(std::fs::Metadata::is_file)
             {
                 grant.version = Some(version_of(&metadata));
                 grant.size = Some(metadata.len());
@@ -613,7 +627,7 @@ impl GrantStore {
                 return Err(FileError::NotGranted("this handle has no read right on a file".into()));
             }
             // The file may have become a link out of the workspace since it was granted.
-            let real = still_inside(&workspace, &grant.path).ok_or_else(unavailable)?;
+            let real = grant.reach(&workspace).ok_or_else(unavailable)?;
             let mut file = File::open(real).map_err(io)?;
             let metadata = file.metadata().map_err(io)?;
             if !metadata.is_file() {
@@ -694,12 +708,14 @@ impl GrantStore {
             if grant.kind != Kind::File {
                 return Err(FileError::NotGranted("this handle is not a file".into()));
             }
-            let creating = grant.has(Right::Create);
+            // A `create` right commits once (H5); a document's handle that also has `write` then
+            // replaces the file it made, with the version that commit answered.
+            let creating = grant.has(Right::Create) && !grant.committed;
             if !creating && !grant.has(Right::Write) {
+                if grant.has(Right::Create) {
+                    return Err(FileError::AlreadyCommitted);
+                }
                 return Err(FileError::NotGranted("this handle has no create or write right".into()));
-            }
-            if creating && grant.committed {
-                return Err(FileError::AlreadyCommitted);
             }
             if chunk.offset != grant.staged {
                 return Err(FileError::BadParams(format!("offset is {}, the bytes staged so far", grant.staged)));
@@ -720,7 +736,7 @@ impl GrantStore {
                 None
             };
             if grant.staging.is_none() {
-                grant.staging = Some(stage(&workspace, &grant.path)?);
+                grant.staging = Some(stage(&workspace, &grant.path, grant.own)?);
             }
             if let Some(staging) = grant.staging.as_mut() {
                 staging.file.write_all(chunk.bytes).map_err(io)?;
@@ -747,6 +763,108 @@ impl GrantStore {
             session.log.push(entry);
             Ok(Some(version))
         })
+    }
+
+    /// Grants a handle on the document file a headless kit opens or saves to (`Flow::Document`),
+    /// on the kit's formats rather than its `files` lists: `read` and `write` on an existing file,
+    /// `create` (with `read` and `write`, for the saves after the first) on a new one. `own` lets
+    /// it be one of the host's own hidden files (drafts). Answers the existing grant of the same
+    /// file with the same rights, so a file opened twice is one document (section 5).
+    pub fn grant_document(&self, session: &str, principal: &str, path: &str, rights: &[Right], own: bool) -> Result<FileStat, FileError> {
+        let path = self.confine_as(path, own)?;
+        self.with_session(session, principal, |_, session| {
+            // A document's handle stays its handle: a new file's handle, once its first save made
+            // the file, answers for it as an existing file's would.
+            let wants_write = rights.contains(&Right::Write);
+            // An export's `create` handle (no `read`) is never shared: each export is a new file.
+            let same = |grant: &&Grant| {
+                grant.flow == Flow::Document
+                    && rights.contains(&Right::Read)
+                    && grant.has(Right::Read)
+                    && grant.path == path
+                    && grant.has(Right::Write) == wants_write
+                    && (rights.contains(&Right::Create) || !grant.has(Right::Create) || grant.committed)
+            };
+            if let Some(existing) = session.grants.values().find(same) {
+                return Ok(existing.stat());
+            }
+            let exists = std::fs::symlink_metadata(&path).is_ok();
+            if rights.contains(&Right::Create) == exists {
+                return Err(if exists { FileError::Conflict("a file with this name exists; create never replaces one".into()) } else { unavailable() });
+            }
+            if rights.contains(&Right::Write) && session.read_only {
+                return Err(FileError::NotAllowed("a read-only session replaces no file".into()));
+            }
+            let metadata = std::fs::metadata(&path).ok();
+            if exists && !metadata.as_ref().is_some_and(std::fs::Metadata::is_file) {
+                return Err(unavailable());
+            }
+            let grant = Grant {
+                version: metadata.as_ref().map(version_of),
+                size: metadata.as_ref().map(std::fs::Metadata::len),
+                own,
+                ..new_grant(Flow::Document, rights.to_vec(), Kind::File, display_name(&path), path.clone(), None)
+            };
+            Ok(session.add(grant))
+        })
+    }
+
+    /// `files.resolve`: a `read` handle on a file the document of handle `document` refers to by
+    /// `link`, the path as the document stores it: relative to the document's folder, or from the
+    /// workspace with a leading `/`, never outside it or into a hidden folder (E5, H3, LR2).
+    pub fn resolve(&self, session: &str, principal: &str, document: &str, link: &str) -> Result<FileStat, FileError> {
+        let workspace = self.workspace()?.to_path_buf();
+        let folder = self.with_session(session, principal, |_, session| {
+            let grant = session.granted(document)?;
+            if grant.flow != Flow::Document {
+                return Err(FileError::NotGranted("this handle is not a document's".into()));
+            }
+            Ok(grant.path.parent().and_then(|parent| relative_to(&workspace, parent)).unwrap_or_default())
+        })?;
+        let relative = resolve_link(&folder, link).ok_or_else(unavailable)?;
+        let path = self.confine(&relative)?;
+        self.with_session(session, principal, |_, session| {
+            if let Some(existing) = session.grants.values().find(|grant| grant.flow == Flow::Lent && grant.path == path) {
+                return Ok(existing.stat());
+            }
+            let Some(metadata) = std::fs::metadata(&path).ok().filter(std::fs::Metadata::is_file) else {
+                return Err(unavailable());
+            };
+            let grant = Grant {
+                version: Some(version_of(&metadata)),
+                size: Some(metadata.len()),
+                ..new_grant(Flow::Lent, vec![Right::Read], Kind::File, display_name(&path), path.clone(), None)
+            };
+            Ok(session.add(grant))
+        })
+    }
+
+    /// `files.create` beside the document of handle `document` (`documentId` in the request).
+    pub fn create_beside(&self, session: &str, principal: &str, suggested_name: &str, mime: Option<&str>, document: &str) -> Result<FileStat, FileError> {
+        self.with_session(session, principal, |_, session| {
+            let parent = session.granted(document)?.path.parent().map(Path::to_path_buf).ok_or(FileError::Io)?;
+            let suggested = sanitize_file_name(suggested_name);
+            if !session.may_create(&suggested) {
+                return Err(FileError::NotAllowed(format!("the kit may not create .{} files", extension_label(&suggested))));
+            }
+            let name = free_name(session, &parent, &suggested)?;
+            let path = parent.join(&name);
+            let grant = Grant { mime: mime.map(str::to_owned), ..new_grant(Flow::Create, vec![Right::Create], Kind::File, name, path, Some(parent)) };
+            Ok(session.add(grant))
+        })
+    }
+
+    /// Whether the workspace path `path` names an existing file or folder the kit may reach.
+    pub fn exists(&self, path: &str, own: bool) -> bool {
+        self.confine_as(path, own).is_ok_and(|path| std::fs::symlink_metadata(path).is_ok())
+    }
+
+    /// The workspace path a handle names, for the host itself; the kit never sees it.
+    pub fn path_of(&self, session: &str, principal: &str, handle: &str) -> Option<String> {
+        let workspace = self.workspace.clone()?;
+        let mut sessions = self.sessions();
+        let session = sessions.get_mut(session).filter(|found| found.principal == principal)?;
+        relative_to(&workspace, &session.grants.get(handle)?.path)
     }
 
     /// `files/release`: drops handles; an unknown or expired one is not an error.
@@ -784,6 +902,11 @@ impl GrantStore {
     /// segment, and, once links are followed, inside the workspace and outside its hidden
     /// folders. A missing file is confined through its folder, which must exist.
     fn confine(&self, path: &str) -> Result<PathBuf, FileError> {
+        self.confine_as(path, false)
+    }
+
+    /// [`Self::confine`], allowing hidden segments for the host's `own` files.
+    fn confine_as(&self, path: &str, own: bool) -> Result<PathBuf, FileError> {
         let workspace = self.workspace()?;
         let trimmed = path.trim().trim_start_matches('/');
         if trimmed.is_empty() || trimmed.contains('\\') || trimmed.contains('\0') {
@@ -791,18 +914,18 @@ impl GrantStore {
         }
         let mut absolute = workspace.to_path_buf();
         for part in trimmed.split('/') {
-            if part.is_empty() || part.starts_with('.') || Path::new(part).is_absolute() {
+            if part.is_empty() || part == "." || part == ".." || (part.starts_with('.') && !own) || Path::new(part).is_absolute() {
                 return Err(unavailable());
             }
             absolute.push(part);
         }
         if std::fs::symlink_metadata(&absolute).is_ok() {
-            return still_inside(workspace, &absolute).ok_or_else(unavailable);
+            return reach(workspace, &absolute, own).ok_or_else(unavailable);
         }
         let (Some(parent), Some(name)) = (absolute.parent(), absolute.file_name()) else {
             return Err(unavailable());
         };
-        let parent = still_inside(workspace, parent).ok_or_else(unavailable)?;
+        let parent = reach(workspace, parent, own).ok_or_else(unavailable)?;
         if !parent.is_dir() {
             return Err(unavailable());
         }
@@ -827,7 +950,28 @@ fn new_grant(flow: Flow, rights: Vec<Right>, kind: Kind, name: String, path: Pat
         staging: None,
         staged: 0,
         written: 0,
+        own: false,
     }
+}
+
+/// `link` as a workspace path: relative to `folder` (workspace-relative, `/`-separated), from the
+/// workspace with a leading `/`; `..` climbs no higher than the workspace.
+fn resolve_link(folder: &str, link: &str) -> Option<String> {
+    if link.trim().is_empty() || link.ends_with('/') || link.contains('\\') || link.contains('\0') {
+        return None;
+    }
+    let start = if link.starts_with('/') { "" } else { folder };
+    let mut parts: Vec<&str> = Vec::new();
+    for part in start.split('/').chain(link.split('/')) {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            part => parts.push(part),
+        }
+    }
+    (!parts.is_empty()).then(|| parts.join("/"))
 }
 
 /// `prefix` and 128 random bits in hex (FA1).
@@ -838,10 +982,15 @@ fn random_id(prefix: &str) -> String {
 /// The real path of `path` when, links followed, it is inside `workspace` and no part of it
 /// below the workspace is hidden.
 fn still_inside(workspace: &Path, path: &Path) -> Option<PathBuf> {
+    reach(workspace, path, false)
+}
+
+/// [`still_inside`], allowing hidden parts for the host's `own` files.
+fn reach(workspace: &Path, path: &Path, own: bool) -> Option<PathBuf> {
     let real = std::fs::canonicalize(path).ok()?;
     let inside = real.strip_prefix(workspace).ok()?;
     let hidden = inside.components().any(|part| match part {
-        Component::Normal(part) => part.to_string_lossy().starts_with('.'),
+        Component::Normal(part) => !own && part.to_string_lossy().starts_with('.'),
         _ => true,
     });
     (!hidden).then_some(real)
@@ -941,9 +1090,9 @@ fn free_name(session: &Session, folder: &Path, suggested: &str) -> Result<String
 }
 
 /// A new staging file beside `target`, hidden so no kit reads it.
-fn stage(workspace: &Path, target: &Path) -> Result<Staging, FileError> {
+fn stage(workspace: &Path, target: &Path, own: bool) -> Result<Staging, FileError> {
     let parent = target.parent().ok_or(FileError::Io)?;
-    let parent = still_inside(workspace, parent).ok_or_else(unavailable)?;
+    let parent = reach(workspace, parent, own).ok_or_else(unavailable)?;
     let temp = parent.join(format!(".{}.kition-{}.part", display_name(target), hex::encode(rand::random::<[u8; 8]>())));
     let file = OpenOptions::new().write(true).create_new(true).open(&temp).map_err(io)?;
     Ok(Staging { temp, file })
@@ -957,7 +1106,7 @@ fn commit(workspace: &Path, grant: &mut Grant, mut staging: Staging, expected: O
     staging.file.flush().map_err(io)?;
     staging.file.sync_all().map_err(io)?;
     if let Some(expected) = expected {
-        let real = still_inside(workspace, &grant.path).ok_or_else(unavailable)?;
+        let real = grant.reach(workspace).ok_or_else(unavailable)?;
         let metadata = std::fs::metadata(&real).map_err(io)?;
         if version_of(&metadata) != expected {
             return Err(FileError::Conflict("the file changed since the version the kit read".into()));

@@ -1,4 +1,5 @@
 // Copied from kition-sdk crates/kition-kits/tests/mcp_stdio.rs by scripts/sync-kit-host.mjs; change it there, not here.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! `kition-kits-mcp` over stdio, as a harness launches it: tools (the object-model ones
 //! included), structured error codes, and `kit://` resources, against the mock kit standing in
 //! for Kition Vector (`KITION_KIT_MOCK_AS`).

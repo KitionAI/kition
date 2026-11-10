@@ -1,0 +1,24 @@
+format: 1
+id: kition.kits.host-protocol/handles-only
+feature: kition.kits.host-protocol
+intent: >-
+  Kition hosts a headless kit on Kit Host Protocol 2 and checks it with its conformance suite: the
+  kit.json must say kition-kit/2, the host names files to the kit only by handles it minted and
+  serves files.* from the workspace, a document opens by handle and saves through files.write with
+  the version it read, a handle no host granted is refused file_not_granted for the host and the
+  agent, and a save over a file that changed after the kit read it is refused file_conflict,
+  leaves the file as it is, and puts the document in conflict. The mock kit passes every check.
+layer: unit
+direction: security
+source:
+  kind: synthetic
+  from: crates/kition-kit-conformance/tests/mock.rs
+  licence: owned
+input: []
+steps:
+  - cargo-test: { package: kition-kit-conformance, test: mock, filter: mock_kit_passes_every_check }
+expected:
+  - actual: out:exit
+    compare: exit
+tags: [security]
+since: "2026-11-10"

@@ -1,7 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/value.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::collections::HashMap;
-
-use loro::LoroValue;
+use loro::{LoroMapValue, LoroValue};
 use serde_json::{Map, Value};
 
 /// JSON to the engine's value type. Integers stay integers; other numbers become doubles.
@@ -15,7 +13,18 @@ pub(crate) fn to_loro(value: Value) -> LoroValue {
         },
         Value::String(text) => LoroValue::from(text),
         Value::Array(items) => LoroValue::from(items.into_iter().map(to_loro).collect::<Vec<_>>()),
-        Value::Object(fields) => LoroValue::from(fields.into_iter().map(|(key, value)| (key, to_loro(value))).collect::<HashMap<_, _>>()),
+        Value::Object(fields) => {
+            // Inserted in key order: the engine writes a map in its table's order, which a
+            // per-process hash seed would make differ between two encodings of one value.
+            let mut sorted: Vec<(String, Value)> = fields.into_iter().collect();
+            sorted.sort_by(|a, b| a.0.cmp(&b.0));
+            let mut map = LoroMapValue::default();
+            let entries = map.make_mut();
+            for (key, value) in sorted {
+                entries.insert(key, to_loro(value));
+            }
+            LoroValue::Map(map)
+        }
     }
 }
 

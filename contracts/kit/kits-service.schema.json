@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/kit/kits-service.schema.json",
+  "title": "Kition Kits Service API v1",
+  "description": "Parameters and answers of `kition-kits serve`, the API a host in any language uses: JSON-RPC 2.0, one message per line, on the process's standard input and output, files named by workspace paths. See kition-sdk's docs/sdk/hosts.md.",
+  "$defs": {
+    "workspacePath": { "type": "string", "minLength": 1, "description": "Relative to the workspace folder, `/`-separated." },
+    "kitId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$" },
+    "documentId": { "type": "string", "minLength": 1 },
+    "document": {
+      "type": "object",
+      "required": ["kitId", "documentId", "path", "title", "format", "readOnly", "dirty", "canUndo", "canRedo", "conflict", "version", "summary", "details"],
+      "properties": {
+        "kitId": { "$ref": "#/$defs/kitId" },
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "path": { "anyOf": [{ "$ref": "#/$defs/workspacePath" }, { "type": "null" }] },
+        "title": { "type": "string" },
+        "format": { "type": "string" },
+        "readOnly": { "type": "boolean" },
+        "dirty": { "type": "boolean" },
+        "canUndo": { "type": "boolean" },
+        "canRedo": { "type": "boolean" },
+        "conflict": { "type": "boolean", "description": "The file changed under unsaved edits: the next save fails file_conflict; reload or save elsewhere." },
+        "version": { "type": "integer", "minimum": 0, "description": "Counts the kit's changes, so a view knows when to refresh." },
+        "summary": { "type": "string" },
+        "details": { "type": "object", "description": "The kit's structured state (`view.describe`)." }
+      }
+    },
+    "kit": {
+      "type": "object",
+      "required": ["id", "name", "extensions", "creates", "installed"],
+      "properties": {
+        "id": { "$ref": "#/$defs/kitId" },
+        "name": { "type": "string" },
+        "extensions": { "type": "array", "items": { "type": "string" } },
+        "creates": { "type": "array", "items": { "type": "string" } },
+        "installed": { "type": "boolean" }
+      }
+    },
+    "documentRef": {
+      "type": "object",
+      "required": ["kit", "documentId"],
+      "properties": {
+        "kit": { "$ref": "#/$defs/kitId" },
+        "documentId": { "$ref": "#/$defs/documentId" }
+      }
+    },
+
+    "initializeParams": {
+      "type": "object",
+      "required": ["client"],
+      "properties": {
+        "client": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": { "name": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "initializeResult": {
+      "type": "object",
+      "required": ["serviceVersion", "protocolVersion", "workspace", "kits"],
+      "properties": {
+        "serviceVersion": { "const": 1 },
+        "protocolVersion": { "type": "integer", "description": "The Kit Host Protocol the kits speak." },
+        "workspace": { "type": "boolean" },
+        "kits": { "type": "array", "items": { "$ref": "#/$defs/kit" } }
+      }
+    },
+    "kitsListResult": {
+      "type": "object",
+      "required": ["kits"],
+      "properties": { "kits": { "type": "array", "items": { "$ref": "#/$defs/kit" } } }
+    },
+    "pathParams": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "$ref": "#/$defs/workspacePath" },
+        "options": { "type": "object", "description": "documents.create only: the kit's options for a new document (`width`, `height`, …)." }
+      }
+    },
+    "saveAsParams": {
+      "allOf": [{ "$ref": "#/$defs/documentRef" }],
+      "required": ["path"],
+      "properties": { "path": { "$ref": "#/$defs/workspacePath" }, "format": { "type": "string", "minLength": 1 } }
+    },
+    "closeParams": {
+      "allOf": [{ "$ref": "#/$defs/documentRef" }],
+      "properties": { "discardChanges": { "type": "boolean" } }
+    },
+    "previewParams": {
+      "allOf": [{ "$ref": "#/$defs/documentRef" }],
+      "properties": { "maxSize": { "type": "integer", "minimum": 16, "maximum": 4096 } }
+    },
+    "previewResult": {
+      "type": "object",
+      "required": ["mimeType", "data"],
+      "properties": { "mimeType": { "const": "image/png" }, "data": { "type": "string", "contentEncoding": "base64" } }
+    },
+    "commandsListParams": {
+      "type": "object",
+      "required": ["kit"],
+      "properties": { "kit": { "$ref": "#/$defs/kitId" }, "documentId": { "$ref": "#/$defs/documentId" }, "query": { "type": "string" } }
+    },
+    "commandsListResult": {
+      "type": "object",
+      "required": ["commands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "group", "params", "mutates", "enabled"],
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": ["string", "null"] },
+              "group": { "type": "string" },
+              "params": { "type": "object", "description": "JSON Schema of the command's parameters." },
+              "output": { "type": ["object", "null"] },
+              "mutates": { "type": "boolean" },
+              "enabled": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "executeParams": {
+      "allOf": [{ "$ref": "#/$defs/documentRef" }],
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "params": { "type": "object" },
+        "origin": { "enum": ["user", "agent", "system"], "default": "user", "description": "Who makes the change: the person, an agent acting for them, or the host acting on the person's behalf. A system change is no undo step: neither the person's nor an agent's undo takes it back." },
+        "originLabel": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$", "description": "With origin system: the host feature that writes (emailsync), for the document's history." }
+      }
+    },
+    "executeResult": {
+      "type": "object",
+      "required": ["changed", "document"],
+      "properties": { "changed": { "type": "boolean" }, "result": {}, "document": { "$ref": "#/$defs/document" } }
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message", "data"],
+      "properties": {
+        "code": { "type": "integer" },
+        "message": { "type": "string" },
+        "data": {
+          "type": "object",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "enum": [
+                "file_conflict",
+                "file_not_allowed",
+                "file_not_granted",
+                "file_already_committed",
+                "file_unsaved_edits",
+                "file_quota",
+                "io_error",
+                "invalid_path",
+                "unknown_kit",
+                "no_workspace",
+                "kit_unavailable",
+                "kit_error",
+                "document_not_found",
+                "document_dirty",
+                "unsupported_format",
+                "command_not_found",
+                "command_disabled",
+                "invalid_params",
+                "role_forbidden",
+                "request_cancelled"
+              ]
+            },
+            "detail": { "type": "string" },
+            "model": { "type": "object", "description": "An object-model failure: `{ code, index, message }`." }
+          }
+        }
+      }
+    }
+  },
+  "methods": {
+    "kits.initialize": { "params": "#/$defs/initializeParams", "result": "#/$defs/initializeResult" },
+    "kits.list": { "result": "#/$defs/kitsListResult" },
+    "kits.ping": {},
+    "documents.open": { "params": "#/$defs/pathParams", "result": "#/$defs/document" },
+    "documents.create": { "params": "#/$defs/pathParams", "result": "#/$defs/document" },
+    "documents.get": { "params": "#/$defs/documentRef", "result": "#/$defs/document" },
+    "documents.save": { "params": "#/$defs/documentRef", "result": "#/$defs/document" },
+    "documents.saveAs": { "params": "#/$defs/saveAsParams", "result": "#/$defs/document" },
+    "documents.reload": { "params": "#/$defs/documentRef", "result": "#/$defs/document" },
+    "documents.changedOnDisk": { "params": "#/$defs/pathParams" },
+    "documents.close": { "params": "#/$defs/closeParams" },
+    "documents.preview": { "params": "#/$defs/previewParams", "result": "#/$defs/previewResult" },
+    "documents.check": { "params": "#/$defs/documentRef" },
+    "commands.list": { "params": "#/$defs/commandsListParams", "result": "#/$defs/commandsListResult" },
+    "commands.execute": { "params": "#/$defs/executeParams", "result": "#/$defs/executeResult" },
+    "model.describe": { "params": "#/$defs/documentRef" },
+    "model.batch": { "params": "#/$defs/documentRef" },
+    "tools.list": {},
+    "tools.call": {}
+  }
+}

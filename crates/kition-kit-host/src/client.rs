@@ -1,6 +1,7 @@
 // Copied from kition-sdk crates/kition-kit-host/src/client.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! A Kit Protocol client connection: request and response correlation,
-//! timeouts with `$/cancelRequest`, and a notification stream.
+//! A Kit Host Protocol client connection: request and response correlation,
+//! timeouts with `$/cancelRequest`, a notification stream, and, on the host
+//! connection, the answers to the kit's own requests (`files.*`, section 5.1).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -17,8 +18,14 @@ use serde_json::Value;
 use tokio::io::BufReader;
 use tokio::sync::{mpsc, oneshot, watch};
 
+use crate::kit_files::HostService;
+use crate::process::LaunchError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
+    /// The kit could not be started ([`crate::HeadlessKit::launch`]).
+    #[error(transparent)]
+    Launch(#[from] LaunchError),
     #[error("kit error: {0}")]
     Rpc(RpcError),
     #[error("`{0}` timed out")]
@@ -39,6 +46,22 @@ impl ClientError {
             _ => None,
         }
     }
+
+    /// The Kit Host Protocol reason (`error.data.reason`) of a JSON-RPC error, as sent.
+    pub fn reason(&self) -> Option<&str> {
+        self.data()?.get("reason")?.as_str()
+    }
+
+    /// The JSON-RPC error's `data`.
+    pub fn data(&self) -> Option<&Value> {
+        self.rpc()?.data.as_ref()
+    }
+
+    /// Whether the kit itself is gone or unresponsive rather than refusing this one request: the
+    /// host should stop using the process.
+    pub fn is_fatal(&self) -> bool {
+        matches!(self, Self::Launch(_) | Self::Timeout(_) | Self::Closed | Self::Io(_))
+    }
 }
 
 type Pending = Mutex<HashMap<RequestId, oneshot::Sender<Result<Value, RpcError>>>>;
@@ -57,12 +80,19 @@ pub struct KitClient {
 }
 
 impl KitClient {
-    /// Wraps a connected transport and starts reading from it.
+    /// Wraps a connected transport and starts reading from it. The kit's own requests are
+    /// answered `-32601`: an agent connection serves none.
     pub fn new(reader: BoxReader, writer: BoxWriter) -> Self {
+        Self::serving(reader, writer, None)
+    }
+
+    /// [`KitClient::new`] for the host connection: `service` answers the kit's requests, each on
+    /// a blocking thread, while the connection goes on reading.
+    pub fn serving(reader: BoxReader, writer: BoxWriter, service: Option<Arc<dyn HostService>>) -> Self {
         let shared = Arc::new(Shared { writer: tokio::sync::Mutex::new(writer), pending: Mutex::new(HashMap::new()), next_id: AtomicI64::new(1) });
         let (notify_tx, notify_rx) = mpsc::unbounded_channel();
         let (closed_tx, closed_rx) = watch::channel(false);
-        tokio::spawn(read_loop(reader, Arc::clone(&shared), notify_tx, closed_tx));
+        tokio::spawn(read_loop(reader, Arc::clone(&shared), notify_tx, closed_tx, service));
         Self { shared, notifications: tokio::sync::Mutex::new(notify_rx), closed: closed_rx }
     }
 
@@ -119,7 +149,7 @@ impl KitClient {
     }
 
     async fn send(&self, message: &Value) -> Result<(), ClientError> {
-        self.send_raw(&framing::encode(message)?).await
+        send_on(&self.shared, message).await
     }
 
     /// `kit.initialize` followed by the `kit.initialized` notification.
@@ -150,7 +180,37 @@ impl KitClient {
     }
 }
 
-async fn read_loop(reader: BoxReader, shared: Arc<Shared>, notifications: mpsc::UnboundedSender<Notification>, closed: watch::Sender<bool>) {
+async fn send_on(shared: &Shared, message: &Value) -> Result<(), ClientError> {
+    let frame = framing::encode(message)?;
+    let mut writer = shared.writer.lock().await;
+    write_frame_async(&mut *writer, &frame)
+        .await
+        .map_err(|error| if kition_kit_protocol::transport::is_disconnect(&error) { ClientError::Closed } else { ClientError::Io(error) })
+}
+
+/// Answers one request from the kit with `service`, off the reading task.
+fn answer(shared: &Arc<Shared>, service: Option<&Arc<dyn HostService>>, request: Request) {
+    let shared = Arc::clone(shared);
+    let service = service.cloned();
+    tokio::spawn(async move {
+        let Request { id, method, params } = request;
+        let outcome = match service {
+            None => Err(RpcError::method_not_found(&method)),
+            Some(service) => tokio::task::spawn_blocking(move || service.serve(&method, params.unwrap_or_else(|| Value::Object(Default::default()))))
+                .await
+                .unwrap_or_else(|_| Err(RpcError::internal("the host failed while answering the kit"))),
+        };
+        let _ = send_on(&shared, &kition_kit_protocol::Response { id: Some(id), outcome }.to_value()).await;
+    });
+}
+
+async fn read_loop(
+    reader: BoxReader,
+    shared: Arc<Shared>,
+    notifications: mpsc::UnboundedSender<Notification>,
+    closed: watch::Sender<bool>,
+    service: Option<Arc<dyn HostService>>,
+) {
     let mut reader = BufReader::new(reader);
     let mut line = Vec::new();
     loop {
@@ -174,8 +234,7 @@ async fn read_loop(reader: BoxReader, shared: Arc<Shared>, notifications: mpsc::
             Ok(Message::Notification(notification)) => {
                 let _ = notifications.send(notification);
             }
-            // Kits do not send requests to clients in protocol version 1.
-            Ok(Message::Request(_)) => {}
+            Ok(Message::Request(request)) => answer(&shared, service.as_ref(), request),
             Err(_) => {
                 tracing::warn!(target: "kition_kit", "dropped a malformed message from a kit")
             }

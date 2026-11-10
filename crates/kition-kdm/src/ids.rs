@@ -6,13 +6,57 @@ use uuid::Uuid;
 
 use crate::{KdmError, Result};
 
+/// Ids in a reproducible build: `SOURCE_DATE_EPOCH` set (a showcase sample, a golden case), new
+/// document ids, actors and object ids are counted from the epoch instead of drawn at random, so
+/// the same steps save the same bytes. Never on the web: the page has no environment.
+mod reproducible {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn epoch() -> Option<u64> {
+        static EPOCH: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+        *EPOCH.get_or_init(|| std::env::var("SOURCE_DATE_EPOCH").ok().and_then(|value| value.trim().parse::<u64>().ok()))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn epoch() -> Option<u64> {
+        None
+    }
+
+    /// SplitMix64: one well-mixed value from a seed.
+    pub(super) fn mix(seed: u64) -> u64 {
+        let mut z = seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+
+    /// The next counted value, in a reproducible build.
+    pub(super) fn next() -> Option<u64> {
+        let epoch = epoch()?;
+        Some(mix(epoch ^ mix(NEXT.fetch_add(1, Ordering::Relaxed))))
+    }
+
+    /// A version 7 shaped UUID of the next counted values, in a reproducible build.
+    pub(super) fn uuid() -> Option<uuid::Uuid> {
+        let high = next()?;
+        let low = mix(high);
+        let high = (high & 0xFFFF_FFFF_FFFF_0FFF) | 0x0000_0000_0000_7000;
+        let low = (low & 0x3FFF_FFFF_FFFF_FFFF) | 0x8000_0000_0000_0000;
+        Some(uuid::Uuid::from_u64_pair(high, low))
+    }
+}
+
 /// A document's durable identity. Renaming or moving its file never changes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DocId(Uuid);
 
 impl DocId {
+    /// A new id: UUID v7, or counted in a reproducible build ([`reproducible`]).
     pub fn new() -> Self {
-        Self(Uuid::now_v7())
+        Self(reproducible::uuid().unwrap_or_else(Uuid::now_v7))
     }
 
     pub fn parse(text: &str) -> Result<Self> {
@@ -46,8 +90,9 @@ pub struct ActorId(u64);
 
 impl ActorId {
     /// A fresh random actor. The top bit is cleared because the engine reserves `u64::MAX`.
+    /// A random actor, or a counted one in a reproducible build ([`reproducible`]).
     pub fn random() -> Self {
-        Self(Uuid::new_v4().as_u64_pair().0 >> 1)
+        Self(reproducible::next().unwrap_or_else(|| Uuid::new_v4().as_u64_pair().0) >> 1)
     }
 
     pub fn from_u64(value: u64) -> Result<Self> {
@@ -67,9 +112,10 @@ impl ActorId {
 pub struct ObjectId(String);
 
 impl ObjectId {
-    /// A new id. UUID v7: unique without coordination and roughly creation-ordered.
+    /// A new id. UUID v7: unique without coordination and roughly creation-ordered; counted in a
+    /// reproducible build ([`reproducible`]).
     pub fn new() -> Self {
-        Self(Uuid::now_v7().to_string())
+        Self(reproducible::uuid().unwrap_or_else(Uuid::now_v7).to_string())
     }
 
     pub fn from_string(id: impl Into<String>) -> Self {

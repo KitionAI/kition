@@ -1,7 +1,7 @@
 # Copied from kition-sdk crates/kition-kit-protocol/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
 [package]
 name = "kition-kit-protocol"
-description = "Kit Host Protocol v1 message types, error codes, launch constants, and line framing shared by hosts and kits."
+description = "Kit Host Protocol v2 message types, error codes, launch constants, and line framing shared by hosts and kits."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

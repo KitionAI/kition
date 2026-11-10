@@ -1,19 +1,21 @@
 // Copied from kition-sdk crates/kition-kits/src/manager.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Running kits for the open workspace.
 //!
-//! A kit starts on first use, headless, with the workspace folder as its only root; it serves
-//! previews and the agent (kit editors run in the page, `KitFrame`). Each kit process gets two
-//! connections: the `host`
-//! connection serves people, and an `agent` connection serves agent tools, so the kit itself
-//! enforces the agent's role and URI limits. Kits stop when the manager is dropped, which happens
-//! when the runtime restarts for another workspace.
+//! A kit starts on first use, headless; it serves previews and the agent (kit editors run in the
+//! page, `KitFrame`). Each kit process gets two connections: the `host` connection serves people
+//! and answers the kit's `files.*` from the workspace (Kit Host Protocol 2, section 5.1, through a
+//! grant session of its own, `kition_kit_host::KitFiles`), and an `agent` connection serves agent
+//! tools, so the kit itself enforces the agent's role. The kit never sees a path: the manager
+//! mints a handle for every file it names to the kit. Kits stop when the manager is dropped, which
+//! happens when the runtime restarts for another workspace.
 
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use kition_kit_host::{ClientError, KitClient, KitProcess, LaunchOptions};
+use kition_kit_host::files::{FilesManifest, GrantStore};
+use kition_kit_host::{ClientError, HOST_PRINCIPAL, HostService, KitClient, KitFiles, KitProcess, LaunchOptions, file_error};
 use kition_kit_protocol::methods::{self, NotificationMethod, RequestMethod};
 use kition_kit_protocol::types::*;
 use kition_kit_protocol::{ErrorReason, PROTOCOL_VERSION};
@@ -57,8 +59,10 @@ pub enum KitError {
     Stopped { name: &'static str },
     #[error("{0}")]
     Unavailable(String),
+    /// The kit's refusal: its reason, its message, and for `invalid_params` the wrong
+    /// parameters (`data.errors`, `{ path, message, expected? }` each).
     #[error("{message}")]
-    Kit { reason: Option<ErrorReason>, message: String },
+    Kit { reason: Option<ErrorReason>, message: String, errors: Vec<Value> },
     /// An object-model failure (`model.batch`, `model.describe`): the kit's `data.model`, whose
     /// `code` is a `BatchErrorCode` (`invalid-op`, `not-found`, `invalid-value`, `read-only`,
     /// `command-failed`) and `index` the operation that failed.
@@ -75,10 +79,11 @@ impl KitError {
                     Some(detail) if !detail.is_empty() => format!("{}: {detail}", error.message),
                     _ => error.message.clone(),
                 };
-                Self::Kit { reason: error.reason(), message }
+                let errors = error.data.as_ref().and_then(|data| data.get("errors")).and_then(Value::as_array).cloned().unwrap_or_default();
+                Self::Kit { reason: error.reason(), message, errors }
             }
             ClientError::Closed | ClientError::Io(_) => Self::Stopped { name: kit.name },
-            other => Self::Kit { reason: None, message: other.to_string() },
+            other => Self::Kit { reason: None, message: other.to_string(), errors: Vec::new() },
         }
     }
 }
@@ -108,6 +113,9 @@ pub struct DocumentView {
     pub dirty: bool,
     pub can_undo: bool,
     pub can_redo: bool,
+    /// The file changed under unsaved edits: the next save fails `file_conflict`; reload or save
+    /// elsewhere (KHP section 5).
+    pub conflict: bool,
     /// Increments whenever the kit reports a change, so views know when to refresh.
     pub version: u64,
     pub summary: String,
@@ -150,11 +158,12 @@ pub struct ExecuteView {
 
 type Versions = Arc<Mutex<HashMap<String, u64>>>;
 
-/// One kit process and its two connections.
+/// One kit process, its two connections, and the files its host connection serves it.
 pub(crate) struct RunningKit {
     pub(crate) process: tokio::sync::Mutex<KitProcess>,
     pub(crate) host: Arc<KitClient>,
     pub(crate) agent: Arc<KitClient>,
+    files: Arc<KitFiles>,
     versions: Versions,
 }
 
@@ -168,6 +177,11 @@ impl RunningKit {
 
     fn version(&self, document_id: &str) -> u64 {
         self.versions.lock().unwrap_or_else(PoisonError::into_inner).get(document_id).copied().unwrap_or(0)
+    }
+
+    /// The workspace path of the open document `document_id`, from the handle it was opened with.
+    fn path_of(&self, document_id: &str) -> Option<String> {
+        self.files.path_of(&self.files.handle_of(document_id)?)
     }
 
     pub(crate) async fn stop(&self) {
@@ -195,8 +209,9 @@ pub(crate) struct Inner {
     headless_drafts: AtomicBool,
     /// The headless kits' draft documents, by workspace path.
     pub(crate) draft_documents: tokio::sync::Mutex<HashMap<String, String>>,
-    /// The file grants kits hold (`grants.rs`, KitFiles 1.0).
-    grants: crate::grants::GrantStore,
+    /// The file grants kits hold (`kition_kit_host::files`, KitFiles 1.1): the editor pages'
+    /// sessions and each headless kit's.
+    grants: Arc<GrantStore>,
     /// Every headless save of a workspace file, for whoever follows file edits (the host table
     /// client's triggers).
     saves: tokio::sync::broadcast::Sender<SavedFile>,
@@ -229,7 +244,7 @@ impl KitManager {
         let workspace = workspace.map(|dir| std::fs::canonicalize(&dir).unwrap_or(dir));
         Self {
             inner: Arc::new(Inner {
-                grants: crate::grants::GrantStore::new(workspace.clone()),
+                grants: Arc::new(GrantStore::new(workspace.clone())),
                 workspace,
                 kits,
                 running: tokio::sync::Mutex::new(HashMap::new()),
@@ -260,8 +275,8 @@ impl KitManager {
         self.inner.workspace.as_deref()
     }
 
-    /// The file grants kits hold in this workspace (KitFiles 1.0).
-    pub fn grants(&self) -> &crate::grants::GrantStore {
+    /// The file grants kits hold in this workspace (KitFiles 1.1).
+    pub fn grants(&self) -> &GrantStore {
         &self.inner.grants
     }
 
@@ -273,8 +288,8 @@ impl KitManager {
         session: &str,
         principal: &str,
         handle: &str,
-        chunk: crate::grants::WriteChunk<'_>,
-    ) -> Result<Option<String>, crate::grants::FileError> {
+        chunk: kition_kit_host::files::WriteChunk<'_>,
+    ) -> Result<Option<String>, kition_kit_host::files::FileError> {
         let grants = self.grants();
         let unsaved = match grants.replaces(session, principal, handle) {
             Some(path) if chunk.last => self.inner.bridge.find(&path).await.is_some_and(|document| document.dirty),
@@ -358,7 +373,7 @@ impl KitManager {
     }
 
     async fn launch(&self, kit: &'static KitDefinition) -> Result<RunningKit, KitError> {
-        let workspace = self.workspace()?;
+        self.workspace()?;
         let binary = self
             .inner
             .kits
@@ -368,8 +383,17 @@ impl KitManager {
             .filter(|path| path.is_file())
             .ok_or(KitError::NotInstalled { name: kit.name })?;
         let launch_error = |detail: String| KitError::Launch { name: kit.name, detail };
+        // A kit built on another protocol version would exit at once; say why instead.
+        let speaks = format!("kition-kit/{PROTOCOL_VERSION}");
+        if let Some(protocol) = kit.protocol.filter(|protocol| *protocol != speaks) {
+            return Err(launch_error(format!(
+                "its kit.json says it speaks {protocol}, and this host speaks {speaks}: install a release built on Kit Host Protocol {PROTOCOL_VERSION}"
+            )));
+        }
+        let manifest = FilesManifest { create: kit.exports.iter().map(|extension| (*extension).to_owned()).collect(), ..FilesManifest::default() };
+        let files =
+            Arc::new(KitFiles::open(Arc::clone(&self.inner.grants), kit.id, HOST_PRINCIPAL, manifest).map_err(|error| launch_error(error.to_string()))?);
         let process = KitProcess::launch(LaunchOptions::new(binary)).await.map_err(|error| launch_error(error.to_string()))?;
-        let root = url::Url::from_directory_path(workspace).map(String::from).map_err(|()| launch_error("the workspace path is not absolute".into()))?;
         let params = |role: Role| InitializeParams {
             protocol_version: PROTOCOL_VERSION,
             token: process.token().to_owned(),
@@ -377,13 +401,15 @@ impl KitManager {
             client: ClientInfo { name: "Kition".into(), version: env!("CARGO_PKG_VERSION").into() },
             locale: (role == Role::Host).then(|| "en-US".to_owned()),
             appearance: (role == Role::Host).then_some(Appearance::Light),
-            workspace_roots: if role == Role::Host { vec![root.clone()] } else { Vec::new() },
+            host_services: if role == Role::Host { files.services() } else { Vec::new() },
         };
         let connect = |role: Role| {
             let params = params(role);
             let process = &process;
+            // The host connection answers the kit's files.*; an agent connection serves nothing.
+            let service = (role == Role::Host).then(|| Arc::clone(&files) as Arc<dyn HostService>);
             async move {
-                let client = process.connect().await.map_err(|error| format!("cannot connect: {error}"))?;
+                let client = process.connect_serving(service).await.map_err(|error| format!("cannot connect: {error}"))?;
                 let result = client.initialize(&params).await.map_err(|error| format!("kit.initialize failed: {error}"))?;
                 if result.kit.id != kit.id {
                     return Err(format!("the executable is `{}`, not `{}`", result.kit.id, kit.id));
@@ -399,7 +425,7 @@ impl KitManager {
         let drained = Arc::clone(&agent);
         tokio::spawn(async move { while drained.next_notification().await.is_some() {} });
         tracing::info!(kit = kit.id, pid = ?process.id(), "kit started");
-        Ok(RunningKit { process: tokio::sync::Mutex::new(process), host, agent, versions })
+        Ok(RunningKit { process: tokio::sync::Mutex::new(process), host, agent, files, versions })
     }
 
     async fn call<M: RequestMethod>(&self, kit: &'static KitDefinition, caller: Caller, params: &M::Params) -> Result<(Arc<RunningKit>, M::Result), KitError> {
@@ -416,12 +442,36 @@ impl KitManager {
         }
     }
 
-    fn file_uri(&self, path: &str, own: bool) -> Result<String, KitError> {
+    /// A handle on the workspace file `path` for the kit (`read` and `write`, or `read`, `create`
+    /// and `write` on a new file), as the workspace path the kit's grant session reaches.
+    fn handle(&self, running: &RunningKit, path: &str, own: bool, existing: bool) -> Result<String, KitError> {
         let absolute = self.resolve_in(path, own)?;
-        if !absolute.is_file() {
+        if existing && !absolute.is_file() {
             return Err(KitError::InvalidPath(format!("`{path}` does not exist")));
         }
-        url::Url::from_file_path(&absolute).map(String::from).map_err(|()| KitError::InvalidPath(format!("`{path}` is not a local file")))
+        let relative = self.relative(&absolute).ok_or_else(|| KitError::NotAllowed(format!("`{path}` is outside the workspace")))?;
+        running.files.document(&relative, false, own).map(|stat| stat.handle).map_err(|error| {
+            let error = file_error(&error);
+            KitError::Kit {
+                reason: error.reason(),
+                message: error.data.as_ref().and_then(|data| data["detail"].as_str()).unwrap_or(&error.message).to_owned(),
+                errors: Vec::new(),
+            }
+        })
+    }
+
+    /// `document.open` of the file of `handle`, remembered as that document's file.
+    async fn open_handle(
+        &self,
+        kit: &'static KitDefinition,
+        caller: Caller,
+        handle: String,
+        create: Option<CreateDocument>,
+    ) -> Result<(Arc<RunningKit>, DocumentState), KitError> {
+        let params = DocumentOpenParams { file: handle.clone(), read_only: None, create };
+        let (running, state) = self.call::<methods::DocumentOpen>(kit, caller, &params).await?;
+        running.files.opened(&state.document_id, &handle);
+        Ok((running, state))
     }
 
     /// Opens a workspace file in the kit that handles its extension.
@@ -436,8 +486,9 @@ impl KitManager {
 
     async fn open_in(&self, caller: Caller, path: &str, own: bool) -> Result<DocumentView, KitError> {
         let kit = self.kit_for_path(path).ok_or_else(|| KitError::InvalidPath(format!("no kit opens `{path}`")))?;
-        let params = DocumentOpenParams { uri: self.file_uri(path, own)?, read_only: None, create: None };
-        let (running, state) = self.call::<methods::DocumentOpen>(kit, caller, &params).await?;
+        let running = self.running(kit).await?;
+        let handle = self.handle(&running, path, own, true)?;
+        let (running, state) = self.open_handle(kit, caller, handle, None).await?;
         self.view(kit, &running, caller, state).await
     }
 
@@ -477,9 +528,10 @@ impl KitManager {
         target_path: &Path,
         options: Map<String, Value>,
     ) -> Result<DocumentView, KitError> {
-        let uri = url::Url::from_file_path(target_path).map(String::from).map_err(|()| KitError::InvalidPath("the folder is not a local path".into()))?;
-        let params = DocumentOpenParams { uri, read_only: None, create: Some(CreateDocument { format: format.to_owned(), options: Some(options) }) };
-        let (_, state) = self.call::<methods::DocumentOpen>(kit, caller, &params).await?;
+        let path = self.relative(target_path).ok_or_else(|| KitError::InvalidPath("the folder is not in the workspace".into()))?;
+        let running = self.running(kit).await?;
+        let handle = self.handle(&running, &path, false, false)?;
+        let (_, state) = self.open_handle(kit, caller, handle, Some(CreateDocument { format: format.to_owned(), options: Some(options) })).await?;
         let saved = DocumentRef { document_id: state.document_id.clone() };
         let (running, _) = self.call::<methods::DocumentSave>(kit, caller, &saved).await?;
         let (_, state) = self.state(kit, caller, &saved.document_id).await?;
@@ -524,11 +576,11 @@ impl KitManager {
 
     async fn state(&self, kit: &'static KitDefinition, caller: Caller, document_id: &str) -> Result<(Arc<RunningKit>, DocumentState), KitError> {
         let (running, list) = self.call::<methods::DocumentList>(kit, caller, &Empty {}).await?;
-        let state = list
-            .documents
-            .into_iter()
-            .find(|document| document.document_id == document_id)
-            .ok_or(KitError::Kit { reason: Some(ErrorReason::DocumentNotFound), message: "the document is not open".into() })?;
+        let state = list.documents.into_iter().find(|document| document.document_id == document_id).ok_or(KitError::Kit {
+            reason: Some(ErrorReason::DocumentNotFound),
+            message: "the document is not open".into(),
+            errors: Vec::new(),
+        })?;
         Ok((running, state))
     }
 
@@ -541,7 +593,7 @@ impl KitManager {
         Ok(DocumentView {
             kit_id: kit.id,
             version: running.version(&state.document_id),
-            path: state.uri.as_deref().and_then(|uri| self.relative(uri)),
+            path: running.path_of(&state.document_id),
             document_id: state.document_id.clone(),
             title: state.title,
             format: state.format,
@@ -549,6 +601,7 @@ impl KitManager {
             dirty: state.dirty,
             can_undo: state.can_undo,
             can_redo: state.can_redo,
+            conflict: state.conflict,
             summary: described.summary,
             details: described.state,
         })
@@ -561,9 +614,11 @@ impl KitManager {
         let inner = document_id;
         let params = ViewScreenshotParams { document_id: inner.to_owned(), scope: ScreenshotScope::Canvas, max_size: Some(max_size.clamp(16, 4096)) };
         let (_, image) = self.call::<methods::ViewScreenshot>(kit, Caller::User, &params).await?;
-        base64::engine::general_purpose::STANDARD
-            .decode(image.data)
-            .map_err(|error| KitError::Kit { reason: None, message: format!("the kit sent an unreadable image: {error}") })
+        base64::engine::general_purpose::STANDARD.decode(image.data).map_err(|error| KitError::Kit {
+            reason: None,
+            message: format!("the kit sent an unreadable image: {error}"),
+            errors: Vec::new(),
+        })
     }
 
     /// Commands, optionally limited to those whose id, title, or description contains `query`.
@@ -676,17 +731,31 @@ impl KitManager {
     }
 
     pub async fn execute(&self, caller: Caller, kit_id: &str, document_id: &str, command: &str, params: Map<String, Value>) -> Result<ExecuteView, KitError> {
+        let origin = match caller {
+            Caller::User => Origin::User,
+            Caller::Agent => Origin::Agent,
+        };
+        self.execute_as(caller, origin, None, kit_id, document_id, command, params).await
+    }
+
+    /// [`KitManager::execute`] with the origin the kit records: `system` is the host changing the
+    /// document on the person's behalf (KHP section 6), only on the host connection, by the host
+    /// feature `label` (`emailsync`); no undo takes it back.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn execute_as(
+        &self,
+        caller: Caller,
+        origin: Origin,
+        label: Option<&str>,
+        kit_id: &str,
+        document_id: &str,
+        command: &str,
+        params: Map<String, Value>,
+    ) -> Result<ExecuteView, KitError> {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
-        let request = CommandsExecuteParams {
-            document_id: inner.to_owned(),
-            command: command.to_owned(),
-            params,
-            origin: match caller {
-                Caller::User => Origin::User,
-                Caller::Agent => Origin::Agent,
-            },
-        };
+        let request =
+            CommandsExecuteParams { document_id: inner.to_owned(), command: command.to_owned(), params, origin, origin_label: label.map(str::to_owned) };
         let (_, executed) = self.call::<methods::CommandsExecute>(kit, caller, &request).await?;
         let document = self.document(caller, kit_id, document_id).await?;
         Ok(ExecuteView { changed: executed.changed, result: executed.result, document })
@@ -747,10 +816,11 @@ impl KitManager {
                 continue;
             };
             for document in list.documents {
-                let here = document.uri.as_deref().and_then(|uri| self.relative(uri));
-                if here.as_deref() == Some(path) {
-                    let params = DocumentCloseParams { document_id: document.document_id, discard_changes: Some(true) };
-                    let _ = kit.host.call::<methods::DocumentClose>(&params).await;
+                if kit.path_of(&document.document_id).as_deref() == Some(path) {
+                    let params = DocumentCloseParams { document_id: document.document_id.clone(), discard_changes: Some(true) };
+                    if kit.host.call::<methods::DocumentClose>(&params).await.is_ok() {
+                        kit.files.closed(&document.document_id);
+                    }
                 }
             }
         }
@@ -764,7 +834,7 @@ impl KitManager {
             let Ok(list) = kit.agent.call::<methods::DocumentList>(&Empty {}).await else {
                 continue;
             };
-            files.extend(list.documents.iter().filter_map(|document| document.uri.as_deref()).filter_map(|uri| self.relative(uri)).map(|path| (kit_id, path)));
+            files.extend(list.documents.iter().filter_map(|document| kit.path_of(&document.document_id)).map(|path| (kit_id, path)));
         }
         files
     }
@@ -781,6 +851,44 @@ impl KitManager {
         Ok(view)
     }
 
+    /// Saves the document to the workspace file `path` (a new file, or one it replaces), which it
+    /// then lives in; `format` is the file's by default.
+    pub async fn save_as(&self, caller: Caller, kit_id: &str, document_id: &str, path: &str, format: Option<&str>) -> Result<DocumentView, KitError> {
+        let kit = self.definition(kit_id)?;
+        let running = self.running(kit).await?;
+        let handle = self.handle(&running, path, false, false)?;
+        let params = DocumentSaveAsParams { document_id: document_id.to_owned(), file: handle.clone(), format: format.map(str::to_owned) };
+        let (running, _) = self.call::<methods::DocumentSaveAs>(kit, caller, &params).await?;
+        running.files.opened(document_id, &handle);
+        let view = self.document(caller, kit_id, document_id).await?;
+        if let Some(path) = view.path.clone() {
+            let _ = self.inner.saves.send(SavedFile { kit_id: view.kit_id, path, document_id: document_id.to_owned() });
+        }
+        Ok(view)
+    }
+
+    /// The document's file read again, its unsaved edits dropped: how a conflict is resolved in
+    /// favour of the file (KHP section 5).
+    pub async fn reload(&self, kit_id: &str, document_id: &str) -> Result<DocumentView, KitError> {
+        let kit = self.definition(kit_id)?;
+        let (running, state) = self.call::<methods::DocumentReload>(kit, Caller::User, &DocumentRef { document_id: document_id.to_owned() }).await?;
+        self.view(kit, &running, Caller::User, state).await
+    }
+
+    /// Tells the kits that hold the workspace file `path` open that it changed on disk: a clean
+    /// document is read again, one with unsaved edits is marked in conflict.
+    pub async fn changed_on_disk(&self, path: &str) {
+        let running: Vec<Arc<RunningKit>> = self.inner.running.lock().await.values().cloned().collect();
+        for kit in running {
+            let Ok(list) = kit.host.call::<methods::DocumentList>(&Empty {}).await else {
+                continue;
+            };
+            for document in list.documents.iter().filter(|document| kit.path_of(&document.document_id).as_deref() == Some(path)) {
+                let _ = kit.host.notify::<methods::DocumentDidChangeOnDisk>(&DocumentRef { document_id: document.document_id.clone() }).await;
+            }
+        }
+    }
+
     /// Hears every headless save of a workspace file from now on.
     pub fn subscribe_saves(&self) -> tokio::sync::broadcast::Receiver<SavedFile> {
         self.inner.saves.subscribe()
@@ -790,7 +898,8 @@ impl KitManager {
         let kit = self.definition(kit_id)?;
         let inner = document_id;
         let params = DocumentCloseParams { document_id: inner.to_owned(), discard_changes: Some(discard_changes) };
-        self.call::<methods::DocumentClose>(kit, Caller::User, &params).await?;
+        let (running, _) = self.call::<methods::DocumentClose>(kit, Caller::User, &params).await?;
+        running.files.closed(inner);
         Ok(())
     }
 
@@ -837,7 +946,11 @@ impl KitManager {
         let written = std::fs::write(&temporary, bytes).and_then(|()| std::fs::rename(&temporary, &target));
         if let Err(error) = written {
             let _ = std::fs::remove_file(&temporary);
-            return Err(KitError::Kit { reason: Some(ErrorReason::IoError), message: format!("could not save `{path}`: {}", error.kind()) });
+            return Err(KitError::Kit {
+                reason: Some(ErrorReason::IoError),
+                message: format!("could not save `{path}`: {}", error.kind()),
+                errors: Vec::new(),
+            });
         }
         Ok(())
     }
@@ -859,8 +972,11 @@ impl KitManager {
         if made.components().any(|part| part.as_os_str().to_string_lossy().starts_with('.')) {
             return Err(invalid());
         }
-        std::fs::create_dir_all(real.join(made))
-            .map_err(|error| KitError::Kit { reason: Some(ErrorReason::IoError), message: format!("could not make the folder of `{path}`: {}", error.kind()) })
+        std::fs::create_dir_all(real.join(made)).map_err(|error| KitError::Kit {
+            reason: Some(ErrorReason::IoError),
+            message: format!("could not make the folder of `{path}`: {}", error.kind()),
+            errors: Vec::new(),
+        })
     }
 
     /// Asks every running kit to exit.
@@ -927,11 +1043,11 @@ impl KitManager {
         }
     }
 
-    fn relative(&self, uri: &str) -> Option<String> {
+    /// An absolute path inside the workspace as a workspace path, `/`-separated.
+    fn relative(&self, path: &Path) -> Option<String> {
         let workspace = self.inner.workspace.as_deref()?;
-        let path = url::Url::parse(uri).ok()?.to_file_path().ok()?;
-        let path = std::fs::canonicalize(&path).unwrap_or(path);
-        let relative = path.strip_prefix(workspace).ok()?;
+        let real = std::fs::canonicalize(path).ok().or_else(|| Some(std::fs::canonicalize(path.parent()?).ok()?.join(path.file_name()?)))?;
+        let relative = real.strip_prefix(workspace).ok()?;
         let parts: Option<Vec<&str>> = relative
             .components()
             .map(|component| match component {

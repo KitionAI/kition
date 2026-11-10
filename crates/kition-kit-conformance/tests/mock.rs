@@ -101,9 +101,12 @@ async fn a_missing_command_fails_commands() {
         "{}",
         report.render()
     );
-    assert!(matches!(
-        report.outcome("round-trip"),
-        Some(Outcome::Skipped(_))
-    ));
+    for id in ["round-trip", "files"] {
+        assert!(
+            matches!(report.outcome(id), Some(Outcome::Skipped(_))),
+            "{id}: {}",
+            report.render()
+        );
+    }
     assert_eq!(report.outcome("shutdown"), Some(&Outcome::Passed));
 }

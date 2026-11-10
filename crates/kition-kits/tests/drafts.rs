@@ -1,4 +1,5 @@
 // Copied from kition-sdk crates/kition-kits/tests/drafts.rs by scripts/sync-kit-host.mjs; change it there, not here.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Headless drafts through `kition-kits-mcp`, as an integrator runs them (KHP A12 to
 //! A15): with `--drafts`, the agent's edits go to a draft in the workspace's `.kition/drafts/`
 //! and leave the file alone; the agent checks the draft and asks for review; the person lists,

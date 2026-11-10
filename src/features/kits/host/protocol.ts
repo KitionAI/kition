@@ -212,6 +212,31 @@ export type AiStep = { command: string; params?: Record<string, unknown> }
 export type AiRunResult = { completed: Array<{ command: string; changed: boolean; result: unknown }>; saved: boolean }
 
 /**
+ * `ai/run`'s params. Without `origin` the steps are the agent's (section 2). (2.7) With `origin:
+ * "system"` they are the host's own change on the person's behalf (a host feature such as mail
+ * sync writing into the open document): no undo step in any history, recorded under the KDM
+ * `system` origin with `originLabel` (`ORIGIN_LABEL`; `host` when absent), as Kit Host Protocol's
+ * `commands.execute` runs them. Only the host sends it, never for a model's call, and never with
+ * `draft`.
+ */
+export type AiRunParams = { steps: AiStep[]; save: boolean; draft?: boolean; origin?: 'system'; originLabel?: string }
+
+/** A host feature's name for a change it makes (`originLabel`, minor version 2.7): 1 to 64 letters, digits, `.`, `_`, `-`. */
+export const ORIGIN_LABEL = /^[A-Za-z0-9._-]{1,64}$/
+/** The label of a host's change that names no feature. */
+export const HOST_ORIGIN_LABEL = 'host'
+
+/**
+ * `error.data.reason` of an `ai/run` step whose parameters the kit's engine refused (minor
+ * version 2.7): `data` is `{ reason, command, step, errors }`, `errors` one `{ path, message,
+ * expected? }` for each wrong parameter, as Kit Host Protocol's `invalid_params` lists them.
+ */
+export const INVALID_PARAMS_REASON = 'invalid-params'
+
+/** Who made a change `document/changed` reports: the person, the agent, or (2.7) the host, with its `originLabel`. */
+export type DocumentChangeBy = { by: 'person' | 'agent' } | { by: 'system'; originLabel: string }
+
+/**
  * The object model's requests (capability `model`, section 7a; `KitObjectModel 1.0`). `schema` is
  * the kit's KDM schema as the host knows it (`model/schema.json`): a kit whose engine does not
  * describe its own schema runs the batch with it. A refused batch answers an error whose `data`
@@ -714,7 +739,7 @@ export type HostToKit = {
   /** `draft: true` (capability `draft`) inspects, runs on, and previews the agent's draft instead of the live document; `ai/run` opens one if there is none. */
   'ai/inspect': [{ draft?: boolean }, Record<string, unknown>]
   'ai/commands': [{ query: string }, Array<Record<string, unknown>>]
-  'ai/run': [{ steps: AiStep[]; save: boolean; draft?: boolean }, AiRunResult]
+  'ai/run': [AiRunParams, AiRunResult]
   'ai/preview': [{ maxSize: number; draft?: boolean }, { png: string }]
   /** The draft (capability `draft`, section 7d). */
   'draft/state': [Record<string, never>, DraftInfo]
@@ -818,7 +843,7 @@ export type KitToHost = {
 
 /** Notifications the kit sends. */
 export type KitNotifications = {
-  'document/changed': DocumentState & { by: 'person' | 'agent' }
+  'document/changed': DocumentState & DocumentChangeBy
   'host/notify': { level: 'info' | 'success' | 'warning' | 'error'; title: string; description?: string }
   'host/shortcut': { key: string; code: string; meta: boolean; ctrl: boolean; shift: boolean; alt: boolean }
   'replica/changed': { version: ArrayBuffer }

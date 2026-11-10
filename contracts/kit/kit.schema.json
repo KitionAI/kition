@@ -533,7 +533,7 @@
           "type": "string"
         },
         "protocol": {
-          "const": "kition-kit/1"
+          "const": "kition-kit/2"
         },
         "features": {
           "type": "array",
@@ -542,6 +542,14 @@
           "items": {
             "type": "string",
             "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)+$"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Optional platform capabilities the executable serves, as kit.initialize lists them in capabilities.capabilities (platform docs/platform/kits/manifest.md, K22): document-text, the document's words through document.text (KitText 1.0).",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["document-text"]
           }
         }
       }

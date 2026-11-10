@@ -160,6 +160,7 @@ const schemaPlace = (text) =>
     .replaceAll('/../../schemas/', '/../../contracts/kit/')
     .replaceAll('`schemas/kit-protocol.schema.json`', '`contracts/kit/kit-protocol.schema.json`')
     .replaceAll('schemas/mcp-tools.schema.json', 'contracts/kit/mcp-tools.schema.json')
+    .replaceAll('schemas/kits-service.schema.json', 'contracts/kit/kits-service.schema.json')
 const walk = (dir, prefix = '') =>
   fs
     .readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -169,13 +170,18 @@ const walk = (dir, prefix = '') =>
       if (entry.isDirectory()) return entry.name === 'target' ? [] : walk(dir, relative)
       return entry.name === '.DS_Store' ? [] : [relative]
     })
+// kition-kits' tests/hosts.rs runs kition-sdk's host examples (examples/hosts: Python, Node, Go),
+// which this repository does not carry; it is kition-sdk's test of its examples, not of the host.
+const rustKitSkipped = new Set(['crates/kition-kits/tests/hosts.rs'])
 const rustKitDirs = []
 for (const crate of rustKitCrates) {
-  const relatives = walk(path.join(sdk, crate))
+  const relatives = walk(path.join(sdk, crate)).filter((relative) => !rustKitSkipped.has(`${crate}/${relative}`))
   for (const relative of relatives) {
     if (relative === 'Cargo.toml') continue
     const source = `${crate}/${relative}`
-    if (relative.endsWith('.rs')) files.push({ source, out: source, rewrite: (text) => header(source) + schemaPlace(text) })
+    // Kition denies unwrap and expect in its own code; the SDK's integration tests use them.
+    const allow = relative.startsWith('tests/') ? '#![allow(clippy::unwrap_used, clippy::expect_used)]\n' : ''
+    if (relative.endsWith('.rs')) files.push({ source, out: source, rewrite: (text) => header(source) + allow + schemaPlace(text) })
     else files.push({ source, out: source, binary: true })
   }
   for (const dir of new Set(relatives.map((relative) => path.posix.dirname(relative)).filter((dir) => dir !== '.'))) {
@@ -206,8 +212,9 @@ ${rest}`
     },
   })
 }
-// The Kit Host Protocol's schema and the kit tools' schemas (kition-sdk `schemas/`).
-for (const name of ['kit-protocol.schema.json', 'mcp-tools.schema.json']) {
+// The Kit Host Protocol's schema, the kit tools' schemas, and the Kits Service API's schema
+// (`kition-kits serve`) (kition-sdk `schemas/`).
+for (const name of ['kit-protocol.schema.json', 'mcp-tools.schema.json', 'kits-service.schema.json']) {
   files.push({ source: `schemas/${name}`, out: `contracts/kit/${name}`, rewrite: (text) => text })
 }
 // A KDM copy whose source file is gone is stale too. Only files this script wrote (they start

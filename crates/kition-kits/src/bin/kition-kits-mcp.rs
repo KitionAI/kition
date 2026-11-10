@@ -14,7 +14,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use kition_kits::definitions::{self, KitSources};
+use kition_kits::definitions;
 use kition_kits::{KitManager, drafts, tools};
 use serde_json::{Value, json};
 
@@ -29,11 +29,15 @@ usage:
 
 kits (a kit is its KHP manifest, `kit.json`, and its headless executable):
   --kit <path>           a kit's headless executable; its kit.json is the nearest one above it
-                         that names it (`headless.executable`), as in a kit repository; repeatable
+                         that names it (`headless.executable`), as in a kit repository, or the
+                         SDK bundle's kits/<kit>/kit.json beside its bin/; repeatable
   --kits-dir <folder>    a folder with one folder per kit holding its kit.json, and its executable
-                         beside it if installed
+                         beside it if installed (an SDK bundle's `kits/`)
   KITION_KIT_<KIT>_BINARY  executables named by the environment, as --kit (development builds)
-  PATH                   the executable a found kit's kit.json names, on the PATH
+  bin/<platform>/        for kits without one, the executable their kit.json names in the bundle's
+                         bin/<platform>/ beside --kits-dir, beside kition-kits-mcp, then on the PATH
+
+  In an SDK bundle:      bin/<platform>/kition-kits-mcp --workspace <folder> --kits-dir kits
 
 server options:
   --unified              one set of tools for every kit (`kit_<action>`), routed by the file's
@@ -49,27 +53,9 @@ drafts commands (print JSON; an error is `{ \"error\": { code, message } }` and 
   discard <path>             drop the draft; the file stays as it is
 ";
 
-/// The kits the options and the environment declare (`definitions.rs`): `--kit` and the
-/// environment's executables with the manifests they were built from, `--kits-dir`'s kit folders,
-/// then the PATH for kits found without an executable.
+/// The kits the options and the environment declare (`definitions::found`).
 fn found_kits(options: &Options) -> Vec<definitions::Found> {
-    let mut executables = options.kits.clone();
-    executables.extend(KitSources::executables_from_env());
-    if let Some(dir) = &options.kits_dir {
-        // An installed kit's executable sits in its folder beside its kit.json.
-        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
-            let manifest = std::fs::read_to_string(entry.path().join("kit.json")).ok().and_then(|text| serde_json::from_str::<Value>(&text).ok());
-            if let Some(name) = manifest.as_ref().and_then(|manifest| manifest.pointer("/headless/executable")).and_then(Value::as_str) {
-                let executable = entry.path().join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
-                if executable.is_file() {
-                    executables.push(executable);
-                }
-            }
-        }
-    }
-    let mut found = definitions::discover(&KitSources { manifests: Vec::new(), kits_dir: options.kits_dir.clone(), executables });
-    definitions::on_path(&mut found);
-    found
+    definitions::found(&options.kits, options.kits_dir.as_deref())
 }
 
 /// `--list-kits`: each kit found, its version, and whether its executable is there.
@@ -82,6 +68,7 @@ fn list_kits(found: &[definitions::Found]) -> Value {
             "extensions": kit.extensions,
             "executable": executable.as_ref().map(|path| path.display().to_string()),
             "installed": executable.as_deref().is_some_and(Path::is_file),
+            "reason": definitions::missing(&(*kit, executable.clone())),
         })).collect::<Vec<_>>()
     })
 }
@@ -191,6 +178,12 @@ fn main() -> ExitCode {
     }
     tools::set_unified(options.unified);
     let found = found_kits(&options);
+    if !options.list_kits {
+        // A kit without its executable has no tools: say so, rather than serve none silently.
+        for reason in found.iter().filter_map(definitions::missing) {
+            eprintln!("kition-kits-mcp: {reason}");
+        }
+    }
     if options.list_kits {
         print(&list_kits(&found));
         return ExitCode::SUCCESS;

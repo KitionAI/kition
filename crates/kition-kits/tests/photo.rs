@@ -1,4 +1,5 @@
 // Copied from kition-sdk crates/kition-kits/tests/photo.rs by scripts/sync-kit-host.mjs; change it there, not here.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 //! The runtime against a real `kition-photo` build. Runs only when both are set:
 //!
 //! ```sh

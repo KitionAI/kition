@@ -209,7 +209,7 @@ impl From<KitError> for KitToolError {
                     Some(ErrorReason::CommandDisabled) => ErrorCode::COMMAND_FAILED,
                     Some(ErrorReason::DocumentNotFound) => ErrorCode::NotOpen,
                     Some(ErrorReason::InvalidParams) => ErrorCode::InvalidParams,
-                    Some(ErrorReason::UriNotGranted | ErrorReason::RoleForbidden) => ErrorCode::NotAllowed,
+                    Some(ErrorReason::FileNotGranted | ErrorReason::FileNotAllowed | ErrorReason::RoleForbidden) => ErrorCode::NotAllowed,
                     Some(ErrorReason::UnsupportedFormat) => ErrorCode::Unsupported,
                     Some(ErrorReason::RequestCancelled) => ErrorCode::Unavailable,
                     Some(_) | None => ErrorCode::Failed,
@@ -265,7 +265,7 @@ mod tests {
         let busy = KitToolError::from(KitError::Stopped { name: "Vector" });
         assert_eq!(busy.code, ErrorCode::Unavailable);
         assert_eq!(busy.to_json()["retryable"], true);
-        let unknown = KitToolError::from(KitError::Kit { reason: Some(ErrorReason::CommandNotFound), message: "no command `x`".into() });
+        let unknown = KitToolError::from(KitError::Kit { reason: Some(ErrorReason::CommandNotFound), message: "no command `x`".into(), errors: Vec::new() });
         assert_eq!(unknown.to_json()["code"], "unknown-command");
         let model = KitToolError::from(KitError::Model { code: "read-only".into(), index: None, message: "the document is read-only".into() });
         assert_eq!(model.code, ErrorCode::READ_ONLY);

@@ -18,12 +18,14 @@ impl Endpoint {
         Self::create_in(&std::env::temp_dir())
     }
 
-    /// Creates a new endpoint under `base`. Unix socket paths are limited to
-    /// about 100 bytes, so `base` should be short.
+    /// Creates a new endpoint under `base`, made (mode `0700`) when missing.
+    /// Unix socket paths are limited to about 100 bytes, so `base` should be
+    /// short.
     #[cfg(unix)]
     pub fn create_in(base: &std::path::Path) -> io::Result<Self> {
         use std::os::unix::fs::DirBuilderExt;
 
+        std::fs::DirBuilder::new().recursive(true).mode(0o700).create(base)?;
         let suffix = hex::encode(rand::random::<[u8; 8]>());
         let dir = base.join(format!("kition-kit-{suffix}"));
         std::fs::DirBuilder::new().mode(0o700).create(&dir)?;
@@ -64,5 +66,17 @@ mod tests {
         assert!(endpoint.address().ends_with("kit.sock"));
         drop(endpoint);
         assert!(!dir.exists());
+    }
+
+    #[test]
+    fn a_missing_base_is_made_private() {
+        let base = std::env::temp_dir().join(format!("kith-{}", std::process::id())).join("sockets");
+        let _ = std::fs::remove_dir_all(base.parent().unwrap_or(&base));
+        let endpoint = Endpoint::create_in(&base).unwrap_or_else(|err| panic!("{err}"));
+        let mode = std::fs::metadata(&base).unwrap_or_else(|err| panic!("{err}")).permissions().mode();
+        assert_eq!(mode & 0o777, 0o700);
+        assert!(endpoint.address().starts_with(&*base.to_string_lossy()));
+        drop(endpoint);
+        let _ = std::fs::remove_dir_all(base.parent().unwrap_or(&base));
     }
 }

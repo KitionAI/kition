@@ -1,17 +1,23 @@
-//! The Kit Protocol conformance suite (protocol section 14).
+//! The Kit Host Protocol conformance suite (protocol section 14).
 //!
 //! The suite launches a kit executable in `headless` mode and checks it as a
-//! black box over the real transport. Every kit release must pass it.
-//! Embedding behavior is accepted manually in the desktop client instead.
+//! black box over the real transport, as its host: it serves the kit the files
+//! of a temporary workspace (`files.*`, section 5.1) and names them to the kit
+//! only by handles. Every kit release must pass it. Embedding behavior is
+//! accepted manually in the desktop client instead.
 
 pub mod schema;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use base64::Engine as _;
-use kition_kit_host::{ClientError, KitClient, KitProcess, LaunchOptions};
+use kition_kit_host::files::{FilesManifest, GrantStore};
+use kition_kit_host::{
+    ClientError, HOST_PRINCIPAL, HostService, KitClient, KitFiles, KitProcess, LaunchOptions,
+};
 use kition_kit_protocol::launch::{SHUTDOWN_TIMEOUT, Surface};
 use kition_kit_protocol::methods::{self, RequestMethod};
 use kition_kit_protocol::types::*;
@@ -177,8 +183,12 @@ pub const CHECKS: &[(&str, &str)] = &[
     ("commands", "lists commands with valid parameter schemas"),
     ("round-trip", "opens, edits, saves, and reopens the fixture"),
     (
+        "files",
+        "reads and saves only through granted handles, and a stale save is file_conflict",
+    ),
+    (
         "agent-limits",
-        "limits the agent role to granted methods and URIs",
+        "limits the agent role to granted methods and handles",
     ),
     ("screenshot", "renders view.screenshot in headless mode"),
     ("shutdown", "exits within 5 seconds of kit.shutdown"),
@@ -201,7 +211,8 @@ struct Context<'a> {
     manifest: Option<ManifestFacts>,
     process: KitProcess,
     workspace: PathBuf,
-    outside: PathBuf,
+    /// The files the host connection serves the kit: a grant session over `workspace`.
+    files: Arc<KitFiles>,
 }
 
 pub async fn run(options: &Options) -> Report {
@@ -233,13 +244,40 @@ pub async fn run(options: &Options) -> Report {
         },
     };
 
-    let (Ok(workspace), Ok(outside)) = (tempfile::tempdir(), tempfile::tempdir()) else {
+    let Ok(workspace) = tempfile::tempdir() else {
         report.record(
             "launch",
             title("launch"),
-            Err("cannot create temporary directories".into()),
+            Err("cannot create a temporary workspace".into()),
         );
         return report;
+    };
+    let root = canonical(workspace.path());
+    let kit_id = manifest.as_ref().map_or_else(
+        || {
+            options
+                .executable
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        },
+        |manifest| manifest.id.clone(),
+    );
+    let files = match KitFiles::open(
+        Arc::new(GrantStore::new(Some(root.clone()))),
+        &kit_id,
+        HOST_PRINCIPAL,
+        FilesManifest::default(),
+    ) {
+        Ok(files) => Arc::new(files),
+        Err(error) => {
+            report.record(
+                "launch",
+                title("launch"),
+                Err(format!("cannot open the host's file grants: {error}")),
+            );
+            return report;
+        }
     };
     let mut launch = LaunchOptions::new(&options.executable);
     launch.env.clone_from(&options.env);
@@ -259,8 +297,8 @@ pub async fn run(options: &Options) -> Report {
         schemas,
         manifest,
         process,
-        workspace: canonical(workspace.path()),
-        outside: canonical(outside.path()),
+        workspace: root,
+        files,
     };
 
     report.record(
@@ -309,8 +347,14 @@ pub async fn run(options: &Options) -> Report {
                     title("round-trip"),
                     context.round_trip(&host, &commands, &initialized).await,
                 );
+                // It edits the fixture with the same command.
+                report.record("files", title("files"), context.files_check(&host).await);
             }
-            _ => report.skip("round-trip", title("round-trip"), "commands.list failed"),
+            _ => {
+                for id in ["round-trip", "files"] {
+                    report.skip(id, title(id), "commands.list failed");
+                }
+            }
         }
         report.record(
             "agent-limits",
@@ -327,6 +371,7 @@ pub async fn run(options: &Options) -> Report {
         for id in [
             "commands",
             "round-trip",
+            "files",
             "agent-limits",
             "screenshot",
             "shutdown",
@@ -348,7 +393,8 @@ pub async fn run(options: &Options) -> Report {
         Ok(())
     };
     report.record("quiet-stdout", title("quiet-stdout"), quiet);
-    drop((workspace, outside));
+    drop(context);
+    drop(workspace);
     report
 }
 
@@ -443,8 +489,10 @@ fn platform_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
     (levels, notes)
 }
 
-/// The protocol a KHP manifest's `headless` section must name.
-const HEADLESS_PROTOCOL: &str = "kition-kit/1";
+/// The protocol a KHP manifest's `headless` section must name: the version this suite speaks.
+fn headless_protocol() -> String {
+    format!("kition-kit/{PROTOCOL_VERSION}")
+}
 
 fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, String> {
     let text = std::fs::read_to_string(path)
@@ -459,9 +507,10 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, Strin
     }
     schemas.kit(&value)?;
     let protocol = value["headless"]["protocol"].as_str();
-    if protocol != Some(HEADLESS_PROTOCOL) {
+    let expected = headless_protocol();
+    if protocol != Some(expected.as_str()) {
         return Err(format!(
-            "kit.json `headless.protocol` is {}, expected {HEADLESS_PROTOCOL}",
+            "kit.json `headless.protocol` is {}, expected {expected}",
             protocol.unwrap_or("missing")
         ));
     }
@@ -486,17 +535,8 @@ fn canonical(path: &Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-fn file_uri(path: &Path) -> Result<String, String> {
-    url::Url::from_file_path(path)
-        .map(String::from)
-        .map_err(|()| format!("cannot express {} as a file URI", path.display()))
-}
-
-fn dir_uri(path: &Path) -> Result<String, String> {
-    url::Url::from_directory_path(path)
-        .map(String::from)
-        .map_err(|()| format!("cannot express {} as a file URI", path.display()))
-}
+/// A handle no host minted: well formed, granted to nobody.
+const UNGRANTED_HANDLE: &str = "fh_00000000000000000000000000000000";
 
 fn client_info() -> ClientInfo {
     ClientInfo {
@@ -534,24 +574,34 @@ impl Context<'_> {
         role: Role,
         token: &str,
         protocol_version: u32,
-    ) -> Result<InitializeParams, String> {
-        Ok(InitializeParams {
+    ) -> InitializeParams {
+        InitializeParams {
             protocol_version,
             token: token.to_owned(),
             role,
             client: client_info(),
             locale: (role == Role::Host).then(|| "en-US".to_owned()),
             appearance: (role == Role::Host).then_some(Appearance::Light),
-            workspace_roots: match role {
-                Role::Host => vec![dir_uri(&self.workspace)?],
+            host_services: match role {
+                Role::Host => self.files.services(),
                 Role::Agent => Vec::new(),
             },
-        })
+        }
     }
 
+    /// A connection that serves the kit nothing: an agent's, or one the kit must refuse.
     async fn connect(&self) -> Result<KitClient, String> {
         self.process
             .connect()
+            .await
+            .map_err(|error| format!("cannot connect: {error}"))
+    }
+
+    /// The host connection, which answers the kit's `files.*` from the workspace.
+    async fn connect_host(&self) -> Result<KitClient, String> {
+        let service = Arc::clone(&self.files) as Arc<dyn HostService>;
+        self.process
+            .connect_serving(Some(service))
             .await
             .map_err(|error| format!("cannot connect: {error}"))
     }
@@ -569,7 +619,7 @@ impl Context<'_> {
     async fn protocol_version(&self) -> Result<(), String> {
         let client = self.connect().await?;
         let params =
-            self.initialize_params(Role::Host, self.process.token(), PROTOCOL_VERSION + 98)?;
+            self.initialize_params(Role::Host, self.process.token(), PROTOCOL_VERSION + 98);
         expect_reason(
             client
                 .call_with_timeout::<methods::Initialize>(&params, Some(NEGATIVE_TIMEOUT))
@@ -585,7 +635,7 @@ impl Context<'_> {
         } else {
             "0".repeat(64)
         };
-        let params = self.initialize_params(Role::Host, &wrong, PROTOCOL_VERSION)?;
+        let params = self.initialize_params(Role::Host, &wrong, PROTOCOL_VERSION);
         expect_reason(
             client
                 .call_with_timeout::<methods::Initialize>(&params, Some(NEGATIVE_TIMEOUT))
@@ -601,7 +651,7 @@ impl Context<'_> {
 
     async fn agent_before_host(&self) -> Result<(), String> {
         let client = self.connect().await?;
-        let params = self.initialize_params(Role::Agent, self.process.token(), PROTOCOL_VERSION)?;
+        let params = self.initialize_params(Role::Agent, self.process.token(), PROTOCOL_VERSION);
         match client
             .call_with_timeout::<methods::Initialize>(&params, Some(NEGATIVE_TIMEOUT))
             .await
@@ -613,8 +663,8 @@ impl Context<'_> {
     }
 
     async fn initialize_host(&self) -> Result<(KitClient, InitializeResult), String> {
-        let host = self.connect().await?;
-        let params = self.initialize_params(Role::Host, self.process.token(), PROTOCOL_VERSION)?;
+        let host = self.connect_host().await?;
+        let params = self.initialize_params(Role::Host, self.process.token(), PROTOCOL_VERSION);
         let raw = host
             .request(
                 methods::Initialize::NAME,
@@ -690,19 +740,46 @@ impl Context<'_> {
         Ok(result.commands)
     }
 
-    fn write_fixture(&self, dir: &Path) -> Result<String, String> {
-        let path = dir.join(&self.options.fixture.file_name);
-        std::fs::write(&path, &self.options.fixture.contents).map_err(|error| error.to_string())?;
-        file_uri(&path)
+    /// Writes the fixture into the workspace and mints the host's handle on it (`read` and
+    /// `write`): the kit never sees its path.
+    fn write_fixture(&self) -> Result<String, String> {
+        let name = &self.options.fixture.file_name;
+        std::fs::write(self.workspace.join(name), &self.options.fixture.contents)
+            .map_err(|error| error.to_string())?;
+        self.files
+            .document(name, false, false)
+            .map(|stat| stat.handle)
+            .map_err(|error| format!("cannot grant the fixture: {error}"))
     }
 
-    async fn open(&self, client: &KitClient, uri: &str) -> Result<DocumentState, String> {
+    /// `document.open` of the file of `handle`, remembered as that document's file.
+    async fn open(&self, client: &KitClient, handle: &str) -> Result<DocumentState, String> {
         let raw = client
-            .request(methods::DocumentOpen::NAME, json!({ "uri": uri }), None)
+            .request(methods::DocumentOpen::NAME, json!({ "file": handle }), None)
             .await
             .map_err(|error| format!("document.open: {error}"))?;
         self.schemas.protocol_def("documentState", &raw)?;
-        serde_json::from_value(raw).map_err(|error| error.to_string())
+        let state: DocumentState =
+            serde_json::from_value(raw).map_err(|error| error.to_string())?;
+        self.files.opened(&state.document_id, handle);
+        Ok(state)
+    }
+
+    async fn close(
+        &self,
+        client: &KitClient,
+        document_id: &str,
+        discard_changes: Option<bool>,
+    ) -> Result<(), String> {
+        client
+            .call::<methods::DocumentClose>(&DocumentCloseParams {
+                document_id: document_id.to_owned(),
+                discard_changes,
+            })
+            .await
+            .map_err(|error| format!("document.close: {error}"))?;
+        self.files.closed(document_id);
+        Ok(())
     }
 
     async fn describe(
@@ -733,7 +810,7 @@ impl Context<'_> {
         initialized: &InitializeResult,
     ) -> Result<(), String> {
         let fixture = &self.options.fixture;
-        let uri = self.write_fixture(&self.workspace)?;
+        let handle = self.write_fixture()?;
         let path = self.workspace.join(&fixture.file_name);
         let describes = initialized
             .capabilities
@@ -741,13 +818,19 @@ impl Context<'_> {
             .iter()
             .any(|feature| feature == "view.describe");
 
-        let opened = self.open(host, &uri).await?;
+        let opened = self.open(host, &handle).await?;
         if opened.dirty {
             return Err("a freshly opened document is dirty".into());
         }
-        let again = self.open(host, &uri).await?;
+        if opened.name != fixture.file_name {
+            return Err(format!(
+                "document.open named the document `{}`, not the file's name `{}`",
+                opened.name, fixture.file_name
+            ));
+        }
+        let again = self.open(host, &handle).await?;
         if again.document_id != opened.document_id {
-            return Err("opening the same URI twice returned a different documentId".into());
+            return Err("opening the same handle twice returned a different documentId".into());
         }
         let mutates = commands
             .iter()
@@ -759,6 +842,7 @@ impl Context<'_> {
                 command: fixture.edit_command.clone(),
                 params: fixture.edit_params.clone(),
                 origin: Origin::Agent,
+                origin_label: None,
             })
             .await
             .map_err(|error| format!("commands.execute: {error}"))?;
@@ -790,21 +874,31 @@ impl Context<'_> {
             })
             .await
             .map_err(|error| format!("document.save: {error}"))?;
-        if !saved.uri.starts_with("file://") {
-            return Err(format!("document.save returned `{}`", saved.uri));
+        if saved.name != fixture.file_name {
+            return Err(format!(
+                "document.save named `{}`, not the file's name `{}`",
+                saved.name, fixture.file_name
+            ));
         }
         let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
         if executed.changed && bytes == fixture.contents {
             return Err("the saved file is identical to the fixture".into());
         }
-        host.call::<methods::DocumentClose>(&DocumentCloseParams {
-            document_id: opened.document_id.clone(),
-            discard_changes: None,
-        })
-        .await
-        .map_err(|error| format!("document.close after save: {error}"))?;
+        let stat = self
+            .files
+            .serve("files.stat", json!({ "handle": handle }))
+            .map_err(|error| format!("files.stat: {}", error.message))?;
+        if stat["version"] != json!(saved.version) {
+            return Err(format!(
+                "document.save answered version {}, but the file's is {}",
+                saved.version, stat["version"]
+            ));
+        }
+        self.close(host, &opened.document_id, None)
+            .await
+            .map_err(|error| format!("{error} after save"))?;
 
-        let reopened = self.open(host, &uri).await?;
+        let reopened = self.open(host, &handle).await?;
         if reopened.dirty {
             return Err("the reopened document is dirty".into());
         }
@@ -824,18 +918,70 @@ impl Context<'_> {
             .await,
             ErrorReason::DocumentNotFound,
         )?;
-        host.call::<methods::DocumentClose>(&DocumentCloseParams {
-            document_id: reopened.document_id,
-            discard_changes: Some(true),
+        self.close(host, &reopened.document_id, Some(true)).await
+    }
+
+    /// Section 14 check 5 from the kit's side: it opens no file through a handle the host did not
+    /// grant (`file_not_granted`), and it saves with the version it read, so a file that changed
+    /// meanwhile fails `file_conflict` and leaves the document in conflict.
+    async fn files_check(&self, host: &KitClient) -> Result<(), String> {
+        expect_reason(
+            host.request(
+                methods::DocumentOpen::NAME,
+                json!({ "file": UNGRANTED_HANDLE }),
+                None,
+            )
+            .await,
+            ErrorReason::FileNotGranted,
+        )
+        .map_err(|error| format!("document.open of an ungranted handle: {error}"))?;
+
+        let fixture = &self.options.fixture;
+        let handle = self.write_fixture()?;
+        let opened = self.open(host, &handle).await?;
+        host.call::<methods::CommandsExecute>(&CommandsExecuteParams {
+            document_id: opened.document_id.clone(),
+            command: fixture.edit_command.clone(),
+            params: fixture.edit_params.clone(),
+            origin: Origin::Agent,
+            origin_label: None,
         })
         .await
-        .map_err(|error| format!("document.close: {error}"))?;
-        Ok(())
+        .map_err(|error| format!("commands.execute: {error}"))?;
+        // Another program changes the file after the kit read it, while it has unsaved edits.
+        let mut changed = fixture.contents.clone();
+        changed.extend_from_slice(&fixture.contents);
+        changed.push(b'\n');
+        let path = self.workspace.join(&fixture.file_name);
+        std::fs::write(&path, &changed).map_err(|error| error.to_string())?;
+        expect_reason(
+            host.call::<methods::DocumentSave>(&DocumentRef {
+                document_id: opened.document_id.clone(),
+            })
+            .await,
+            ErrorReason::FileConflict,
+        )
+        .map_err(|error| format!("document.save over a file changed since it was read: {error}"))?;
+        if std::fs::read(&path).map_err(|error| error.to_string())? != changed {
+            return Err("a save refused file_conflict still replaced the file".into());
+        }
+        let listed = host
+            .call::<methods::DocumentList>(&Empty {})
+            .await
+            .map_err(|error| format!("document.list: {error}"))?;
+        if !listed
+            .documents
+            .iter()
+            .any(|document| document.document_id == opened.document_id && document.conflict)
+        {
+            return Err("a save refused file_conflict did not put the document in conflict".into());
+        }
+        self.close(host, &opened.document_id, Some(true)).await
     }
 
     async fn agent_limits(&self) -> Result<(), String> {
         let agent = self.connect().await?;
-        let params = self.initialize_params(Role::Agent, self.process.token(), PROTOCOL_VERSION)?;
+        let params = self.initialize_params(Role::Agent, self.process.token(), PROTOCOL_VERSION);
         agent
             .initialize(&params)
             .await
@@ -856,30 +1002,27 @@ impl Context<'_> {
         )
         .map_err(|error| format!("kit.shutdown: {error}"))?;
 
-        let outside = self.write_fixture(&self.outside)?;
         expect_reason(
             agent
-                .request(methods::DocumentOpen::NAME, json!({ "uri": outside }), None)
+                .request(
+                    methods::DocumentOpen::NAME,
+                    json!({ "file": UNGRANTED_HANDLE }),
+                    None,
+                )
                 .await,
-            ErrorReason::UriNotGranted,
+            ErrorReason::FileNotGranted,
         )
-        .map_err(|error| format!("document.open outside the workspace: {error}"))?;
+        .map_err(|error| format!("document.open of an ungranted handle: {error}"))?;
 
-        let inside = self.write_fixture(&self.workspace)?;
-        let opened = self.open(&agent, &inside).await?;
-        agent
-            .call::<methods::DocumentClose>(&DocumentCloseParams {
-                document_id: opened.document_id,
-                discard_changes: Some(true),
-            })
-            .await
-            .map_err(|error| format!("document.close: {error}"))?;
-        Ok(())
+        // A handle the host minted for the agent's run opens through the host's files.
+        let handle = self.write_fixture()?;
+        let opened = self.open(&agent, &handle).await?;
+        self.close(&agent, &opened.document_id, Some(true)).await
     }
 
     async fn screenshot(&self, host: &KitClient) -> Result<(), String> {
-        let uri = self.write_fixture(&self.workspace)?;
-        let opened = self.open(host, &uri).await?;
+        let handle = self.write_fixture()?;
+        let opened = self.open(host, &handle).await?;
         let raw = host
             .request(
                 methods::ViewScreenshot::NAME,
@@ -905,13 +1048,7 @@ impl Context<'_> {
                 "the PNG is {width}x{height}, larger than maxSize {SCREENSHOT_MAX_SIZE}"
             ));
         }
-        host.call::<methods::DocumentClose>(&DocumentCloseParams {
-            document_id: opened.document_id,
-            discard_changes: Some(true),
-        })
-        .await
-        .map_err(|error| format!("document.close: {error}"))?;
-        Ok(())
+        self.close(host, &opened.document_id, Some(true)).await
     }
 
     async fn shutdown(&mut self, host: &KitClient) -> Result<(), String> {

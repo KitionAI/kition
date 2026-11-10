@@ -1003,6 +1003,7 @@
         "dirty",
         "canUndo",
         "canRedo",
+        "conflict",
         "version",
         "summary",
         "details"
@@ -1043,6 +1044,10 @@
         },
         "canRedo": {
           "type": "boolean"
+        },
+        "conflict": {
+          "type": "boolean",
+          "description": "The file changed on disk under unsaved edits: the next save fails with data.reason file_conflict until the document is reloaded or saved to another file (Kit Host Protocol section 5)."
         },
         "version": {
           "type": "integer",

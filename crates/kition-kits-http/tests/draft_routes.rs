@@ -28,6 +28,7 @@ static MOCK: KitDefinition = KitDefinition {
     base_name: "Untitled Mock kit",
     exports: &[],
     executable: None,
+    protocol: Some("kition-kit/2"),
     version: "0.0.0",
     manifest: "{}",
     agent: KitAgent {
