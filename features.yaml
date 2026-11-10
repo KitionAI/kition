@@ -404,6 +404,16 @@ features:
     cases:
       - kition.kits.file-writes/path-escapes
     since: "2026-11-06"
+  - id: kition.kits.host-protocol
+    title: Kition hosts kits on Kit Host Protocol 2, naming files to them only by handles
+    direction: [security, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-kit-conformance/**
+    cases:
+      - kition.kits.host-protocol/handles-only
+    since: "2026-11-10"
   - id: kition.workflow.onboarding-actions
     title: The onboarding workflows run on a chosen row, skip an incomplete row, and never write placeholders
     direction: [function, data-safety]

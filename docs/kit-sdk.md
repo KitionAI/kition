@@ -699,7 +699,7 @@ Kit repository:
    and Sheet's `bindings/wasm/src/check.rs` are the examples).
 3. Add the headless executable `apps/kition-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
-   Add `"headless": { "executable": "kition-<kit>", "protocol": "kition-kit/1" }`
+   Add `"headless": { "executable": "kition-<kit>", "protocol": "kition-kit/2" }`
    to `kit.json`. `SANDBOXED` lists commands whose file parameters the
    engine reads through lent files (otherwise commands naming files are
    refused for the agent); `VOLATILE` lists `inspect()` keys that are session

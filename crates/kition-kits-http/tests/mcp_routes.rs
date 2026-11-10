@@ -168,6 +168,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
             "vector_query",
             "vector_batch",
             "vector_check",
+            "vector_export",
             "vector_create"
         ]
     );
