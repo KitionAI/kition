@@ -146,15 +146,15 @@
   },
   "sheet": {
     "repository": "KitionAI/kition-sheet",
-    "version": "0.4.58",
-    "tag": "package-v0.4.58",
-    "asset": "kition-sheet-0.4.58.tgz",
-    "size": 13264846,
-    "sha256": "572e9a0db30e246acc74d22bb774fbc08ed518956567dec23b6de351067f22b7",
-    "commit": "0bd94ac5dce85c122980238a750974d7623850f3",
+    "version": "0.4.59",
+    "tag": "package-v0.4.59",
+    "asset": "kition-sheet-0.4.59.tgz",
+    "size": 17176413,
+    "sha256": "8c90b2e8617000188f69092a77fbfac418131cb4b5892d35283587aa29727126",
+    "commit": "66e0d8f3810d8aa2708f6c73062860803bb1e5c0",
     "sdkCommit": "7db55eebd58c3e924c678ef7505a565e65854137",
     "tesseraCommit": "19877cc0ba7da40d6ba0551fcc48d76b18efba42",
-    "fontsCommit": "7c594d2b4cde74f0548a357331baef045d12d2ce"
+    "fontsCommit": "3ec72be7ffcc8b88fab081f9e0b01401a96d5eec"
   },
   "slide": {
     "repository": "KitionAI/kition-slide",
