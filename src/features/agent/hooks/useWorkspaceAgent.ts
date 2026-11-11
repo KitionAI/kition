@@ -81,13 +81,9 @@ type WorkspaceAgentTurnContext = {
   taskMode?: AgentTaskMode
   /** Active workbench tab type. Forwarded to streamAgentMessage so the
    *  backend can swap pane-specific instructions in the system prompt
-   *  (e.g. don't suggest document_write when the pane is a workflow
-   *  editor). Defaults to "document" upstream when omitted. */
+   *  (e.g. don't suggest document_write when the pane is an image
+   *  gallery). Defaults to "document" upstream when omitted. */
   paneContext?: AgentPaneContext
-  /** Workflow id (when pane is workflow) so the backend can inject a
-   *  compact trigger/action summary into the skill
-   *  context. Frontend reads this from the active workflow tab. */
-  activeWorkflowId?: string
 }
 
 type UseWorkspaceAgentOptions = {
@@ -628,10 +624,6 @@ export function useWorkspaceAgent({
           // it even if the turn later fails.
           void onWorkspaceArtifactsSaved?.(sessionId)
           void refreshMentionableDocuments()
-          return
-        case 'connections-changed':
-          // The workflow drawer refreshes its connection list on this signal.
-          window.dispatchEvent(new CustomEvent('kition:connections:changed', { detail: effect.detail }))
       }
     }
 
@@ -732,7 +724,6 @@ export function useWorkspaceAgent({
         attachmentPaths,
         localSources: followup?.localSources ?? agentLocalSources[sessionId] ?? [],
         activeDocumentPath: requestActiveDocumentPath,
-        activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
         taskMode: turnContext?.taskMode,
         imageGenerationIntent: followup?.imageGenerationIntent,

@@ -65,7 +65,7 @@
     "description": "Preferencias de proxy y de conexiones salientes para toda la aplicación de escritorio.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Enruta todas las solicitudes salientes — entorno de ejecución (SMTP, webhooks, consola), ventana de escritorio y actualizador automático — a través del mismo proxy.",
+      "sectionDescription": "Enruta todas las solicitudes salientes — entorno de ejecución (webhooks, consola), ventana de escritorio y actualizador automático — a través del mismo proxy.",
       "enableTitle": "Usar proxy",
       "enableDescription": "Cuando está desactivado, el tráfico va directo.",
       "schemeLabel": "Esquema",
@@ -96,7 +96,7 @@
       "saveButton": "Guardar",
       "savingButton": "Guardando…",
       "savedFeedback": "Guardado",
-      "scopeNote": "A nivel de proceso: se aplica a todas las integraciones. No está disponible la anulación por conexión — desactívalo si un flujo de trabajo necesita acceso directo.",
+      "scopeNote": "A nivel de proceso: se aplica a todas las integraciones. No está disponible la anulación por conexión — desactívalo si una integración necesita acceso directo.",
       "errors": {
         "hostRequired": "El host es obligatorio cuando el proxy está activado.",
         "portRange": "El puerto debe estar entre 1 y 65535.",
@@ -104,7 +104,7 @@
       },
       "restart": {
         "title": "¿Reiniciar el servicio en segundo plano?",
-        "body": "La API de Kition debe reiniciarse para que la nueva configuración de proxy surta efecto. Los flujos de trabajo en ejecución se pausarán unos segundos.",
+        "body": "La API de Kition debe reiniciarse para que la nueva configuración de proxy surta efecto. Las tareas en segundo plano se pausarán unos segundos.",
         "confirmButton": "Guardar y reiniciar",
         "cancelButton": "Cancelar",
         "restarting": "Reiniciando el servicio en segundo plano…",
@@ -205,27 +205,9 @@
     "errorDisk": "No hay suficiente espacio en disco para descargar la actualización.",
     "errorRateLimit": "Se alcanzó el límite de peticiones de GitHub. Se reintentará más tarde."
   },
-  "search": {
-    "title": "Buscar",
-    "paletteHint": "⌘⇧F · Documentos / Tablas / Campos",
-    "palettePlaceholder": "Buscar en todos los documentos y tablas…",
-    "moreResults": "Refina tu búsqueda para ver más",
-    "emptyPrompt": "Escribe una palabra clave u operador para empezar a buscar",
-    "noMatches": "Sin coincidencias",
-    "groups": {
-      "document": "Documentos",
-      "record": "Registros",
-      "fieldsViews": "Campos / vistas"
-    },
-    "metaKind": {
-      "field": "campo",
-      "view": "vista",
-      "table": "tabla"
-    }
-  },
   "scenario": {
     "heading": "Empieza desde tu escenario",
-    "promptPlaceholder": "Describe el flujo de trabajo que quieres crear…",
+    "promptPlaceholder": "Describe la configuración que quieres crear…",
     "attachFiles": "Adjuntar archivos",
     "buildSetup": "Configuración de la construcción",
     "startIt": "Empezar",

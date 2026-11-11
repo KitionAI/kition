@@ -206,33 +206,6 @@ describe('AppShell portal restore', () => {
     container.remove()
   })
 
-  it('hosts workflow routes inside WorkspaceScreen instead of a full-screen overlay', async () => {
-    window.history.replaceState(null, '', '/workflow')
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    let root: Root | null = null
-
-    await act(async () => {
-      root = createRoot(container)
-      root.render(createElement(AppShell))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(container.querySelector('[data-testid="workflow-route-overlay"]')).toBeNull()
-    expect(mocks.WorkspaceScreen).toHaveBeenCalled()
-    const props = (mocks.WorkspaceScreen.mock.calls as unknown as Array<[Record<string, unknown>]>).at(-1)![0]
-    expect(props.workflowOpen).toBe(true)
-    expect(props.workflowContext).toBeNull()
-    expect(typeof props.workflowSchemaLookup).toBe('function')
-    expect(typeof props.onCloseWorkflow).toBe('function')
-
-    await act(async () => {
-      root?.unmount()
-    })
-    container.remove()
-  })
-
   it('reports a failed Getting Started setup in plain words, keeps the internal error out of the toast, and offers Retry', async () => {
     const failure = new Error('not used')
     mocks.maybeSeedOnboardingPack.mockRejectedValueOnce(failure).mockResolvedValueOnce('')

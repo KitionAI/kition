@@ -16,7 +16,6 @@ describe('a table file’s children in the tree', () => {
     expect(parseTableFileChildPath(tableFileChildPath('Leads.ktable', 'tables', '3'))).toEqual({ filePath: 'Leads.ktable', kind: 'tables', view: { path: 'tables/3' } })
     expect(parseTableFileChildPath('ktable-view://records/1/Leads.ktable')).toBeNull()
     expect(parseTableFileChildPath('ktable-view://tables/1/notes.md')).toBeNull()
-    expect(parseTableFileChildPath('workflows://Leads.ktable')).toBeNull()
   })
 
   it('lists the expanded table files, under the key their rows expand by', () => {

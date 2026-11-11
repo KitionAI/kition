@@ -11,7 +11,7 @@ const INITIAL_TURN_CONTEXT: AgentTurnContext = {
 
 /**
  * The context attached to every Agent turn: what the user is looking at
- * (document, workflow). The workspace screen refreshes it during render;
+ * (document, gallery). The workspace screen refreshes it during render;
  * `getTurnContext` reads it at send time.
  */
 export function useWorkspaceAgentTurnContext() {

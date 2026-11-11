@@ -96,23 +96,6 @@
         }
       }
     },
-    "workflow": {
-      "description": "Descreva o fluxo de trabalho que você deseja e o agente esboçará o gatilho + a ação.",
-      "suggestions": {
-        "emailOnRecord": {
-          "label": "Enviar e-mail a cada novo registro",
-          "prompt": "Quando um registro for criado nesta tabela, envie-me um resumo do registro por e-mail."
-        },
-        "remindOnDate": {
-          "label": "Lembrar em um campo de data",
-          "prompt": "Quando a data de hoje coincidir com a coluna de prazo desta tabela, envie um lembrete."
-        },
-        "refine": {
-          "label": "Refinar este fluxo de trabalho",
-          "prompt": "Analise o fluxo de trabalho atual e sugira o próximo refinamento."
-        }
-      }
-    },
     "gallery": {
       "description": "Peça ao agente para organizar, descrever ou reaproveitar as mídias desta galeria.",
       "suggestions": {

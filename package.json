@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Kition — documents, structured tables, AI agents, and visual workflows",
+  "description": "Kition — documents, structured tables, and AI agents",
   "homepage": "https://kition.ai",
   "repository": {
     "type": "git",
@@ -88,9 +88,6 @@
     "test:api-token:e2e": "bash scripts/inspect-api-token.sh",
     "test:collab:e2e": "playwright test --config tooling/playwright.config.ts e2e/collab-photo.spec.ts e2e/collab-film.spec.ts e2e/collab-slide.spec.ts e2e/collab-doc.spec.ts e2e/collab-sheet.spec.ts e2e/collab-vector.spec.ts e2e/collab-effect.spec.ts e2e/collab-cad.spec.ts e2e/collab-cube.spec.ts e2e/collab-fig.spec.ts e2e/collab-pdf.spec.ts e2e/collab-note.spec.ts --workers=1",
     "test:scenario:e2e": "bash scripts/inspect-scenario.sh",
-    "test:workflow:e2e": "bash scripts/inspect-workflow.sh",
-    "test:workflow:ai-build:e2e": "playwright test --config tooling/playwright.config.ts e2e/workflow-real-ai-build.spec.ts --workers=1",
-    "test:workflow:onboarding:e2e": "bash scripts/inspect-workflow-onboarding.sh",
     "check:kit-host": "node scripts/sync-kit-host.mjs --check",
     "ai": "node ../kition-sdk/tools/ai-cases.mjs --repo .",
     "check:tessera": "node scripts/pin-tessera.mjs --check"
@@ -102,7 +99,6 @@
   },
   "devDependencies": {
     "@fontsource-variable/inter": "5.3.0",
-    "@orama/orama": "^3.1.18",
     "@playwright/test": "^1.64.1",
     "@tanstack/react-query": "^5.105.0",
     "@tauri-apps/api": "^2.12.4",

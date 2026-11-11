@@ -1,9 +1,6 @@
 //! `/kit-tables`: the renderer's view of the workspace's table files for Kition's own features
-//! (the workflow editor's table and field pickers, the workspace tree's table leaves, search,
-//! templates, and the design handoff). Every answer comes from the Table kit through the host
+//! (the workspace tree's table leaves, templates, and the design handoff). Every answer comes from the Table kit through the host
 //! table client; `contracts/runtime/kit-tables.schema.json`.
-
-use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::{Query, State};
@@ -17,20 +14,10 @@ use serde_json::{Map, Value, json};
 
 use crate::{FileInfo, TableClient, TableError, TableInfo, is_table_path};
 
-/// Follows a renamed table file (or a folder of them) in the host features that name it:
-/// answers how many bindings changed.
-pub type RenameHook = Arc<dyn Fn(&str, &str) -> Result<usize, String> + Send + Sync>;
-
-/// Follows a deleted table file (or a folder of them) in the host features bound to it, which
-/// it removes: answers how many bindings went.
-pub type DeleteHook = Arc<dyn Fn(&str) -> Result<usize, String> + Send + Sync>;
-
 #[derive(Clone)]
 pub struct KitTablesState {
     pub auth: AuthConfig,
     pub tables: TableClient,
-    pub renamed: Option<RenameHook>,
-    pub deleted: Option<DeleteHook>,
 }
 
 impl axum::extract::FromRef<KitTablesState> for AuthConfig {
@@ -42,7 +29,6 @@ impl axum::extract::FromRef<KitTablesState> for AuthConfig {
 pub fn router(state: KitTablesState) -> Router {
     Router::new()
         .route("/kit-tables", get(list))
-        .route("/kit-tables/stamps", get(stamps))
         .route("/kit-tables/files", post(create_file))
         .route("/kit-tables/tables", post(create_table))
         .route("/kit-tables/tables/update", post(update_table))
@@ -157,20 +143,6 @@ async fn list(
         }
     }
     Ok(ok(json!({ "files": files, "unreadable": unreadable })))
-}
-
-/// Every table file with its stamp, without reading any: what changed since a stamp seen before.
-async fn stamps(State(state): State<KitTablesState>, _user: CurrentUser) -> AppResult<Response> {
-    let files: Vec<Value> = state
-        .tables
-        .table_files()
-        .into_iter()
-        .filter_map(|path| {
-            let stamp = state.tables.stamp(&path)?;
-            Some(json!({ "path": path, "stamp": stamp }))
-        })
-        .collect();
-    Ok(ok(json!({ "files": files })))
 }
 
 #[derive(Deserialize, Default)]
@@ -395,12 +367,9 @@ async fn renamed(
     if from.is_empty() || to.is_empty() {
         return Err(AppError::bad_request("`from` and `to` required"));
     }
-    state.tables.moved(from, to);
-    let updated = match &state.renamed {
-        Some(hook) => hook(from, to).map_err(AppError::internal)?,
-        None => 0,
-    };
-    Ok(ok(json!({ "updated": updated })))
+    // The file's description is read again at its new path.
+    state.tables.forget(from.trim_end_matches('/'));
+    Ok(ok(json!({})))
 }
 
 #[derive(Deserialize, Default)]
@@ -419,11 +388,7 @@ async fn deleted(
         return Err(AppError::bad_request("`path` required"));
     }
     state.tables.forget(path);
-    let removed = match &state.deleted {
-        Some(hook) => hook(path).map_err(AppError::internal)?,
-        None => 0,
-    };
-    Ok(ok(json!({ "removed": removed })))
+    Ok(ok(json!({})))
 }
 
 #[cfg(test)]

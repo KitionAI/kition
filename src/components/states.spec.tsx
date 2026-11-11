@@ -27,8 +27,8 @@ describe('shared states', () => {
   })
 
   it('renders the empty state with its action', async () => {
-    await act(async () => root!.render(createElement(EmptyState, { title: 'No workflows', description: 'Create one', action: createElement('button', null, 'Create'), 'data-testid': 'empty' })))
-    expect(container.querySelector('[data-testid="empty"] h2')?.textContent).toBe('No workflows')
+    await act(async () => root!.render(createElement(EmptyState, { title: 'No files', description: 'Create one', action: createElement('button', null, 'Create'), 'data-testid': 'empty' })))
+    expect(container.querySelector('[data-testid="empty"] h2')?.textContent).toBe('No files')
     expect(container.querySelector('[data-testid="empty"] button')?.textContent).toBe('Create')
   })
 

@@ -6,14 +6,13 @@ Kition adopts **Direction A: Quiet Workspace** as the product UI style baseline.
 
 This direction is a conservative refinement of the current product UI. It keeps
 the app calm, document-first, and tool-focused while tightening consistency
-across the workspace shell, editor, tables, settings, workflow, and agent
-surfaces.
+across the workspace shell, editor, tables, settings, and agent surfaces.
 
 ## Design Intent
 
 Kition should feel like a quiet, capable AI workspace: precise, light,
 trustworthy, and efficient. The interface should support repeated work in
-documents, tables, workflows, and agents without visual noise.
+documents, tables, and agents without visual noise.
 
 The product should not feel like a marketing page inside the app. Use brand
 color as a clear action and selection signal, not as decoration.
@@ -230,16 +229,6 @@ The widget is the Note kit's (kition-note `web/`), drawn in its editor in
 - Build/progress cards should use quiet borders and small status markers.
 - Purple should mark the main action or selected AI state, not fill the drawer.
 
-### Workflow
-
-- Workflow pages should keep the workspace shell visible when possible.
-- Canvas nodes should use the same card radius and border rules as other
-  product cards.
-- Zoom controls and insert controls must have stable dimensions and clear
-  affordance.
-- AI generation entry points can use the primary purple CTA; generated or
-  streaming rows should use soft neutral/purple feedback.
-
 ### Responsive And Small Windows
 
 - Desktop workspace targets a minimum usable width of **1024px**. At ≥1024px
@@ -254,9 +243,9 @@ The widget is the Note kit's (kition-note `web/`), drawn in its editor in
   modals expand to near-full width. Primary actions (Add record, Send, Run,
   Generate, primary CTA in dialogs) must remain reachable without horizontal
   scrolling.
-- Below **480px** the product is explicitly out of scope for editing
-  workflows — render a "please use a larger window" hint for editor and
-  workflow canvas surfaces rather than shipping a broken layout. Read-only
+- Below **480px** the product is explicitly out of scope for editing —
+  render a "please use a larger window" hint for editor surfaces rather than
+  shipping a broken layout. Read-only
   surfaces (document viewer, settings about page) should still work.
 - Hover-only affordances are not allowed below 1024px: any control that uses
   a hover-reveal pattern on desktop must also be reachable via tap, long-press

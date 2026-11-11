@@ -22,7 +22,6 @@ export type { AgentLocalSource } from '@/types/agentLocalSource'
 // drift from the wire definition.
 export type AgentPaneContext =
   | 'document'
-  | 'workflow'
   | 'gallery'
 
 export type AgentSession = {

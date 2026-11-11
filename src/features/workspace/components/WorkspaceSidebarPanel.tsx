@@ -9,7 +9,6 @@ type WorkspaceSidebarPanelProps = {
   activePath: string
   createMenuOpen: boolean
   createMenuTriggerPath: string
-  createMenuVariant?: 'workspace' | 'tableFile'
   loading: boolean
   modifiedPaths: Set<string>
   moveTargets: WorkspaceTreeNode[]
@@ -24,13 +23,7 @@ type WorkspaceSidebarPanelProps = {
   onOpen: (path: string) => void
   onOpenCreateMenu: () => void
   onCloseCreateMenu: () => void
-  /** Called when the user picks `New workflow` on a table file row. */
-  onCreateWorkflowForTable?: (node: WorkspaceTreeNode) => void
   onRefresh?: () => void
-  /** Opens the workspace-global Workflows tab. Surfaced as a lightning-bolt
-   *  icon in the sidebar header — replaces the old root-level virtual
-   *  "Workflows" node so the tree stays clean. */
-  onOpenWorkflows?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
   onRename: (node: WorkspaceTreeNode, nextTitle: string) => void
@@ -47,15 +40,12 @@ type WorkspaceSidebarPanelProps = {
   treeIcons: Record<string, string>
   workspaceDisplayName: string
   workspaceTreeNodes: WorkspaceTreeNode[]
-  /** Opens the standalone full-text search modal (Codex-style palette). */
-  onOpenSearch?: () => void
 }
 
 export function WorkspaceSidebarPanel({
   activePath,
   createMenuOpen,
   createMenuTriggerPath,
-  createMenuVariant,
   loading,
   modifiedPaths,
   moveTargets,
@@ -68,7 +58,6 @@ export function WorkspaceSidebarPanel({
   onOpenCreateMenu,
   onCloseCreateMenu,
   onRefresh,
-  onOpenWorkflows,
   kitCreations,
   onRename,
   onSetIcon,
@@ -81,14 +70,12 @@ export function WorkspaceSidebarPanel({
   onRevealInOS,
   onImportFiles,
   onPasteFiles,
-  onCreateWorkflowForTable,
   privateExpanded,
   rootPath,
   treeExpandedPaths,
   treeIcons,
   workspaceDisplayName,
   workspaceTreeNodes,
-  onOpenSearch,
 }: WorkspaceSidebarPanelProps) {
   return (
     <WorkspaceSidebar
@@ -98,7 +85,6 @@ export function WorkspaceSidebarPanel({
       privateExpanded={privateExpanded}
       createMenuOpen={createMenuOpen}
       createMenuTriggerPath={createMenuTriggerPath}
-      createMenuVariant={createMenuVariant}
       onToggleSidebar={onToggleSidebar}
       onTogglePrivate={onTogglePrivate}
       onOpenCreateMenu={onOpenCreateMenu}
@@ -106,9 +92,7 @@ export function WorkspaceSidebarPanel({
       onCreateFolder={onCreateFolder}
       onPasteFiles={onPasteFiles}
       onRefresh={onRefresh}
-      onOpenWorkflows={onOpenWorkflows}
                   kitCreations={kitCreations}
-      onOpenSearch={onOpenSearch}
       treeContent={(
         <>
           <WorkspaceTree
@@ -130,11 +114,9 @@ export function WorkspaceSidebarPanel({
             onAddToNewChat={onAddToNewChat}
             onRevealInOS={onRevealInOS}
             onImportFiles={onImportFiles}
-            onCreateWorkflowForTable={onCreateWorkflowForTable}
             onOpen={onOpen}
             createMenuOpen={createMenuOpen}
             createMenuTriggerPath={createMenuTriggerPath}
-            createMenuVariant={createMenuVariant}
             onCloseCreateMenu={onCloseCreateMenu}
             onCreateFolder={onCreateFolder}
                   kitCreations={kitCreations}

@@ -1,7 +1,6 @@
 /**
  * What the workspace must do when a live session event or stream frame
- * arrives: reload modified documents, refresh the tree, and announce
- * connections. Pure: the hook runs the returned effects. Each function takes the session view as it was
+ * arrives: reload modified documents and refresh the tree. Pure: the hook runs the returned effects. Each function takes the session view as it was
  * before the input is applied, so replayed input yields no effects.
  */
 import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
@@ -19,10 +18,6 @@ import {
 export type AgentEffect =
   | { type: 'documents-modified'; paths: string[] }
   | { type: 'deliverables-saved'; paths: string[] }
-  | {
-    type: 'connections-changed'
-    detail: { source: 'configure_smtp_connection'; connectionId: string; workflowId: string; workflowAttached: boolean }
-  }
 
 /** Workspace documents a completed run changed (the former `getAgentModifiedDocumentPaths`). */
 function modifiedPaths(run: AgentToolRun): string[] {
@@ -54,19 +49,6 @@ function completedRunEffects(run: AgentToolRun): AgentEffect[] {
   const effects: AgentEffect[] = []
   const paths = modifiedPaths(run)
   if (paths.length) effects.push({ type: 'documents-modified', paths })
-  if (run.name === 'configure_smtp_connection') {
-    const id = field(run.output, 'id')
-    const workflowId = field(run.output, 'workflow_id')
-    effects.push({
-      type: 'connections-changed',
-      detail: {
-        source: 'configure_smtp_connection',
-        connectionId: typeof id === 'string' ? id : '',
-        workflowId: typeof workflowId === 'string' ? workflowId : '',
-        workflowAttached: Boolean(field(run.output, 'workflow_attached')),
-      },
-    })
-  }
   return effects
 }
 

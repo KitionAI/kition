@@ -37,7 +37,6 @@ pub struct StreamRequest {
     pub attachment_paths: Vec<String>,
     pub local_sources: Vec<LocalSourceInput>,
     pub active_document_path: String,
-    pub active_workflow_id: String,
     pub pane_context: String,
     pub execution_mode: String,
     /// How the agent edits kit documents: `live` (the default) or `draft` (standard 2.0 A12).
@@ -52,7 +51,7 @@ pub struct StreamRequest {
 
 fn pane(value: &str) -> String {
     match value.trim().to_lowercase().as_str() {
-        pane @ ("workflow" | "gallery") => pane.to_owned(),
+        "gallery" => "gallery".to_owned(),
         _ => "document".to_owned(),
     }
 }
@@ -351,7 +350,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     let skills: Vec<SkillDef> = catalog::match_skills(&all_skills, &content, has_documents);
     let facts = TurnFacts {
         prompt_context: request.prompt_context,
-        active_workflow_id: request.active_workflow_id,
         skills,
         hosted_web_search: run.model.supports_hosted_web_search(),
         hosted_images: run.model.supports_hosted_images(),

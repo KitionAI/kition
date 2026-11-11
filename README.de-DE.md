@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <strong>Dokumente, Tabellen, Agenten und Workflows in einem Desktop-Arbeitsbereich.</strong><br />
-  Schreiben Sie vernetztes Wissen, bauen Sie Datenwerkzeuge, recherchieren Sie im Web und automatisieren Sie wiederkehrende Arbeit.
+  <strong>Dokumente, Tabellen und Agenten in einem Desktop-Arbeitsbereich.</strong><br />
+  Schreiben Sie vernetztes Wissen, bauen Sie Datenwerkzeuge und recherchieren Sie im Web.
 </p>
 
 <p align="center">
@@ -34,19 +34,18 @@
   <a href=".github/SECURITY.md">Sicherheit</a>
 </p>
 
-<p align="center"><img src="docs/readme/kition-overview.webp" alt="Kition-Übersicht mit Dokumenten, strukturierten Tabellen, Agentenrecherche und visuellen Workflows" width="100%" /></p>
+<p align="center"><img src="docs/readme/kition-overview.webp" alt="Kition-Übersicht mit Dokumenten, strukturierten Tabellen und Agentenrecherche" width="100%" /></p>
 
-Kition vereint Markdown-Dokumente, strukturierte Tabellen, einen werkzeugfähigen KI-Agenten, Webrecherche und visuelle Workflows. Der Agent arbeitet mit bearbeitbaren Projektdateien, typisierten Datensätzen, Anhängen und sichtbaren Prozessen. Dadurch lassen sich Ergebnisse leichter prüfen, korrigieren und wiederholen.
+Kition vereint Markdown-Dokumente, strukturierte Tabellen, einen werkzeugfähigen KI-Agenten und Webrecherche. Der Agent arbeitet mit bearbeitbaren Projektdateien, typisierten Datensätzen und Anhängen. Dadurch lassen sich Ergebnisse leichter prüfen, korrigieren und wiederholen.
 
 > Kition befindet sich derzeit in der Beta-Phase. Sichern Sie wichtige Arbeitsbereiche und prüfen Sie Änderungen des Agenten vor dem Einsatz in produktiven Abläufen.
 
 ## Warum Kition
 
-- **Vernetzte Dokumente.** Markdown mit Live-Vorschau, internen Links, Backlinks, Code, Mathematik, Diagrammen, täglichen Notizen, Suche und Export.
+- **Vernetzte Dokumente.** Markdown mit Live-Vorschau, internen Links, Backlinks, Code, Mathematik, Diagrammen, täglichen Notizen und Export.
 - **Strukturierte Daten neben dem Wissen.** Typisierte Felder, Formeln, Filter, Gruppen, Ansichten, Anhänge und KI-Felder.
 - **Ein Agent, der handeln kann.** Er recherchiert im Web, liest und aktualisiert Dokumente und Tabellen und speichert Ergebnisse im Projekt.
 - **Prüfbare Dokumentänderungen.** Lassen Sie den Agenten das aktive Dokument bearbeiten, prüfen Sie jede Ergänzung und Löschung und nehmen Sie einzelne Änderungen an oder lehnen Sie sie ab.
-- **Sichtbare Automatisierung.** Kombinieren Sie Auslöser und Aktionen, testen Sie Schritte und prüfen Sie den Ausführungsverlauf.
 
 ## Den Agenten bearbeiten lassen – die Entscheidung bleibt bei Ihnen
 
@@ -66,7 +65,7 @@ So entsteht ein kontrollierter Dokumentablauf: Beschreiben Sie das Ziel in natü
 
 ## Mit der Arbeit beginnen, nicht mit einer leeren Eingabe
 
-Kition hält den Aufgabenkontext in Dokumenten, Tabellenfeldern, Datensätzen, Vorlagen und Workflows fest. Die integrierten Szenarien sind gewöhnliche `.ktable`-Dateien und können an echte Projekte angepasst werden.
+Kition hält den Aufgabenkontext in Dokumenten, Tabellenfeldern, Datensätzen und Vorlagen fest. Die integrierten Szenarien sind gewöhnliche `.ktable`-Dateien und können an echte Projekte angepasst werden.
 
 ### Kampagnenmaterial stapelweise erzeugen
 
@@ -88,12 +87,11 @@ Erzeugen Sie Designvarianten, orthografische Ansichten, Funktionsbilder, Lifesty
 
 ## Hauptfunktionen
 
-- **Dokumente:** Markdown-Bearbeitung, Vorschau, Vorlagen, Suche und PDF-Export.
+- **Dokumente:** Markdown-Bearbeitung, Vorschau, Vorlagen und PDF-Export.
 - **Tabellen:** typisierte Felder, Anhänge, Formeln, Filter, Sortierung, Gruppen und mehrere Ansichten.
 - **Agent:** Dokumentaktualisierung, Webrecherche, Werkzeugnutzung und Speichern im Arbeitsbereich.
-- **Workflows:** visuelle Kombination von Auslösern und Aktionen, Schritttests und Ausführungsverlauf.
 - **Kits:** sechzehn integrierte Editoren für eigene Dateitypen (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). Die Engine jedes Kits läuft als WebAssembly in einem Web Worker, und der Agent bearbeitet dieselben Dateien über die Werkzeuge des Kits.
-- **Einstellungen:** E-Mail, Modelle, Proxy, MCP, Konto, Nutzung, Aktualisierungen und Desktop-Integration.
+- **Einstellungen:** Modelle, Proxy, MCP, Konto, Nutzung, Aktualisierungen und Desktop-Integration.
 
 ## Installation
 

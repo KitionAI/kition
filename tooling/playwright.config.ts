@@ -18,14 +18,11 @@ for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) {
 
 // KITION_E2E_SCOPE=ci runs every mock-backed spec in one sweep, including the
 // desktop specs, which drive the renderer through a mocked desktop bridge.
-// Specs that need live AI or SMTP credentials or the README capture flag run
-// through their own scripts instead, and
+// Specs that need the README capture flag run through their own scripts
+// instead, and
 // specs that currently fail against the UI are quarantined in
 // tooling/e2e-quarantine.json until they are fixed or deleted.
 const LIVE_SERVICE_SPECS = [
-  '**/workflow-real.spec.ts',
-  '**/workflow-real-ai-build.spec.ts',
-  '**/workflow-onboarding-actions-real.spec.ts',
   '**/readme-assets.spec.ts',
 ]
 // The kit interaction suite (e2e/interaction/) is expensive: it runs only through

@@ -61,13 +61,12 @@ test.describe('responsive shell — narrow / tiny viewports', () => {
   })
 
   for (const width of [1024, 1100, 1200]) {
-    test(`desktop ${width}: the sidebar header's files, search and collapse buttons are visible and not covered`, async ({ page }) => {
+    test(`desktop ${width}: the sidebar header's files and collapse buttons are visible and not covered`, async ({ page }) => {
       await bootShell(page, { width, height: 768 })
       await expect(page.locator('.app-shell.is-narrow')).toHaveCount(0)
       const header = page.locator('.workspace-sidebar-header')
       const controls = [
         header.getByTestId('sidebar-tab-files'),
-        header.getByTestId('sidebar-tab-search'),
         header.locator('.workspace-sidebar-header-action'),
       ]
       for (const control of controls) {

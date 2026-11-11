@@ -13,12 +13,7 @@ vi.mock('@/services/desktop', () => ({
   }),
 }))
 
-// Only the event names are needed; keep the HTTP modules (and the axios
-// client they build at import time) out of this test.
-vi.mock('./connections', () => ({ CONNECTIONS_CHANGED_EVENT: 'kition:connections:changed' }))
-
 import { queryKeys } from './queryKeys'
-import { WORKFLOW_CHANGED_EVENT } from '@/lib/workflowEvents'
 import {
   installWorkspaceInvalidation,
   invalidateForWorkspaceChange,
@@ -34,8 +29,6 @@ function seed(client: QueryClient) {
     table: queryKeys.documentByPath(ROOT, 'a/b.ktable'),
     note: queryKeys.documentByPath(ROOT, 'notes/today.md'),
     otherRootTree: queryKeys.workspaceTree('/workspace/other'),
-    workflows: queryKeys.workflows(),
-    connections: queryKeys.connections(),
   }
   for (const key of Object.values(keys)) client.setQueryData(key, { seeded: true })
   return keys
@@ -72,7 +65,6 @@ describe('invalidateForWorkspaceChange', () => {
     expect(isInvalidated(client, keys.note)).toBe(false)
     expect(isInvalidated(client, keys.tree)).toBe(false)
     expect(isInvalidated(client, keys.otherRootTree)).toBe(false)
-    expect(isInvalidated(client, keys.workflows)).toBe(false)
   })
 
   it('an added or removed file also invalidates the tree listing', async () => {
@@ -87,7 +79,7 @@ describe('invalidateForWorkspaceChange', () => {
 })
 
 describe('installWorkspaceInvalidation', () => {
-  it('wires the watcher, the reload event, and runtime change events, and disposes them', async () => {
+  it('wires the watcher and the reload event, and disposes them', async () => {
     const keys = seed(client)
     const dispose = installWorkspaceInvalidation(client)
     expect(watcher.handler).not.toBeNull()
@@ -102,16 +94,11 @@ describe('installWorkspaceInvalidation', () => {
     expect(isInvalidated(client, keys.tree)).toBe(true)
     expect(isInvalidated(client, keys.otherRootTree)).toBe(false)
 
-    window.dispatchEvent(new CustomEvent(WORKFLOW_CHANGED_EVENT))
-    await Promise.resolve()
-    expect(isInvalidated(client, keys.workflows)).toBe(true)
-    expect(isInvalidated(client, keys.connections)).toBe(false)
-
     dispose()
     expect(watcher.unsubscribe).toHaveBeenCalledTimes(1)
-    client.setQueryData(keys.connections, { seeded: true })
-    window.dispatchEvent(new CustomEvent(WORKFLOW_CHANGED_EVENT))
+    client.setQueryData(keys.tree, { seeded: true })
+    window.dispatchEvent(new CustomEvent(WORKSPACE_RELOAD_EVENT))
     await Promise.resolve()
-    expect(isInvalidated(client, keys.connections)).toBe(false)
+    expect(isInvalidated(client, keys.tree)).toBe(false)
   })
 })

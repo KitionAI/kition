@@ -67,11 +67,8 @@ pub const WEB_RESEARCH: &str = "For research or investigation questions (e.g. \"
 /// Guidance for the workbench pane the user has open.
 pub fn pane(pane: &str) -> &'static [&'static str] {
     match pane {
-        "workflow" => &[
-            "The user is on the Kition workflow pane to your left. If a specific workflow is open (the skill context will carry an 'Active workflow the user is editing' block), frame suggestions as concrete trigger / action changes (\"set the trigger to record_updated\", \"change the To field to ...\"). Use table_inspect on the bound `.ktable` file when you need to reference fields. If no specific workflow is open (workflow list view), help the user pick a template, describe what their new workflow should do, or list existing workflows \u{2014} do not invent details of a workflow that doesn't exist yet. Do not propose document_write or document_read unless the user explicitly asks for documentation about the workflow.",
-        ],
         "gallery" => &[
-            "The user is on the Kition media gallery pane to your left. Unlike the workflow / document panes, the skill context carries no manifest of which assets exist \u{2014} call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen.",
+            "The user is on the Kition media gallery pane to your left. Unlike the document pane, the skill context carries no manifest of which assets exist \u{2014} call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen.",
         ],
         _ => &[
             "The user is on the Kition document pane to your left. If a document is open (the skill context will carry an 'Active document the user is reading' block with title / path / description), call document_read on the path before summarising or quoting it \u{2014} do not invent the document's contents from the title alone. If no document is open yet, ask the user which document they want to work with (or offer document_list / document_search to discover candidates).",
@@ -180,7 +177,7 @@ mod tests {
             "Respond to the user in English unless they explicitly write in another language."
         ));
         assert!(execution_mode("preview").starts_with("Current execution mode: preview."));
-        assert!(pane("workflow")[0].contains("Kition workflow pane"));
+        assert!(pane("gallery")[0].contains("Kition media gallery pane"));
         assert_eq!(title_from("intro\n# Report\nbody", "x"), "Report");
         assert_eq!(title_from("no heading", ""), "Agent output");
     }

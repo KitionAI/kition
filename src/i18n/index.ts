@@ -7,8 +7,6 @@ import enWorkspace from './locales/en-US/workspace.json'
 import enWorkspaceLauncher from './locales/en-US/workspaceLauncher.json'
 import enAgent from './locales/en-US/agent.json'
 import enErrors from './locales/en-US/errors.json'
-import enWorkflow from './locales/en-US/workflow.json'
-import enConnections from './locales/en-US/connections.json'
 import enImageGeneration from './locales/en-US/imageGeneration.json'
 import enHistory from './locales/en-US/history.json'
 
@@ -34,8 +32,6 @@ const resources = {
     workspaceLauncher: enWorkspaceLauncher,
     agent: enAgent,
     errors: enErrors,
-    workflow: enWorkflow,
-    connections: enConnections,
     imageGeneration: enImageGeneration,
     history: enHistory,
   },
@@ -173,5 +169,3 @@ export const i18nReady = ensureLocaleLoaded(initialLocale)
     syncDocumentLang(DEFAULT_LOCALE)
     return i18next
   })
-
-export default i18next

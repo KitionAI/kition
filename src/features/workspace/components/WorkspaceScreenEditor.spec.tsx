@@ -10,14 +10,12 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
   const templateDialogs = { openDocumentTemplateDialog: vi.fn() }
   const onCreateTable = vi.fn()
   const input: WorkspaceScreenEditorInput = {
-    rootPath: '/vault',
     workspaceTabs: [],
     activeWorkspaceTab: undefined,
     activeWorkspaceTabId: '',
     galleryPanelProps: null,
     agentPanel,
     templateDialogs,
-    workflows: { openTableFileWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
     onCreateTable,
     ...overrides,
   }

@@ -1,4 +1,4 @@
-import { ArrowRightIcon as ArrowRight, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, SparklesIcon as Sparkles, WorkflowIcon as Workflow } from '@kition/tessera-icons/react'
+import { ArrowRightIcon as ArrowRight, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, SparklesIcon as Sparkles } from '@kition/tessera-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { KitionLogoMark } from '@/components/KitionLogoMark'
@@ -7,14 +7,12 @@ type WorkspaceEmptyStateProps = {
   onCreateDocument: () => void
   onCreateTable: () => void
   onOpenAgent: () => void
-  onOpenWorkflows: () => void
 }
 
 export function WorkspaceEmptyState({
   onCreateDocument,
   onCreateTable,
   onOpenAgent,
-  onOpenWorkflows,
 }: WorkspaceEmptyStateProps) {
   const { t } = useTranslation('workspace')
 
@@ -32,13 +30,6 @@ export function WorkspaceEmptyState({
       title: t('emptyState.actions.table.title'),
       description: t('emptyState.actions.table.description'),
       onClick: onCreateTable,
-    },
-    {
-      key: 'workflow',
-      icon: Workflow,
-      title: t('emptyState.actions.workflow.title'),
-      description: t('emptyState.actions.workflow.description'),
-      onClick: onOpenWorkflows,
     },
   ]
 

@@ -332,30 +332,6 @@ pub fn contains_http_url(text: &str) -> bool {
 mod tests {
     use super::*;
 
-    /// AI-SCENE-002 (docs/kition-onboarding-core-scenarios.csv): asked to propose a cleanup
-    /// workflow, the agent can only describe one. It has no tool that creates, edits, enables,
-    /// tests or runs a workflow; those stay the person's, on the Workflows page.
-    #[test]
-    fn no_tool_creates_enables_or_runs_a_workflow() {
-        let workflow_tools: Vec<String> = tools()
-            .into_iter()
-            .map(|tool| tool.name)
-            .filter(|name| name.to_lowercase().contains("workflow"))
-            .collect();
-        assert!(workflow_tools.is_empty(), "{workflow_tools:?}");
-        for skill in &CATALOG.skills {
-            assert!(
-                skill
-                    .tools
-                    .iter()
-                    .all(|tool| !tool.to_lowercase().contains("workflow")),
-                "{}: {:?}",
-                skill.name,
-                skill.tools
-            );
-        }
-    }
-
     #[test]
     fn catalog_loads_without_browser_tools() {
         assert!(tools().len() > 30);

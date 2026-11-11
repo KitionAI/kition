@@ -288,7 +288,7 @@ test('AI-SCENE-001: the agent summarizes the open onboarding guide, writes only 
   let turns: Awaited<ReturnType<typeof mockAgentTurn>> | undefined
   const routes = async (page: Page) => {
     turns = await mockAgentTurn(page, (turn, request) => {
-      const bullets = ['- Kition keeps notes, tables, workflows and kits in one workspace.', '- Everything in Getting Started is editable.', '- Tables can fill AI fields on request.', '- Workflows react to table changes.', '- The agent works on the file you have open.'].join('\n')
+      const bullets = ['- Kition keeps notes, tables and kits in one workspace.', '- Everything in Getting Started is editable.', '- Tables can fill AI fields on request.', '- Boards hold diagrams and sketches.', '- The agent works on the file you have open.'].join('\n')
       if (request.call === 1) {
         turn.tool('read_1', 'document_read', { path: guide }, { path: guide })
         turn.tool('patch_1', 'apply_patch', { path: guide }, { file_ops: [{ kind: 'update', path: guide }] })

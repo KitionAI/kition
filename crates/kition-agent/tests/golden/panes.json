@@ -40,7 +40,6 @@
   "tools": {
     "apply_patch": "cd7f9e00b4ec6237",
     "artifact_write": "4773f957cfc760ec",
-    "configure_smtp_connection": "d78f3dc843d93687",
     "document_list": "3bdf73906b1f7d42",
     "document_read": "d9bd96b2d2f3624c",
     "document_search": "dfcd1046be742169",
@@ -76,7 +75,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -111,49 +109,10 @@
         }
       ]
     },
-    "workflow": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_generation",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch",
-        "web_search"
-      ],
-      "prompt": [
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Current execution mode: apply.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "The user is on the Kition workflow pane to your left. If a specific workflow is open (the skill context will carry an 'Active workflow the user is editing' block), frame suggestions as concrete trigger / action changes (\"set the trigger to record_updated\", \"change the To field to ...\"). Use table_inspect on the bound `.ktable` file when you need to reference fields. If no specific workflow is open (workflow list view), help the user pick a template, describe what their new workflow should do, or list existing workflows — do not invent details of a workflow that doesn't exist yet. Do not propose document_write or document_read unless the user explicitly asks for documentation about the workflow."
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
     "gallery": {
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -178,7 +137,7 @@
         "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
         "Current execution mode: apply.",
         "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "The user is on the Kition media gallery pane to your left. Unlike the workflow / document panes, the skill context carries no manifest of which assets exist — call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen."
+        "The user is on the Kition media gallery pane to your left. Unlike the document pane, the skill context carries no manifest of which assets exist — call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen."
       ],
       "conversation": [
         {
@@ -191,7 +150,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -243,7 +201,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -295,7 +252,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -335,7 +291,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -380,49 +335,10 @@
         }
       ]
     },
-    "workflow-active": {
-      "tools": [
-        "apply_patch",
-        "artifact_write",
-        "configure_smtp_connection",
-        "document_list",
-        "document_read",
-        "document_search",
-        "exec_command",
-        "file_search",
-        "fs_copy",
-        "fs_list",
-        "fs_mkdir",
-        "fs_read",
-        "fs_remove",
-        "fs_stat",
-        "image_generation",
-        "register_artifact",
-        "save_image_asset",
-        "update_plan",
-        "view_image",
-        "web_article_save",
-        "web_fetch",
-        "web_search"
-      ],
-      "prompt": [
-        "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
-        "Current execution mode: apply.",
-        "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "The user is on the Kition workflow pane to your left. If a specific workflow is open (the skill context will carry an 'Active workflow the user is editing' block), frame suggestions as concrete trigger / action changes (\"set the trigger to record_updated\", \"change the To field to ...\"). Use table_inspect on the bound `.ktable` file when you need to reference fields. If no specific workflow is open (workflow list view), help the user pick a template, describe what their new workflow should do, or list existing workflows — do not invent details of a workflow that doesn't exist yet. Do not propose document_write or document_read unless the user explicitly asks for documentation about the workflow."
-      ],
-      "conversation": [
-        {
-          "role": "user",
-          "content": "Write a short plan"
-        }
-      ]
-    },
     "document-research": {
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -461,7 +377,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -521,7 +436,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -586,7 +500,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -637,7 +550,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -689,7 +601,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -727,7 +638,6 @@
       "tools": [
         "apply_patch",
         "artifact_write",
-        "configure_smtp_connection",
         "document_list",
         "document_read",
         "document_search",
@@ -750,7 +660,7 @@
         "Before execution, still inspect the current content and avoid duplicate writes whenever possible.",
         "Current execution mode: apply.",
         "If the user asks to write, save, or organize into the current table or current document, you may use write tools when needed.",
-        "The user is on the Kition media gallery pane to your left. Unlike the workflow / document panes, the skill context carries no manifest of which assets exist — call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen."
+        "The user is on the Kition media gallery pane to your left. Unlike the document pane, the skill context carries no manifest of which assets exist — call fs_list (with a glob like \"*.png\" / \"*.mp4\" depending on the gallery kind) before claiming the gallery contains anything specific. Use view_image to inspect specific assets the user names. Only call image_search when the user explicitly asks to generate new images. Do not invent filenames or descriptions of assets you have not actually seen."
       ],
       "conversation": [
         {

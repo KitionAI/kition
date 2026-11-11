@@ -10,10 +10,7 @@ type UseWorkspaceCreateFlowsOptions = {
   createFolder: TreeActions['createFolder']
 }
 
-/**
- * The create entry points that are not template pickers: the new-folder dialog and the create
- * menu opened on a table file (a workflow for its tables).
- */
+/** The create entry point that is not a template picker: the new-folder dialog. */
 export function useWorkspaceCreateFlows({
   createMenuFolder,
   createFolder,
@@ -36,10 +33,6 @@ export function useWorkspaceCreateFlows({
     setFolderName('')
   }, [createFolder, createMenuFolder, folderName])
 
-  // The create menu opened on a table file.
-  const [tableFileCreateContext, setTableFileCreateContext] = useState<string | null>(null)
-  const createMenuVariant: 'workspace' | 'tableFile' = tableFileCreateContext ? 'tableFile' : 'workspace'
-
   return {
     folderDialogOpen,
     folderName,
@@ -47,8 +40,5 @@ export function useWorkspaceCreateFlows({
     openFolderDialog,
     setFolderDialogVisible,
     submitFolderDialog,
-    tableFileCreateContext,
-    setTableFileCreateContext,
-    createMenuVariant,
   }
 }

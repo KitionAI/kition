@@ -11,7 +11,6 @@ type UseWorkspaceTreeActionsOptions = {
   applyWorkspaceDocument: ApplyWorkspaceDocument
   filterWorkspaceTabs: (predicate: (tab: WorkspaceTab) => boolean) => void
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
-  renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
   setActiveResourcePath: Dispatch<SetStateAction<string>>
   setActiveWorkspaceTabId: (tabId: string) => void
   setAgentModifiedDocumentPaths: Dispatch<SetStateAction<Set<string>>>
@@ -26,7 +25,6 @@ export function useWorkspaceTreeActions({
   applyWorkspaceDocument,
   filterWorkspaceTabs,
   remapWorkspaceTabPaths,
-  renameWorkspaceTabPath,
   setActiveResourcePath,
   setActiveWorkspaceTabId,
   setAgentModifiedDocumentPaths,
@@ -63,7 +61,6 @@ export function useWorkspaceTreeActions({
     filterWorkspaceTabs,
     refreshWorkspaceDocuments: loaderActions.refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
-    renameWorkspaceTabPath,
     rootPath: treeState.rootPath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,

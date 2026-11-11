@@ -7,7 +7,6 @@ use axum::response::IntoResponse;
 use std::sync::Arc;
 
 use kition_core::config::AppConfig;
-use kition_core::events::EventBus;
 use kition_core::{AppError, AppResult};
 use kition_http::AuthConfig;
 use kition_store::Db;
@@ -23,16 +22,14 @@ pub struct Deps {
     pub workspace_id: String,
     pub upload_dir: PathBuf,
     pub workspace_dir: Option<PathBuf>,
-    pub events: EventBus,
-    pub connections: kition_connections::Store,
     /// Kition Cloud sign-in; AI features require an active session.
     pub portal: kition_desktop::PortalAuth,
     /// Model provider calls, shared by every AI feature.
     pub ai: kition_ai::engine::Engine,
     /// Kits for this workspace; they stop when the runtime restarts.
     pub kits: kition_kits::KitManager,
-    /// The host table client: how workflows and the renderer's table pickers reach `.ktable`
-    /// files, all through the Table kit.
+    /// The host table client: how the renderer's table pickers reach `.ktable` files, all
+    /// through the Table kit.
     pub table_client: kition_tableclient::TableClient,
 }
 
@@ -70,9 +67,6 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
         kition_store::seed::run(&conn)?;
     }
 
-    let db_for_connections = db.clone();
-    let sqlite_path = config.sqlite_path.clone();
-    let upload_dir_text = config.upload_dir.clone();
     let upload_dir = absolute(&config.upload_dir)?;
     std::fs::create_dir_all(&upload_dir)?;
     let workspace_dir = if config.workspace_dir.trim().is_empty() {
@@ -108,8 +102,7 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
         },
     );
     write_token_file(&config, &upload_dir, workspace_dir.as_deref())?;
-    let events = EventBus::default();
-    let table_client = kition_tableclient::TableClient::new(kits.clone(), events.clone());
+    let table_client = kition_tableclient::TableClient::new(kits.clone());
     Ok(Deps {
         table_client,
         kits,
@@ -120,16 +113,10 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
         workspace_id,
         upload_dir,
         workspace_dir,
-        events,
-        connections: kition_connections::Store {
-            db: db_for_connections,
-            secrets: kition_connections::SecretStore::new(&sqlite_path, &upload_dir_text),
-        },
     })
 }
 
 pub fn router(deps: &Deps) -> Router {
-    kition_tableclient::TriggerWatcher::start(deps.table_client.clone());
     let api = Router::new()
         .merge(crate::system::api_router(deps))
         .merge(kition_ai::models::router(deps.auth()))
@@ -160,20 +147,7 @@ pub fn router(deps: &Deps) -> Router {
             deps.config.http_port, deps.config.api_prefix
         ),
     }));
-    let workflows = crate::workflows::start(deps);
-    let api = api.merge(kition_workflow::router(workflows.state.clone()));
-    let used_by = {
-        let store = workflows.state.engine.store.clone();
-        Arc::new(move |id: &str| store.count_by_connection(id)) as kition_connections::UsedByCounter
-    };
-    let api = api.merge(kition_connections::router(
-        kition_connections::ConnectionsState {
-            auth: deps.auth(),
-            store: deps.connections.clone(),
-            used_by: Some(used_by),
-        },
-    ));
-    let agent = crate::agent::build(deps, workflows.state.engine.store.clone());
+    let agent = crate::agent::build(deps);
     let api = api.merge(crate::kit_images::router(
         crate::kit_images::KitImagesState {
             auth: deps.auth(),
@@ -186,14 +160,10 @@ pub fn router(deps: &Deps) -> Router {
         ai_gate: deps.ai_gate(),
     }));
     let api = if deps.workspace_dir.is_some() {
-        let renamed = crate::workflows::rename_hook(&workflows.state.engine.store);
-        let deleted = crate::workflows::delete_hook(&workflows.state.engine.store);
         api.merge(kition_tableclient::routes::router(
             kition_tableclient::routes::KitTablesState {
                 auth: deps.auth(),
                 tables: deps.table_client.clone(),
-                renamed: Some(renamed),
-                deleted: Some(deleted),
             },
         ))
         .merge(kition_tableclient::scenario::router(

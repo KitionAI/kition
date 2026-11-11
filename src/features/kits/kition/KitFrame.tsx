@@ -133,7 +133,7 @@ async function writeForKit(path: string, readOnly: boolean, { path: wanted, byte
   } catch (error) {
     throw new Error(saveFailureText(error))
   }
-  // Kition's own table pickers (workflows) read the saved tables.
+  // Kition's own table pickers read the saved tables.
   if (isTableFilePath(target)) notifyTableFilesChanged(target)
   return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
 }
@@ -272,12 +272,12 @@ function relayShortcut(key: { key: string; code: string; meta?: boolean; ctrl?: 
 
 /**
  * Kition's own requests a kit may make: what it generates with the person's models (Kit UI
- * protocol section 7j), Kition's features it offers controls for (7j: run a workflow on a record,
- * start a design from one), and pictures pasted by their web address (7l). None for a preview or
+ * protocol section 7j), Kition's features it offers controls for (7j: open Settings to set up AI),
+ * and pictures pasted by their web address (7l). None for a preview or
  * a read-only document, which the kit cannot write an answer into.
  */
-function kitionRequests(path: string, writable: boolean): Pick<KitHostHandlers, 'generate' | 'actions' | 'fetchImage'> {
-  return writable ? { generate: (params) => kitionGenerate(params), actions: kitionActions(path), fetchImage: kitionFetchImage } : {}
+function kitionRequests(writable: boolean): Pick<KitHostHandlers, 'generate' | 'actions' | 'fetchImage'> {
+  return writable ? { generate: (params) => kitionGenerate(params), actions: kitionActions(), fetchImage: kitionFetchImage } : {}
 }
 
 function linkHandlers(latest: { current: { onOpenLink?: (params: KitOpenParams) => Promise<KitOpenResult>; askUrl: (url: string) => Promise<boolean> } }): Pick<KitHostHandlers, 'open' | 'openUrl'> {
@@ -388,7 +388,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
             },
             notify: showKitNotice,
             draftChanged: (info) => setKitDraft(path, info),
-            ...kitionRequests(path, !preview && !openedReadOnly),
+            ...kitionRequests(!preview && !openedReadOnly),
             ...collab?.handlers,
             shortcut: relayShortcut,
           },

@@ -79,21 +79,18 @@ fn pipeline(notes: &Notes) -> Pipeline {
 }
 
 /// The arguments as written to the session log for tools whose provider
-/// does not shape them: local search queries and credentials are left out.
+/// does not shape them: local search queries are left out.
 /// Tools that need their own summary pass it through their provider's
 /// `ToolShape`.
 fn logged_arguments(name: &str, input: &Value) -> Value {
     match name {
-        "source_search" | "source_file_search" | "configure_smtp_connection" => {
+        "source_search" | "source_file_search" => {
             let mut safe = input.as_object().cloned().unwrap_or_default();
             if let Some(query) = safe.remove("query") {
                 safe.insert(
                     "query_chars".into(),
                     json!(query.as_str().unwrap_or_default().chars().count()),
                 );
-            }
-            if safe.remove("password").is_some() {
-                safe.insert("password".into(), json!("[redacted]"));
             }
             Value::Object(safe)
         }
@@ -398,7 +395,6 @@ mod tests {
         for needle in [
             "\"document\"",
             "\"table\"",
-            "\"workflow\"",
             "\"gallery\"",
             "\"design\"",
             "photo_",
@@ -501,14 +497,7 @@ mod tests {
     }
 
     #[test]
-    fn logged_arguments_leave_out_queries_and_credentials() {
-        assert_eq!(
-            logged_arguments(
-                "configure_smtp_connection",
-                &json!({ "host": "smtp.example.com", "password": "fake-secret" })
-            ),
-            json!({ "host": "smtp.example.com", "password": "[redacted]" })
-        );
+    fn logged_arguments_leave_out_queries() {
         for name in ["source_search", "source_file_search"] {
             assert_eq!(
                 logged_arguments(name, &json!({ "query": "hello", "limit": 3 })),

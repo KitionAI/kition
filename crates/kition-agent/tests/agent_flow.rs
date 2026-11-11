@@ -258,10 +258,8 @@ fn app_with(kits: impl FnOnce(&std::path::Path) -> Option<kition_kits::KitManage
         upload_dir: uploads.path().to_path_buf(),
         policy_path: Some(config.path().join("execpolicy.toml")),
         hooks: None,
-        smtp: None,
         portal_base_url: String::new(),
         mcp_path: None,
-        workflow_prompt: None,
         kits: kits(workspace.path()),
     });
     let db_handle = db.clone();
@@ -1703,7 +1701,7 @@ async fn panes_offer_the_expected_tools_and_prompt() {
     // The kits Kition ships, as the runtime finds them from their manifests.
     kition_kits::definitions::fixture_kits();
     let mut scenarios: Vec<Scenario<'_>> = Vec::new();
-    for pane in ["document", "workflow", "gallery"] {
+    for pane in ["document", "gallery"] {
         scenarios.push(scenario(pane, "responses", json!({ "pane_context": pane })));
     }
     scenarios.push(scenario(
@@ -1728,11 +1726,6 @@ async fn panes_offer_the_expected_tools_and_prompt() {
             "pane_context": "document",
             "prompt_context": "Extra context from the client.",
         }),
-    ));
-    scenarios.push(scenario(
-        "workflow-active",
-        "responses",
-        json!({ "pane_context": "workflow", "active_workflow_id": "wf-1" }),
     ));
     scenarios.push(scenario(
         "document-research",

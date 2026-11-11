@@ -65,7 +65,7 @@
     "description": "桌面端代理与对外连接的统一设置。",
     "proxy": {
       "sectionTitle": "代理",
-      "sectionDescription": "运行时（SMTP / Webhook / Console）、桌面窗口、自动更新都会走这里配置的代理。",
+      "sectionDescription": "运行时（Webhook / Console）、桌面窗口、自动更新都会走这里配置的代理。",
       "enableTitle": "启用代理",
       "enableDescription": "关闭时直连。",
       "schemeLabel": "协议",
@@ -96,7 +96,7 @@
       "saveButton": "保存",
       "savingButton": "保存中…",
       "savedFeedback": "已保存",
-      "scopeNote": "进程级生效，对所有外部请求统一生效。暂不支持按连接覆盖：单条 workflow 需直连时请整体关闭。",
+      "scopeNote": "进程级生效，对所有外部请求统一生效。暂不支持按连接覆盖：单个集成需直连时请整体关闭。",
       "errors": {
         "hostRequired": "启用代理时必须填主机。",
         "portRange": "端口需在 1 到 65535 之间。",
@@ -104,7 +104,7 @@
       },
       "restart": {
         "title": "需要重启后台服务",
-        "body": "新代理设置需要重启 Kition API 才能生效，正在运行的 workflow 会短暂暂停。",
+        "body": "新代理设置需要重启 Kition API 才能生效，后台任务会短暂暂停。",
         "confirmButton": "保存并重启",
         "cancelButton": "取消",
         "restarting": "正在重启后台服务…",
@@ -205,27 +205,9 @@
     "errorDisk": "磁盘空间不足，无法下载更新。",
     "errorRateLimit": "已达到 GitHub 速率限制。稍后将重试。"
   },
-  "search": {
-    "title": "搜索",
-    "paletteHint": "⌘⇧F · 文档 / 表格 / 字段",
-    "palettePlaceholder": "在所有文档和表格中搜索…",
-    "moreResults": "结果较多，请细化关键词",
-    "emptyPrompt": "输入关键词或操作符开始搜索",
-    "noMatches": "无匹配结果",
-    "groups": {
-      "document": "文档",
-      "record": "记录",
-      "fieldsViews": "字段 / 视图"
-    },
-    "metaKind": {
-      "field": "字段",
-      "view": "视图",
-      "table": "表"
-    }
-  },
   "scenario": {
     "heading": "从你的场景开始",
-    "promptPlaceholder": "描述你想要构建的工作流…",
+    "promptPlaceholder": "描述你想要搭建的内容…",
     "attachFiles": "添加附件",
     "buildSetup": "构建设置",
     "startIt": "开始",

@@ -65,7 +65,7 @@
     "description": "Proxy and outbound connection preferences for the whole desktop app.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Routes every outbound request — runtime (SMTP, webhooks, console), desktop window, and auto-updater — through the same proxy.",
+      "sectionDescription": "Routes every outbound request — runtime (webhooks, console), desktop window, and auto-updater — through the same proxy.",
       "enableTitle": "Use proxy",
       "enableDescription": "When off, traffic goes direct.",
       "schemeLabel": "Scheme",
@@ -96,7 +96,7 @@
       "saveButton": "Save",
       "savingButton": "Saving…",
       "savedFeedback": "Saved",
-      "scopeNote": "Process-wide: applies to all integrations. Per-connection override is not available — turn this off if a single workflow needs direct access.",
+      "scopeNote": "Process-wide: applies to all integrations. Per-connection override is not available — turn this off if a single integration needs direct access.",
       "errors": {
         "hostRequired": "Host is required when proxy is enabled.",
         "portRange": "Port must be between 1 and 65535.",
@@ -104,7 +104,7 @@
       },
       "restart": {
         "title": "Restart background service?",
-        "body": "The Kition API has to restart for the new proxy settings to take effect. Any running workflows will pause for a few seconds.",
+        "body": "The Kition API has to restart for the new proxy settings to take effect. Background tasks will pause for a few seconds.",
         "confirmButton": "Save and restart",
         "cancelButton": "Cancel",
         "restarting": "Restarting background service…",
@@ -205,27 +205,9 @@
     "errorDisk": "Not enough disk space to download the update.",
     "errorRateLimit": "GitHub rate limit reached. Will retry later."
   },
-  "search": {
-    "title": "Search",
-    "paletteHint": "⌘⇧F · Documents / Tables / Fields",
-    "palettePlaceholder": "Search across all documents and tables…",
-    "moreResults": "Refine your keywords to see more",
-    "emptyPrompt": "Type a keyword or operator to start searching",
-    "noMatches": "No matches",
-    "groups": {
-      "document": "Documents",
-      "record": "Records",
-      "fieldsViews": "Fields / views"
-    },
-    "metaKind": {
-      "field": "field",
-      "view": "view",
-      "table": "table"
-    }
-  },
   "scenario": {
     "heading": "Start from your scenario",
-    "promptPlaceholder": "Describe the workflow you want to build…",
+    "promptPlaceholder": "Describe the setup you want to build…",
     "attachFiles": "Attach files",
     "buildSetup": "Build setup",
     "startIt": "Start it",

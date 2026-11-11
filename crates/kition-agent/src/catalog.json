@@ -46,69 +46,6 @@
       "permission": "workspace-write"
     },
     {
-      "name": "configure_smtp_connection",
-      "description": "Create or update an Email SMTP connection from the values the user provided, AND optionally attach it to the calling workflow in the same call. Use this tool whenever the user asks you to set up, configure, save, or update SMTP / email settings — typical inputs include host, port, username, password, from address, and TLS mode. When the prompt mentions a specific workflow id, ALWAYS pass it as `workflowId` so the new connection is wired into that workflow's action node immediately (no manual dropdown click required). On success, the new connection's id is returned (and, when workflowId was supplied, the patched workflow's id too). The server runs a real Test & Save against the SMTP server before persisting; if the test fails the row is rolled back and you should report the failure verbatim to the user.",
-      "category": "workflow",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Human-readable connection name (e.g. \"Sales SMTP\"). Required."
-          },
-          "host": {
-            "type": "string",
-            "description": "SMTP host (e.g. smtp.gmail.com). Required."
-          },
-          "port": {
-            "type": "integer",
-            "description": "SMTP port. Defaults to 587."
-          },
-          "username": {
-            "type": "string",
-            "description": "SMTP username. Required for authenticated providers."
-          },
-          "password": {
-            "type": "string",
-            "description": "SMTP password / app password. Required when creating a new connection."
-          },
-          "from": {
-            "type": "string",
-            "description": "From address (e.g. ops@example.com). Required."
-          },
-          "fromName": {
-            "type": "string",
-            "description": "Optional from-name displayed alongside the address."
-          },
-          "tlsMode": {
-            "type": "string",
-            "enum": [
-              "starttls",
-              "tls",
-              "plain"
-            ],
-            "description": "TLS mode. Defaults to starttls."
-          },
-          "existingConnectionId": {
-            "type": "string",
-            "description": "When set, update this connection instead of creating a new one. Pass an empty string or omit to create."
-          },
-          "workflowId": {
-            "type": "string",
-            "description": "Optional. When set, after the connection is saved this tool also patches the workflow's action.connectionId so the connection is attached in one step — saves the user a manual click. The prompt passed to you usually already contains the workflow id; copy it here verbatim when present."
-          }
-        },
-        "required": [
-          "name",
-          "host",
-          "from",
-          "username"
-        ],
-        "additionalProperties": false
-      },
-      "permission": "workspace-write"
-    },
-    {
       "name": "document_list",
       "description": "List files inside a folder of the Kition document workspace so you can decide which files to read with document_read.",
       "category": "document",

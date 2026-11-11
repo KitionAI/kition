@@ -15,43 +15,6 @@ function file(path: string, name = path): WorkspaceDocumentTreeItem {
   return { type: 'file', path, name, format: 'md' as never, size: 0, updated_at: '' } as WorkspaceDocumentTreeItem
 }
 
-describe('buildPrivateSectionTreeNodes hidden workflow storage', () => {
-  it('hides workflow.json and workflow_runs.json from the root tree', () => {
-    const nodes = buildPrivateSectionTreeNodes(
-      [
-        file('workflow.json'),
-        file('workflow_runs.json'),
-        file('inbox.md'),
-      ],
-      emptyMetadata,
-    )
-    // The raw workflow.json / workflow_runs.json storage files stay
-    // hidden from the tree. The global Workflows entry point has been
-    // moved out of the tree into a sidebar-header lightning-bolt icon,
-    // so we only expect the surviving real files here.
-    expect(nodes.map((n) => n.name)).toEqual(['inbox.md'])
-  })
-
-  it('does not hide raw workflow files that live inside subfolders (devmode path)', () => {
-    const nodes = buildPrivateSectionTreeNodes(
-      [
-        {
-          type: 'folder',
-          path: 'debug',
-          name: 'debug',
-          children: [file('debug/workflow.json', 'workflow.json')],
-        } as WorkspaceDocumentTreeItem,
-      ],
-      emptyMetadata,
-    )
-    // The folder survives and the nested file is preserved — the
-    // root-only filter is intentional so subdirectories can be used
-    // for backups / debug dumps without disappearing.
-    expect(nodes[0].name).toBe('debug')
-    expect(nodes[0].children.map((c) => c.name)).toEqual(['workflow.json'])
-  })
-})
-
 describe('buildPrivateSectionTreeNodes Board files', () => {
   it('lists a .kboard file as a Board, the Board kit opens it', () => {
     const nodes = buildPrivateSectionTreeNodes([{

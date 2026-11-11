@@ -323,21 +323,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         kind: item.kind,
       }]
     }
-    if (item.type === 'workflow' && typeof item.id === 'string' && typeof item.title === 'string') {
-      const tablePath = typeof item.tablePath === 'string' && item.tablePath.length > 0
-        ? item.tablePath
-        : undefined
-      const workflowId = typeof item.workflowId === 'string' && item.workflowId.length > 0
-        ? item.workflowId
-        : undefined
-      return [{
-        id: tablePath ? `workflow:${tablePath}` : item.id,
-        type: 'workflow',
-        title: item.title,
-        ...(tablePath ? { tablePath } : {}),
-        ...(workflowId ? { workflowId } : {}),
-      }]
-    }
     return []
   })
   const indexById = new Map<string, number>()

@@ -65,7 +65,7 @@
     "description": "Preferências de proxy e de conexões de saída para todo o app desktop.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Roteia todas as requisições de saída — runtime (SMTP, webhooks, console), janela do app e atualizador automático — pelo mesmo proxy.",
+      "sectionDescription": "Roteia todas as requisições de saída — runtime (webhooks, console), janela do app e atualizador automático — pelo mesmo proxy.",
       "enableTitle": "Usar proxy",
       "enableDescription": "Quando desativado, o tráfego vai direto.",
       "schemeLabel": "Esquema",
@@ -96,7 +96,7 @@
       "saveButton": "Salvar",
       "savingButton": "Salvando…",
       "savedFeedback": "Salvo",
-      "scopeNote": "Válido para todo o processo: aplica-se a todas as integrações. Não há substituição por conexão — desative isto se um fluxo de trabalho específico precisar de acesso direto.",
+      "scopeNote": "Válido para todo o processo: aplica-se a todas as integrações. Não há substituição por conexão — desative isto se uma integração específica precisar de acesso direto.",
       "errors": {
         "hostRequired": "O host é obrigatório quando o proxy está ativado.",
         "portRange": "A porta deve estar entre 1 e 65535.",
@@ -104,7 +104,7 @@
       },
       "restart": {
         "title": "Reiniciar o serviço em segundo plano?",
-        "body": "A Kition API precisa reiniciar para que as novas configurações de proxy entrem em vigor. Quaisquer fluxos de trabalho em execução vão pausar por alguns segundos.",
+        "body": "A Kition API precisa reiniciar para que as novas configurações de proxy entrem em vigor. As tarefas em segundo plano vão pausar por alguns segundos.",
         "confirmButton": "Salvar e reiniciar",
         "cancelButton": "Cancelar",
         "restarting": "Reiniciando o serviço em segundo plano…",
@@ -205,27 +205,9 @@
     "errorDisk": "Espaço em disco insuficiente para baixar a atualização.",
     "errorRateLimit": "Limite de taxa do GitHub atingido. Tentará novamente mais tarde."
   },
-  "search": {
-    "title": "Pesquisar",
-    "paletteHint": "⌘⇧F · Documentos / Tabelas / Campos",
-    "palettePlaceholder": "Pesquisar em todos os documentos e tabelas…",
-    "moreResults": "Refine sua busca para ver mais",
-    "emptyPrompt": "Digite uma palavra-chave ou operador para começar a pesquisar",
-    "noMatches": "Nenhum resultado",
-    "groups": {
-      "document": "Documentos",
-      "record": "Registros",
-      "fieldsViews": "Campos / visualizações"
-    },
-    "metaKind": {
-      "field": "campo",
-      "view": "visualização",
-      "table": "tabela"
-    }
-  },
   "scenario": {
     "heading": "Comece a partir do seu cenário",
-    "promptPlaceholder": "Descreva o fluxo de trabalho que você quer criar…",
+    "promptPlaceholder": "Descreva a configuração que você quer criar…",
     "attachFiles": "Anexar arquivos",
     "buildSetup": "Configurar montagem",
     "startIt": "Iniciar",

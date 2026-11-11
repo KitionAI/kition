@@ -74,14 +74,14 @@
     "workspaceDescription": "Your workspace is ready. Pick an option now, or skip and start with the files in Getting Started.",
     "workspaceLocal": "Stored locally on this device",
     "providerTitle": "Choose how you want to work",
-    "providerDescription": "You can change this later in Settings. Documents, tables, and local workflows work without an account or AI provider.",
+    "providerDescription": "You can change this later in Settings. Documents and tables work without an account or AI provider.",
     "choice": {
       "cloud": "Kition Cloud",
       "cloudDescription": "Hosted AI with Kition Account sign-in and no separate API key.",
       "byo": "Bring your own API key",
       "byoDescription": "Connect OpenAI, Anthropic, DeepSeek, or another compatible provider.",
       "local": "Continue without AI",
-      "localDescription": "Open the welcome guide and explore local documents, tables, and workflows without an account or API key."
+      "localDescription": "Open the welcome guide and explore local documents and tables without an account or API key."
     },
     "successTitle": "Complete one useful action",
     "success": {
@@ -96,9 +96,9 @@
         "privacy": "Prompts and selected context are sent directly to the provider you configure."
       },
       "local": {
-        "title": "Run the Contacts workflow",
-        "description": "Normalize contact details with a deterministic workflow that needs no AI model.",
-        "privacy": "This workflow runs locally and does not send workspace content to an AI service."
+        "title": "Explore the example tables",
+        "description": "Open the welcome guide and the example tables in Getting Started; none of them needs an AI model.",
+        "privacy": "Everything stays on this device; no workspace content is sent to an AI service."
       }
     },
     "continue": "Continue",

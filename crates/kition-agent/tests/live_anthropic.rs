@@ -94,10 +94,8 @@ fn app(mock: &Path) -> Live {
         upload_dir: uploads.path().to_path_buf(),
         policy_path: Some(config.path().join("execpolicy.toml")),
         hooks: None,
-        smtp: None,
         portal_base_url: String::new(),
         mcp_path: None,
-        workflow_prompt: None,
         kits: Some(kits),
     });
     let app = router(AgentState {

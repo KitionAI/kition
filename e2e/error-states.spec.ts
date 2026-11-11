@@ -146,32 +146,3 @@ test('the agent without a model says so and offers Configure', async ({ page, ba
     await host.dispose()
   }
 })
-
-test('a search with no results says so and keeps the query editable', async ({ page, baseURL }) => {
-  const { host } = await openKitWorkspace(page, baseURL!, { 'Notes/Atlas.md': Buffer.from('# Atlas\n\nA comet observation.\n') }, { routes: async (p) => { await mockKitTables(p, []) } })
-  try {
-    await page.getByTestId('sidebar-tab-search').click()
-    const input = page.getByTestId('search-palette-input')
-    await expect(input).toBeEnabled({ timeout: 15_000 })
-    await input.fill('zzqqxx')
-    await expect(page.getByTestId('search-palette-empty')).toHaveText('No matches')
-    await expectPlain(page.getByTestId('search-palette'))
-    await input.fill('comet')
-    await expect(page.getByTestId('search-result-item')).toHaveCount(1, { timeout: 15_000 })
-  } finally {
-    await host.dispose()
-  }
-})
-
-test('the workflow page with nothing in it explains workflows and offers New workflow', async ({ page, baseURL }) => {
-  const { host } = await openKitWorkspace(page, baseURL!, {}, { routes: async (p) => { await mockKitTables(p, []) } })
-  try {
-    await page.goto(new URL('/workflow', baseURL!).toString())
-    await expect(page.getByText('No workflows yet')).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText('A workflow does work for you when something happens in a table')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'New workflow' }).first()).toBeEnabled()
-    await expectPlain(page.locator('body'))
-  } finally {
-    await host.dispose()
-  }
-})

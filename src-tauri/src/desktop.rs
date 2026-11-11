@@ -66,7 +66,6 @@ impl Desktop {
         let mut proxy = ProxyManager::new(&shared_data_dir);
         proxy.load(&secure);
         let supervisor = Arc::new(Supervisor::new(env.clone(), app_version));
-        supervisor.set_smtp_proxy(proxy.active_url());
         Self {
             bootstrap: CommunityBootstrap::new(&shared_data_dir),
             registry: Mutex::new(Registry::new(&shared_data_dir)),

@@ -33,7 +33,6 @@ pub struct Supervisor {
     api_token: String,
     /// The dev server's origin under `tauri dev`, which the runtime must let through.
     dev_origin: Mutex<Option<String>>,
-    smtp_proxy: Mutex<String>,
     /// The `kit.json` of every kit package the renderer is served with, for the runtime's kits.
     kit_manifests: Mutex<Vec<String>>,
     server: tokio::sync::Mutex<Option<RunningServer>>,
@@ -47,7 +46,6 @@ impl Supervisor {
             app_version: app_version.to_owned(),
             api_token: kition_http::gate::new_token(),
             dev_origin: Mutex::default(),
-            smtp_proxy: Mutex::default(),
             kit_manifests: Mutex::default(),
             server: tokio::sync::Mutex::new(None),
             last_error: Mutex::default(),
@@ -89,14 +87,6 @@ impl Supervisor {
             .workspace_dir = workspace_dir.to_path_buf();
     }
 
-    /// The proxy SMTP connections tunnel through; `None` connects directly.
-    pub fn set_smtp_proxy(&self, proxy: Option<String>) {
-        *self
-            .smtp_proxy
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner) = proxy.unwrap_or_default();
-    }
-
     fn config(&self) -> AppConfig {
         let env = self.env();
         let text = |path: &Path| path.to_string_lossy().into_owned();
@@ -126,11 +116,6 @@ impl Supervisor {
             upload_dir: text(&env.uploads_dir),
             workspace_dir: text(&env.workspace_dir),
             sqlite_path: text(&env.sqlite_path),
-            smtp_proxy: self
-                .smtp_proxy
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .clone(),
             kit_manifests: self
                 .kit_manifests
                 .lock()

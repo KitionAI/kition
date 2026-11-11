@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
-import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/cn'
 
@@ -14,13 +13,6 @@ const WorkspaceMediaPanel = lazy(() =>
 const WorkspaceFileViewerPane = lazy(() =>
   import('@/features/workspace/components/WorkspaceFileViewerPane').then((module) => ({ default: module.WorkspaceFileViewerPane })),
 )
-const WorkflowHomePage = lazy(() =>
-  import('@/features/workflow/pages/WorkflowHomePage').then((module) => ({ default: module.WorkflowHomePage })),
-)
-const WorkflowIndexPage = lazy(() =>
-  import('@/features/workflow/pages/WorkflowIndexPage').then((module) => ({ default: module.WorkflowIndexPage })),
-)
-
 function EditorPaneFallback() {
   const { t } = useTranslation('common')
   return (
@@ -39,7 +31,7 @@ function EditorPaneFallback() {
 
 /**
  * Every editor surface mounts behind its own error boundary so a crash in one
- * document, table, or workflow view leaves the shell and the other
+ * document, table, or file view leaves the shell and the other
  * tabs usable. The Suspense fallback covers the lazy chunk load.
  */
 function EditorPaneBoundary({
@@ -66,35 +58,21 @@ type WorkspaceEditorContentProps = {
   activeWorkspaceTab: WorkspaceTab | undefined
   activeWorkspaceTabId: string
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
-  onOpenWorkflow?: (tablePath: string, workflowId: string) => void
-  onOpenGlobalWorkflow?: (workflowId: string) => void
-  onOpenWorkflows: () => void
   onCreateDocument: () => void
   onCreateTable: () => void
   onOpenAgent: () => void
   workspaceTabs: WorkspaceTab[]
-  /** Active workspace root. Forwarded to mounted workbench panes that
-   *  need to scope their data fetches to this workspace — without it
-   *  the workflow trigger-table picker would pull rows from sibling
-   *  workspaces. */
-  rootPath: string
 }
 
 export function WorkspaceEditorContent({
   activeWorkspaceTab,
   activeWorkspaceTabId,
   galleryPanelProps,
-  onOpenWorkflow,
-  onOpenGlobalWorkflow,
-  onOpenWorkflows,
   onCreateDocument,
   onCreateTable,
   onOpenAgent,
   workspaceTabs,
-  rootPath,
 }: WorkspaceEditorContentProps) {
-  const openGlobalWorkflow = onOpenGlobalWorkflow ?? openWorkflowDetail
-
   return (
     <>
       {!activeWorkspaceTab ? (
@@ -102,7 +80,6 @@ export function WorkspaceEditorContent({
           onCreateDocument={onCreateDocument}
           onCreateTable={onCreateTable}
           onOpenAgent={onOpenAgent}
-          onOpenWorkflows={onOpenWorkflows}
         />
       ) : null}
       {activeWorkspaceTab?.type === 'gallery' && galleryPanelProps ? (
@@ -112,53 +89,6 @@ export function WorkspaceEditorContent({
           </EditorPaneBoundary>
         </div>
       ) : null}
-      {workspaceTabs
-        .filter((tab): tab is Extract<WorkspaceTab, { type: 'workflow' }> => tab.type === 'workflow')
-        .map((tab) => (
-          <div
-            key={tab.id}
-            className={cn(
-              'document-editor-view',
-              activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'workflow' && 'is-active',
-            )}
-            // workspace-workflow-workbench is the long-standing testid the
-            // real-API workflow suite asserts on; workspace-workflow-tab
-            // is the new DocTab-specific hook for canvas e2e + future
-            // multi-tab tests. We expose both off the same element so
-            // neither contract has to drift when the underlying mount changes.
-            data-testid="workspace-workflow-workbench"
-            data-workflow-tab="true"
-            data-workflow-tab-id={tab.id}
-          >
-            {tab.workflowId ? (
-              // Detail mode: show single workflow editor
-              <EditorPaneBoundary fallback={null}>
-                <WorkflowHomePage
-                  hideClose
-                  initialSelectedId={tab.workflowId}
-                  scopedTablePath={tab.tablePath}
-                  rootPath={rootPath}
-                />
-              </EditorPaneBoundary>
-            ) : (
-              // Index mode: show list of workflows scoped to a table file
-              <EditorPaneBoundary fallback={null}>
-                <WorkflowIndexPage
-                  scopedTablePath={tab.tablePath}
-                  rootPath={rootPath}
-                  onSelectWorkflow={(workflowId, resolvedTablePath) => {
-                    const tablePath = tab.tablePath || resolvedTablePath
-                    if (tablePath && onOpenWorkflow) {
-                      onOpenWorkflow(tablePath, workflowId)
-                      return
-                    }
-                    openGlobalWorkflow(workflowId)
-                  }}
-                />
-              </EditorPaneBoundary>
-            )}
-          </div>
-        ))}
       {workspaceTabs
         .filter((tab): tab is Extract<WorkspaceTab, { type: 'file-viewer' }> => tab.type === 'file-viewer')
         .map((tab) => (

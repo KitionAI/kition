@@ -339,9 +339,9 @@ items with `primary`.
   kit's own purposes (`<kit>.<name>`) as `not-allowed`, because Kition has no
   generic handling for them, and `mountKit` refuses any other string
   (UI-G4). It answers `host/action` with its
-  own actions (`kitActions.ts`: `workflow.run` through
-  `POST /v1/workflows/{id}/run-record`, and `design.fromRecord`); neither is
-  offered to a preview or a read-only document. Links (KitLinks 1.0
+  own actions (`kitActions.ts`: `settings.open`, which opens Settings where
+  the person sets up AI); none is offered to a preview or a read-only
+  document. Links (KitLinks 1.0
   section 5): `host/open` opens the workspace file a link names in a tab
   (`kitLinks.ts`: a path from the document's folder, or a bare name resolved
   to the nearest file of that name), at the link's view, and creates a
@@ -463,19 +463,17 @@ items with `primary`.
 `kit.table` (`KitionAI/kition-table`, package `public/kits/table-ui`) is a
 normal kit: `.ktable` files open in its own editor in `KitFrame`, and its
 engine and editor live in its repository. Kition has no table engine or
-table editor of its own. Kition's host features (workflows, form and email
-sync, the scenario builder, the workspace tree) read and write tables through
+table editor of its own. Kition's host features (the scenario builder, the
+workspace tree) read and write tables through
 the host table client, `crates/kition-tableclient`: through the Kit AI bridge
 when an editor has the file open, so the edit arrives live, and through the
 headless `kition-table` otherwise. Its writes carry a `system:<feature>` origin
-and never join the person's undo; workflow triggers read
-`table.changes.since` from a cursor kept per file in the workspace
-(`.kition/tables/changes.json`), so a restart neither drops nor repeats
-an edit. The renderer reaches it through `/v1/kit-tables*`
+and never join the person's undo. The renderer reaches it through `/v1/kit-tables*`
 (`contracts/runtime/kit-tables.schema.json`, `src/api/kitTables.ts`), and
-workflows name a table by its file path (`documentPath`) and table id. They follow the file: a rename or move
-(`/v1/kit-tables/renamed`) changes the path they name, and a delete
-(`/v1/kit-tables/deleted`) removes them. An expanded table file in the
+host features name a table by its file path (`documentPath`) and table id. The
+renderer reports a rename or move (`/v1/kit-tables/renamed`) and a delete
+(`/v1/kit-tables/deleted`), so the client reads the file again at its new path
+or forgets it. An expanded table file in the
 workspace tree lists its tables and dashboards, read through the kit
 (`/v1/kit-tables?path=`); a click opens the file in the kit at that one with
 the Kit UI view `{ "path": "tables/<id>" }` or `{ "path": "dashboards/<id>" }`

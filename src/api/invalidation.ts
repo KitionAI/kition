@@ -7,15 +7,11 @@
  *   scoped to the changed path; a changed table file also tells the table pickers
  *   (`TABLE_FILES_CHANGED_EVENT`).
  * - `kition:workspace-reload`, the manual "re-read the tree" event.
- * - The runtime change events dispatched by the API modules after a write
- *   (workflows, connections).
  */
 import type { QueryClient } from '@tanstack/react-query'
 
 import { queryKeys, workspaceRootKey } from '@/api/queryKeys'
 import { subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
-import { WORKFLOW_CHANGED_EVENT, WORKFLOW_ENABLED_CHANGED_EVENT } from '@/lib/workflowEvents'
-import { CONNECTIONS_CHANGED_EVENT } from './connections'
 import { isTableFilePath, notifyTableFilesChanged } from './kitTables'
 
 export const WORKSPACE_RELOAD_EVENT = 'kition:workspace-reload'
@@ -44,10 +40,6 @@ function invalidateWorkspace(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: queryKeys.workspace(currentWorkspaceRoot) })
 }
 
-function invalidateWorkflows(queryClient: QueryClient) {
-  return queryClient.invalidateQueries({ queryKey: queryKeys.workflows() })
-}
-
 /**
  * Subscribes the query client to every change signal. Returns a disposer.
  * Safe to call in a browser preview: the watcher subscription is a no-op
@@ -66,11 +58,6 @@ export function installWorkspaceInvalidation(queryClient: QueryClient) {
       disposers.push(() => window.removeEventListener(event, handler))
     }
     listen(WORKSPACE_RELOAD_EVENT, () => { void invalidateWorkspace(queryClient) })
-    listen(WORKFLOW_CHANGED_EVENT, () => { void invalidateWorkflows(queryClient) })
-    listen(WORKFLOW_ENABLED_CHANGED_EVENT, () => { void invalidateWorkflows(queryClient) })
-    listen(CONNECTIONS_CHANGED_EVENT, () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.connections() })
-    })
   }
 
   return () => {

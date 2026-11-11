@@ -7,8 +7,7 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 // the empty-state copy lookup and the buildAgentTurnContext payload. If
 // those drift apart the agent backend's system-prompt addendum stops
 // matching what the user sees on the empty-state card — that's exactly
-// the desync docs/workflow-ai-chat-ux-review.md P1-2 warns about. This
-// helper is the single source of truth, with a spec that exhaustively
+// the desync this helper prevents. It is the single source of truth, with a spec that exhaustively
 // covers every WorkspaceTab variant.
 //
 // Mapping rationale:
@@ -17,9 +16,7 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //                    → 'gallery'  for media formats (image, video, audio) —
 //                                  "Summarize this document" reads as a bug
 //                                  when the user is staring at a PNG
-//   workflow        → 'workflow'  (workflow editor)
 //   gallery         → 'gallery'   (image gallery)
-//   design          → 'design'    (artboard editor)
 //   null/undefined  → 'document'  (no tab open — fall back to general assistance)
 export function deriveAgentPaneContext(
   tab: WorkspaceTab | null | undefined,
@@ -42,8 +39,6 @@ export function deriveAgentPaneContext(
         default:
           return 'document'
       }
-    case 'workflow':
-      return 'workflow'
     case 'gallery':
       return 'gallery'
     default: {
@@ -67,11 +62,6 @@ export function resolveAgentActiveDocument(
   switch (tab.type) {
     case 'file-viewer':
       return { path: tab.path, format: tab.format }
-    case 'workflow':
-      return {
-        path: tab.tablePath || '',
-        format: tab.tablePath ? 'table' : undefined,
-      }
     case 'gallery':
       return { path: '' }
     default: {

@@ -19,7 +19,6 @@
       "html": "HTML"
     },
     "folder": "Dossier",
-    "newWorkflow": "Nouveau flux de travail",
     "group": {
       "documents": "Documents",
       "data": "Données",
@@ -29,7 +28,7 @@
   },
   "emptyState": {
     "title": "Turn ideas into organized work",
-    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document or table.",
     "prompt": {
       "title": "Describe what you want to build",
       "description": "Plan, research, write, and organize with Kition AI.",
@@ -44,24 +43,17 @@
       "table": {
         "title": "New table",
         "description": "Structure projects, records, and research."
-      },
-      "workflow": {
-        "title": "Workflows",
-        "description": "Automate repeatable work across your tables."
       }
     }
   },
   "sidebar": {
     "tabs": {
-      "files": "Fichiers",
-      "search": "Rechercher"
+      "files": "Fichiers"
     },
     "collapseSection": "Réduire {{name}}",
     "expandSection": "Développer {{name}}",
     "newPage": "Nouvelle page",
     "newPageIn": "Nouvelle page dans {{name}}",
-    "workflows": "Workflows",
-    "openWorkflows": "Ouvrir les workflows",
     "refresh": "Actualiser l'espace de travail",
     "collapseSidebar": "Réduire la barre latérale",
     "loadingDirectory": "Chargement du répertoire local"
@@ -99,7 +91,6 @@
     "closeRight": "Fermer les onglets à droite",
     "closeReadOnly": "Fermer tous les onglets en lecture seule",
     "copyReference": "Copier le chemin/la référence",
-    "workflowsTitle": "Workflows",
     "unsavedTitle": "« {{name}} » contient des modifications non enregistrées",
     "unsavedMessage": "Les enregistrer avant de fermer l’onglet ? Les modifications non enregistrées seront perdues.",
     "unsavedTitleMany": "Modifications non enregistrées dans {{count}} documents",

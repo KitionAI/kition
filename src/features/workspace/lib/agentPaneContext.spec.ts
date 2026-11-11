@@ -2,8 +2,7 @@
  * Locks in the WorkspaceTab → AgentPaneContext mapping. Two call sites
  * in WorkspaceScreen consume this — empty-state copy + buildAgentTurnContext
  * — and if they drift apart the agent backend's system-prompt addendum
- * stops matching what the user sees on the empty-state card. That's
- * exactly the desync docs/workflow-ai-chat-ux-review.md P1-2 calls out.
+ * stops matching what the user sees on the empty-state card.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -62,15 +61,6 @@ describe('deriveAgentPaneContext', () => {
     }
   })
 
-  it('workflow tab → workflow', () => {
-    const tab: WorkspaceTab = {
-      id: 'w1',
-      type: 'workflow',
-      title: 'Email on lead',
-    }
-    expect(deriveAgentPaneContext(tab)).toBe('workflow')
-  })
-
   it('gallery tab → gallery', () => {
     const tab: WorkspaceTab = {
       id: 'g1',
@@ -101,17 +91,7 @@ describe('resolveAgentActiveDocument', () => {
     })).toEqual({ path: 'Reports/Quarter.pdf', format: 'pdf' })
   })
 
-  it('binds a workflow tab to its table file', () => {
-    expect(resolveAgentActiveDocument({
-      id: 'workflow:Sales/Leads.ktable',
-      type: 'workflow',
-      title: 'Leads',
-      tablePath: 'Sales/Leads.ktable',
-    })).toEqual({ path: 'Sales/Leads.ktable', format: 'table' })
-    expect(resolveAgentActiveDocument({
-      id: 'workflow',
-      type: 'workflow',
-      title: 'Workflows',
-    })).toEqual({ path: '', format: undefined })
+  it('names no document for a gallery tab', () => {
+    expect(resolveAgentActiveDocument({ id: 'g1', type: 'gallery', title: 'Images', kind: 'images' })).toEqual({ path: '' })
   })
 })

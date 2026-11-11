@@ -145,14 +145,8 @@ export async function streamAgentMessage(options: {
   attachmentPaths?: string[]
   localSources?: AgentLocalSource[]
   activeDocumentPath?: string
-  /** Workflow id the user is editing when paneContext === 'workflow'.
-   *  Backend loads the def + appends a compact summary to the skill
-   *  context so the agent knows the trigger.type /
-   *  action.type without having to call tools. Empty / missing → no
-   *  workflow context is injected. */
-  activeWorkflowId?: string
   /** Mirrors the workbench tab type the user has open ("document" /
-   *  "workflow" / "gallery"). The backend uses
+   *  "gallery"). The backend uses
    *  this to add pane-specific guidance to the system prompt so the
    *  agent's behaviour matches what the user is actually looking at.
    *  Empty string / undefined defaults to "document". */
@@ -183,7 +177,6 @@ export async function streamAgentMessage(options: {
       attachment_paths: options.attachmentPaths || [],
       local_sources: options.localSources || [],
       active_document_path: options.activeDocumentPath || '',
-      active_workflow_id: options.activeWorkflowId || '',
       pane_context: options.paneContext || '',
       execution_mode: options.executionMode || 'apply',
       task_mode: options.taskMode || 'auto',

@@ -78,5 +78,3 @@ CREATE INDEX `idx_desktop_hooks_deleted_at` ON `desktop_hooks`(`deleted_at`);
 CREATE INDEX `idx_desktop_hooks_enabled` ON `desktop_hooks`(`enabled`);
 CREATE INDEX `idx_desktop_hook_user_event` ON `desktop_hooks`(`user_id`,`event`);
 CREATE TABLE `desktop_notification_policies` (`user_id` integer PRIMARY KEY AUTOINCREMENT,`system_notifications_enabled` numeric NOT NULL DEFAULT true,`on_task_completed` numeric NOT NULL DEFAULT true,`on_task_failed` numeric NOT NULL DEFAULT true,`on_user_input_needed` numeric NOT NULL DEFAULT true,`long_running_threshold_seconds` integer NOT NULL DEFAULT 0,`created_at` integer,`updated_at` integer);
-CREATE TABLE `connections` (`id` text,`user_id` integer,`channel` text,`name` text,`settings_json` JSON,`secret_json` JSON,`status` text,`last_verified_at` integer,`last_error_code` text,`last_error_message` text,`created_at` integer,`updated_at` integer,PRIMARY KEY (`id`));
-CREATE INDEX `idx_connections_user_channel` ON `connections`(`user_id`,`channel`);

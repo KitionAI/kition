@@ -9,7 +9,7 @@
  *   ['workspace', root, 'tree']               the file tree listing
  *   ['workspace', root, 'document', path]     one document or data document by path
  *   ['workspace', root, 'records', ...]       record windows for one table
- *   ['runtime', 'workflows' | 'connections' | ...] workspace-independent runtime lists
+ *   ['runtime', 'agent-sessions' | ...] workspace-independent runtime lists
  *   ['bundled', ...]                          assets packaged with the client
  */
 export const queryKeys = {
@@ -23,8 +23,6 @@ export const queryKeys = {
   designTemplates: () => ['bundled', 'design-templates'] as const,
 
   runtime: ['runtime'] as const,
-  workflows: () => ['runtime', 'workflows'] as const,
-  connections: () => ['runtime', 'connections'] as const,
   agentSessions: () => ['runtime', 'agent-sessions'] as const,
   agentSession: (id: string) => ['runtime', 'agent-sessions', id] as const,
 }

@@ -227,7 +227,6 @@ impl ProxyManager {
             "http_proxy",
             "NO_PROXY",
             "no_proxy",
-            "KITION_SMTP_PROXY",
         ];
         if !self.loaded {
             return Vec::new();

@@ -19,7 +19,6 @@
       "html": "HTML"
     },
     "folder": "Folder",
-    "newWorkflow": "New workflow",
     "group": {
       "documents": "Documents",
       "data": "Data",
@@ -29,7 +28,7 @@
   },
   "emptyState": {
     "title": "Turn ideas into organized work",
-    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document or table.",
     "prompt": {
       "title": "Describe what you want to build",
       "description": "Plan, research, write, and organize with Kition AI.",
@@ -44,24 +43,17 @@
       "table": {
         "title": "New table",
         "description": "Structure projects, records, and research."
-      },
-      "workflow": {
-        "title": "Workflows",
-        "description": "Automate repeatable work across your tables."
       }
     }
   },
   "sidebar": {
     "tabs": {
-      "files": "Files",
-      "search": "Search"
+      "files": "Files"
     },
     "collapseSection": "Collapse {{name}}",
     "expandSection": "Expand {{name}}",
     "newPage": "New page",
     "newPageIn": "New page in {{name}}",
-    "workflows": "Workflows",
-    "openWorkflows": "Open workflows",
     "refresh": "Refresh workspace",
     "collapseSidebar": "Collapse sidebar",
     "loadingDirectory": "Loading local directory"
@@ -99,7 +91,6 @@
     "closeRight": "Close tabs to the right",
     "closeReadOnly": "Close all read-only tabs",
     "copyReference": "Copy path/reference",
-    "workflowsTitle": "Workflows",
     "unsavedTitle": "“{{name}}” has unsaved changes",
     "unsavedMessage": "Save them before the tab closes? Changes you don’t save are lost.",
     "unsavedTitleMany": "Unsaved changes in {{count}} documents",

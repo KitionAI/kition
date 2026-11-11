@@ -5,8 +5,7 @@ intent: >-
   Every empty and error state a person meets says what happened in plain words and offers a next
   step, never a raw error, and the window stays usable: an empty workspace, a failed Getting
   Started setup, an unreachable file service, an editor engine that cannot load, a damaged file, a
-  save the disk refuses, the agent without a model, a search with no results, and an empty
-  workflow page.
+  save the disk refuses, and the agent without a model.
 layer: golden
 source:
   kind: probe

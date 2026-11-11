@@ -93,18 +93,6 @@ describe('effectsOfEvent', () => {
     ])
     expect(effects).toEqual([{ type: 'documents-modified', paths: ['Docs/From-args.md'] }])
   })
-
-  it('announces a configured SMTP connection', () => {
-    const { effects } = collect([
-      turnStart(),
-      call('s1', 'configure_smtp_connection', { password: '[redacted]' }),
-      ok('s1', 'configure_smtp_connection', { id: 'conn-1', workflow_id: 'wf-2', workflow_attached: true }),
-    ])
-    expect(effects).toEqual([{
-      type: 'connections-changed',
-      detail: { source: 'configure_smtp_connection', connectionId: 'conn-1', workflowId: 'wf-2', workflowAttached: true },
-    }])
-  })
 })
 
 describe('stepAgentSession', () => {

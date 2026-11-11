@@ -65,7 +65,7 @@
     "description": "Préférences de proxy et de connexions sortantes pour l'ensemble de l'application de bureau.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Achemine chaque requête sortante — moteur d'exécution (SMTP, webhooks, console), fenêtre de bureau et outil de mise à jour automatique — via le même proxy.",
+      "sectionDescription": "Achemine chaque requête sortante — moteur d'exécution (webhooks, console), fenêtre de bureau et outil de mise à jour automatique — via le même proxy.",
       "enableTitle": "Utiliser un proxy",
       "enableDescription": "Lorsque désactivé, le trafic passe en direct.",
       "schemeLabel": "Schéma",
@@ -204,24 +204,6 @@
     "errorVerification": "Échec de la vérification du fichier de mise à jour. Réinstallez depuis Releases.",
     "errorDisk": "Espace disque insuffisant pour télécharger la mise à jour.",
     "errorRateLimit": "Limite de débit GitHub atteinte. Nouvelle tentative ultérieure."
-  },
-  "search": {
-    "title": "Rechercher",
-    "paletteHint": "⌘⇧F · Documents / Tables / Champs",
-    "palettePlaceholder": "Rechercher dans tous les documents et tables…",
-    "moreResults": "Affinez votre recherche pour voir plus",
-    "emptyPrompt": "Saisissez un mot-clé ou un opérateur pour lancer la recherche",
-    "noMatches": "Aucun résultat",
-    "groups": {
-      "document": "Documents",
-      "record": "Enregistrements",
-      "fieldsViews": "Champs / vues"
-    },
-    "metaKind": {
-      "field": "champ",
-      "view": "vue",
-      "table": "table"
-    }
   },
   "scenario": {
     "heading": "Partir de votre scénario",

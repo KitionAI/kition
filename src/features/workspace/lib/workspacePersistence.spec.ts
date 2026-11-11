@@ -9,11 +9,11 @@ import {
 const ROOT_A = '/Users/alice/vault-a'
 const ROOT_B = '/Users/alice/vault-b'
 
-const workflowTab = {
-  id: 'workflow:plan.ktable',
-  type: 'workflow' as const,
-  title: 'plan',
-  tablePath: 'plan.ktable',
+const videosTab = {
+  id: 'gallery:videos',
+  type: 'gallery' as const,
+  title: 'Videos',
+  kind: 'videos' as const,
 }
 
 describe('workspacePersistence tabs', () => {
@@ -26,37 +26,37 @@ describe('workspacePersistence tabs', () => {
       [ROOT_A]: [
         { id: 'browser:generic-web:example.com', type: 'browser', title: 'Example', provider: 'generic-web' },
         { id: 'browser-sites', type: 'browser-sites', title: 'Sites' },
-        workflowTab,
+        videosTab,
       ],
     }))
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(videosTab)])
   })
 
   it('keeps each workspace tab list isolated under its own rootPath', () => {
-    writeWorkspaceTabs(ROOT_A, [workflowTab])
+    writeWorkspaceTabs(ROOT_A, [videosTab])
     writeWorkspaceTabs(ROOT_B, [
       {
-        id: 'workflow:notes.ktable',
-        type: 'workflow',
-        title: 'notes',
-        tablePath: 'notes.ktable',
+        id: 'gallery:clips',
+        type: 'gallery',
+        title: 'Clips',
+        kind: 'videos',
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(videosTab)])
     expect(readWorkspaceTabs(ROOT_B)).toEqual([
       {
-        id: 'workflow:notes.ktable',
-        type: 'workflow',
-        title: 'notes',
-        tablePath: 'notes.ktable',
+        id: 'gallery:clips',
+        type: 'gallery',
+        title: 'Clips',
+        kind: 'videos',
       },
     ])
   })
 
   it('returns no tabs and does not write when rootPath is empty', () => {
-    writeWorkspaceTabs(ROOT_A, [workflowTab])
+    writeWorkspaceTabs(ROOT_A, [videosTab])
 
     expect(readWorkspaceTabs('')).toEqual([])
 
@@ -70,11 +70,11 @@ describe('workspacePersistence tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(videosTab)])
   })
 
   it('writing an empty list removes that workspace’s slot', () => {
-    writeWorkspaceTabs(ROOT_A, [workflowTab])
+    writeWorkspaceTabs(ROOT_A, [videosTab])
     writeWorkspaceTabs(ROOT_A, [])
 
     expect(readWorkspaceTabs(ROOT_A)).toEqual([])
@@ -86,32 +86,14 @@ describe('workspacePersistence tabs', () => {
   it('migrates legacy v1 array into the first rootPath that reads it', () => {
     window.localStorage.setItem(
       'kition.document.workspace-tabs.v1',
-      JSON.stringify([workflowTab]),
+      JSON.stringify([videosTab]),
     )
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(workflowTab)])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(videosTab)])
     // Legacy key gets cleaned up.
     expect(window.localStorage.getItem('kition.document.workspace-tabs.v1')).toBeNull()
     // Subsequent reads from other workspaces do not see the migrated data.
     expect(readWorkspaceTabs(ROOT_B)).toEqual([])
-  })
-
-  it('restores workflow tabs including optional tablePath/workflowId', () => {
-    const scoped = {
-      id: 'workflow:Leads.ktable',
-      type: 'workflow' as const,
-      title: 'Leads workflows',
-      tablePath: 'Leads.ktable',
-      workflowId: 'auto-99',
-    }
-    const global = {
-      id: 'workflow:home',
-      type: 'workflow' as const,
-      title: 'Workflows',
-    }
-    writeWorkspaceTabs(ROOT_A, [scoped, global])
-
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([scoped, global])
   })
 })
 

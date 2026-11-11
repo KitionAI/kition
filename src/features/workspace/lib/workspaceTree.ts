@@ -95,14 +95,6 @@ function buildWorkspaceTreeNodes(
       return
     }
 
-    // Hide raw workflow storage from the tree. They live under the
-    // workspace root and we don't want users
-    // editing them by hand. Surface still works for advanced users via
-    // OS-level reveal.
-    if (parentPath === '' && (item.name === 'workflow.json' || item.name === 'workflow_runs.json')) {
-      return
-    }
-
     files.push(item)
   })
 
@@ -163,12 +155,6 @@ export function buildPrivateSectionTreeNodes(
   // like Agent/images/<session>/*.png are visible to the user. The earlier
   // design routed media into a separate gallery section that was never wired
   // up, leaving image folders silently invisible after image_generation runs.
-  //
-  // The global "Workflows" entry used to be appended here as a virtual root
-  // node, but it now lives as a lightning-bolt icon in the sidebar header
-  // (between the New Page + and Refresh buttons). The routing path
-  // (`workflows://`) is unchanged — the icon dispatches it through the same
-  // WorkspaceScreen.onOpen handler.
   return buildWorkspaceTreeNodes(items, metadata, '')
 }
 

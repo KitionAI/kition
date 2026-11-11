@@ -28,7 +28,6 @@ const status = {
     documents: 1,
     tables: 1,
     assets: 2,
-    workflows: 1,
     agent_sessions: 1,
     total_bytes: 4096,
   },

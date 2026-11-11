@@ -759,7 +759,6 @@ pub async fn proxy_save(
         let requires_restart = ProxyManager::requires_restart(&previous, &next, password_changed);
         (next, requires_restart, proxy.active_url())
     };
-    state.supervisor.set_smtp_proxy(active.clone());
     updates.set_proxy(active);
     Ok(json!({ "state": next, "requiresRestart": requires_restart }))
 }

@@ -41,12 +41,12 @@ describe('request api client', () => {
     fetchMock.mockResolvedValue(jsonResponse({ code: 200, data: [] }))
     const mod = await loadRequestModule()
 
-    const response = await mod.default.get('/v1/workflows', { params: { workspace_root: '/vault', query: undefined } })
+    const response = await mod.default.get('/v1/agent/sessions', { params: { workspace_root: '/vault', query: undefined } })
 
     expect(waitForDesktopBackendReady).toHaveBeenCalledTimes(1)
-    expect(normalizeApiPath).toHaveBeenCalledWith('/v1/workflows')
+    expect(normalizeApiPath).toHaveBeenCalledWith('/v1/agent/sessions')
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('/api/v1/workflows?workspace_root=%2Fvault')
+    expect(url).toBe('/api/v1/agent/sessions?workspace_root=%2Fvault')
     expect(init.method).toBe('GET')
     expect((init.headers as Record<string, string>)['X-Locale']).toBeTruthy()
     expect(response).toEqual([])
@@ -56,7 +56,7 @@ describe('request api client', () => {
     waitForDesktopBackendReady.mockResolvedValue(false)
     const mod = await loadRequestModule()
 
-    await expect(mod.default.get('/v1/workflows')).rejects.toThrow('Desktop backend is not ready yet, please retry shortly')
+    await expect(mod.default.get('/v1/agent/sessions')).rejects.toThrow('Desktop backend is not ready yet, please retry shortly')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -64,7 +64,7 @@ describe('request api client', () => {
     fetchMock.mockImplementation(() => jsonResponse({ ok: true }))
     const mod = await loadRequestModule()
 
-    await mod.default.post('/v1/workflows', { name: 'x' })
+    await mod.default.post('/v1/agent/sessions', { name: 'x' })
     const [, jsonInit] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(jsonInit.body).toBe('{"name":"x"}')
     expect((jsonInit.headers as Record<string, string>)['Content-Type']).toBe('application/json')

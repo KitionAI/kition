@@ -96,23 +96,6 @@
         }
       }
     },
-    "workflow": {
-      "description": "Describe the workflow you want and the agent will draft the trigger + action.",
-      "suggestions": {
-        "emailOnRecord": {
-          "label": "Email me on every new record",
-          "prompt": "When a record is created in this table, email me a summary of the record."
-        },
-        "remindOnDate": {
-          "label": "Remind on a date field",
-          "prompt": "When today matches the deadline column on this table, send a reminder."
-        },
-        "refine": {
-          "label": "Refine this workflow",
-          "prompt": "Look at the current workflow and suggest the next refinement."
-        }
-      }
-    },
     "gallery": {
       "description": "Ask the agent to organise, describe, or repurpose the media in this gallery.",
       "suggestions": {

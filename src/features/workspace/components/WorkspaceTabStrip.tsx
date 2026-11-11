@@ -1,9 +1,8 @@
-import { BotIcon as Bot, ChevronDownIcon as ChevronDown, ChevronLeftIcon as ChevronLeft, ChevronRightIcon as ChevronRight, FileVideoCameraIcon as FileVideo2, ImageIcon, PanelLeftOpenIcon as PanelLeftOpen, XIcon as X, ZapIcon as Zap } from '@kition/tessera-icons/react'
+import { BotIcon as Bot, ChevronDownIcon as ChevronDown, ChevronLeftIcon as ChevronLeft, ChevronRightIcon as ChevronRight, FileVideoCameraIcon as FileVideo2, ImageIcon, PanelLeftOpenIcon as PanelLeftOpen, XIcon as X } from '@kition/tessera-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
-import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, getWorkspaceTabKit, type WorkspaceTab } from '@/features/workspace/lib/workspace'
-import { KitIcon } from '@/components/KitIcon'
+import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { canShareDocument, CollabTabIndicators, isDocumentCollab, requestShareDocument, requestSyncDocument, useCollabAvailable } from '@/features/collab/public'
 import { canShowDocumentHistory, requestDocumentHistory } from '@/features/history/public'
 import { KitDraftTabMark } from '@/features/kits/public'
@@ -458,18 +457,8 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
       ? <ImageIcon className={cn('size-3.5', getWorkspaceItemIconColorClass('image'))} />
       : <FileVideo2 className={cn('size-3.5', getWorkspaceItemIconColorClass('video'))} />
   }
-  if (tab.type === 'file-viewer') {
-    const Icon = getWorkspaceItemIcon(tab.format)
-    return <Icon className={cn('size-3.5', getWorkspaceItemIconColorClass(tab.format))} />
-  }
-  if (tab.type === 'workflow') {
-    if (tab.tablePath) {
-      return <KitIcon kit="table" small className="size-3.5" />
-    }
-    return <Zap className="size-3.5 text-brand" />
-  }
-  const kit = getWorkspaceTabKit(tab)
-  return <KitIcon kit={kit ?? 'note'} small className="size-3.5" />
+  const Icon = getWorkspaceItemIcon(tab.format)
+  return <Icon className={cn('size-3.5', getWorkspaceItemIconColorClass(tab.format))} />
 }
 
 /** A background tab whose document the agent changed: the change waits there for review. */

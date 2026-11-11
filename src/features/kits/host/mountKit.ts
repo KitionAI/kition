@@ -140,7 +140,7 @@ export type KitHostHandlers = {
   generate?: (params: Params<'host/generate'>) => Result<'host/generate'>
   /**
    * `host/action`: the host's actions by id, each listed as capability `action:<id>` (section
-   * 7j), such as `workflow.run` and `design.fromRecord`. An id the host does not serve is refused
+   * 7j), such as `settings.open` and `design.fromRecord`. An id the host does not serve is refused
    * with reason `not-allowed`.
    */
   actions?: Record<string, (params: Record<string, unknown>) => Result<'host/action'>>

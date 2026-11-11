@@ -14,7 +14,6 @@ export const PRODUCT_ANALYTICS_EVENT_NAMES = [
   'account_state_refreshed',
   'agent_first_request_started',
   'agent_first_request_completed',
-  'workflow_first_run_completed',
   'credits_low_seen',
   'credits_exhausted_seen',
   'billing_opened',

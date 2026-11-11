@@ -10,7 +10,7 @@ export type AgentModelOption = {
   runtimeModel: RuntimeWritingModel
 }
 
-export function buildWritingRuntimeModel(settings: DesktopSettingsState, modelName: string) {
+function buildWritingRuntimeModel(settings: DesktopSettingsState, modelName: string) {
   if (!modelName) {
     return undefined
   }
@@ -37,7 +37,7 @@ export function buildWritingRuntimeModel(settings: DesktopSettingsState, modelNa
   }
 }
 
-export function resolveAgentTextModel(settings: DesktopSettingsState) {
+function resolveAgentTextModel(settings: DesktopSettingsState) {
   const providerKind = settings.models.activeProvider
   return settings.models.selectedModelByProvider[providerKind]
     || settings.models.preferredChatModel

@@ -509,18 +509,8 @@ describe('AgentChatPanel empty-state per pane', () => {
     )
     const labels = getStarterLabels()
     expect(labels).toContain('Summarize this document')
-    expect(labels).not.toContain('Email me on every new record')
+    expect(labels).not.toContain('Describe each item')
     expect(labels).not.toContain('Add a site')
-  })
-
-  it('workflow pane shows workflow suggestions, not document suggestions', async () => {
-    await mount(
-      createElement(AgentChatPanel, makeMinimalProps({ paneContext: 'workflow' })),
-    )
-    const labels = getStarterLabels()
-    expect(labels).toContain('Email me on every new record')
-    expect(labels).toContain('Refine this workflow')
-    expect(labels).not.toContain('Summarize this document')
   })
 
   it('gallery pane shows media-agnostic suggestions', async () => {
@@ -538,7 +528,7 @@ describe('AgentChatPanel empty-state per pane', () => {
     await mount(
       createElement(
         AgentChatPanel,
-        makeMinimalProps({ paneContext: 'workflow', onDraftChange }),
+        makeMinimalProps({ paneContext: 'gallery', onDraftChange }),
       ),
     )
     const firstCard = container.querySelector('.agent-chat-suggestion-card') as HTMLButtonElement
@@ -549,7 +539,7 @@ describe('AgentChatPanel empty-state per pane', () => {
     })
     expect(onDraftChange).toHaveBeenCalledTimes(1)
     const prompt = onDraftChange.mock.calls[0][0] as string
-    // Verify it's the *workflow* pane's first suggestion prompt, not the
+    // Verify it's the *gallery* pane's first suggestion prompt, not the
     // document fallback — proves the pane wiring at click time.
     expect(prompt.length).toBeGreaterThan(0)
     expect(prompt).not.toMatch(/Summarize this document/)
@@ -563,13 +553,12 @@ describe('AgentChatPanel empty-state per pane', () => {
   //
   // iter 28: parameterize across every pane. The CTA-swap logic is
   // pane-agnostic, but each pane has its own suggestion set, and a
-  // regression that special-cases (say) workflow could silently leak
+  // regression that special-cases (say) the gallery could silently leak
   // pane-specific suggestions back through. Cover the panes
   // explicitly so one accidentally re-enabled pane fails its own
   // assertion.
   describe.each([
     { pane: 'document', leakedStarter: 'Summarize this document' },
-    { pane: 'workflow', leakedStarter: 'Email me on every new record' },
     { pane: 'gallery', leakedStarter: 'Describe each item' },
   ] as const)('needsModelConfig on pane $pane', ({ pane, leakedStarter }) => {
     it('hides the pane-specific suggestion and shows the Configure CTA instead', async () => {

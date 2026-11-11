@@ -2,20 +2,18 @@ import type { Page } from '@playwright/test'
 
 /**
  * mockSuppressLauncher hides the desktop "select vault" launcher screen
- * so e2e specs can land directly in the workspace. Extracted from the
- * individual workflow specs that all repeated the same 50-line
- * boilerplate.
+ * so e2e specs can land directly in the workspace.
  */
 export async function mockSuppressLauncher(
   page: Page,
-  vaultPath = '/tmp/kition-workflow-e2e-vault',
+  vaultPath = '/tmp/kition-e2e-vault',
   capabilities: string[] = [],
 ) {
   await page.addInitScript(({ vaultPath: vp, runtimeCapabilities }) => {
     const stateWindow = window as typeof window & Record<string, unknown>
     const vault = {
       path: vp,
-      name: 'Workflow E2E Vault',
+      name: 'E2E Vault',
       added_at: '2026-01-01T00:00:00.000Z',
       last_opened_at: '2026-01-01T00:00:00.000Z',
     }

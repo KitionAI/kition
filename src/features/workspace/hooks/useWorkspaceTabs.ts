@@ -6,7 +6,6 @@ import {
   closeTab,
   filterTabs,
   remapTabPaths,
-  renameTabPath,
   switchWorkspaceTabs,
   updateTab,
   upsertTab,
@@ -94,11 +93,6 @@ export function useWorkspaceTabs({
     setState((current) => remapTabPaths(current, sourcePath, targetPath))
   }, [])
 
-  // A renamed table file keeps its workflow tab.
-  const renameWorkspaceTabPath = useCallback((fromPath: string, toPath: string) => {
-    setState((current) => renameTabPath(current, fromPath, toPath))
-  }, [])
-
   const activateWorkspaceTab = useCallback(async (tab: WorkspaceTab) => {
     setActiveWorkspaceTabId(tab.id)
     if (tab.type === 'gallery') {
@@ -122,7 +116,6 @@ export function useWorkspaceTabs({
     closeWorkspaceTab,
     filterWorkspaceTabs,
     remapWorkspaceTabPaths,
-    renameWorkspaceTabPath,
     setActiveWorkspaceTabId,
     updateWorkspaceTab,
     upsertWorkspaceTab,

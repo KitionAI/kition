@@ -2,7 +2,7 @@
 
 # Welcome to Kition
 
-Kition brings Markdown documents, structured tables, visual workflows, and AI Chat together in one focused workspace. This welcome document and the ready-to-open examples are grouped inside **Getting Started**.
+Kition brings Markdown documents, structured tables, and AI Chat together in one focused workspace. This welcome document and the ready-to-open examples are grouped inside **Getting Started**.
 
 > [!tip] Everything here is editable
 > This page is a plain Markdown file. Keep the sections that help, rewrite them for your team, or delete the page after you are comfortable with the workspace.
@@ -23,12 +23,11 @@ flowchart LR
     You --> Chat[AI Chat]
     Chat --> Docs
     Chat --> Tables
-    Tables --> Workflows[Visual workflows]
     Docs --> Workspace[(Local workspace)]
     Tables --> Workspace
 ```
 
-Documents remain portable files. Tables keep typed fields, views, records, and workflow configuration together.
+Documents remain portable files. Tables keep typed fields, views, and records together.
 
 ## What makes Kition useful
 
@@ -38,12 +37,11 @@ Documents remain portable files. Tables keep typed fields, views, records, and w
 | Structured data | Related records and field types stay together. | Create a table from Template Center. |
 | Multiple views | One table can use grid, kanban, calendar, or gallery views. | Add a second view to a table. |
 | Published forms | A configured form can collect remote submissions. | Publish a form and submit one test response. |
-| Visual workflows | Record events can trigger repeatable actions. | Inspect the workflow area of a template. |
 | AI fields and chat | AI can work with selected fields or active workspace context. | Ask for a summary before requesting changes. |
 
 ## Explore the template library
 
-Open **Template Center** from the workspace create menu. Each template creates an independent `.ktable` file, so you can safely change fields, views, records, forms, and workflows without modifying the original template.
+Open **Template Center** from the workspace create menu. Each template creates an independent `.ktable` file, so you can safely change fields, views, records, and forms without modifying the original template.
 
 The built-in templates cover different kinds of work:
 
@@ -119,18 +117,6 @@ $$
 V_5 = 100(1.08)^5 \approx 146.93
 $$
 
-## Work with workflows
-
-Use a workflow when a record change should trigger deterministic follow-up, such as normalizing text, assigning a status, copying a record, or sending data to an approved integration.
-
-Before enabling a workflow:
-
-- verify the trigger;
-- review every mapped input field;
-- test against one sample record;
-- confirm the result in the destination table or service;
-- enable automation only after the test behaves as expected.
-
 ## Work with AI Chat
 
 Useful first prompts are concrete and scoped to the active file.
@@ -161,7 +147,6 @@ Open **Settings > Onboarding Guides** when you want a larger, guided example. Im
 
 | Guide | What it demonstrates | Requirement |
 | --- | --- | --- |
-| Lead Automation | A record-created follow-up workflow | None to inspect |
 | Receipt Extraction | A reusable structured extraction prompt | AI provider to run again |
 | Product Content | Image and copy generation fields | Image-capable AI provider to run again |
 

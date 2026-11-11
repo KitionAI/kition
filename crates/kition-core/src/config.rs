@@ -52,14 +52,6 @@ pub struct AppConfig {
     /// does with the kit packages it serves. Set by the embedding process only.
     pub kit_manifests: Vec<String>,
     pub sqlite_path: String,
-    pub smtp_host: String,
-    pub smtp_port: i64,
-    pub smtp_username: String,
-    pub smtp_password: String,
-    pub smtp_from: String,
-    pub smtp_from_name: String,
-    pub smtp_tls_mode: String,
-    pub smtp_proxy: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -147,31 +139,6 @@ fn from_value(root: &Value, env: &dyn Fn(&str) -> Option<String>) -> AppConfig {
         sqlite_path: first_non_empty(&[
             env_str("KITION_DESKTOP_SQLITE_PATH"),
             file.string("sqlite.path"),
-        ]),
-        smtp_host: first_non_empty(&[env_str("KITION_SMTP_HOST"), file.string("smtp.host")]),
-        smtp_port: first_non_empty_int(&env_str("KITION_SMTP_PORT"), file.int("smtp.port")),
-        smtp_username: first_non_empty(&[
-            env_str("KITION_SMTP_USERNAME"),
-            file.string("smtp.username"),
-        ]),
-        smtp_password: first_non_empty(&[
-            env_str("KITION_SMTP_PASSWORD"),
-            file.string("smtp.password"),
-        ]),
-        smtp_from: first_non_empty(&[env_str("KITION_SMTP_FROM"), file.string("smtp.from")]),
-        smtp_from_name: first_non_empty(&[
-            env_str("KITION_SMTP_FROM_NAME"),
-            file.string("smtp.fromName"),
-        ]),
-        smtp_tls_mode: first_non_empty(&[
-            env_str("KITION_SMTP_TLS_MODE"),
-            file.string("smtp.tlsMode"),
-        ]),
-        smtp_proxy: first_non_empty(&[
-            env_str("KITION_SMTP_PROXY"),
-            file.string("smtp.proxy"),
-            env_str("HTTPS_PROXY"),
-            env_str("https_proxy"),
         ]),
     };
     if cfg.api_prefix.is_empty() {
@@ -283,9 +250,6 @@ workspaceDir = "./workspace"
 
 [logger.default]
 level = "error"
-
-[smtp]
-proxy = "http://file-proxy"
 "#;
 
     fn env_from(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
@@ -313,7 +277,6 @@ proxy = "http://file-proxy"
         assert_eq!(cfg.sqlite_path, "./data/test.db");
         assert_eq!(cfg.log_level, "error");
         assert_eq!(cfg.portal_base_url, "https://devapi.kition.ai");
-        assert_eq!(cfg.smtp_proxy, "http://file-proxy");
     }
 
     #[test]
@@ -371,13 +334,6 @@ proxy = "http://file-proxy"
         assert_eq!(cfg.http_port, 8001);
         assert_eq!(cfg.log_level, "info");
         assert_eq!(cfg.portal_base_url, "https://kition.ai");
-    }
-
-    #[test]
-    fn smtp_proxy_falls_back_to_https_proxy() {
-        let root: Value = toml::from_str("").unwrap_or_else(|err| panic!("config: {err}"));
-        let cfg = from_value(&root, &env_from(&[("https_proxy", "http://lower")]));
-        assert_eq!(cfg.smtp_proxy, "http://lower");
     }
 
     #[test]

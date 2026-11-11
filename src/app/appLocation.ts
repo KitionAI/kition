@@ -4,13 +4,11 @@
  * the result, and never reads `window.location` piecemeal.
  */
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
-import type { WorkflowRouteContext } from '@/features/workflow/public'
 
 export type AppLocation =
   | { view: 'documents' }
   | { view: 'settings'; section: SettingsSectionKey }
   | { view: 'scenario' }
-  | { view: 'workflow'; pathname: string; context: WorkflowRouteContext | null }
 
 export type AppView = AppLocation['view']
 
@@ -52,40 +50,28 @@ export function normalizeAppPathname(pathname: string): string {
     pathname === DEFAULT_APP_PATHNAME
     || pathname === '/settings'
     || pathname === '/scenario'
-    || pathname.startsWith('/workflow')
   ) {
     return pathname
   }
   return DEFAULT_APP_PATHNAME
 }
 
-function readWorkflowContext(state: unknown): WorkflowRouteContext | null {
-  const context = (state as { workflowContext?: Partial<WorkflowRouteContext> } | null)?.workflowContext
-  if (!context || !context.documentPath || !context.tableId) return null
-  return { documentPath: context.documentPath, tableId: context.tableId, tableName: context.tableName || '' }
-}
-
 export function parseAppLocation(input: { pathname: string; search: string; state: unknown }): AppLocation {
   const pathname = normalizeAppPathname(input.pathname)
   if (pathname === '/scenario') return { view: 'scenario' }
-  if (pathname.startsWith('/workflow')) {
-    return { view: 'workflow', pathname, context: readWorkflowContext(input.state) }
-  }
   if (pathname === '/settings') {
     return { view: 'settings', section: resolveSettingsSection(new URLSearchParams(input.search).get('section')) }
   }
   return { view: 'documents' }
 }
 
-/** The pathname a location lives at; the workflow view keeps whatever sub-path it was opened with. */
+/** The pathname a location lives at. */
 export function appLocationPathname(location: AppLocation): string {
   switch (location.view) {
     case 'settings':
       return '/settings'
     case 'scenario':
       return '/scenario'
-    case 'workflow':
-      return location.pathname
     default:
       return DEFAULT_APP_PATHNAME
   }

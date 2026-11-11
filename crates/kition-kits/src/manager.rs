@@ -212,19 +212,6 @@ pub(crate) struct Inner {
     /// The file grants kits hold (`kition_kit_host::files`, KitFiles 1.1): the editor pages'
     /// sessions and each headless kit's.
     grants: Arc<GrantStore>,
-    /// Every headless save of a workspace file, for whoever follows file edits (the host table
-    /// client's triggers).
-    saves: tokio::sync::broadcast::Sender<SavedFile>,
-}
-
-/// A headless document saved to its workspace file.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SavedFile {
-    pub kit_id: &'static str,
-    /// Workspace-relative, `/`-separated.
-    pub path: String,
-    /// The headless document, still open after the save.
-    pub document_id: String,
 }
 
 /// The kits of one workspace. Cheap to clone.
@@ -252,7 +239,6 @@ impl KitManager {
                 described: Mutex::default(),
                 headless_drafts: AtomicBool::new(false),
                 draft_documents: tokio::sync::Mutex::default(),
-                saves: tokio::sync::broadcast::channel(256).0,
             }),
         }
     }
@@ -844,11 +830,7 @@ impl KitManager {
         let inner = document_id;
         let params = DocumentRef { document_id: inner.to_owned() };
         self.call::<methods::DocumentSave>(kit, caller, &params).await?;
-        let view = self.document(caller, kit_id, document_id).await?;
-        if let Some(path) = view.path.clone() {
-            let _ = self.inner.saves.send(SavedFile { kit_id: view.kit_id, path, document_id: document_id.to_owned() });
-        }
-        Ok(view)
+        self.document(caller, kit_id, document_id).await
     }
 
     /// Saves the document to the workspace file `path` (a new file, or one it replaces), which it
@@ -860,11 +842,7 @@ impl KitManager {
         let params = DocumentSaveAsParams { document_id: document_id.to_owned(), file: handle.clone(), format: format.map(str::to_owned) };
         let (running, _) = self.call::<methods::DocumentSaveAs>(kit, caller, &params).await?;
         running.files.opened(document_id, &handle);
-        let view = self.document(caller, kit_id, document_id).await?;
-        if let Some(path) = view.path.clone() {
-            let _ = self.inner.saves.send(SavedFile { kit_id: view.kit_id, path, document_id: document_id.to_owned() });
-        }
-        Ok(view)
+        self.document(caller, kit_id, document_id).await
     }
 
     /// The document's file read again, its unsaved edits dropped: how a conflict is resolved in
@@ -887,11 +865,6 @@ impl KitManager {
                 let _ = kit.host.notify::<methods::DocumentDidChangeOnDisk>(&DocumentRef { document_id: document.document_id.clone() }).await;
             }
         }
-    }
-
-    /// Hears every headless save of a workspace file from now on.
-    pub fn subscribe_saves(&self) -> tokio::sync::broadcast::Receiver<SavedFile> {
-        self.inner.saves.subscribe()
     }
 
     pub async fn close(&self, kit_id: &str, document_id: &str, discard_changes: bool) -> Result<(), KitError> {

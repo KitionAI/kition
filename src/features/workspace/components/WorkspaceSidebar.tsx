@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, FolderIcon as Folder, LoaderCircleIcon as LoaderCircle, PanelLeftCloseIcon as PanelLeftClose, PlusIcon as Plus, RefreshCwIcon as RefreshCw, SearchIcon as Search, ZapIcon as Zap } from '@kition/tessera-icons/react'
+import { ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, FolderIcon as Folder, LoaderCircleIcon as LoaderCircle, PanelLeftCloseIcon as PanelLeftClose, PlusIcon as Plus, RefreshCwIcon as RefreshCw } from '@kition/tessera-icons/react'
 import { type ClipboardEvent as ReactClipboardEvent, type DragEvent as ReactDragEvent, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
@@ -15,7 +15,6 @@ export function WorkspaceSidebar({
   privateExpanded,
   createMenuOpen,
   createMenuTriggerPath,
-  createMenuVariant,
   treeContent,
   mediaSections,
   onTogglePrivate,
@@ -24,10 +23,8 @@ export function WorkspaceSidebar({
   onCreateFolder,
   onPasteFiles,
   onRefresh,
-  onOpenWorkflows,
   kitCreations,
   onToggleSidebar,
-  onOpenSearch,
 }: {
   loading: boolean
   rootPath: string
@@ -35,7 +32,6 @@ export function WorkspaceSidebar({
   privateExpanded: boolean
   createMenuOpen: boolean
   createMenuTriggerPath: string
-  createMenuVariant?: 'workspace' | 'tableFile'
   treeContent: ReactNode
   mediaSections?: ReactNode
   onTogglePrivate: () => void
@@ -44,16 +40,9 @@ export function WorkspaceSidebar({
   onCreateFolder: () => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   onRefresh?: () => void
-  /** Opens the workspace-global Workflows tab. Replaces the old root-level
-   *  virtual "Workflows" tree node — kept as a header-bar shortcut so the
-   *  entry point survives without taking a row in the tree. */
-  onOpenWorkflows?: () => void
-  /** Creates a durable native SVG Board file in the active workspace folder. */
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
   onToggleSidebar?: () => void
-  /** Opens the standalone full-text search modal (Codex-style palette). */
-  onOpenSearch?: () => void
 }) {
   // The create menu can be triggered from two anchors: the sidebar header `+`
   // (createMenuTriggerPath === '') or any tree row's inline `+` (path !== '').
@@ -169,16 +158,6 @@ export function WorkspaceSidebar({
           >
             <Folder className="size-4" />
           </button>
-          <button
-            type="button"
-            className="workspace-sidebar-tab"
-            onClick={() => onOpenSearch?.()}
-            aria-label={t('sidebar.tabs.search')}
-            title={t('sidebar.tabs.search')}
-            data-testid="sidebar-tab-search"
-          >
-            <Search className="size-4" />
-          </button>
         </div>
         {onToggleSidebar ? (
           <button
@@ -226,24 +205,11 @@ export function WorkspaceSidebar({
                 </button>
                 <WorkspaceCreateMenu
                   open={createMenuOpen && createMenuTriggerPath === ''}
-                  variant={createMenuVariant ?? 'workspace'}
                   anchorEl={headerCreateAnchor}
                   onCreateFolder={onCreateFolder}
                   kitCreations={kitCreations}
                 />
               </span>
-              {onOpenWorkflows ? (
-                <button
-                  type="button"
-                  className="document-private-create"
-                  onClick={onOpenWorkflows}
-                  aria-label={t('sidebar.openWorkflows')}
-                  title={t('sidebar.workflows')}
-                  data-testid="workspace-sidebar-workflows"
-                >
-                  <Zap className="size-3.5" />
-                </button>
-              ) : null}
               {onRefresh ? (
                 <button
                   type="button"

@@ -26,7 +26,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Option<Menu<R>>> {
                 "Copyright \u{a9} 2026 Heartie Technology Limited. All rights reserved.",
             ))
             .comments(Some(
-                "Documents, data tables, AI agents, and workflows in one workspace.",
+                "Documents, data tables, and AI agents in one workspace.",
             ))
             .build();
         menu.append(

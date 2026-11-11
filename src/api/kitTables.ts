@@ -1,37 +1,25 @@
 /**
- * The workspace's table files as Kition's own features see them: the workflow editor's table and
- * field pickers, the workspace tree's table leaves, templates, and the design handoff. The runtime answers through the Table kit (`contracts/runtime/kit-tables`);
+ * The workspace's table files as Kition's own features see them: the workspace tree's table
+ * leaves, templates, and the design handoff. The runtime answers through the Table kit (`contracts/runtime/kit-tables`);
  * a table is named by its file's path and its id in the file.
  */
 import request from './request'
 import type {
-  KitTablesAttachment,
-  KitTablesCreateFileResult,
   KitTablesDeletedResult,
-  KitTablesFieldSeed,
-  KitTablesFieldsResult,
   KitTablesFile,
   KitTablesFileList,
-  KitTablesRecord,
-  KitTablesRecordsPage,
   KitTablesRenamedResult,
-  KitTablesStampList,
-  KitTablesTable,
-  KitTablesWriteRecordResult,
 } from './generated/kit-tables'
 
-export type { KitTablesFieldSeed, KitTablesFile, KitTablesRecord, KitTablesTable }
+export type { KitTablesFile }
 
 /** The table file extension, with its dot. */
-export const TABLE_FILE_EXTENSION = '.ktable'
+const TABLE_FILE_EXTENSION = '.ktable'
 
 /** Whether `path` names a table file. */
 export function isTableFilePath(path: string | null | undefined) {
   return Boolean(path && path.toLowerCase().endsWith(TABLE_FILE_EXTENSION))
 }
-
-/** A table named the way host features store it. */
-export type TableRef = { path: string; tableId: string }
 
 /** Every table file in the workspace (or only `path`), with its tables and dashboards; each read through the Table kit. */
 export function listTableFiles(options?: { path?: string; signal?: AbortSignal }) {
@@ -42,41 +30,12 @@ export function listTableFiles(options?: { path?: string; signal?: AbortSignal }
   })
 }
 
-/** Every table file with its stamp, which changes whenever the file is written; reads none of them. */
-export function listTableFileStamps(options?: { signal?: AbortSignal }) {
-  return request.get<KitTablesStampList>('/v1/kit-tables/stamps', { signal: options?.signal, suppressErrorMessage: true })
-}
-
-/** Makes a new table file at `path` with the kit's starter table (titled `title` when given). */
-export function createTableFile(path: string, title?: string) {
-  return request.post<KitTablesCreateFileResult>('/v1/kit-tables/files', title ? { path, title } : { path })
-}
-
-/** Adds a table to a file. */
-export function createTable(path: string, title: string, fields: KitTablesFieldSeed[] = [], feature?: string) {
-  return request.post<KitTablesTable>('/v1/kit-tables/tables', { path, title, ...(fields.length ? { fields } : {}), ...(feature ? { feature } : {}) })
-}
-
-/** A table's fields as the kit answers them, and the table. */
-export function getTableFields({ path, tableId }: TableRef, options?: { signal?: AbortSignal }) {
-  return request.get<KitTablesFieldsResult>('/v1/kit-tables/fields', { params: { path, tableId }, signal: options?.signal, suppressErrorMessage: true })
-}
-
-/** A table's records (values keyed by field name), at most `limit` from `offset` (all without). */
-export function listTableRecords({ path, tableId }: TableRef, options?: { limit?: number; offset?: number; signal?: AbortSignal }) {
-  return request.get<KitTablesRecordsPage>('/v1/kit-tables/records', {
-    params: { path, tableId, limit: options?.limit, offset: options?.offset },
-    signal: options?.signal,
-    suppressErrorMessage: true,
-  })
-}
-
-/** Tells the host features that name a table file (or a folder of them) that it moved. */
+/** Tells the runtime's table client that a table file (or a folder of them) moved: it reads it again at the new path. */
 export function reportTableFileRenamed(from: string, to: string) {
   return request.post<KitTablesRenamedResult>('/v1/kit-tables/renamed', { from, to }, { suppressErrorMessage: true })
 }
 
-/** Tells the host features bound to a deleted table file (or to the table files of a deleted folder) that it went: they are removed. */
+/** Tells the runtime's table client that a table file (or the table files of a deleted folder) went: it forgets them. */
 export function reportTableFileDeleted(path: string) {
   return request.post<KitTablesDeletedResult>('/v1/kit-tables/deleted', { path }, { suppressErrorMessage: true })
 }
@@ -93,9 +52,4 @@ export function onTableFilesChanged(listener: (path?: string) => void) {
   const handle = (event: Event) => listener((event as CustomEvent<{ path?: string }>).detail?.path)
   window.addEventListener(TABLE_FILES_CHANGED_EVENT, handle)
   return () => window.removeEventListener(TABLE_FILES_CHANGED_EVENT, handle)
-}
-
-/** A table's key in maps that hold tables of many files: its file's path and its id there. */
-export function tableKey(path: string, tableId: string | number) {
-  return `${path}#${tableId}`
 }

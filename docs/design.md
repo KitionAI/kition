@@ -447,7 +447,7 @@ components:
 
 Kition product UI adopts **Direction A: Quiet Workspace** as the current
 implementation baseline. For app surfaces such as workspace shell, document
-editor, Table, Settings, Workflow, Scenario, and Agent drawers, follow
+editor, Table, Settings, Scenario, and Agent drawers, follow
 `docs/product-ui-style.md` before applying the broader marketing-oriented
 analysis below.
 
@@ -483,7 +483,6 @@ correct section instead of borrowing a marketing token:
 | Markdown table widget (in-document table editing) | `docs/product-ui-style.md` → Markdown Table Widget |
 | Settings rows, panes, async feedback | `docs/product-ui-style.md` → Settings |
 | Agent / Scenario drawers, close behaviour, AI states | `docs/product-ui-style.md` → Agent And Scenario Drawers |
-| Workflow canvas, nodes, zoom controls, AI entry | `docs/product-ui-style.md` → Workflow |
 | Minimum desktop width and narrow-viewport collapse | `docs/product-ui-style.md` → Responsive And Small Windows |
 | CSS variable mapping (light + dark) | `docs/product-ui-style.md` → CSS Variable Mapping, Dark Mode |
 
@@ -493,9 +492,9 @@ documented in the product file.
 
 ## Overview
 
-Kition presents a coherent workspace where documents, tables, kits, agent web research, workflows, and AI tools share one product surface. Marketing pages should lead with tangible product capabilities and show real Kition workspace captures rather than relying on abstract positioning.
+Kition presents a coherent workspace where documents, tables, kits, agent web research, and AI tools share one product surface. Marketing pages should lead with tangible product capabilities and show real Kition workspace captures rather than relying on abstract positioning.
 
-Supporting sections should demonstrate real document editing, structured data, visual workflows, and Agent actions. Use the pastel feature palette to distinguish capabilities while keeping the main product surfaces white or light neutral.
+Supporting sections should demonstrate real document editing, structured data, and Agent actions. Use the pastel feature palette to distinguish capabilities while keeping the main product surfaces white or light neutral.
 
 The system uses Inter across every UI surface. Buttons are `{rounded.md}` (8px) rectangles, not pills. Cards use `{rounded.lg}` (12px) consistently.
 

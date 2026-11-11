@@ -53,7 +53,6 @@
         "documents",
         "tables",
         "assets",
-        "workflows",
         "agent_sessions",
         "total_bytes"
       ],
@@ -61,7 +60,6 @@
         "documents": { "type": "integer", "minimum": 0 },
         "tables": { "type": "integer", "minimum": 0, "description": "Table files (.ktable); the Table kit owns their contents." },
         "assets": { "type": "integer", "minimum": 0 },
-        "workflows": { "type": "integer", "minimum": 0 },
         "agent_sessions": { "type": "integer", "minimum": 0 },
         "total_bytes": { "type": "integer", "minimum": 0 }
       }
@@ -148,8 +146,6 @@
             "document",
             "table",
             "asset",
-            "workflow",
-            "workflow_run",
             "agent_session",
             "agent_session_events",
             "workspace_metadata"
@@ -219,7 +215,6 @@
       "documents",
       "tables",
       "assets",
-      "workflow definitions and runs",
       "agent sessions and events",
       "sync state",
       "workspace metadata"

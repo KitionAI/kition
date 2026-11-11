@@ -28,8 +28,6 @@ references, but never secret values.
     workspace.json
     metadata.json
     assets/sha256/<prefix>/<content-hash>.<extension>
-    workflows/<workflow-id>/definition.json
-    workflows/<workflow-id>/runs/<run-id>.jsonl
     agents/<session-id>/session.json
     agents/<session-id>/session-events.jsonl
     journal/
@@ -61,7 +59,7 @@ migration. Private runtime implementation remains outside this repository.
    metadata while preserving resolved URLs for display compatibility.
 3. Migrate legacy upload URLs and inline assets with hash verification and
    atomic reference updates.
-4. Move workspace-owned metadata, workflows, Agent history, and sync state into
+4. Move workspace-owned metadata, Agent history, and sync state into
    workspace-owned canonical files. Rebuildable indexes may remain local.
 5. Add Git preparation, storage health UI, repair actions, and optional Git LFS
    recommendations for binary files.

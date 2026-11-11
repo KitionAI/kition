@@ -25,7 +25,7 @@ import {
 const sampleGuide: OnboardingGuide = {
   slug: 'lead-automation',
   displayName: 'Lead Automation',
-  summary: 'Build a workflow from a prompt.',
+  summary: 'Follow up on new leads from a table.',
   intro: 'intro.md',
   seeds: ['orders.csv', 'prompts.md'],
   assets: ['reference.jpg'],

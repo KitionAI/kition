@@ -63,7 +63,7 @@ type Feedback = { tone: FeedbackTone; message: string } | null
  *      `requiresRestart` so we know whether the Go API needs a restart.
  *   2. If yes, prompt the user via a confirm dialog. Only on explicit
  *      confirmation do we call `restartBackend` — silent restart-on-save is
- *      a privacy hazard for users mid-workflow.
+ *      a privacy hazard for users mid-task.
  */
 export function NetworkSettings() {
   const { t } = useTranslation('settings')

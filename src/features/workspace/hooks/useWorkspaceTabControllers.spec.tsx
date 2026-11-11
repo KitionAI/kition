@@ -19,27 +19,21 @@ vi.mock('@/features/kits/public', () => ({
   .IS_REACT_ACT_ENVIRONMENT = true
 
 const FILE: WorkspaceTab = { id: 'file-viewer:Notes.md', type: 'file-viewer', title: 'Notes', path: 'Notes.md', format: 'markdown' }
-const WORKFLOW: WorkspaceTab = { id: 'workflow:Leads.ktable', type: 'workflow', title: 'Leads', tablePath: 'Leads.ktable' }
 
 let container: HTMLDivElement | null = null
 let root: Root | null = null
 let api: ReturnType<typeof useWorkspaceTabControllers> | null = null
 
-function Surface({ tabs, closeWorkspaceTab, onCloseWorkflow, askUnsavedClose }: {
+function Surface({ tabs, closeWorkspaceTab, askUnsavedClose }: {
   tabs: WorkspaceTab[]
   closeWorkspaceTab: (tabId: string) => void
-  onCloseWorkflow: () => void
   askUnsavedClose: (scope: UnsavedCloseScope) => Promise<UnsavedCloseChoice>
 }) {
   api = useWorkspaceTabControllers({
     workspaceTabs: tabs,
-    activeWorkspaceTab: tabs[0],
     activeWorkspaceTabId: tabs[0]?.id ?? '',
     closeWorkspaceTab,
     upsertWorkspaceTab: () => {},
-    setActiveResourcePath: () => {},
-    workflowOpen: true,
-    onCloseWorkflow,
     openDocument: async () => {},
     askUnsavedClose,
   })
@@ -48,15 +42,14 @@ function Surface({ tabs, closeWorkspaceTab, onCloseWorkflow, askUnsavedClose }: 
 
 async function mount(tabs: WorkspaceTab[], choice: UnsavedCloseChoice = 'cancel') {
   const closeWorkspaceTab = vi.fn()
-  const onCloseWorkflow = vi.fn()
   const askUnsavedClose = vi.fn(async () => choice)
   container = document.createElement('div')
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container!)
-    root.render(createElement(Surface, { tabs, closeWorkspaceTab, onCloseWorkflow, askUnsavedClose }))
+    root.render(createElement(Surface, { tabs, closeWorkspaceTab, askUnsavedClose }))
   })
-  return { closeWorkspaceTab, onCloseWorkflow, askUnsavedClose }
+  return { closeWorkspaceTab, askUnsavedClose }
 }
 
 afterEach(async () => {
@@ -70,20 +63,6 @@ afterEach(async () => {
 })
 
 describe('useWorkspaceTabControllers', () => {
-  it('closes a file tab and leaves the workflow workbench open', async () => {
-    const { closeWorkspaceTab, onCloseWorkflow } = await mount([FILE, WORKFLOW])
-    await act(async () => api!.handleCloseWorkspaceTabById(FILE.id))
-    expect(closeWorkspaceTab).toHaveBeenCalledWith(FILE.id)
-    expect(onCloseWorkflow).not.toHaveBeenCalled()
-  })
-
-  it('closes the workflow workbench with its last workflow tab', async () => {
-    const { closeWorkspaceTab, onCloseWorkflow } = await mount([WORKFLOW, FILE])
-    await act(async () => api!.handleCloseWorkspaceTabById(WORKFLOW.id))
-    expect(closeWorkspaceTab).toHaveBeenCalledWith(WORKFLOW.id)
-    expect(onCloseWorkflow).toHaveBeenCalledOnce()
-  })
-
   it('closes a kit tab without unsaved edits without asking', async () => {
     const { closeWorkspaceTab, askUnsavedClose } = await mount([FILE])
     await act(async () => api!.handleCloseWorkspaceTabById(FILE.id))

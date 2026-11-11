@@ -9,7 +9,6 @@ mod images;
 mod kits;
 mod mcp;
 mod sources;
-mod workflow;
 
 use std::sync::Arc;
 
@@ -25,7 +24,6 @@ use crate::run::Run;
 #[derive(Debug, Clone, Default)]
 pub struct TurnFacts {
     pub prompt_context: String,
-    pub active_workflow_id: String,
     pub skills: Vec<SkillDef>,
     pub hosted_web_search: bool,
     pub hosted_images: bool,
@@ -88,7 +86,6 @@ pub async fn providers(
         Arc::new(core::CoreProvider::load(run, facts, factory).await),
         Arc::new(document::DocumentProvider::new(factory)),
         Arc::new(images::ImagesProvider::new(facts, factory)),
-        Arc::new(workflow::WorkflowProvider::new(run, facts)),
         Arc::new(gallery::GalleryProvider),
         Arc::new(sources::LocalSourcesProvider::new(run, factory)),
         Arc::new(kits::KitsProvider::new(run, factory)),
@@ -169,10 +166,8 @@ pub(crate) mod testing {
             upload_dir: dirs[1].path().to_path_buf(),
             policy_path: Some(dirs[2].path().join("execpolicy.toml")),
             hooks: None,
-            smtp: None,
             portal_base_url: String::new(),
             mcp_path: None,
-            workflow_prompt: None,
             kits,
         });
         let run = Run {

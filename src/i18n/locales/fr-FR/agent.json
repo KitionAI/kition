@@ -96,23 +96,6 @@
         }
       }
     },
-    "workflow": {
-      "description": "Décrivez le workflow souhaité et l'agent rédigera le déclencheur + l'action.",
-      "suggestions": {
-        "emailOnRecord": {
-          "label": "M'envoyer un e-mail à chaque nouvel enregistrement",
-          "prompt": "Lorsqu'un enregistrement est créé dans cette table, envoie-moi un résumé de l'enregistrement par e-mail."
-        },
-        "remindOnDate": {
-          "label": "Rappeler sur un champ de date",
-          "prompt": "Lorsque la date du jour correspond à la colonne d'échéance de cette table, envoie un rappel."
-        },
-        "refine": {
-          "label": "Affiner ce workflow",
-          "prompt": "Examine le workflow actuel et suggère le prochain ajustement."
-        }
-      }
-    },
     "gallery": {
       "description": "Demandez à l'agent d'organiser, de décrire ou de réutiliser les médias de cette galerie.",
       "suggestions": {

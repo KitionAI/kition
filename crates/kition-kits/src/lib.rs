@@ -14,5 +14,5 @@ pub mod resources;
 pub mod serve;
 pub mod tools;
 
-pub use bridge::{Bridge, LiveChange, LiveDocument};
-pub use manager::{Caller, DocumentView, ExecuteView, FileWrite, KitAgent, KitDefinition, KitError, KitExport, KitManager, KitSources, SavedFile};
+pub use bridge::{Bridge, LiveDocument};
+pub use manager::{Caller, DocumentView, ExecuteView, FileWrite, KitAgent, KitDefinition, KitError, KitExport, KitManager, KitSources};

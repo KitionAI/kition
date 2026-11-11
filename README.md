@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <strong>Documents, Tables, Boards, kits, Agents, and Workflows in one desktop workspace.</strong><br />
-  Write connected knowledge, think visually, build data tools, edit sheets, slides, photos, films, and CAD drawings, research the web, and automate repeatable work.
+  <strong>Documents, Tables, Boards, kits, and Agents in one desktop workspace.</strong><br />
+  Write connected knowledge, think visually, build data tools, edit sheets, slides, photos, films, and CAD drawings, and research the web.
 </p>
 
 <p align="center">
@@ -41,15 +41,13 @@
 </p>
 
 <p align="center">
-  <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, boards, Agent research, and visual workflows" width="100%" />
+  <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, boards, and Agent research" width="100%" />
 </p>
 
 Kition brings Markdown documents, structured table files, infinite
-Boards, a tool-using AI agent, web research, and visual workflows into
-one desktop workspace.
+Boards, a tool-using AI agent, and web research into one desktop workspace.
 Instead of making every task begin in a blank chat, Kition gives the Agent
-editable project files, typed records, attachments, and visible processes to
-work with. This makes powerful AI operations easier to inspect, correct, and
+editable project files, typed records, and attachments to work with. This makes powerful AI operations easier to inspect, correct, and
 repeat without handing context between disconnected tools.
 
 > Kition is currently in beta. Back up important workspaces and review agent
@@ -58,7 +56,7 @@ repeat without handing context between disconnected tools.
 ## Why Kition
 
 - **Connected documents.** Write Markdown with live preview, links, backlinks,
-  callouts, code, math, diagrams, daily notes, search, and export.
+  callouts, code, math, diagrams, daily notes, and export.
 - **Structured data beside the knowledge.** Turn research and content into
   typed records, formulas, filters, groups, views, attachments, and AI fields.
 - **Visual thinking with reviewable AI changes.** Build diagrams, mind maps,
@@ -68,8 +66,6 @@ repeat without handing context between disconnected tools.
   table schemas, update content, and save useful output into the active project.
 - **Reviewable document edits.** Let the Agent edit the active document, inspect
   every addition and deletion, then accept or reject individual changes.
-- **Visible automation.** Assemble trigger-and-action workflows, test steps,
-  inspect run history, and resolve missing inputs before enabling a process.
 - **Kits for every kind of file.** Sixteen kits in four product lines open sheets, slides,
   photos, films, CAD drawings, and more as ordinary workspace files, and the Agent
   works on them through each kit's tools. See [Kits](#kits).
@@ -102,7 +98,7 @@ what remains in the final document.
 A capable Agent is useful, but a blank prompt still asks the user to design the
 task, describe every input, choose an output format, and recover when a step
 goes wrong. Kition moves that complexity into familiar work surfaces:
-documents, table fields, records, templates, and workflows.
+documents, table fields, records, and templates.
 
 The built-in scenarios below are ordinary `.ktable` files. Their prompts,
 field relationships, generated assets, and review states stay visible and can
@@ -123,8 +119,8 @@ the review surface.
 
 Drop receipt photos into an attachment field. Vision-powered fields extract
 the vendor, address, category, structured JSON, and plain OCR text directly
-into the same row. The results can then be filtered, corrected, summarized by
-the Agent, or passed into a review workflow.
+into the same row. The results can then be filtered, corrected, or summarized
+by the Agent.
 
 <p align="center">
   <img src="docs/readme/scenarios/receipt-ocr.webp" alt="Kition receipt OCR table extracting vendor, address, category, structured data, and plain text from images" width="100%" />
@@ -142,9 +138,8 @@ regenerate, and hand off than a collection of disconnected chat outputs.
 </p>
 
 These scenarios show the intended Kition loop: use documents for narrative
-context, tables for structured state, Boards for visual thinking, the
-Agent for uncertain work, and Workflows for steps that should become
-repeatable.
+context, tables for structured state, Boards for visual thinking, and the
+Agent for uncertain work.
 
 ## Product Tour
 
@@ -155,8 +150,8 @@ repeatable.
 ### Write connected documents
 
 Write Markdown with live preview, internal links, backlinks, tags, outlines,
-embeds, callouts, code, math, diagrams, templates, daily notes, tabs, and
-full-text search. Export finished work to PDF when it needs to leave
+embeds, callouts, code, math, diagrams, templates, daily notes, and tabs.
+Export finished work to PDF when it needs to leave
 the workspace.
 
 </td>
@@ -207,20 +202,6 @@ review before it becomes part of the workspace.
 
 </td>
 </tr>
-<tr>
-<td width="42%" valign="middle">
-
-### Automate repeatable work
-
-Build trigger-and-action workflows on a visual canvas. Start from a template,
-assemble a workflow manually, test individual steps, inspect run history, and
-resolve missing inputs before enabling it.
-
-</td>
-<td width="58%">
-  <img src="docs/readme/workflows.webp" alt="Kition visual workflow canvas with a trigger, action, configuration, and test controls" width="100%" />
-</td>
-</tr>
 </table>
 
 ## Kits
@@ -260,11 +241,9 @@ Also included:
 
 - AI-assisted table fields for generating text, structured values, and media
   from record context.
-- Email connections and inbox-to-table workflows. See
-  [Email Connections](docs/email-connections.md).
 - Model, proxy, MCP, account, usage, update, and desktop integration settings.
-- A seeded Getting Started workspace with practical document, table, and
-  workflow examples.
+- A seeded Getting Started workspace with practical document and table
+  examples.
 
 ## Install
 
@@ -311,8 +290,8 @@ path for most client-side contributions. More options are documented in
 Everything that makes up the Kition desktop app is open source in this
 repository:
 
-- the React renderer (`src/`): document, table, Agent, settings, email,
-  scenario, workflow, and kit-host UI;
+- the React renderer (`src/`): document, table, Agent, settings, scenario,
+  and kit-host UI;
 - the Tauri desktop shell (`src-tauri/`) and desktop integration;
 - the Rust runtime (`crates/`), which the shell runs in-process and which
   serves its HTTP API on loopback only. See

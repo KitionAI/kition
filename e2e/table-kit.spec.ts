@@ -9,8 +9,8 @@ import { canReadBlobBodies } from './helpers/requestBody'
  * Kition's tables are `.ktable` files the Table kit edits in its own editor (KitFrame). This gate
  * covers what Kition adds around the kit: creating a table file, saving through Kition's file API,
  * a host feature's write arriving live in an open editor without joining the person's undo, the
- * person's models answering AI fields and selection rewrites (`host/generate`), and the host actions a table asks for
- * (`host/action`: `workflow.run`), and a table file's tables and dashboards
+ * person's models answering AI fields and selection rewrites (`host/generate`), the host actions a table offers
+ * (`host/action`: none besides Settings), and a table file's tables and dashboards
  * in the workspace tree, which open the file in the kit at the one clicked (`document.view`, then
  * `document/reveal`). The editor's own behavior is tested in the kit's repository.
  */
@@ -29,7 +29,7 @@ function caller(doc: NodeTableDocument) {
 type Field = { id: number; name: string; title: string; is_primary?: boolean }
 type Record_ = { id: number; values: Record<string, unknown> }
 
-/** A table of leads made by the engine the page runs: a title, an AI tagline, and a workflow button. */
+/** A table of leads made by the engine the page runs: a title and an AI tagline. */
 async function leadsFixture() {
   const sdk = await engine.load()
   const doc = sdk.TableDocument.create('Leads.ktable', 0, 0)
@@ -38,7 +38,6 @@ async function leadsFixture() {
   call('tables.update', { tableId: table.id, title: 'Leads' })
   for (const field of table.fields.filter((field) => !field.is_primary)) call('fields.delete', { tableId: table.id, fieldId: field.id })
   call('fields.create', { tableId: table.id, title: 'Tagline', type: 'text', options: { ai_config: { type: 'text_generation', prompt: 'Write a tagline', enabled: true } } })
-  call('fields.create', { tableId: table.id, title: 'Follow up', type: 'button', options: { label: 'Follow up', action: { kind: 'run_workflow', workflow_id: 7 } } })
   call('records.create', { tableId: table.id, values: { title: 'Ada' } })
   doc.markSaved()
   const bytes = Buffer.from(doc.save())
@@ -156,7 +155,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
   const { bytes, tableId } = await leadsFixture()
   await configureModel(page)
 
-  // The runtime's bridge requests wait until the test lets them through: a workflow's record.
+  // The runtime's bridge requests wait until the test lets them through: a host feature's record.
   let release: () => void = () => {}
   const released = new Promise<void>((resolve) => { release = resolve })
   let streams = 0
@@ -180,7 +179,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
             path: 'Leads.ktable',
             kit: 'kit.table',
             tool: 'run',
-            arguments: { steps: [{ command: 'table.records.create', params: { tableId, values: { title: 'From a workflow' }, asOrigin: 'system:workflow' } }], save: false },
+            arguments: { steps: [{ command: 'table.records.create', params: { tableId, values: { title: 'From the host' }, asOrigin: 'system:scenario' } }], save: false },
           },
         },
       ]
@@ -206,7 +205,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
     await expect(records(kit)).toContainText('2 records')
     await expect(kit.getByTestId('table-unsaved')).toBeVisible()
 
-    // A workflow's record arrives through the bridge while the editor is open and unsaved.
+    // A host feature's record arrives through the bridge while the editor is open and unsaved.
     release()
     await expect.poll(() => posted.find((message) => message.id === 1), { timeout: 30_000 }).toBeTruthy()
     const answer = posted.find((message) => message.id === 1)!
@@ -215,7 +214,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
     await expect(records(kit)).toContainText('3 records')
     await expect(kit.getByTestId('table-unsaved')).toBeVisible()
 
-    // The person's Undo takes back their own duplicate, never the workflow's record.
+    // The person's Undo takes back their own duplicate, never the host feature's record.
     await kit.getByTestId('table-undo').click()
     await expect(records(kit)).toContainText('2 records')
 
@@ -231,7 +230,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
     expect(saves.map((save) => save.path)).toEqual(['Leads.ktable'])
     if (canReadBlobBodies(browserName)) {
       const saved = await savedRecords(saves.at(-1)!.bytes)
-      expect(saved.map((record) => record.values.title).sort()).toEqual(['Ada', 'From a workflow'])
+      expect(saved.map((record) => record.values.title).sort()).toEqual(['Ada', 'From the host'])
       expect(saved.find((record) => record.values.title === 'Ada')?.values.tagline).toBe('Poetical science')
     }
   } finally {
@@ -239,31 +238,12 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
   }
 })
 
-test('a table’s button runs a Kition workflow (host/action)', async ({ page, baseURL }) => {
+test('Kition serves no design action, so the record menu offers none (host/action)', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
-  const { bytes, tableId } = await leadsFixture()
-  const runs: Array<{ url: string; body: Record<string, unknown> }> = []
-  const routes = async (page: Page) => {
-    await serveKitTables(page)
-    await page.route('**/api/v1/workflows/*/run-record', async (route) => {
-      runs.push({ url: route.request().url(), body: route.request().postDataJSON() as Record<string, unknown> })
-      await fulfillJson(route, { code: 200, message: 'success', data: { ok: true } })
-    })
-  }
-  const { host, kit } = await openInKitFrame(page, baseURL!, 'Leads.ktable', bytes, {}, { routes })
+  const { bytes } = await leadsFixture()
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Leads.ktable', bytes, {}, { routes: serveKitTables })
   try {
     await expect(records(kit)).toContainText('1 record', { timeout: 60_000 })
-
-    // The record's panel shows the button; Kition runs the workflow on this file's record.
-    await recordMenu(kit)
-    await kit.getByRole('button', { name: 'Add comment' }).click()
-    await kit.locator('.data-inline-button-cell', { hasText: 'Follow up' }).click()
-    await expect.poll(() => runs.length, { timeout: 30_000 }).toBe(1)
-    expect(new URL(runs[0].url).pathname).toMatch(/\/workflows\/7\/run-record$/)
-    expect(runs[0].body).toEqual({ documentPath: 'Leads.ktable', tableId: String(tableId), recordId: expect.any(String) })
-    await page.keyboard.press('Escape')
-
-    // Kition serves no design action, so the record menu offers none.
     await recordMenu(kit)
     await expect(kit.getByRole('button', { name: 'Create design from record' })).toHaveCount(0)
   } finally {

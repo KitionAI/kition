@@ -26,7 +26,6 @@ pub struct Summary {
     /// Table files (`.ktable`); the Table kit owns their contents.
     pub tables: i64,
     pub assets: i64,
-    pub workflows: i64,
     pub agent_sessions: i64,
     pub total_bytes: i64,
 }
@@ -102,12 +101,6 @@ pub fn classify_path(path: &str) -> &'static str {
         "agent_session"
     } else if lower.starts_with(".kition/agents/") && lower.ends_with("/session-events.jsonl") {
         "agent_session_events"
-    } else if lower == "workflow.json"
-        || (lower.contains("/workflows/") && lower.ends_with("definition.json"))
-    {
-        "workflow"
-    } else if lower == "workflow_runs.json" || lower.contains("/runs/") {
-        "workflow_run"
     } else if lower.ends_with(".ktable") {
         "table"
     } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
@@ -207,7 +200,6 @@ impl StateMirror {
                         ));
                     }
                 }
-                "workflow" | "workflow_run" => summary.workflows += 1,
                 "agent_session" => summary.agent_sessions += 1,
                 _ => {}
             }

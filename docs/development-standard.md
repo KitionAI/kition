@@ -150,7 +150,7 @@ gates.
 | React component or hook | Focused Vitest file, `pnpm run build:check` |
 | Shared UI or layout | Focused tests, `pnpm run build:check`, visual review |
 | Table behavior | Focused tests, `pnpm test:ktable:e2e`, required table widget gate |
-| Workflow or scenario | Focused tests and the matching inspection command |
+| Scenario | Focused tests and the matching inspection command |
 | Desktop shell or packaging | `pnpm check:desktop`, `pnpm test:desktop:unit`, and relevant desktop E2E |
 | Runtime contract | Contract/mock tests plus `pnpm check:desktop` for the runtime crates |
 

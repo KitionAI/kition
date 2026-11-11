@@ -24,7 +24,7 @@ describe('resolveSettingsSection', () => {
 describe('normalizeAppPathname', () => {
   it('keeps the served routes and returns removed ones to the documents workspace', () => {
     expect(normalizeAppPathname('/')).toBe('/documents')
-    expect(normalizeAppPathname('/workflow/new')).toBe('/workflow/new')
+    expect(normalizeAppPathname('/workflow/new')).toBe('/documents')
     expect(normalizeAppPathname('/settings')).toBe('/settings')
     expect(normalizeAppPathname('/writing/wechat_article')).toBe('/documents')
     expect(normalizeAppPathname('/image')).toBe('/documents')
@@ -39,15 +39,6 @@ describe('parseAppLocation', () => {
       .toEqual({ view: 'settings', section: 'general' })
   })
 
-  it('keeps the workflow sub-path and takes its context from history state when complete', () => {
-    const context = { documentPath: 'crm.ktable', tableId: '1', tableName: 'Leads' }
-    expect(parseAppLocation({ pathname: '/workflow/new', search: '', state: { workflowContext: context } }))
-      .toEqual({ view: 'workflow', pathname: '/workflow/new', context })
-    expect(parseAppLocation({ pathname: '/workflow', search: '', state: { workflowContext: { documentPath: 'crm.ktable' } } }))
-      .toEqual({ view: 'workflow', pathname: '/workflow', context: null })
-    expect(parseAppLocation({ pathname: '/workflow', search: '', state: null }).view).toBe('workflow')
-  })
-
   it('sends unknown and root paths to the documents workspace', () => {
     expect(parseAppLocation({ pathname: '/', search: '', state: null })).toEqual({ view: 'documents' })
     expect(parseAppLocation({ pathname: '/image', search: '?section=models', state: null })).toEqual({ view: 'documents' })
@@ -57,7 +48,7 @@ describe('parseAppLocation', () => {
 
 describe('appLocationPathname', () => {
   it('round-trips each view', () => {
-    for (const pathname of ['/documents', '/settings', '/scenario', '/workflow/new']) {
+    for (const pathname of ['/documents', '/settings', '/scenario']) {
       expect(appLocationPathname(parseAppLocation({ pathname, search: '', state: null }))).toBe(pathname)
     }
   })

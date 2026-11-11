@@ -19,7 +19,6 @@
       "html": "HTML"
     },
     "folder": "Carpeta",
-    "newWorkflow": "Nuevo flujo de trabajo",
     "group": {
       "documents": "Documentos",
       "data": "Datos",
@@ -29,7 +28,7 @@
   },
   "emptyState": {
     "title": "Turn ideas into organized work",
-    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document or table.",
     "prompt": {
       "title": "Describe what you want to build",
       "description": "Plan, research, write, and organize with Kition AI.",
@@ -44,24 +43,17 @@
       "table": {
         "title": "New table",
         "description": "Structure projects, records, and research."
-      },
-      "workflow": {
-        "title": "Workflows",
-        "description": "Automate repeatable work across your tables."
       }
     }
   },
   "sidebar": {
     "tabs": {
-      "files": "Archivos",
-      "search": "Buscar"
+      "files": "Archivos"
     },
     "collapseSection": "Contraer {{name}}",
     "expandSection": "Expandir {{name}}",
     "newPage": "Nueva página",
     "newPageIn": "Nueva página en {{name}}",
-    "workflows": "Flujos de trabajo",
-    "openWorkflows": "Abrir flujos de trabajo",
     "refresh": "Actualizar espacio de trabajo",
     "collapseSidebar": "Contraer barra lateral",
     "loadingDirectory": "Cargando directorio local"
@@ -99,7 +91,6 @@
     "closeRight": "Cerrar pestañas a la derecha",
     "closeReadOnly": "Cerrar todas las pestañas de solo lectura",
     "copyReference": "Copiar ruta/referencia",
-    "workflowsTitle": "Flujos de trabajo",
     "unsavedTitle": "“{{name}}” tiene cambios sin guardar",
     "unsavedMessage": "¿Guardarlos antes de cerrar la pestaña? Los cambios que no guardes se perderán.",
     "unsavedTitleMany": "Cambios sin guardar en {{count}} documentos",

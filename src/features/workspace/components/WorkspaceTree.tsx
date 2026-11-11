@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, LayoutDashboardIcon as LayoutDashboard, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, Table2Icon as Table2, TrashIcon as Trash2, ZapIcon as Zap } from '@kition/tessera-icons/react'
+import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, LayoutDashboardIcon as LayoutDashboard, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, Table2Icon as Table2, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -45,7 +45,6 @@ export function WorkspaceTree({
   onAddToNewChat,
   onRevealInOS,
   onImportFiles,
-  onCreateWorkflowForTable,
   actionMenuPath,
   onActionMenuChange,
   draggingPath,
@@ -55,7 +54,6 @@ export function WorkspaceTree({
   onDragNodeEnd,
   createMenuOpen,
   createMenuTriggerPath,
-  createMenuVariant,
   onCloseCreateMenu,
   onCreateFolder,
   kitCreations,
@@ -80,8 +78,6 @@ export function WorkspaceTree({
   onAddToNewChat?: (node: WorkspaceTreeNode) => void
   onRevealInOS?: (node: WorkspaceTreeNode) => void
   onImportFiles?: (files: File[], folder?: string) => void
-  /** Create a workflow for one of a table file's tables (the row of `Leads.ktable`). */
-  onCreateWorkflowForTable?: (node: WorkspaceTreeNode) => void
   actionMenuPath?: string
   onActionMenuChange?: (path: string) => void
   draggingPath?: string
@@ -91,7 +87,6 @@ export function WorkspaceTree({
   onDragNodeEnd?: () => void
   createMenuOpen?: boolean
   createMenuTriggerPath?: string
-  createMenuVariant?: 'workspace' | 'tableFile'
   onCloseCreateMenu?: () => void
   onCreateFolder?: () => void
   /** The create menu's kit items (Image, Video project). */
@@ -216,20 +211,14 @@ export function WorkspaceTree({
         const icon = icons[node.path]
         const isActive = node.type === 'file' && activePath === node.path
         const isModified = node.type === 'file' && modifiedPaths.has(node.path)
-        const isWorkflowsVirtual = node.virtual && node.path.startsWith('workflows://')
-        const isWorkflowVirtual = node.virtual && node.path.startsWith('workflow://')
         // A table or dashboard of a table file (the Table kit lists them; a click opens it there).
         const tableFileChild = node.virtual ? parseTableFileChildPath(node.path) : null
-        const FormatIcon = isWorkflowsVirtual || isWorkflowVirtual
-            ? Zap
-            : tableFileChild
-              ? (tableFileChild.kind === 'dashboards' ? LayoutDashboard : Table2)
-              : getWorkspaceItemIcon(node.format)
-        const formatIconColorClass = isWorkflowsVirtual || isWorkflowVirtual
-          ? 'text-brand'
-          : tableFileChild
-            ? getWorkspaceItemIconColorClass(inferWorkspaceItemFormat(tableFileChild.filePath))
-            : getWorkspaceItemIconColorClass(node.format)
+        const FormatIcon = tableFileChild
+          ? (tableFileChild.kind === 'dashboards' ? LayoutDashboard : Table2)
+          : getWorkspaceItemIcon(node.format)
+        const formatIconColorClass = tableFileChild
+          ? getWorkspaceItemIconColorClass(inferWorkspaceItemFormat(tableFileChild.filePath))
+          : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
         // A table file opens in the Table kit; expanded, it lists its tables and dashboards.
         const isTableFile = node.type === 'file'
@@ -243,7 +232,7 @@ export function WorkspaceTree({
         const expanded = expandedPaths.has(disclosureKey)
         const visibleChildren = node.children
         const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder' || isTableFile
-        const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isTableFile)
+        const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable)
         const canDelete = !node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path)))
         const canSetIcon = !node.virtual
         // Every file renames and moves (a kit's too); duplicating is for notes only (see isDuplicableWorkspaceFormat).
@@ -253,7 +242,6 @@ export function WorkspaceTree({
         const canAddToChat = !node.virtual && Boolean(onAddToChat)
         const canAddToNewChat = !node.virtual && Boolean(onAddToNewChat)
         const canRevealInOS = !node.virtual && Boolean(onRevealInOS)
-        const canCreateWorkflowForTable = isTableFile && Boolean(onCreateWorkflowForTable)
         const hasMenu = canSetIcon || canRename || canDuplicate || canMove || canDelete || canAddToChat || canAddToNewChat || canRevealInOS
         const actionMenuOpen = currentActionMenuPath === node.path
         const moveMenuOpen = moveMenuPath === node.path
@@ -461,11 +449,9 @@ export function WorkspaceTree({
                           <WorkspaceCreateMenu
                             open
                             placement={menuPlacement}
-                            variant={createMenuVariant ?? 'workspace'}
                             anchorEl={createMenuAnchorEl}
                             onCreateFolder={onCreateFolder ?? (() => undefined)}
                             kitCreations={kitCreations}
-                            onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
                           />
                         ) : null}
                       </span>
@@ -679,7 +665,6 @@ export function WorkspaceTree({
                 onAddToNewChat={onAddToNewChat}
                 onRevealInOS={onRevealInOS}
                 onImportFiles={onImportFiles}
-                onCreateWorkflowForTable={onCreateWorkflowForTable}
                 onOpen={onOpen}
                 actionMenuPath={currentActionMenuPath}
                 onActionMenuChange={setCurrentActionMenuPath}
@@ -690,7 +675,6 @@ export function WorkspaceTree({
                 onDragNodeEnd={handleDragNodeEnd}
                 createMenuOpen={createMenuOpen}
                 createMenuTriggerPath={createMenuTriggerPath}
-                createMenuVariant={createMenuVariant}
                 onCloseCreateMenu={onCloseCreateMenu}
                 onCreateFolder={onCreateFolder}
                             kitCreations={kitCreations}

@@ -104,12 +104,10 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     // The app's page only: the dependency scan reads every HTML file under the root otherwise.
     entries: ['index.html'],
-    // Search runs in a worker and starts on idle, so Vite's cold-start scanner
-    // cannot discover these dependencies from index.html. Pre-bundle them to
-    // prevent a full-page reload when the worker starts during renderer E2E.
-    // loro-crdt is only reached through dynamic imports for now (the e2e smoke test imports
-    // src/lib/kdm), so pre-bundle it as well.
-    include: ['@orama/orama', 'idb', 'loro-crdt'],
+    // Vite's cold-start scanner cannot discover dependencies reached only through dynamic
+    // imports from index.html (idb for the extension store; loro-crdt, which the e2e smoke test
+    // imports from src/lib/kdm). Pre-bundle them to prevent a full-page reload during renderer E2E.
+    include: ['idb', 'loro-crdt'],
   },
   css: {
     postcss: resolve(repositoryDir, 'tooling'),

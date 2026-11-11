@@ -88,8 +88,8 @@ workspace, the shell, and the agent; each kit owns one editing domain.
 |             engine compiled to WebAssembly in a Web Worker                |
 |                 | loopback HTTP API                                       |
 | Tauri shell (Rust) = Kit Host       | Runtime (Rust crates, in-process)   |
-|   window, menus, updates            |   agent, data, workflows; starts    |
-|                                     |   headless kits through             |
+|   window, menus, updates            |   agent, data; starts headless      |
+|                                     |   kits through                      |
 |                                     |   kition-kit-host                   |
 +-------------+-------------------------------------+-----------------------+
               | Kit Protocol (JSON-RPC 2.0, local socket or named pipe)

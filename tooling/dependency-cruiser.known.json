@@ -41,38 +41,6 @@
     ]
   },
   {
-    "type": "cycle",
-    "from": "src/features/workflow/templates/builtins.ts",
-    "to": "src/features/workflow/templates/index.ts",
-    "unresolvedTo": "./index",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/workflow/templates/index.ts",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/workflow/templates/builtins.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "src/features/account/components/KitionAccountPanel.tsx",
     "to": "src/features/analytics/lib/productAnalytics.ts",
@@ -592,109 +560,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workflow/hooks/useWorkflowDryRun.ts",
-    "to": "src/features/analytics/lib/productAnalytics.ts",
-    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/hooks/useWorkflowModeDialogState.ts",
-    "to": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
-    "unresolvedTo": "@/features/workspace/components/WorkspaceWorkflowCreateModeDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/hooks/useWorkflowSendTest.ts",
-    "to": "src/features/analytics/lib/productAnalytics.ts",
-    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/pages/WorkflowHomePage.tsx",
-    "to": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
-    "unresolvedTo": "@/features/workspace/components/WorkspaceWorkflowCreateModeDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/pages/WorkflowIndexPage.tsx",
-    "to": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
-    "unresolvedTo": "@/features/workspace/components/WorkspaceWorkflowCreateModeDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/pages/WorkflowNewPage.tsx",
-    "to": "src/features/agent/lib/agentConfig.ts",
-    "unresolvedTo": "@/features/agent/lib/agentConfig",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceAgentSidebar.tsx",
     "to": "src/features/agent/components/AgentChatPanel.tsx",
     "unresolvedTo": "@/features/agent/components/AgentChatPanel",
@@ -730,57 +595,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/workflow/lib/openWorkflowRoute.ts",
-    "unresolvedTo": "@/features/workflow/lib/openWorkflowRoute",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/workflow/pages/WorkflowHomePage.tsx",
-    "unresolvedTo": "@/features/workflow/pages/WorkflowHomePage",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/workflow/pages/WorkflowIndexPage.tsx",
-    "unresolvedTo": "@/features/workflow/pages/WorkflowIndexPage",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/settings/DesktopSettingsPage.tsx",
     "unresolvedTo": "@/features/settings/DesktopSettingsPage",
@@ -808,41 +622,6 @@
       "aliased-tsconfig-paths",
       "local",
       "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/workflow/components/BodyTemplateEditor.types.ts",
-    "unresolvedTo": "@/features/workflow/components/BodyTemplateEditor.types",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/workflow/pages/WorkflowRoute.tsx",
-    "unresolvedTo": "@/features/workflow/pages/WorkflowRoute",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
     ],
     "rule": {
       "severity": "error",
@@ -905,58 +684,6 @@
     "from": "src/features/workspace/components/WorkspaceScreenSidebar.tsx",
     "to": "src/features/updates/UpdateBanner.tsx",
     "unresolvedTo": "@/features/updates/UpdateBanner",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
-    "to": "src/features/workflow/components/launcher/WorkflowLauncherTemplateCard.tsx",
-    "unresolvedTo": "@/features/workflow/components/launcher/WorkflowLauncherTemplateCard",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
-    "to": "src/features/workflow/lib/openWorkflowRoute.ts",
-    "unresolvedTo": "@/features/workflow/lib/openWorkflowRoute",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceWorkflowCreateModeDialog.tsx",
-    "to": "src/features/workflow/templates/index.ts",
-    "unresolvedTo": "@/features/workflow/templates",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

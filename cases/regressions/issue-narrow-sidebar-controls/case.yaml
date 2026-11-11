@@ -1,7 +1,7 @@
 format: 1
 id: regressions/issue-narrow-sidebar-controls
 feature: kition.platform.release-checks
-intent: At desktop widths from 1024px to 1200px the document topbar starts beside the sidebar, so the sidebar's files, search and collapse buttons stay visible and clickable instead of sitting under the tab strip.
+intent: At desktop widths from 1024px to 1200px the document topbar starts beside the sidebar, so the sidebar's files and collapse buttons stay visible and clickable instead of sitting under the tab strip.
 layer: golden
 source:
   kind: probe

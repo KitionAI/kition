@@ -1,12 +1,11 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
 import { KitIcon } from '@/components/KitIcon'
-import { FolderPlusIcon as FolderPlus, ZapIcon as Zap } from '@kition/tessera-icons/react'
+import { FolderPlusIcon as FolderPlus } from '@kition/tessera-icons/react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-type WorkspaceCreateMenuVariant = 'workspace' | 'tableFile'
 type WorkspaceCreateMenuPlacement = 'top' | 'bottom'
 
 // Estimated dimensions for off-screen detection. Real menu size depends on
@@ -36,15 +35,12 @@ type CreateItem = {
 
 export function WorkspaceCreateMenu({
   open,
-  variant = 'workspace',
   placement = 'bottom',
   anchorEl,
   onCreateFolder,
   kitCreations,
-  onCreateWorkflow,
 }: {
   open: boolean
-  variant?: WorkspaceCreateMenuVariant
   placement?: WorkspaceCreateMenuPlacement
   /** When provided, the menu portals to <body> and floats at the trigger's
    *  bottom-right so it escapes the sidebar's overflow-hidden
@@ -54,12 +50,9 @@ export function WorkspaceCreateMenu({
   onCreateFolder: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
-  /** Table file variant only: a workflow for one of the file's tables. */
-  onCreateWorkflow?: () => void
 }) {
   const { t } = useTranslation('workspace')
-  const grouped = variant === 'workspace'
-  const coords = useAnchoredMenuCoords(open, anchorEl ?? null, grouped ? { estimatedWidth: ESTIMATED_GROUPED_MENU_WIDTH, estimatedHeight: ESTIMATED_GROUPED_MENU_HEIGHT } : undefined)
+  const coords = useAnchoredMenuCoords(open, anchorEl ?? null, { estimatedWidth: ESTIMATED_GROUPED_MENU_WIDTH, estimatedHeight: ESTIMATED_GROUPED_MENU_HEIGHT })
 
   if (!open) {
     return null
@@ -75,23 +68,8 @@ export function WorkspaceCreateMenu({
     onClick: kit.onCreate,
   })).sort((a, b) => createRank(a.id) - createRank(b.id))
 
-  const content: ReactNode = variant === 'tableFile' ? (
-    // On a table file the inline `+` menu adds a workflow for its tables.
-    <>
-      {onCreateWorkflow ? (
-        <button
-          type="button"
-          className="document-create-option"
-          data-testid="table-file-action-create-workflow"
-          onClick={onCreateWorkflow}
-        >
-          <Zap className="size-4" />
-          <span>{t('createMenu.newWorkflow')}</span>
-        </button>
-      ) : null}
-    </>
-  ) : (
-    // Every file type by what it is for, in two columns; Folder last.
+  // Every file type by what it is for, in two columns; Folder last.
+  const content: ReactNode = (
     <>
       {CREATE_GROUPS.map((group) => {
         const items = createItems.filter((item) => item.group === group)
@@ -120,7 +98,7 @@ export function WorkspaceCreateMenu({
     </>
   )
 
-  const menuClassName = grouped ? 'document-create-menu document-create-menu--grouped' : 'document-create-menu'
+  const menuClassName = 'document-create-menu document-create-menu--grouped'
 
   if (anchorEl !== undefined) {
     if (!coords) {

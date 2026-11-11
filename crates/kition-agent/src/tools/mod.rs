@@ -84,16 +84,6 @@ async fn blocking(
         .unwrap_or_else(|_| Err("tool failed unexpectedly".into()))
 }
 
-async fn configure_smtp(run: &Run, input: &Value) -> ToolResult {
-    let configure = run
-        .agent
-        .smtp()
-        .cloned()
-        .ok_or("connections service is not available")?;
-    let (summary, output) = configure(run.user_id, input.clone()).await?;
-    Ok(crate::run::ToolOutput::new(summary, output))
-}
-
 async fn dispatch(run: &Arc<Run>, name: &str, input: &Value) -> ToolResult {
     if let Some((kit, _)) = kits::parse(name) {
         return kits::call(run, kit, name, input).await;
@@ -130,7 +120,6 @@ async fn dispatch(run: &Arc<Run>, name: &str, input: &Value) -> ToolResult {
         "image_search" => images::image_search(run, input).await,
         "save_image_asset" => images::save_image_asset(run, input).await,
         "exec_command" => exec::exec_command(run, input).await,
-        "configure_smtp_connection" => configure_smtp(run, input).await,
         other => crate::mcp::call(run, other, input).await,
     }
 }

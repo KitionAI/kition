@@ -44,38 +44,11 @@ afterEach(() => {
 })
 
 describe('WorkspaceSidebar', () => {
-  it('shows the Files and Search tabs', async () => {
+  it('shows the Files tab', async () => {
     await mount(defaultProps())
 
     const tabs = Array.from(container.querySelectorAll('.workspace-sidebar-tabs button'))
-    expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([
-      'Files',
-      'Search',
-    ])
-    expect(container.querySelector('[data-testid="workspace-sidebar-workflows-button"]')).toBeNull()
-  })
-
-  it('clicking the Search tab opens the search modal instead of hiding the tree', async () => {
-    const onOpenSearch = vi.fn()
-    await mount(defaultProps({
-      treeContent: createElement('div', { 'data-testid': 'sentinel-tree' }, 'Tree'),
-      onOpenSearch,
-    }))
-
-    // Files tab is the default → tree is visible.
-    expect(container.querySelector('[data-testid="sentinel-tree"]')).not.toBeNull()
-
-    const searchTab = container.querySelector('[data-testid="sidebar-tab-search"]') as HTMLButtonElement
-    expect(searchTab).not.toBeNull()
-    await act(async () => {
-      searchTab.click()
-      await Promise.resolve()
-    })
-
-    // Search is now an action button that opens the modal — the tree stays put.
-    expect(onOpenSearch).toHaveBeenCalledTimes(1)
-    expect(container.querySelector('[data-testid="sentinel-tree"]')).not.toBeNull()
-    expect(container.querySelector('.document-private-heading')).not.toBeNull()
+    expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual(['Files'])
   })
 
   it('keeps the header create action available when the workspace tree is empty', async () => {

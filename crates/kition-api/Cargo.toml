@@ -19,7 +19,6 @@ path = "src/main.rs"
 [dependencies]
 kition-agent = { workspace = true }
 kition-ai = { workspace = true }
-kition-connections = { workspace = true }
 kition-kits = { workspace = true }
 kition-kits-http = { workspace = true }
 kition-core = { workspace = true }
@@ -30,7 +29,6 @@ kition-kdm = { workspace = true }
 kition-store = { workspace = true }
 kition-workspace = { workspace = true }
 kition-workspacestorage = { workspace = true }
-kition-workflow = { workspace = true }
 
 anyhow = { workspace = true }
 axum = { workspace = true }

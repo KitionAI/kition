@@ -76,15 +76,10 @@ async function mountHarness(initialRootPath: string): Promise<Harness> {
   }
 }
 
-/** A table file's workflow tab: the tabs a workspace keeps across windows (a kit's file tab reopens from the tree). */
+/** A videos gallery tab: the tabs a workspace keeps across windows (a kit's file tab reopens from the tree). */
 function docTab(path: string): WorkspaceTab {
-  const tablePath = path.replace(/\.md$/, '.ktable')
-  return {
-    id: `workflow:${tablePath}`,
-    type: 'workflow',
-    title: tablePath.split('/').pop() || tablePath,
-    tablePath,
-  }
+  const name = path.replace(/\.md$/, '')
+  return { id: `gallery:videos:${name}`, type: 'gallery', title: name, kind: 'videos' }
 }
 
 describe('useWorkspaceTabs — atomic workspace switch', () => {
@@ -102,16 +97,16 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
       ref.current.upsertWorkspaceTab(docTab('A-home.md'), { activate: true })
       await Promise.resolve()
     })
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:A-home.ktable'])
-    expect(ref.current.activeWorkspaceTabId).toBe('workflow:A-home.ktable')
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['gallery:videos:A-home'])
+    expect(ref.current.activeWorkspaceTabId).toBe('gallery:videos:A-home')
 
     await setRootPath('/B')
 
     expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual([
-      'workflow:B-home.ktable',
-      'workflow:B-notes.ktable',
+      'gallery:videos:B-home',
+      'gallery:videos:B-notes',
     ])
-    expect(ref.current.activeWorkspaceTabId).toBe('workflow:B-home.ktable')
+    expect(ref.current.activeWorkspaceTabId).toBe('gallery:videos:B-home')
   })
 
   it('remaps file tab paths and keeps a valid active tab after deletion', async () => {
@@ -162,8 +157,8 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
 
     await setRootPath('/A')
 
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:A-home.ktable'])
-    expect(ref.current.activeWorkspaceTabId).toBe('workflow:A-home.ktable')
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['gallery:videos:A-home'])
+    expect(ref.current.activeWorkspaceTabId).toBe('gallery:videos:A-home')
   })
 
   it('persists tabs under the new rootPath only after the switch settles', async () => {
@@ -182,8 +177,8 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
     })
 
     const stored = JSON.parse(window.localStorage.getItem('kition.document.workspace-tabs.v2') || '{}')
-    expect(stored['/A'].map((t: any) => t.id)).toEqual(['workflow:A-home.ktable'])
-    expect(stored['/B'].map((t: any) => t.id)).toEqual(['workflow:B-home.ktable'])
+    expect(stored['/A'].map((t: any) => t.id)).toEqual(['gallery:videos:A-home'])
+    expect(stored['/B'].map((t: any) => t.id)).toEqual(['gallery:videos:B-home'])
   })
 
   it('production flow: setRootPath then async upsertWorkspaceTab in one batch', async () => {
@@ -193,7 +188,7 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
       ref.current.upsertWorkspaceTab(docTab('A-home.md'), { activate: true })
       await Promise.resolve()
     })
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:A-home.ktable'])
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['gallery:videos:A-home'])
 
     // Emulate refreshWorkspaceDocuments() landing on the new vault. The real
     // sequence is: setRootPath(B); await readWorkspaceDocument; applyWorkspaceDocument(B-home).
@@ -206,7 +201,7 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
       await Promise.resolve()
     })
 
-    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['workflow:B-home.ktable'])
-    expect(ref.current.activeWorkspaceTabId).toBe('workflow:B-home.ktable')
+    expect(ref.current.workspaceTabs.map((t) => t.id)).toEqual(['gallery:videos:B-home'])
+    expect(ref.current.activeWorkspaceTabId).toBe('gallery:videos:B-home')
   })
 })

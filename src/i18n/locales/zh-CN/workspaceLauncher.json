@@ -74,14 +74,14 @@
     "workspaceDescription": "工作区已准备就绪。现在选择一个选项，或跳过并从“入门”文件开始。",
     "workspaceLocal": "本地存储在此设备上",
     "providerTitle": "选择您的工作方式",
-    "providerDescription": "稍后可以在“设置”中更改。文档、表格和本地工作流无需账户或 AI 服务商即可使用。",
+    "providerDescription": "稍后可以在“设置”中更改。文档和表格无需账户或 AI 服务商即可使用。",
     "choice": {
       "cloud": "Kition Cloud",
       "cloudDescription": "登录 Kition 账户即可使用托管 AI，无需单独的 API 密钥。",
       "byo": "使用自己的 API 密钥",
       "byoDescription": "连接OpenAI、Anthropic、DeepSeek或其他兼容的提供商。",
       "local": "不使用 AI 继续",
-      "localDescription": "打开欢迎指南，无需账户或 API 密钥即可浏览本地文档、表格和工作流。"
+      "localDescription": "打开欢迎指南，无需账户或 API 密钥即可浏览本地文档和表格。"
     },
     "successTitle": "完成一个有用的操作",
     "success": {
@@ -96,9 +96,9 @@
         "privacy": "提示词和所选上下文将直接发送到你配置的服务商。"
       },
       "local": {
-        "title": "运行联系人工作流",
-        "description": "通过无需 AI 模型的确定性工作流规范联系人信息。",
-        "privacy": "此工作流在本地运行，不会将工作区内容发送到 AI 服务。"
+        "title": "浏览示例表格",
+        "description": "打开欢迎指南和 Getting Started 中的示例表格，都不需要 AI 模型。",
+        "privacy": "所有内容都留在本机，不会将工作区内容发送到 AI 服务。"
       }
     },
     "continue": "继续",

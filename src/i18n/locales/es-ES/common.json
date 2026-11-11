@@ -49,10 +49,7 @@
     "syncedDocumentsHint": "Abre aquí un documento de tus otros dispositivos"
   },
   "viewport": {
-    "tooNarrow": "La ventana es demasiado estrecha. Es posible que el editor y el lienzo de Workflow no se puedan usar por completo en este tamaño. Amplía la ventana a al menos 480px."
-  },
-  "search": {
-    "fileMissing": "El archivo ya no existe"
+    "tooNarrow": "La ventana es demasiado estrecha. Es posible que el editor no se pueda usar por completo en este tamaño. Amplía la ventana a al menos 480px."
   },
   "errorBoundary": {
     "title": "Something went wrong",

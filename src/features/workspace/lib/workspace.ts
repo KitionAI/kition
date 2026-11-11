@@ -21,16 +21,6 @@ export type WorkspaceTab =
       format: WorkspaceDocumentFormat
     }
   | { id: string; type: 'gallery'; title: string; kind: WorkspaceMediaKind }
-  | {
-      id: string
-      type: 'workflow'
-      title: string
-      /** Optional: open the home view scoped to one table file's tables (e.g.
-       *  "Leads.ktable"). When undefined the tab shows the global list. */
-      tablePath?: string
-      /** Optional: pre-select a specific workflow id when the tab mounts. */
-      workflowId?: string
-    }
 
 export type WorkspaceTreeNode = {
   type: 'folder' | 'file'
@@ -267,18 +257,6 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
       return format
     default:
       return null
-  }
-}
-
-/** The kit whose color and icon a tab shows; plain files, galleries, and workflows have none. */
-export function getWorkspaceTabKit(tab: WorkspaceTab): KitIconId | null {
-  switch (tab.type) {
-    case 'gallery':
-      return null
-    case 'file-viewer':
-      return getWorkspaceItemKitIcon(tab.format)
-    case 'workflow':
-      return tab.tablePath ? 'table' : null
   }
 }
 

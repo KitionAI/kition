@@ -19,7 +19,6 @@
       "html": "HTML"
     },
     "folder": "文件夹",
-    "newWorkflow": "新建工作流",
     "group": {
       "documents": "文档",
       "data": "数据",
@@ -29,7 +28,7 @@
   },
   "emptyState": {
     "title": "将创意转化为有组织的工作",
-    "description": "从侧边栏打开内容，从空白画布开始，或让 Kition AI 帮你构建下一个文档、表格或工作流。",
+    "description": "从侧边栏打开内容，从空白画布开始，或让 Kition AI 帮你构建下一个文档或表格。",
     "prompt": {
       "title": "描述您想要构建的内容",
       "description": "使用 Kition AI 进行规划、研究、写作和整理。",
@@ -44,24 +43,17 @@
       "table": {
         "title": "新建表格",
         "description": "构建项目、记录和研究。"
-      },
-      "workflow": {
-        "title": "工作流",
-        "description": "在表格之间自动执行可重复的工作。"
       }
     }
   },
   "sidebar": {
     "tabs": {
-      "files": "文件",
-      "search": "搜索"
+      "files": "文件"
     },
     "collapseSection": "折叠 {{name}}",
     "expandSection": "展开 {{name}}",
     "newPage": "新建页面",
     "newPageIn": "在 {{name}} 中新建页面",
-    "workflows": "工作流",
-    "openWorkflows": "打开工作流",
     "refresh": "刷新工作区",
     "collapseSidebar": "折叠侧边栏",
     "loadingDirectory": "正在加载本地目录"
@@ -99,7 +91,6 @@
     "closeRight": "关闭右侧标签页",
     "closeReadOnly": "关闭所有只读标签页",
     "copyReference": "复制路径/引用",
-    "workflowsTitle": "工作流",
     "unsavedTitle": "“{{name}}”有未保存的更改",
     "unsavedMessage": "关闭标签页前要保存吗？未保存的更改将会丢失。",
     "unsavedTitleMany": "{{count}} 个文档有未保存的更改",

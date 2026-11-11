@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <strong>Documents, tableaux, agents et workflows dans un seul espace de travail.</strong><br />
-  Rédigez des connaissances reliées, créez des outils de données, effectuez des recherches sur le web et automatisez le travail répétitif.
+  <strong>Documents, tableaux et agents dans un seul espace de travail.</strong><br />
+  Rédigez des connaissances reliées, créez des outils de données et effectuez des recherches sur le web.
 </p>
 
 <p align="center">
@@ -34,19 +34,18 @@
   <a href=".github/SECURITY.md">Sécurité</a>
 </p>
 
-<p align="center"><img src="docs/readme/kition-overview.webp" alt="Vue d’ensemble de Kition avec documents, tableaux structurés, recherches de l’agent et workflows visuels" width="100%" /></p>
+<p align="center"><img src="docs/readme/kition-overview.webp" alt="Vue d’ensemble de Kition avec documents, tableaux structurés et recherches de l’agent" width="100%" /></p>
 
-Kition réunit des documents Markdown, des tableaux structurés, un agent IA capable d’utiliser des outils, la recherche web et des workflows visuels. L’agent travaille avec des fichiers de projet modifiables, des enregistrements typés, des pièces jointes et des processus visibles, ce qui facilite la vérification, la correction et la répétition des résultats.
+Kition réunit des documents Markdown, des tableaux structurés, un agent IA capable d’utiliser des outils et la recherche web. L’agent travaille avec des fichiers de projet modifiables, des enregistrements typés et des pièces jointes, ce qui facilite la vérification, la correction et la répétition des résultats.
 
 > Kition est actuellement en version bêta. Sauvegardez les espaces de travail importants et vérifiez les modifications de l’agent avant une utilisation en production.
 
 ## Pourquoi Kition
 
-- **Documents reliés.** Markdown avec aperçu en direct, liens internes, backlinks, code, mathématiques, diagrammes, notes quotidiennes, recherche et export.
+- **Documents reliés.** Markdown avec aperçu en direct, liens internes, backlinks, code, mathématiques, diagrammes, notes quotidiennes et export.
 - **Données structurées à côté des connaissances.** Champs typés, formules, filtres, groupes, vues, pièces jointes et champs IA.
 - **Un agent qui peut agir.** Il recherche sur le web, lit et modifie les documents et tableaux, puis enregistre les résultats dans le projet.
 - **Modifications de documents contrôlables.** Laissez l’agent modifier le document actif, examinez chaque ajout et suppression, puis acceptez ou refusez les changements individuellement.
-- **Automatisation visible.** Assemblez des déclencheurs et des actions, testez les étapes et consultez l’historique d’exécution.
 
 ## Laissez l’agent modifier, gardez le dernier mot
 
@@ -66,7 +65,7 @@ Le travail documentaire devient ainsi contrôlable : décrivez l’objectif en l
 
 ## Commencez par le travail, pas par une invite vide
 
-Kition conserve le contexte dans les documents, les champs de tableau, les enregistrements, les modèles et les workflows. Les scénarios intégrés sont de simples fichiers `.ktable` adaptables à un projet réel.
+Kition conserve le contexte dans les documents, les champs de tableau, les enregistrements et les modèles. Les scénarios intégrés sont de simples fichiers `.ktable` adaptables à un projet réel.
 
 ### Générer des ressources de campagne par lots
 
@@ -88,12 +87,11 @@ Créez des propositions de design, vues orthographiques, images de fonctionnalit
 
 ## Fonctionnalités principales
 
-- **Documents :** édition Markdown, aperçu, modèles, recherche, export PDF.
+- **Documents :** édition Markdown, aperçu, modèles, export PDF.
 - **Tableaux :** champs typés, pièces jointes, formules, filtres, tri, groupes et vues multiples.
 - **Agent :** modification de documents, recherche web, utilisation d’outils et sauvegarde dans l’espace de travail.
-- **Workflows :** composition visuelle de déclencheurs et d’actions, tests et historique d’exécution.
 - **Kits :** seize éditeurs intégrés, chacun pour son type de fichier (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). Le moteur de chaque kit s’exécute en WebAssembly dans un Web Worker, et l’agent modifie les mêmes fichiers avec les outils du kit.
-- **Réglages :** e-mail, modèles, proxy, MCP, compte, consommation, mises à jour et intégration au bureau.
+- **Réglages :** modèles, proxy, MCP, compte, consommation, mises à jour et intégration au bureau.
 
 ## Installation
 

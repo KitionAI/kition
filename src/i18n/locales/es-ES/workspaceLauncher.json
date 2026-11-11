@@ -74,14 +74,14 @@
     "workspaceDescription": "Kition guarda los documentos y archivos table file en la carpeta que seleccionaste.",
     "workspaceLocal": "Guardado localmente en este dispositivo",
     "providerTitle": "Elige cómo quieres trabajar",
-    "providerDescription": "Puedes cambiar de proveedor más adelante. Los flujos locales funcionan sin cuenta ni clave de API.",
+    "providerDescription": "Puedes cambiar de proveedor más adelante. Los documentos y las tablas funcionan sin cuenta ni clave de API.",
     "choice": {
       "cloud": "Kition Cloud",
       "cloudDescription": "IA alojada con Kition Account y sin una clave de API independiente.",
       "byo": "Usar tu propia clave de API",
       "byoDescription": "Conecta OpenAI, Anthropic, DeepSeek u otro proveedor compatible.",
       "local": "Solo local",
-      "localDescription": "Open the welcome guide and explore local documents, tables, and workflows without an account or API key."
+      "localDescription": "Open the welcome guide and explore local documents and tables without an account or API key."
     },
     "successTitle": "Completa una acción útil",
     "success": {
@@ -96,9 +96,9 @@
         "privacy": "Los prompts y el contexto seleccionado se envían directamente al proveedor configurado."
       },
       "local": {
-        "title": "Ejecuta el workflow de Contacts",
-        "description": "Normaliza contactos con un flujo determinista que no necesita IA.",
-        "privacy": "Este flujo se ejecuta localmente y no envía contenido a un servicio de IA."
+        "title": "Explora las tablas de ejemplo",
+        "description": "Abre la guía de bienvenida y las tablas de ejemplo de Getting Started; ninguna necesita un modelo de IA.",
+        "privacy": "Todo se queda en este dispositivo; no se envía contenido a un servicio de IA."
       }
     },
     "continue": "Continuar",

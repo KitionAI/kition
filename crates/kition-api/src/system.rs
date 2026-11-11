@@ -81,8 +81,7 @@ async fn me(user: CurrentUser) -> Response {
 }
 
 const E2E_PASSWORD: &str = "123456";
-const E2E_RESET_TABLES: [&str; 7] = [
-    "connections",
+const E2E_RESET_TABLES: [&str; 6] = [
     "oauth_usage_logs",
     "oauth_accounts",
     "ai_model_usage_logs",
@@ -158,9 +157,5 @@ async fn e2e_reset(State(deps): State<Deps>) -> AppResult<Response> {
         })
         .await
         .map_err(failed)?;
-    if let Some(dir) = &deps.workspace_dir {
-        let _ = std::fs::remove_file(dir.join("workflow.json"));
-        let _ = std::fs::remove_file(dir.join("workflow_runs.json"));
-    }
     Ok(ok(seeded))
 }

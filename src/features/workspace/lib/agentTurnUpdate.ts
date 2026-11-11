@@ -21,8 +21,5 @@ export function buildWorkspaceAgentTurnUpdate({
     // Same mapping as the chat panel's empty-state copy, so the system
     // prompt addendum matches what the user sees.
     paneContext: deriveAgentPaneContext(activeWorkspaceTab),
-    // A workflow tab opened on one workflow lets the runtime attach that
-    // workflow's summary; the global list carries no id.
-    activeWorkflowId: activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.workflowId : undefined,
   }
 }

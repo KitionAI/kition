@@ -90,7 +90,7 @@ tests.
 | `pnpm build:check` | Runtime lock, assets, notices, types, and renderer build |
 
 Feature-specific inspection commands remain available in `package.json` for
-Table kit, Scenario, Workflow, and Agent work.
+Table kit, Scenario, and Agent work.
 
 ## Before Opening a Pull Request
 

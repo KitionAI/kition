@@ -20,17 +20,12 @@ type UseWorkspaceCreateMenuOptions = {
   openDocumentTemplateDialog: (folder?: string) => void
   /** Kit items (Image, Video project), each making a file in a folder. */
   kitCreations: readonly KitCreationSource[]
-  openWorkspaceWorkflow: () => void
-  /** A workflow for one of a table file's tables. */
-  openTableFileWorkflow: (tablePath: string) => void
   onCloseProfile?: () => void
 }
 
 /**
- * Handlers behind the sidebar's create menu. The menu opens either for the
- * workspace (a folder) or for a table file, where it makes a workflow for
- * the file's tables. Returned as one object so the sidebar props
- * can spread it.
+ * Handlers behind the sidebar's create menu, opened for the workspace or a
+ * folder. Returned as one object so the sidebar props can spread it.
  */
 export function useWorkspaceCreateMenu({
   createFlows,
@@ -41,21 +36,14 @@ export function useWorkspaceCreateMenu({
   createDocumentInside,
   openDocumentTemplateDialog,
   kitCreations,
-  openWorkspaceWorkflow,
-  openTableFileWorkflow,
   onCloseProfile,
 }: UseWorkspaceCreateMenuOptions) {
-  const { setTableFileCreateContext, createMenuVariant } = createFlows
   return useMemo(() => ({
-    createMenuVariant,
     onOpenCreateMenu: () => {
       expandPrivateSection()
       openCreateFormatMenu('')
     },
-    onCloseCreateMenu: () => {
-      closeCreateMenu()
-      setTableFileCreateContext(null)
-    },
+    onCloseCreateMenu: closeCreateMenu,
     onCreateDocument: () => {
       closeCreateMenu()
       openDocumentTemplateDialog(createMenuFolder)
@@ -65,23 +53,7 @@ export function useWorkspaceCreateMenu({
       createFlows.openFolderDialog()
     },
     onCreateInside: (node: WorkspaceTreeNode) => {
-      if (node.type === 'file' && node.name.toLowerCase().endsWith('.ktable') && !node.virtual) {
-        setTableFileCreateContext(node.path)
-        expandPrivateSection()
-        openCreateFormatMenu(undefined, node.path)
-        return
-      }
       void createDocumentInside(node)
-    },
-    onCreateWorkflowForTable: (node: WorkspaceTreeNode) => {
-      closeCreateMenu()
-      setTableFileCreateContext(null)
-      onCloseProfile?.()
-      openTableFileWorkflow(node.path)
-    },
-    onOpenWorkflows: () => {
-      onCloseProfile?.()
-      openWorkspaceWorkflow()
     },
     kitCreations: kitCreations.map<KitCreationItem>((kit) => ({
       id: kit.id,
@@ -101,13 +73,9 @@ export function useWorkspaceCreateMenu({
     createDocumentInside,
     createFlows,
     createMenuFolder,
-    createMenuVariant,
     expandPrivateSection,
     onCloseProfile,
     openCreateFormatMenu,
     openDocumentTemplateDialog,
-    openTableFileWorkflow,
-    openWorkspaceWorkflow,
-    setTableFileCreateContext,
   ])
 }

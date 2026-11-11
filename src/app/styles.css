@@ -1409,7 +1409,7 @@
   }
 
   .workspace-empty-state__actions {
-    @apply grid w-full grid-cols-3 gap-3;
+    @apply grid w-full grid-cols-2 gap-3;
   }
 
   .workspace-empty-state__action-card {
@@ -2859,12 +2859,6 @@
     transition:
       transform 180ms ease,
       filter 180ms ease;
-  }
-
-  /* The workflow properties drawer is flush with the right edge; keep the
-     launcher clear of its save row instead of covering it. */
-  body:has(.workflow-properties-drawer) .agent-floating-launcher {
-    right: calc(360px + max(1.25rem, env(safe-area-inset-right)));
   }
 
   /* A kit's editor reaches to the right edge with its own panels (a layer list and its buttons)
@@ -4441,67 +4435,7 @@
   grid-column: 1 / -1;
 }
 
-/* === Search result rows (shared by the command palette) === */
-
-.search-result-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  width: 100%;
-  padding: 6px 8px;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 100ms;
-}
-
-.search-result-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-}
-
-.search-result-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.search-result-source {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-  background: hsl(var(--muted));
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-
-.search-result-snippet {
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  white-space: pre-wrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.search-result-snippet mark {
-  background: hsl(var(--warning) / 0.25);
-  color: hsl(var(--foreground));
-  border-radius: 2px;
-  padding: 0 1px;
-}
-
-/* === Search command palette (Phase H) === */
+/* === Overlay animations === */
 
 @keyframes overlay-backdrop-in {
   from { opacity: 0; }
@@ -4520,104 +4454,11 @@ body:has(.settings-modal-window) .kui-toasts {
   bottom: calc((100vh - min(760px, 100vh - 4rem)) / 2 + 76px);
 }
 
-/* The command and search palettes share one backdrop: a dim scrim without blur, like Tessera's dialogs. */
-.command-overlay,
-.search-palette-backdrop {
+/* The command palette's backdrop: a dim scrim without blur, like Tessera's dialogs. */
+.command-overlay {
   background: hsl(var(--shadow-color) / 0.4);
   backdrop-filter: none;
   animation: overlay-backdrop-in 120ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.search-palette-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.search-palette {
-  width: 640px;
-  margin-top: 12vh;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
-  box-shadow: var(--shadow-elevated);
-  overflow: hidden;
-  animation: overlay-panel-in 180ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.search-palette-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-size: 15px;
-  outline: none;
-}
-
-.search-palette-input::placeholder {
-  color: hsl(var(--muted-foreground));
-}
-
-.search-palette-list {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.search-palette-row {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  border-radius: 6px;
-  padding: 0 4px;
-}
-
-.search-palette-row.is-active {
-  background: hsl(var(--accent) / 0.5);
-}
-
-.search-palette-row .search-result-item {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.search-palette-shortcut {
-  flex-shrink: 0;
-  align-self: center;
-  min-width: 26px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-  background: hsl(var(--muted));
-  border: 1px solid hsl(var(--border));
-  border-radius: 4px;
-}
-.search-palette-shortcut.is-empty {
-  background: none;
-  border-color: transparent;
-}
-
-.search-palette-empty {
-  padding: 16px 10px;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-  text-align: center;
-}
-
-.search-palette-overflow {
-  padding: 6px 10px;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  text-align: center;
 }
 
 @media (max-width: 1023px) {

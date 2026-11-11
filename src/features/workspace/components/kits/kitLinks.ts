@@ -78,8 +78,8 @@ export async function openKitLink(from: string, params: KitOpenParams, opener: K
 
 /**
  * Kition's side of opening: the workspace's files from its tree, a new file made by the engine of
- * a kit that creates its extension (as the create menu makes one), and a tab opened as the search
- * palette opens one, its kit editor shown at `view`.
+ * a kit that creates its extension (as the create menu makes one), and a tab opened by path, its
+ * kit editor shown at `view`.
  */
 export const KITION_LINK_OPENER: KitLinkOpener = {
   files: async () => flattenWorkspaceDocumentItems((await listWorkspaceDocuments()).items ?? []).map((item) => item.path),
@@ -93,6 +93,6 @@ export const KITION_LINK_OPENER: KitLinkOpener = {
   },
   open: (path, view) => {
     if (view) revealInKit(path, view)
-    window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path } }))
+    window.dispatchEvent(new CustomEvent('kition:workspace:open-path', { detail: { path } }))
   },
 }

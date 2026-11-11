@@ -18,8 +18,6 @@ export type WorkspaceScreenTopbarInput = {
     activateWorkspaceTab: (tab: WorkspaceTab) => Promise<void> | void
     closeTab: (tabId: string) => void
   }
-  workflowOpen: boolean
-  onCloseWorkflow?: () => void
   onCloseProfile?: () => void
 }
 
@@ -30,10 +28,8 @@ function buildWorkspaceTopbarProps(input: WorkspaceScreenTopbarInput): TopbarPro
     tabStripProps: buildWorkspaceTabStripProps({
       tabs: tabs.workspaceTabs,
       activeTabId: tabs.activeWorkspaceTabId,
-      workflowOpen: input.workflowOpen,
       closeTab: tabs.closeTab,
       activateTab: tabs.activateWorkspaceTab,
-      onCloseWorkflow: input.onCloseWorkflow,
       onCloseProfile: input.onCloseProfile,
       sidebarCollapsed: chrome.sidebarCollapsed,
       onToggleSidebar: chrome.toggleSidebarCollapsed,

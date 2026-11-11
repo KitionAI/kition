@@ -856,7 +856,6 @@ mod receipt_flow {
 
     use axum::Json;
     use axum::routing::post;
-    use kition_core::events::EventBus;
     use kition_kits::KitManager;
 
     use super::*;
@@ -972,13 +971,10 @@ mod receipt_flow {
         let kit = kition_kits::KitDefinition::from_manifest_text(&manifest)
             .unwrap_or_else(|error| panic!("{error}"));
         let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
-        let tables = TableClient::new(
-            KitManager::new(
-                Some(dir.path().to_path_buf()),
-                vec![(kit, Some(executable))],
-            ),
-            EventBus::default(),
-        );
+        let tables = TableClient::new(KitManager::new(
+            Some(dir.path().to_path_buf()),
+            vec![(kit, Some(executable))],
+        ));
         let engine = Engine::new(dir.path().join("uploads"), None);
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -1065,13 +1061,10 @@ mod receipt_flow {
             kition_kits::definitions::manifest_beside(&executable_or_panic()).unwrap_or_default();
         let kit = kition_kits::KitDefinition::from_manifest_text(&manifest)
             .unwrap_or_else(|error| panic!("{error}"));
-        let reopened = TableClient::new(
-            KitManager::new(
-                Some(dir.path().to_path_buf()),
-                vec![(kit, Some(executable_or_panic()))],
-            ),
-            EventBus::default(),
-        );
+        let reopened = TableClient::new(KitManager::new(
+            Some(dir.path().to_path_buf()),
+            vec![(kit, Some(executable_or_panic()))],
+        ));
         let table = reopened
             .tables(&path)
             .await
@@ -1182,13 +1175,10 @@ mod receipt_flow {
         let kit = kition_kits::KitDefinition::from_manifest_text(&manifest)
             .unwrap_or_else(|error| panic!("{error}"));
         let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
-        let tables = TableClient::new(
-            KitManager::new(
-                Some(dir.path().to_path_buf()),
-                vec![(kit, Some(executable))],
-            ),
-            EventBus::default(),
-        );
+        let tables = TableClient::new(KitManager::new(
+            Some(dir.path().to_path_buf()),
+            vec![(kit, Some(executable))],
+        ));
         let engine = Engine::new(dir.path().join("uploads"), None);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await

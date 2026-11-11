@@ -86,7 +86,6 @@ function Surface() {
     filterWorkspaceTabs: () => {},
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths: () => {},
-    renameWorkspaceTabPath: () => {},
     rootPath: ROOT,
     setActiveResourcePath: () => {},
     setActiveWorkspaceTabId: () => {},

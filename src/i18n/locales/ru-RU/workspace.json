@@ -19,7 +19,6 @@
       "html": "HTML"
     },
     "folder": "Папка",
-    "newWorkflow": "Новый рабочий процесс",
     "group": {
       "documents": "Документы",
       "data": "Данные",
@@ -29,7 +28,7 @@
   },
   "emptyState": {
     "title": "Turn ideas into organized work",
-    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document or table.",
     "prompt": {
       "title": "Describe what you want to build",
       "description": "Plan, research, write, and organize with Kition AI.",
@@ -44,24 +43,17 @@
       "table": {
         "title": "New table",
         "description": "Structure projects, records, and research."
-      },
-      "workflow": {
-        "title": "Workflows",
-        "description": "Automate repeatable work across your tables."
       }
     }
   },
   "sidebar": {
     "tabs": {
-      "files": "Файлы",
-      "search": "Поиск"
+      "files": "Файлы"
     },
     "collapseSection": "Свернуть {{name}}",
     "expandSection": "Развернуть {{name}}",
     "newPage": "Новая страница",
     "newPageIn": "Новая страница в {{name}}",
-    "workflows": "Процессы",
-    "openWorkflows": "Открыть процессы",
     "refresh": "Обновить рабочую область",
     "collapseSidebar": "Свернуть боковую панель",
     "loadingDirectory": "Загрузка локального каталога"
@@ -99,7 +91,6 @@
     "closeRight": "Закрыть вкладки справа",
     "closeReadOnly": "Закрыть все вкладки только для чтения",
     "copyReference": "Копировать путь/ссылку",
-    "workflowsTitle": "Процессы",
     "unsavedTitle": "В «{{name}}» есть несохранённые изменения",
     "unsavedMessage": "Сохранить их перед закрытием вкладки? Несохранённые изменения будут потеряны.",
     "unsavedTitleMany": "Несохранённые изменения в документах: {{count}}",

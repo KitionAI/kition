@@ -52,7 +52,6 @@ type UseWorkspaceTreeNodeActionsOptions = {
   filterWorkspaceTabs: (predicate: (tab: WorkspaceTab) => boolean) => void
   refreshWorkspaceDocuments: (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
-  renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
   rootPath: string
   setActiveResourcePath: (path: string) => void
   setActiveWorkspaceTabId: (tabId: string) => void
@@ -66,8 +65,9 @@ type UseWorkspaceTreeNodeActionsOptions = {
   >
 }
 
-// Workflows name table files by path: a renamed or moved table file (or a folder holding some)
-// is followed there. Fire-and-forget by design — failure here mustn't roll back the disk op.
+// The runtime's table client knows table files by path: a renamed or moved table file (or a folder
+// holding some) is read again at its new path. Fire-and-forget by design — failure here mustn't
+// roll back the disk op.
 function followMovedTableFiles(fromPath: string, toPath: string) {
   if (!fromPath || !toPath || fromPath === toPath) {
     return
@@ -77,8 +77,8 @@ function followMovedTableFiles(fromPath: string, toPath: string) {
   })
 }
 
-// The workflows bound to a deleted table file (or to the table files of a deleted folder) go
-// with it. Fire-and-forget, as for moves: the file is already in the Trash.
+// The runtime's table client forgets a deleted table file (or the table files of a deleted
+// folder). Fire-and-forget, as for moves: the file is already in the Trash.
 function followDeletedTableFiles(node: WorkspaceTreeNode) {
   const gone = new Set<string>()
   if (node.type === 'folder' || isTableFilePath(node.path)) gone.add(node.path)
@@ -121,7 +121,6 @@ export function useWorkspaceTreeNodeActions({
   filterWorkspaceTabs,
   refreshWorkspaceDocuments,
   remapWorkspaceTabPaths,
-  renameWorkspaceTabPath,
   rootPath,
   setActiveResourcePath,
   setActiveWorkspaceTabId,
@@ -455,10 +454,6 @@ export function useWorkspaceTreeNodeActions({
         renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, moved.path)
       ))
       remapWorkspaceTabPaths(node.path, moved.path)
-      // A table file's workflow tab follows the file.
-      if (node.path.toLowerCase().endsWith('.ktable')) {
-        renameWorkspaceTabPath(node.path, moved.path)
-      }
       setFeedback(t('feedback.renamed'))
       await refreshWorkspaceDocuments(moved.path)
     } catch (requestError: any) {
@@ -471,7 +466,6 @@ export function useWorkspaceTreeNodeActions({
     applyWorkspaceDocumentList,
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
-    renameWorkspaceTabPath,
     rootPath,
     setError,
     setFeedback,

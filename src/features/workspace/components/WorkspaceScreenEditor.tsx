@@ -9,24 +9,18 @@ export type WorkspaceEditorContentProps = ComponentProps<typeof WorkspaceEditorC
 
 /** What the editor column needs, as the bundles the workspace hooks already return. */
 export type WorkspaceScreenEditorInput = {
-  rootPath: string
   workspaceTabs: WorkspaceEditorContentProps['workspaceTabs']
   activeWorkspaceTab: WorkspaceEditorContentProps['activeWorkspaceTab']
   activeWorkspaceTabId: string
   galleryPanelProps: WorkspaceEditorContentProps['galleryPanelProps']
   agentPanel: Pick<WorkspaceAgentPanelState, 'open' | 'setOpen' | 'setHistoryOpen'>
   templateDialogs: Pick<ReturnType<typeof useWorkspaceTemplateDialogs>, 'openDocumentTemplateDialog'>
-  workflows: {
-    /** The workflows of one table file. */
-    openTableFileWorkflow: (tablePath: string, workflowId?: string) => void
-    openWorkspaceWorkflow: (workflowId?: string) => void
-  }
   /** A new table file, from the Table kit. */
   onCreateTable: () => void
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { agentPanel, templateDialogs, workflows } = input
+  const { agentPanel, templateDialogs } = input
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
     agentPanel.setHistoryOpen(false)
@@ -35,9 +29,6 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     activeWorkspaceTab: input.activeWorkspaceTab,
     activeWorkspaceTabId: input.activeWorkspaceTabId,
     galleryPanelProps: input.galleryPanelProps,
-    onOpenWorkflow: workflows.openTableFileWorkflow,
-    onOpenGlobalWorkflow: workflows.openWorkspaceWorkflow,
-    onOpenWorkflows: () => workflows.openWorkspaceWorkflow(),
     onCreateDocument: () => templateDialogs.openDocumentTemplateDialog(''),
     onCreateTable: input.onCreateTable,
     onOpenAgent: () => {
@@ -45,7 +36,6 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
     },
     workspaceTabs: input.workspaceTabs,
-    rootPath: input.rootPath,
   }
 }
 /** The active pane inside the editor column. */

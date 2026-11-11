@@ -50,18 +50,6 @@ export type KitTablesFile = {
  */
 export type KitTablesStamp = string
 
-export type KitTablesFileStamp = {
-  path: KitTablesTablePath
-  stamp: KitTablesStamp
-}
-
-/**
- * Every table file with its stamp, without reading any (search reads only the files whose stamp changed).
- */
-export type KitTablesStampList = {
-  files: KitTablesFileStamp[]
-}
-
 export type KitTablesUnreadableFile = {
   path: string
   error: string
@@ -184,12 +172,10 @@ export type KitTablesRenamedRequest = {
   to: string
 }
 
-export type KitTablesRenamedResult = {
-  /**
-   * Workflows that now name the new path.
-   */
-  updated: number
-}
+/**
+ * The file's description is read again at its new path.
+ */
+export type KitTablesRenamedResult = Record<string, never>
 
 export type KitTablesDeletedRequest = {
   /**
@@ -198,16 +184,14 @@ export type KitTablesDeletedRequest = {
   path: string
 }
 
-export type KitTablesDeletedResult = {
-  /**
-   * Workflows bound to the deleted files, which were removed.
-   */
-  removed: number
-}
+/**
+ * The runtime forgets the deleted files.
+ */
+export type KitTablesDeletedResult = Record<string, never>
 
 export type KitTablesReason = "unavailable" | "not-found" | "failed"
 
 /**
- * /api/v1/kit-tables: the workspace's .ktable files (all of them, or the one ?path= names) as Kition's own features see them (the workflow editor's table and field pickers, the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.
+ * /api/v1/kit-tables: the workspace's .ktable files (all of them, or the one ?path= names) as Kition's own features see them (the workspace tree's table leaves, templates, and the design handoff). The runtime answers through the Table kit (crates/kition-tableclient): the live editor over the Kit AI bridge when a window has the file open, the headless kit otherwise. Host features name a table by its file's workspace path, the file's documentId (its KDM root object id, which a rename keeps), and the table's id in the file. Writes carry the origin system:<feature> and never join the person's undo. Refusals carry data.reason: unavailable (no Table kit in this build), not-found, or failed.
  */
 export type KitTablesContract = KitTablesFileList

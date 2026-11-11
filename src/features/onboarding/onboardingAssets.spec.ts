@@ -87,7 +87,6 @@ describe('onboarding static assets', () => {
     )
     expect(receiptGuide?.assets).toBeUndefined()
     expect(manifest.guides.map((guide: { displayName: string }) => guide.displayName)).toEqual([
-      'Lead Automation',
       'Receipt Extraction',
       'Product Content',
     ])
@@ -131,6 +130,7 @@ describe('onboarding static assets', () => {
     expect(english).not.toContain('Contact Directory')
     expect(english).toContain('[[Getting Started/Projects & Planning/Task Tracker.ktable]]')
     expect(english).not.toContain('Workflow Examples/')
+    expect(english.toLowerCase()).not.toContain('workflow')
     expect(english).not.toContain('Guides/Email Automation/')
 
     expect(readdirSync(dir).filter((name) => /^welcome\..+\.md$/.test(name))).toEqual([])

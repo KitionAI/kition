@@ -65,7 +65,7 @@ type AgentChatPanelProps = {
   /** Active workbench pane the agent sits next to. Drives the
    *  empty-state copy so the suggestion prompts match what the user is
    *  actually looking at — "Summarize this document" makes no sense
-   *  when the right pane is a workflow editor. Defaults
+   *  when the right pane is an image gallery. Defaults
    *  to 'document' to keep behaviour unchanged for legacy mounts. */
   paneContext?: AgentPaneContext
   /** Client-only welcome copy for surfaces that do not yet publish runtime context. */

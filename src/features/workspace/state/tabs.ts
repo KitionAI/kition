@@ -98,37 +98,6 @@ function remapPathTabId(tabId: string, sourcePath: string, targetPath: string) {
   return nextPath === path ? tabId : `${prefix}${nextPath}`
 }
 
-/** After a table file rename, its workflow tab and its file tab follow the file. */
-export function renameTabPath(state: TabsState, fromPath: string, toPath: string): TabsState {
-  if (!fromPath || !toPath || fromPath === toPath) return state
-  let changed = false
-  const remapped = state.tabs.map((tab) => {
-    if (tab.type === 'workflow' && tab.tablePath === fromPath) {
-      changed = true
-      return { ...tab, tablePath: toPath, id: `workflow:${toPath}` }
-    }
-    if (tab.type === 'file-viewer' && tab.path === fromPath) {
-      changed = true
-      return { ...tab, path: toPath, id: `file-viewer:${toPath}` }
-    }
-    return tab
-  })
-  if (!changed) return state
-  const seen = new Set<string>()
-  const tabs = remapped.filter((tab) => {
-    if (seen.has(tab.id)) return false
-    seen.add(tab.id)
-    return true
-  })
-  return { tabs, activeTabId: renameActiveTabId(state.activeTabId, fromPath, toPath) }
-}
-
-function renameActiveTabId(activeId: string, fromPath: string, toPath: string) {
-  if (activeId === `workflow:${fromPath}`) return `workflow:${toPath}`
-  if (activeId === `file-viewer:${fromPath}`) return `file-viewer:${toPath}`
-  return activeId
-}
-
 /**
  * Tab list to show after switching from one workspace to another. Tabs that
  * were not in the last committed state were added in the same React batch as

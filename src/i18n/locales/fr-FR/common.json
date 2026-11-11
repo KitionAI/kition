@@ -49,10 +49,7 @@
     "syncedDocumentsHint": "Ouvrir ici un document de vos autres appareils"
   },
   "viewport": {
-    "tooNarrow": "La fenêtre est trop étroite. L'éditeur et le canevas Workflow peuvent ne pas être pleinement utilisables à cette taille. Agrandissez la fenêtre à au moins 480px."
-  },
-  "search": {
-    "fileMissing": "Le fichier n'existe plus"
+    "tooNarrow": "La fenêtre est trop étroite. L'éditeur peut ne pas être pleinement utilisable à cette taille. Agrandissez la fenêtre à au moins 480px."
   },
   "errorBoundary": {
     "title": "Something went wrong",

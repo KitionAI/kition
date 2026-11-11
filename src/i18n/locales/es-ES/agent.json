@@ -96,23 +96,6 @@
         }
       }
     },
-    "workflow": {
-      "description": "Describe el workflow que quieres y el agente redactará el desencadenante y la acción.",
-      "suggestions": {
-        "emailOnRecord": {
-          "label": "Enviarme un correo por cada registro nuevo",
-          "prompt": "Cuando se cree un registro en esta tabla, envíame por correo un resumen del registro."
-        },
-        "remindOnDate": {
-          "label": "Recordar según un campo de fecha",
-          "prompt": "Cuando la fecha de hoy coincida con la columna de fecha límite de esta tabla, envía un recordatorio."
-        },
-        "refine": {
-          "label": "Refinar este workflow",
-          "prompt": "Revisa el workflow actual y sugiere la siguiente mejora."
-        }
-      }
-    },
     "gallery": {
       "description": "Pide al agente que organice, describa o reutilice el contenido multimedia de esta galería.",
       "suggestions": {

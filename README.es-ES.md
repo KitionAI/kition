@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <strong>Documentos, tablas, agentes y flujos de trabajo en un único espacio de escritorio.</strong><br />
-  Escribe conocimiento conectado, crea herramientas de datos, investiga en la web y automatiza el trabajo repetitivo.
+  <strong>Documentos, tablas y agentes en un único espacio de escritorio.</strong><br />
+  Escribe conocimiento conectado, crea herramientas de datos e investiga en la web.
 </p>
 
 <p align="center">
@@ -34,19 +34,18 @@
   <a href=".github/SECURITY.md">Seguridad</a>
 </p>
 
-<p align="center"><img src="docs/readme/kition-overview.webp" alt="Vista general de Kition con documentos, tablas estructuradas, investigación del agente y flujos visuales" width="100%" /></p>
+<p align="center"><img src="docs/readme/kition-overview.webp" alt="Vista general de Kition con documentos, tablas estructuradas e investigación del agente" width="100%" /></p>
 
-Kition reúne documentos Markdown, tablas estructuradas, un agente de IA capaz de usar herramientas, investigación web y flujos de trabajo visuales. El agente trabaja con archivos de proyecto editables, registros tipados, adjuntos y procesos visibles, lo que facilita revisar, corregir y repetir los resultados.
+Kition reúne documentos Markdown, tablas estructuradas, un agente de IA capaz de usar herramientas e investigación web. El agente trabaja con archivos de proyecto editables, registros tipados y adjuntos, lo que facilita revisar, corregir y repetir los resultados.
 
 > Kition se encuentra actualmente en beta. Haz copias de seguridad de los espacios importantes y revisa los cambios del agente antes de usarlo en procesos de producción.
 
 ## Por qué Kition
 
-- **Documentos conectados.** Markdown con vista previa, enlaces internos, backlinks, código, matemáticas, diagramas, notas diarias, búsqueda y exportación.
+- **Documentos conectados.** Markdown con vista previa, enlaces internos, backlinks, código, matemáticas, diagramas, notas diarias y exportación.
 - **Datos estructurados junto al conocimiento.** Campos tipados, fórmulas, filtros, grupos, vistas, adjuntos y campos de IA.
 - **Un agente que puede actuar.** Investiga en la web, lee y actualiza documentos y tablas, y guarda resultados en el proyecto.
 - **Cambios de documentos revisables.** Deja que el agente edite el documento activo, revisa cada adición y eliminación, y acepta o rechaza los cambios de forma individual.
-- **Automatización visible.** Combina disparadores y acciones, prueba pasos y revisa el historial de ejecución.
 
 ## Deja que el agente edite sin perder el control
 
@@ -66,7 +65,7 @@ Así se crea un flujo documental controlado: describe el objetivo en lenguaje na
 
 ## Empieza con el trabajo, no con un mensaje vacío
 
-Kition conserva el contexto en documentos, campos de tabla, registros, plantillas y flujos de trabajo. Los escenarios integrados son archivos `.ktable` normales que se pueden adaptar a proyectos reales.
+Kition conserva el contexto en documentos, campos de tabla, registros y plantillas. Los escenarios integrados son archivos `.ktable` normales que se pueden adaptar a proyectos reales.
 
 ### Generar recursos de campaña por lotes
 
@@ -88,12 +87,11 @@ Genera propuestas de diseño, vistas ortográficas, imágenes de característica
 
 ## Funciones principales
 
-- **Documentos:** edición Markdown, vista previa, plantillas, búsqueda y exportación PDF.
+- **Documentos:** edición Markdown, vista previa, plantillas y exportación PDF.
 - **Tablas:** campos tipados, adjuntos, fórmulas, filtros, ordenación, grupos y varias vistas.
 - **Agente:** actualización de documentos, investigación web, uso de herramientas y guardado en el espacio de trabajo.
-- **Flujos:** composición visual de disparadores y acciones, pruebas por pasos e historial de ejecución.
 - **Kits:** dieciséis editores integrados, cada uno para su tipo de archivo (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). El motor de cada kit se ejecuta como WebAssembly en un Web Worker, y el agente edita los mismos archivos con las herramientas del kit.
-- **Ajustes:** correo, modelos, proxy, MCP, cuenta, uso, actualizaciones e integración de escritorio.
+- **Ajustes:** modelos, proxy, MCP, cuenta, uso, actualizaciones e integración de escritorio.
 
 ## Instalación
 

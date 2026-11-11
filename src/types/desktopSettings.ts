@@ -6,7 +6,6 @@ export type DesktopSettingsSection =
   | 'account'
   | 'models'
   | 'providers'
-  | 'connections'
   | 'runtime'
   | 'shortcuts'
   | 'mcp'

@@ -6,15 +6,13 @@
  * new responsibilities here (see docs/superpowers/plans, Task 1.4).
  */
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { expandedTableFiles, withTableFileChildren } from '@/features/workspace/lib/tableFileChildren'
 import { useTableFileChildren } from '@/features/workspace/hooks/useTableFileChildren'
 import {
   buildPrivateSectionTreeNodes,
 } from '@/features/workspace/lib/workspaceTree'
-import type { WorkflowRouteContext } from '@/features/workflow/public'
-import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { getKitionAccountLinks, isKitionAccountSessionUsable, useKitionAccount } from '@/features/account/public'
 import { useWorkspaceAgent } from '@/features/agent/public'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
@@ -35,7 +33,6 @@ import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTr
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
-import { useWorkspaceOpeners } from '@/features/workspace/hooks/useWorkspaceOpeners'
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
 import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
@@ -57,9 +54,6 @@ import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTur
 import { notify } from '@/lib/notify'
 import { isDesktopRuntime, type WorkspaceDocumentFormat } from '@/services/desktop'
 
-const WorkflowRoute = lazy(() =>
-  import('@/features/workflow/pages/WorkflowRoute').then((module) => ({ default: module.WorkflowRoute })),
-)
 
 type WorkspaceScreenProps = {
   onOpenSettingsSection?: (section: SettingsSectionKey) => void
@@ -70,12 +64,6 @@ type WorkspaceScreenProps = {
   topbarLeadingPortal: HTMLElement | null
   desktopPlatform?: boolean
   onOpenVaultLauncher?: () => void
-  workflowOpen?: boolean
-  workflowContext?: WorkflowRouteContext | null
-  workflowSchemaLookup?: (documentId: string, tableId: string) => Promise<TableSchema>
-  onCloseWorkflow?: () => void
-  /** Opens the standalone full-text search modal (Codex-style palette). */
-  onOpenSearch?: () => void
 }
 
 
@@ -88,11 +76,6 @@ export function WorkspaceScreen({
   topbarLeadingPortal,
   desktopPlatform = false,
   onOpenVaultLauncher,
-  workflowOpen = false,
-  workflowContext = null,
-  workflowSchemaLookup,
-  onCloseWorkflow,
-  onOpenSearch,
 }: WorkspaceScreenProps) {
   const { t } = useTranslation('workspace')
   const { settings, setSettings } = useDesktopSettings()
@@ -221,7 +204,6 @@ export function WorkspaceScreen({
     closeWorkspaceTab,
     filterWorkspaceTabs,
     remapWorkspaceTabPaths,
-    renameWorkspaceTabPath,
     setActiveWorkspaceTabId,
     upsertWorkspaceTab,
     workspaceTabs,
@@ -234,40 +216,17 @@ export function WorkspaceScreen({
   })
   setActiveWorkspaceTabIdRef.current = setActiveWorkspaceTabId
 
-  // Closing a tab needs the workflow-route guard from the tab strip's
-  // onClose: when the last workflow tab goes away, the full-screen
-  // /workflow route has nothing left to scope to and should exit.
-  // Shared between the tab strip's close button, the middle-click
-  // shortcut, and the Cmd/Ctrl+W keyboard handler below.
-
-
-
-  const {
-    openTableFileWorkflow,
-    openWorkspaceWorkflow,
-  } = useWorkspaceOpeners({
-    upsertWorkspaceTab,
-    setActiveResourcePath,
-    workflowOpen,
-    onCloseWorkflow,
-  })
   const unsavedClose = useUnsavedCloseQuestion()
   useUnsavedLeaveGuard(unsavedClose.ask)
   const { handleCloseWorkspaceTabById, openFileViewerTab } = useWorkspaceTabControllers({
     workspaceTabs,
-    activeWorkspaceTab,
     activeWorkspaceTabId,
     closeWorkspaceTab,
     upsertWorkspaceTab,
-    setActiveResourcePath,
-    workflowOpen,
-    onCloseWorkflow,
     openDocument,
     askUnsavedClose: unsavedClose.ask,
   })
 
-  // The table file the workflow workbench is scoped to, when its tab names one.
-  const activeTableFilePath = activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.tablePath ?? '' : ''
   agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({ activeWorkspaceTab }))
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
   const agentPanel = useWorkspaceAgentPanel({
@@ -301,7 +260,6 @@ export function WorkspaceScreen({
     applyWorkspaceDocument,
     filterWorkspaceTabs,
     remapWorkspaceTabPaths,
-    renameWorkspaceTabPath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,
     setAgentModifiedDocumentPaths,
@@ -353,21 +311,6 @@ export function WorkspaceScreen({
   )
 
   openFileViewerTabRef.current = openFileViewerTab
-
-  const workflowWorkbench = workflowOpen && workflowSchemaLookup ? (
-    <div data-testid="workspace-workflow-workbench" className="h-full min-h-0 overflow-hidden bg-background">
-      <Suspense fallback={null}>
-        <WorkflowRoute
-          workflowContext={workflowContext}
-          schemaLookup={workflowSchemaLookup}
-          scopedTablePath={activeTableFilePath || undefined}
-          onExit={onCloseWorkflow}
-          rootPath={rootPath}
-        />
-      </Suspense>
-    </div>
-  ) : null
-
 
   const openWorkspaceAgentPanel = useCallback(() => {
     setWorkspaceAgentOpen(true)
@@ -431,10 +374,7 @@ export function WorkspaceScreen({
   ) : null
 
   const { openSidebarPath } = useWorkspaceSidebarNavigation({
-    workflowOpen,
-    onCloseWorkflow,
     onCloseProfile,
-    openWorkflows: (tablePath) => (tablePath ? openTableFileWorkflow(tablePath) : openWorkspaceWorkflow()),
     openDocument,
   })
 
@@ -460,8 +400,6 @@ export function WorkspaceScreen({
     createDocumentInside,
     openDocumentTemplateDialog,
     kitCreations,
-    openWorkspaceWorkflow,
-    openTableFileWorkflow,
     onCloseProfile,
   })
 
@@ -476,8 +414,6 @@ export function WorkspaceScreen({
         tabsPortal={topbarLeadingPortal}
         chrome={chrome}
         tabs={{ workspaceTabs, activeWorkspaceTab, activeWorkspaceTabId, activateWorkspaceTab, closeTab: handleCloseWorkspaceTabById }}
-        workflowOpen={workflowOpen}
-        onCloseWorkflow={onCloseWorkflow}
         onCloseProfile={onCloseProfile}
       />
       <WorkspaceAgentChrome portal={topbarActionsPortal} panel={agentPanel} sessions={agentSessions} />
@@ -511,7 +447,6 @@ export function WorkspaceScreen({
             }}
             desktop={isDesktopRuntime()}
             onOpen={openSidebarPath}
-            onOpenSearch={onOpenSearch}
             onRefreshed={() => notify.success(t('feedback.refreshed'))}
           />
         }
@@ -527,19 +462,13 @@ export function WorkspaceScreen({
         }
         editor={(
           <WorkspaceEditorFrame
-            workbench={workflowWorkbench}
             editor={{
-              rootPath,
               workspaceTabs,
               activeWorkspaceTab,
               activeWorkspaceTabId,
               galleryPanelProps,
               agentPanel,
               templateDialogs,
-              workflows: {
-                openTableFileWorkflow,
-                openWorkspaceWorkflow,
-              },
               onCreateTable: createTableFile,
             }}
           />

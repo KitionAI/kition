@@ -7,9 +7,9 @@ const guideManifest: OnboardingGuideManifest = {
   version: 1,
   guides: [
     {
-      slug: 'lead-workflow',
-      displayName: 'Lead workflow',
-      summary: 'Build a workflow from a prompt.',
+      slug: 'lead-follow-up',
+      displayName: 'Lead follow-up',
+      summary: 'Follow up on new leads from a table.',
       intro: 'info.md',
       seeds: ['leads.csv'],
       assets: ['reference.jpg'],
@@ -68,14 +68,14 @@ describe('seedOnboardingPack', () => {
     )
     expect(deps.createFolder).toHaveBeenCalledWith({
       parent_folder: 'Getting Started/Guides',
-      name: 'Lead workflow',
+      name: 'Lead follow-up',
     })
     expect(deps.writeDocument).toHaveBeenCalledWith(
-      'Getting Started/Guides/Lead workflow/info.md',
+      'Getting Started/Guides/Lead follow-up/info.md',
       '# hi',
     )
     expect(deps.importFile).toHaveBeenCalledWith(expect.objectContaining({
-      folder: 'Getting Started/Guides/Lead workflow/assets',
+      folder: 'Getting Started/Guides/Lead follow-up/assets',
       filename: 'reference.jpg',
     }))
     expect(welcomePath).toBe('Getting Started/Welcome to Kition.md')

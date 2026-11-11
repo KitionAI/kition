@@ -42,7 +42,6 @@ export type WorkspaceScreenSidebarInput = {
   /** Desktop-only affordances (reveal in OS, file import and paste) are offered only when true. */
   desktop: boolean
   onOpen: SidebarPanelProps['onOpen']
-  onOpenSearch?: () => void
   /** Called after a manual refresh succeeds. */
   onRefreshed: () => void
 }
@@ -82,7 +81,6 @@ export function buildWorkspaceSidebarPanelProps(input: WorkspaceScreenSidebarInp
     moveTargets: input.moveTargets,
     workspaceDisplayName: tree.workspaceDisplayName,
     workspaceTreeNodes: input.treeNodes,
-    onOpenSearch: input.onOpenSearch,
   }
 }
 

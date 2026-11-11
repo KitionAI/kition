@@ -1,5 +1,5 @@
-//! The host table client: how Kition's host features (workflows, the scenario builder, the
-//! workspace tree and search) read and write `.ktable` files.
+//! The host table client: how Kition's host features (the scenario builder, the workspace tree)
+//! read and write `.ktable` files.
 //!
 //! Kition has no table engine of its own. Every request goes to the Table kit, as the agent's
 //! table tools do: to the live editor through the Kit AI bridge when a renderer window has the
@@ -13,17 +13,13 @@
 
 pub mod routes;
 pub mod scenario;
-mod triggers;
 
 use std::collections::HashMap;
 use std::path::{Component, Path};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use kition_core::events::EventBus;
 use kition_kits::{Caller, KitError, KitManager};
 use serde_json::{Map, Value, json};
-
-pub use triggers::{TriggerWatcher, record_events};
 
 /// The Table kit.
 pub const TABLE_KIT: &str = "kit.table";
@@ -263,45 +259,9 @@ pub fn is_table_path(path: &str) -> bool {
         })
 }
 
-/// Where the triggers keep each table file's `changes.since` cursor, in the workspace's own
-/// store: a restart reports the edits made after the last report, and never one twice.
-const CURSORS_FILE: &str = ".kition/tables/changes.json";
-
-/// The cursors file: `{ "files": { "<path>": "<version>" } }`.
-#[derive(Default, serde::Serialize, serde::Deserialize)]
-struct Cursors {
-    #[serde(default)]
-    files: HashMap<String, String>,
-}
-
-fn read_cursors(file: Option<&Path>) -> HashMap<String, String> {
-    file.and_then(|file| std::fs::read(file).ok())
-        .and_then(|bytes| serde_json::from_slice::<Cursors>(&bytes).ok())
-        .map(|cursors| cursors.files)
-        .unwrap_or_default()
-}
-
-/// Writes the cursors beside the file, then moves them over it, so a crash leaves the old ones.
-fn write_cursors(file: &Path, files: &HashMap<String, String>) -> std::io::Result<()> {
-    if let Some(parent) = file.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let bytes = serde_json::to_vec_pretty(&Cursors {
-        files: files.clone(),
-    })?;
-    let staged = file.with_extension("json.tmp");
-    std::fs::write(&staged, bytes)?;
-    std::fs::rename(&staged, file)
-}
-
 struct Inner {
     kits: KitManager,
-    events: EventBus,
     queues: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
-    /// The version of each file the triggers last reported changes up to, kept in
-    /// `cursors_file` across restarts.
-    versions: Mutex<HashMap<String, String>>,
-    cursors_file: Option<std::path::PathBuf>,
     /// Each closed file's description, with the modification time it was read at.
     described: Mutex<HashMap<String, (std::time::SystemTime, FileInfo)>>,
 }
@@ -313,16 +273,11 @@ pub struct TableClient {
 }
 
 impl TableClient {
-    pub fn new(kits: KitManager, events: EventBus) -> Self {
-        let cursors_file = kits.workspace_dir().map(|dir| dir.join(CURSORS_FILE));
-        let versions = read_cursors(cursors_file.as_deref());
+    pub fn new(kits: KitManager) -> Self {
         Self {
             inner: Arc::new(Inner {
                 kits,
-                events,
                 queues: Mutex::default(),
-                versions: Mutex::new(versions),
-                cursors_file,
                 described: Mutex::default(),
             }),
         }
@@ -330,10 +285,6 @@ impl TableClient {
 
     pub fn kits(&self) -> &KitManager {
         &self.inner.kits
-    }
-
-    pub fn events(&self) -> &EventBus {
-        &self.inner.events
     }
 
     fn queue(&self, path: &str) -> Arc<tokio::sync::Mutex<()>> {
@@ -344,42 +295,6 @@ impl TableClient {
             .entry(path.to_owned())
             .or_default()
             .clone()
-    }
-
-    pub(crate) fn version(&self, path: &str) -> Option<String> {
-        self.inner
-            .versions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(path)
-            .cloned()
-    }
-
-    pub(crate) fn set_version(&self, path: &str, version: String) {
-        self.update_versions(|versions| {
-            if versions.get(path) == Some(&version) {
-                return false;
-            }
-            versions.insert(path.to_owned(), version);
-            true
-        });
-    }
-
-    /// Changes the cursors and, when `change` answers that it changed them, saves them.
-    fn update_versions(&self, change: impl FnOnce(&mut HashMap<String, String>) -> bool) {
-        let mut versions = self
-            .inner
-            .versions
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        if !change(&mut versions) {
-            return;
-        }
-        if let Some(file) = &self.inner.cursors_file
-            && let Err(error) = write_cursors(file, &versions)
-        {
-            tracing::warn!(%error, "the table triggers' cursors were not saved");
-        }
     }
 
     /// Runs `steps` on the table file `path`, in order, and answers each step's `result`. With
@@ -406,21 +321,7 @@ impl TableClient {
             })
             .collect();
         let writes = steps.iter().any(Step::writes);
-        // The first request to a file also learns its version, from which the triggers report
-        // other people's edits (`triggers.rs`).
-        let prime = self.version(path).is_none();
-        let mut steps = steps;
-        if prime {
-            steps.push(Step::new("changes.since", json!({ "version": "" })));
-        }
-        let mut answers = self.run_steps(path, &steps, writes).await?;
-        if prime
-            && let Some(since) = answers.pop()
-            && let Some(version) = since["version"].as_str()
-        {
-            self.set_version(path, version.to_owned());
-        }
-        Ok(answers)
+        self.run_steps(path, &steps, writes).await
     }
 
     async fn run_steps(&self, path: &str, steps: &[Step], writes: bool) -> TableResult<Vec<Value>> {
@@ -566,8 +467,8 @@ impl TableClient {
         self.request(path, "records.list", params, None).await
     }
 
-    /// Creates a record from values keyed by field id, name, or title, as `write_as`; publishes
-    /// `RecordCreated`. Answers the record.
+    /// Creates a record from values keyed by field id, name, or title, as `write_as`. Answers
+    /// the record.
     pub async fn create_record(
         &self,
         path: &str,
@@ -584,13 +485,11 @@ impl TableClient {
                 Some(write_as),
             )
             .await?;
-        let record = record_info(&answer);
-        self.publish_created(path, &table.id, &record);
-        Ok(record)
+        Ok(record_info(&answer))
     }
 
-    /// Updates a record from values keyed by field id, name, or title, as `write_as`; publishes
-    /// `RecordUpdated`. Answers the record's values after the update.
+    /// Updates a record from values keyed by field id, name, or title, as `write_as`. Answers
+    /// the record's values after the update.
     pub async fn update_record(
         &self,
         path: &str,
@@ -600,14 +499,16 @@ impl TableClient {
         write_as: &str,
     ) -> TableResult<Map<String, Value>> {
         let table = self.table(path, table_id).await?;
-        let previous = self
+        if !self
             .records(path, table_id)
             .await?
-            .into_iter()
-            .find(|record| record.id == record_id.trim())
-            .ok_or_else(|| {
-                TableError::not_found(format!("table {table_id} has no record {record_id}"))
-            })?;
+            .iter()
+            .any(|record| record.id == record_id.trim())
+        {
+            return Err(TableError::not_found(format!(
+                "table {table_id} has no record {record_id}"
+            )));
+        }
         let answer = self
             .request(
                 path,
@@ -620,20 +521,7 @@ impl TableClient {
                 Some(write_as),
             )
             .await?;
-        let record = record_info(&answer);
-        self.inner.events.publish(record_events::updated(
-            path,
-            &table.id,
-            &record,
-            Some(previous.values),
-        ));
-        Ok(record.values)
-    }
-
-    pub(crate) fn publish_created(&self, path: &str, table_id: &str, record: &RecordInfo) {
-        self.inner
-            .events
-            .publish(record_events::created(path, table_id, record));
+        Ok(record_info(&answer).values)
     }
 
     /// Adds a table (`title`, and `fields` as the request layer's field seeds) as `write_as`.
@@ -768,36 +656,6 @@ impl TableClient {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .retain(|known, _| !under(known));
-        self.update_versions(|versions| {
-            let before = versions.len();
-            versions.retain(|known, _| !under(known));
-            versions.len() != before
-        });
-    }
-
-    /// Follows a file or folder renamed from `from` to `to`: its description is read again, and
-    /// the triggers' cursors move with it (a rename keeps the document and its versions).
-    pub fn moved(&self, from: &str, to: &str) {
-        let (from, to) = (from.trim_end_matches('/'), to.trim_end_matches('/'));
-        let under = |known: &String| known == from || known.starts_with(&format!("{from}/"));
-        self.inner
-            .described
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .retain(|known, _| !under(known));
-        self.update_versions(|versions| {
-            let moving: Vec<String> = versions
-                .keys()
-                .filter(|known| under(known))
-                .cloned()
-                .collect();
-            for known in &moving {
-                if let Some(version) = versions.remove(known) {
-                    versions.insert(format!("{to}{}", &known[from.len()..]), version);
-                }
-            }
-            !moving.is_empty()
-        });
     }
 
     /// The document's KDM root object id, from the headless kit's object model.
@@ -985,30 +843,6 @@ mod tests {
         assert_eq!(keyed.get("email"), Some(&json!("a@example.com")));
         assert!(keyed.contains_key("title"));
         assert!(!keyed.contains_key("other"));
-    }
-
-    #[test]
-    fn cursors_survive_a_restart_and_follow_renames_and_deletes() {
-        let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
-        let open = || {
-            TableClient::new(
-                KitManager::new(Some(dir.path().to_path_buf()), Vec::new()),
-                EventBus::default(),
-            )
-        };
-        let client = open();
-        client.set_version("crm/Leads.ktable", "v1".into());
-        client.set_version("crm/Deals.ktable", "v2".into());
-        client.set_version("Other.ktable", "v3".into());
-        let restarted = open();
-        assert_eq!(restarted.version("crm/Leads.ktable").as_deref(), Some("v1"));
-        restarted.moved("crm", "sales");
-        restarted.forget("Other.ktable");
-        let again = open();
-        assert_eq!(again.version("crm/Leads.ktable"), None);
-        assert_eq!(again.version("sales/Leads.ktable").as_deref(), Some("v1"));
-        assert_eq!(again.version("sales/Deals.ktable").as_deref(), Some("v2"));
-        assert_eq!(again.version("Other.ktable"), None);
     }
 
     #[test]

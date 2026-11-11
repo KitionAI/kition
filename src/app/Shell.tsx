@@ -7,8 +7,6 @@ import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBann
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { appLocationPathname, leaveAppView, readAppLocation, resolveSettingsSection, type AppLocation } from '@/app/appLocation'
 import { useShortcut } from '@/lib/useShortcut'
-import type { WorkflowRouteContext } from '@/features/workflow/public'
-import { fetchWorkflowTableSchema } from '@/features/workflow/lib/workflowTableSchema'
 import { useGlobalShortcuts } from '@/features/settings/useGlobalShortcuts'
 import { WorkspaceScreen } from '@/features/workspace/components/WorkspaceScreen'
 import { WorkspaceLauncherScreen } from '@/features/workspace/components/WorkspaceLauncherScreen'
@@ -21,21 +19,12 @@ import {
   getDesktopBackendStatus,
   getDesktopInfo,
   openWorkspaceWindow,
-  readWorkspaceDocument,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
 import { CollabDialogs, requestOpenSharedDocument, requestSyncedDocuments, startCollab, useCollabAvailable } from '@/features/collab/public'
 import { embeddedKitFor, sharedKitFor } from '@/features/workspace/components/kits/kitEditors'
 import { DocumentHistoryHost } from '@/features/history/public'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
-import { SearchService } from '@/features/search/service/searchService'
-import { attachEventBridges } from '@/features/search/service/events'
-import { scheduleSearchBoot } from '@/features/search/service/searchBootScheduler'
-import { invalidateWorkspaceNotes, loadWorkspaceNotes } from '@/features/search/sources/workspaceNotes'
-import { extractNoteDocs } from '@/features/search/sources/noteSource'
-import { loadTableSearchFile, syncTableSearchDocs } from '@/features/search/sources/tableSource'
-import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
-import { navigateToHit } from '@/features/search/ui/navigateToHit'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
 import { reconcileOnboardingWelcome } from '@/features/onboarding/reconcileOnboardingWelcome'
 import { FirstRunActivationPanel } from '@/features/onboarding/components/FirstRunActivationPanel'
@@ -66,149 +55,6 @@ const ScenarioRoute = lazy(() =>
 const DesktopSettingsPage = lazy(() =>
   import('@/features/settings/DesktopSettingsPage').then((module) => ({ default: module.DesktopSettingsPage })),
 )
-const SearchCommandPalette = lazy(() =>
-  import('@/features/search/ui/SearchCommandPalette').then((module) => ({ default: module.SearchCommandPalette })),
-)
-
-// Module-level singleton: created once, reused across rootPath changes via init()
-const searchService = new SearchService({
-  workerFactory: () => new Worker(
-    new URL('../features/search/worker/search.worker.ts', import.meta.url),
-    { type: 'module' },
-  ),
-})
-
-// V1 navigate adapters — openVaultPath has no Shell-level opener; dispatches a
-// custom event that WorkspaceScreen can wire to in a follow-up.
-const navigateAdapters: NavigateAdapters = {
-  openVaultPath: async (vp) => {
-    window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: vp } }))
-  },
-  getCmViewForPath: () => null,   // V1 — flash wired in follow-up
-  showToast: (msg) => { toast.info(msg) },
-}
-
-const NOTE_READ_CONCURRENCY = 8
-
-async function loadSearchNoteDocs(rootPath: string, cancelled: () => boolean) {
-  const mdFiles = await loadWorkspaceNotes(rootPath)
-  const noteDocs: ReturnType<typeof extractNoteDocs> = []
-  let readFailures = 0
-
-  for (let index = 0; index < mdFiles.length; index += NOTE_READ_CONCURRENCY) {
-    if (cancelled()) break
-    const batch = mdFiles.slice(index, index + NOTE_READ_CONCURRENCY)
-    const results = await Promise.allSettled(
-      batch.map(async (file) => {
-        const document = await readWorkspaceDocument(file.path)
-        return extractNoteDocs({ vaultPath: file.path, content: document.content })
-      }),
-    )
-    results.forEach((result, batchIndex) => {
-      if (result.status === 'fulfilled') noteDocs.push(...result.value)
-      else {
-        readFailures += 1
-        console.warn('[search] failed to read', batch[batchIndex]?.path, result.reason)
-      }
-    })
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
-  }
-
-  return { mdFileCount: mdFiles.length, noteDocs, readFailures }
-}
-
-function useSearchBoot(rootPath: string) {
-  const [ready, setReady] = useState(false)
-  const startRef = useRef<() => void>(() => undefined)
-
-  useEffect(() => {
-    setReady(false)
-    if (!rootPath) {
-      startRef.current = () => undefined
-      void searchService.destroy()
-      return
-    }
-
-    let unsub = () => {}
-    let cancelled = false
-    let started = false
-    let cancelScheduled = () => {}
-
-    const start = () => {
-      if (started || cancelled) return
-      started = true
-      cancelScheduled()
-      void (async () => {
-        try {
-          const initOut = await searchService.init(rootPath)
-          if (cancelled) return
-
-          if (initOut.restoredFromDisk) setReady(true)
-          unsub = attachEventBridges(searchService, {
-            readMarkdown: async (vaultPath) => {
-              const document = await readWorkspaceDocument(vaultPath)
-              return document.content
-            },
-            loadTableFile: (vaultPath) => loadTableSearchFile(vaultPath),
-          })
-
-          const scan = await loadSearchNoteDocs(rootPath, () => cancelled)
-          if (cancelled) return
-          await searchService.bulkLoad(scan.noteDocs)
-          if (!initOut.restoredFromDisk) setReady(true)
-          // Table files are read through the Table kit, after the notes and one at a time: only the
-          // ones new or written since the index last read them (a build or runtime without the kit
-          // indexes notes only).
-          const tables = isWebPreviewMode()
-            ? null
-            : await syncTableSearchDocs(searchService, initOut.stamps, () => cancelled).catch((error: unknown) => {
-              console.warn('[search] table files were not indexed', error)
-              return null
-            })
-          if (cancelled) return
-          console.info('[search boot]', {
-            rootPath,
-            restoredFromDisk: initOut.restoredFromDisk,
-            restoredDocCount: initOut.docCount,
-            mdFileCount: scan.mdFileCount,
-            noteDocCount: scan.noteDocs.length,
-            readFailures: scan.readFailures,
-            tables,
-          })
-        } catch (error) {
-          if (!cancelled) console.warn('[search] boot failed', error)
-        }
-      })()
-    }
-
-    startRef.current = start
-    cancelScheduled = scheduleSearchBoot(start)
-
-    const onReload = () => {
-      invalidateWorkspaceNotes()
-      unsub()
-      unsub = () => {}
-      void searchService.destroy()
-      setReady(false)
-      started = false
-      start()
-    }
-    window.addEventListener('kition:workspace-reload', onReload)
-
-    return () => {
-      cancelled = true
-      cancelScheduled()
-      unsub()
-      startRef.current = () => undefined
-      void searchService.destroy()
-      window.removeEventListener('kition:workspace-reload', onReload)
-    }
-  }, [rootPath])
-
-  const start = useCallback(() => startRef.current(), [])
-  return { ready, start }
-}
-
 /** Where toasts start: below the workspace's tab strip (36px) with a gap. */
 const TOAST_TOP_OFFSET = 48
 
@@ -220,8 +66,6 @@ export function AppShell() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [scenarioOpen, setScenarioOpen] = useState(false)
-  const [workflowOpen, setWorkflowOpen] = useState(false)
-  const [workflowContext, setWorkflowContext] = useState<WorkflowRouteContext | null>(null)
   const [desktopPlatform, setDesktopPlatform] = useState<string | null>(null)
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined)
   const [runtimeLabel, setRuntimeLabel] = useState<'local-runtime' | 'dev-runtime' | ''>('')
@@ -260,9 +104,6 @@ export function AppShell() {
   const [launcherBusy, setLauncherBusy] = useState(false)
   const settingsModalOpen = settingsOpen
 
-  // Search palette state
-  const [paletteOpen, setPaletteOpen] = useState(false)
-
   useEffect(() => {
     if (isWebPreviewMode()) {
       return
@@ -288,18 +129,11 @@ export function AppShell() {
     chooseParentDirectory,
   } = vaultRegistry
 
-  const { ready: searchReady, start: startSearch } = useSearchBoot(activeVaultPath || '')
-
   useEffect(() => {
     if (!activeVaultPath || lastTrackedWorkspaceRef.current === activeVaultPath) return
     lastTrackedWorkspaceRef.current = activeVaultPath
     trackProductEvent('workspace_opened')
   }, [activeVaultPath])
-
-  const openSearch = useCallback(() => {
-    startSearch()
-    setPaletteOpen(true)
-  }, [startSearch])
 
   useEffect(() => {
     if (!vaultsLoaded) {
@@ -581,8 +415,6 @@ export function AppShell() {
   // parsed location keeps the four view states consistent with each other.
   const applyAppLocation = useCallback((location: AppLocation) => {
     setScenarioOpen(location.view === 'scenario')
-    setWorkflowOpen(location.view === 'workflow')
-    setWorkflowContext(location.view === 'workflow' ? location.context : null)
     if (location.view === 'settings') {
       openSettings(location.section)
     } else {
@@ -605,8 +437,8 @@ export function AppShell() {
     return () => window.removeEventListener('popstate', syncAppLocation)
   }, [applyAppLocation])
 
-  // Decoupled "open Settings" trigger so unrelated features (workflow AI
-  // dead-end, agent panel "configure model" CTA, etc.) can pop the
+  // Decoupled "open Settings" trigger so unrelated features (the agent
+  // panel "configure model" CTA, etc.) can pop the
   // panel without having to thread the openSettings callback through
   // their prop chain. Listens for kition:settings:open with an optional
   // detail.section; falls back to general when omitted/invalid.
@@ -628,13 +460,6 @@ export function AppShell() {
     leaveAppView('scenario')
   }, [])
 
-  const closeWorkflowRoute = useCallback(() => {
-    setWorkflowOpen(false)
-    setWorkflowContext(null)
-    leaveAppView('workflow')
-  }, [])
-
-  useShortcut('Mod+Shift+F', openSearch)
   useShortcut('Mod+K', () => setCommandOpen(true))
   // Inside a kit editor Cmd+K is the kit's own; the kit forwards Cmd+. (KitFrame's HOST_SHORTCUTS).
   useShortcut('Mod+.', () => setCommandOpen(true))
@@ -764,13 +589,6 @@ export function AppShell() {
             topbarLeadingPortal={topbarLeadingPortal}
             desktopPlatform={Boolean(desktopPlatform)}
             onOpenVaultLauncher={openVaultLauncherDialog}
-            workflowOpen={workflowOpen}
-            workflowContext={workflowContext}
-            workflowSchemaLookup={(documentPath, tableId) =>
-              fetchWorkflowTableSchema(documentPath, tableId, workflowContext?.tableName || 'Table')
-            }
-            onCloseWorkflow={closeWorkflowRoute}
-            onOpenSearch={openSearch}
           />
         )}
       </main>
@@ -845,17 +663,6 @@ export function AppShell() {
       {commandOpen ? (
         <Suspense fallback={null}>
           <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} onOpenShared={collabAvailable ? requestOpenSharedDocument : undefined} onOpenSynced={collabAvailable ? requestSyncedDocuments : undefined} />
-        </Suspense>
-      ) : null}
-      {paletteOpen ? (
-        <Suspense fallback={null}>
-          <SearchCommandPalette
-            service={searchService}
-            ready={searchReady}
-            open
-            onClose={() => setPaletteOpen(false)}
-            onPick={(hit) => { void navigateToHit(hit, navigateAdapters); setPaletteOpen(false) }}
-          />
         </Suspense>
       ) : null}
       <CollabDialogs kitFor={sharedKitFor} onOpened={(path) => requestShowWorkspaceFile(path, true)} />

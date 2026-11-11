@@ -1,8 +1,7 @@
 /**
  * Locks in the per-pane empty-state mapping and the i18n key-path
  * contract. Without this, a rename of a suggestion key in agent.json or in
- * the source map would silently regress to the document fallback —
- * exactly the bug docs/workflow-ai-chat-ux-review.md P1-2 called out.
+ * the source map would silently regress to the document fallback.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -16,7 +15,6 @@ import {
 
 const PANES: AgentPaneContext[] = [
   'document',
-  'workflow',
   'gallery',
 ]
 
@@ -84,27 +82,27 @@ describe('emptyStateForPane', () => {
       calls.push(key)
       return `RESOLVED:${key}`
     }
-    const cfg = emptyStateForPane('workflow', t)
-    expect(cfg.description).toBe('RESOLVED:emptyState.workflow.description')
+    const cfg = emptyStateForPane('gallery', t)
+    expect(cfg.description).toBe('RESOLVED:emptyState.gallery.description')
     expect(cfg.suggestions).toHaveLength(3)
     expect(cfg.suggestions.map((s) => s.label)).toEqual([
-      'RESOLVED:emptyState.workflow.suggestions.emailOnRecord.label',
-      'RESOLVED:emptyState.workflow.suggestions.remindOnDate.label',
-      'RESOLVED:emptyState.workflow.suggestions.refine.label',
+      'RESOLVED:emptyState.gallery.suggestions.describeEach.label',
+      'RESOLVED:emptyState.gallery.suggestions.groupByTopic.label',
+      'RESOLVED:emptyState.gallery.suggestions.pickHero.label',
     ])
     expect(cfg.suggestions.map((s) => s.prompt)).toEqual([
-      'RESOLVED:emptyState.workflow.suggestions.emailOnRecord.prompt',
-      'RESOLVED:emptyState.workflow.suggestions.remindOnDate.prompt',
-      'RESOLVED:emptyState.workflow.suggestions.refine.prompt',
+      'RESOLVED:emptyState.gallery.suggestions.describeEach.prompt',
+      'RESOLVED:emptyState.gallery.suggestions.groupByTopic.prompt',
+      'RESOLVED:emptyState.gallery.suggestions.pickHero.prompt',
     ])
-    expect(calls).toContain('emptyState.workflow.description')
+    expect(calls).toContain('emptyState.gallery.description')
   })
 
   it('falls back to the document suggestion set for unknown pane strings', () => {
     const t = (key: string) => key
     const cfg = emptyStateForPane('unknown-pane' as AgentPaneContext, t)
     // The document pane has 3 suggestions, and unknown panes should
-    // borrow those keys (not workflow / gallery's).
+    // borrow those keys (not the gallery's).
     expect(cfg.suggestions).toHaveLength(3)
     // The keys themselves come from PANE_SUGGESTIONS.document — they are
     // requested under the unknown pane's namespace (so a refactor that

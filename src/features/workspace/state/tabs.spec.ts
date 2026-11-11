@@ -7,7 +7,6 @@ import {
   EMPTY_TABS_STATE,
   filterTabs,
   remapTabPaths,
-  renameTabPath,
   switchWorkspaceTabs,
   updateTab,
   upsertTab,
@@ -16,8 +15,6 @@ import {
 
 const doc = (path: string, extra: Partial<Extract<WorkspaceTab, { type: 'file-viewer' }>> = {}): WorkspaceTab =>
   ({ id: `file-viewer:${path}`, type: 'file-viewer', title: path, path, format: 'markdown', ...extra })
-const workflow = (tablePath: string, workflowId?: string): WorkspaceTab =>
-  ({ id: `workflow:${tablePath}`, type: 'workflow', title: 'W', tablePath, workflowId })
 
 const state = (tabs: WorkspaceTab[], activeTabId = tabs[0]?.id ?? ''): TabsState => ({ tabs, activeTabId })
 const ids = (s: TabsState) => s.tabs.map((tab) => tab.id)
@@ -43,14 +40,6 @@ describe('upsertTab', () => {
     expect(next.tabs[0]).toMatchObject({ title: 'A!' })
     expect(ids(next)).toEqual(['file-viewer:a.md', 'file-viewer:b.md'])
   })
-
-  it('keeps one workflow tab per table file, showing the workflow last opened', () => {
-    const start = state([doc('x.md'), workflow('Leads.ktable', 'wf_1')])
-    const next = upsertTab(start, workflow('Leads.ktable', 'wf_2'))
-    expect(ids(next)).toEqual(['file-viewer:x.md', 'workflow:Leads.ktable'])
-    expect(next.tabs[1]).toMatchObject({ workflowId: 'wf_2' })
-  })
-
 })
 
 describe('updateTab', () => {
@@ -100,25 +89,6 @@ describe('remapTabPaths', () => {
     expect(next.tabs[1]).toMatchObject({ path: 'new/b.kdesign', title: 'b' })
     expect(next.activeTabId).toBe('file-viewer:new/b.kdesign')
     expect(remapTabPaths(start, 'x', 'x')).toBe(start)
-  })
-})
-
-describe('renameTabPath', () => {
-  it('moves a renamed table file\'s workflow tab with it', () => {
-    const start = state([workflow('Leads.ktable', 'wf'), doc('n.md')], 'workflow:Leads.ktable')
-    const next = renameTabPath(start, 'Leads.ktable', 'Customers.ktable')
-    expect(ids(next)).toEqual(['workflow:Customers.ktable', 'file-viewer:n.md'])
-    expect(next.tabs[0]).toMatchObject({ tablePath: 'Customers.ktable' })
-    expect(next.activeTabId).toBe('workflow:Customers.ktable')
-  })
-
-
-  it('renames an open file tab and leaves unrelated tabs alone', () => {
-    const start = state([doc('a.md'), doc('b.md')], 'file-viewer:a.md')
-    const next = renameTabPath(start, 'a.md', 'z.md')
-    expect(ids(next)).toEqual(['file-viewer:z.md', 'file-viewer:b.md'])
-    expect(next.activeTabId).toBe('file-viewer:z.md')
-    expect(renameTabPath(start, 'nope.md', 'x.md')).toBe(start)
   })
 })
 

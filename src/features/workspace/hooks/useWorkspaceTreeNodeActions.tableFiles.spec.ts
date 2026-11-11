@@ -1,6 +1,6 @@
 /**
  * Deleting a table file (or a folder, or a page with child pages, that may hold some) tells the
- * runtime, which removes the workflows bound to it; moves are followed the same way. A failed report never blocks the file operation.
+ * runtime, whose table client forgets it; moves are followed the same way. A failed report never blocks the file operation.
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -59,7 +59,6 @@ function Surface() {
     filterWorkspaceTabs: () => {},
     refreshWorkspaceDocuments: async () => true,
     remapWorkspaceTabPaths: () => {},
-    renameWorkspaceTabPath: () => {},
     rootPath: ROOT,
     setActiveResourcePath: () => {},
     setActiveWorkspaceTabId: () => {},

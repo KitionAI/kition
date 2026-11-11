@@ -2,14 +2,6 @@
   "version": 1,
   "guides": [
     {
-      "slug": "lead-automation",
-      "displayName": "Lead Automation",
-      "summary": "Inspect a prebuilt record-created workflow with bound fields and an email action.",
-      "intro": "intro.md",
-      "seeds": [],
-      "tableFile": "Lead Follow-up.ktable"
-    },
-    {
       "slug": "receipt-extraction",
       "displayName": "Receipt Extraction",
       "summary": "Turn receipt files into structured fields that are ready to filter and review.",

@@ -1,6 +1,6 @@
 format: 1
 kit: kition
-updated: "2026-11-06"
+updated: "2026-11-10"
 golden_budget_s: 600
 features:
   - id: kition.kits.doc-page-view
@@ -53,26 +53,6 @@ features:
     cases:
       - regressions/issue-rename-kit-files
     since: "2026-11-10"
-  - id: kition.search.workspace-index
-    title: Full-text search indexes current workspace notes and table records without reusing another workspace's listing
-    direction: [function, data-safety]
-    priority: P1
-    status: has
-    paths:
-      - src/app/Shell.tsx
-      - src/features/search/sources/workspaceNotes.ts
-      - src/features/search/sources/workspaceNotes.spec.ts
-      - src/features/search/sources/workspaceNotesIsolation.spec.ts
-      - src/features/search/service/searchService.ts
-      - src/features/search/service/searchService.spec.ts
-      - src/features/search/ui/SearchCommandPalette.tsx
-      - src/features/search/ui/SearchCommandPalette.spec.tsx
-      - e2e/search-fulltext.spec.ts
-    cases:
-      - regressions/issue-release-search-cache
-      - regressions/issue-release-search-refresh
-      - kition.search.workspace-index/browser
-    since: "2026-10-31"
   - id: kition.agent.kit-adaptation
     title: Every installed kit accepts agent edits while preserving saved files, drafts and read-only access
     direction: [ai, function, data-safety, security]
@@ -183,8 +163,6 @@ features:
       - regressions/issue-seed-error-toast
       - regressions/issue-account-pane-title
       - regressions/issue-about-switches
-      - regressions/issue-workflow-empty-state
-      - regressions/issue-palette-backdrop
       - regressions/issue-toast-over-settings
       - regressions/issue-release-kit-manifests
     since: "2026-10-31"
@@ -429,21 +407,6 @@ features:
       - kition.kits.fetch-image/public-only
       - kition.kits.fetch-image/reasons
     since: "2026-11-10"
-  - id: kition.workflow.onboarding-actions
-    title: The onboarding workflows run on a chosen row, skip an incomplete row, and never write placeholders
-    direction: [function, data-safety]
-    priority: P0
-    status: has
-    paths:
-      - crates/kition-workflow/**
-      - e2e/workflow-onboarding-actions-real.spec.ts
-      - scripts/inspect-workflow-onboarding.sh
-    gap: The branches run on a live local runtime (scripts/inspect-workflow-onboarding.sh), which CI does not start; the mock-backed CI sweep covers the workflow pages only.
-    cases:
-      - regressions/issue-workflow-preview-field-names
-      - regressions/issue-workflow-required-field-skip
-      - regressions/issue-workflow-unresolved-field
-    since: "2026-11-06"
   - id: kition.onboarding.ai-fields
     title: The onboarding tables' AI fields run on request for the asked cell, from that row
     direction: [ai, function, data-safety]
@@ -470,11 +433,9 @@ features:
       - crates/kition-tableclient/src/scenario.rs
       - crates/kition-agent/src/catalog.rs
       - e2e/table-agent-document-flow.spec.ts
-      - e2e/onboarding-agent-workflow-proposal.spec.ts
     gap: The agent scenarios run on a mocked agent stream, so they test the binding and what the page writes, not what a real model chooses; the receipt extraction test needs the Table kit's headless program (sibling kition-table build or KITION_KIT_TABLE_BINARY) and skips without it.
     cases:
       - kition.onboarding.ai-scenarios/agent-document
-      - kition.onboarding.ai-scenarios/agent-proposal
       - kition.onboarding.ai-scenarios/receipt-extraction
       - regressions/issue-scenario-cancel-partial
     since: "2026-11-06"

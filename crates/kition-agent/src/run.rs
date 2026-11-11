@@ -22,17 +22,6 @@ use crate::workspace::Workspace;
 /// `(user_id, hook_event, tool_name, stage, status)`.
 pub type HookDispatch = Arc<dyn Fn(i64, &str, &str, &str, &str) + Send + Sync>;
 
-/// Saves an SMTP connection for `configure_smtp_connection`:
-/// `(user_id, input) -> (summary, output)`.
-pub type SmtpConfigurator = Arc<
-    dyn Fn(i64, Value) -> futures::future::BoxFuture<'static, Result<(String, Value), String>>
-        + Send
-        + Sync,
->;
-
-/// Describes a workflow for the prompt when the user has it open.
-pub type WorkflowPrompt = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
-
 pub struct AgentConfig {
     pub db: Db,
     pub engine: Engine,
@@ -40,10 +29,8 @@ pub struct AgentConfig {
     pub upload_dir: PathBuf,
     pub policy_path: Option<PathBuf>,
     pub hooks: Option<HookDispatch>,
-    pub smtp: Option<SmtpConfigurator>,
     pub portal_base_url: String,
     pub mcp_path: Option<PathBuf>,
-    pub workflow_prompt: Option<WorkflowPrompt>,
     /// Kits the agent can drive, such as the photo editor.
     pub kits: Option<kition_kits::KitManager>,
 }
@@ -55,10 +42,8 @@ struct Inner {
     upload_dir: PathBuf,
     policy: RwLock<Policy>,
     hooks: Option<HookDispatch>,
-    smtp: Option<SmtpConfigurator>,
     portal_base_url: String,
     mcp: crate::mcp::Manager,
-    workflow_prompt: Option<WorkflowPrompt>,
     kits: Option<kition_kits::KitManager>,
     /// One lock per session for its turns; session ids are unique only
     /// within this agent's database.
@@ -87,10 +72,8 @@ impl Agent {
                 upload_dir: config.upload_dir,
                 policy: RwLock::new(Policy::load(config.policy_path)),
                 hooks: config.hooks,
-                smtp: config.smtp,
                 portal_base_url: config.portal_base_url,
                 mcp: crate::mcp::Manager::new(config.mcp_path),
-                workflow_prompt: config.workflow_prompt,
                 kits: config.kits,
                 turns: SessionLocks::default(),
                 stream_revisions: Mutex::default(),
@@ -125,10 +108,6 @@ impl Agent {
         &self.inner.web
     }
 
-    pub fn smtp(&self) -> Option<&SmtpConfigurator> {
-        self.inner.smtp.as_ref()
-    }
-
     pub fn kits(&self) -> Option<&kition_kits::KitManager> {
         self.inner.kits.as_ref()
     }
@@ -149,15 +128,6 @@ impl Agent {
 
     pub fn mcp(&self) -> &crate::mcp::Manager {
         &self.inner.mcp
-    }
-
-    /// The prompt block for an open workflow, or `""`.
-    pub fn workflow_prompt(&self, id: &str) -> String {
-        self.inner
-            .workflow_prompt
-            .as_ref()
-            .and_then(|describe| describe(id))
-            .unwrap_or_default()
     }
 
     pub fn policy(&self) -> std::sync::RwLockReadGuard<'_, Policy> {
@@ -465,10 +435,8 @@ mod tests {
             upload_dir: dirs[0].path().to_path_buf(),
             policy_path: None,
             hooks: None,
-            smtp: None,
             portal_base_url: String::new(),
             mcp_path: None,
-            workflow_prompt: None,
             kits: None,
         })
     }
