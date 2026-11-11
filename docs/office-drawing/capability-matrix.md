@@ -84,7 +84,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   gestures add adjust handles (`adjust_handles`, `hit_adjust`,
   `Gesture::adjusting`: a drag previews the new outline and commits one
   `drawing.format`), now in Doc's and Sheet's editors (Slide had its own).
-  `drawing.arrange` (`KitDrawing 1.4`, DR21; `kition_drawing::arrange`)
+  `drawing.arrange` (`KitDrawing 1.4`, DR21; `kition_office_core::arrange`)
   moves objects in their stack in all three kits, and Shape Format's shared
   Arrange menus run it. Doc keeps a floating object's place in the stack
   (`relativeHeight`) and lays a page's floating objects out in that order;
@@ -136,7 +136,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   Slide reroutes after every edit already. `drawing.reconnect` moves one end
   to another site or frees it, and in Doc and Sheet a selected connector's
   ends drag with the pointer, snapping to sites in reach
-  (`kition_drawing::connect::EndDrag`). Slide takes `drawing.reconnect`, and
+  (`kition_office_core::connect::EndDrag`). Slide takes `drawing.reconnect`, and
   its canvas already drags connector ends onto sites and glues a line drawn
   from one shape to another in one drag. Evidence: the
   `connectors_follow_…` engine tests and the bindings'
@@ -146,7 +146,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
   Sheet, Insert › Shapes arms a shape (`draw.shape`) and a drag on the page or
   sheet draws it; a line drawn from one shape's site to another's is made with
   `drawing.connect`, a connector in one undo step
-  (`kition_drawing::connect::CreateDrag`; the bindings'
+  (`kition_office_core::connect::CreateDrag`; the bindings'
   `a_shape_chosen_in_insert_shapes_…` tests and the Doc and Sheet browser
   runs). Kits without `draw.shape` keep inserting at their default place.
 
@@ -159,7 +159,7 @@ re-verified on 2026-10-21 at Slide `1a32b3c`, Sheet `40146b0`, SDK `405a379`.
 | Sheet | P | P | Y | Y | Y | Y | Y | P | Y |
 
 *(Phase 3, charts: all three kits implement `KitDrawing 1.1` charts through
-kition-sdk's `kition_drawing::chart`, the shared description (`ChartSpec`),
+kition-sdk's `kition_office_core::chart`, the shared description (`ChartSpec`),
 the `drawing.chart` change and the DrawingML chart codec. Insert › Chart and
 Chart Design are the shared kit-editor controls in every kit, so a person's edit
 and an agent's are the same command. Each kit has a native test and a
@@ -213,7 +213,7 @@ and checks read-only refusal.)*
   and a position the type does not take are refused. Trendlines and error bars (DR16b) are
   described, set from Chart Elements › Trendline and Error Bars (on every
   series) or `seriesFormat`, saved and reopened in all three kits; the shared
-  `kition_drawing::chart::trend` fits them and measures them, Doc and Sheet
+  `kition_office_core::chart::trend` fits them and measures them, Doc and Sheet
   draw them over unstacked series, and Slide draws them with its own renderer.
   Evidence: the `trendlines_…` engine tests and each kit's `chart.mjs` in
   Chromium and WebKit. Combinations on two axes (DR16c): a series' own type
@@ -246,7 +246,7 @@ and checks read-only refusal.)*
 | Sheet | P | P | Y | Y | Y | Y | Y | Y | Y |
 
 *(Phase 3, ink: all three kits implement `KitDrawing 1.2` ink through
-kition-sdk's `kition_drawing::ink`: the shared stroke (tool, colour, width,
+kition-sdk's `kition_office_core::ink`: the shared stroke (tool, colour, width,
 points with pressure), `drawing.ink` and `drawing.erase`, a pen gesture that
 previews and adds one stroke on release, and an eraser whose swept path takes
 the strokes it touches on release, each one undo step. The Draw tab is the
@@ -283,7 +283,7 @@ that draws, undoes, erases, saves, reopens and checks read-only refusal.)*
 | Sheet | Y | P | P | P | Y | Y | Y | Y | Y |
 
 Text warp is `KitDrawing 1.3` (DR26 to DR28). The shared geometry is
-`kition_drawing::warp`: each preset is an envelope (the curves the text's top
+`kition_office_core::warp`: each preset is an envelope (the curves the text's top
 and bottom follow) or an arch, approximating Office's preset families rather
 than their exact guide formulas, so warped text is not yet a strict-fidelity
 match. Every kit lays its text out flat, stretches the glyph outlines over the

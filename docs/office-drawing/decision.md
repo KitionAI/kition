@@ -34,6 +34,12 @@ have yet.
 
 ### D1 Shared code lives in `kition-sdk`
 
+> 2026-11-11: the crate is now `kition-office-core` (kition-sdk 0.16.0). It holds what the
+> Office kits (doc, sheet, slide) share, not only drawing objects: equations and SmartArt
+> diagrams move into it next, and later the PDF and picture export they share. One crate
+> rather than one per feature, named with a foundation suffix so it isn't read as another kit
+> (owner decision). The record below keeps the name it was decided under.
+
 The shared drawing code is a new crate, `kition-drawing`, in the
 `kition-sdk` repository, next to the crates every kit already depends on. It
 starts as one crate with internal modules (`model`, `geom`, `edit`, `ops`,
