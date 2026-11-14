@@ -93,8 +93,8 @@
     "check:tessera": "node scripts/pin-tessera.mjs --check"
   },
   "dependencies": {
-    "@kition/tessera-icons": "github:KitionAI/kition-tessera#8459465cc74c3bb4530e75eaeb01eec09c7fbf4d&path:/packages/icons",
-    "@kition/tessera-ui": "github:KitionAI/kition-tessera#8459465cc74c3bb4530e75eaeb01eec09c7fbf4d&path:/packages/ui",
+    "@kition/tessera-icons": "github:KitionAI/kition-tessera#38cd673f2785e7fd69b45e71dc7706890f728655&path:/packages/icons",
+    "@kition/tessera-ui": "github:KitionAI/kition-tessera#38cd673f2785e7fd69b45e71dc7706890f728655&path:/packages/ui",
     "loro-crdt": "1.16.4"
   },
   "devDependencies": {
@@ -159,8 +159,8 @@
       "postcss-selector-parser@>=6.0.0 <6.1.5": "6.1.5",
       "source-map-js": "1.2.2",
       "katex@<0.18.2": "0.18.11",
-      "@kition/tessera-icons": "github:KitionAI/kition-tessera#8459465cc74c3bb4530e75eaeb01eec09c7fbf4d&path:/packages/icons",
-      "@kition/tessera-tokens": "github:KitionAI/kition-tessera#8459465cc74c3bb4530e75eaeb01eec09c7fbf4d&path:/packages/tokens"
+      "@kition/tessera-icons": "github:KitionAI/kition-tessera#38cd673f2785e7fd69b45e71dc7706890f728655&path:/packages/icons",
+      "@kition/tessera-tokens": "github:KitionAI/kition-tessera#38cd673f2785e7fd69b45e71dc7706890f728655&path:/packages/tokens"
     },
     "patchedDependencies": {
       "brace-expansion@5.0.12": "patches/brace-expansion@5.0.12.patch"
