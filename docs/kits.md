@@ -5,8 +5,8 @@ editor, and Kition's own kit editors are gone. Every new kit must follow this gu
 
 This guide is how Kition implements the **Kit Harness Protocol (KHP)** and
 the Kition kit platform, which are normative. KHP (how an AI agent uses a
-kit) is [`spec/`](https://github.com/KitionAI/kit-standard/tree/main/spec)
-in the `KitionAI/kit-standard` repository (aligned with DeepSeek
+kit) is [`spec/`](https://github.com/KitionAI/khp/tree/main/spec)
+in the `KitionAI/khp` repository (aligned with DeepSeek
 Harness contracts); the platform (engines, the Kit Data Model, the Kit UI
 protocol, embedding) is `docs/platform/` in the
 `KitionAI/kition-sdk` repository (Apache-2.0), the SDK that implements both,

@@ -130,7 +130,7 @@ own interaction tests live in the kition-table repository and run there.
 ## Kits (Mandatory)
 
 - Read `docs/kits.md` before any kit work. It is how Kition implements the
-  Kit Harness Protocol (KHP, `spec/` in the private `KitionAI/kit-standard`
+  Kit Harness Protocol (KHP, `spec/` in the private `KitionAI/khp`
   repository) and the Kition kit platform (`docs/platform/` in the private
   `KitionAI/kition-sdk` repository), which are normative: kits, the host, and
   the agent conform to them, and contract changes go there first. The
