@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_doc_sdk",
+    "module": "kition_doc_kit",
     "class": "DocDocument",
     "contract": 2,
-    "crate": "kition-doc-sdk"
+    "crate": "kition-doc-kit"
   },
   "formats": [
     {

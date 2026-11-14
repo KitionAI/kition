@@ -9,10 +9,10 @@
   "distribution": "default",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_table_sdk",
+    "module": "kition_table_kit",
     "class": "TableDocument",
     "contract": 1,
-    "crate": "kition-table-sdk"
+    "crate": "kition-table-kit"
   },
   "formats": [
     {

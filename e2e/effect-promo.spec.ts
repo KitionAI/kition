@@ -7,7 +7,7 @@ type EffectDocument = { save(): Uint8Array; execute(command: string, params: str
 const engine = kitEngine<{ EffectDocument: {
   create(name: string, width: number, height: number): EffectDocument
   open(name: string, bytes: Uint8Array): EffectDocument
-} }>('effect', 'kition_effect_sdk')
+} }>('effect', 'kition_effect_kit')
 
 for (const [orientation, width, height] of [['landscape', 320, 180], ['portrait', 180, 320]] as const) {
   test(`an external agent builds and revises a ${orientation} promotional film through the live Effect bridge`, async ({ page, baseURL }) => {

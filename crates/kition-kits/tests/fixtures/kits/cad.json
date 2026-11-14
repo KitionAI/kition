@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_cad_sdk",
+    "module": "kition_cad_kit",
     "class": "CadDocument",
     "contract": 2,
-    "crate": "kition-cad-sdk"
+    "crate": "kition-cad-kit"
   },
   "formats": [
     {

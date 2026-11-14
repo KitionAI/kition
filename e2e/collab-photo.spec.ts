@@ -5,7 +5,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
 import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodePhotoDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_sdk')
+const engine = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_kit')
 
 async function posterFixture() {
   const sdk = await engine.load()
@@ -30,7 +30,7 @@ const status = (page: Page) => page.locator('.document-tab-list [data-testid="co
 
 test('co-edits a Photo document between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Photo kit editor is not built into public/kits/photo-ui')
-  test.skip(!kitPackageHasReplicaInfo('photo', 'kition_photo_sdk'), 'the Photo kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh photo')
+  test.skip(!kitPackageHasReplicaInfo('photo', 'kition_photo_kit'), 'the Photo kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh photo')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -106,7 +106,7 @@ test('co-edits a Photo document between two windows: live, and merging edits mad
 
 /** Whether the Photo kit package takes layer leases (its engine answers `layerObjectIds`). */
 function photoPackageHasLeases() {
-  const glue = path.join(process.cwd(), 'public', 'kits', 'photo-ui', 'engine', 'kition_photo_sdk.js')
+  const glue = path.join(process.cwd(), 'public', 'kits', 'photo-ui', 'engine', 'kition_photo_kit.js')
   return existsSync(glue) && readFileSync(glue, 'utf8').includes('layerObjectIds')
 }
 

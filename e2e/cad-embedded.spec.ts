@@ -7,7 +7,7 @@ import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodeCadDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ CadDocument: { create(name: string, width: number, height: number): NodeCadDocument; open(name: string, bytes: Uint8Array): NodeCadDocument } }>('cad', 'kition_cad_sdk')
+const engine = kitEngine<{ CadDocument: { create(name: string, width: number, height: number): NodeCadDocument; open(name: string, bytes: Uint8Array): NodeCadDocument } }>('cad', 'kition_cad_kit')
 
 /** A real drawing made by the same engine the page runs: a room outline on its own layer. */
 async function planFixture() {
@@ -73,7 +73,7 @@ test('opens a drawing in the CAD kit’s own editor, draws in it, and saves it t
 
 test('keeps a CAD drawing’s replica across a save and a reopen, and opens a file changed elsewhere with what it holds', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the CAD kit editor is not built into public/kits/cad-ui')
-  test.skip(!kitPackageHasReplicaInfo('cad', 'kition_cad_sdk'), 'the CAD kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh cad')
+  test.skip(!kitPackageHasReplicaInfo('cad', 'kition_cad_kit'), 'the CAD kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh cad')
   test.setTimeout(180_000)
   const name = 'Replica.dxf'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await planFixture(), {}, { persist: true, modes: { 'kit.cad': 'classic' } })

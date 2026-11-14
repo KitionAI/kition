@@ -16,7 +16,7 @@ const preview = process.argv.includes('--preview')
 const media = await fragmentsAssets(root, output)
 const asset = name => { const b = media.get(name); assert.ok(b, `Unlent asset: ${name}`); return b }
 globalThis.kitionHost = { size: name => asset(name).length, readRange: (name, offset, length) => asset(name).subarray(offset, offset + length) }
-const sdk = await import(pathToFileURL(path.join(root, 'public/kits/effect-ui/engine/kition_effect_sdk.js')))
+const sdk = await import(pathToFileURL(path.join(root, 'public/kits/effect-ui/engine/kition_effect_kit.js')))
 await sdk.default({ module_or_path: await fs.readFile(path.join(root, 'public/kits/effect-ui/engine/kition_effect_sdk_bg.wasm')) })
 const doc = sdk.EffectDocument.create('Kition-Fragments.keffect', 1280, 720), commands = []
 const execute = (command, params = {}) => {

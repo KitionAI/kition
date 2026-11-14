@@ -7,7 +7,7 @@ import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openT
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
   SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument }
-}>('slide', 'kition_slide_sdk')
+}>('slide', 'kition_slide_kit')
 
 /** A slide file made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
 async function slideFixture() {
@@ -64,7 +64,7 @@ async function openSyncedDocuments(page: Page) {
 
 test('syncs a slide file across one person\'s two devices: synced on one, listed and opened on the other, edited on both', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_kit'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)

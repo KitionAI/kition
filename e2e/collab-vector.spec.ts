@@ -5,7 +5,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
 import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_sdk')
+const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_kit')
 
 /** A drawing made by the same engine the page runs: two tall rectangles, one on each half. */
 async function drawingFixture() {
@@ -74,7 +74,7 @@ async function settledVersion(page: Page, path: string) {
 
 test('co-edits a Vector drawing between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
-  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_sdk'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
+  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_kit'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)

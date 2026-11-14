@@ -2,8 +2,8 @@
   "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-module.mjs checks each one (docs/kits.md). `runtime: ts-worker` is a TypeScript engine, which scripts/check-kit-module.mjs leaves to check-manifest --module; `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
   "photo": {
     "repository": "KitionAI/kition-photo",
-    "crate": "kition-photo-sdk",
-    "module": "kition_photo_sdk",
+    "crate": "kition-photo-kit",
+    "module": "kition_photo_kit",
     "class": "PhotoDocument",
     "name": "fixture.psd",
     "edit": {
@@ -28,8 +28,8 @@
   },
   "film": {
     "repository": "KitionAI/kition-film",
-    "crate": "kition-film-sdk",
-    "module": "kition_film_sdk",
+    "crate": "kition-film-kit",
+    "module": "kition_film_kit",
     "class": "FilmDocument",
     "name": "Edit.kfilm",
     "edit": [
@@ -52,8 +52,8 @@
   },
   "vector": {
     "repository": "KitionAI/kition-vector",
-    "crate": "kition-vector-sdk",
-    "module": "kition_vector_sdk",
+    "crate": "kition-vector-kit",
+    "module": "kition_vector_kit",
     "class": "VectorDocument",
     "name": "Drawing.kvector",
     "edit": {
@@ -68,8 +68,8 @@
   },
   "effect": {
     "repository": "KitionAI/kition-effect",
-    "crate": "kition-effect-sdk",
-    "module": "kition_effect_sdk",
+    "crate": "kition-effect-kit",
+    "module": "kition_effect_kit",
     "class": "EffectDocument",
     "name": "Motion.keffect",
     "edit": {
@@ -82,8 +82,8 @@
   },
   "design": {
     "repository": "KitionAI/kition-design",
-    "crate": "kition-design-sdk",
-    "module": "kition_design_sdk",
+    "crate": "kition-design-kit",
+    "module": "kition_design_kit",
     "class": "DesignDocument",
     "name": "Flyer.kdesign",
     "edit": [
@@ -112,8 +112,8 @@
   },
   "cad": {
     "repository": "KitionAI/kition-cad",
-    "crate": "kition-cad-sdk",
-    "module": "kition_cad_sdk",
+    "crate": "kition-cad-kit",
+    "module": "kition_cad_kit",
     "class": "CadDocument",
     "name": "Plan.dxf",
     "edit": {
@@ -129,8 +129,8 @@
   },
   "slide": {
     "repository": "KitionAI/kition-slide",
-    "crate": "kition-slide-sdk",
-    "module": "kition_slide_sdk",
+    "crate": "kition-slide-kit",
+    "module": "kition_slide_kit",
     "class": "SlideDocument",
     "name": "Slide.kslide",
     "edit": {
@@ -148,8 +148,8 @@
   },
   "doc": {
     "repository": "KitionAI/kition-doc",
-    "crate": "kition-doc-sdk",
-    "module": "kition_doc_sdk",
+    "crate": "kition-doc-kit",
+    "module": "kition_doc_kit",
     "class": "DocDocument",
     "name": "Letter.docx",
     "edit": {
@@ -161,8 +161,8 @@
   },
   "sheet": {
     "repository": "KitionAI/kition-sheet",
-    "crate": "kition-sheet-sdk",
-    "module": "kition_sheet_sdk",
+    "crate": "kition-sheet-kit",
+    "module": "kition_sheet_kit",
     "class": "SheetDocument",
     "name": "Budget.xlsx",
     "edit": {
@@ -175,8 +175,8 @@
   },
   "pdf": {
     "repository": "KitionAI/kition-pdf",
-    "crate": "kition-pdf-sdk",
-    "module": "kition_pdf_sdk",
+    "crate": "kition-pdf-kit",
+    "module": "kition_pdf_kit",
     "class": "PdfDocument",
     "name": "Report.pdf",
     "edit": {
@@ -191,8 +191,8 @@
   },
   "table": {
     "repository": "KitionAI/kition-table",
-    "crate": "kition-table-sdk",
-    "module": "kition_table_sdk",
+    "crate": "kition-table-kit",
+    "module": "kition_table_kit",
     "class": "TableDocument",
     "name": "Tasks.ktable",
     "edit": {
@@ -207,8 +207,8 @@
   },
   "board": {
     "repository": "KitionAI/kition-board",
-    "crate": "kition-board-sdk",
-    "module": "kition_board_sdk",
+    "crate": "kition-board-kit",
+    "module": "kition_board_kit",
     "class": "BoardDocument",
     "name": "Plan.kboard",
     "edit": {
@@ -232,8 +232,8 @@
   },
   "note": {
     "repository": "KitionAI/kition-note",
-    "crate": "kition-note-sdk",
-    "module": "kition_note_sdk",
+    "crate": "kition-note-kit",
+    "module": "kition_note_kit",
     "class": "NoteDocument",
     "name": "Notes.md",
     "text": true,
@@ -247,8 +247,8 @@
   },
   "html": {
     "repository": "KitionAI/kition-html",
-    "crate": "kition-html-sdk",
-    "module": "kition_html_sdk",
+    "crate": "kition-html-kit",
+    "module": "kition_html_kit",
     "class": "HtmlDocument",
     "name": "Page.html",
     "optional": true,
@@ -261,8 +261,8 @@
   },
   "cube": {
     "repository": "KitionAI/kition-cube",
-    "crate": "kition-cube-sdk",
-    "module": "kition_cube_sdk",
+    "crate": "kition-cube-kit",
+    "module": "kition_cube_kit",
     "class": "CubeDocument",
     "name": "Room.kcube",
     "edit": {
@@ -272,8 +272,8 @@
   },
   "fig": {
     "repository": "KitionAI/kition-fig",
-    "crate": "kition-fig-sdk",
-    "module": "kition_fig_sdk",
+    "crate": "kition-fig-kit",
+    "module": "kition_fig_kit",
     "class": "FigDocument",
     "name": "Screen.kfig",
     "optional": true,

@@ -13,7 +13,7 @@ import { tags } from './support'
  */
 
 type NodePdfDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ PdfDocument: { create(name: string, width: number, height: number): NodePdfDocument; open(name: string, bytes: Uint8Array): NodePdfDocument } }>('pdf', 'kition_pdf_sdk')
+const engine = kitEngine<{ PdfDocument: { create(name: string, width: number, height: number): NodePdfDocument; open(name: string, bytes: Uint8Array): NodePdfDocument } }>('pdf', 'kition_pdf_kit')
 
 /** Two pages of text and a bookmark, then `blank` blank pages. */
 async function guide(blank = 0) {

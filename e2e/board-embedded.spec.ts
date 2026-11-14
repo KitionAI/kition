@@ -9,7 +9,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
  */
 
 type NodeBoardDocument = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
-const engine = kitEngine<{ BoardDocument: { create(name: string, width: number, height: number): NodeBoardDocument; open(name: string, bytes: Uint8Array): NodeBoardDocument } }>('board', 'kition_board_sdk')
+const engine = kitEngine<{ BoardDocument: { create(name: string, width: number, height: number): NodeBoardDocument; open(name: string, bytes: Uint8Array): NodeBoardDocument } }>('board', 'kition_board_kit')
 
 /** A board made by the engine the page runs: one shape. */
 async function planFixture() {

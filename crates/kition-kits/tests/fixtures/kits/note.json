@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_note_sdk",
+    "module": "kition_note_kit",
     "class": "NoteDocument",
     "contract": 2,
-    "crate": "kition-note-sdk"
+    "crate": "kition-note-kit"
   },
   "formats": [
     {

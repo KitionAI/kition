@@ -5,7 +5,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
 import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodeCubeDocument = { save(): Uint8Array; free(): void }
-const engine = kitEngine<{ CubeDocument: { create(name: string, width: number, height: number): NodeCubeDocument } }>('cube', 'kition_cube_sdk')
+const engine = kitEngine<{ CubeDocument: { create(name: string, width: number, height: number): NodeCubeDocument } }>('cube', 'kition_cube_kit')
 
 /** The starter scene the page's engine makes: a cube, a light, and a camera. */
 async function roomFixture() {
@@ -43,7 +43,7 @@ async function settledVersion(page: Page, path: string) {
 
 test('co-edits a 3D scene between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Cube kit editor is not built into public/kits/cube-ui')
-  test.skip(!kitPackageHasReplicaInfo('cube', 'kition_cube_sdk'), 'the Cube kit package predates engine contract 2; build it with scripts/build-kit-ui.sh cube')
+  test.skip(!kitPackageHasReplicaInfo('cube', 'kition_cube_kit'), 'the Cube kit package predates engine contract 2; build it with scripts/build-kit-ui.sh cube')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)

@@ -509,7 +509,7 @@ claimed. The editor uses the shared session's file-change and read-only rules.
 
 `kit.board` (`KitionAI/kition-board`, package `public/kits/board-ui`) is a
 normal kit: `.kboard` files open in its own editor in `KitFrame`, and its Rust
-engine (`kition_board_sdk`, `BoardDocument`) and editor live in its
+engine (`kition_board_kit`, `BoardDocument`) and editor live in its
 repository, published and pinned like every other kit. The create menu's Board
 item makes an empty board with the engine in the page, and the agent's
 `board_*` tools run on the headless `kition-board` for files no editor has open
@@ -523,7 +523,7 @@ tested in the kit's repository. Kition has no board editor of its own.
 `kit.cube` (`KitionAI/kition-cube`, package `public/kits/cube-ui`) is the
 3D kit: `.kcube` files (a ZIP of the scene as JSON and each mesh as a binary
 buffer) open in its own editor in `KitFrame`. Its Rust engine
-(`kition_cube_sdk`, `CubeDocument`) renders the viewport in software in the
+(`kition_cube_kit`, `CubeDocument`) renders the viewport in software in the
 worker; the document's size is the editor's viewport (`view.resize`), and the
 view, shading, and selection are session state that never makes the file
 dirty. It exports glTF/GLB, OBJ, STL, and PNG renders, and places glTF, OBJ,
@@ -539,7 +539,7 @@ editing, saving, and creating a scene through Kition.
 
 `kit.fig` (`KitionAI/kition-fig`, package `public/kits/fig-ui`) is the
 interface design and prototyping kit: `.kfig` files open in its own editor in
-`KitFrame`, on its Rust engine (`kition_fig_sdk`, `FigDocument`) in the
+`KitFrame`, on its Rust engine (`kition_fig_kit`, `FigDocument`) in the
 worker. The engine also imports `.fig` and `.sketch` files; Kition opens only
 `.kfig` in the kit. The create menu's Fig item makes `Untitled fig.kfig`
 (one 1440 x 1024 frame) with the engine in the page, and the agent's `fig_*`
@@ -572,7 +572,7 @@ its first package is published and pinned.
 
 `kit.note` (`KitionAI/kition-note`, package `public/kits/note-ui`) is a
 normal kit: `.md` and `.markdown` files open in its own editor in `KitFrame`,
-and its Rust engine (`kition_note_sdk`, `NoteDocument`) and editor live in
+and its Rust engine (`kition_note_kit`, `NoteDocument`) and editor live in
 its repository, published and pinned like every other kit. As in Word, the
 engine lays the note out, draws it on the canvas (a live preview: Markdown
 shows on the caret's lines, tables as grids, pictures in place), and edits it

@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_sheet_sdk",
+    "module": "kition_sheet_kit",
     "class": "SheetDocument",
     "contract": 2,
-    "crate": "kition-sheet-sdk"
+    "crate": "kition-sheet-kit"
   },
   "formats": [
     {

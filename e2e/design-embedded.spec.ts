@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
 
 type NodeDesignDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ DesignDocument: { create(name: string, width: number, height: number): NodeDesignDocument } }>('design', 'kition_design_sdk')
+const engine = kitEngine<{ DesignDocument: { create(name: string, width: number, height: number): NodeDesignDocument } }>('design', 'kition_design_kit')
 
 /** A real layout made by the same engine the page runs: one page with a text frame. */
 async function flyerFixture() {

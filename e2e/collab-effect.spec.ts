@@ -5,7 +5,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
 import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
 
 type NodeEffectDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ EffectDocument: { create(name: string, width: number, height: number): NodeEffectDocument } }>('effect', 'kition_effect_sdk')
+const engine = kitEngine<{ EffectDocument: { create(name: string, width: number, height: number): NodeEffectDocument } }>('effect', 'kition_effect_kit')
 
 /**
  * A two-second composition made by the engine the page runs: a red solid whose opacity fades in
@@ -46,7 +46,7 @@ async function bringForward(page: Page, kit: FrameLocator, name: string) {
 
 test('co-edits a motion project between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Effect kit editor is not built into public/kits/effect-ui')
-  test.skip(!kitPackageHasReplicaInfo('effect', 'kition_effect_sdk'), 'the Effect kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh effect')
+  test.skip(!kitPackageHasReplicaInfo('effect', 'kition_effect_kit'), 'the Effect kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh effect')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)

@@ -18,7 +18,7 @@ const TOKEN = 'e2e-launch-token-0123456789abcdef'
 const BACKEND = 'http://127.0.0.1:18101'
 
 type NodePhotoDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const photo = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_sdk')
+const photo = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_kit')
 
 async function posterFixture() {
   const sdk = await photo.load()

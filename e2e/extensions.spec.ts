@@ -7,10 +7,10 @@ import { canReadBlobBodies } from './helpers/requestBody'
 type EngineDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 type SlideSdk = { SlideDocument: { create(name: string, width: number, height: number): EngineDocument; open(name: string, bytes: Uint8Array): EngineDocument } }
 
-const slides = kitEngine<SlideSdk>('slide', 'kition_slide_sdk')
-const words = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): EngineDocument } }>('doc', 'kition_doc_sdk')
-const sheets = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): EngineDocument } }>('sheet', 'kition_sheet_sdk')
-const figs = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): EngineDocument } }>('fig', 'kition_fig_sdk')
+const slides = kitEngine<SlideSdk>('slide', 'kition_slide_kit')
+const words = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): EngineDocument } }>('doc', 'kition_doc_kit')
+const sheets = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): EngineDocument } }>('sheet', 'kition_sheet_kit')
+const figs = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): EngineDocument } }>('fig', 'kition_fig_kit')
 const EXAMPLE = path.join(process.cwd(), 'e2e', 'fixtures', 'extensions', 'title-case')
 const EXTENSION = 'com.kition.examples.title-case'
 const READ_ONLY = 'com.kition.examples.title-case-read-only'

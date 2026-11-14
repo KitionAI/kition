@@ -21,7 +21,7 @@ type NodeSlideSdk = {
 }
 
 async function loadSdk() {
-  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_sdk.js')).href)) as NodeSlideSdk
+  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_kit.js')).href)) as NodeSlideSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   return sdk
 }
@@ -116,7 +116,7 @@ test('opens slides in the Slide kit’s own editor, edits it there, and saves it
 
 test('keeps a slide file’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slide kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_kit'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   test.setTimeout(180_000)
   const name = 'Replica.kslide'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await slidesFixture(), {}, { persist: true })

@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_cube_sdk",
+    "module": "kition_cube_kit",
     "class": "CubeDocument",
     "contract": 2,
-    "crate": "kition-cube-sdk"
+    "crate": "kition-cube-kit"
   },
   "formats": [
     {

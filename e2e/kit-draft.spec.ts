@@ -20,7 +20,7 @@ type NodeSlideSdk = {
 
 /** A two-slide slide file made by the engine the page runs. */
 async function slideFixture() {
-  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_sdk.js')).href)) as NodeSlideSdk
+  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_kit.js')).href)) as NodeSlideSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   const doc = sdk.SlideDocument.create('Launch.kslide', 960, 540)
   doc.execute('slide.new', '{}')

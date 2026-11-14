@@ -9,7 +9,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
  */
 
 type NodeCubeDocument = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
-const engine = kitEngine<{ CubeDocument: { create(name: string, width: number, height: number): NodeCubeDocument; open(name: string, bytes: Uint8Array): NodeCubeDocument } }>('cube', 'kition_cube_sdk')
+const engine = kitEngine<{ CubeDocument: { create(name: string, width: number, height: number): NodeCubeDocument; open(name: string, bytes: Uint8Array): NodeCubeDocument } }>('cube', 'kition_cube_kit')
 const missing = 'the Cube kit is not built into public/kits/cube-ui (scripts/fetch-kits.mjs or scripts/build-kit-ui.sh cube)'
 
 /** A scene made by the engine the page runs: the starter scene and a sphere beside the cube. */

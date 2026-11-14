@@ -14,7 +14,7 @@ import { tags } from './support'
  */
 
 type NodeSheetDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument; open(name: string, bytes: Uint8Array): NodeSheetDocument } }>('sheet', 'kition_sheet_sdk')
+const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument; open(name: string, bytes: Uint8Array): NodeSheetDocument } }>('sheet', 'kition_sheet_kit')
 
 /** A small budget with a total, and `extraSheets` more sheets. */
 async function budget(extraSheets = 0) {

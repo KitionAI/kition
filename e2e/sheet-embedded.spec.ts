@@ -7,7 +7,7 @@ import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodeSheetDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument; open(name: string, bytes: Uint8Array): NodeSheetDocument } }>('sheet', 'kition_sheet_sdk')
+const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument; open(name: string, bytes: Uint8Array): NodeSheetDocument } }>('sheet', 'kition_sheet_kit')
 
 /** A real workbook made by the same engine the page runs: a small budget with a total. */
 async function budgetFixture() {
@@ -79,7 +79,7 @@ test('opens a workbook in the Sheet kit’s own editor, edits it there, and save
 
 test('keeps a workbook’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
-  test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_sdk'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
+  test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_kit'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
   test.setTimeout(180_000)
   const name = 'Replica.xlsx'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await budgetFixture(), {}, { persist: true, modes: { 'kit.sheet': 'classic' } })

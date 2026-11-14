@@ -50,7 +50,7 @@ hostMatrix({
 
 coEditing({
   kit: 'board',
-  module: 'kition_board_sdk',
+  module: 'kition_board_kit',
   file: 'Plan.kboard',
   title: 'Plan',
   fixture: () => plan(1),

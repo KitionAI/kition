@@ -14,7 +14,7 @@ import { tags } from './support'
  * Kition has no co-editing spec for the HTML kit yet.
  */
 
-const engine = kitEngine('html', 'kition_html_sdk')
+const engine = kitEngine('html', 'kition_html_kit')
 
 const htmlPage = (count: number) => `<!doctype html><html><body><h1>Notes</h1>${Array.from({ length: count }, (_, index) => `<p>Line ${index + 1}</p>`).join('')}</body></html>`
 const paragraphs = (source: string) => (source.match(/<p>/g) ?? []).length

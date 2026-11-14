@@ -7,7 +7,7 @@ import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodePdfDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ PdfDocument: { create(name: string, width: number, height: number): NodePdfDocument; open(name: string, bytes: Uint8Array): NodePdfDocument } }>('pdf', 'kition_pdf_sdk')
+const engine = kitEngine<{ PdfDocument: { create(name: string, width: number, height: number): NodePdfDocument; open(name: string, bytes: Uint8Array): NodePdfDocument } }>('pdf', 'kition_pdf_kit')
 
 /** A real PDF made by the same engine the page runs: two pages of text and a bookmark. */
 async function guideFixture() {
@@ -71,7 +71,7 @@ test('opens a PDF in the PDF kit’s own editor, edits it there, and saves it th
 
 test('keeps a PDF’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the PDF kit editor is not built into public/kits/pdf-ui')
-  test.skip(!kitPackageHasReplicaInfo('pdf', 'kition_pdf_sdk'), 'the PDF kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh pdf')
+  test.skip(!kitPackageHasReplicaInfo('pdf', 'kition_pdf_kit'), 'the PDF kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh pdf')
   test.setTimeout(180_000)
   const name = 'Replica.pdf'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await guideFixture(), {}, { persist: true, modes: { 'kit.pdf': 'classic' } })

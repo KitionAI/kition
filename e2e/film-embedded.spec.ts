@@ -8,7 +8,7 @@ import { dismissFirstRunActivation } from './helpers/onboarding'
 const CLIP = path.join(process.cwd(), 'e2e', 'fixtures', 'film', 'bars.mp4')
 
 type NodeFilmDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ FilmDocument: { create(name: string, width: number, height: number): NodeFilmDocument } }>('film', 'kition_film_sdk')
+const engine = kitEngine<{ FilmDocument: { create(name: string, width: number, height: number): NodeFilmDocument } }>('film', 'kition_film_kit')
 
 /**
  * A project with `clipPath` (relative to the project's own file) on V1, made by the engine the

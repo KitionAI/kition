@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_board_sdk",
+    "module": "kition_board_kit",
     "class": "BoardDocument",
     "contract": 2,
-    "crate": "kition-board-sdk"
+    "crate": "kition-board-kit"
   },
   "formats": [
     {

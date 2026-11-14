@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
 
 type Doc = { save(): Uint8Array; free(): void }
-const engine = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): Doc } }>('doc', 'kition_doc_sdk')
+const engine = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): Doc } }>('doc', 'kition_doc_kit')
 
 test.use({ viewport: { width: 2048, height: 1140 }, deviceScaleFactor: 2 })
 

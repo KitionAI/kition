@@ -11,7 +11,7 @@ import { fulfillJson } from './mockApi'
  */
 
 type NodeTableDocument = { call(method: string, params: string): string; free(): void }
-const engine = kitEngine<{ TableDocument: { open(name: string, bytes: Uint8Array): NodeTableDocument } }>('table', 'kition_table_sdk')
+const engine = kitEngine<{ TableDocument: { open(name: string, bytes: Uint8Array): NodeTableDocument } }>('table', 'kition_table_kit')
 
 export type TableRecord = { id: number; values: Record<string, unknown> }
 

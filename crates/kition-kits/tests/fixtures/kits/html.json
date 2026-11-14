@@ -5,10 +5,10 @@
   "version": "0.1.0",
   "license": "Apache-2.0",
   "engine": {
-    "module": "kition_html_sdk",
+    "module": "kition_html_kit",
     "class": "HtmlDocument",
     "contract": 1,
-    "crate": "kition-html-sdk"
+    "crate": "kition-html-kit"
   },
   "formats": [
     {

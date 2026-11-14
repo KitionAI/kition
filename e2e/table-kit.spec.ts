@@ -16,7 +16,7 @@ import { canReadBlobBodies } from './helpers/requestBody'
  */
 
 type NodeTableDocument = { call(method: string, params: string): string; save(): Uint8Array; markSaved(): void; free(): void }
-const engine = kitEngine<{ TableDocument: { create(name: string, width: number, height: number): NodeTableDocument; open(name: string, bytes: Uint8Array): NodeTableDocument } }>('table', 'kition_table_sdk')
+const engine = kitEngine<{ TableDocument: { create(name: string, width: number, height: number): NodeTableDocument; open(name: string, bytes: Uint8Array): NodeTableDocument } }>('table', 'kition_table_kit')
 
 function caller(doc: NodeTableDocument) {
   return <T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}): T => {

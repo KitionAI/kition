@@ -18,7 +18,7 @@ assert.deepEqual(baseline.results.map(result => result.id), cases.map(item => it
 const packageDirectory = path.join(root, 'public/kits/effect-ui')
 const packageInfo = JSON.parse(await fs.readFile(path.join(packageDirectory, 'kit-ui.json'), 'utf8'))
 const wasm = await fs.readFile(path.join(packageDirectory, 'engine/kition_effect_sdk_bg.wasm'))
-const sdk = await import(pathToFileURL(path.join(packageDirectory, 'engine/kition_effect_sdk.js')).href)
+const sdk = await import(pathToFileURL(path.join(packageDirectory, 'engine/kition_effect_kit.js')).href)
 await sdk.default({ module_or_path: wasm })
 const report = { schema: 1, reference: baseline.reference, package: packageInfo, wasmSha256: hash(wasm), cases: [] }
 const output = path.join(root, 'test-results/effect-regression')

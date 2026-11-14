@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_fig_sdk",
+    "module": "kition_fig_kit",
     "class": "FigDocument",
     "contract": 2,
-    "crate": "kition-fig-sdk"
+    "crate": "kition-fig-kit"
   },
   "formats": [
     {

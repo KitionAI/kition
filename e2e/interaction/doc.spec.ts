@@ -14,7 +14,7 @@ import { tags } from './support'
  */
 
 type NodeDocDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): NodeDocDocument; open(name: string, bytes: Uint8Array): NodeDocDocument } }>('doc', 'kition_doc_sdk')
+const engine = kitEngine<{ DocDocument: { create(name: string, width: number, height: number): NodeDocDocument; open(name: string, bytes: Uint8Array): NodeDocDocument } }>('doc', 'kition_doc_kit')
 
 /** A title and a paragraph, then `breaks` page breaks. */
 async function letter(breaks = 0) {

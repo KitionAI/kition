@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_effect_sdk",
+    "module": "kition_effect_kit",
     "class": "EffectDocument",
     "contract": 2,
-    "crate": "kition-effect-sdk"
+    "crate": "kition-effect-kit"
   },
   "formats": [
     {

@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { kitEngine, openInKitFrame, openKitWorkspace, openTreeFile } from './helpers/embeddedKit'
 
-const engine = kitEngine('html', 'kition_html_sdk')
+const engine = kitEngine('html', 'kition_html_kit')
 const original = '<!doctype html><html><body><h1>Original HTML</h1></body></html>'
 const edited = '<!doctype html><html><body style="background:#5645d4;color:white"><h1>Saved HTML</h1></body></html>'
 

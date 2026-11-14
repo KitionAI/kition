@@ -21,7 +21,7 @@ type NodeDocSdk = {
 }
 
 async function loadSdk() {
-  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_doc_sdk.js')).href)) as NodeDocSdk
+  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_doc_kit.js')).href)) as NodeDocSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   return sdk
 }
@@ -144,7 +144,7 @@ test('opens a Doc document in the Doc kit’s own editor, edits it there, and sa
 
 test('keeps a Doc document’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Doc kit editor is not built into public/kits/doc-ui')
-  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
+  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_kit'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
   test.setTimeout(180_000)
   const name = 'Replica.docx'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await letterFixture(), {}, { persist: true, modes: { 'kit.doc': 'classic' } })

@@ -194,7 +194,7 @@ test('captures README product screenshots from the onboarding source', async ({ 
 })
 
 type NodeBoardDocument = { execute(command: string, params: string): string; save(): Uint8Array; free(): void }
-const boardEngine = kitEngine<{ BoardDocument: { create(name: string, width: number, height: number): NodeBoardDocument } }>('board', 'kition_board_sdk')
+const boardEngine = kitEngine<{ BoardDocument: { create(name: string, width: number, height: number): NodeBoardDocument } }>('board', 'kition_board_kit')
 
 /** A launch plan made by the Board kit's engine: its mind map and flow chart templates. */
 async function launchBoard() {

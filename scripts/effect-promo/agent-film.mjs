@@ -29,7 +29,7 @@ media.set('media/score.wav', music.wav)
 // The Node host lends only the campaign's allowlisted media to the WASM engine.
 const asset = name => { const bytes = media.get(name); if (!bytes) throw new Error(`Unlent campaign asset: ${name}`); return bytes }
 globalThis.kitionHost = { size: name => asset(name).length, readRange: (name, offset, length) => new Uint8Array(asset(name).subarray(offset, offset + length)) }
-const sdk = await import(pathToFileURL(path.join(root, 'public/kits/effect-ui/engine/kition_effect_sdk.js')).href)
+const sdk = await import(pathToFileURL(path.join(root, 'public/kits/effect-ui/engine/kition_effect_kit.js')).href)
 await sdk.default({ module_or_path: await fs.readFile(path.join(root, 'public/kits/effect-ui/engine/kition_effect_sdk_bg.wasm')) })
 const doc = sdk.EffectDocument.create('Kition-Agent-Film.keffect', 1920, 1080)
 const steps = []

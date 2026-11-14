@@ -7,11 +7,11 @@ import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodeEffectDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ EffectDocument: { create(name: string, width: number, height: number): NodeEffectDocument } }>('effect', 'kition_effect_sdk')
+const engine = kitEngine<{ EffectDocument: { create(name: string, width: number, height: number): NodeEffectDocument } }>('effect', 'kition_effect_kit')
 
 test.beforeAll(() => {
   expect(engine.built, 'Build or fetch public/kits/effect-ui before running the Effect gate').toBe(true)
-  expect(kitPackageHasReplicaInfo('effect', 'kition_effect_sdk'), 'The Effect package must support replica/info').toBe(true)
+  expect(kitPackageHasReplicaInfo('effect', 'kition_effect_kit'), 'The Effect package must support replica/info').toBe(true)
 })
 
 /** A real project made by the same engine the page runs: a 2-second composition with a fading solid. */

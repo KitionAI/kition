@@ -13,7 +13,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
  */
 
 type NodeFigDocument = { execute(command: string, params: string): string; query(name: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
-const engine = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): NodeFigDocument; open(name: string, bytes: Uint8Array): NodeFigDocument } }>('fig', 'kition_fig_sdk')
+const engine = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): NodeFigDocument; open(name: string, bytes: Uint8Array): NodeFigDocument } }>('fig', 'kition_fig_kit')
 const missing = 'the Fig kit is not built into public/kits/fig-ui (scripts/build-kit-ui.sh fig)'
 
 /** A design made by the engine the page runs: the starter frame and a rectangle on it. */

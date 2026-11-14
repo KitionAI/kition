@@ -4,7 +4,7 @@ import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
 type EngineDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 type SlideSdk = { SlideDocument: { create(name: string, width: number, height: number): EngineDocument } }
 
-const slides = kitEngine<SlideSdk>('slide', 'kition_slide_sdk')
+const slides = kitEngine<SlideSdk>('slide', 'kition_slide_kit')
 const PATH = 'Review.kslide'
 
 /** A slide file of two slides. */

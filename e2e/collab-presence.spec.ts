@@ -12,7 +12,7 @@ import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openS
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
   SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument }
-}>('slide', 'kition_slide_sdk')
+}>('slide', 'kition_slide_kit')
 
 /** A one-slide slide file whose lone shape is a text box across the slide's middle, where a click selects it. */
 async function slideFixture() {
@@ -38,7 +38,7 @@ const canvas = (kit: FrameLocator) =>
 
 test('Bob sees the shape Alice selected on a shared slide, outlined with her name', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Slide kit editor is not built into public/kits/slide-ui')
-  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_kit'), 'the Slide kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
   test.skip(!kitPackageSharesPresence(), 'the Slide kit package predates presence (Kit UI 1.7); build it locally with scripts/build-kit-ui.sh slide')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')

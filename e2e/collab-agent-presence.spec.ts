@@ -4,7 +4,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
 import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, shareFromTab, signedIn, startKitionServer, useSyncServer } from './helpers/kitionServer'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_sdk')
+const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_kit')
 
 /** A drawing with one rectangle, made by the same engine the page runs. */
 async function drawingFixture() {
@@ -47,7 +47,7 @@ const peers = (page: Page) => page.locator('.document-tab-list [data-testid="col
 
 test("the agent's edit on a shared drawing shows the agent in every viewer's presence", async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
-  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_sdk'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
+  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_kit'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(240_000)

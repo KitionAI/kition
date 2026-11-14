@@ -19,7 +19,7 @@ import {
 } from './helpers/kitionServer'
 
 type NodeSheetDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument } }>('sheet', 'kition_sheet_sdk')
+const engine = kitEngine<{ SheetDocument: { create(name: string, width: number, height: number): NodeSheetDocument } }>('sheet', 'kition_sheet_kit')
 
 /** A workbook made by the same engine the page runs: a small budget with a total in B4. */
 async function budgetFixture() {
@@ -96,7 +96,7 @@ async function liveTo(pageA: Page, pathA: string, pageB: Page, pathB: string, ba
 
 test('co-edits a workbook between two windows: live, formulas that follow their rows, and merging edits made offline, in one cell too', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
-  test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_sdk'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
+  test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_kit'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)

@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_pdf_sdk",
+    "module": "kition_pdf_kit",
     "class": "PdfDocument",
     "contract": 2,
-    "crate": "kition-pdf-sdk"
+    "crate": "kition-pdf-kit"
   },
   "formats": [
     {

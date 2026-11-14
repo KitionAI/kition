@@ -13,7 +13,7 @@ import { tags } from './support'
  */
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument; open(name: string, bytes: Uint8Array): NodeSlideDocument } }>('slide', 'kition_slide_sdk')
+const engine = kitEngine<{ SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument; open(name: string, bytes: Uint8Array): NodeSlideDocument } }>('slide', 'kition_slide_kit')
 
 /** A title slide and a slide with a square, then `more` slides. */
 async function deck(more = 0) {

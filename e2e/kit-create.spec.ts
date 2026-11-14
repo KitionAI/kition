@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { kitEngine, openKitWorkspace } from './helpers/embeddedKit'
 
-const photo = kitEngine('photo', 'kition_photo_sdk')
+const photo = kitEngine('photo', 'kition_photo_kit')
 
 test('makes a new image with the engine in the Photo kit’s package and opens it in the kit’s editor', async ({ page, baseURL }, testInfo) => {
   test.skip(!photo.built, 'the Photo kit is not built into public/kits/photo-ui')

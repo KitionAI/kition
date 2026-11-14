@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_slide_sdk",
+    "module": "kition_slide_kit",
     "class": "SlideDocument",
     "contract": 2,
-    "crate": "kition-slide-sdk"
+    "crate": "kition-slide-kit"
   },
   "formats": [
     {

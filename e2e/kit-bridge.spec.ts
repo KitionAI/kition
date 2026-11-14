@@ -18,7 +18,7 @@ type NodeVectorSdk = {
 
 /** A 400 x 300 pt drawing with one rectangle, made by the engine the page runs. */
 async function drawingFixture() {
-  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_vector_sdk.js')).href)) as NodeVectorSdk
+  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_vector_kit.js')).href)) as NodeVectorSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   const doc = sdk.VectorDocument.create('Logo.kvector', 400, 300)
   doc.execute('shape.rectangle', JSON.stringify({ x: 20, y: 20, width: 80, height: 60 }))

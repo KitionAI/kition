@@ -16,7 +16,7 @@ execFileSync('ffprobe', ['-version'], { stdio: 'ignore' })
 execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' })
 const packageDirectory = path.join(root, 'public/kits/effect-ui')
 const wasm = await fs.readFile(path.join(packageDirectory, 'engine/kition_effect_sdk_bg.wasm'))
-const sdk = await import(pathToFileURL(path.join(packageDirectory, 'engine/kition_effect_sdk.js')).href)
+const sdk = await import(pathToFileURL(path.join(packageDirectory, 'engine/kition_effect_kit.js')).href)
 await sdk.default({ module_or_path: wasm })
 const browser = await chromium.launch()
 try {

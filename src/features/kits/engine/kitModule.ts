@@ -34,7 +34,7 @@ export type KitModuleManifest = {
   kitId: string
   /** Folder under `public/kits/`. */
   dir: string
-  /** The wasm-pack module name, for example `kition_photo_sdk`. */
+  /** The wasm-pack module name, for example `kition_photo_kit`. */
   module: string
   /** The exported document class, for example `PhotoDocument`. */
   documentClass: string

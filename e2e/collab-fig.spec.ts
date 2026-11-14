@@ -14,7 +14,7 @@ import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openS
  */
 
 type NodeFigDocument = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
-const engine = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): NodeFigDocument; open(name: string, bytes: Uint8Array): NodeFigDocument } }>('fig', 'kition_fig_sdk')
+const engine = kitEngine<{ FigDocument: { create(name: string, width: number, height: number): NodeFigDocument; open(name: string, bytes: Uint8Array): NodeFigDocument } }>('fig', 'kition_fig_kit')
 const missing = 'the Fig kit is not built into public/kits/fig-ui (scripts/build-kit-ui.sh fig)'
 
 /** A design made by the engine the page runs: the starter frame and a rectangle on it. */
@@ -114,7 +114,7 @@ const call = (id: number, file: string, tool: string, args: Record<string, unkno
 
 test('co-edits a Fig design between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, missing)
-  test.skip(!kitPackageHasReplicaInfo('fig', 'kition_fig_sdk'), 'the Fig kit package predates engine contract 2; build it with scripts/build-kit-ui.sh fig')
+  test.skip(!kitPackageHasReplicaInfo('fig', 'kition_fig_kit'), 'the Fig kit package predates engine contract 2; build it with scripts/build-kit-ui.sh fig')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -193,7 +193,7 @@ test('co-edits a Fig design between two windows: live, and merging edits made of
 
 test("the agent reads and edits an open Fig design through its object model, and each Undo takes back only its own side's step", async ({ page, baseURL }) => {
   test.skip(!engine.built, missing)
-  test.skip(!kitPackageHasReplicaInfo('fig', 'kition_fig_sdk'), 'the Fig kit package predates engine contract 2; build it with scripts/build-kit-ui.sh fig')
+  test.skip(!kitPackageHasReplicaInfo('fig', 'kition_fig_kit'), 'the Fig kit package predates engine contract 2; build it with scripts/build-kit-ui.sh fig')
   test.setTimeout(180_000)
   // A sync server is configured, but nobody is signed in: co-editing stays off.
   await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')

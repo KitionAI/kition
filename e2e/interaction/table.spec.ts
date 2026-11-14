@@ -13,12 +13,12 @@ import { tags } from './support'
  * version history needs; H11 (printing): the Table kit's manifest does not ask to print.
  *
  * H13 (co-editing): the Table kit's editor does not offer its replica yet. Turned on for a trial,
- * a shared table could not be opened (`kition_table_sdk cannot open a replica`), so co-editing
+ * a shared table could not be opened (`kition_table_kit cannot open a replica`), so co-editing
  * stays off until its engine opens a replica.
  */
 
 type NodeTableDocument = { call(method: string, params: string): string; save(): Uint8Array; markSaved(): void; free(): void }
-const engine = kitEngine<{ TableDocument: { create(name: string, width: number, height: number): NodeTableDocument; open(name: string, bytes: Uint8Array): NodeTableDocument } }>('table', 'kition_table_sdk')
+const engine = kitEngine<{ TableDocument: { create(name: string, width: number, height: number): NodeTableDocument; open(name: string, bytes: Uint8Array): NodeTableDocument } }>('table', 'kition_table_kit')
 
 function caller(doc: NodeTableDocument) {
   return <T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}): T => {

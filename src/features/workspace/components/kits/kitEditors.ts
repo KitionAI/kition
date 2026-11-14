@@ -56,7 +56,7 @@ function kit(name: string, documentClass: string, entry: Omit<KitEditorEntry, 'e
     ...entry,
     key: entry.key ?? name,
     embedded: { kitId: `kit.${name}`, dir },
-    engine: { kitId: `kit.${name}`, dir: `${dir}/engine`, module: `kition_${name}_sdk`, documentClass },
+    engine: { kitId: `kit.${name}`, dir: `${dir}/engine`, module: `kition_${name}_kit`, documentClass },
   }
 }
 

@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_photo_sdk",
+    "module": "kition_photo_kit",
     "class": "PhotoDocument",
     "contract": 2,
-    "crate": "kition-photo-sdk"
+    "crate": "kition-photo-kit"
   },
   "formats": [
     {

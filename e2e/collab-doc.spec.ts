@@ -7,7 +7,7 @@ import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openS
 type NodeDocDocument = { save(name?: string): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
   DocDocument: { create(name: string, width: number, height: number): NodeDocDocument; open(name: string, bytes: Uint8Array): NodeDocDocument }
-}>('doc', 'kition_doc_sdk')
+}>('doc', 'kition_doc_kit')
 
 /** A letter made by the same engine the page runs: a title paragraph and a body paragraph. */
 async function letterFixture() {
@@ -63,7 +63,7 @@ async function typeAtDocEnd(page: Page, kit: FrameLocator, text: string) {
 
 test('co-edits a Doc document between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
-  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
+  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_kit'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)
@@ -201,7 +201,7 @@ async function formatBodyRange(page: Page, kit: FrameLocator, from: number, coun
 
 test('two windows typing and formatting one paragraph at once keep both texts and both formats', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Doc kit editor is not built into public/kits/doc-ui')
-  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_sdk'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
+  test.skip(!kitPackageHasReplicaInfo('doc', 'kition_doc_kit'), 'the Doc kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh doc')
   const unavailable = kitionServerSkipReason()
   test.skip(Boolean(unavailable), unavailable ?? '')
   test.setTimeout(300_000)

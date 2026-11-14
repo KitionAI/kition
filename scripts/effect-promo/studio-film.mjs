@@ -17,7 +17,7 @@ const stills = process.argv.includes('--stills')
 const media = await studioAssets(root, output)
 const get = name => { const bytes = media.get(name); assert.ok(bytes, `Unlent media: ${name}`); return bytes }
 globalThis.kitionHost = { size: name => get(name).length, readRange: (name, offset, length) => get(name).subarray(offset, offset + length) }
-const sdk = await import(pathToFileURL(path.join(root, 'public/kits/effect-ui/engine/kition_effect_sdk.js')))
+const sdk = await import(pathToFileURL(path.join(root, 'public/kits/effect-ui/engine/kition_effect_kit.js')))
 await sdk.default({ module_or_path: await fs.readFile(path.join(root, 'public/kits/effect-ui/engine/kition_effect_sdk_bg.wasm')) })
 const doc = sdk.EffectDocument.create('Kition-One-Brief.keffect', 1280, 720)
 const commands = []

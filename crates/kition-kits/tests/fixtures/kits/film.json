@@ -7,10 +7,10 @@
   "version": "0.5.4",
   "license": "Apache-2.0",
   "engine": {
-    "module": "kition_film_sdk",
+    "module": "kition_film_kit",
     "class": "FilmDocument",
     "contract": 1,
-    "crate": "kition-film-sdk"
+    "crate": "kition-film-kit"
   },
   "formats": [
     {

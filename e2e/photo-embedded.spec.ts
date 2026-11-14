@@ -5,7 +5,7 @@ import { kitEngine, openInKitFrame, openTreeFile, replicaVersion } from './helpe
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 type NodePhotoDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_sdk')
+const engine = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_kit')
 
 /** A real image made by the same engine the page runs: a background and one pixel layer. */
 async function posterFixture(width = 480, height = 320) {

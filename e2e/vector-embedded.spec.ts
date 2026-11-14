@@ -6,7 +6,7 @@ import { kitPackageHasReplicaInfo } from './helpers/kitionServer'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_sdk')
+const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_kit')
 
 /** A real drawing made by the same engine the page runs: one rectangle. */
 async function logoFixture() {
@@ -55,7 +55,7 @@ test('opens a drawing in the Vector kit’s own editor, draws in it, and saves i
 
 test('keeps a drawing’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
   test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
-  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_sdk'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
+  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_kit'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
   test.setTimeout(180_000)
   const name = 'Replica.kvector'
   const { host, kit } = await openInKitFrame(page, baseURL!, name, await logoFixture(), {}, { persist: true })

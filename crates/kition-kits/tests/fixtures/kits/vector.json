@@ -9,10 +9,10 @@
   "distribution": "plugin",
   "engine": {
     "runtime": "rust-wasm",
-    "module": "kition_vector_sdk",
+    "module": "kition_vector_kit",
     "class": "VectorDocument",
     "contract": 2,
-    "crate": "kition-vector-sdk"
+    "crate": "kition-vector-kit"
   },
   "formats": [
     {
