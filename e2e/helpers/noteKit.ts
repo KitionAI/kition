@@ -7,7 +7,7 @@ import { openInKitFrame, openKitWorkspace } from './embeddedKit'
 const NOTE_UI = path.join(process.cwd(), 'public', 'kits', 'note-ui')
 
 /** Whether the Note kit's pinned package is in `public/kits/note-ui` (`make kit-fetch`). */
-export const noteKitPackaged = existsSync(path.join(NOTE_UI, 'kit-ui.json')) && existsSync(path.join(NOTE_UI, 'engine', 'kition_note_sdk_bg.wasm'))
+export const noteKitPackaged = existsSync(path.join(NOTE_UI, 'kit-ui.json')) && existsSync(path.join(NOTE_UI, 'engine', 'kition_note_kit_bg.wasm'))
 
 /** Fails, never skips, without the Note kit's package: the specs that use it are gates. */
 export function requireNoteKit() {

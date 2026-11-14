@@ -12,7 +12,7 @@ import { canReadBlobBodies } from './helpers/requestBody'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'doc-ui', 'engine')
 const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'doc-ui', 'kit-ui.json')
-const SDK_WASM = path.join(SDK_DIR, 'kition_doc_sdk_bg.wasm')
+const SDK_WASM = path.join(SDK_DIR, 'kition_doc_kit_bg.wasm')
 
 type NodeDocDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 type NodeDocSdk = {

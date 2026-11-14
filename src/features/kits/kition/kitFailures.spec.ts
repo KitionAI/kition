@@ -19,7 +19,7 @@ describe('openFailureKind', () => {
   })
 
   it("tells an editor engine that could not start from a damaged file", () => {
-    expect(openFailureKind("failed to fetch Wasm: 500 Internal Server Error fetching 'http://127.0.0.1/kits/slide-ui/engine/kition_slide_sdk_bg.wasm'")).toBe('engine')
+    expect(openFailureKind("failed to fetch Wasm: 500 Internal Server Error fetching 'http://127.0.0.1/kits/slide-ui/engine/kition_slide_kit_bg.wasm'")).toBe('engine')
     expect(openFailureKind('CompileError: WebAssembly.instantiate(): expected magic word')).toBe('engine')
   })
 

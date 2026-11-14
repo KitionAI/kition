@@ -12,7 +12,7 @@ import { canReadBlobBodies } from './helpers/requestBody'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'engine')
 const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'kit-ui.json')
-const SDK_WASM = path.join(SDK_DIR, 'kition_slide_sdk_bg.wasm')
+const SDK_WASM = path.join(SDK_DIR, 'kition_slide_kit_bg.wasm')
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
 type NodeSlideSdk = {

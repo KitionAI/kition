@@ -9,7 +9,7 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'engine')
-const SDK_WASM = path.join(SDK_DIR, 'kition_slide_sdk_bg.wasm')
+const SDK_WASM = path.join(SDK_DIR, 'kition_slide_kit_bg.wasm')
 const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'kit-ui.json')
 const UI_ASSETS = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'assets')
 

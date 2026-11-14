@@ -9,7 +9,7 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'vector-ui', 'engine')
-const SDK_WASM = path.join(SDK_DIR, 'kition_vector_sdk_bg.wasm')
+const SDK_WASM = path.join(SDK_DIR, 'kition_vector_kit_bg.wasm')
 
 type NodeVectorSdk = {
   default: (input: { module_or_path: Buffer }) => Promise<unknown>
