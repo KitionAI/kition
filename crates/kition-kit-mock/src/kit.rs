@@ -8,12 +8,12 @@ use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 use kition_kdm::batch::{self, BatchError, BatchErrorCode, BatchTarget};
 use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Schema, Tx};
 
-use kition_kit_protocol::framing::{self, write_frame_async};
-use kition_kit_protocol::launch::{REQUEST_TIMEOUT, Surface};
-use kition_kit_protocol::methods::{self, HostServiceMethod, NotificationMethod, RequestMethod};
-use kition_kit_protocol::transport::BoxWriter;
-use kition_kit_protocol::types::*;
-use kition_kit_protocol::{ErrorData, ErrorReason, Message, Notification, PROTOCOL_VERSION, Request, RequestId, Response, RpcError, base64};
+use kition_kit_process_protocol::framing::{self, write_frame_async};
+use kition_kit_process_protocol::launch::{REQUEST_TIMEOUT, Surface};
+use kition_kit_process_protocol::methods::{self, HostServiceMethod, NotificationMethod, RequestMethod};
+use kition_kit_process_protocol::transport::BoxWriter;
+use kition_kit_process_protocol::types::*;
+use kition_kit_process_protocol::{ErrorData, ErrorReason, Message, Notification, PROTOCOL_VERSION, Request, RequestId, Response, RpcError, base64};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
@@ -377,7 +377,7 @@ impl Kit {
     fn initialize(&self, connection: &mut Connection, params: Value) -> Handled {
         let params: InitializeParams = parse(params)?;
         if params.protocol_version != PROTOCOL_VERSION {
-            return Err(RpcError::kit_detail(ErrorReason::UnsupportedProtocol, format!("this kit speaks Kit Host Protocol version {PROTOCOL_VERSION}")));
+            return Err(RpcError::kit_detail(ErrorReason::UnsupportedProtocol, format!("this kit speaks Kit Process Protocol version {PROTOCOL_VERSION}")));
         }
         if params.token != self.token && self.fault != Fault::IgnoreToken {
             return Err(RpcError::kit(ErrorReason::Unauthorized));
@@ -475,7 +475,7 @@ impl Kit {
             }
             methods::CommandsExecute::NAME => {
                 let params: CommandsExecuteParams = parse(params)?;
-                if params.origin == kition_kit_protocol::types::Origin::System && role != Role::Host {
+                if params.origin == kition_kit_process_protocol::types::Origin::System && role != Role::Host {
                     return Err(RpcError::kit_detail(ErrorReason::RoleForbidden, "only the host sends origin system"));
                 }
                 self.execute(params, step)
@@ -724,7 +724,7 @@ impl Kit {
         };
         // A host's change (origin system) is no undo step; this kit keeps whole texts as its undo
         // steps, so the earlier steps go too, rather than an undo taking the host's change back.
-        let system = params.origin == kition_kit_protocol::types::Origin::System;
+        let system = params.origin == kition_kit_process_protocol::types::Origin::System;
         let state = self.with_document(&params.document_id, |document| {
             if document.read_only {
                 return Err(RpcError::kit(ErrorReason::CommandDisabled));

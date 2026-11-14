@@ -21,7 +21,7 @@ const DESKTOP_SHELL_ORIGINS: [&str; 3] = [
     "https://tauri.localhost",
 ];
 const ALLOW_METHODS: &str = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
-// `Range` lets kit workers read workspace media in ranges (lent files in docs/kit-sdk.md).
+// `Range` lets kit workers read workspace media in ranges (lent files in docs/kits.md).
 // `Kition-Token` is the per-launch API token (`crate::gate`).
 const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Token";
 // Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`. A read

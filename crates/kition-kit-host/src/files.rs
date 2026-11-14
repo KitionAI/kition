@@ -1,6 +1,6 @@
 // Copied from kition-sdk crates/kition-kit-host/src/files.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! File grants for kits (Kition platform `KitFiles 1.1`): a host's grant table and the files it
-//! serves through them, to kit editor pages (Kit UI `files/*`) and to headless kits (Kit Host
+//! serves through them, to kit editor pages (Kit UI `files/*`) and to headless kits (Kit Process
 //! Protocol `files.*`, [`crate::KitFiles`]).
 //!
 //! A **session** is one kit editor page or one headless host connection. It is
@@ -61,7 +61,7 @@ pub enum Flow {
     List,
     /// A file an agent's command names (`KitAgent` A28): `write` only when approved (FA13).
     Agent,
-    /// The document file the host opens in a headless kit, or saves it to (Kit Host Protocol
+    /// The document file the host opens in a headless kit, or saves it to (Kit Process Protocol
     /// `document.open`, `saveAs`, `export`): the host chose it, under the kit's formats.
     Document,
     /// A file a document refers to, resolved from its stored path (`files.resolve`, E5): `read`.

@@ -6,9 +6,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use kition_kit_protocol::methods::{Initialize, Initialized};
-use kition_kit_protocol::types::{ClientInfo, Empty, InitializeParams, Role};
-use kition_kit_protocol::{PROTOCOL_VERSION, RequestMethod};
+use kition_kit_process_protocol::methods::{Initialize, Initialized};
+use kition_kit_process_protocol::types::{ClientInfo, Empty, InitializeParams, Role};
+use kition_kit_process_protocol::{PROTOCOL_VERSION, RequestMethod};
 use serde_json::{Value, json};
 
 use crate::client::{ClientError, KitClient};
@@ -95,8 +95,8 @@ impl HeadlessKit {
 
     fn workspace_files(&self) -> Result<&KitFiles, ClientError> {
         self.files().ok_or_else(|| {
-            ClientError::Rpc(kition_kit_protocol::RpcError::kit_detail(
-                kition_kit_protocol::ErrorReason::FileNotAllowed,
+            ClientError::Rpc(kition_kit_process_protocol::RpcError::kit_detail(
+                kition_kit_process_protocol::ErrorReason::FileNotAllowed,
                 "the kit was launched without a workspace",
             ))
         })

@@ -1,4 +1,4 @@
-//! The Kit Host Protocol conformance suite (protocol section 14).
+//! The Kit Process Protocol conformance suite (protocol section 14).
 //!
 //! The suite launches a kit executable in `headless` mode and checks it as a
 //! black box over the real transport, as its host: it serves the kit the files
@@ -18,10 +18,10 @@ use kition_kit_host::files::{FilesManifest, GrantStore};
 use kition_kit_host::{
     ClientError, HOST_PRINCIPAL, HostService, KitClient, KitFiles, KitProcess, LaunchOptions,
 };
-use kition_kit_protocol::launch::{SHUTDOWN_TIMEOUT, Surface};
-use kition_kit_protocol::methods::{self, RequestMethod};
-use kition_kit_protocol::types::*;
-use kition_kit_protocol::{ErrorReason, PROTOCOL_VERSION, RpcError};
+use kition_kit_process_protocol::launch::{SHUTDOWN_TIMEOUT, Surface};
+use kition_kit_process_protocol::methods::{self, RequestMethod};
+use kition_kit_process_protocol::types::*;
+use kition_kit_process_protocol::{ErrorReason, PROTOCOL_VERSION, RpcError};
 use serde_json::{Map, Value, json};
 
 use schema::Schemas;
@@ -669,7 +669,7 @@ impl Context<'_> {
             .request(
                 methods::Initialize::NAME,
                 serde_json::to_value(&params).map_err(|error| error.to_string())?,
-                Some(kition_kit_protocol::launch::INITIALIZE_TIMEOUT),
+                Some(kition_kit_process_protocol::launch::INITIALIZE_TIMEOUT),
             )
             .await
             .map_err(|error| error.to_string())?;
@@ -1169,7 +1169,7 @@ mod tests {
             "name": "Example",
             "version": "0.1.0",
             "license": "Apache-2.0",
-            "engine": { "module": "kition_example_sdk", "class": "ExampleDocument", "contract": 1 },
+            "engine": { "module": "kition_example_kit", "class": "ExampleDocument", "contract": 1 },
             "formats": [{ "id": "example", "extensions": ["example"], "role": "edit" }],
             "ui": { "mode": "embedded", "entry": "ui/index.html", "layout": "canvas" }
         });

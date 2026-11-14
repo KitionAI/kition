@@ -16,7 +16,7 @@ black-box tests.
 A change that crosses the renderer and the runtime updates the contract in
 `contracts/runtime/`, the renderer mock, and the runtime together. Kits are
 developed in separate repositories; Kition ships their published packages,
-pinned in `kits/kits.lock.json` (see [docs/kit-sdk.md](docs/kit-sdk.md)).
+pinned in `kits/kits.lock.json` (see [docs/kits.md](docs/kits.md)).
 
 ## Local Setup
 

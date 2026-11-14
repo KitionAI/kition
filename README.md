@@ -235,7 +235,7 @@ Preview kits are early. HTML and Fig are not pinned in `kits/kits.lock.json`
 yet; they ship once their packages are published.
 
 Each kit is developed in its own repository; see
-[Kit SDK](docs/kit-sdk.md) for how kits plug into Kition.
+[Kits](docs/kits.md) for how kits plug into Kition.
 
 Also included:
 
@@ -340,7 +340,7 @@ For product questions, account help, and private workspace concerns, see
 ├── crates/                  # Rust runtime (kition-api and its feature crates)
 ├── docs/                    # Product, contributor, design, and runtime docs
 ├── e2e/                     # Playwright black-box tests
-├── kits/                    # Kit pins (kits.lock.json) and kit SDK registry
+├── kits/                    # Kit pins (kits.lock.json) and kit module registry
 ├── packages/                # Source packages that also run outside Kition
 ├── public/                  # Static assets, onboarding files, and kit packages
 ├── scripts/                 # Repository checks and inspection entry points

@@ -114,8 +114,8 @@ jobs:
           GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
         run: node scripts/fetch-kits.mjs
 
-      - name: Check the kit engines against the Kit SDK contract
-        run: pnpm run check:kit-sdks
+      - name: Check the kit engines against the kit engine contract
+        run: pnpm run check:kit-modules
 
       - name: Run repository, security, build, and unit checks
         run: pnpm run check

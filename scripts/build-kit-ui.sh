@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds a kit's own editor (Kition platform `docs/platform/kits/ui.md`: the kit's web/ app and its engine) and puts
-# it in public/kits/<kit>-ui, where Kition shows it in an iframe (KitFrame). See docs/kit-sdk.md.
+# it in public/kits/<kit>-ui, where Kition shows it in an iframe (KitFrame). See docs/kits.md.
 #
 #   scripts/build-kit-ui.sh slide
 #   scripts/build-kit-ui.sh slide --ui-only  # reuse an already built, unchanged engine
@@ -43,7 +43,7 @@ rm -rf "$out/dev.html" "$out/sample"
 # The kit's licence and notices travel with the package (Apache-2.0 section 4).
 cp "$kit_repo/LICENSE" "$kit_repo/NOTICE" "$out/"
 # The kit's KDM schema (kit.json `model.schema`, platform rule K12) travels with the package as
-# model/schema.json: the schema its engine was built with, which hosts and @kition/sdk read.
+# model/schema.json: the schema its engine was built with, which hosts and @kition/script read.
 schema="$(node -p "require('$kit_repo/kit.json').model?.schema ?? ''")"
 if [[ -n "$schema" ]]; then
   [[ -f "$kit_repo/$schema" ]] || { echo "$kit_repo/kit.json names model.schema $schema, which is missing" >&2; exit 1; }
@@ -85,7 +85,7 @@ NODE
 kit_id="$(node -p "require('$out/kit-ui.json').kitId")"
 version="$(node -p "require('$out/kit-ui.json').version")"
 # Marks the package as a local build, so scripts/fetch-kits.mjs never takes it for the published
-# one of the same version (docs/kit-sdk.md, section 4b). publish-kit.sh leaves it out of the .tgz.
+# one of the same version (docs/kits.md, section 4b). publish-kit.sh leaves it out of the .tgz.
 sdk_commit="$(git -C "${KITION_SDK_REPO:-$kit_repo/../kition-sdk}" rev-parse HEAD 2>/dev/null || echo unknown)"
 printf '{ "local": true, "kitCommit": "%s", "sdkCommit": "%s", "builtAt": "%s" }\n' "$commit" "$sdk_commit" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$out/.kition-package.json"
 echo "built $kit_id $version into public/kits/$kit-ui"

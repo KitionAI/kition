@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Downloads the kit packages pinned in kits/kits.lock.json into public/kits/<kit>-ui, where the
-// build includes them (docs/kit-sdk.md, section 4b).
+// build includes them (docs/kits.md, section 4b).
 //
 //   node scripts/fetch-kits.mjs          fetch the packages that are missing or not the pinned ones
 //   node scripts/fetch-kits.mjs --check  only compare public/kits with the lock

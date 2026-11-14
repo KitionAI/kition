@@ -2,7 +2,7 @@
 /**
  * `@kition/extensions`: the extension host (`KitExtensions 1.0`). A host loads extensions
  * (`extension.json` + one ES module), runs each in a sandboxed worker on an opaque origin with only
- * its declared network origins, and serves it the object model (`@kition/sdk`) of the documents it
+ * its declared network origins, and serves it the object model (`@kition/script`) of the documents it
  * is active on, checked against its permissions. Extension authors: see `@kition/extensions/runtime`
  * for `activate(ctx)`'s types.
  */

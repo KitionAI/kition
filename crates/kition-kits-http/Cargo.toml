@@ -15,7 +15,7 @@ kition-core = { workspace = true }
 kition-http = { workspace = true }
 kition-kits = { workspace = true }
 kition-kit-host = { workspace = true }
-kition-kit-protocol = { workspace = true }
+kition-kit-process-protocol = { workspace = true }
 
 axum = { workspace = true }
 http = { workspace = true }

@@ -14,7 +14,7 @@ workspace = true
 [dependencies]
 kition-kdm = { path = "../kition-kdm" }
 kition-kit-host = { path = "../kition-kit-host" }
-kition-kit-protocol = { path = "../kition-kit-protocol", features = ["tokio"] }
+kition-kit-process-protocol = { path = "../kition-kit-process-protocol", features = ["tokio"] }
 
 base64 = "0.22"
 hex = "0.4"

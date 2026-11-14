@@ -129,12 +129,12 @@ own interaction tests live in the kition-table repository and run there.
 
 ## Kits (Mandatory)
 
-- Read `docs/kit-sdk.md` before any kit work. It is how Kition implements the
+- Read `docs/kits.md` before any kit work. It is how Kition implements the
   Kit Harness Protocol (KHP, `spec/` in the private `KitionAI/kit-standard`
   repository) and the Kition kit platform (`docs/platform/` in the private
   `KitionAI/kition-sdk` repository), which are normative: kits, the host, and
   the agent conform to them, and contract changes go there first. The
-  checklist in `docs/kit-sdk.md` is the definition of done for a new kit, and
+  checklist in `docs/kits.md` is the definition of done for a new kit, and
   every kit ships a `kit.json` that declares its KHP version (`"khp": "1.0"`)
   and passes kition-sdk's `tools/check-manifest.mjs`.
 - Kition is KHP's reference implementation, and its agent targets
@@ -153,18 +153,18 @@ own interaction tests live in the kition-table repository and run there.
   `kits/kits.lock.json`. Never add builds or workflows to the private kit
   repositories' CI; their Actions minutes are limited. Register a kit in
   `src/features/workspace/components/kits/kitEditors.ts` and
-  `kits/sdks.json`; see `docs/kit-sdk.md`.
+  `kits/modules.json`; see `docs/kits.md`.
 - If the upstream app draws something in its own UI, port it into the kit's
   SDK crate as engine overlays or into the kit's editor, never into Kition.
-- `src/features/kits/sdk/` loads a kit's engine in the page (Kition makes new
+- `src/features/kits/engine/` loads a kit's engine in the page (Kition makes new
   files with it): it must never import the rest of Kition (`pnpm check:deps`
   enforces it). Shared strings under `workspace:kitEditor.*` must never name a
   kit.
-- A kit SDK implements `KitDocument` from the private `KitionAI/kition-sdk`
+- A kit module implements `KitDocument` from the private `KitionAI/kition-sdk`
   crate (Apache-2.0), exports it with `export_kit_document!`, and passes
-  `kition_sdk::testing::check_contract` in its tests and `pnpm check:kit-sdks`
+  `kition_kit::testing::check_contract` in its tests and `pnpm check:kit-modules`
   once built. Contract changes happen in kition-sdk and bump the version there
-  and in `src/features/kits/sdk/kitSdk.ts` together.
+  and in `src/features/kits/engine/kitModule.ts` together.
 - Kit repositories are standalone clones (never GitHub forks). A kit derived
   from an upstream project credits it only in the kit's `NOTICE`.
 - Never run a kit engine on the page's thread, never write a kit file except

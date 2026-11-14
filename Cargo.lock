@@ -3346,7 +3346,7 @@ dependencies = [
  "jsonschema",
  "kition-harness",
  "kition-kit-host",
- "kition-kit-protocol",
+ "kition-kit-process-protocol",
  "kition-kits",
  "serde_json",
  "tempfile",
@@ -3358,7 +3358,7 @@ name = "kition-kit-host"
 version = "0.0.0"
 dependencies = [
  "hex",
- "kition-kit-protocol",
+ "kition-kit-process-protocol",
  "rand 0.9.5",
  "serde",
  "serde_json",
@@ -3372,7 +3372,7 @@ name = "kition-kit-mock"
 version = "0.0.0"
 dependencies = [
  "kition-kdm",
- "kition-kit-protocol",
+ "kition-kit-process-protocol",
  "serde",
  "serde_json",
  "tokio",
@@ -3380,7 +3380,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kition-kit-protocol"
+name = "kition-kit-process-protocol"
 version = "0.0.0"
 dependencies = [
  "jsonschema",
@@ -3399,7 +3399,7 @@ dependencies = [
  "jsonschema",
  "kition-kdm",
  "kition-kit-host",
- "kition-kit-protocol",
+ "kition-kit-process-protocol",
  "rand 0.9.5",
  "serde",
  "serde_json",
@@ -3422,7 +3422,7 @@ dependencies = [
  "kition-core",
  "kition-http",
  "kition-kit-host",
- "kition-kit-protocol",
+ "kition-kit-process-protocol",
  "kition-kits",
  "kition-store",
  "serde",

@@ -351,7 +351,7 @@
         "namespace": {
           "type": "string",
           "pattern": "^[A-Z][A-Za-z0-9]*$",
-          "description": "The namespace of the generated typings (@kition/sdk kits/<namespace>)."
+          "description": "The namespace of the generated typings (@kition/script kits/<namespace>)."
         }
       }
     },
@@ -537,7 +537,7 @@
         },
         "features": {
           "type": "array",
-          "description": "Optional Kit Host Protocol features the executable serves, as kit.initialize lists them in capabilities.features (for example model.describe and model.batch, the object model).",
+          "description": "Optional Kit Process Protocol features the executable serves, as kit.initialize lists them in capabilities.features (for example model.describe and model.batch, the object model).",
           "uniqueItems": true,
           "items": {
             "type": "string",

@@ -42,7 +42,7 @@ Recommended ownership for editor content panes:
 Current feature split:
 
 - `src/features/agent`: AI chat, agent execution timeline, model selection, and agent-only interaction flows
-- `src/features/kits`: kit editors in `KitFrame` and their host (see [kit-sdk.md](kit-sdk.md)); tables are `.ktable` files the Table kit edits in its own editor, boards `.kboard` files the Board kit edits, and notes `.md` files the Note kit edits
+- `src/features/kits`: kit editors in `KitFrame` and their host (see [kits.md](kits.md)); tables are `.ktable` files the Table kit edits in its own editor, boards `.kboard` files the Board kit edits, and notes `.md` files the Note kit edits
 - `src/features/workspace`: editor chrome, workspace navigation, tabs, tree, and media navigation
 - `src/features/settings`: desktop settings surfaces
 

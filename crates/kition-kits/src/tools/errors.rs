@@ -5,7 +5,7 @@
 //! Protocol reasons and the host's own checks say.
 
 use kition_kdm::batch::BatchErrorCode;
-use kition_kit_protocol::ErrorReason;
+use kition_kit_process_protocol::ErrorReason;
 use serde_json::{Map, Value, json};
 
 use crate::bridge::BridgeFailure;

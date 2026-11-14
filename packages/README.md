@@ -4,7 +4,7 @@ Source packages that Kition builds from `src/` and that run outside Kition too. 
 the moment: Kition's shared controls (buttons, form fields, modals, popovers, sheets, confirm, the
 command list) come from Kition Tessera (`@kition/tessera-ui`, below), and kit editors live in the
 kits' own repositories, shipped as packages in `public/kits/<kit>-ui/`
-([docs/kit-sdk.md](../docs/kit-sdk.md)).
+([docs/kits.md](../docs/kits.md)).
 
 ## How Kition uses packages here
 

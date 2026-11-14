@@ -1,7 +1,7 @@
 // Copied from kition-sdk crates/kition-kits/src/serve.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! `kition-kits serve`: the Kits Service API, how a host written in any language uses Kition's
 //! kits. The host starts one process and speaks newline-delimited JSON-RPC 2.0 on its standard
-//! input and output, naming files by workspace paths; this process does everything the Kit Host
+//! input and output, naming files by workspace paths; this process does everything the Kit Process
 //! Protocol asks of a host (launching the kits, serving their `files.*` with handles, staged and
 //! atomic writes with version checks, confinement to the workspace) through [`KitManager`], the
 //! same host Kition runs. The methods and their shapes are `contracts/kit/kits-service.schema.json`;
@@ -12,9 +12,9 @@
 
 use std::sync::Arc;
 
-use kition_kit_protocol::framing::{self, read_frame_async, write_frame_async};
-use kition_kit_protocol::types::Origin;
-use kition_kit_protocol::{ErrorReason, Message, Response, RpcError};
+use kition_kit_process_protocol::framing::{self, read_frame_async, write_frame_async};
+use kition_kit_process_protocol::types::Origin;
+use kition_kit_process_protocol::{ErrorReason, Message, Response, RpcError};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
@@ -29,7 +29,7 @@ pub const SERVICE_VERSION: u32 = 1;
 /// `kit_unavailable`); the call may succeed once the kit is installed or on a retry.
 pub const KIT_UNAVAILABLE: i64 = -32050;
 
-/// A failure of the kits as the service answers it: the Kit Host Protocol's code and reason when
+/// A failure of the kits as the service answers it: the Kit Process Protocol's code and reason when
 /// the kit gave one (`file_conflict`, `command_not_found`, …), else the service's own.
 pub fn service_error(error: &KitError) -> RpcError {
     let detail = error.to_string();
@@ -147,7 +147,7 @@ pub async fn handle(kits: &KitManager, method: &str, request: Value) -> Result<V
         "kits.initialize" => {
             let mut answer = kits_list(kits);
             answer["serviceVersion"] = json!(SERVICE_VERSION);
-            answer["protocolVersion"] = json!(kition_kit_protocol::PROTOCOL_VERSION);
+            answer["protocolVersion"] = json!(kition_kit_process_protocol::PROTOCOL_VERSION);
             answer["workspace"] = json!(kits.workspace_dir().is_some());
             Ok(answer)
         }
@@ -190,7 +190,7 @@ pub async fn handle(kits: &KitManager, method: &str, request: Value) -> Result<V
         "documents.preview" => {
             let document: DocumentParams = params(request)?;
             let png = kits.preview(&document.kit, &document.document_id, document.max_size.unwrap_or(1024)).await.map_err(failed)?;
-            Ok(json!({ "mimeType": "image/png", "data": kition_kit_protocol::base64::encode(&png) }))
+            Ok(json!({ "mimeType": "image/png", "data": kition_kit_process_protocol::base64::encode(&png) }))
         }
         "documents.check" => {
             let document: DocumentParams = params(request)?;

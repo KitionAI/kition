@@ -4,9 +4,9 @@
  * serves it the object model of the documents it is active on, checked against its permissions.
  */
 import { BatchError, type BatchRequest, type Origin } from '../kdm'
-import { kitDescriptor, openDocument, type KitCommandInfo, type ModelDocument, type ModelPort } from '../sdk'
+import { kitDescriptor, openDocument, type KitCommandInfo, type ModelDocument, type ModelPort } from '../script'
 // Every generated kit's schema: extensions work on documents of any of them.
-import '../sdk/kits/index'
+import '../script/kits/index'
 import { checkBatch, requirePermission } from './gate'
 import { appliesTo, connectSources, hasPermission, panelAppliesTo, parseManifest, type ExtensionCommand, type ExtensionManifest, type ExtensionPanel, type Permission } from './manifest'
 import type { DocumentInfo, Notice } from './protocol'
@@ -36,7 +36,7 @@ export type HostDocument = {
   path?: string
   /** The document's object model port (`portFromConnection`, `portFromEngine`, …). */
   port: ModelPort
-  /** The kit's schema when the kit is not registered with `@kition/sdk` (`registerKit`). */
+  /** The kit's schema when the kit is not registered with `@kition/script` (`registerKit`). */
   schema?: object
 }
 
@@ -44,7 +44,7 @@ export type ExtensionNotice = Notice & { extension: string }
 
 export type ExtensionHostOptions = {
   sandbox: SandboxFactory
-  /** The kit's schema for documents that bring none; `@kition/sdk`'s registered kits otherwise. */
+  /** The kit's schema for documents that bring none; `@kition/script`'s registered kits otherwise. */
   schema?: (kitId: string) => object | undefined
   /** `ctx.notify` of extensions, and the host's reports of their failures. */
   notify?: (notice: ExtensionNotice) => void

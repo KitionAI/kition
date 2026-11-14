@@ -6,7 +6,7 @@ import type { MountedKitDocument } from '@/features/kits/public'
 import { RpcPeer, SANDBOX_TAG, type ExtensionNotice, type SandboxFactory } from '@/lib/extensions'
 import { WORKER_RUNTIME } from '@/lib/extensions/generated/runtime'
 import { parseSchema, person, Replica, Version } from '@/lib/kdm'
-import { registerKit } from '@/lib/sdk'
+import { registerKit } from '@/lib/script'
 
 const files = new Map<string, string>()
 const mounted: { listener: ((document: MountedKitDocument) => (() => void) | void) | null; active: MountedKitDocument | null } = { listener: null, active: null }

@@ -1,5 +1,5 @@
 // Copied from kition-sdk crates/kition-kit-host/src/client.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! A Kit Host Protocol client connection: request and response correlation,
+//! A Kit Process Protocol client connection: request and response correlation,
 //! timeouts with `$/cancelRequest`, a notification stream, and, on the host
 //! connection, the answers to the kit's own requests (`files.*`, section 5.1).
 
@@ -8,12 +8,12 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use kition_kit_protocol::framing::{self, read_frame_async, write_frame_async};
-use kition_kit_protocol::launch::request_timeout;
-use kition_kit_protocol::methods::{CancelRequest, Initialize, Initialized};
-use kition_kit_protocol::transport::{BoxReader, BoxWriter};
-use kition_kit_protocol::types::{CancelRequestParams, Empty, InitializeParams, InitializeResult};
-use kition_kit_protocol::{Message, Notification, NotificationMethod, Request, RequestId, RequestMethod, RpcError};
+use kition_kit_process_protocol::framing::{self, read_frame_async, write_frame_async};
+use kition_kit_process_protocol::launch::request_timeout;
+use kition_kit_process_protocol::methods::{CancelRequest, Initialize, Initialized};
+use kition_kit_process_protocol::transport::{BoxReader, BoxWriter};
+use kition_kit_process_protocol::types::{CancelRequestParams, Empty, InitializeParams, InitializeResult};
+use kition_kit_process_protocol::{Message, Notification, NotificationMethod, Request, RequestId, RequestMethod, RpcError};
 use serde_json::Value;
 use tokio::io::BufReader;
 use tokio::sync::{mpsc, oneshot, watch};
@@ -47,7 +47,7 @@ impl ClientError {
         }
     }
 
-    /// The Kit Host Protocol reason (`error.data.reason`) of a JSON-RPC error, as sent.
+    /// The Kit Process Protocol reason (`error.data.reason`) of a JSON-RPC error, as sent.
     pub fn reason(&self) -> Option<&str> {
         self.data()?.get("reason")?.as_str()
     }
@@ -145,7 +145,7 @@ impl KitClient {
         let mut writer = self.shared.writer.lock().await;
         write_frame_async(&mut *writer, frame)
             .await
-            .map_err(|error| if kition_kit_protocol::transport::is_disconnect(&error) { ClientError::Closed } else { ClientError::Io(error) })
+            .map_err(|error| if kition_kit_process_protocol::transport::is_disconnect(&error) { ClientError::Closed } else { ClientError::Io(error) })
     }
 
     async fn send(&self, message: &Value) -> Result<(), ClientError> {
@@ -185,7 +185,7 @@ async fn send_on(shared: &Shared, message: &Value) -> Result<(), ClientError> {
     let mut writer = shared.writer.lock().await;
     write_frame_async(&mut *writer, &frame)
         .await
-        .map_err(|error| if kition_kit_protocol::transport::is_disconnect(&error) { ClientError::Closed } else { ClientError::Io(error) })
+        .map_err(|error| if kition_kit_process_protocol::transport::is_disconnect(&error) { ClientError::Closed } else { ClientError::Io(error) })
 }
 
 /// Answers one request from the kit with `service`, off the reading task.
@@ -200,7 +200,7 @@ fn answer(shared: &Arc<Shared>, service: Option<&Arc<dyn HostService>>, request:
                 .await
                 .unwrap_or_else(|_| Err(RpcError::internal("the host failed while answering the kit"))),
         };
-        let _ = send_on(&shared, &kition_kit_protocol::Response { id: Some(id), outcome }.to_value()).await;
+        let _ = send_on(&shared, &kition_kit_process_protocol::Response { id: Some(id), outcome }.to_value()).await;
     });
 }
 

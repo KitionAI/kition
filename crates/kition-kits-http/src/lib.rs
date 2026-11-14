@@ -10,7 +10,7 @@ use axum::routing::{get, post};
 use http::header;
 use kition_core::{AppError, AppResult};
 use kition_http::{AuthConfig, CurrentUser, JsonBody, ok};
-use kition_kit_protocol::ErrorReason;
+use kition_kit_process_protocol::ErrorReason;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 

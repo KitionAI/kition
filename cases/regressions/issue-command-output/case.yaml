@@ -8,13 +8,13 @@ intent: >-
 layer: golden
 source:
   kind: issue
-  from: crates/kition-kit-protocol/tests/schema.rs
+  from: crates/kition-kit-process-protocol/tests/schema.rs
   licence: owned
   note: Found while wiring Fig's agent-ready surface (kition-fig agent.rs keeps output_schema empty because of it).
 input: []
 steps:
   - cargo-test:
-      package: kition-kit-protocol
+      package: kition-kit-process-protocol
       test: schema
       filter: a_command_may_say_what_it_answers
 expected:

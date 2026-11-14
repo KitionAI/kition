@@ -4,7 +4,7 @@
 //! `kition-kits serve --workspace <folder>` speaks the Kits Service API (newline-delimited
 //! JSON-RPC 2.0 on standard input and output, `kition_kits::serve`): the host opens, edits, saves
 //! and previews the workspace's files by path, and this process runs the kits and serves their
-//! files over the Kit Host Protocol. Like every form of Kition Kits, it is free and needs no
+//! files over the Kit Process Protocol. Like every form of Kition Kits, it is free and needs no
 //! licence key.
 
 use std::path::PathBuf;

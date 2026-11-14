@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publishes a kit's package (its own editor and its engine, public/kits/<kit>-ui) as a GitHub
 # Release asset of the kit's private repository, and pins it in kits/kits.lock.json. Kition's
-# release builds download the pinned packages (scripts/fetch-kits.mjs); see docs/kit-sdk.md,
+# release builds download the pinned packages (scripts/fetch-kits.mjs); see docs/kits.md,
 # section 4b.
 #
 #   scripts/publish-kit.sh photo            build the pushed origin/main and publish it
@@ -24,8 +24,8 @@ fonts_repo="${KITION_FONTS_REPO:-$parent/kition-fonts}"
 # kit-editor links its components, tokens, and icons from a kition-tessera checkout beside kition-sdk.
 tessera_repo="${KITION_TESSERA_REPO:-$parent/kition-tessera}"
 scratch="${KITION_KIT_SCRATCH:-${TMPDIR:-/tmp}}"; scratch="${scratch%/}/kition-kit-publish/$kit"
-repository="$(node -e "const kit = require('$repo_root/kits/sdks.json')['$kit']; if (!kit) process.exit(1); console.log(kit.repository)")" \
-  || { echo "kits/sdks.json has no kit \"$kit\"" >&2; exit 2; }
+repository="$(node -e "const kit = require('$repo_root/kits/modules.json')['$kit']; if (!kit) process.exit(1); console.log(kit.repository)")" \
+  || { echo "kits/modules.json has no kit \"$kit\"" >&2; exit 2; }
 command -v gh >/dev/null || { echo "gh is required" >&2; exit 1; }
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 if stable_cargo="$(rustup which --toolchain stable cargo 2>/dev/null)"; then

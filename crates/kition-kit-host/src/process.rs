@@ -8,9 +8,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use kition_kit_protocol::PROTOCOL_VERSION;
-use kition_kit_protocol::launch::{ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, INITIALIZE_TIMEOUT, LAUNCH_ARG, READY_TIMEOUT, ReadyLine, Surface};
-use kition_kit_protocol::transport;
+use kition_kit_process_protocol::PROTOCOL_VERSION;
+use kition_kit_process_protocol::launch::{ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, INITIALIZE_TIMEOUT, LAUNCH_ARG, READY_TIMEOUT, ReadyLine, Surface};
+use kition_kit_process_protocol::transport;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
 

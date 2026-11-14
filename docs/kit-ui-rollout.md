@@ -1,7 +1,7 @@
 # Kit UI Rollout: Every Kit Draws Its Own Editor
 
 Status record, 2026-10-12; updated 2026-10-15 when Kition's own kit editors
-were removed. See `docs/kit-sdk.md` section 4 for how it works.
+were removed. See `docs/kits.md` section 4 for how it works.
 
 ## Decision
 

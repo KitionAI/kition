@@ -1,4 +1,4 @@
-// Copied from kition-sdk packages/kit-protocol/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
+// Copied from kition-sdk packages/kit-ui-protocol/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
  * The Kit UI protocol, `kition-kit-ui/1` (Kition platform docs/platform/reference/ui-protocol.md): its messages, and JSON-RPC 2.0
  * over a MessagePort for both sides. A host and an embedded kit UI each make one `KitPeer` on
@@ -215,7 +215,7 @@ export type AiRunResult = { completed: Array<{ command: string; changed: boolean
  * `ai/run`'s params. Without `origin` the steps are the agent's (section 2). (2.7) With `origin:
  * "system"` they are the host's own change on the person's behalf (a host feature such as mail
  * sync writing into the open document): no undo step in any history, recorded under the KDM
- * `system` origin with `originLabel` (`ORIGIN_LABEL`; `host` when absent), as Kit Host Protocol's
+ * `system` origin with `originLabel` (`ORIGIN_LABEL`; `host` when absent), as Kit Process Protocol's
  * `commands.execute` runs them. Only the host sends it, never for a model's call, and never with
  * `draft`.
  */
@@ -229,7 +229,7 @@ export const HOST_ORIGIN_LABEL = 'host'
 /**
  * `error.data.reason` of an `ai/run` step whose parameters the kit's engine refused (minor
  * version 2.7): `data` is `{ reason, command, step, errors }`, `errors` one `{ path, message,
- * expected? }` for each wrong parameter, as Kit Host Protocol's `invalid_params` lists them.
+ * expected? }` for each wrong parameter, as Kit Process Protocol's `invalid_params` lists them.
  */
 export const INVALID_PARAMS_REASON = 'invalid-params'
 

@@ -18,7 +18,7 @@ export type NodeKit = Record<string, { create(name: string, width: number, heigh
 
 /** The engine of `kit` in its package, with the document class `documentClass`. */
 export function nodeEngine(kit: string, documentClass: string) {
-  const engine = kitEngine<NodeKit>(kit, `kition_${kit}_sdk`)
+  const engine = kitEngine<NodeKit>(kit, `kition_${kit}_kit`)
   return {
     built: engine.built,
     /** A new document of `width` × `height`, edited by `build`, saved to bytes. */

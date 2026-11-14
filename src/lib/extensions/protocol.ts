@@ -5,7 +5,7 @@
  * documents it is active on through the host, which checks every call against its permissions.
  */
 import type { BatchRequest, BatchResult } from '../kdm'
-import type { KitCommandInfo } from '../sdk'
+import type { KitCommandInfo } from '../script'
 import type { ExtensionManifest } from './manifest'
 
 /** The message the host posts to the sandbox page with the channel's port (see `sandbox/`). */

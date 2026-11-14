@@ -62,8 +62,8 @@ features:
       - e2e/interaction/agent-adaptation.spec.ts
       - src/features/kits/kition/kitBridge.ts
       - src/features/kits/kition/kitBridgeModel.ts
-      - kits/sdks.json
-      - scripts/check-kit-sdk.mjs
+      - kits/modules.json
+      - scripts/check-kit-module.mjs
       - scripts/lib/kitParameterSchema.mjs
       - scripts/lib/kitParameterSchema.spec.ts
     cases:
@@ -198,8 +198,8 @@ features:
     priority: P2
     status: has
     paths:
-      - contracts/kit/kit-protocol.schema.json
-      - crates/kition-kit-protocol/src/types.rs
+      - contracts/kit/kit-process-protocol.schema.json
+      - crates/kition-kit-process-protocol/src/types.rs
     cases:
       - regressions/issue-command-output
     since: "2026-10-28"
@@ -279,12 +279,12 @@ features:
       - kition.kit-collab.fig/live-and-offline
     since: "2026-10-28"
   - id: kition.extensions.kit-scripts
-    title: A workspace script edits the open kit document through the object model of the kit's registered schema (`src/lib/sdk/kits/`)
+    title: A workspace script edits the open kit document through the object model of the kit's registered schema (`src/lib/script/kits/`)
     direction: [function]
     priority: P1
     status: has
     paths:
-      - src/lib/sdk/kits/*.ts
+      - src/lib/script/kits/*.ts
       - src/lib/extensions/*.ts
       - e2e/extensions.spec.ts
       - src/features/extensions/public.ts
@@ -383,7 +383,7 @@ features:
       - kition.kits.file-writes/path-escapes
     since: "2026-11-06"
   - id: kition.kits.host-protocol
-    title: Kition hosts kits on Kit Host Protocol 2, naming files to them only by handles
+    title: Kition hosts kits on Kit Process Protocol 2, naming files to them only by handles
     direction: [security, data-safety]
     priority: P0
     status: has

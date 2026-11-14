@@ -1,6 +1,6 @@
 // Copied from kition-sdk crates/kition-kit-mock/src/main.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! A minimal kit for plain-text `.mocktext` documents. It implements the
-//! headless parts of Kit Host Protocol version 2, reading and writing its
+//! headless parts of Kit Process Protocol version 2, reading and writing its
 //! documents through the host's `files.*`, so a host and the conformance suite
 //! can be tested without a real editor. It shares no code with
 //! `kition-kit-server`: it is a second, independent kit side.
@@ -14,10 +14,10 @@ use std::io::Write;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use kition_kit_protocol::framing::{self, read_frame_async, write_frame_async};
-use kition_kit_protocol::launch::{ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, LAUNCH_ARG, ReadyLine, Surface, is_valid_token};
-use kition_kit_protocol::transport::{BoxReader, BoxWriter, Listener};
-use kition_kit_protocol::{Message, Response};
+use kition_kit_process_protocol::framing::{self, read_frame_async, write_frame_async};
+use kition_kit_process_protocol::launch::{ENV_ENDPOINT, ENV_PROTOCOL, ENV_SURFACE, ENV_TOKEN, LAUNCH_ARG, ReadyLine, Surface, is_valid_token};
+use kition_kit_process_protocol::transport::{BoxReader, BoxWriter, Listener};
+use kition_kit_process_protocol::{Message, Response};
 use serde_json::Value;
 use tokio::io::BufReader;
 
@@ -137,7 +137,7 @@ async fn handle_connection(kit: Arc<Kit>, reader: BoxReader, writer: BoxWriter) 
             Ok(Some(frame)) => frame,
             Ok(None) => break,
             Err(error) if error.is_recoverable() => {
-                let reply = Response { id: None, outcome: Err(kition_kit_protocol::RpcError::parse_error()) };
+                let reply = Response { id: None, outcome: Err(kition_kit_process_protocol::RpcError::parse_error()) };
                 send(&writer, &reply.to_value()).await;
                 continue;
             }

@@ -1,5 +1,5 @@
 # Kit (Photo, Film, Vector, Effect, Design, CAD, Slide, Doc, Sheet, PDF, Table, Board, Note, Cube, Fig) shortcuts for building, trying, and testing the kits.
-# See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kition-photo,
+# See docs/kits.md. Kit repositories are sibling checkouts (../kition-photo,
 # ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-slide, ../kition-doc, ../kition-sheet, ../kition-pdf, ../kition-table, ../kition-board, ../kition-note, ../kition-cube, ../kition-fig); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
@@ -104,7 +104,7 @@ kit-dev-run:
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
-	pnpm check:kit-sdks
+	pnpm check:kit-modules
 
 kit-e2e: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
 	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.config.ts $(KIT_E2E) --reporter=line

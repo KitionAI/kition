@@ -3,7 +3,7 @@
  * its create specs from, and `@/features/workspace/lib/workspace` drops from a workspace tab
  * title (`workspaceTitleExtensionPattern`). A leaf module with no imports of its own, so reading
  * it from `workspace.ts` never cycles back through `@/features/kits/public` — which
- * `kitEditors.ts` needs for `EmbeddedKit`/`KitSdkManifest`, and which the document feature's
+ * `kitEditors.ts` needs for `EmbeddedKit`/`KitModuleManifest`, and which the document feature's
  * public surface imports, which `workspace.ts` is read by (`pnpm check:deps`).
  */
 export const KIT_CREATE_EXTENSION = {

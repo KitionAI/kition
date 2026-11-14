@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { KITS } from '../src/lib/sdk/kits/index'
+import { KITS } from '../src/lib/script/kits/index'
 
 type Manifest = { model?: { schema?: string; schemaVersion?: number } }
 

@@ -3,7 +3,7 @@
 Run the packaged Kition Effect engine against a frozen reference, then exercise its editor inside
 Kition. Regular testing needs neither the reference application, its repository, Rust, nor a network
 connection. Install repository dependencies and fetch/build the pinned `public/kits/effect-ui/`
-package first, as described in [the kit SDK guide](kit-sdk.md).
+package first, as described in [the kit module guide](kits.md).
 The separate promotional-film benchmark also uses Playwright Chromium and the external `ffprobe`/`ffmpeg`
 decoders; `test:effect:regression` itself still needs only Node and the packaged engine.
 

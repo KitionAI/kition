@@ -14,7 +14,7 @@
  * is saved as the file's format, and the replica it saved with is stored under the new file's
  * stamp), as that same replica, so its editor opens the file as it and the relay joins its room.
  */
-import { KITION_KIT_HOST, writeKitFileFromReplica, type KitSdkManifest } from '@/features/kits/public'
+import { KITION_KIT_HOST, writeKitFileFromReplica, type KitModuleManifest } from '@/features/kits/public'
 import { blobHashCandidates, decodeBlobSection, encodeBlobSection, SyncRpcError, type BlobEntry, type Role, type RoomListing, type RoomMembersResult, type SyncClient } from '@/lib/sync'
 import { createWorkspaceFolder, listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import { findCollabDocument, type CollabReplica } from './collabDocuments'
@@ -117,7 +117,7 @@ export async function ownPrincipalId(): Promise<string | null> {
 }
 
 /** What Kition knows of a kit to open its shared documents: its engine, and its file extension. */
-export type SharedKit = { engine: KitSdkManifest; extension: string }
+export type SharedKit = { engine: KitModuleManifest; extension: string }
 
 function folderExists(items: readonly WorkspaceDocumentTreeItem[], path: string) {
   return items.some((item) => item.type === 'folder' && item.path === path)

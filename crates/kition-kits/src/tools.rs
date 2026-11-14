@@ -832,7 +832,7 @@ async fn part_command(
     for command in commands {
         match kits.execute(Caller::Agent, view.kit_id, &view.document_id, command, params.clone()).await {
             Ok(executed) => return Ok(Some(executed)),
-            Err(KitError::Kit { reason: Some(kition_kit_protocol::ErrorReason::CommandNotFound), .. }) => {}
+            Err(KitError::Kit { reason: Some(kition_kit_process_protocol::ErrorReason::CommandNotFound), .. }) => {}
             Err(error) => return Err(KitToolError::from(error).context(context)),
         }
     }

@@ -1,4 +1,4 @@
-// The kit packages pinned in kits/kits.lock.json (docs/kit-sdk.md, section 4b): reading the
+// The kit packages pinned in kits/kits.lock.json (docs/kits.md, section 4b): reading the
 // lock, and checking a folder of kit packages (public/kits or dist/kits) against it.
 import fs from 'node:fs'
 import path from 'node:path'
@@ -75,12 +75,12 @@ export function kitPackageProblem(kitsDir, kit, pinned, { stamp = true } = {}) {
 }
 
 /**
- * Every difference between `kitsDir` and the lock, and every kit in kits/sdks.json the lock does
+ * Every difference between `kitsDir` and the lock, and every kit in kits/modules.json the lock does
  * not pin (except `optional` ones); empty when every kit is there as pinned.
  */
 export function kitPackageProblems(repoRoot, kitsDir) {
   const lock = readKitLock(repoRoot)
-  const { $comment: _comment, ...registry } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'sdks.json'), 'utf8'))
+  const { $comment: _comment, ...registry } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'modules.json'), 'utf8'))
   const unpinned = Object.keys(registry).filter((kit) => !lock[kit] && registry[kit].optional !== true).map((kit) => `${kit}: not pinned in kits/kits.lock.json (scripts/publish-kit.sh ${kit})`)
   return [...unpinned, ...Object.entries(lock).map(([kit, pinned]) => kitPackageProblem(kitsDir, kit, pinned)).filter(Boolean)]
 }

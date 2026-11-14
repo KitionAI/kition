@@ -4,7 +4,7 @@
  * call from an extension's worker here before it reaches the document.
  */
 import type { BatchRequest } from '../kdm'
-import type { KitCommandInfo } from '../sdk'
+import type { KitCommandInfo } from '../script'
 import { hasPermission, type Permission } from './manifest'
 import { ExtensionError } from './rpc'
 

@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-const PROTOCOL: &str = include_str!("../../../contracts/kit/kit-protocol.schema.json");
+const PROTOCOL: &str = include_str!("../../../contracts/kit/kit-process-protocol.schema.json");
 /// The `kit.json` schema (KHP's manifest plus the Kition kit platform's fields), a copy of
 /// `schemas/kit.schema.json` in the kition-sdk repository.
 const KIT: &str = include_str!("../../../contracts/kit/kit.schema.json");

@@ -8,12 +8,12 @@ storytelling, typography, pacing, asset quality, or a finished soundtrack.
 
 Both agents can use Kition's existing kit MCP endpoint, `POST /v1/mcp/kits`, or the
 `kition-kits-mcp` stdio server. Connection details belong to the person's local configuration;
-do not commit credentials or machine-specific paths. See [the kit SDK guide](kit-sdk.md).
+do not commit credentials or machine-specific paths. See [the kit module guide](kits.md).
 
 Use `effect_inspect`, `effect_commands`, `effect_run`, and `effect_check`. The same commands reach
 an open editor through the live bridge, including its undo history. With no editor open, the kit
 runs headless. Discover available command parameters from `effect_commands`; the current Effect
-command types also appear in `src/lib/sdk/kits/effect.ts` (generated; never edit it).
+command types also appear in `src/lib/script/kits/effect.ts` (generated; never edit it).
 
 The repository provides an original four-shot, 12-second production fixture:
 

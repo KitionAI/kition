@@ -3,7 +3,7 @@
 //!
 //! A kit starts on first use, headless; it serves previews and the agent (kit editors run in the
 //! page, `KitFrame`). Each kit process gets two connections: the `host` connection serves people
-//! and answers the kit's `files.*` from the workspace (Kit Host Protocol 2, section 5.1, through a
+//! and answers the kit's `files.*` from the workspace (Kit Process Protocol 2, section 5.1, through a
 //! grant session of its own, `kition_kit_host::KitFiles`), and an `agent` connection serves agent
 //! tools, so the kit itself enforces the agent's role. The kit never sees a path: the manager
 //! mints a handle for every file it names to the kit. Kits stop when the manager is dropped, which
@@ -16,9 +16,9 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use kition_kit_host::files::{FilesManifest, GrantStore};
 use kition_kit_host::{ClientError, HOST_PRINCIPAL, HostService, KitClient, KitFiles, KitProcess, LaunchOptions, file_error};
-use kition_kit_protocol::methods::{self, NotificationMethod, RequestMethod};
-use kition_kit_protocol::types::*;
-use kition_kit_protocol::{ErrorReason, PROTOCOL_VERSION};
+use kition_kit_process_protocol::methods::{self, NotificationMethod, RequestMethod};
+use kition_kit_process_protocol::types::*;
+use kition_kit_process_protocol::{ErrorReason, PROTOCOL_VERSION};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
@@ -187,7 +187,7 @@ impl RunningKit {
     pub(crate) async fn stop(&self) {
         let _ = self.host.call::<methods::Shutdown>(&Empty {}).await;
         let mut process = self.process.lock().await;
-        if process.wait_for_exit(kition_kit_protocol::launch::SHUTDOWN_TIMEOUT).await.is_none() {
+        if process.wait_for_exit(kition_kit_process_protocol::launch::SHUTDOWN_TIMEOUT).await.is_none() {
             process.kill().await;
         }
     }
@@ -373,7 +373,7 @@ impl KitManager {
         let speaks = format!("kition-kit/{PROTOCOL_VERSION}");
         if let Some(protocol) = kit.protocol.filter(|protocol| *protocol != speaks) {
             return Err(launch_error(format!(
-                "its kit.json says it speaks {protocol}, and this host speaks {speaks}: install a release built on Kit Host Protocol {PROTOCOL_VERSION}"
+                "its kit.json says it speaks {protocol}, and this host speaks {speaks}: install a release built on Kit Process Protocol {PROTOCOL_VERSION}"
             )));
         }
         let manifest = FilesManifest { create: kit.exports.iter().map(|extension| (*extension).to_owned()).collect(), ..FilesManifest::default() };

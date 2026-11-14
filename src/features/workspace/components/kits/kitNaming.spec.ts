@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import sdks from '../../../../../kits/sdks.json'
+import sdks from '../../../../../kits/modules.json'
 import { creatableKits } from './kitEditors'
 
 describe('kit identities across the workspace and engine registry', () => {

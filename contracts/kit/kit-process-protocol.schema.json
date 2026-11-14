@@ -1,0 +1,518 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/kit/kit-process-protocol.schema.json",
+  "title": "Kition Kit Process Protocol v2",
+  "description": "Parameter and result shapes for Kit Process Protocol methods, version 2: the requests clients send to a kit, and the host services (files.*) a kit sends to its host. Messages are JSON-RPC 2.0; see kition-sdk's docs/platform/reference/kit-process-protocol.md.",
+  "$defs": {
+    "fileHandle": { "type": "string", "pattern": "^fh_[A-Za-z0-9_-]{22,}$" },
+    "fileName": { "type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$" },
+    "documentId": { "type": "string", "minLength": 1 },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mimeType", "width", "height", "data"],
+      "properties": {
+        "mimeType": { "const": "image/png" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "data": { "type": "string", "contentEncoding": "base64" }
+      }
+    },
+    "emptyResult": {
+      "type": "object",
+      "additionalProperties": false
+    },
+
+    "initializeParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "token", "role", "client"],
+      "properties": {
+        "protocolVersion": { "type": "integer", "minimum": 2 },
+        "token": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "role": { "enum": ["host", "agent"] },
+        "client": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "locale": { "type": "string", "minLength": 2 },
+        "appearance": { "enum": ["light", "dark"] },
+        "hostServices": {
+          "type": "array",
+          "items": { "enum": ["files", "files.print", "links", "links.preview", "replica"] },
+          "uniqueItems": true
+        }
+      }
+    },
+    "initializeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "kit", "capabilities"],
+      "properties": {
+        "protocolVersion": { "type": "integer", "minimum": 1 },
+        "kit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "capabilities": { "$ref": "#/$defs/capabilities" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surfaces", "formats"],
+      "properties": {
+        "surfaces": {
+          "type": "array",
+          "items": { "enum": ["headless"] }
+        },
+        "formats": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["open", "save", "export"],
+          "properties": {
+            "open": { "type": "array", "items": { "type": "string" } },
+            "save": { "type": "array", "items": { "type": "string" } },
+            "export": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "features": {
+          "type": "array",
+          "description": "Optional protocol features, for example view.describe or commands.didChangeEnabled.",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_.]*$" }
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Optional platform capabilities of the executable, as the manifest's headless.capabilities lists them, for example document-text (KitText 1.0, document.text).",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" }
+        }
+      }
+    },
+    "setPreferencesParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locale": { "type": "string", "minLength": 2 },
+        "appearance": { "enum": ["light", "dark"] }
+      }
+    },
+    "cancelRequestParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": ["integer", "string"] }
+      }
+    },
+
+    "documentState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "name", "title", "format", "readOnly", "dirty", "canUndo", "canRedo", "conflict"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "name": { "$ref": "#/$defs/fileName" },
+        "title": { "type": "string" },
+        "format": { "type": "string", "minLength": 1 },
+        "readOnly": { "type": "boolean" },
+        "dirty": { "type": "boolean" },
+        "canUndo": { "type": "boolean" },
+        "canRedo": { "type": "boolean" },
+        "conflict": { "type": "boolean", "description": "The file changed since the kit read it while the document has unsaved edits." }
+      }
+    },
+    "documentOpenParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file"],
+      "properties": {
+        "file": { "$ref": "#/$defs/fileHandle" },
+        "readOnly": { "type": "boolean" },
+        "create": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format"],
+          "properties": {
+            "format": { "type": "string", "minLength": 1 },
+            "options": { "type": "object" }
+          }
+        }
+      }
+    },
+    "documentListResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documents"],
+      "properties": {
+        "documents": { "type": "array", "items": { "$ref": "#/$defs/documentState" } }
+      }
+    },
+    "documentRefParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" }
+      }
+    },
+    "documentSaveAsParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "file"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "file": { "$ref": "#/$defs/fileHandle" },
+        "format": { "type": "string", "minLength": 1 }
+      }
+    },
+    "documentExportParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "file", "format"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "file": { "$ref": "#/$defs/fileHandle" },
+        "format": { "type": "string", "minLength": 1 },
+        "options": { "type": "object" }
+      }
+    },
+    "documentWritten": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "$ref": "#/$defs/fileName" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "documentCloseParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "discardChanges": { "type": "boolean" }
+      }
+    },
+    "documentDidSaveParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "name", "version"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "name": { "$ref": "#/$defs/fileName" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "commandInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "group", "params", "mutates", "enabled"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "group": { "type": "string", "minLength": 1 },
+        "params": {
+          "type": "object",
+          "description": "JSON Schema (draft 2020-12) for commands.execute params."
+        },
+        "output": {
+          "type": "object",
+          "description": "Optional JSON Schema (draft 2020-12) for the command's result, from the engine's outputSchema (KHP A1). An MCP binding sends it as the tool's outputSchema."
+        },
+        "mutates": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "menu": {
+          "type": "array",
+          "description": "Where the command sits in the kit's menus, for example [\"Layer\", \"New\"]. A host that draws the kit's chrome builds its menus from it.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "shortcut": {
+          "type": "string",
+          "description": "The default shortcut, for example Cmd+Shift+N."
+        },
+        "keywords": {
+          "type": "array",
+          "description": "Words a command search finds the command by that its id, title and description do not say, for example the effect names effect.apply takes. Searched, not shown.",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "commandsListParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "groups": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "commandsListResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands"],
+      "properties": {
+        "commands": { "type": "array", "items": { "$ref": "#/$defs/commandInfo" } }
+      }
+    },
+    "commandsExecuteParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "command", "params", "origin"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "command": { "type": "string", "minLength": 1 },
+        "params": { "type": "object" },
+        "origin": { "enum": ["user", "agent", "system"] },
+        "originLabel": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$", "description": "With origin system: the host feature that writes, for the document's history." }
+      }
+    },
+    "commandsExecuteResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changed"],
+      "properties": {
+        "changed": { "type": "boolean" },
+        "result": {}
+      }
+    },
+    "commandsDidChangeEnabledParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "enabled", "disabled"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "enabled": { "type": "array", "items": { "type": "string" } },
+        "disabled": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "viewScreenshotParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "scope"],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "scope": { "enum": ["canvas"] },
+        "maxSize": { "type": "integer", "minimum": 16 }
+      }
+    },
+    "viewDescribeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "state"],
+      "properties": {
+        "summary": { "type": "string" },
+        "state": { "type": "object" }
+      }
+    },
+    "documentTextParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId"],
+      "description": "document.text (KitText 1.0), for a kit with the capability document-text. Read-only.",
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "limit": { "type": "integer", "minimum": 0, "description": "The most Unicode scalar values to answer; 1048576 when absent." }
+      }
+    },
+    "documentTextResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "truncated"],
+      "properties": {
+        "text": { "type": "string", "description": "The document's words in reading order, plain text, blocks separated by newlines; at most limit Unicode scalar values." },
+        "truncated": { "type": "boolean", "description": "Whether the document has more words than text holds." },
+        "parts": {
+          "type": "array",
+          "description": "Labelled ranges of text (pages, slides, layers), in order and not overlapping, counted in Unicode scalar values; end is exclusive.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "start", "end"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "start": { "type": "integer", "minimum": 0 },
+              "end": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+
+    "progressParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token", "title", "done"],
+      "properties": {
+        "token": { "type": ["integer", "string"] },
+        "title": { "type": "string" },
+        "fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "done": { "type": "boolean" }
+      }
+    },
+    "logParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "message"],
+      "properties": {
+        "level": { "enum": ["debug", "info", "warn", "error"] },
+        "message": { "type": "string" }
+      }
+    },
+    "fileStat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle", "name", "kind", "version", "rights"],
+      "properties": {
+        "handle": { "$ref": "#/$defs/fileHandle" },
+        "name": { "$ref": "#/$defs/fileName" },
+        "kind": { "enum": ["file", "folder"] },
+        "size": { "type": "integer", "minimum": 0 },
+        "mime": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] },
+        "rights": { "type": "array", "items": { "enum": ["read", "create", "write"] }, "uniqueItems": true }
+      }
+    },
+    "fileRefParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle"],
+      "properties": {
+        "handle": { "$ref": "#/$defs/fileHandle" }
+      }
+    },
+    "filesReadParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle"],
+      "properties": {
+        "handle": { "$ref": "#/$defs/fileHandle" },
+        "offset": { "type": "integer", "minimum": 0 },
+        "length": { "type": "integer", "minimum": 0, "maximum": 8388608 }
+      }
+    },
+    "filesReadResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data", "version", "size"],
+      "properties": {
+        "data": { "type": "string", "contentEncoding": "base64" },
+        "version": { "type": "string", "minLength": 1 },
+        "size": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "filesListResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files"],
+      "properties": {
+        "files": { "type": "array", "items": { "$ref": "#/$defs/fileStat" } }
+      }
+    },
+    "filesWriteParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle", "data", "offset"],
+      "properties": {
+        "handle": { "$ref": "#/$defs/fileHandle" },
+        "data": { "type": "string", "contentEncoding": "base64" },
+        "offset": { "type": "integer", "minimum": 0 },
+        "final": { "type": "boolean" },
+        "expected": { "type": "string", "minLength": 1 }
+      }
+    },
+    "filesWriteResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "filesCreateParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suggestedName"],
+      "properties": {
+        "suggestedName": { "type": "string", "minLength": 1 },
+        "mime": { "type": "string", "minLength": 1 },
+        "folder": { "$ref": "#/$defs/fileHandle" },
+        "documentId": { "$ref": "#/$defs/documentId" }
+      }
+    },
+    "filesResolveParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["link"],
+      "anyOf": [{ "required": ["documentId"] }, { "required": ["file"] }],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/documentId" },
+        "file": { "$ref": "#/$defs/fileHandle" },
+        "link": { "type": "string", "minLength": 1 }
+      }
+    },
+    "filesReleaseParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handles"],
+      "properties": {
+        "handles": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "errorData": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "enum": [
+            "unauthorized",
+            "not_initialized",
+            "role_forbidden",
+            "unsupported_protocol",
+            "document_not_found",
+            "document_dirty",
+            "unsupported_format",
+            "io_error",
+            "file_not_granted",
+            "file_conflict",
+            "file_already_committed",
+            "file_unsaved_edits",
+            "file_not_allowed",
+            "file_quota",
+            "command_not_found",
+            "command_disabled",
+            "invalid_params",
+            "request_cancelled"
+          ]
+        },
+        "detail": { "type": "string" },
+        "errors": {
+          "type": "array",
+          "description": "invalid_params: one entry per wrong parameter.",
+          "items": {
+            "type": "object",
+            "required": ["path", "message"],
+            "properties": {
+              "path": { "type": "string", "description": "A JSON Pointer into the command's params, for example /fields/0/type." },
+              "message": { "type": "string" },
+              "expected": { "type": "string", "description": "What the command takes there, in words." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

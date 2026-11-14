@@ -1,5 +1,5 @@
 import type { KitIconId } from '@/components/KitIcon'
-import type { EmbeddedKit, KitSdkManifest } from '@/features/kits/public'
+import type { EmbeddedKit, KitModuleManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { KIT_CREATE_EXTENSION } from './kitFormats'
 
@@ -16,14 +16,14 @@ export type KitEditorProps = {
  * src-tauri/src/workspace/formats.rs) and the kit's package, which release builds always
  * include (`scripts/build-kits.sh`). The package holds the kit's own editor, shown in an
  * iframe (standard 6.1), and its engine, which Kition also uses to make new files.
- * Adding a kit adds one entry here; see docs/kit-sdk.md.
+ * Adding a kit adds one entry here; see docs/kits.md.
  */
 export type KitEditorEntry = {
   format: WorkspaceDocumentFormat
   /** The kit's package under `public/kits/<dir>/`. */
   embedded: EmbeddedKit
   /** The kit's engine inside its package. */
-  engine: KitSdkManifest
+  engine: KitModuleManifest
   /** The `<key>Kit` strings and the kit icon. */
   key: string
   icon: KitIconId

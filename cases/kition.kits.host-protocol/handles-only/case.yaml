@@ -2,7 +2,7 @@ format: 1
 id: kition.kits.host-protocol/handles-only
 feature: kition.kits.host-protocol
 intent: >-
-  Kition hosts a headless kit on Kit Host Protocol 2 and checks it with its conformance suite: the
+  Kition hosts a headless kit on Kit Process Protocol 2 and checks it with its conformance suite: the
   kit.json must say kition-kit/2, the host names files to the kit only by handles it minted and
   serves files.* from the workspace, a document opens by handle and saves through files.write with
   the version it read, a handle no host granted is refused file_not_granted for the host and the

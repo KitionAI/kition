@@ -1,0 +1,285 @@
+{
+  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-module.mjs checks each one (docs/kits.md). `runtime: ts-worker` is a TypeScript engine, which scripts/check-kit-module.mjs leaves to check-manifest --module; `optional: true` may be left out of kits/kits.lock.json (Kition does not ship it until it is pinned).",
+  "photo": {
+    "repository": "KitionAI/kition-photo",
+    "crate": "kition-photo-sdk",
+    "module": "kition_photo_sdk",
+    "class": "PhotoDocument",
+    "name": "fixture.psd",
+    "edit": {
+      "command": "paint.stroke",
+      "params": {
+        "points": [
+          [
+            4,
+            4,
+            1
+          ],
+          [
+            30,
+            20,
+            1
+          ]
+        ],
+        "size": 6,
+        "color": "#ff0000"
+      }
+    }
+  },
+  "film": {
+    "repository": "KitionAI/kition-film",
+    "crate": "kition-film-sdk",
+    "module": "kition_film_sdk",
+    "class": "FilmDocument",
+    "name": "Edit.kfilm",
+    "edit": [
+      {
+        "command": "file.newColorMatte",
+        "params": {
+          "color": "#ff0000",
+          "seconds": 2
+        }
+      },
+      {
+        "command": "timeline.place",
+        "params": {
+          "item": "$0.item",
+          "track": "V1",
+          "seconds": 0
+        }
+      }
+    ]
+  },
+  "vector": {
+    "repository": "KitionAI/kition-vector",
+    "crate": "kition-vector-sdk",
+    "module": "kition_vector_sdk",
+    "class": "VectorDocument",
+    "name": "Drawing.kvector",
+    "edit": {
+      "command": "shape.rectangle",
+      "params": {
+        "x": 20,
+        "y": 10,
+        "width": 50,
+        "height": 30
+      }
+    }
+  },
+  "effect": {
+    "repository": "KitionAI/kition-effect",
+    "crate": "kition-effect-sdk",
+    "module": "kition_effect_sdk",
+    "class": "EffectDocument",
+    "name": "Motion.keffect",
+    "edit": {
+      "command": "layer.newSolid",
+      "params": {
+        "name": "Red",
+        "color": "#ff0000"
+      }
+    }
+  },
+  "design": {
+    "repository": "KitionAI/kition-design",
+    "crate": "kition-design-sdk",
+    "module": "kition_design_sdk",
+    "class": "DesignDocument",
+    "name": "Flyer.kdesign",
+    "edit": [
+      {
+        "command": "frame.create",
+        "params": {
+          "rect": [
+            10,
+            10,
+            40,
+            30
+          ],
+          "content": "unassigned"
+        }
+      },
+      {
+        "command": "object.fill",
+        "params": {
+          "swatch": "Black",
+          "ids": [
+            "$0.id"
+          ]
+        }
+      }
+    ]
+  },
+  "cad": {
+    "repository": "KitionAI/kition-cad",
+    "crate": "kition-cad-sdk",
+    "module": "kition_cad_sdk",
+    "class": "CadDocument",
+    "name": "Plan.dxf",
+    "edit": {
+      "command": "circle",
+      "params": {
+        "center": [
+          200,
+          150
+        ],
+        "radius": 40
+      }
+    }
+  },
+  "slide": {
+    "repository": "KitionAI/kition-slide",
+    "crate": "kition-slide-sdk",
+    "module": "kition_slide_sdk",
+    "class": "SlideDocument",
+    "name": "Slide.kslide",
+    "edit": {
+      "command": "shape.insert",
+      "params": {
+        "preset": "ellipse",
+        "rect": [
+          100,
+          100,
+          200,
+          120
+        ]
+      }
+    }
+  },
+  "doc": {
+    "repository": "KitionAI/kition-doc",
+    "crate": "kition-doc-sdk",
+    "module": "kition_doc_sdk",
+    "class": "DocDocument",
+    "name": "Letter.docx",
+    "edit": {
+      "command": "text.insert",
+      "params": {
+        "text": "Hello"
+      }
+    }
+  },
+  "sheet": {
+    "repository": "KitionAI/kition-sheet",
+    "crate": "kition-sheet-sdk",
+    "module": "kition_sheet_sdk",
+    "class": "SheetDocument",
+    "name": "Budget.xlsx",
+    "edit": {
+      "command": "cell.set",
+      "params": {
+        "cell": "C2",
+        "input": "99"
+      }
+    }
+  },
+  "pdf": {
+    "repository": "KitionAI/kition-pdf",
+    "crate": "kition-pdf-sdk",
+    "module": "kition_pdf_sdk",
+    "class": "PdfDocument",
+    "name": "Report.pdf",
+    "edit": {
+      "command": "page_rotate",
+      "params": {
+        "degrees": 90,
+        "pages": [
+          1
+        ]
+      }
+    }
+  },
+  "table": {
+    "repository": "KitionAI/kition-table",
+    "crate": "kition-table-sdk",
+    "module": "kition_table_sdk",
+    "class": "TableDocument",
+    "name": "Tasks.ktable",
+    "edit": {
+      "command": "table.records.create",
+      "params": {
+        "tableId": 1,
+        "values": {
+          "title": "Write the plan"
+        }
+      }
+    }
+  },
+  "board": {
+    "repository": "KitionAI/kition-board",
+    "crate": "kition-board-sdk",
+    "module": "kition_board_sdk",
+    "class": "BoardDocument",
+    "name": "Plan.kboard",
+    "edit": {
+      "command": "element.create",
+      "params": {
+        "elements": [
+          {
+            "kind": "shape",
+            "position": {
+              "x": 40,
+              "y": 40
+            },
+            "size": {
+              "w": 160,
+              "h": 100
+            }
+          }
+        ]
+      }
+    }
+  },
+  "note": {
+    "repository": "KitionAI/kition-note",
+    "crate": "kition-note-sdk",
+    "module": "kition_note_sdk",
+    "class": "NoteDocument",
+    "name": "Notes.md",
+    "text": true,
+    "edit": {
+      "command": "text.insert",
+      "params": {
+        "at": 0,
+        "text": "# Notes\n"
+      }
+    }
+  },
+  "html": {
+    "repository": "KitionAI/kition-html",
+    "crate": "kition-html-sdk",
+    "module": "kition_html_sdk",
+    "class": "HtmlDocument",
+    "name": "Page.html",
+    "optional": true,
+    "edit": {
+      "command": "html.setSource",
+      "params": {
+        "source": "<!doctype html><html><body style=\"margin:0;background:#5645d4\">Hello</body></html>"
+      }
+    }
+  },
+  "cube": {
+    "repository": "KitionAI/kition-cube",
+    "crate": "kition-cube-sdk",
+    "module": "kition_cube_sdk",
+    "class": "CubeDocument",
+    "name": "Room.kcube",
+    "edit": {
+      "command": "add.uvSphere",
+      "params": { "location": [2, 0, 1], "radius": 0.5 }
+    }
+  },
+  "fig": {
+    "repository": "KitionAI/kition-fig",
+    "crate": "kition-fig-sdk",
+    "module": "kition_fig_sdk",
+    "class": "FigDocument",
+    "name": "Screen.kfig",
+    "optional": true,
+    "edit": {
+      "command": "shape.rectangle",
+      "params": { "x": 0, "y": 0, "width": 40, "height": 40 }
+    }
+  }
+}

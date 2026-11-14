@@ -62,7 +62,7 @@
       "required": ["serviceVersion", "protocolVersion", "workspace", "kits"],
       "properties": {
         "serviceVersion": { "const": 1 },
-        "protocolVersion": { "type": "integer", "description": "The Kit Host Protocol the kits speak." },
+        "protocolVersion": { "type": "integer", "description": "The Kit Process Protocol the kits speak." },
         "workspace": { "type": "boolean" },
         "kits": { "type": "array", "items": { "$ref": "#/$defs/kit" } }
       }

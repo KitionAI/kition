@@ -142,7 +142,7 @@ module.exports = {
     },
     {
       // Object-model typings generated from each kit's schema (scripts/generate-kit.mjs in kition-sdk).
-      files: ['src/lib/sdk/kits/**'],
+      files: ['src/lib/script/kits/**'],
       rules: { 'max-lines': 'off' },
     },
     {

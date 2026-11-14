@@ -7,7 +7,7 @@ package inside the app (2026-10-15); native kit surfaces (section 6), the
 signed kit index and per-platform downloads were removed (2026-10-28), so kit
 processes run only headless and kits are pinned in `kits/kits.lock.json`.
 Sections 1, 3.3, 5, 7, and 10.1 were rewritten to that model on 2026-10-31. See
-[kit-sdk.md](kit-sdk.md).
+[kits.md](kits.md).
 
 Kition is a workspace for documents, data, media, and an AI agent that works
 across all of them. This document defines how professional editors (images,
@@ -17,7 +17,7 @@ A kit's engine is compiled to WebAssembly and runs in a Web Worker in the page;
 the kit draws its own editor, which Kition shows in an iframe (`KitFrame`, Kit
 UI protocol). A kit's native executable runs only `headless`, for the agent.
 
-The wire contract is specified in the Kition kit platform (kition-sdk `docs/platform/reference/kit-protocol.md`) and the
+The wire contract is specified in the Kition kit platform (kition-sdk `docs/platform/reference/kit-process-protocol.md`) and the
 machine-readable schemas live in [`contracts/kit/`](../contracts/kit/).
 
 ## 1. Goals
@@ -120,7 +120,7 @@ other client. Kits depend only on the Kit Protocol.
 
 | Crate | Purpose |
 | --- | --- |
-| `kition-kit-protocol` | Message types mirroring `contracts/kit/`, error codes, launch constants, line framing, and the socket or named pipe transport. No async runtime unless the `tokio` feature is enabled, so thread-based kits can use it |
+| `kition-kit-process-protocol` | Message types mirroring `contracts/kit/`, error codes, launch constants, line framing, and the socket or named pipe transport. No async runtime unless the `tokio` feature is enabled, so thread-based kits can use it |
 | `kition-kit-host` | Launching a kit with a private endpoint and token, waiting for `ready`, and a request client with timeouts and cancellation. Kits run only headless |
 | `kition-kit-mock` | A headless kit for `.mocktext` documents, used to test the host and the suite |
 | `kition-kit-conformance` | The conformance suite (protocol section 14), as a library and as the `kition-kit-conformance` command that kit repositories run in CI |
@@ -142,8 +142,8 @@ way:
 
 Kition has no editors of its own for these formats: Markdown notes, tables,
 boards, and slides are kits like the others. Registration lives in
-`src/features/workspace/components/kits/kitEditors.ts` and `kits/sdks.json`;
-see [kit-sdk.md](kit-sdk.md).
+`src/features/workspace/components/kits/kitEditors.ts` and `kits/modules.json`;
+see [kits.md](kits.md).
 
 ## 6. Surfaces: How A Kit Appears Inside Kition
 
@@ -152,7 +152,7 @@ see [kit-sdk.md](kit-sdk.md).
 > own editor in an iframe (`KitFrame`, Kit UI protocol). The `embedded`
 > overlay window was prototyped for `kit.photo` and rejected in the real
 > desktop client: it felt like a separate program, doubled the canvas, and
-> added scroll bars. How to build a kit editor: [kit-sdk.md](kit-sdk.md).
+> added scroll bars. How to build a kit editor: [kits.md](kits.md).
 >
 > **2026-10-28:** the native surfaces are gone from the protocol and the
 > runtime (`embedded`, `window`, the `surface.*` methods, embedding
@@ -201,7 +201,7 @@ kition-<kit>/                    one kit repository, the same layout for every k
   crates/media/<name>            audio and video codecs and containers
   crates/render/<name>           rendering, rasterising, printing
   crates/support/<name>          geometry, color, fonts, text, test helpers
-  bindings/wasm/                 kition-<kit>-sdk: the in-page engine (KitDocument)
+  bindings/wasm/                 kition-<kit>-kit: the in-page engine (KitDocument)
   bindings/headless/             kition-<kit>: the agent's headless executable
   web/                           the kit's editor (Kit UI protocol)
   kit.json                       manifest (KHP)
@@ -215,8 +215,8 @@ developer machine with `scripts/publish-kit.sh <kit>` in this repository: it
 builds the package from the kit's pushed `main`, uploads it to a
 `package-v<version>` Release of the kit's repository, and pins it in
 `kits/kits.lock.json`. Kition's release workflow fetches the pinned packages
-and checks every engine against the Kit SDK contract
-([kit-sdk.md](kit-sdk.md), section 4b). Headless executables pass the Kit
+and checks every engine against the kit engine contract
+([kits.md](kits.md), section 4b). Headless executables pass the Kit
 Protocol conformance suite:
 `kition-kit-conformance --kit <executable> --manifest kit.json --fixture
 <document> --edit-command <command> --edit-params '<json>'`.
@@ -250,11 +250,11 @@ accepts only first-party kits:
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
 | 1 | `KitionAI/kition-photo` repository: `kition-kit-server`, `apps/kition-photo` with a `headless` backend over the upstream automation engine, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks) |
 | 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.kphoto`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab |
-| 3a | In-page editing with `kit.photo` ([kit-sdk.md](kit-sdk.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
+| 3a | In-page editing with `kit.photo` ([kits.md](kits.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
 | 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a; its code removed 2026-10-28 |
 | 4 (dropped) | Distribution: downloaded native kits through a signed index | Superseded: kits ship inside the app, pinned in `kits/kits.lock.json`; the index, its schema and types were removed 2026-10-28 |
 | 5 | Image editing inside documents over the headless engine (crop and adjust) | Image edits round-trip from documents |
-| 6 | Additional kits (PDF, Film, Vector, and the rest of section 5), each built on the Kit SDK template | Each passes conformance, its SDK e2e, and the performance budget in [kit-sdk.md](kit-sdk.md) |
+| 6 | Additional kits (PDF, Film, Vector, and the rest of section 5), each built on the Kition SDK template | Each passes conformance, its SDK e2e, and the performance budget in [kits.md](kits.md) |
 
 ### 10.1 Running a headless kit from its repository
 
@@ -284,6 +284,6 @@ client.
 | Upstream instability (alpha, high churn) | Kition does not merge upstream; each kit is its own code, gated by its tests and conformance |
 | Large command catalogs overwhelm the agent | Tool groups and per-turn filtering |
 | Kit crashes | The engine runs in a worker and the editor in an iframe; a headless kit runs in its own process, and the host restarts it and reopens documents from disk |
-| Bundle size | Per-kit performance budgets in [kit-sdk.md](kit-sdk.md) |
+| Bundle size | Per-kit performance budgets in [kits.md](kits.md) |
 | Font licensing for bundled fonts | Review each font package before redistribution |
-| Protocol drift between Kition and kit repositories | Decided 2026-10-10: kits do not link `kition-kit-protocol`; every kit release must pass the conformance suite built from this repository |
+| Protocol drift between Kition and kit repositories | Decided 2026-10-10: kits do not link `kition-kit-process-protocol`; every kit release must pass the conformance suite built from this repository |

@@ -11,7 +11,7 @@ import {
   type KitReplicaMeta,
 } from '@/services/desktop'
 import { resolveKitFilesRootURL, resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
-import { stampFromHeaders, type KitHost } from '../sdk/kitHost'
+import { stampFromHeaders, type KitHost } from '../engine/kitHost'
 import type { StoredReplica } from '../host/mountKit'
 import { saveFailureText } from './kitFailures'
 import { runtimeFetch } from '@/services/runtimeAuth'

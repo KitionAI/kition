@@ -15,16 +15,16 @@ module.exports = {
       name: 'no-circular',
       severity: 'error',
       comment: 'Import cycle. Move the shared piece into a leaf module (src/lib or <feature>/lib) that neither side re-imports.',
-      from: { pathNot: '^src/lib/sdk/' },
+      from: { pathNot: '^src/lib/script/' },
       to: { circular: true },
     },
     {
-      // src/lib/sdk is copied verbatim from kition-sdk (scripts/sync-kit-host.mjs), where one of
+      // src/lib/script is copied verbatim from kition-sdk (scripts/sync-kit-host.mjs), where one of
       // its modules imports a type from the module that imports it. Runtime cycles still fail.
       name: 'no-circular-copied-sdk',
       severity: 'error',
-      comment: 'Import cycle in the object model copy. Fix it in kition-sdk packages/sdk and sync again.',
-      from: { path: '^src/lib/sdk/' },
+      comment: 'Import cycle in the object model copy. Fix it in kition-sdk packages/script and sync again.',
+      from: { path: '^src/lib/script/' },
       to: { circular: true, viaOnly: { dependencyTypesNot: ['type-only'] } },
     },
     {
@@ -38,12 +38,12 @@ module.exports = {
       },
     },
     {
-      name: 'kit-sdk-core-is-portable',
+      name: 'kit-module-core-is-portable',
       comment:
-        'src/features/kits/sdk is the portable core of the open Kit SDK (docs/kit-sdk.md): it may use npm packages and itself, never the rest of Kition.',
+        'src/features/kits/engine is the portable core of the open Kition SDK (docs/kits.md): it may use npm packages and itself, never the rest of Kition.',
       severity: 'error',
-      from: { path: '^src/features/kits/sdk/' },
-      to: { path: '^src/', pathNot: '^src/features/kits/sdk/' },
+      from: { path: '^src/features/kits/engine/' },
+      to: { path: '^src/', pathNot: '^src/features/kits/engine/' },
     },
     {
       name: 'packages-import-nothing-from-the-app',

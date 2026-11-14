@@ -1,5 +1,5 @@
 // Copied from kition-sdk crates/kition-kit-host/src/kit_files.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! The host's `files.*` for one kit process (Kit Host Protocol section 5.1, `KitFiles 1.1` FA12):
+//! The host's `files.*` for one kit process (Kit Process Protocol section 5.1, `KitFiles 1.1` FA12):
 //! a [`GrantStore`] session for the host connection, the handles the host mints for the documents
 //! it names, and the answers to the kit's requests. A host written in Rust serves its kits with
 //! it; a host in another language runs `kition-kits serve`, which does.
@@ -7,8 +7,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use kition_kit_protocol::types::{FileRef, FilesCreateParams, FilesReadParams, FilesReleaseParams, FilesResolveParams, FilesWriteParams};
-use kition_kit_protocol::{ErrorReason, RpcError, base64};
+use kition_kit_process_protocol::types::{FileRef, FilesCreateParams, FilesReadParams, FilesReleaseParams, FilesResolveParams, FilesWriteParams};
+use kition_kit_process_protocol::{ErrorReason, RpcError, base64};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
@@ -37,7 +37,7 @@ impl Drop for KitFiles {
     }
 }
 
-/// A grant refusal as the Kit Host Protocol error with its code (`KitFiles 1.1` section 10).
+/// A grant refusal as the Kit Process Protocol error with its code (`KitFiles 1.1` section 10).
 pub fn file_error(error: &FileError) -> RpcError {
     let reason = match error {
         FileError::NotGranted(_) => ErrorReason::FileNotGranted,
@@ -117,7 +117,7 @@ impl KitFiles {
 
 impl HostService for KitFiles {
     fn services(&self) -> Vec<String> {
-        vec![kition_kit_protocol::HOST_SERVICE_FILES.to_owned()]
+        vec![kition_kit_process_protocol::HOST_SERVICE_FILES.to_owned()]
     }
 
     fn serve(&self, method: &str, request: Value) -> Result<Value, RpcError> {

@@ -11,7 +11,7 @@ type EngineDocument = { save(): Uint8Array; inspect(): string; free(): void }
 type EngineClass = { create(name: string, width: number, height: number): EngineDocument; open(name: string, bytes: Uint8Array): EngineDocument }
 type Answer = { result?: Record<string, any>; error?: { code: number; message: string; data?: Record<string, unknown> } }
 
-const registry = JSON.parse(readFileSync('kits/sdks.json', 'utf8')) as Record<string, Entry>
+const registry = JSON.parse(readFileSync('kits/modules.json', 'utf8')) as Record<string, Entry>
 
 function result(answer: Answer) {
   expect(answer.error, JSON.stringify(answer)).toBeUndefined()
