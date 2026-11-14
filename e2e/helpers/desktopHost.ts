@@ -51,7 +51,7 @@ export type DesktopHost = {
 
 const editable = /\.(md|markdown)$/i
 const textual = /\.(md|markdown|txt|csv|tsv|json|html|htm)$/i
-const supported = /\.(md|markdown|ktable|kboard|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kfilm|kvector|keffect|kdesign|dxf|kcube|kfig|kslide|mp4|mov|webm|mp3|wav|m4a)$/i
+const supported = /\.(md|markdown|ktable|kboard|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|kphoto|kfilm|kvector|kmotion|klayout|dxf|kscene|kdesign|kslide|mp4|mov|webm|mp3|wav|m4a)$/i
 
 function formatOf(file: string) {
   const extension = path.extname(file).toLowerCase()
@@ -60,7 +60,7 @@ function formatOf(file: string) {
     '.docx': 'docx', '.xlsx': 'xlsx', '.xls': 'xlsx', '.pptx': 'pptx', '.ppt': 'pptx', '.pdf': 'pdf',
     '.csv': 'csv', '.tsv': 'csv', '.json': 'json', '.txt': 'text', '.html': 'html', '.htm': 'html',
     '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image', '.webp': 'image', '.svg': 'image',
-    '.psd': 'photo', '.psb': 'photo', '.kphoto': 'photo', '.kfilm': 'film', '.kvector': 'vector', '.keffect': 'effect', '.kdesign': 'design', '.dxf': 'cad', '.kcube': 'cube', '.kfig': 'fig', '.kslide': 'slide',
+    '.psd': 'photo', '.psb': 'photo', '.kphoto': 'photo', '.kfilm': 'film', '.kvector': 'vector', '.kmotion': 'motion', '.klayout': 'layout', '.dxf': 'cad', '.kscene': 'scene', '.kdesign': 'design', '.kslide': 'slide',
     '.mp4': 'video', '.mov': 'video', '.webm': 'video', '.mp3': 'audio', '.wav': 'audio', '.m4a': 'audio',
   }
   return formats[extension] || 'binary'
@@ -170,7 +170,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
   }
 
   function checkRoot(request: Record<string, unknown>) {
-    if (request.expected_root && request.expected_root !== activeRoot) throw new Error('DESIGN_WORKSPACE_CHANGED')
+    if (request.expected_root && request.expected_root !== activeRoot) throw new Error('LAYOUT_WORKSPACE_CHANGED')
   }
 
   async function uniqueName(folder: string, requested: string, siblingFolder: boolean) {
@@ -337,7 +337,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     },
     list_workspace_documents: () => list(),
     read_workspace_image: async ({ request }) => {
-      if (request?.expected_root !== activeRoot) throw new Error('DESIGN_WORKSPACE_CHANGED')
+      if (request?.expected_root !== activeRoot) throw new Error('LAYOUT_WORKSPACE_CHANGED')
       const { absolute, relative } = resolve(request?.path)
       const mime = ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' } as Record<string, string>)[path.extname(relative).toLowerCase()]
       if (!mime) throw new Error('Unsupported image format')
@@ -363,7 +363,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       if (!editable.test(relative)) throw new Error('only editable workspace documents can be saved as text')
       if (request && 'expected_content' in request && typeof request.expected_content === 'string') {
         const current = await fs.readFile(absolute, 'utf8').catch(() => null)
-        if (current !== request.expected_content) throw new Error('DESIGN_SAVE_CONFLICT')
+        if (current !== request.expected_content) throw new Error('LAYOUT_SAVE_CONFLICT')
       }
       await fs.mkdir(path.dirname(absolute), { recursive: true })
       await fs.writeFile(absolute, String(request?.content ?? ''))

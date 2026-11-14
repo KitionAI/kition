@@ -67,7 +67,7 @@ features:
       - scripts/lib/kitParameterSchema.mjs
       - scripts/lib/kitParameterSchema.spec.ts
     cases:
-      - kition.agent.kit-adaptation/design
+      - kition.agent.kit-adaptation/layout
       - kition.agent.kit-adaptation/note
       - kition.agent.kit-adaptation/all-kits
       - regressions/issue-agent-file-schema
@@ -176,9 +176,9 @@ features:
       - crates/kition-kits/src/tools/export.rs
       - crates/kition-kits/src/tools.rs
       - crates/kition-kits/src/manager.rs
-    gap: Only Fig declares an agent export so far; Cube and the other kits with exports do not offer `<prefix>_export` yet.
+    gap: Only Design declares an agent export so far; Scene and the other kits with exports do not offer `<prefix>_export` yet.
     cases:
-      - kition.agent.kit-export/fig-formats
+      - kition.agent.kit-export/design-formats
     since: "2026-10-28"
   - id: kition.agent.kit-preview
     title: The agent previews a part or a diagnostic's target with the kit's own render command (KHP A39)
@@ -190,7 +190,7 @@ features:
       - crates/kition-kits/src/tools.rs
       - crates/kition-kits/src/manager.rs
     cases:
-      - kition.agent.kit-preview/fig-target
+      - kition.agent.kit-preview/design-target
     since: "2026-10-28"
   - id: kition.kit-protocol.command-output
     title: A kit command may declare the shape of its result (`output`, KHP A1)
@@ -258,25 +258,25 @@ features:
       - crates/kition-kits/src/manager.rs
       - src/features/kits/kition/kitBridgeModel.ts
       - src/features/kits/kition/kitBridge.ts
-    gap: Through the headless kit a Fig batch's model ops arrive as a collaborator's changes (kition-sdk `session::model::Exchange`), so the agent's undo takes back only its commands, not its renames.
+    gap: Through the headless kit a Design batch's model ops arrive as a collaborator's changes (kition-sdk `session::model::Exchange`), so the agent's undo takes back only its commands, not its renames.
     cases:
-      - kition.agent.kit-object-model/fig-headless
-      - kition.agent.kit-object-model/fig-open-editor
+      - kition.agent.kit-object-model/design-headless
+      - kition.agent.kit-object-model/design-open-editor
       - regressions/issue-bridge-model-schema
-      - regressions/issue-agent-design-schema
-      - regressions/issue-fig-schema-version
+      - regressions/issue-agent-layout-schema
+      - regressions/issue-design-schema-version
     since: "2026-10-28"
-  - id: kition.kit-collab.fig
-    title: People co-edit a Fig design live and across going offline (engine contract 2), and its replica is kept in Kition's store
+  - id: kition.kit-collab.design
+    title: People co-edit a design live and across going offline (engine contract 2), and its replica is kept in Kition's store
     direction: [collab]
     priority: P1
     status: has
     paths:
-      - e2e/collab-fig.spec.ts
+      - e2e/collab-design.spec.ts
       - src/features/kits/kition/KitFrame.tsx
       - src/lib/sync/*.ts
     cases:
-      - kition.kit-collab.fig/live-and-offline
+      - kition.kit-collab.design/live-and-offline
     since: "2026-10-28"
   - id: kition.extensions.kit-scripts
     title: A workspace script edits the open kit document through the object model of the kit's registered schema (`src/lib/script/kits/`)
@@ -295,7 +295,7 @@ features:
       - src/features/kits/kition/kitConnections.ts
       - src/features/kits/kition/kitConnections.spec.ts
     cases:
-      - kition.extensions.kit-scripts/fig-script
+      - kition.extensions.kit-scripts/design-script
       - regressions/issue-release-sdk-sync
       - regressions/issue-release-extension-palette
       - regressions/issue-release-active-kit-palette
@@ -310,15 +310,15 @@ features:
       - src/features/kits/kition/WorkspaceFilePicker.tsx
       - src/features/kits/host/mountKit.ts
       - src/features/kits/host/protocol.ts
-      - e2e/fig-embedded.spec.ts
+      - e2e/design-embedded.spec.ts
       - crates/kition-kits/tests/sdk_kits.rs
-    gap: Kition sends no `document/fileChanged`-style notice for a linked file; the kit watches its stamp (Fig every 2 seconds). Only Fig's Libraries view asks for `links/pick` so far.
+    gap: Kition sends no `document/fileChanged`-style notice for a linked file; the kit watches its stamp (Design every 2 seconds). Only Design's Libraries view asks for `links/pick` so far.
     cases:
-      - kition.kit-links.pick-link/fig-library
-      - kition.kit-links.pick-link/fig-library-webkit
-      - kition.kit-links.pick-link/fig-library-headless
-      - kition.kit-links.pick-link/fig-library-styles
-      - kition.kit-links.pick-link/fig-library-styles-webkit
+      - kition.kit-links.pick-link/design-library
+      - kition.kit-links.pick-link/design-library-webkit
+      - kition.kit-links.pick-link/design-library-headless
+      - kition.kit-links.pick-link/design-library-styles
+      - kition.kit-links.pick-link/design-library-styles-webkit
       - kition.kit-links.pick-link/picker-scope
     since: "2026-10-28"
   - id: kition.platform.open-source-notices

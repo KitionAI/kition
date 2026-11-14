@@ -7,11 +7,11 @@
       "photo": "Photo",
       "film": "Film",
       "vector": "Vector",
-      "effect": "Effect",
-      "design": "Design",
+      "motion": "Motion",
+      "layout": "Layout",
       "cad": "CAD",
-      "cube": "Куб",
-      "fig": "Fig",
+      "scene": "Scene",
+      "design": "Design",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -291,25 +291,25 @@
     "unavailableTitle": "Редактирование Vector недоступно в этой сборке",
     "unavailableBody": "Файлы Vector открываются в Kition, когда в сборку включён движок Vector."
   },
-  "effectKit": {
-    "unavailableTitle": "Редактирование Effect недоступно в этой сборке",
-    "unavailableBody": "Файлы Effect открываются в Kition, когда в сборку включён движок Effect."
+  "motionKit": {
+    "unavailableTitle": "Редактирование Motion недоступно в этой сборке",
+    "unavailableBody": "Файлы Motion открываются в Kition, когда в сборку включён движок Motion."
   },
-  "designKit": {
-    "unavailableTitle": "Редактирование Design недоступно в этой сборке",
-    "unavailableBody": "Файлы Design открываются в Kition, когда в сборку включён движок Design."
+  "layoutKit": {
+    "unavailableTitle": "Редактирование Layout недоступно в этой сборке",
+    "unavailableBody": "Файлы Layout открываются в Kition, когда в сборку включён движок Layout."
   },
   "cadKit": {
     "unavailableTitle": "Редактирование CAD недоступно в этой сборке",
     "unavailableBody": "Файлы CAD открываются в Kition, когда в сборку включён движок CAD."
   },
-  "cubeKit": {
-    "unavailableTitle": "Редактирование Куба недоступно в этой сборке",
-    "unavailableBody": "Файлы Куба открываются в Kition, когда в сборку включён движок Cube."
+  "sceneKit": {
+    "unavailableTitle": "Редактирование Scene недоступно в этой сборке",
+    "unavailableBody": "Файлы Scene открываются в Kition, когда в сборку включён движок Scene."
   },
-  "figKit": {
-    "unavailableTitle": "Редактирование Fig недоступно в этой сборке",
-    "unavailableBody": "Файлы Fig открываются в Kition, когда в сборку включён движок Fig."
+  "designKit": {
+    "unavailableTitle": "Редактирование Design недоступно в этой сборке",
+    "unavailableBody": "Файлы Design открываются в Kition, когда в сборку включён движок Design."
   },
   "slideKit": {
     "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
@@ -423,14 +423,14 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "cube": "Куб",
-      "fig": "Fig",
       "design": "Design",
       "document": "Document",
-      "effect": "Effect",
       "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
       "pdf": "PDF",
       "photo": "Photo",
+      "scene": "Scene",
       "sheet": "Sheet",
       "slide": "Slide",
       "table": "Table",

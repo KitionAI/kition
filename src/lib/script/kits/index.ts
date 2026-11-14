@@ -5,10 +5,10 @@
 import type { KitDescriptor } from '../kits'
 import { boardKit } from './board'
 import { cadKit } from './cad'
-import { cubeKit } from './cube'
+import { sceneKit } from './scene'
+import { layoutKit } from './layout'
+import { motionKit } from './motion'
 import { designKit } from './design'
-import { effectKit } from './effect'
-import { figKit } from './fig'
 import { filmKit } from './film'
 import { htmlKit } from './html'
 import { noteKit } from './note'
@@ -20,9 +20,9 @@ import { tableKit } from './table'
 import { vectorKit } from './vector'
 import { docKit } from './doc'
 
-export { boardKit, cadKit, cubeKit, designKit, effectKit, figKit, filmKit, htmlKit, noteKit, pdfKit, photoKit, sheetKit, slideKit, tableKit, vectorKit, docKit }
+export { boardKit, cadKit, sceneKit, layoutKit, motionKit, designKit, filmKit, htmlKit, noteKit, pdfKit, photoKit, sheetKit, slideKit, tableKit, vectorKit, docKit }
 
 /** Every generated kit's descriptor, by kit id. */
 export const KITS: Readonly<Record<string, KitDescriptor>> = Object.fromEntries(
-  [docKit, slideKit, sheetKit, photoKit, vectorKit, effectKit, cadKit, pdfKit, tableKit, filmKit, boardKit, noteKit, cubeKit, figKit, designKit, htmlKit].map((kit) => [kit.id, kit]),
+  [docKit, slideKit, sheetKit, photoKit, vectorKit, motionKit, cadKit, pdfKit, tableKit, filmKit, boardKit, noteKit, sceneKit, designKit, layoutKit, htmlKit].map((kit) => [kit.id, kit]),
 )

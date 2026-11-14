@@ -30,7 +30,7 @@ describe('collabErrorText', () => {
   })
 
   it('says this build cannot open the kind of document a link leads to', () => {
-    expect(text(new Error('this build cannot open kit.cube documents'))).toBe('This version of Kition cannot open this kind of document.')
+    expect(text(new Error('this build cannot open kit.scene documents'))).toBe('This version of Kition cannot open this kind of document.')
   })
 
   it('never shows a raw error', () => {

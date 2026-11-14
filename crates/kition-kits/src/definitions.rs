@@ -601,7 +601,7 @@ mod tests {
 
     #[test]
     fn extensions_read_as_people_list_them() {
-        assert_eq!(listed(&["kfig"]), ".kfig");
+        assert_eq!(listed(&["kdesign"]), ".kdesign");
         assert_eq!(listed(&["kslide", "pptx"]), ".kslide and .pptx");
         assert_eq!(listed(&["psd", "psb", "kphoto"]), ".psd, .psb, or .kphoto");
     }

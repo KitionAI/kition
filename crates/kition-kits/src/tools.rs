@@ -636,7 +636,7 @@ fn render_params(input: &Value, part: Option<u64>) -> Option<Map<String, Value>>
     Some(params)
 }
 
-/// What a rendered preview shows, for its caption: `part 2 of `a.kfig``, `layer:12 of `a.kfig``.
+/// What a rendered preview shows, for its caption: `part 2 of `a.kdesign``, `layer:12 of `a.kdesign``.
 fn rendered_caption(kit: &KitDefinition, params: &Map<String, Value>, file: &str) -> String {
     let what = if let Some(target) = params.get("target") {
         let named = target.get("path").or_else(|| target.get("objectId")).and_then(Value::as_str).unwrap_or_default();
@@ -1950,13 +1950,13 @@ mod tests {
     #[test]
     fn run_refuses_the_export_command() {
         crate::definitions::fixture_kits();
-        let effect = kit("kit.effect");
+        let motion = kit("kit.motion");
         let steps = [json!({ "command": "file.exportMovie", "params": {} })];
-        let Err(error) = refuse_export_command(effect, &steps) else {
+        let Err(error) = refuse_export_command(motion, &steps) else {
             panic!("_run refuses the export command");
         };
-        assert!(error.message.contains("effect_export"), "{}", error.message);
-        assert!(refuse_export_command(effect, &[json!({ "command": "layer.newText" })]).is_ok());
+        assert!(error.message.contains("motion_export"), "{}", error.message);
+        assert!(refuse_export_command(motion, &[json!({ "command": "layer.newText" })]).is_ok());
     }
 
     #[test]
@@ -1966,11 +1966,11 @@ mod tests {
         let answer = listed_commands("mp4", closest);
         assert!(answer.summary.starts_with("No command matches `mp4`"), "{}", answer.summary);
         assert_eq!(answer.output["total"], 0);
-        let effect = kit("kit.effect");
+        let motion = kit("kit.motion");
         let sheet = kit("kit.sheet");
-        assert!(file_tool_hint(effect, "render mp4").is_some_and(|hint| hint.contains("effect_export")));
-        assert!(file_tool_hint(effect, "new project file").is_some_and(|hint| hint.contains("effect_create")));
-        assert!(file_tool_hint(effect, "text layer").is_none());
+        assert!(file_tool_hint(motion, "render mp4").is_some_and(|hint| hint.contains("motion_export")));
+        assert!(file_tool_hint(motion, "new project file").is_some_and(|hint| hint.contains("motion_create")));
+        assert!(file_tool_hint(motion, "text layer").is_none());
         assert!(file_tool_hint(sheet, "export csv").is_some_and(|hint| hint.contains("sheet_export")), "sheet exports PDF, CSV and HTML for the agent");
     }
 
@@ -1980,26 +1980,26 @@ mod tests {
         let slide = kit("kit.slide");
         assert!(offers(slide, "slide_create"), "slide creates .kslide");
         assert!(slide.creates.contains(&("kslide", "slide")));
-        let effect = kit("kit.effect");
-        assert!(offers(effect, "effect_create") && offers(effect, "effect_export"));
-        let Some(create) = specs().into_iter().find(|spec| spec.name == "effect_create") else {
-            panic!("effect_create is a tool");
+        let motion = kit("kit.motion");
+        assert!(offers(motion, "motion_create") && offers(motion, "motion_export"));
+        let Some(create) = specs().into_iter().find(|spec| spec.name == "motion_create") else {
+            panic!("motion_create is a tool");
         };
-        assert!(create.writes && create.description.contains(".keffect"));
-        assert_eq!(parse("effect_create").map(|(kit, action)| (kit.id, action)), Some(("kit.effect", Action::Create)));
+        assert!(create.writes && create.description.contains(".kmotion"));
+        assert_eq!(parse("motion_create").map(|(kit, action)| (kit.id, action)), Some(("kit.motion", Action::Create)));
     }
 
     #[test]
     fn only_kits_that_declare_drafts_or_an_object_model_offer_their_tools() {
         crate::definitions::fixture_kits();
-        let fig = kit("kit.fig");
+        let design = kit("kit.design");
         let film = kit("kit.film");
-        assert!(!fig.agent.drafts && fig.agent.object_model && film.agent.drafts && !film.agent.object_model);
+        assert!(!design.agent.drafts && design.agent.object_model && film.agent.drafts && !film.agent.object_model);
         for (kit, action, offered) in [
-            (fig, Action::DraftReady, false),
-            (fig, Action::DraftReopen, false),
-            (fig, Action::Query, true),
-            (fig, Action::Batch, true),
+            (design, Action::DraftReady, false),
+            (design, Action::DraftReopen, false),
+            (design, Action::Query, true),
+            (design, Action::Batch, true),
             (film, Action::DraftReady, true),
             (film, Action::DraftReopen, true),
             (film, Action::Query, false),
@@ -2114,9 +2114,9 @@ mod tests {
     #[test]
     fn the_default_preview_is_the_kit_s_render_framed_to_the_content() {
         crate::definitions::fixture_kits();
-        let params = render_params(&json!({ "path": "a.kfig", "preview": true }), None).unwrap_or_default();
+        let params = render_params(&json!({ "path": "a.kdesign", "preview": true }), None).unwrap_or_default();
         assert_eq!(Value::Object(params), json!({ "scale": 1 }), "the document at scale 1 (KHP A39)");
-        let doubled = render_params(&json!({ "path": "a.kfig", "scale": 2 }), None).unwrap_or_default();
+        let doubled = render_params(&json!({ "path": "a.kdesign", "scale": 2 }), None).unwrap_or_default();
         assert_eq!(doubled.get("scale"), Some(&json!(2)));
     }
 
@@ -2165,8 +2165,8 @@ mod tests {
         let prompt = |path: &str| linked_file_prompt(path).unwrap_or_else(|| panic!("{path} opens in a kit"));
         let vector = prompt("art/Logo.kvector");
         assert!(vector.contains("vector_inspect") && vector.contains("vector_run") && vector.contains("in Vector"), "{vector}");
-        assert!(prompt("motion/Intro.keffect").contains("effect_commands"));
-        assert!(prompt("print/Flyer.kdesign").contains("design_run"));
+        assert!(prompt("motion/Intro.kmotion").contains("motion_commands"));
+        assert!(prompt("print/Flyer.klayout").contains("layout_run"));
         assert!(prompt("plans/Floor.dxf").contains("cad_run"));
         assert!(prompt("talks/Launch.pptx").contains("slide_run"));
         assert!(prompt("talks/Launch.pptx").contains("document_read extracts its text"), "PowerPoint text stays readable");

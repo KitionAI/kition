@@ -1,0 +1,23 @@
+format: 1
+id: kition.agent.kit-adaptation/layout
+feature: kition.agent.kit-adaptation
+intent: >-
+  The Layout package supports agent discovery, execution, undo/redo, object-model
+  reads, save/reopen, preview and read-only refusals through the live editor bridge.
+layer: golden
+direction: ai
+source:
+  kind: synthetic
+  from: e2e/interaction/agent-adaptation.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/interaction/agent-adaptation.spec.ts, --grep, "@ai-kit-layout", --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+requires: [chromium]
+timeout_s: 60
+since: "2026-10-31"

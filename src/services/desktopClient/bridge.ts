@@ -125,17 +125,17 @@ export type WorkspaceDocumentFormat =
   | 'photo'
   | 'film'
   | 'vector'
-  | 'effect'
+  | 'motion'
   | 'cad'
-  | 'cube'
-  | 'fig'
+  | 'scene'
+  | 'design'
   | 'slide'
   | 'video'
   | 'audio'
   | 'binary'
   | 'table'
   | 'board'
-  | 'design'
+  | 'layout'
 
 export type WorkspaceDocumentPathRequest = {
   expected_root?: string

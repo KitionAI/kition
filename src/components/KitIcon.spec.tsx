@@ -27,8 +27,8 @@ async function render(element: ReturnType<typeof createElement>) {
 describe('KitIcon', () => {
   it('lists the kits', () => {
     expect(KIT_ICON_IDS).toEqual([
-      'note', 'doc', 'table', 'sheet', 'board', 'slide', 'design',
-      'vector', 'photo', 'effect', 'film', 'pdf', 'cad', 'html', 'cube', 'fig',
+      'note', 'doc', 'table', 'sheet', 'board', 'slide', 'layout',
+      'vector', 'photo', 'motion', 'film', 'pdf', 'cad', 'html', 'scene', 'design',
     ])
   })
 

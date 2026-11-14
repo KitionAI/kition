@@ -224,14 +224,14 @@ Kition ships are pinned in [`kits/kits.lock.json`](kits/kits.lock.json).
 | Office | HTML (Preview) | HTML pages |
 | Design | Photo | Raster images and photo editing |
 | Design | Vector | Vector graphics |
-| Design | Design | Page layouts such as flyers and posters |
-| Design | Fig (Preview) | Interface and screen designs |
+| Design | Layout | Page layouts such as flyers and posters |
+| Design | Design (Preview) | Interface and screen designs |
 | Media | Film | Video timelines |
-| Media | Effect | Motion graphics |
+| Media | Motion | Motion graphics |
 | Engineering | CAD | CAD drawings, including DXF |
-| Engineering | Cube (Preview) | 3D scenes |
+| Engineering | Scene (Preview) | 3D scenes |
 
-Preview kits are early. HTML and Fig are not pinned in `kits/kits.lock.json`
+Preview kits are early. HTML and Design are not pinned in `kits/kits.lock.json`
 yet; they ship once their packages are published.
 
 Each kit is developed in its own repository; see

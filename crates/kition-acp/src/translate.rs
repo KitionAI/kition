@@ -342,7 +342,7 @@ mod tests {
         assert_eq!(tool_kind("vector_batch"), "edit");
         assert_eq!(tool_kind("slide_check"), "read");
         assert_eq!(tool_kind("photo_run"), "edit");
-        assert_eq!(tool_kind("fig_export"), "edit");
+        assert_eq!(tool_kind("design_export"), "edit");
         assert_eq!(tool_kind("document_read"), "read");
         assert_eq!(tool_kind("web_search"), "search");
         assert_eq!(tool_kind("mcp__x__y"), "other");

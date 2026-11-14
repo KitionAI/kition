@@ -7,11 +7,11 @@
       "photo": "Photo",
       "film": "Film",
       "vector": "Vector",
-      "effect": "Effect",
-      "design": "Design",
+      "motion": "Motion",
+      "layout": "Layout",
       "cad": "CAD",
-      "cube": "Cube",
-      "fig": "Fig",
+      "scene": "Scene",
+      "design": "Design",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -291,25 +291,25 @@
     "unavailableTitle": "L’édition Vector n’est pas disponible dans cette version",
     "unavailableBody": "Les fichiers Vector s’ouvrent dans Kition lorsque le moteur Vector est inclus."
   },
-  "effectKit": {
-    "unavailableTitle": "L’édition Effect n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Effect s’ouvrent dans Kition lorsque le moteur Effect est inclus."
+  "motionKit": {
+    "unavailableTitle": "L’édition Motion n’est pas disponible dans cette version",
+    "unavailableBody": "Les fichiers Motion s’ouvrent dans Kition lorsque le moteur Motion est inclus."
   },
-  "designKit": {
-    "unavailableTitle": "L’édition Design n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Design s’ouvrent dans Kition lorsque le moteur Design est inclus."
+  "layoutKit": {
+    "unavailableTitle": "L’édition Layout n’est pas disponible dans cette version",
+    "unavailableBody": "Les fichiers Layout s’ouvrent dans Kition lorsque le moteur Layout est inclus."
   },
   "cadKit": {
     "unavailableTitle": "L’édition CAD n’est pas disponible dans cette version",
     "unavailableBody": "Les fichiers CAD s’ouvrent dans Kition lorsque le moteur CAD est inclus."
   },
-  "cubeKit": {
-    "unavailableTitle": "La modification des fichiers Cube n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Cube s’ouvrent dans Kition lorsque le moteur Cube est inclus."
+  "sceneKit": {
+    "unavailableTitle": "L’édition Scene n’est pas disponible dans cette version",
+    "unavailableBody": "Les fichiers Scene s’ouvrent dans Kition lorsque le moteur Scene est inclus."
   },
-  "figKit": {
-    "unavailableTitle": "L’édition Fig n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Fig s’ouvrent dans Kition lorsque le moteur Fig est inclus."
+  "designKit": {
+    "unavailableTitle": "L’édition Design n’est pas disponible dans cette version",
+    "unavailableBody": "Les fichiers Design s’ouvrent dans Kition lorsque le moteur Design est inclus."
   },
   "slideKit": {
     "unavailableTitle": "L’édition Slide n’est pas disponible dans cette version",
@@ -423,14 +423,14 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "cube": "Cube",
-      "fig": "Fig",
       "design": "Design",
       "document": "Document",
-      "effect": "Effect",
       "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
       "pdf": "PDF",
       "photo": "Photo",
+      "scene": "Scene",
       "sheet": "Sheet",
       "slide": "Slide",
       "table": "Table",

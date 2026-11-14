@@ -37,8 +37,8 @@ kit on the SDK the executable is the same `KitDocument` the page runs, served
 over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kition-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
-the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`, `slide_*`, `doc_*`, `sheet_*`, `pdf_*`).
+the kit's definition (`photo_*`, `film_*`, `vector_*`, `motion_*`,
+`layout_*`, `cad_*`, `slide_*`, `doc_*`, `sheet_*`, `pdf_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -292,8 +292,8 @@ then the person's display mode: Menus (tabs open as drop-down menus or a
 drop-down ribbon panel), Single line (one row of the tab's main commands),
 Classic (the full ribbon), or Focus (no chrome but a floating bar, Cmd+\).
 kit-editor keeps the choice per kit, steps down when the window is too narrow, and
-sizes for touch. Photo, Vector, Film, Effect, and CAD default to Menus; Doc,
-Sheet, Slide, PDF, and Design to Single line (`kit.json` `ui.display`). Canvas
+sizes for touch. Photo, Vector, Film, Motion, and CAD default to Menus; Doc,
+Sheet, Slide, PDF, and Layout to Single line (`kit.json` `ui.display`). Canvas
 kits pass a tool rail of flyout slots; side panels sit right of the body. A
 kit declares its tabs as `{ id, label, view?, ribbon?, menu? }`
 (`catalogTabs` and `commandMenuTabs` build menu tabs) and marks Single line
@@ -363,7 +363,7 @@ items with `primary`.
 - What a kit reads: `host/read` and `host/stamp` answer its own document
   (through `/workspace-files/`, wherever it is) and any other workspace file
   whose path has no hidden segment, through `/kit-files/`: the files beside
-  the document and those its links name in other folders (film and effect
+  the document and those its links name in other folders (film and motion
   clips, linked pictures, the files a kit linked with `links/pick`, such as
   a design's library files). Engines read lent files under the same
   `/kit-files/` root, given to them as a URL signed for that folder only
@@ -438,10 +438,10 @@ items with `primary`.
   theme tokens, and a channel to the extension's worker; Kition's
   `frame-src` keeps it on its page. `src/lib/script/kits/` registers the schema
   of every kit with an object model (Doc, Slide, Sheet, Photo, Vector,
-  Effect, CAD, PDF, Table, Film, Board, Note, Cube, Fig), generated in kition-sdk from each kit's
+  Motion, CAD, PDF, Table, Film, Board, Note, Scene, Design), generated in kition-sdk from each kit's
   `model/schema.json` at its pinned commit. `e2e/extensions.spec.ts`
   installs the example extension, runs its command and its panel, and runs
-  scripts on Slide, Doc, Sheet, and Fig documents. Kition sends the
+  scripts on Slide, Doc, Sheet, and Design documents. Kition sends the
   registered schema with the agent's object-model calls to an open editor
   (`kitBridgeModel.ts`) and with draft review, since kit-editor answers the
   object model of an engine that does not describe its own schema only with
@@ -518,54 +518,54 @@ item makes an empty board with the engine in the page, and the agent's
 saving through Kition, and creating a board; the editor's own behavior is
 tested in the kit's repository. Kition has no board editor of its own.
 
-### The Cube kit
+### The Scene kit
 
-`kit.cube` (`KitionAI/kition-cube`, package `public/kits/cube-ui`) is the
-3D kit: `.kcube` files (a ZIP of the scene as JSON and each mesh as a binary
+`kit.scene` (`KitionAI/kition-scene`, package `public/kits/scene-ui`) is the
+3D kit: `.kscene` files (a ZIP of the scene as JSON and each mesh as a binary
 buffer) open in its own editor in `KitFrame`. Its Rust engine
-(`kition_cube_kit`, `CubeDocument`) renders the viewport in software in the
+(`kition_scene_kit`, `SceneDocument`) renders the viewport in software in the
 worker; the document's size is the editor's viewport (`view.resize`), and the
 view, shading, and selection are session state that never makes the file
 dirty. It exports glTF/GLB, OBJ, STL, and PNG renders, and places glTF, OBJ,
-and STL files into a scene. The create menu's Cube item makes the starter
+and STL files into a scene. The create menu's Scene item makes the starter
 scene (a cube, a light, and a camera) with the engine in the page, and the
-agent's `cube_*` tools run on the headless `kition-cube`, with rotations in
+agent's `scene_*` tools run on the headless `kition-scene`, with rotations in
 degrees and Z up. Its features and defaults are checked against Blender as a
 reference application only (the kit is a clean-room Apache-2.0
-implementation). `e2e/cube-embedded.spec.ts` (in `make kit-e2e`) covers opening,
+implementation). `e2e/scene-embedded.spec.ts` (in `make kit-e2e`) covers opening,
 editing, saving, and creating a scene through Kition.
 
-### The Fig kit
+### The Design kit
 
-`kit.fig` (`KitionAI/kition-fig`, package `public/kits/fig-ui`) is the
-interface design and prototyping kit: `.kfig` files open in its own editor in
-`KitFrame`, on its Rust engine (`kition_fig_kit`, `FigDocument`) in the
+`kit.design` (`KitionAI/kition-design`, package `public/kits/design-ui`) is the
+interface design and prototyping kit: `.kdesign` files open in its own editor in
+`KitFrame`, on its Rust engine (`kition_design_kit`, `DesignDocument`) in the
 worker. The engine also imports `.fig` and `.sketch` files; Kition opens only
-`.kfig` in the kit. The create menu's Fig item makes `Untitled fig.kfig`
-(one 1440 x 1024 frame) with the engine in the page, and the agent's `fig_*`
-tools run on the headless `kition-fig` (`view.describe`, `document.check`, and
-the object model's `model.*`). Fig is on engine contract 2: a design is a
-KDM replica of schema `kit.fig` v2 (kition-fig `docs/kdm.md`; v2 adds the
-libraries a design uses, `Library` objects in `Fig.libraries`), carried inside
-the `.kfig` file under `kdm/`, so people co-edit a shared design and the
+`.kdesign` in the kit. The create menu's Design item makes `Untitled design.kdesign`
+(one 1440 x 1024 frame) with the engine in the page, and the agent's `design_*`
+tools run on the headless `kition-design` (`view.describe`, `document.check`, and
+the object model's `model.*`). Design is on engine contract 2: a design is a
+KDM replica of schema `kit.design` v2 (kition-design `docs/kdm.md`; v2 adds the
+libraries a design uses, `Library` objects in `Design.libraries`), carried inside
+the `.kdesign` file under `kdm/`, so people co-edit a shared design and the
 editor lists the `replica` capability (its replica also goes to Kition's
-store, below). Its object model (namespace `Fig`, registered in
-`src/lib/script/kits/fig.ts`) serves `fig_query` and `fig_batch`, in the open
+store, below). Its object model (namespace `Design`, registered in
+`src/lib/script/kits/design.ts`) serves `design_query` and `design_batch`, in the open
 editor through the Kit AI bridge and headless; workspace scripts use it too.
-Fig claims no agent drafts. Through the headless kit a batch's model
+Design claims no agent drafts. Through the headless kit a batch's model
 operations reach the engine as a collaborator's changes (kition-sdk
 `session::model::Exchange`), so the agent's undo takes back its commands but
-not those. `e2e/fig-embedded.spec.ts` (in `make kit-e2e`) covers opening,
+not those. `e2e/design-embedded.spec.ts` (in `make kit-e2e`) covers opening,
 editing, saving, and creating a design through Kition, and
-`e2e/collab-fig.spec.ts` (in `pnpm test:collab:e2e`) co-editing, the
+`e2e/collab-design.spec.ts` (in `pnpm test:collab:e2e`) co-editing, the
 agent's object model in the open editor, and undo by scope. A design uses team
-libraries from other `.kfig` files: "Add library file…" asks Kition for a
+libraries from other `.kdesign` files: "Add library file…" asks Kition for a
 file to link (`links/pick`), the design names it relative to its folder
-(`../libraries/Design System.kfig`), and the editor reads it and watches
+(`../libraries/Design System.kdesign`), and the editor reads it and watches
 its stamp through `host/read` and `host/stamp`, so a library published again
-on disk shows as an update to accept; `e2e/fig-embedded.spec.ts` covers
+on disk shows as an update to accept; `e2e/design-embedded.spec.ts` covers
 that flow, and `sdk_kits.rs` reads a design's libraries headless. Build it locally
-with `scripts/build-kit-ui.sh fig`; the SDK registry marks Fig optional until
+with `scripts/build-kit-ui.sh design`; the SDK registry marks Design optional until
 its first package is published and pinned.
 
 ### The Note kit
@@ -916,8 +916,8 @@ Engine tools (Vector):
 - Keys pressed while the engine is still answering a click are decided when
   the click is answered: the click may have started a text frame. Deciding at
   once with the last answer sent a fast typist's first letters to tool
-  shortcuts (Design's e2e types right after the drag that makes a frame).
-- An engine whose document holds pages (Design) lays them out on one canvas;
+  shortcuts (Layout's e2e types right after the drag that makes a frame).
+- An engine whose document holds pages (Layout) lays them out on one canvas;
   the document pixels are that canvas, so the host's viewport, overlays, and
   damage work unchanged. Open on the first spread with `initialArea`, not the
   whole canvas shrunk to fit.
@@ -1008,11 +1008,11 @@ Tool-table kits (PDF):
 - An incremental save must be rebased on the exact bytes the host wrote: keep
   them from `save` for `mark_saved`.
 
-Time-based kits (Effect):
+Time-based kits (Motion):
 
 - An export through the engine's own queue (a Render Queue item) changes the
   project and marks it unsaved. Render from a scratch session holding a copy
-  of the project instead (Effect's `renderMovie`), so exporting never dirties
+  of the project instead (Motion's `renderMovie`), so exporting never dirties
   the document.
 - Resolve an engine's relative output paths against a virtual root in the
   SDK. Upstream defaults (the home folder, `~/Movies`) are host paths and
@@ -1063,7 +1063,7 @@ or the adapter's `large()` fixture. Run it from the kit repository with
 | Slide | 354, 167 KB | 6.0 ms | 2.5 s (an import re-reads only the slides it touched) | 4.8 / 6.0 ms (one slide shown, as in the editor) | 4.1 MB |
 | Sheet | 369, 141 KB | 2.4 ms | 3.5 s | 5.7 / 6.0 ms | 1.5 MB |
 | Vector | 153, 67 KB | 2.5 ms | 4.1 s | 22.2 / 35.3 ms | 1.5 MB |
-| Fig | 285, 160 KB | 9.2 ms | 2.4 s | 4.4 / 6.0 ms (a 1440 × 900 view) | 3.4 MB |
+| Design | 285, 160 KB | 9.2 ms | 2.4 s | 4.4 / 6.0 ms (a 1440 × 900 view) | 3.4 MB |
 
 Doc is over the remote-change budget only while other builds load the
 machine. A kit over

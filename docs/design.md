@@ -815,7 +815,7 @@ icons: no gloss, bevel, or 3D render.
 | Part | Light (icon, white surfaces) | Dark surfaces |
 | --- | --- | --- |
 | Stem | `#5645d4` | `#8b7cf0` |
-| Top key (Design) | `#d63e95` | `#f57bbd` |
+| Top key (Layout) | `#d63e95` | `#f57bbd` |
 | Centre key (Photo) | `#0aa3cf` | `#4ccbf0` |
 | Bottom key (Slide) | `#f0701a` | `#ff9a55` |
 | Slots | stem color at 16% on the tile, 14% without | stem color at 20% |
@@ -862,16 +862,16 @@ Each entry has:
 | `sheet` | Sheet | `#1f9d4c` | `#1a8641` | `#4fd17b` |
 | `board` | Board | `#f2b200` | `#966e00` | `#ffd04d` |
 | `slide` | Slide | `#f0701a` | `#c0550d` | `#ff9a55` |
-| `design` | Design | `#d63e95` | `#d32f8d` | `#f57bbd` |
+| `layout` | Layout | `#d63e95` | `#d32f8d` | `#f57bbd` |
 | `vector` | Vector | `#6fa313` | `#58810f` | `#a6d64a` |
 | `photo` | Photo | `#0aa3cf` | `#087fa1` | `#4ccbf0` |
-| `effect` | Effect | `#b03fd6` | `#b03fd6` | `#d27cf0` |
+| `motion` | Motion | `#b03fd6` | `#b03fd6` | `#d27cf0` |
 | `film` | Film | `#2d2f3a` | `#2d2f3a` | `#a3a7b8` |
 | `pdf` | PDF | `#dc3b2e` | `#db3527` | `#ff7a6b` |
 | `cad` | CAD | `#4f6d8a` | `#4f6d8a` | `#8eabc8` |
 | `html` | HTML | `#c65b32` | `#b64b22` | `#ff986b` |
-| `cube` | Cube | `#c47a32` | `#9a5a22` | `#e3a46b` |
-| `fig` | Fig | `#00a676` | `#00875f` | `#02da96` |
+| `scene` | Scene | `#c47a32` | `#9a5a22` | `#e3a46b` |
+| `design` | Design | `#00a676` | `#00875f` | `#02da96` |
 
 Brand purple belongs to Kition; only Document, Kition's home format, shares it.
 

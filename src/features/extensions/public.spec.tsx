@@ -14,7 +14,7 @@ const subscribe = (listeners: Set<() => void>, listener: () => void) => {
 
 const service = {
   ready: Promise.resolve(),
-  activeDocument: () => active ? { path: 'Screen.kfig' } : null,
+  activeDocument: () => active ? { path: 'Screen.kdesign' } : null,
   subscribeDocuments: (listener: () => void) => subscribe(documents, listener),
   subscribe: (listener: () => void) => subscribe(changes, listener),
   paletteCommands: () => commandTitles.map((title) => ({ id: title, title, extension: 'example', extensionName: 'Example' })),

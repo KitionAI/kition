@@ -1,6 +1,6 @@
 /**
  * Helpers for the interaction specs of the document kits (note, table, sheet, doc, slide, pdf,
- * html, design): the host-matrix steps every kit goes through, on the desktop host
+ * html, layout): the host-matrix steps every kit goes through, on the desktop host
  * (e2e/helpers/desktopHost.ts) with the kit's real package in public/kits/.
  */
 import fs from 'node:fs/promises'

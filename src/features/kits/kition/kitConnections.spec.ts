@@ -7,8 +7,8 @@ describe('activeKitDocument', () => {
   it('notifies activation after registration, tab switches and fallback on close', () => {
     const heard: Array<MountedKitDocument | null> = []
     const unsubscribe = subscribeActiveKitDocument(() => heard.push(activeKitDocument()))
-    const a = document('pending.kfig')
-    const b = document('second.kfig')
+    const a = document('pending.kdesign')
+    const b = document('second.kdesign')
     const withdrawA = registerKitConnection(a)
     expect(heard).toEqual([])
     markKitDocumentShown(a.path)
@@ -28,7 +28,7 @@ describe('activeKitDocument', () => {
   })
 
   it('notifies a replacement connection without treating the old cleanup as a close', () => {
-    const a = document('replacement.kfig')
+    const a = document('replacement.kdesign')
     const b = document(a.path)
     const heard: Array<MountedKitDocument | null> = []
     const unsubscribe = subscribeActiveKitDocument(() => heard.push(activeKitDocument()))

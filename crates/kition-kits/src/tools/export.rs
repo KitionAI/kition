@@ -149,11 +149,11 @@ pub(super) async fn export(kits: &KitManager, kit: &'static KitDefinition, input
 mod tests {
     use super::*;
 
-    const FIG: KitExport = KitExport { command: "file.export", formats: &["png", "jpg", "svg", "pdf"], data: "data", params: r#"{"ids": []}"# };
+    const DESIGN: KitExport = KitExport { command: "file.export", formats: &["png", "jpg", "svg", "pdf"], data: "data", params: r#"{"ids": []}"# };
 
     #[test]
     fn the_format_comes_from_the_call_or_the_new_files_extension() {
-        let to = |input: Value| target(&input, &FIG).map_err(|error| error.message);
+        let to = |input: Value| target(&input, &DESIGN).map_err(|error| error.message);
         assert_eq!(to(json!({ "to": "out/Screen.PNG" })), Ok(("png".into(), "out/Screen.PNG".into())));
         assert_eq!(to(json!({ "to": "out/Screen", "format": "svg" })), Ok(("svg".into(), "out/Screen.svg".into())));
         let wrong = to(json!({ "to": "Screen.gif" })).err().unwrap_or_default();
@@ -166,22 +166,22 @@ mod tests {
 
     #[test]
     fn the_kits_fixed_parameters_win_and_no_path_reaches_the_kit() {
-        let params = super::params(&FIG, "png", None).unwrap_or_default();
+        let params = super::params(&DESIGN, "png", None).unwrap_or_default();
         assert_eq!(Value::Object(params), json!({ "ids": [], "format": "png" }));
         let options = json!({ "scale": 2, "ids": ["1:2"], "path": "/tmp/x.png", "format": "pdf" });
-        let params = super::params(&FIG, "png", Some(&options)).unwrap_or_default();
+        let params = super::params(&DESIGN, "png", Some(&options)).unwrap_or_default();
         assert_eq!(Value::Object(params), json!({ "ids": ["1:2"], "scale": 2, "format": "png" }), "the agent may name layers; the format is the call's");
-        assert!(super::params(&FIG, "png", Some(&json!([1]))).is_err());
+        assert!(super::params(&DESIGN, "png", Some(&json!([1]))).is_err());
     }
 
     #[test]
     fn the_file_is_read_from_the_kits_answer_field() {
         let answer = json!({ "format": "png", "data": "iVBORw0KGgo=" });
-        assert_eq!(decode(&FIG, Some(&answer)).unwrap_or_default(), b"\x89PNG\r\n\x1a\n");
-        let cube = KitExport { data: "base64", ..FIG };
-        let error = decode(&cube, Some(&answer)).err().map(|error| error.message);
+        assert_eq!(decode(&DESIGN, Some(&answer)).unwrap_or_default(), b"\x89PNG\r\n\x1a\n");
+        let scene = KitExport { data: "base64", ..DESIGN };
+        let error = decode(&scene, Some(&answer)).err().map(|error| error.message);
         assert!(error.is_some_and(|message| message.contains("no `base64`")), "each kit names its own field");
-        assert!(decode(&FIG, None).is_err());
+        assert!(decode(&DESIGN, None).is_err());
     }
 
     #[test]

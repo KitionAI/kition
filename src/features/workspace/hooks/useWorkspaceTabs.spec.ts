@@ -115,30 +115,30 @@ describe('useWorkspaceTabs — atomic workspace switch', () => {
     await act(async () => {
       ref.current.upsertWorkspaceTab({ id: 'file-viewer:Home.md', type: 'file-viewer', title: 'Home', path: 'Home.md', format: 'markdown' }, { activate: false })
       ref.current.upsertWorkspaceTab({
-        id: 'file-viewer:Planning.kdesign',
+        id: 'file-viewer:Planning.klayout',
         type: 'file-viewer',
         title: 'Planning',
-        path: 'Planning.kdesign',
-        format: 'design',
+        path: 'Planning.klayout',
+        format: 'layout',
       }, { activate: true })
       await Promise.resolve()
     })
 
     await act(async () => {
-      ref.current.remapWorkspaceTabPaths('Planning.kdesign', 'Roadmap.kdesign')
+      ref.current.remapWorkspaceTabPaths('Planning.klayout', 'Roadmap.klayout')
       await Promise.resolve()
     })
     expect(ref.current.workspaceTabs[1]).toEqual({
-      id: 'file-viewer:Roadmap.kdesign',
+      id: 'file-viewer:Roadmap.klayout',
       type: 'file-viewer',
       title: 'Roadmap',
-      path: 'Roadmap.kdesign',
-      format: 'design',
+      path: 'Roadmap.klayout',
+      format: 'layout',
     })
-    expect(ref.current.activeWorkspaceTabId).toBe('file-viewer:Roadmap.kdesign')
+    expect(ref.current.activeWorkspaceTabId).toBe('file-viewer:Roadmap.klayout')
 
     await act(async () => {
-      ref.current.filterWorkspaceTabs((tab) => tab.type !== 'file-viewer' || tab.path !== 'Roadmap.kdesign')
+      ref.current.filterWorkspaceTabs((tab) => tab.type !== 'file-viewer' || tab.path !== 'Roadmap.klayout')
       await Promise.resolve()
     })
     expect(ref.current.workspaceTabs.map((tab) => tab.id)).toEqual(['file-viewer:Home.md'])

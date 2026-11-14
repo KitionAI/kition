@@ -1,0 +1,27 @@
+format: 1
+id: kition.agent.kit-preview/design-target
+feature: kition.agent.kit-preview
+intent: >-
+  design_inspect with a diagnostic's target (`layer:<id>` from design_check) or a page previews just that,
+  drawn by the kit's file.render on whole pixels at the asked scale and within maxSize, so the agent
+  sees what a diagnostic is about; the codes design_check answers are in the kit's catalogue.
+layer: golden
+direction: ai
+source:
+  kind: synthetic
+  from: crates/kition-kits/tests/fixtures/Screen.kdesign
+  licence: owned
+input:
+  - repo:crates/kition-kits/tests/fixtures/Screen.kdesign
+steps:
+  - cargo-test:
+      package: kition-kits
+      test: sdk_kits
+      filter: the_agent_checks_previews_and_exports_a_design
+expected:
+  - actual: out:cargo-test
+    compare: exit
+    value: 0
+tags: [headless]
+requires: [kition-design]
+since: "2026-10-28"

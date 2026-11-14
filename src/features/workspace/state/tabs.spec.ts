@@ -83,11 +83,11 @@ describe('filterTabs', () => {
 
 describe('remapTabPaths', () => {
   it('moves file tabs under the renamed folder', () => {
-    const start = state([doc('old/a.md'), doc('old/b.kdesign', { format: 'design' }), doc('other/c.md')], 'file-viewer:old/b.kdesign')
+    const start = state([doc('old/a.md'), doc('old/b.klayout', { format: 'layout' }), doc('other/c.md')], 'file-viewer:old/b.klayout')
     const next = remapTabPaths(start, 'old', 'new')
-    expect(ids(next)).toEqual(['file-viewer:new/a.md', 'file-viewer:new/b.kdesign', 'file-viewer:other/c.md'])
-    expect(next.tabs[1]).toMatchObject({ path: 'new/b.kdesign', title: 'b' })
-    expect(next.activeTabId).toBe('file-viewer:new/b.kdesign')
+    expect(ids(next)).toEqual(['file-viewer:new/a.md', 'file-viewer:new/b.klayout', 'file-viewer:other/c.md'])
+    expect(next.tabs[1]).toMatchObject({ path: 'new/b.klayout', title: 'b' })
+    expect(next.activeTabId).toBe('file-viewer:new/b.klayout')
     expect(remapTabPaths(start, 'x', 'x')).toBe(start)
   })
 })

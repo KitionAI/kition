@@ -26,10 +26,10 @@ pub fn infer_format(path: &str) -> &'static str {
         ".kfilm" => "film",
         // Vector drawings, edited in the Vector kit.
         ".kvector" => "vector",
-        // Motion-graphics projects, edited in the Effect kit.
-        ".keffect" => "effect",
-        // Page layouts, edited in the Design kit.
-        ".kdesign" => "design",
+        // Motion-graphics projects, edited in the Motion kit.
+        ".kmotion" => "motion",
+        // Page layouts, edited in the Layout kit.
+        ".klayout" => "layout",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
         // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
@@ -38,10 +38,10 @@ pub fn infer_format(path: &str) -> &'static str {
         ".ktable" => "table",
         // Boards, edited in the Board kit.
         ".kboard" => "board",
-        // 3D scenes, edited in the Cube kit.
-        ".kcube" => "cube",
-        // Interface designs, edited in the Fig kit.
-        ".kfig" => "fig",
+        // 3D scenes, edited in the Scene kit.
+        ".kscene" => "scene",
+        // Interface designs, edited in the Design kit.
+        ".kdesign" => "design",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -70,8 +70,8 @@ pub fn is_supported(path: &str) -> bool {
         &[
             "md", "markdown", "txt", "csv", "tsv", "json", "html", "htm", "pdf", "docx", "xlsx",
             "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg", "psd", "psb",
-            "kphoto", "kfilm", "kvector", "keffect", "kdesign", "dxf", "kslide", "ktable",
-            "kboard", "kcube", "kfig", "mp4", "mov", "webm", "mp3", "wav", "m4a",
+            "kphoto", "kfilm", "kvector", "kmotion", "klayout", "dxf", "kslide", "ktable",
+            "kboard", "kscene", "kdesign", "mp4", "mov", "webm", "mp3", "wav", "m4a",
         ],
     )
 }
@@ -90,10 +90,10 @@ mod tests {
         assert!(is_supported("films/Trailer.kfilm"));
         assert_eq!(infer_format("art/Logo.kvector"), "vector");
         assert!(is_supported("art/Logo.kvector"));
-        assert_eq!(infer_format("motion/Intro.keffect"), "effect");
-        assert!(is_supported("motion/Intro.keffect"));
-        assert_eq!(infer_format("print/Flyer.kdesign"), "design");
-        assert!(is_supported("print/Flyer.kdesign"));
+        assert_eq!(infer_format("motion/Intro.kmotion"), "motion");
+        assert!(is_supported("motion/Intro.kmotion"));
+        assert_eq!(infer_format("print/Flyer.klayout"), "layout");
+        assert!(is_supported("print/Flyer.klayout"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
         assert_eq!(infer_format("talks/Launch.kslide"), "slide");
@@ -105,12 +105,12 @@ mod tests {
         assert!(is_supported("plans/Roadmap.kboard"));
         assert!(!is_text("plans/Roadmap.kboard"));
         assert!(!is_editable("plans/Roadmap.kboard"));
-        assert_eq!(infer_format("models/Room.kcube"), "cube");
-        assert!(is_supported("models/Room.KCUBE"));
-        assert!(!is_text("models/Room.kcube"));
-        assert_eq!(infer_format("ui/Screen.kfig"), "fig");
-        assert!(is_supported("ui/Screen.KFIG"));
-        assert!(!is_text("ui/Screen.kfig"));
+        assert_eq!(infer_format("models/Room.kscene"), "scene");
+        assert!(is_supported("models/Room.KSCENE"));
+        assert!(!is_text("models/Room.kscene"));
+        assert_eq!(infer_format("ui/Screen.kdesign"), "design");
+        assert!(is_supported("ui/Screen.KDESIGN"));
+        assert!(!is_text("ui/Screen.kdesign"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.kphoto"));
         assert_eq!(infer_format(".md"), "binary");

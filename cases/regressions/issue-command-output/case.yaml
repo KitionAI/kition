@@ -10,7 +10,7 @@ source:
   kind: issue
   from: crates/kition-kit-process-protocol/tests/schema.rs
   licence: owned
-  note: Found while wiring Fig's agent-ready surface (kition-fig agent.rs keeps output_schema empty because of it).
+  note: Found while wiring Design's agent-ready surface (kition-design agent.rs keeps output_schema empty because of it).
 input: []
 steps:
   - cargo-test:

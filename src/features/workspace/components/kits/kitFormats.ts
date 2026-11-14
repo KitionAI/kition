@@ -9,9 +9,9 @@
 export const KIT_CREATE_EXTENSION = {
   photo: 'psd',
   vector: 'kvector',
-  design: 'kdesign',
+  layout: 'klayout',
   film: 'kfilm',
-  effect: 'keffect',
+  motion: 'kmotion',
   cad: 'dxf',
   doc: 'docx',
   sheet: 'xlsx',
@@ -21,8 +21,8 @@ export const KIT_CREATE_EXTENSION = {
   board: 'kboard',
   html: 'html',
   note: 'md',
-  cube: 'kcube',
-  fig: 'kfig',
+  scene: 'kscene',
+  design: 'kdesign',
 } as const
 
 /** Every extension a kit's create menu item makes, for a workspace tab title to drop. */

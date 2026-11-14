@@ -90,7 +90,7 @@ Tạo phương án thiết kế, hình chiếu, ảnh tính năng, ảnh phong c
 - **Tài liệu:** chỉnh sửa Markdown, xem trước, mẫu, xuất PDF.
 - **Bảng:** trường có kiểu, tệp đính kèm, công thức, bộ lọc, sắp xếp, nhóm và nhiều chế độ xem.
 - **Tác nhân:** cập nhật tài liệu, nghiên cứu web, dùng công cụ và lưu kết quả vào không gian làm việc.
-- **Kit:** mười sáu trình chỉnh sửa tích hợp, mỗi kit cho một loại tệp (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). Engine của mỗi kit chạy dưới dạng WebAssembly trong Web Worker, và tác nhân chỉnh sửa cùng các tệp đó qua công cụ của kit.
+- **Kit:** mười sáu trình chỉnh sửa tích hợp, mỗi kit cho một loại tệp (Board, CAD, Design, Doc, Film, HTML, Layout, Motion, Note, PDF, Photo, Scene, Sheet, Slide, Table, Vector). Engine của mỗi kit chạy dưới dạng WebAssembly trong Web Worker, và tác nhân chỉnh sửa cùng các tệp đó qua công cụ của kit.
 - **Cài đặt:** mô hình, proxy, MCP, tài khoản, mức sử dụng, cập nhật và tích hợp máy tính.
 
 ## Cài đặt

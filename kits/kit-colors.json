@@ -30,8 +30,8 @@
     "light": "#c0550d",
     "dark": "#ff9a55"
   },
-  "design": {
-    "kitId": "kit.design",
+  "layout": {
+    "kitId": "kit.layout",
     "light": "#d32f8d",
     "dark": "#f57bbd"
   },
@@ -45,8 +45,8 @@
     "light": "#087fa1",
     "dark": "#4ccbf0"
   },
-  "effect": {
-    "kitId": "kit.effect",
+  "motion": {
+    "kitId": "kit.motion",
     "light": "#b03fd6",
     "dark": "#d27cf0"
   },
@@ -70,13 +70,13 @@
     "light": "#b64b22",
     "dark": "#ff986b"
   },
-  "cube": {
-    "kitId": "kit.cube",
+  "scene": {
+    "kitId": "kit.scene",
     "light": "#9a5a22",
     "dark": "#e3a46b"
   },
-  "fig": {
-    "kitId": "kit.fig",
+  "design": {
+    "kitId": "kit.design",
     "light": "#00875f",
     "dark": "#02da96"
   }

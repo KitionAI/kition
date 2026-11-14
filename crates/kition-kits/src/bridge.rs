@@ -285,7 +285,7 @@ mod tests {
     async fn a_closed_window_fails_its_calls_at_once() {
         let bridge = Arc::new(Bridge::default());
         let (session, rx) = bridge.connect();
-        let live = LiveDocument { path: "a.keffect".into(), kit: "kit.effect".into(), dirty: false, revision: 1, session };
+        let live = LiveDocument { path: "a.kmotion".into(), kit: "kit.motion".into(), dirty: false, revision: 1, session };
         let call = {
             let bridge = bridge.clone();
             let live = live.clone();
@@ -305,9 +305,9 @@ mod tests {
         let bridge = Arc::new(Bridge::default());
         let (session, _rx) = bridge.connect();
         bridge
-            .receive(session, &json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "a.kdesign", "revision": 7, "by": "agent" } }))
+            .receive(session, &json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "a.klayout", "revision": 7, "by": "agent" } }))
             .unwrap_or_else(|err| panic!("{err}"));
-        assert_eq!(bridge.last_change("/a.kdesign"), Some((7, "agent".to_owned())));
+        assert_eq!(bridge.last_change("/a.klayout"), Some((7, "agent".to_owned())));
     }
 
     #[tokio::test]

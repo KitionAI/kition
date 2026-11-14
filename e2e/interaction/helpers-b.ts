@@ -1,6 +1,6 @@
 /**
- * The host-matrix checks every kit of interaction group B (photo, vector, fig, board, film, effect,
- * cad, cube) goes through, written once over a `KitCase`: how to make the kit's file, read a saved
+ * The host-matrix checks every kit of interaction group B (photo, vector, design, board, film, motion,
+ * cad, scene) goes through, written once over a `KitCase`: how to make the kit's file, read a saved
  * one back with the kit's own engine, wait for the editor, and make one edit in it. Each kit's spec
  * calls `hostMatrix(kitCase)` and adds its own detail tests.
  */

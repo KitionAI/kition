@@ -7,11 +7,11 @@
       "photo": "Photo",
       "film": "Film",
       "vector": "Vector",
-      "effect": "Effect",
-      "design": "Design",
+      "motion": "Motion",
+      "layout": "Layout",
       "cad": "CAD",
-      "cube": "3D 立方",
-      "fig": "Fig",
+      "scene": "Scene",
+      "design": "Design",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -291,25 +291,25 @@
     "unavailableTitle": "此版本不支持 Vector 编辑",
     "unavailableBody": "包含 Vector 引擎时，Vector 文件会在 Kition 中打开。"
   },
-  "effectKit": {
-    "unavailableTitle": "此版本不支持 Effect 编辑",
-    "unavailableBody": "包含 Effect 引擎时，Effect 文件会在 Kition 中打开。"
+  "motionKit": {
+    "unavailableTitle": "此版本不支持 Motion 编辑",
+    "unavailableBody": "包含 Motion 引擎时，Motion 文件会在 Kition 中打开。"
   },
-  "designKit": {
-    "unavailableTitle": "此版本不支持 Design 编辑",
-    "unavailableBody": "包含 Design 引擎时，Design 文件会在 Kition 中打开。"
+  "layoutKit": {
+    "unavailableTitle": "此版本不支持 Layout 编辑",
+    "unavailableBody": "包含 Layout 引擎时，Layout 文件会在 Kition 中打开。"
   },
   "cadKit": {
     "unavailableTitle": "此版本不支持 CAD 编辑",
     "unavailableBody": "包含 CAD 引擎时，CAD 文件会在 Kition 中打开。"
   },
-  "cubeKit": {
-    "unavailableTitle": "此版本不支持编辑 3D 立方",
-    "unavailableBody": "包含 3D 立方引擎时，3D 立方文件会在 Kition 中打开。"
+  "sceneKit": {
+    "unavailableTitle": "此版本不支持 Scene 编辑",
+    "unavailableBody": "包含 Scene 引擎时，Scene 文件会在 Kition 中打开。"
   },
-  "figKit": {
-    "unavailableTitle": "此版本不支持 Fig 编辑",
-    "unavailableBody": "包含 Fig 引擎时，Fig 文件会在 Kition 中打开。"
+  "designKit": {
+    "unavailableTitle": "此版本不支持 Design 编辑",
+    "unavailableBody": "包含 Design 引擎时，Design 文件会在 Kition 中打开。"
   },
   "slideKit": {
     "unavailableTitle": "此版本不支持 Slide 编辑",
@@ -423,14 +423,14 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "cube": "3D 立方",
-      "fig": "Fig",
       "design": "Design",
       "document": "Document",
-      "effect": "Effect",
       "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
       "pdf": "PDF",
       "photo": "Photo",
+      "scene": "Scene",
       "sheet": "Sheet",
       "slide": "Slide",
       "table": "Table",

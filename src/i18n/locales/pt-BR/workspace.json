@@ -7,11 +7,11 @@
       "photo": "Photo",
       "film": "Film",
       "vector": "Vector",
-      "effect": "Effect",
-      "design": "Design",
+      "motion": "Motion",
+      "layout": "Layout",
       "cad": "CAD",
-      "cube": "Cubo",
-      "fig": "Fig",
+      "scene": "Scene",
+      "design": "Design",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -291,25 +291,25 @@
     "unavailableTitle": "A edição de Vector não está disponível nesta versão",
     "unavailableBody": "Arquivos do Vector abrem no Kition quando o mecanismo Vector está incluído."
   },
-  "effectKit": {
-    "unavailableTitle": "A edição de Effect não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Effect abrem no Kition quando o mecanismo Effect está incluído."
+  "motionKit": {
+    "unavailableTitle": "A edição de Motion não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Motion abrem no Kition quando o mecanismo Motion está incluído."
   },
-  "designKit": {
-    "unavailableTitle": "A edição de Design não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Design abrem no Kition quando o mecanismo Design está incluído."
+  "layoutKit": {
+    "unavailableTitle": "A edição de Layout não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Layout abrem no Kition quando o mecanismo Layout está incluído."
   },
   "cadKit": {
     "unavailableTitle": "A edição de CAD não está disponível nesta versão",
     "unavailableBody": "Arquivos do CAD abrem no Kition quando o mecanismo CAD está incluído."
   },
-  "cubeKit": {
-    "unavailableTitle": "A edição de Cubo não está disponível nesta versão",
-    "unavailableBody": "Os arquivos do Cubo abrem no Kition quando o mecanismo Cube está incluído."
+  "sceneKit": {
+    "unavailableTitle": "A edição de Scene não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Scene abrem no Kition quando o mecanismo Scene está incluído."
   },
-  "figKit": {
-    "unavailableTitle": "A edição de Fig não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Fig abrem no Kition quando o mecanismo Fig está incluído."
+  "designKit": {
+    "unavailableTitle": "A edição de Design não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Design abrem no Kition quando o mecanismo Design está incluído."
   },
   "slideKit": {
     "unavailableTitle": "A edição de Slide não está disponível nesta versão",
@@ -423,14 +423,14 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "cube": "Cubo",
-      "fig": "Fig",
       "design": "Design",
       "document": "Document",
-      "effect": "Effect",
       "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
       "pdf": "PDF",
       "photo": "Photo",
+      "scene": "Scene",
       "sheet": "Sheet",
       "slide": "Slide",
       "table": "Table",

@@ -66,12 +66,12 @@
       }
     }
   },
-  "effect": {
-    "repository": "KitionAI/kition-effect",
-    "crate": "kition-effect-kit",
-    "module": "kition_effect_kit",
-    "class": "EffectDocument",
-    "name": "Motion.keffect",
+  "motion": {
+    "repository": "KitionAI/kition-motion",
+    "crate": "kition-motion-kit",
+    "module": "kition_motion_kit",
+    "class": "MotionDocument",
+    "name": "Motion.kmotion",
     "edit": {
       "command": "layer.newSolid",
       "params": {
@@ -80,12 +80,12 @@
       }
     }
   },
-  "design": {
-    "repository": "KitionAI/kition-design",
-    "crate": "kition-design-kit",
-    "module": "kition_design_kit",
-    "class": "DesignDocument",
-    "name": "Flyer.kdesign",
+  "layout": {
+    "repository": "KitionAI/kition-layout",
+    "crate": "kition-layout-kit",
+    "module": "kition_layout_kit",
+    "class": "LayoutDocument",
+    "name": "Flyer.klayout",
     "edit": [
       {
         "command": "frame.create",
@@ -259,23 +259,23 @@
       }
     }
   },
-  "cube": {
-    "repository": "KitionAI/kition-cube",
-    "crate": "kition-cube-kit",
-    "module": "kition_cube_kit",
-    "class": "CubeDocument",
-    "name": "Room.kcube",
+  "scene": {
+    "repository": "KitionAI/kition-scene",
+    "crate": "kition-scene-kit",
+    "module": "kition_scene_kit",
+    "class": "SceneDocument",
+    "name": "Room.kscene",
     "edit": {
       "command": "add.uvSphere",
       "params": { "location": [2, 0, 1], "radius": 0.5 }
     }
   },
-  "fig": {
-    "repository": "KitionAI/kition-fig",
-    "crate": "kition-fig-kit",
-    "module": "kition_fig_kit",
-    "class": "FigDocument",
-    "name": "Screen.kfig",
+  "design": {
+    "repository": "KitionAI/kition-design",
+    "crate": "kition-design-kit",
+    "module": "kition_design_kit",
+    "class": "DesignDocument",
+    "name": "Screen.kdesign",
     "optional": true,
     "edit": {
       "command": "shape.rectangle",

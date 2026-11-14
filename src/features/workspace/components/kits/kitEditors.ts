@@ -66,9 +66,9 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'photo', extension: KIT_CREATE_EXTENSION.photo, baseName: 'Untitled photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.photo', group: 'visual' } }),
   kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: KIT_CREATE_EXTENSION.vector, baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
   // US Letter, in points.
-  kit('design', 'DesignDocument', { format: 'design', icon: 'design', create: { id: 'design', extension: KIT_CREATE_EXTENSION.design, baseName: 'Untitled design', size: { width: 612, height: 792 }, label: 'createMenu.format.design', group: 'documents' } }),
+  kit('layout', 'LayoutDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: KIT_CREATE_EXTENSION.layout, baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
   kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'film', extension: KIT_CREATE_EXTENSION.film, baseName: 'Untitled film', size: { width: 1920, height: 1080 }, label: 'createMenu.format.film', group: 'media' } }),
-  kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'effect', extension: KIT_CREATE_EXTENSION.effect, baseName: 'Untitled effect', size: { width: 1920, height: 1080 }, label: 'createMenu.format.effect', group: 'media' } }),
+  kit('motion', 'MotionDocument', { format: 'motion', icon: 'motion', create: { id: 'motion', extension: KIT_CREATE_EXTENSION.motion, baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', group: 'media' } }),
   // A3 in millimetres; the engine starts a metric drawing with those limits.
   kit('cad', 'CadDocument', { format: 'cad', icon: 'cad', create: { id: 'cad', extension: KIT_CREATE_EXTENSION.cad, baseName: 'Untitled CAD', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', group: 'visual' } }),
   // US Letter, in points.
@@ -83,9 +83,9 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
   kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
   // 3D scenes; the size is the viewport a new scene opens with (the engine starts the default scene).
-  kit('cube', 'CubeDocument', { format: 'cube', icon: 'cube', create: { id: 'cube', extension: KIT_CREATE_EXTENSION.cube, baseName: 'Untitled cube', size: { width: 1280, height: 720 }, label: 'createMenu.format.cube', group: 'visual' } }),
+  kit('scene', 'SceneDocument', { format: 'scene', icon: 'scene', create: { id: 'scene', extension: KIT_CREATE_EXTENSION.scene, baseName: 'Untitled scene', size: { width: 1280, height: 720 }, label: 'createMenu.format.scene', group: 'visual' } }),
   // Interface designs; the size is the first frame a new design starts with (kit.json `creates`).
-  kit('fig', 'FigDocument', { format: 'fig', icon: 'fig', create: { id: 'fig', extension: KIT_CREATE_EXTENSION.fig, baseName: 'Untitled fig', size: { width: 1440, height: 1024 }, label: 'createMenu.format.fig', group: 'visual' } }),
+  kit('design', 'DesignDocument', { format: 'design', icon: 'design', create: { id: 'design', extension: KIT_CREATE_EXTENSION.design, baseName: 'Untitled design', size: { width: 1440, height: 1024 }, label: 'createMenu.format.design', group: 'visual' } }),
   // Markdown notes (`.md`, `.markdown`); US Letter, in points, for its pages.
   kit('note', 'NoteDocument', { format: 'markdown', icon: 'note', create: { id: 'note', extension: KIT_CREATE_EXTENSION.note, baseName: 'Untitled note', size: { width: 612, height: 792 }, label: 'createMenu.format.note', group: 'documents' } }),
 ]

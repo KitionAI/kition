@@ -14,7 +14,7 @@ describe('kit identities across the workspace and engine registry', () => {
       expect(entry.engine.module).toBe(registry.module)
       expect(entry.engine.documentClass).toBe(registry.class)
       expect(registry.repository).toBe(`KitionAI/kition-${name}`)
-      expect(registry.crate).toBe(`kition-${name}-sdk`)
+      expect(registry.crate).toBe(`kition-${name}-kit`)
       const noun = ['pdf', 'cad', 'html'].includes(name) ? name.toUpperCase() : name
       expect(entry.create.baseName).toBe(`Untitled ${noun}`)
     })

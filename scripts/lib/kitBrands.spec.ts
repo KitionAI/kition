@@ -5,7 +5,7 @@ import { kitBrandProblems } from './kitBrands.mjs'
 const palette = {
   $comment: 'generated',
   photo: { kitId: 'kit.photo', light: '#087fa1', dark: '#4ccbf0' },
-  design: { kitId: 'kit.design', light: '#d32f8d', dark: '#f57bbd' },
+  layout: { kitId: 'kit.layout', light: '#d32f8d', dark: '#f57bbd' },
 }
 
 describe('kitBrandProblems', () => {
@@ -18,16 +18,16 @@ describe('kitBrandProblems', () => {
   })
 
   it('finds a kit by its kit id', () => {
-    expect(kitBrandProblems(palette, [{ source: 'design-ui', kitId: 'kit.design', brand: { light: '#d32f8d', dark: '#f57bbd' } }])).toEqual([])
+    expect(kitBrandProblems(palette, [{ source: 'layout-ui', kitId: 'kit.layout', brand: { light: '#d32f8d', dark: '#f57bbd' } }])).toEqual([])
   })
 
   it('reports a missing or different brand', () => {
     expect(kitBrandProblems(palette, [
       { source: 'photo-ui', kitId: 'kit.photo', brand: undefined },
-      { source: 'design-ui', kitId: 'kit.design', brand: { light: '#000000', dark: '#f57bbd' } },
+      { source: 'layout-ui', kitId: 'kit.layout', brand: { light: '#000000', dark: '#f57bbd' } },
     ])).toEqual([
       'photo-ui: kit.photo declares no ui.brand; the palette has {"light":"#087fa1","dark":"#4ccbf0"}',
-      'design-ui: kit.design declares {"light":"#000000","dark":"#f57bbd"}; the palette has {"light":"#d32f8d","dark":"#f57bbd"}',
+      'layout-ui: kit.layout declares {"light":"#000000","dark":"#f57bbd"}; the palette has {"light":"#d32f8d","dark":"#f57bbd"}',
     ])
   })
 

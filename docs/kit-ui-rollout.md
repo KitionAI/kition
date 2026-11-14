@@ -47,8 +47,8 @@ were removed. See `docs/kits.md` section 4 for how it works.
 | CAD | Ribbon | Engine tools, layers palette, command line, drafting modes |
 | Photo | Menu bar | Ported canvas tools, options bar, layers, CJK type |
 | Vector | Menu bar | Tool flyouts, Transform, Appearance, Align, Pathfinder, Layers, Swatches |
-| Design | Menu bar | Pages, Layers, Swatches, Styles; glyph fallback for new documents |
-| Effect | Menu bar | Timeline, transport, Transform keyframes, MP4 render |
+| Layout | Menu bar | Pages, Layers, Swatches, Styles; glyph fallback for new documents |
+| Motion | Menu bar | Timeline, transport, Transform keyframes, MP4 render |
 | Film | Menu bar | Track timeline, playback with sound, media through `host/pick`, stepped MP4 export |
 
 Every kit keeps its editor flow test in its repository: `pnpm test:flow` in

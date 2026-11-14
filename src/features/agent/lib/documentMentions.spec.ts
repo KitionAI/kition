@@ -273,14 +273,14 @@ describe('documentMentions', () => {
 
     const mentioned = buildAgentDocumentMentionPromptContext({
       referencedDocuments: [
-        { kind: 'file', path: 'Motion/Intro.keffect', name: 'Intro.keffect', title: 'Intro' },
-        { kind: 'file', path: 'Print/Flyer.kdesign', name: 'Flyer.kdesign', title: 'Flyer' },
+        { kind: 'file', path: 'Motion/Intro.kmotion', name: 'Intro.kmotion', title: 'Intro' },
+        { kind: 'file', path: 'Print/Flyer.klayout', name: 'Flyer.klayout', title: 'Flyer' },
       ],
     })
-    expect(mentioned).toContain('Referenced motion graphics projects in this turn (open them in Effect)')
-    expect(mentioned).toContain('effect_run')
-    expect(mentioned).toContain('Referenced page layouts in this turn (open them in Design)')
-    expect(mentioned).toContain('design_commands')
+    expect(mentioned).toContain('Referenced motion graphics projects in this turn (open them in Motion)')
+    expect(mentioned).toContain('motion_run')
+    expect(mentioned).toContain('Referenced page layouts in this turn (open them in Layout)')
+    expect(mentioned).toContain('layout_commands')
     expect(mentioned).not.toContain('Referenced workspace documents in this turn')
   })
 

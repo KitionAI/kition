@@ -90,7 +90,7 @@ Erzeugen Sie Designvarianten, orthografische Ansichten, Funktionsbilder, Lifesty
 - **Dokumente:** Markdown-Bearbeitung, Vorschau, Vorlagen und PDF-Export.
 - **Tabellen:** typisierte Felder, Anhänge, Formeln, Filter, Sortierung, Gruppen und mehrere Ansichten.
 - **Agent:** Dokumentaktualisierung, Webrecherche, Werkzeugnutzung und Speichern im Arbeitsbereich.
-- **Kits:** sechzehn integrierte Editoren für eigene Dateitypen (Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML, Note, PDF, Photo, Sheet, Slide, Table, Vector). Die Engine jedes Kits läuft als WebAssembly in einem Web Worker, und der Agent bearbeitet dieselben Dateien über die Werkzeuge des Kits.
+- **Kits:** sechzehn integrierte Editoren für eigene Dateitypen (Board, CAD, Design, Doc, Film, HTML, Layout, Motion, Note, PDF, Photo, Scene, Sheet, Slide, Table, Vector). Die Engine jedes Kits läuft als WebAssembly in einem Web Worker, und der Agent bearbeitet dieselben Dateien über die Werkzeuge des Kits.
 - **Einstellungen:** Modelle, Proxy, MCP, Konto, Nutzung, Aktualisierungen und Desktop-Integration.
 
 ## Installation

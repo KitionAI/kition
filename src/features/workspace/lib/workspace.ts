@@ -151,11 +151,11 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.kvector$/i.test(path)) {
     return 'vector'
   }
-  if (/\.keffect$/i.test(path)) {
-    return 'effect'
+  if (/\.kmotion$/i.test(path)) {
+    return 'motion'
   }
-  if (/\.kdesign$/i.test(path)) {
-    return 'design'
+  if (/\.klayout$/i.test(path)) {
+    return 'layout'
   }
   if (/\.dxf$/i.test(path)) {
     return 'cad'
@@ -163,11 +163,11 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.kslide$/i.test(path)) {
     return 'slide'
   }
-  if (/\.kcube$/i.test(path)) {
-    return 'cube'
+  if (/\.kscene$/i.test(path)) {
+    return 'scene'
   }
-  if (/\.kfig$/i.test(path)) {
-    return 'fig'
+  if (/\.kdesign$/i.test(path)) {
+    return 'design'
   }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
@@ -244,16 +244,16 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
     case 'slide':
       return 'slide'
     case 'pdf':
-    case 'design':
+    case 'layout':
     case 'board':
     case 'photo':
     case 'film':
     case 'vector':
-    case 'effect':
+    case 'motion':
     case 'cad':
     case 'html':
-    case 'cube':
-    case 'fig':
+    case 'scene':
+    case 'design':
       return format
     default:
       return null
@@ -301,11 +301,11 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'photo':
     case 'film':
     case 'vector':
-    case 'effect':
-    case 'design':
+    case 'motion':
+    case 'layout':
     case 'cad':
-    case 'cube':
-    case 'fig':
+    case 'scene':
+    case 'design':
       return 'text-violet-500'
     case 'slide':
       return 'text-orange-500'
@@ -338,16 +338,16 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     photo: 'Photo',
     film: 'Film',
     vector: 'Vector',
-    effect: 'Effect',
+    motion: 'Motion',
     cad: 'CAD',
-    cube: 'Cube',
-    fig: 'Fig',
+    scene: 'Scene',
+    design: 'Design',
     slide: 'Slide',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
     board: 'Board',
-    design: 'Design',
+    layout: 'Layout',
   }
 
   return labels[format || 'markdown']
@@ -406,7 +406,7 @@ export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'design' || format === 'cad' || format === 'cube' || format === 'fig' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
+  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'motion' || format === 'layout' || format === 'cad' || format === 'scene' || format === 'design' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

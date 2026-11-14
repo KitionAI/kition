@@ -6,7 +6,7 @@ import { buildWorkspaceTabStripProps, workspaceTabReference, type WorkspaceTabSt
 
 const tabs: WorkspaceTab[] = [
   { id: 'doc-a', type: 'file-viewer', title: 'A', path: 'a.md', format: 'markdown' },
-  { id: 'doc-b', type: 'file-viewer', title: 'B', path: 'b.kdesign', format: 'design' },
+  { id: 'doc-b', type: 'file-viewer', title: 'B', path: 'b.klayout', format: 'layout' },
   { id: 'viewer', type: 'file-viewer', title: 'Photo', path: 'photo.png', format: 'image' },
   { id: 'sites', type: 'gallery', title: 'Images', kind: 'images' },
 ]

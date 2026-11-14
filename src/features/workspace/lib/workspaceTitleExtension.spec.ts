@@ -9,7 +9,7 @@ describe('getWorkspaceItemTitle', () => {
     ['Notes.markdown', 'Notes'],
     ['Leads.ktable', 'Leads'],
     ['Plan.kboard', 'Plan'],
-    ['Poster.kdesign', 'Poster'],
+    ['Poster.klayout', 'Poster'],
     ['Report.docx', 'Report'],
     ['Budget.xlsx', 'Budget'],
     ['Deck.pptx', 'Deck'],
@@ -21,9 +21,9 @@ describe('getWorkspaceItemTitle', () => {
   it.each([
     ['Photo.psd', 'Photo'],
     ['Logo.kvector', 'Logo'],
-    ['Flyer.kdesign', 'Flyer'],
+    ['Flyer.klayout', 'Flyer'],
     ['Movie.kfilm', 'Movie'],
-    ['Clip.keffect', 'Clip'],
+    ['Clip.kmotion', 'Clip'],
     ['Part.dxf', 'Part'],
     ['Deck.kslide', 'Deck'],
   ])('drops a kit-owned extension from %s, same as the formats kitEditors.ts already knows', (name, title) => {

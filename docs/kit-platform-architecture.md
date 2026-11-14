@@ -131,8 +131,8 @@ injected faults that each check must catch.
 ## 5. Shipped Kits
 
 Kition ships sixteen kits, each pinned by version and checksum in
-`kits/kits.lock.json`: Board, CAD, Cube, Design, Doc, Effect, Fig, Film, HTML,
-Note, PDF, Photo, Sheet, Slide, Table, and Vector. Every kit is delivered the same
+`kits/kits.lock.json`: Board, CAD, Design, Doc, Film, HTML, Layout, Motion,
+Note, PDF, Photo, Scene, Sheet, Slide, Table, and Vector. Every kit is delivered the same
 way:
 
 | Part | Implementation | Delivery |

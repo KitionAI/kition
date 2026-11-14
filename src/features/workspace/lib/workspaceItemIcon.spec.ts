@@ -14,16 +14,16 @@ describe('getWorkspaceItemKitIcon', () => {
     ['pptx', 'slide'],
     ['slide', 'slide'],
     ['pdf', 'pdf'],
-    ['design', 'design'],
+    ['layout', 'layout'],
     ['board', 'board'],
     ['photo', 'photo'],
     ['film', 'film'],
     ['vector', 'vector'],
-    ['effect', 'effect'],
+    ['motion', 'motion'],
     ['cad', 'cad'],
     ['html', 'html'],
-    ['cube', 'cube'],
-    ['fig', 'fig'],
+    ['scene', 'scene'],
+    ['design', 'design'],
   ] as const)('maps %s to the %s kit', (format, kit) => {
     expect(getWorkspaceItemKitIcon(format)).toBe(kit)
   })

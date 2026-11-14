@@ -1,6 +1,6 @@
 """The Kition mark: a mosaic K on the kit-icon tile (docs/design.md, Brand marks and kit icons).
 
-A K on a 3x3 grid: a full-height stem in Kition purple, three keys in kit hues (Design pink,
+A K on a 3x3 grid: a full-height stem in Kition purple, three keys in kit hues (Layout pink,
 Photo cyan, Slide orange) and the three unused cells as faint purple slots, which make the mosaic.
 """
 from dataclasses import dataclass
@@ -13,7 +13,7 @@ from wordmark import outline
 PRIMARY = '#5645d4'
 _KITS = {kit.id: kit for kit in kit_icons.KITS}
 # (column, row) of each key and the kit whose hue it wears, top to bottom.
-KEYS = [((2, 0), 'design'), ((1, 1), 'photo'), ((2, 2), 'slide')]
+KEYS = [((2, 0), 'layout'), ((1, 1), 'photo'), ((2, 2), 'slide')]
 SLOTS = [(1, 0), (2, 1), (1, 2)]
 
 # The 256 master: 44-unit cells with 10-unit gaps. The K sits 6 units right of centre so the

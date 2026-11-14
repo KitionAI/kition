@@ -2,7 +2,7 @@ format: 1
 id: regressions/issue-release-sdk-sync
 feature: kition.extensions.kit-scripts
 intent: >-
-  The bundled Cube scripting types must match the SDK generator, including its source
+  The bundled Scene scripting types must match the SDK generator, including its source
   header, so host synchronization checks pass for the released kit catalogue.
 layer: golden
 source:

@@ -83,7 +83,7 @@ describe('kit replicas in Kition', () => {
     expect(Array.from(new Uint8Array(read!.snapshot))).toEqual([1, 2])
     expect(Array.from(new Uint8Array(read!.blobs))).toEqual([3])
     // Another kit's editor never takes it.
-    await expect(readKitReplica('art/a.psd', 'kit.design')).resolves.toBeNull()
+    await expect(readKitReplica('art/a.psd', 'kit.layout')).resolves.toBeNull()
 
     // A later save replaces it under the same identity; a rename keeps it.
     await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: bytes(9), blobs: bytes(), fileStamp: 'v2' })

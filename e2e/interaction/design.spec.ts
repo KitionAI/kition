@@ -1,89 +1,97 @@
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from '../helpers/embeddedKit'
-import { hostMatrix, onDisk, saveNow } from './helpers-a'
+/**
+ * Interaction suite: the Design kit (`kit.design`) in Kition, on the mocked desktop shell.
+ * Runs only on demand: `pnpm test:interaction:e2e --grep @design`.
+ *
+ * The Design editor draws its layers on a canvas, so the suite reads the live document through
+ * Kition's development hook (`liveDocument`, the Kit AI bridge's `inspect`), and its unsaved mark
+ * is the Save button being enabled (Design shows no status bar).
+ *
+ * Host matrix rows not covered here:
+ * - H9 (worker crash): the kit's engine Worker lives inside the kit's frame, out of the test's reach.
+ * - H10, H11 (history, print) are covered by the note-history and kit-print specs.
+ * - H12 (agent): e2e/collab-design.spec.ts reads and edits the open design through the Kit AI bridge.
+ * - H13 (co-editing): covered by e2e/collab-design.spec.ts.
+ * - H14 (theme and language): kit-editor follows Kition's theme through kitionTheme; not kit-specific.
+ */
+import { expect, test, type FrameLocator, type Page } from '@playwright/test'
+import { openInKitFrame } from '../helpers/embeddedKit'
+import { hostMatrix, liveDocument, nodeEngine } from './helpers-b'
 import { tags } from './support'
 
-/**
- * The Design kit (`kit.design`) in Kition on the desktop host: the host matrix, then the layout's
- * own interactions (pages, layers). The count the matrix follows is the layout's pages.
- *
- * Rows not covered here: H10 (version history): the Design kit keeps no replica, which Kition's
- * version history needs; H11 (printing): the Design kit's manifest does not ask to print.
- *
- * H13 (co-editing): the Design kit's editor does not offer its replica yet. Turned on for a trial,
- * an edit made in each window while one was offline merged into duplicated pages: both windows
- * converged on 8 pages, numbered 1 to 4 twice, where 5 were made. Co-editing stays off until the
- * kit's merge keeps each page once.
- */
+const engine = nodeEngine('design', 'DesignDocument')
+const layersOf = async (bytes: Buffer) => (await engine.inspect('Saved.kdesign', bytes)).layers as number
 
-type NodeDesignDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-const engine = kitEngine<{ DesignDocument: { create(name: string, width: number, height: number): NodeDesignDocument; open(name: string, bytes: Uint8Array): NodeDesignDocument } }>('design', 'kition_design_kit')
+/** The starter frame and `count` rectangles. */
+const screen = (count: number) =>
+  engine.make('Screen.kdesign', 1440, 1024, (doc) => {
+    for (let index = 0; index < count; index += 1) doc.execute('shape.rectangle', JSON.stringify({ x: 120 + index * 360, y: 120, width: 320, height: 200 }))
+  })
 
-/** One page with a text frame, then `pages` more pages. */
-async function flyer(pages = 0) {
-  const sdk = await engine.load()
-  const doc = sdk.DesignDocument.create('Flyer.kdesign', 612, 792)
-  doc.execute('frame.create', JSON.stringify({ rect: [54, 72, 558, 200], content: 'text', caret: true }))
-  doc.execute('text.insert', JSON.stringify({ text: 'Spring concert' }))
-  doc.execute('text.exitToFrame', '{}')
-  doc.execute('edit.deselectAll', '{}')
-  for (let index = 0; index < pages; index += 1) doc.execute('layout.pages.insert', '{}')
-  const bytes = Buffer.from(doc.save())
-  doc.free()
-  return bytes
+/** Draws a rectangle with the toolbar's shape tool in the middle of the canvas. */
+async function drawRectangle(page: Page, kit: FrameLocator) {
+  await kit.getByTestId('design-caret-shape').click()
+  await kit.getByTestId('design-flyout-tool-rectangle').click()
+  const canvas = (await kit.getByTestId('kit-canvas-surface').boundingBox())!
+  const from = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 }
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(from.x + 40, from.y + 30, { steps: 6 })
+  await page.mouse.move(from.x + 80, from.y + 60, { steps: 6 })
+  await page.mouse.up()
 }
 
-async function inspected(bytes: Buffer) {
-  const sdk = await engine.load()
-  const doc = sdk.DesignDocument.open('Saved.kdesign', bytes)
-  const info = JSON.parse(doc.inspect()) as { pageCount: number; layers: unknown[] }
-  doc.free()
-  return info
+const shows = async (page: Page, kit: FrameLocator, count: number, name: string) => {
+  await expect(kit.getByTestId('design-toolbar')).toBeVisible({ timeout: 60_000 })
+  await expect.poll(async () => ((await liveDocument(page, name))?.details as { layers?: number } | undefined)?.layers ?? null, { timeout: 60_000 }).toBe(count)
 }
-
-const OPTIONS = { modes: { 'kit.design': 'menus' as const } }
-
-test.beforeEach(() => {
-  expect(engine.built, 'public/kits/design-ui holds the Design kit package').toBe(true)
-})
 
 hostMatrix({
   kit: 'design',
-  prefix: 'design',
-  name: 'Flyer.kdesign',
-  title: 'Flyer',
-  fixture: () => flyer(),
-  variant: () => flyer(2),
-  variantCount: 3,
-  base: 1,
-  options: OPTIONS,
-  ready: (kit) => expect(kit.getByTestId('design-status')).toHaveText(/^\d+ pages?$/, { timeout: 60_000 }),
-  shown: async (kit) => Number(/(\d+)/.exec((await kit.getByTestId('design-status').textContent()) ?? '')?.[1] ?? -1),
-  saved: async (bytes) => (await inspected(bytes)).pageCount,
-  edit: (kit) => kit.getByTestId('design-add-page').click(),
-  // The Design kit keeps no replica, so Kition keeps no version history of its files (H10).
-  history: false,
-  focus: (kit) => kit.getByTestId('design-canvas-region').click({ position: { x: 40, y: 40 } }),
-  create: { group: 'Documents', name: 'Untitled design.kdesign', count: 1 },
-  agent: { command: 'layout.pages.insert', params: {} },
-  damaged: Buffer.from('this is not a layout'),
+  createGroup: 'Visual',
+  createdName: 'Untitled design.kdesign',
+  file: 'Screen.kdesign',
+  fixture: () => screen(1),
+  variant: () => screen(3),
+  measure: layersOf,
+  counts: { fixture: 2, edited: 3, variant: 4 },
+  shows,
+  edit: drawRectangle,
+  unsaved: (kit) => kit.locator('[data-testid="design-save"]:not([disabled])'),
 })
 
 test.describe('design details', () => {
-  test.setTimeout(180_000)
+  test.beforeEach(() => {
+    test.skip(!engine.built, 'the Design kit is not built into public/kits/design-ui')
+    test.setTimeout(180_000)
+  })
 
-  test('a new layer and a deleted page reach the saved layout', tags('design', ['H3'], true), async ({ page, baseURL }) => {
-    const { host, kit } = await openInKitFrame(page, baseURL!, 'Flyer.kdesign', await flyer(1), {}, { persist: true, ...OPTIONS })
+  test('a new page from the Pages panel saves with the design', tags('design', ['H3'], true), async ({ page, baseURL }) => {
+    const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Screen.kdesign', await screen(1))
     try {
-      await expect(kit.getByTestId('design-status')).toHaveText('2 pages', { timeout: 60_000 })
-      await kit.getByTestId('design-new-layer').click()
-      await expect(kit.getByTestId('design-layers').getByText('Layer 2')).toBeVisible()
-      await kit.getByTestId('design-delete-page').click()
-      await expect(kit.getByTestId('design-status')).toHaveText('1 page')
-      await saveNow(kit, 'design')
-      const saved = await inspected(await onDisk(host, 'Flyer.kdesign'))
-      expect(saved.pageCount).toBe(1)
-      expect(saved.layers).toHaveLength(2)
+      await shows(page, kit, 2, 'Screen.kdesign')
+      await kit.getByTestId('design-pages-add').click()
+      await expect.poll(async () => (((await liveDocument(page, 'Screen.kdesign'))?.details as { pages?: unknown[] } | undefined)?.pages ?? []).length).toBe(2)
+      await page.keyboard.press('ControlOrMeta+s')
+      await expect.poll(() => saves.length, { timeout: 30_000 }).toBeGreaterThan(0)
+      expect(((await engine.inspect('Saved.kdesign', saves.at(-1)!.bytes)).pages as unknown[]).length).toBe(2)
+    } finally {
+      await host.dispose()
+    }
+  })
+
+  test('zooming from the zoom menu changes no layer and leaves nothing to save', tags('design', ['H7']), async ({ page, baseURL }) => {
+    const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Screen.kdesign', await screen(1))
+    try {
+      await shows(page, kit, 2, 'Screen.kdesign')
+      const canvas = (await kit.getByTestId('kit-canvas-surface').boundingBox())!
+      await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2)
+      await page.keyboard.down('Control')
+      await page.mouse.wheel(0, -300)
+      await page.keyboard.up('Control')
+      await page.mouse.wheel(200, 100)
+      await shows(page, kit, 2, 'Screen.kdesign')
+      await expect(kit.getByTestId('design-save')).toBeDisabled()
+      expect(saves).toEqual([])
     } finally {
       await host.dispose()
     }

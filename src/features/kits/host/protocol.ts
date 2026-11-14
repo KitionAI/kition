@@ -702,7 +702,7 @@ export function parseLinksPickParams(value: unknown): KitLinksPickParams | null 
 
 /**
  * Workspace path `to` as the document at `documentPath` links it (HC-P2): relative to the
- * document's folder, with `../` where `to` is elsewhere (`../libraries/Icons.kfig`).
+ * document's folder, with `../` where `to` is elsewhere (`../libraries/Icons.kdesign`).
  */
 export function linkPathFrom(documentPath: string, to: string) {
   const parts = (path: string) => path.replace(/\\/g, '/').split('/').filter((part) => part && part !== '.')

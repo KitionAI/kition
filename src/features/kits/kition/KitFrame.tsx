@@ -101,7 +101,7 @@ async function unusedPath(path: string) {
  * What a kit may read (`host/read`) and ask the stamp of (`host/stamp`): its own document, through
  * Kition's file service wherever the document is; and any other workspace file whose path has no
  * hidden segment, through the kit file service (which the runtime confines the same way): the
- * files beside the document, and those its links name elsewhere (film and effect clips, linked
+ * files beside the document, and those its links name elsewhere (film and motion clips, linked
  * pictures). Never Kition's own store (`.kition/`, other documents' replicas and comment threads)
  * or any other hidden file or folder (rule LR2). The lent files engines read follow the same rule.
  */

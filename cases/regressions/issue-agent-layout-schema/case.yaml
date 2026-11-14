@@ -1,0 +1,21 @@
+format: 1
+id: regressions/issue-agent-layout-schema
+feature: kition.agent.kit-object-model
+intent: >-
+  The host supplies Layout's registered object-model schema to agent describe and
+  batch requests, so the open editor can answer without describing its own schema.
+layer: golden
+source:
+  kind: probe
+  from: e2e/interaction/agent-adaptation.spec.ts
+  licence: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/kits/kition/kitBridgeModel.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-10-31"
+timeout_s: 60

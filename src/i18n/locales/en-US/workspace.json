@@ -7,11 +7,11 @@
       "photo": "Photo",
       "film": "Film",
       "vector": "Vector",
-      "effect": "Effect",
-      "design": "Design",
+      "motion": "Motion",
+      "layout": "Layout",
       "cad": "CAD",
-      "cube": "Cube",
-      "fig": "Fig",
+      "scene": "Scene",
+      "design": "Design",
       "slide": "Slide",
       "doc": "Doc",
       "sheet": "Sheet",
@@ -291,25 +291,25 @@
     "unavailableTitle": "Vector editing is not available in this build",
     "unavailableBody": "Vector files open in Kition when the Vector engine is included."
   },
-  "effectKit": {
-    "unavailableTitle": "Effect editing is not available in this build",
-    "unavailableBody": "Effect files open in Kition when the Effect engine is included."
+  "motionKit": {
+    "unavailableTitle": "Motion editing is not available in this build",
+    "unavailableBody": "Motion files open in Kition when the Motion engine is included."
   },
-  "designKit": {
-    "unavailableTitle": "Design editing is not available in this build",
-    "unavailableBody": "Design files open in Kition when the Design engine is included."
+  "layoutKit": {
+    "unavailableTitle": "Layout editing is not available in this build",
+    "unavailableBody": "Layout files open in Kition when the Layout engine is included."
   },
   "cadKit": {
     "unavailableTitle": "CAD editing is not available in this build",
     "unavailableBody": "CAD files open in Kition when the CAD engine is included."
   },
-  "cubeKit": {
-    "unavailableTitle": "Cube editing is not available in this build",
-    "unavailableBody": "Cube files open in Kition when the Cube engine is included."
+  "sceneKit": {
+    "unavailableTitle": "Scene editing is not available in this build",
+    "unavailableBody": "Scene files open in Kition when the Scene engine is included."
   },
-  "figKit": {
-    "unavailableTitle": "Fig editing is not available in this build",
-    "unavailableBody": "Fig files open in Kition when the Fig engine is included."
+  "designKit": {
+    "unavailableTitle": "Design editing is not available in this build",
+    "unavailableBody": "Design files open in Kition when the Design engine is included."
   },
   "slideKit": {
     "unavailableTitle": "Slide editing is not available in this build",
@@ -423,14 +423,14 @@
     "kits": {
       "board": "Board",
       "cad": "CAD",
-      "cube": "Cube",
-      "fig": "Fig",
       "design": "Design",
       "document": "Document",
-      "effect": "Effect",
       "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
       "pdf": "PDF",
       "photo": "Photo",
+      "scene": "Scene",
       "sheet": "Sheet",
       "slide": "Slide",
       "table": "Table",
