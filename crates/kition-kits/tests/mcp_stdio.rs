@@ -5,8 +5,11 @@
 //! for Kition Example (`KITION_KIT_MOCK_AS`).
 //!
 //! The mock kit executable is built with the workspace (`cargo build -p kition-kit-mock`); when
-//! it is missing locally, the test says so and passes. CI requires it.
+//! it is missing locally, the test says so and passes. CI requires it. The kit's launcher is a
+//! shell script, so these tests run on Unix.
+#![cfg(unix)]
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Stdio;
 
@@ -81,11 +84,7 @@ async fn serves_tools_errors_and_resources_over_stdio() {
     std::fs::copy(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/support/example.json"), example.join("kit.json")).unwrap_or_else(|err| panic!("{err}"));
     let launcher = example.join(format!("kition-example{}", std::env::consts::EXE_SUFFIX));
     std::fs::write(&launcher, format!("#!/bin/sh\nexec '{}' \"$@\"\n", mock.display())).unwrap_or_else(|err| panic!("{err}"));
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
-    }
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
     let mut child = command
         .arg("--workspace")
         .arg(workspace.path())
@@ -197,11 +196,7 @@ async fn answers_tool_calls_on_the_default_thread_stack() {
     std::fs::copy(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/support/example.json"), example.join("kit.json")).unwrap_or_else(|err| panic!("{err}"));
     let launcher = example.join(format!("kition-example{}", std::env::consts::EXE_SUFFIX));
     std::fs::write(&launcher, format!("#!/bin/sh\nexec '{}' \"$@\"\n", mock.display())).unwrap_or_else(|err| panic!("{err}"));
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
-    }
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
     let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_kition-kits-mcp"));
     for (key, _) in std::env::vars() {
         if key == "RUST_MIN_STACK" || (key.starts_with("KITION_KIT_") && key.ends_with("_BINARY")) {

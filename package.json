@@ -60,7 +60,7 @@
     "build:perf": "pnpm run build && pnpm perf:budget",
     "build:desktop": "node src-tauri/scripts/build.mjs",
     "dist:desktop": "node src-tauri/scripts/build.mjs",
-    "check:desktop": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
+    "check:desktop": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo build -p kition-kit-mock && cargo test --workspace",
     "release:github": "node scripts/release-github.mjs",
     "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/workspace/lib/workspacePersistence.spec.ts",
     "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-document-flow.spec.ts --workers=1",

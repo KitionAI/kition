@@ -9,7 +9,11 @@
 //! The SDK's mock executable exercises these paths with a synthetic manifest. A kit whose headless executable forks the file's
 //! replica (`model.export`, then `model.open`) keeps replica drafts; one whose replica does not
 //! fork keeps a copy of the file and says why in `draft.json` (`replicaError`).
+//!
+//! The kits stand in for the mock through shell-script launchers, so these tests run on Unix.
+#![cfg(unix)]
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -31,7 +35,6 @@ const CASES: &[Case] =
     &[Case { prefix: "example", fixture: "Plan.example", step: || json!({ "command": "text.append", "params": { "text": "# Agenda\n\n" } }), mode: "replica" }];
 
 fn replica_kit() -> (tempfile::TempDir, PathBuf) {
-    use std::os::unix::fs::PermissionsExt;
     let mock = mock_binary().expect("build kition-kit-mock first");
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("kit.json"), include_str!("support/example.json")).unwrap();
@@ -213,11 +216,7 @@ async fn a_file_draft_says_why_it_is_not_a_replica() {
         format!("#!/bin/sh\nKITION_KIT_MOCK_AS=kit.example:example KITION_KIT_MOCK_VERSION={version} exec '{}' \"$@\"\n", mock.display()),
     )
     .unwrap_or_else(|err| panic!("{err}"));
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
-    }
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
     let mut command = tokio::process::Command::new(MCP);
     for (key, _) in std::env::vars() {
         if key.starts_with("KITION_KIT_") && key.ends_with("_BINARY") {
@@ -400,11 +399,7 @@ async fn draft_mode_refuses_edits_of_a_kit_without_drafts() {
         ),
     )
     .unwrap_or_else(|err| panic!("{err}"));
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
-    }
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
     let mut command = tokio::process::Command::new(MCP);
     for (key, _) in std::env::vars() {
         if key.starts_with("KITION_KIT_") && key.ends_with("_BINARY") {

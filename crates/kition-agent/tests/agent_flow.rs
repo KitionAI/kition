@@ -1531,12 +1531,15 @@ async fn the_agent_runs_a_kit_tool_the_model_asks_for() {
         eprintln!("skipped: build kition-kit-mock first (cargo build -p kition-kit-mock)");
         return;
     };
+    let vector = kition_kits::definitions::fixture_kit("kit.vector");
     let bin = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let launcher = bin.path().join("kition-vector-mock.sh");
+    // The mock reports the version of the kit it stands in for (lock-step, host rule H11).
     std::fs::write(
         &launcher,
         format!(
-            "#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector exec '{}' \"$@\"\n",
+            "#!/bin/sh\nKITION_KIT_MOCK_AS=kit.vector:kvector KITION_KIT_MOCK_VERSION={} exec '{}' \"$@\"\n",
+            vector.version,
             mock.display()
         ),
     )
@@ -1547,7 +1550,6 @@ async fn the_agent_runs_a_kit_tool_the_model_asks_for() {
         std::fs::create_dir_all(root.join("art")).unwrap_or_else(|err| panic!("{err}"));
         std::fs::write(root.join("art/Note.kvector"), "hello")
             .unwrap_or_else(|err| panic!("{err}"));
-        let vector = kition_kits::definitions::fixture_kit("kit.vector");
         Some(kition_kits::KitManager::new(
             Some(root.to_path_buf()),
             vec![(vector, Some(launcher.clone()))],

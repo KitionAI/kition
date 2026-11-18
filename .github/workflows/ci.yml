@@ -138,5 +138,8 @@ jobs:
       - name: Lint the runtime and desktop shell
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      - name: Build the mock kit the tests start
+        run: cargo build -p kition-kit-mock
+
       - name: Test the runtime and desktop shell
         run: cargo test --workspace --no-fail-fast
