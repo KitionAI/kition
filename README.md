@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://github.com/KitionAI/kition/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KitionAI/kition/ci.yml?branch=main&amp;style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;label=CI" alt="CI status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="License: Apache-2.0" /></a>
-  <img src="https://img.shields.io/badge/version-0.2.0-5645d4?style=flat-square" alt="Version 0.2.0" />
+  <img src="https://img.shields.io/badge/version-0.1.0-5645d4?style=flat-square" alt="Version 0.1.0" />
   <img src="https://img.shields.io/badge/status-beta-f5d75e?style=flat-square" alt="Project status: beta" />
   <img src="https://img.shields.io/badge/macOS-supported-5645d4?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS supported" />
   <img src="https://img.shields.io/badge/Windows-supported-5645d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" alt="Windows supported" />
@@ -54,7 +54,7 @@ The agent does not paste text back at you. It reads the file through the kit, ch
 kit's commands, previews the result, and runs the kit's checks. You see every change, and you can
 let it work in a draft that you review before anything changes.
 
-> Kition 0.2.0 is in beta. Keep backups of important workspaces.
+> Kition 0.1.0 is in beta. Keep backups of important workspaces.
 
 ## What you can do
 
@@ -104,7 +104,7 @@ agent, see the [Kition SDK](https://github.com/KitionAI/kition-sdk) and
 
 ## Install
 
-Desktop builds of Kition 0.2.0 for macOS, Windows and Linux will be published on
+Desktop builds of Kition 0.1.0 for macOS, Windows and Linux will be published on
 [GitHub Releases](https://github.com/KitionAI/kition/releases). Until then, Kition runs from
 source: see [CONTRIBUTING.md](.github/CONTRIBUTING.md#run-from-source).
 
