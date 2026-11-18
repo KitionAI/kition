@@ -9,29 +9,49 @@ const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQD
 /** Another 1×1 PNG, for a rerun that must replace the first pictures. */
 const OTHER_PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
 
-/** The grid's per-cell Regenerate buttons on its first row, left to right. */
-async function firstRowButtons(kit: FrameLocator) {
-  const buttons = kit.getByRole('button', { name: 'Regenerate', exact: true })
-  await expect(buttons.first()).toBeVisible({ timeout: 30_000 })
-  const boxes = await Promise.all((await buttons.all()).map(async (button) => ({ button, box: (await button.boundingBox())! })))
-  const top = Math.min(...boxes.map(({ box }) => box.y))
-  return boxes.filter(({ box }) => Math.abs(box.y - top) < 4).sort((a, b) => a.box.x - b.box.x).map(({ button }) => button)
+const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
+/** The grid's first row's buttons sit this far below the stage's top: under the 32 px header, 4 px into the cell, at their middle. */
+const FIRST_ROW_BUTTONS = 32 + 4 + 9
+/** The AI regenerate button's side (the 0.5.0 grid draws it 18 px wide); the row's own control at its start is wider. */
+const AI_BUTTON = 18
+
+/**
+ * The grid's per-cell Regenerate buttons on its first row, left to right, as the points a person
+ * clicks. The engine draws the grid on a canvas, and a hovered AI cell shows its regenerate button
+ * at its top right, where the pointer becomes a hand: moving along the first row finds each one.
+ */
+async function firstRowButtons(page: Page, kit: FrameLocator) {
+  const scan = async () => {
+    const box = (await stage(kit).boundingBox())!
+    const y = box.y + FIRST_ROW_BUTTONS
+    const spans: Array<{ from: number; to: number }> = []
+    for (let x = box.x; x < box.x + box.width; x += 3) {
+      await page.mouse.move(x, y)
+      const hand = await stage(kit).evaluate((element) => [element, ...element.querySelectorAll<HTMLElement>('*')].some((node) => (node as HTMLElement).style.cursor === 'pointer'))
+      if (!hand) continue
+      const last = spans.at(-1)
+      if (last && x - last.to <= 3) last.to = x
+      else spans.push({ from: x, to: x })
+    }
+    return spans.filter(({ from, to }) => to - from <= AI_BUTTON).map(({ from, to }) => ({ x: (from + to) / 2, y }))
+  }
+  let buttons: Awaited<ReturnType<typeof scan>> = []
+  await expect.poll(async () => (buttons = await scan()).length, { timeout: 30_000 }).toBeGreaterThan(0)
+  return buttons.map((point) => ({ click: () => page.mouse.click(point.x, point.y), x: point.x }))
 }
 
-/** Scrolls the grid to its last (`dx` > 0) or first columns and waits until it stops moving. */
+/** Scrolls the grid to its last (`dx` > 0) or first columns and waits until its buttons stop moving. */
 async function scrollGrid(page: Page, kit: FrameLocator, dx: number) {
-  const stage = kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
-  const box = (await stage.boundingBox())!
+  const box = (await stage(kit).boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.wheel(dx, 0)
-  const first = kit.getByRole('button', { name: 'Regenerate', exact: true }).first()
   let last = ''
   await expect.poll(async () => {
-    const now = JSON.stringify(await first.boundingBox())
+    const now = JSON.stringify((await firstRowButtons(page, kit)).map((button) => button.x))
     const settled = now === last
     last = now
     return settled
-  }, { intervals: [200, 200, 200, 400] }).toBe(true)
+  }, { intervals: [200, 200, 200, 400], timeout: 30_000 }).toBe(true)
 }
 const scrollToLastColumns = (page: Page, kit: FrameLocator) => scrollGrid(page, kit, 4000)
 
@@ -67,7 +87,7 @@ test('AI-SCENE-006: Product Content Studio runs only the asked cells, keeps the 
     expect(requests).toHaveLength(0)
 
     // Designs is the first AI column: its first-row button asks for images of this concept.
-    const [designs] = await firstRowButtons(kit)
+    const [designs] = await firstRowButtons(page, kit)
     await designs.click()
     await expect.poll(() => requests.length, { timeout: 30_000 }).toBeGreaterThan(0)
     await expect.poll(() => requests.filter((request) => request.output === 'image').length, { timeout: 60_000 }).toBe(3)
@@ -77,7 +97,7 @@ test('AI-SCENE-006: Product Content Studio runs only the asked cells, keeps the 
 
     // LinkedIn copy is the second-to-last AI column: one text request that names the concept.
     await scrollToLastColumns(page, kit)
-    const lastButtons = await firstRowButtons(kit)
+    const lastButtons = await firstRowButtons(page, kit)
     await lastButtons.at(-2)!.click()
     await expect.poll(() => requests.length, { timeout: 30_000 }).toBe(imageRequests + 1)
     const copy = requests.at(-1)!
@@ -107,13 +127,13 @@ test('AI-SCENE-006: Product Content Studio runs only the asked cells, keeps the 
     refuseText = true
     const beforeRefusal = requests.length
     await scrollToLastColumns(page, kit)
-    await (await firstRowButtons(kit)).at(-2)!.click()
+    await (await firstRowButtons(page, kit)).at(-2)!.click()
     await expect(kit.getByText(/No credits left/)).toBeVisible({ timeout: 30_000 })
     expect(requests).toHaveLength(beforeRefusal + 1)
 
     // A rerun of Designs replaces its pictures rather than adding to them.
     await scrollGrid(page, kit, -4000)
-    const [designsAgain] = await firstRowButtons(kit)
+    const [designsAgain] = await firstRowButtons(page, kit)
     const beforeRerun = requests.length
     await designsAgain.click()
     await expect.poll(() => requests.filter((request) => request.output === 'image').length, { timeout: 60_000 }).toBe(6)
