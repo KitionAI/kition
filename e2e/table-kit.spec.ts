@@ -85,8 +85,8 @@ async function recordMenu(kit: FrameLocator) {
 }
 
 test('the Table kit is packaged with Kition', () => {
-  // The gate fails, never skips, when the package is missing: run `make kit-fetch` (or
-  // scripts/publish-kit.sh table) to restore public/kits/table-ui.
+  // The gate fails, never skips, when the package is missing: run `make kit-fetch` to restore
+  // public/kits/table-ui.
   expect(engine.built, 'public/kits/table-ui holds the Table kit package').toBe(true)
 })
 

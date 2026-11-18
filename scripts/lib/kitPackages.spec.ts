@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { KIT_PACKAGE_STAMP, kitPackageProblem, publishedKitPackageStamp, writeKitPackageStamp } from './kitPackages.mjs'
+import { KIT_PACKAGE_STAMP, kitLockEntry, kitPackageProblem, publishedKitPackageStamp, writeKitLock, writeKitPackageStamp } from './kitPackages.mjs'
 
 const pinned = {
   repository: 'KitionAI/kition-slide',
@@ -63,5 +63,55 @@ describe('kitPackageProblem', () => {
 
   it('reports a missing package', () => {
     expect(kitPackageProblem(kitsDir, 'word', pinned)).toMatch(/word: not in/)
+  })
+})
+
+describe('kitLockEntry', () => {
+  const metadata = { ...pinned, tesseraCommit: '4'.repeat(40) }
+  const asked = { repository: pinned.repository, version: pinned.version }
+  const download = { size: pinned.size, sha256: pinned.sha256 }
+
+  it('takes the Release metadata as the lock entry, in the lock order', () => {
+    const entry = kitLockEntry('slide', asked, { extra: true, ...metadata }, download)
+    expect(Object.keys(entry)).toEqual(['repository', 'version', 'tag', 'asset', 'size', 'sha256', 'commit', 'sdkCommit', 'tesseraCommit', 'fontsCommit'])
+    expect(entry).toEqual(metadata)
+  })
+
+  it('rejects a download whose size or SHA-256 differs from the metadata', () => {
+    expect(() => kitLockEntry('slide', asked, metadata, { ...download, sha256: 'b'.repeat(64) })).toThrow(/sha256 a+ instead of b+/)
+    expect(() => kitLockEntry('slide', asked, metadata, { ...download, size: 1 })).toThrow(/size 1234 instead of 1/)
+  })
+
+  it('rejects metadata of another kit, repository or version', () => {
+    expect(() => kitLockEntry('slide', { ...asked, version: '0.4.8' }, metadata, download)).toThrow(/version 0\.4\.7 instead of 0\.4\.8/)
+    expect(() => kitLockEntry('slide', { ...asked, repository: 'KitionAI/kition-sheet' }, metadata, download)).toThrow(/repository/)
+    expect(() => kitLockEntry('sheet', { ...asked, repository: 'KitionAI/kition-sheet' }, { ...metadata, repository: 'KitionAI/kition-sheet' }, download)).toThrow(/asset kition-slide-0\.4\.7\.tgz instead of kition-sheet-0\.4\.7\.tgz/)
+  })
+
+  it('rejects metadata without every commit', () => {
+    const { tesseraCommit: _tessera, ...withoutTessera } = metadata
+    expect(() => kitLockEntry('slide', asked, withoutTessera, download)).toThrow(/no valid tesseraCommit/)
+  })
+})
+
+describe('writeKitLock', () => {
+  let repoRoot: string
+
+  beforeEach(() => {
+    repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-lock-'))
+    fs.mkdirSync(path.join(repoRoot, 'kits'))
+    fs.writeFileSync(path.join(repoRoot, 'kits', 'kits.lock.json'), JSON.stringify({ $comment: 'pins', slide: { version: '1' }, board: { version: '1' } }))
+  })
+
+  afterEach(() => {
+    fs.rmSync(repoRoot, { recursive: true, force: true })
+  })
+
+  it('replaces and adds entries, keeping the comment first and the kits sorted', () => {
+    writeKitLock(repoRoot, { slide: { version: '2' }, cad: { version: '1' } })
+    const text = fs.readFileSync(path.join(repoRoot, 'kits', 'kits.lock.json'), 'utf8')
+    expect(Object.keys(JSON.parse(text))).toEqual(['$comment', 'board', 'cad', 'slide'])
+    expect(JSON.parse(text).slide).toEqual({ version: '2' })
+    expect(text.endsWith('}\n')).toBe(true)
   })
 })

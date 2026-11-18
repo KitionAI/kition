@@ -1,0 +1,101 @@
+name: Kit package
+
+# Builds a kit's package and publishes it as the `package-v<version>` Release of the kit's
+# repository (scripts/package-kit.sh; docs/kits.md, section 4b). Each kit repository's Package
+# workflow (.github/workflows/package.yml, started by hand) calls it with the kit's name, so the
+# Release is made with that repository's own workflow token. Every repository it reads is public.
+
+on:
+  workflow_call:
+    inputs:
+      kit:
+        description: The kit's name in Kition's kits/modules.json, for example board
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PNPM_VERSION: 10.34.9
+  NODE_VERSION: '24'
+  WASM_PACK_VERSION: v0.13.1
+
+jobs:
+  package:
+    name: Package ${{ inputs.kit }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      # The layout scripts/package-kit.sh expects: the kit, Kition, kition-sdk, kition-tessera and
+      # kition-fonts side by side.
+      - name: Check out the kit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: kition-${{ inputs.kit }}
+
+      - name: Check out Kition
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition
+          ref: main
+          path: kition
+
+      - name: Check out kition-sdk
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition-sdk
+          ref: main
+          path: kition-sdk
+
+      - name: Check out kition-tessera
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition-tessera
+          ref: main
+          path: kition-tessera
+
+      - name: Check out kition-fonts
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition-fonts
+          ref: main
+          path: kition-fonts
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kition-${{ inputs.kit }} -> target
+
+      - name: Setup wasm-pack
+        run: curl -fsSL https://github.com/rustwasm/wasm-pack/releases/download/${WASM_PACK_VERSION}/wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar -xz --strip-components=1 -C "$HOME/.cargo/bin" "wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl/wasm-pack"
+
+      # C code in the engines' dependencies (psm's assembly, through loro) is compiled for wasm32
+      # with the runner's LLVM.
+      - name: Use LLVM for wasm32 C code
+        run: |
+          llvm="$(ls -d /usr/lib/llvm-*/bin | sort -V | tail -n 1)"
+          echo "CC_wasm32_unknown_unknown=$llvm/clang" >> "$GITHUB_ENV"
+          echo "AR_wasm32_unknown_unknown=$llvm/llvm-ar" >> "$GITHUB_ENV"
+
+      - name: Build and publish the package
+        run: kition/scripts/package-kit.sh "$KIT"
+        env:
+          KIT: ${{ inputs.kit }}
+          GH_TOKEN: ${{ github.token }}

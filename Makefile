@@ -68,7 +68,7 @@ $(addprefix kit-ui-,$(KIT_UIS)): kit-ui-%:
 
 kit-uis: $(addprefix kit-ui-,$(KIT_UIS))
 
-# The published packages instead of local builds (scripts/publish-kit.sh publishes them).
+# The published packages instead of local builds (each kit's Package workflow publishes them).
 kit-fetch:
 	node scripts/fetch-kits.mjs
 

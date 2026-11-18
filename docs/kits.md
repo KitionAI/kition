@@ -316,7 +316,7 @@ items with `primary`.
   schemas bundled in `@kition/script/kits`. The kit's `agent/checks.json` (its
   check catalogue) and `agent/guide.md` (its guide for models) travel the
   same way (KHP K17). A local build warns when the kit's `level` claims
-  Agent-ready without them, and `scripts/publish-kit.sh` refuses to publish
+  Agent-ready without them, and the kit's Package workflow refuses to publish
   it. kition-sdk's
   `packages/script/scripts/sync-kits.mjs` regenerates those bundled kits from
   the packages pinned in `kits/kits.lock.json`, and `--check` reports drift.
@@ -645,16 +645,26 @@ origin of its own, keeps documents in its own storage, and may co-edit them
 through a sync server. Kition consumes the package the way any other host
 would, through `@kition/kit-host`, so it never builds kits in its release.
 
-- **Publishing** runs on a developer machine, never in the kit
-  repositories' CI (their Actions minutes are limited):
-  `scripts/publish-kit.sh <kit>` clones the pushed `origin/main` of the kit,
-  kition-sdk, kition-tessera, and kition-fonts side by side in a scratch folder (local changes
-  never reach a package), builds the package with `scripts/build-kit-ui.sh`,
-  uploads `kition-<kit>-<version>.tgz` to a `package-v<version>` Release of
-  the kit's repository with `gh`, and pins it in `kits/kits.lock.json`
-  (version, commit, size, SHA-256, and the kition-sdk, kition-tessera, and
-  kition-fonts commits). A version is published once: bump `version` in the kit's
-  `kit.json` to publish a change. `--dry-run` builds and packs only.
+- **Publishing** runs on GitHub, never on a developer machine. Each kit
+  repository has a Package workflow (`.github/workflows/package.yml`, started
+  by hand with `gh workflow run package.yml -R KitionAI/kition-<kit>`) that
+  calls Kition's reusable `.github/workflows/kit-package.yml` with the kit's
+  name. It checks out the commit it was started on, beside Kition,
+  kition-sdk, kition-tessera, and kition-fonts (main), and runs
+  `scripts/package-kit.sh <kit>`: it refuses a version whose
+  `package-v<version>` Release exists, builds the package with
+  `scripts/build-kit-ui.sh` (machine paths in the engine remapped), refuses a
+  `level` its agent files do not back, and publishes the `package-v<version>`
+  Release of the kit's repository with that repository's workflow token,
+  targeting the built commit: `kition-<kit>-<version>.tgz` (the `<kit>-ui`
+  folder without the local-build stamp) and `kition-<kit>-<version>.json`,
+  its lock entry (repository, version, tag, asset, size, SHA-256, and the
+  kit, kition-sdk, kition-tessera, and kition-fonts commits). A version is
+  published once: bump `version` in the kit's `kit.json` to publish a change.
+- **Pinning**: `node scripts/pin-kits.mjs <kit>...` (or `--all`) reads the
+  `version` in kit.json on the kit's main branch, downloads that version's
+  Release with `gh`, checks the package's size and SHA-256 against its
+  metadata, and writes the entry into `kits/kits.lock.json`.
 - **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads the
   pinned packages into `public/kits/` with `gh release download`, checks size
   and SHA-256, and checks the extracted `kit-ui.json` (kit id, version,
@@ -736,8 +746,8 @@ Kition renderer:
 
 8. An entry in `kits/modules.json` (the contract check) and the kit in
    `KIT_UIS` in the `Makefile`. Then `make kit-ui-<kit>` and
-   `pnpm check:kit-modules`, and when it is ready to ship,
-   `scripts/publish-kit.sh <kit>`.
+   `pnpm check:kit-modules`, and when it is ready to ship, the kit's
+   Package workflow and `node scripts/pin-kits.mjs <kit>` (section 4b).
 9. One entry in `KIT_EDITORS` (`src/features/workspace/components/kits/kitEditors.ts`): format, icon, the
    engine's document class, `preview: true` for a format the file preview
    already shows (PDF, Office; the linked-file prompt then keeps
@@ -975,7 +985,7 @@ Slide and page kits (Slide):
   `web/.pnpmfile.cjs` links kition-sdk and kition-tessera checkouts instead
   (`KITION_SDK`, `KITION_TESSERA`; default `../kition-sdk` and
   `../kition-tessera`) and rewrites the lockfile, which is not committed;
-  `scripts/build-kit-ui.sh` honours it and `scripts/publish-kit.sh` refuses it.
+  `scripts/build-kit-ui.sh` honours it and `scripts/package-kit.sh` never uses it.
   Each kit's Vite config allows reading those checkouts. Kits draw icons
   from `@kition/tessera-icons/react` or kit-editor's `TesseraIcons`, never
   from lucide-react, and name icons for their own engine commands in

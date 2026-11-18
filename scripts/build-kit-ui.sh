@@ -78,7 +78,7 @@ fi
 # The kit's agent files (KHP K17) travel with the package beside kit.json: its check catalogue,
 # agent/checks.json, required for a kit that claims Agent-ready, and its guide for models,
 # agent/guide.md, required at Agent-ready complete. Hosts serve them as khp://kits/<id>/agent/*.
-# A local build only warns of a missing one; publish-kit.sh refuses the package.
+# A local build only warns of a missing one; scripts/package-kit.sh refuses the package.
 level="$(node -p "require('$kit_repo/kit.json').level ?? 'basic'")"
 for file in checks.json guide.md; do
   if [[ -f "$kit_repo/agent/$file" ]]; then
@@ -110,7 +110,7 @@ NODE
 kit_id="$(node -p "require('$out/kit-ui.json').kitId")"
 version="$(node -p "require('$out/kit-ui.json').version")"
 # Marks the package as a local build, so scripts/fetch-kits.mjs never takes it for the published
-# one of the same version (docs/kits.md, section 4b). publish-kit.sh leaves it out of the .tgz.
+# one of the same version (docs/kits.md, section 4b). scripts/package-kit.sh leaves it out of the .tgz.
 sdk_commit="$(git -C "${KITION_SDK_REPO:-$kit_repo/../kition-sdk}" rev-parse HEAD 2>/dev/null || echo unknown)"
 printf '{ "local": true, "kitCommit": "%s", "sdkCommit": "%s", "builtAt": "%s" }\n' "$commit" "$sdk_commit" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$out/.kition-package.json"
 echo "built $kit_id $version into public/kits/$kit-ui"

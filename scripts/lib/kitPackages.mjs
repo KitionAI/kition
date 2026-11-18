@@ -8,6 +8,34 @@ export function readKitLock(repoRoot) {
   return kits
 }
 
+/** The fields of a lock entry, in the order kits/kits.lock.json writes them. */
+export const KIT_LOCK_FIELDS = ['repository', 'version', 'tag', 'asset', 'size', 'sha256', 'commit', 'sdkCommit', 'tesseraCommit', 'fontsCommit']
+
+/**
+ * The lock entry of `kit` from the metadata asset of its `package-v<version>` Release
+ * (`kition-<kit>-<version>.json`, written by scripts/package-kit.sh), checked against the
+ * repository and version asked for and against the downloaded package's size and SHA-256.
+ * Throws when anything differs.
+ */
+export function kitLockEntry(kit, { repository, version }, metadata, { size, sha256 }) {
+  const expected = { repository, version, tag: `package-v${version}`, asset: `kition-${kit}-${version}.tgz`, size, sha256 }
+  const differences = Object.keys(expected).filter((key) => metadata[key] !== expected[key])
+  if (differences.length) {
+    throw new Error(`${kit}: the Release's metadata differs (${differences.map((key) => `${key} ${metadata[key] ?? 'missing'} instead of ${expected[key]}`).join(', ')})`)
+  }
+  const missing = ['commit', 'sdkCommit', 'tesseraCommit', 'fontsCommit'].filter((key) => !/^[0-9a-f]{40}$/.test(metadata[key] ?? ''))
+  if (missing.length) throw new Error(`${kit}: the Release's metadata has no valid ${missing.join(', ')}`)
+  return Object.fromEntries(KIT_LOCK_FIELDS.map((key) => [key, metadata[key]]))
+}
+
+/** Writes kits/kits.lock.json with `entries` replacing or adding kits: `$comment` first, kits sorted. */
+export function writeKitLock(repoRoot, entries) {
+  const file = path.join(repoRoot, 'kits', 'kits.lock.json')
+  const { $comment, ...kits } = { ...JSON.parse(fs.readFileSync(file, 'utf8')), ...entries }
+  const sorted = Object.fromEntries(Object.keys(kits).sort().map((key) => [key, kits[key]]))
+  fs.writeFileSync(file, `${JSON.stringify({ $comment, ...sorted }, null, 2)}\n`)
+}
+
 /** What a kit package's `kit-ui.json` in `kitsDir` says, or null when it is not there. */
 function installedKitPackage(kitsDir, kit) {
   try {
@@ -20,8 +48,8 @@ function installedKitPackage(kitsDir, kit) {
 /**
  * The stamp in a kit package's folder that says where the package came from. It is not part of
  * the published `.tgz`: scripts/fetch-kits.mjs writes the published package's lock entry,
- * scripts/build-kit-ui.sh marks a local build (`"local": true`), and scripts/publish-kit.sh
- * removes it before packing.
+ * scripts/build-kit-ui.sh marks a local build (`"local": true`), and scripts/package-kit.sh
+ * leaves it out of the package.
  */
 export const KIT_PACKAGE_STAMP = '.kition-package.json'
 
@@ -81,6 +109,6 @@ export function kitPackageProblem(kitsDir, kit, pinned, { stamp = true } = {}) {
 export function kitPackageProblems(repoRoot, kitsDir) {
   const lock = readKitLock(repoRoot)
   const { $comment: _comment, ...registry } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'modules.json'), 'utf8'))
-  const unpinned = Object.keys(registry).filter((kit) => !lock[kit] && registry[kit].optional !== true).map((kit) => `${kit}: not pinned in kits/kits.lock.json (scripts/publish-kit.sh ${kit})`)
+  const unpinned = Object.keys(registry).filter((kit) => !lock[kit] && registry[kit].optional !== true).map((kit) => `${kit}: not pinned in kits/kits.lock.json (node scripts/pin-kits.mjs ${kit})`)
   return [...unpinned, ...Object.entries(lock).map(([kit, pinned]) => kitPackageProblem(kitsDir, kit, pinned)).filter(Boolean)]
 }
