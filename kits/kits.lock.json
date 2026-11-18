@@ -98,15 +98,15 @@
   },
   "note": {
     "repository": "KitionAI/kition-note",
-    "version": "0.3.0",
-    "tag": "package-v0.3.0",
-    "asset": "kition-note-0.3.0.tgz",
-    "size": 12807926,
-    "sha256": "2b6ae1c8a5c1d1a1abdd4c0c559f4f4984aed15e1364a980d0227a6c049bbd44",
-    "commit": "c98f22834326a890fc1745c6c3e14b581393f991",
-    "sdkCommit": "f5ea478430d1e85069b6c6c9fac1de6b8e5c5d57",
-    "tesseraCommit": "832f61a5e4b4ac1a5083620bfdeeb92a86560694",
-    "fontsCommit": "c01cc9cb9069001375627204d105d3cff96ed690"
+    "version": "0.1.0",
+    "tag": "package-v0.1.0",
+    "asset": "kition-note-0.1.0.tgz",
+    "size": 12985259,
+    "sha256": "736d0cc470ab41232a54d85d98f071a95b1b82779aef9155d6104d4b70388ae9",
+    "commit": "cc86c3b0cd8acd3a35ae6ec5e598cf7186ec7733",
+    "sdkCommit": "808e02044efe58bd2e56f5b8c0061e802083fb65",
+    "tesseraCommit": "304c21743543cd29baccf3bda841df3daef378bf",
+    "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf"
   },
   "pdf": {
     "repository": "KitionAI/kition-pdf",
