@@ -1256,10 +1256,10 @@ impl Observed {
     }
 }
 
-/// The golden file: the prompt lines every scenario shares, each tool's
+/// The gate file: the prompt lines every scenario shares, each tool's
 /// digest, and per scenario its tool names, its other prompt lines, and
 /// the user message.
-fn golden_from(observed: &[(String, Observed)]) -> Value {
+fn gate_from(observed: &[(String, Observed)]) -> Value {
     let mut shared = observed
         .first()
         .map(|(_, first)| first.prompt.clone())
@@ -1297,10 +1297,10 @@ fn strings(value: &Value) -> Vec<String> {
         .collect()
 }
 
-/// Every difference between `observed` and the golden data, readably.
-fn golden_differences(golden: &Value, observed: &[(String, Observed)]) -> Vec<String> {
+/// Every difference between `observed` and the gate data, readably.
+fn gate_differences(gate: &Value, observed: &[(String, Observed)]) -> Vec<String> {
     let mut problems = Vec::new();
-    let expected: std::collections::BTreeSet<String> = golden["scenarios"]
+    let expected: std::collections::BTreeSet<String> = gate["scenarios"]
         .as_object()
         .map(|scenarios| scenarios.keys().cloned().collect())
         .unwrap_or_default();
@@ -1308,21 +1308,21 @@ fn golden_differences(golden: &Value, observed: &[(String, Observed)]) -> Vec<St
         observed.iter().map(|(name, _)| name.clone()).collect();
     if expected != ran {
         problems.push(format!(
-            "scenarios differ: golden only {:?}, test only {:?}",
+            "scenarios differ: gate only {:?}, test only {:?}",
             expected.difference(&ran).collect::<Vec<_>>(),
             ran.difference(&expected).collect::<Vec<_>>()
         ));
     }
-    let shared = strings(&golden["prompt"]);
+    let shared = strings(&gate["prompt"]);
     for (name, scenario) in observed {
-        let entry = &golden["scenarios"][name];
+        let entry = &gate["scenarios"][name];
         if !entry.is_object() {
             continue;
         }
         let names: Vec<String> = scenario.tools.keys().cloned().collect();
-        let golden_names = strings(&entry["tools"]);
-        let added = without(&names, &golden_names);
-        let removed = without(&golden_names, &names);
+        let gate_names = strings(&entry["tools"]);
+        let added = without(&names, &gate_names);
+        let removed = without(&gate_names, &names);
         if !added.is_empty() || !removed.is_empty() {
             problems.push(format!(
                 "{name}: tools added {added:?}, removed {removed:?}"
@@ -1332,7 +1332,7 @@ fn golden_differences(golden: &Value, observed: &[(String, Observed)]) -> Vec<St
             .tools
             .iter()
             .filter(|(tool, digest)| {
-                golden["tools"][tool.as_str()]
+                gate["tools"][tool.as_str()]
                     .as_str()
                     .is_some_and(|known| known != digest.as_str())
             })
@@ -1341,10 +1341,10 @@ fn golden_differences(golden: &Value, observed: &[(String, Observed)]) -> Vec<St
         if !changed.is_empty() {
             problems.push(format!("{name}: tool definitions changed {changed:?}"));
         }
-        let mut golden_prompt = shared.clone();
-        golden_prompt.extend(strings(&entry["prompt"]));
-        let added = without(&scenario.prompt, &golden_prompt);
-        let removed = without(&golden_prompt, &scenario.prompt);
+        let mut gate_prompt = shared.clone();
+        gate_prompt.extend(strings(&entry["prompt"]));
+        let added = without(&scenario.prompt, &gate_prompt);
+        let removed = without(&gate_prompt, &scenario.prompt);
         if !added.is_empty() || !removed.is_empty() {
             problems.push(format!(
                 "{name}: prompt lines added {added:#?}, removed {removed:#?}"
@@ -1360,8 +1360,8 @@ fn golden_differences(golden: &Value, observed: &[(String, Observed)]) -> Vec<St
     problems
 }
 
-fn golden_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/panes.json")
+fn gate_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/gate/panes.json")
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1448,7 +1448,7 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         ));
     }
 
-    let write = std::env::var("KITION_WRITE_GOLDEN").is_ok_and(|value| value == "1");
+    let write = std::env::var("KITION_WRITE_GATE").is_ok_and(|value| value == "1");
     let mut observed: Vec<(String, Observed)> = Vec::new();
     for Scenario {
         name,
@@ -1490,23 +1490,23 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         observed.push((name, Observed::new(&actual)));
     }
     if write {
-        let path = golden_path();
+        let path = gate_path();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).unwrap_or_else(|err| panic!("{err}"));
         }
-        let text = serde_json::to_string_pretty(&golden_from(&observed))
+        let text = serde_json::to_string_pretty(&gate_from(&observed))
             .unwrap_or_else(|err| panic!("{err}"));
         std::fs::write(path, text + "\n").unwrap_or_else(|err| panic!("{err}"));
         return;
     }
-    let golden: Value = serde_json::from_str(
-        &std::fs::read_to_string(golden_path()).unwrap_or_else(|err| panic!("{err}")),
+    let gate: Value = serde_json::from_str(
+        &std::fs::read_to_string(gate_path()).unwrap_or_else(|err| panic!("{err}")),
     )
     .unwrap_or_else(|err| panic!("{err}"));
-    let problems = golden_differences(&golden, &observed);
+    let problems = gate_differences(&gate, &observed);
     assert!(
         problems.is_empty(),
-        "the requests differ from tests/golden/panes.json (KITION_WRITE_GOLDEN=1 rewrites it):\n{}",
+        "the requests differ from tests/gate/panes.json (KITION_WRITE_GATE=1 rewrites it):\n{}",
         problems.join("\n")
     );
 }
