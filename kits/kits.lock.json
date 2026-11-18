@@ -170,15 +170,15 @@
   },
   "table": {
     "repository": "KitionAI/kition-table",
-    "version": "0.4.0",
-    "tag": "package-v0.4.0",
-    "asset": "kition-table-0.4.0.tgz",
-    "size": 15373095,
-    "sha256": "745783e1777a8ae73d55ab2d14deced63ab021e388750fd764e54c27d57da67e",
-    "commit": "076bb31a55832a2ec76a19122feedfcf5153c9c5",
-    "sdkCommit": "f5ea478430d1e85069b6c6c9fac1de6b8e5c5d57",
-    "tesseraCommit": "832f61a5e4b4ac1a5083620bfdeeb92a86560694",
-    "fontsCommit": "c01cc9cb9069001375627204d105d3cff96ed690"
+    "version": "0.5.0",
+    "tag": "package-v0.5.0",
+    "asset": "kition-table-0.5.0.tgz",
+    "size": 21735246,
+    "sha256": "bee405a49d5f9e9e31b7bf5a3f71fd97bcf0c71feaae9212063443be0cf45b4f",
+    "commit": "c2d3279f1555000848db42832281e2f7c71f1904",
+    "sdkCommit": "0f7dff05e1311dd8022b6935336cf71ff15e69cd",
+    "tesseraCommit": "304c21743543cd29baccf3bda841df3daef378bf",
+    "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf"
   },
   "vector": {
     "repository": "KitionAI/kition-vector",
