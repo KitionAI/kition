@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { designKit } from '@/lib/script/kits/design'
+import { layoutKit } from '@/lib/script/kits/layout'
 import type { KitConnection } from '../host/mountKit'
 import { bridgeModel } from './kitBridgeModel'
 
@@ -18,7 +20,8 @@ describe('bridgeModel', () => {
     const model = bridgeModel(kit.connection, 'kit.layout')!
     await model.describe()
     await model.batch({ ops: [], load: [{ target: 'root' }] })
-    expect(kit.describe.mock.calls[0]![0]).toMatchObject({ kit: 'kit.layout', schemaVersion: 1, root: 'Layout' })
+    expect(kit.describe.mock.calls[0]![0]).toBe(layoutKit.schema)
+    expect(kit.describe.mock.calls[0]![0]).toMatchObject({ kit: 'kit.layout', root: 'Layout' })
     expect(kit.batch.mock.calls[0]![0]).toMatchObject({ schema: { kit: 'kit.layout', root: 'Layout' } })
   })
 
@@ -28,7 +31,8 @@ describe('bridgeModel', () => {
     await model.describe()
     await model.batch({ ops: [], load: [{ target: 'root' }] })
     const [described] = kit.describe.mock.calls[0]!
-    expect(described).toMatchObject({ kit: 'kit.design', schemaVersion: 4, root: 'Design' })
+    expect(described).toBe(designKit.schema)
+    expect(described).toMatchObject({ kit: 'kit.design', root: 'Design' })
     expect(kit.batch.mock.calls[0]![0]).toMatchObject({ ops: [], load: [{ target: 'root' }], schema: { kit: 'kit.design', root: 'Design' } })
   })
 
