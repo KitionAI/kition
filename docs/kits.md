@@ -664,9 +664,8 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
   stamp is missing, local, or differs from the lock is fetched again even at
   the pinned version (`KITION_KEEP_LOCAL_KITS=1` keeps local builds of the
   pinned version and commit), and `--check` and the release build's
-  `dist/kits` check report it. `--check` only compares. Locally it uses your gh login; the release
-  workflow uses the `KITION_KITS_TOKEN` secret, a read-only token for the kit
-  repositories' contents.
+  `dist/kits` check report it. `--check` only compares. Locally it uses your gh login; the
+  workflows use their own `github.token`, since the kit repositories are public.
 - **Releasing**: Kition's release workflow (a public repository, so its CI is
   free) fetches the packages, checks every engine against the contract
   (`pnpm check:kit-modules`), runs the kit e2e specs in its sweep, and fetches

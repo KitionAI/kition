@@ -10,9 +10,9 @@
 // the pinned one even when its version matches, so it is fetched again and `--check` fails. Set
 // KITION_KEEP_LOCAL_KITS=1 to keep local builds of the pinned version and commit instead.
 //
-// The packages are Release assets of the kit repositories (kition-note is public; most others are
-// still private), downloaded with `gh release download`: locally with your gh login, in CI with
-// GH_TOKEN set to a token that can read those repositories. Each download is checked against the pinned size and SHA-256.
+// The packages are Release assets of the kit repositories, which are public, downloaded with
+// `gh release download`: locally with your gh login, in CI with GH_TOKEN set to the workflow's
+// token. Each download is checked against the pinned size and SHA-256.
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'

@@ -87,8 +87,8 @@ jobs:
 
       - name: Fetch the kit packages
         env:
-          # Reads the Releases of the kit repositories (kits/kits.lock.json); most are still private.
-          GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
+          # Reads the Releases of the kit repositories (kits/kits.lock.json), which are public.
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/fetch-kits.mjs
 
       - name: Run every mock-backed renderer and desktop end-to-end spec
