@@ -65,15 +65,17 @@ export async function collectArtifacts({ bundleDir, outputDir, version, triple, 
   return copied
 }
 
-/** Every file a complete release publishes for `version`. */
-export function expectedReleaseAssets(version) {
-  const names = []
-  for (const arch of ['arm64', 'x64']) {
-    names.push(`Kition-${version}-macos-${arch}.dmg`, `Kition-${version}-macos-${arch}.app.tar.gz`, `Kition-${version}-macos-${arch}.app.tar.gz.sig`)
-  }
-  names.push(`Kition-${version}-windows-x64-setup.exe`, `Kition-${version}-windows-x64-setup.exe.sig`)
-  names.push(`Kition-${version}-linux-x64.AppImage`, `Kition-${version}-linux-x64.AppImage.sig`)
-  return names
+/** The desktop targets a complete release ships, as Rust target triples. */
+export const releaseTargets = ['aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-pc-windows-msvc', 'x86_64-unknown-linux-gnu']
+
+/**
+ * Every file a release of `version` publishes for `targets`: by default every
+ * target, which a published release needs; a draft may hold fewer.
+ */
+export function expectedReleaseAssets(version, targets = releaseTargets) {
+  return targets.flatMap((triple) =>
+    plannedArtifacts({ bundleDir: '', version, triple }).flatMap(({ to, updater }) => (updater ? [to, `${to}.sig`] : [to])),
+  )
 }
 
 /** Builds `latest.json` from the signed update archives in `artifactDir`. */

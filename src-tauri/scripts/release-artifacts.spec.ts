@@ -77,4 +77,12 @@ describe('expectedReleaseAssets', () => {
     expect(names).toContain('Kition-2.0.0-linux-x64.AppImage')
     expect(names).toHaveLength(10)
   })
+
+  it('lists only the files of the targets asked for', () => {
+    expect(expectedReleaseAssets('2.0.0', ['aarch64-apple-darwin'])).toEqual([
+      'Kition-2.0.0-macos-arm64.dmg',
+      'Kition-2.0.0-macos-arm64.app.tar.gz',
+      'Kition-2.0.0-macos-arm64.app.tar.gz.sig',
+    ])
+  })
 })

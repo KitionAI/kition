@@ -172,6 +172,15 @@ GitHub Releases must be published as `allentatakai`.
    identity from the tag, signs and packages the desktop clients, and publishes
    the release.
 
+`Publish Release` takes two more inputs. `targets` chooses the desktop builds:
+`all` (the default) builds every platform, and a single target such as
+`darwin-arm64` builds only that one. `publish` (on by default) publishes the
+release; with it off, the run uploads the installers and an updater manifest
+of the platforms it built to the draft, verifies them, and leaves the release
+a draft. A published release has every platform, so `publish` with anything
+but `targets: all` is refused. A later run with `targets: all` replaces the
+draft's files and publishes it.
+
 Tags with a prerelease component, such as `v0.2.0-beta.1` or `v1.1.0-rc.1`,
 produce `rc` builds and GitHub prereleases. Plain tags such as `v1.1.0` produce
 `stable` builds. There is no manual test/production selector.

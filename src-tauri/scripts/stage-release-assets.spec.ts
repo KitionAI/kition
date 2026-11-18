@@ -3,8 +3,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { expectedReleaseAssets } from './release-artifacts.mjs'
-import { stageReleaseAssets } from './stage-release-assets.mjs'
+import { expectedReleaseAssets, releaseTargets } from './release-artifacts.mjs'
+import { parseTargets, stageReleaseAssets } from './stage-release-assets.mjs'
 
 const cleanupPaths: string[] = []
 
@@ -41,5 +41,41 @@ describe('stageReleaseAssets', () => {
     const { artifacts, out } = await fixture(expectedReleaseAssets('2.0.0').slice(1))
     await expect(stageReleaseAssets({ artifacts, out, version: '2.0.0', tag: 'v2.0.0', repository: 'a/b' }))
       .rejects.toThrow('missing release assets: Kition-2.0.0-macos-arm64.dmg')
+  })
+
+  it('stages a draft of the targets asked for, with an updater manifest of those platforms', async () => {
+    const { artifacts, out } = await fixture(expectedReleaseAssets('2.0.0', ['aarch64-apple-darwin']))
+    const staged = await stageReleaseAssets({
+      artifacts,
+      out,
+      version: '2.0.0',
+      tag: 'v2.0.0',
+      repository: 'KitionAI/kition',
+      targets: ['aarch64-apple-darwin'],
+    })
+
+    expect(staged).toEqual([
+      'Kition-2.0.0-macos-arm64.app.tar.gz',
+      'Kition-2.0.0-macos-arm64.app.tar.gz.sig',
+      'Kition-2.0.0-macos-arm64.dmg',
+      'latest.json',
+    ])
+    const manifest = JSON.parse(await fs.readFile(path.join(out, 'latest.json'), 'utf8'))
+    expect(Object.keys(manifest.platforms)).toEqual(['darwin-aarch64'])
+  })
+
+  it('refuses a draft that misses a file of a target asked for', async () => {
+    const { artifacts, out } = await fixture(['Kition-2.0.0-macos-arm64.dmg', 'Kition-2.0.0-macos-arm64.app.tar.gz'])
+    await expect(
+      stageReleaseAssets({ artifacts, out, version: '2.0.0', tag: 'v2.0.0', repository: 'a/b', targets: ['aarch64-apple-darwin'] }),
+    ).rejects.toThrow('missing release assets: Kition-2.0.0-macos-arm64.app.tar.gz.sig')
+  })
+
+  it('reads --targets as a list of release targets, and every target without it', () => {
+    expect(parseTargets(undefined)).toEqual(releaseTargets)
+    expect(parseTargets('aarch64-apple-darwin')).toEqual(['aarch64-apple-darwin'])
+    expect(parseTargets('aarch64-apple-darwin, x86_64-unknown-linux-gnu')).toEqual(['aarch64-apple-darwin', 'x86_64-unknown-linux-gnu'])
+    expect(() => parseTargets('aarch64-unknown-linux-gnu')).toThrow('unknown release targets: aarch64-unknown-linux-gnu')
+    expect(() => parseTargets(',')).toThrow('unknown release targets')
   })
 })

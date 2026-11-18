@@ -7,6 +7,19 @@ on:
         description: SemVer without the v prefix
         required: true
         type: string
+      targets:
+        description: Desktop targets to build; a published release needs all
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - darwin-arm64
+      publish:
+        description: Publish the Release; when off, the installers stay in the draft
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -27,6 +40,8 @@ jobs:
     outputs:
       build_identity: ${{ steps.classify.outputs.build_identity }}
       prerelease: ${{ steps.classify.outputs.prerelease }}
+      matrix: ${{ steps.targets.outputs.matrix }}
+      triples: ${{ steps.targets.outputs.triples }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v7
@@ -58,6 +73,35 @@ jobs:
           fs.appendFileSync(
             process.env.GITHUB_OUTPUT,
             `build_identity=${result.buildIdentity}\nprerelease=${result.prerelease}\n`,
+          )
+          NODE
+
+      - name: Select the desktop targets
+        id: targets
+        shell: bash
+        env:
+          TARGETS: ${{ inputs.targets }}
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          // Every desktop build a release has; `targets` names one by its artifact without `desktop-`.
+          const builds = [
+            { os: 'macos-15', triple: 'aarch64-apple-darwin', platform: 'darwin', artifact: 'desktop-darwin-arm64' },
+            { os: 'macos-15-intel', triple: 'x86_64-apple-darwin', platform: 'darwin', artifact: 'desktop-darwin-x64' },
+            { os: 'windows-2022', triple: 'x86_64-pc-windows-msvc', platform: 'win32', artifact: 'desktop-windows-x64' },
+            { os: 'ubuntu-22.04', triple: 'x86_64-unknown-linux-gnu', platform: 'linux', artifact: 'desktop-linux-x64' },
+          ]
+          const targets = process.env.TARGETS
+          const selected = targets === 'all' ? builds : builds.filter((build) => build.artifact === `desktop-${targets}`)
+          if (!selected.length) throw new Error(`unknown desktop targets: ${targets}`)
+          if (process.env.PUBLISH === 'true' && selected.length !== builds.length) {
+            throw new Error('a published release has every platform: dispatch with targets all, or with publish off to fill the draft')
+          }
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `matrix=${JSON.stringify({ include: selected })}\ntriples=${selected.map((build) => build.triple).join(',')}\n`,
           )
           NODE
 
@@ -142,24 +186,7 @@ jobs:
     environment: release
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: macos-15
-            triple: aarch64-apple-darwin
-            platform: darwin
-            artifact: desktop-darwin-arm64
-          - os: macos-15-intel
-            triple: x86_64-apple-darwin
-            platform: darwin
-            artifact: desktop-darwin-x64
-          - os: windows-2022
-            triple: x86_64-pc-windows-msvc
-            platform: win32
-            artifact: desktop-windows-x64
-          - os: ubuntu-22.04
-            triple: x86_64-unknown-linux-gnu
-            platform: linux
-            artifact: desktop-linux-x64
+      matrix: ${{ fromJSON(needs.validate-release.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout release tag
@@ -303,6 +330,7 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ inputs.version }}
+          TRIPLES: ${{ needs.validate-release.outputs.triples }}
         run: |
           set -euo pipefail
           node src-tauri/scripts/stage-release-assets.mjs \
@@ -310,7 +338,8 @@ jobs:
             --out release-assets \
             --version "$VERSION" \
             --tag "$RELEASE_TAG" \
-            --repository "$GITHUB_REPOSITORY"
+            --repository "$GITHUB_REPOSITORY" \
+            --targets "$TRIPLES"
 
       - name: Upload installers to draft Release
         shell: bash
@@ -346,6 +375,7 @@ jobs:
           done < <(find release-assets -type f -print | sort)
 
       - name: Publish verified Release
+        if: inputs.publish
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -358,6 +388,7 @@ jobs:
             --prerelease="$PRERELEASE"
 
       - name: Point the beta update channel at this release
+        if: inputs.publish
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

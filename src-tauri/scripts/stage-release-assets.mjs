@@ -4,12 +4,16 @@
  *
  * Usage: node src-tauri/scripts/stage-release-assets.mjs --artifacts <downloaded>
  *   --out <folder> --version <x.y.z> --tag <vX.Y.Z> --repository <owner/repo>
+ *   [--targets <triple>,<triple>]
+ *
+ * Without `--targets` the release must hold every platform (`releaseTargets`);
+ * with it, only the targets named, for a draft that is not published yet.
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { buildUpdaterManifest, expectedReleaseAssets } from './release-artifacts.mjs'
+import { buildUpdaterManifest, expectedReleaseAssets, releaseTargets } from './release-artifacts.mjs'
 
 function parseArgs(argv) {
   const values = {}
@@ -30,7 +34,16 @@ async function walk(root) {
   return files.flat()
 }
 
-export async function stageReleaseAssets({ artifacts, out, version, tag, repository }) {
+/** The targets `--targets` names (comma separated), each a release target; all of them without it. */
+export function parseTargets(value) {
+  if (!value) return releaseTargets
+  const targets = value.split(',').map((target) => target.trim()).filter(Boolean)
+  const unknown = targets.filter((target) => !releaseTargets.includes(target))
+  if (!targets.length || unknown.length) throw new Error(`unknown release targets: ${unknown.join(', ') || value}`)
+  return targets
+}
+
+export async function stageReleaseAssets({ artifacts, out, version, tag, repository, targets = releaseTargets }) {
   await fs.mkdir(out, { recursive: true })
   const seen = new Set()
   for (const file of await walk(artifacts)) {
@@ -39,7 +52,7 @@ export async function stageReleaseAssets({ artifacts, out, version, tag, reposit
     seen.add(name)
     await fs.copyFile(file, path.join(out, name))
   }
-  const missing = expectedReleaseAssets(version).filter((name) => !seen.has(name))
+  const missing = expectedReleaseAssets(version, targets).filter((name) => !seen.has(name))
   if (missing.length) throw new Error(`missing release assets: ${missing.join(', ')}`)
   const manifest = await buildUpdaterManifest({ artifactDir: out, version, tag, repository })
   await fs.writeFile(path.join(out, 'latest.json'), JSON.stringify(manifest, null, 2) + '\n')
@@ -52,7 +65,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const required of ['artifacts', 'out', 'version', 'tag', 'repository']) {
       if (!args[required]) throw new Error(`missing --${required}`)
     }
-    const staged = await stageReleaseAssets(args)
+    const staged = await stageReleaseAssets({ ...args, targets: parseTargets(args.targets) })
     for (const name of staged) console.log(`[stage-release-assets] ${name}`)
   } catch (error) {
     console.error(`[stage-release-assets] ${error?.message ?? error}`)
