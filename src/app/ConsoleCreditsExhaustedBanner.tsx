@@ -1,0 +1,70 @@
+import { useEffect, useState } from 'react'
+import { TriangleAlertIcon as AlertTriangle, ExternalLinkIcon as ExternalLink, XIcon as X } from '@kition/tessera-icons/react'
+import { useTranslation } from 'react-i18next'
+
+import { Button } from '@kition/tessera-ui'
+import { openExternalURL } from '@/services/desktop'
+import {
+  type ConsoleCreditsExhaustedDetail,
+  subscribeConsoleCreditsExhausted,
+} from '@/services/consoleCredits'
+
+/**
+ * Non-blocking banner that surfaces the structured `credits_exhausted` error
+ * returned by the KitionAI Console hosted LLM proxy. The banner is dismissable
+ * and re-appears whenever a new credits-exhausted event fires, so the user can
+ * close it and keep working with a different provider without it lingering.
+ */
+export function ConsoleCreditsExhaustedBanner() {
+  const { t } = useTranslation('common')
+  const [detail, setDetail] = useState<ConsoleCreditsExhaustedDetail | null>(null)
+
+  useEffect(() => {
+    return subscribeConsoleCreditsExhausted((next) => {
+      setDetail(next)
+    })
+  }, [])
+
+  if (!detail) {
+    return null
+  }
+
+  return (
+    <div
+      className="console-credits-banner"
+      role="alert"
+      data-testid="console-credits-exhausted-banner"
+    >
+      <div className="console-credits-banner__icon" aria-hidden="true">
+        <AlertTriangle className="size-5" />
+      </div>
+      <div className="console-credits-banner__copy">
+        <p className="console-credits-banner__title">{t('credits.exhaustedTitle')}</p>
+        <p className="console-credits-banner__message">{detail.message}</p>
+      </div>
+      <div className="console-credits-banner__actions">
+        {detail.topupUrl ? (
+          <Button size="md" variant="primary"
+            type="button"
+            className="console-credits-banner__primary"
+            onClick={() => void openExternalURL(detail.topupUrl)}
+            data-testid="console-credits-exhausted-topup"
+          >
+            <ExternalLink className="size-4" />
+            {t('credits.topUp')}
+          </Button>
+        ) : null}
+        <button
+          type="button"
+          className="console-credits-banner__close"
+          onClick={() => setDetail(null)}
+          aria-label={t('actions.dismiss')}
+          title={t('actions.dismiss')}
+          data-testid="console-credits-exhausted-dismiss"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+    </div>
+  )
+}

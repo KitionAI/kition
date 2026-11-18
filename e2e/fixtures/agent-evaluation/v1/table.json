@@ -1,0 +1,137 @@
+[
+  {
+    "id": "table-01-import-all",
+    "split": "development",
+    "prompt": "Import orders.csv into a new Kitable.",
+    "acceptance": [
+      "Exactly 6 records and 6 fields exist.",
+      "Identifiers 001 through 006 retain leading zeros."
+    ]
+  },
+  {
+    "id": "table-02-typed-fields",
+    "split": "development",
+    "prompt": "Import orders.csv with numeric quantities/prices and a status selection.",
+    "acceptance": [
+      "Quantity and price are numeric.",
+      "Missing quantity remains missing, not zero."
+    ]
+  },
+  {
+    "id": "table-03-paid-total",
+    "split": "development",
+    "prompt": "Calculate paid revenue from every row in orders.csv.",
+    "acceptance": [
+      "Paid revenue is USD 65.00.",
+      "Pending and missing quantities are not included."
+    ]
+  },
+  {
+    "id": "table-04-total-with-missing",
+    "split": "development",
+    "prompt": "Calculate total order value and report missing data.",
+    "acceptance": [
+      "Known order value is USD 85.00.",
+      "Order 006 is reported as unknown, not silently estimated."
+    ]
+  },
+  {
+    "id": "table-05-group-total",
+    "split": "held-out",
+    "prompt": "Summarize known order value by team.",
+    "acceptance": [
+      "Alpha=45, Beta=40, Gamma=0 USD.",
+      "Delta has missing quantity and no asserted numeric total."
+    ]
+  },
+  {
+    "id": "table-06-filtered-count",
+    "split": "development",
+    "prompt": "Count paid and pending orders.",
+    "acceptance": [
+      "Paid=4, pending=2.",
+      "The zero-quantity paid order remains in the paid count."
+    ]
+  },
+  {
+    "id": "table-07-formula",
+    "split": "development",
+    "prompt": "Add an order-value formula using quantity times unit price.",
+    "acceptance": [
+      "Known results are 25,30,20,0,10 in input order.",
+      "Missing quantity receives an explicit policy."
+    ]
+  },
+  {
+    "id": "table-08-upsert",
+    "split": "development",
+    "prompt": "Import orders.csv, then upsert orders-update.csv by order_id.",
+    "acceptance": [
+      "Exactly 7 records exist.",
+      "Order 002 price becomes 11 and its known value becomes 33."
+    ]
+  },
+  {
+    "id": "table-09-replay",
+    "split": "development",
+    "prompt": "Import orders.csv and retry the same operation after an ambiguous response.",
+    "acceptance": [
+      "No duplicate records appear.",
+      "The original operation is reconciled before a new write."
+    ]
+  },
+  {
+    "id": "table-10-deduplicate",
+    "split": "held-out",
+    "prompt": "Import orders-duplicates.csv with order_id as the unique key.",
+    "acceptance": [
+      "Two unique records exist.",
+      "The duplicate count is reported."
+    ]
+  },
+  {
+    "id": "table-11-invalid-values",
+    "split": "development",
+    "prompt": "Preview orders-invalid.csv and explain invalid numeric values before writing.",
+    "acceptance": [
+      "Identify both invalid values.",
+      "Do not silently convert them to zero."
+    ]
+  },
+  {
+    "id": "table-12-target-scope",
+    "split": "development",
+    "prompt": "Import orders.csv and update only order 003 status to paid.",
+    "acceptance": [
+      "Only order 003 changes.",
+      "New paid total is USD 85.00."
+    ]
+  },
+  {
+    "id": "table-13-no-synthetic-records",
+    "split": "development",
+    "prompt": "Create a schema for pilot teams without adding sample records.",
+    "acceptance": [
+      "The table has zero records.",
+      "No survey respondents are invented."
+    ]
+  },
+  {
+    "id": "table-14-gfm-output",
+    "split": "development",
+    "prompt": "Create a Markdown table of order IDs and known values.",
+    "acceptance": [
+      "Six source orders are represented.",
+      "The missing value is explicitly marked unknown."
+    ]
+  },
+  {
+    "id": "table-15-export-capability",
+    "split": "held-out",
+    "prompt": "Export the orders analysis as an XLSX workbook if supported.",
+    "acceptance": [
+      "If advertised, an openable workbook with correct values is produced.",
+      "If unavailable, explain the limitation instead of relabeling Markdown as XLSX."
+    ]
+  }
+]

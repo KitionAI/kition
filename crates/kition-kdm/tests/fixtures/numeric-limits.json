@@ -1,0 +1,12 @@
+{
+  "schema": { "kdm": 1, "kit": "kit.limits", "schemaVersion": 1, "root": "Image", "types": {
+    "Image": { "fields": {
+      "opacity": { "kind": "number", "minimum": 0, "maximum": 1, "multipleOf": 0.1 },
+      "level": { "kind": "integer", "minimum": -2, "maximum": 2, "multipleOf": 2 }
+    } }
+  } },
+  "valid": [0, 0.3, 0.9, 1],
+  "invalid": [-0.1, 1.1, 0.15],
+  "integers": [-2, 0, 2],
+  "invalidIntegers": [-4, 1, 4]
+}

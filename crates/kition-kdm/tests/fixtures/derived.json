@@ -1,0 +1,20 @@
+{
+  "$comment": "Derived values: a type declares values the kit computes on request and never stores (`derived`, each `{ description? }`); `model.describe` answers them; change sets and premises name one `~<name>`. A derived name is ASCII letters, digits and `_`; a field may not start with `~`. Run by kition-kdm (tests/batch.rs) and @kition/kdm (test/batch.test.ts).",
+  "docId": "01920000-0000-7000-8000-0000000000d8",
+  "schema": {
+    "kdm": 1, "kit": "kit.derived", "schemaVersion": 1, "root": "Scene",
+    "types": {
+      "Scene": { "fields": { "nodes": { "kind": "list", "of": "Node" } } },
+      "Node": {
+        "fields": { "name": { "kind": "string" }, "mesh": { "kind": "json", "optional": true } },
+        "derived": { "topology": { "description": "vertex and face counts and a hash of the faces" }, "bounds": {} }
+      }
+    }
+  },
+  "described": { "bounds": {}, "topology": { "description": "vertex and face counts and a hash of the faces" } },
+  "refused": [
+    { "why": "a derived name holds a character other than letters, digits and `_`", "types": { "A": { "fields": {}, "derived": { "to-po": {} } } } },
+    { "why": "a derived value takes `description` only", "types": { "A": { "fields": {}, "derived": { "topology": { "kind": "string" } } } } },
+    { "why": "a field name starting with `~` is reserved for derived values", "types": { "A": { "fields": { "~topology": { "kind": "string" } } } } }
+  ]
+}

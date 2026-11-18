@@ -1,0 +1,1557 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/kits.schema.json",
+  "title": "Kition Kits",
+  "description": "GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /v1/kits/drafts[/compare|/merge|/discard] review the drafts an agent keeps beside files over kition-kits-mcp --drafts; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found. /v1/kits/grants serves file grants to in-page kit editors (Kition platform KitFiles 1.0): sessions, handles, reads, staged writes, and releases; their refusals carry a KitFiles reason (fileErrorReason). POST /v1/kits/images/fetch downloads a picture a kit's person pasted by its web address (Kit UI protocol host/fetchImage, section 7l) and answers its bytes with its image Content-Type; its refusals carry fetchImageErrorReason.",
+  "$ref": "#/$defs/kitList",
+  "$defs": {
+    "kitId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+    },
+    "workspacePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "kitStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "extensions",
+        "creates",
+        "installed"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/kitId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "creates": {
+          "type": "array",
+          "description": "Extensions the kit can create new documents in.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "installed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "kitList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kits"
+      ],
+      "properties": {
+        "kits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kitStatus"
+          }
+        }
+      }
+    },
+    "openRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        }
+      }
+    },
+    "commandView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "group",
+        "mutates",
+        "enabled",
+        "menu",
+        "shortcut"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "group": {
+          "type": "string"
+        },
+        "mutates": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "menu": {
+          "type": "array",
+          "description": "Menu path in the kit, for example [\"Layer\", \"New\"]; empty when the command is not in a menu.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shortcut": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "commandList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/{kitId}/documents/{documentId}/commands[?query=]",
+      "required": [
+        "commands"
+      ],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/commandView"
+          }
+        }
+      }
+    },
+    "writeFileQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PUT /v1/kits/files?path=&document=: writes the raw request body (application/octet-stream, up to 2 GiB) to a workspace file. With document, it saves the document an in-page editor opened: path must be that document, a file a kit edits, and only it is replaced. Without document, it makes a new file a kit edits or a kit export (for example an .mp4 from a video project) and never replaces an existing file. In-page editors save, export, and make new files through it.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "document": {
+          "$ref": "#/$defs/workspacePath",
+          "description": "The document an in-page editor opened, when the write saves it; path must name the same file."
+        }
+      }
+    },
+    "grantSessionId": {
+      "type": "string",
+      "pattern": "^fs_[0-9a-f]{32}$",
+      "description": "A grant session: one kit editor page, bound to its kit, the person, and the document it opened. 128 random bits."
+    },
+    "fileHandle": {
+      "type": "string",
+      "pattern": "^fh_[0-9a-f]{32}$",
+      "description": "A file handle (KitFiles FA1): opaque, 128 random bits, bound to one grant session. The runtime keeps the path it names; no answer carries a path."
+    },
+    "fileRight": {
+      "enum": [
+        "read",
+        "create",
+        "write"
+      ],
+      "description": "read: files/read and files/stat, and files/list on a folder. create: write a new file once (never replacing one), or files/create in a folder. write: replace an existing file with an expected version (FA2)."
+    },
+    "fileKind": {
+      "enum": [
+        "file",
+        "folder"
+      ]
+    },
+    "grantFlow": {
+      "enum": [
+        "pick",
+        "drop",
+        "create",
+        "list",
+        "agent"
+      ],
+      "description": "How a handle was granted (KitFiles section 3): the person's pick or drop, files/create, an entry of a granted folder, or a file an agent's command names."
+    },
+    "fileErrorReason": {
+      "enum": [
+        "file-not-granted",
+        "not-allowed",
+        "already-committed",
+        "conflict",
+        "unsaved-edits",
+        "quota",
+        "io-error"
+      ],
+      "description": "data.reason of a refused /v1/kits/grants request (KitFiles section 10): 403 file-not-granted (unknown, expired, released, or foreign handle or session, or a right the handle lacks) and not-allowed (outside the workspace, a hidden path or a link out of it, an extension outside the kit's manifest, a write in a read-only session); 409 already-committed, conflict (a create that would replace a file, or a stale expected version), and unsaved-edits; 413 quota; 500 io-error. Malformed parameters are 400 with data.reason null."
+    },
+    "fetchImageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/images/fetch, only with this launch's token: the picture at url, downloaded from public addresses only (never loopback, private, or link-local addresses, checked at every redirect), at most 12 MiB. The answer is the bytes, Content-Type one of image/png, image/jpeg, image/gif, image/webp, image/svg+xml, image/avif.",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "fetchImageErrorReason": {
+      "enum": [
+        "not-allowed",
+        "unsupported",
+        "quota",
+        "io-error"
+      ],
+      "description": "data.reason of a refused /v1/kits/images/fetch (Kit UI protocol section 7l): 403 not-allowed (not an http or https address, or one on this computer or the local network); 415 unsupported (not a picture); 413 quota (larger than 12 MiB); 502 io-error (the download failed)."
+    },
+    "filesManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The kit manifest's files lists (K15), extensions without the dot. A grant outside them is refused not-allowed; without them every grant is.",
+      "properties": {
+        "read": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "create": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "folders": {
+          "type": "boolean"
+        },
+        "print": {
+          "type": "boolean"
+        }
+      }
+    },
+    "grantSessionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/grants/sessions: opens a grant session for a kit's editor page. Its handles expire when it ends (DELETE /v1/kits/grants/sessions/{session}) or after twelve hours unused.",
+      "required": [
+        "kit"
+      ],
+      "properties": {
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "document": {
+          "$ref": "#/$defs/workspacePath",
+          "description": "The document the editor opened; files/create without a folder makes files beside it."
+        },
+        "files": {
+          "$ref": "#/$defs/filesManifest"
+        },
+        "readOnly": {
+          "type": "boolean",
+          "description": "A read-only document: no write grants (FA17)."
+        }
+      }
+    },
+    "grantSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The answer to POST /v1/kits/grants/sessions.",
+      "required": [
+        "session"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        }
+      }
+    },
+    "fileStat": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A handle as the kit sees it (FA3): GET /v1/kits/grants/{handle}?session=, and the answer of POST /v1/kits/grants and /v1/kits/grants/create.",
+      "required": [
+        "handle",
+        "name",
+        "kind",
+        "version",
+        "rights"
+      ],
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/fileHandle"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The last path segment only; untrusted text."
+        },
+        "kind": {
+          "$ref": "#/$defs/fileKind"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mime": {
+          "type": "string"
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The file's opaque version stamp; null for a created file not committed yet."
+        },
+        "rights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileRight"
+          }
+        }
+      }
+    },
+    "grantRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/grants: grants a handle on a workspace file or folder the person picked or dropped. read and write need an existing file; create needs a new name in an existing folder and never replaces a file (conflict). A folder takes read, and create when the manifest lists create.",
+      "required": [
+        "session",
+        "path",
+        "kind",
+        "rights",
+        "flow"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        },
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kind": {
+          "$ref": "#/$defs/fileKind"
+        },
+        "rights": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/fileRight"
+          }
+        },
+        "accept": {
+          "type": "array",
+          "description": "For a folder: the extensions files/list answers, within the manifest's read list.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "flow": {
+          "enum": [
+            "pick",
+            "drop"
+          ]
+        }
+      }
+    },
+    "createFileRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/grants/create: files/create (FA7). A handle with right create on a new file beside the session's document, or in a folder handle with right create, under an unused name (Report 2.pdf when Report.pdf exists). Only the last segment of suggestedName counts, sanitised (FA15); its extension must be in the manifest's create list. The file appears when committed.",
+      "required": [
+        "session",
+        "suggestedName"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        },
+        "suggestedName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mime": {
+          "type": "string"
+        },
+        "folder": {
+          "$ref": "#/$defs/fileHandle"
+        }
+      }
+    },
+    "fileList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/grants/{handle}/list?session=: files/list on a folder handle with right read. Its visible files the grant accepts, not recursively, each a new handle with right read.",
+      "required": [
+        "files"
+      ],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileStat"
+          }
+        }
+      }
+    },
+    "readFileQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/grants/{handle}/content?session=&offset=&length=: files/read. The body is the bytes (application/octet-stream) from offset, at most length and at most 8 MiB; ETag is the file's version and Kition-File-Size the whole file's size, so the caller reads on.",
+      "required": [
+        "session"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "writeChunkQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PUT /v1/kits/grants/{handle}/content?session=&offset=&final=&expected=: files/write, one chunk (the raw request body, application/octet-stream, up to 64 MiB). offset must equal the bytes staged so far. Chunks are staged in a temporary file; final commits atomically. A create handle commits once and never replaces a file; a write handle commits only while the file's version is still expected, which the final chunk carries, and not while an editor has the file open with unsaved edits. A failed commit drops the staged bytes.",
+      "required": [
+        "session",
+        "offset"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "final": {
+          "type": "boolean"
+        },
+        "expected": {
+          "type": "string"
+        }
+      }
+    },
+    "writeChunkResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The answer to a files/write chunk: {} while staging, the committed file's version after the final chunk.",
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "releaseRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/grants/release: files/release. Unknown and expired handles are ignored; staged writes of released handles are dropped.",
+      "required": [
+        "session",
+        "handles"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        },
+        "handles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileHandle"
+          }
+        }
+      }
+    },
+    "grantView": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A handle as the person sees it (FA16).",
+      "required": [
+        "handle",
+        "name",
+        "kind",
+        "version",
+        "rights",
+        "flow"
+      ],
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/fileHandle"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The last path segment only; untrusted text."
+        },
+        "kind": {
+          "$ref": "#/$defs/fileKind"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mime": {
+          "type": "string"
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The file's opaque version stamp; null for a created file not committed yet."
+        },
+        "rights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileRight"
+          }
+        },
+        "flow": {
+          "$ref": "#/$defs/grantFlow"
+        }
+      }
+    },
+    "grantLogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One entry of a session's grant log (KitFiles section 7): every grant, commit, release, and revocation, with the file's display name only.",
+      "required": [
+        "at",
+        "event",
+        "handle",
+        "flow",
+        "kit",
+        "principal",
+        "rights",
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Milliseconds since the Unix epoch."
+        },
+        "event": {
+          "enum": [
+            "grant",
+            "commit",
+            "release",
+            "revoke"
+          ]
+        },
+        "handle": {
+          "$ref": "#/$defs/fileHandle"
+        },
+        "flow": {
+          "$ref": "#/$defs/grantFlow"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "principal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileRight"
+          }
+        },
+        "kind": {
+          "$ref": "#/$defs/fileKind"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "grantSessionView": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/grants/sessions/{session}: what the session holds now and its grant log (FA16).",
+      "required": [
+        "session",
+        "kit",
+        "document",
+        "readOnly",
+        "grants",
+        "log"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/grantSessionId"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "document": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/workspacePath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/grantView"
+          }
+        },
+        "log": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/grantLogEntry"
+          }
+        }
+      }
+    },
+    "grantSessionEnd": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The answer to DELETE /v1/kits/grants/sessions/{session}: the handles that expired with it.",
+      "required": [
+        "revoked"
+      ],
+      "properties": {
+        "revoked": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fileHandle"
+          }
+        }
+      }
+    },
+    "draftMode": {
+      "enum": [
+        "replica",
+        "file"
+      ],
+      "description": "replica: the draft is a KDM replica the kit compares object by object; file: a copy of the file, compared by summaries and renders."
+    },
+    "headlessDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A draft an agent keeps beside a workspace file over kition-kits-mcp --drafts (KHP A27), as GET /v1/kits/drafts lists it. Only the person merges or discards it (A14).",
+      "required": [
+        "version",
+        "path",
+        "kit",
+        "mode",
+        "state",
+        "baseSha256",
+        "created",
+        "updated",
+        "stale"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "mode": {
+          "$ref": "#/$defs/draftMode"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "ready"
+          ],
+          "description": "ready: the agent asked for review."
+        },
+        "baseSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The file's SHA-256 when the draft forked from it."
+        },
+        "created": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix milliseconds."
+        },
+        "updated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix milliseconds."
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "The file changed since the draft forked: merging would drop those edits."
+        }
+      }
+    },
+    "draftList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/drafts: the workspace's headless drafts, oldest first.",
+      "required": [
+        "drafts"
+      ],
+      "properties": {
+        "drafts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/headlessDraft"
+          }
+        }
+      }
+    },
+    "draftCompareQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/drafts/compare?path=&previews=: what merging the draft of path would change. 404 reason not-found when there is none.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "previews": {
+          "type": "boolean",
+          "description": "Also render both sides (base64 PNG)."
+        }
+      }
+    },
+    "draftObjectChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "fields"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "draftTextChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        }
+      }
+    },
+    "draftDiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The object-level difference (KHP A13) between the file as the draft forked from it and the draft.",
+      "required": [
+        "created",
+        "changed",
+        "deleted",
+        "texts"
+      ],
+      "properties": {
+        "created": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftObjectChange"
+          }
+        },
+        "changed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftObjectChange"
+          }
+        },
+        "deleted": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftObjectChange"
+          }
+        },
+        "texts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftTextChange"
+          }
+        }
+      }
+    },
+    "draftSides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "draft": {
+          "type": "string"
+        }
+      }
+    },
+    "draftComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The comparison a person reviews before merging: diff for replica drafts whose kit describes its schema (null otherwise, with diffUnavailable), each side's summary, and with previews both sides rendered.",
+      "required": [
+        "path",
+        "kit",
+        "mode",
+        "state",
+        "stale",
+        "diff",
+        "summary"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "mode": {
+          "$ref": "#/$defs/draftMode"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "ready"
+          ]
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "diff": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/draftDiff"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diffUnavailable": {
+          "type": "string",
+          "description": "Why there is no object-level diff."
+        },
+        "summary": {
+          "$ref": "#/$defs/draftSides"
+        },
+        "previews": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/draftSides"
+            }
+          ],
+          "description": "base64 PNG renders of each side."
+        }
+      }
+    },
+    "draftMergeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/drafts/merge: writes the draft as the file. 409 reason stale when the file changed since the draft forked, unless overwrite; 404 reason not-found when there is no draft.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "overwrite": {
+          "type": "boolean",
+          "description": "Replace the file anyway, dropping its newer edits."
+        }
+      }
+    },
+    "draftMergeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "merged",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "merged": {
+          "const": true
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "draftDiscardRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/drafts/discard: drops the draft; the file stays as it is. 404 reason not-found when there is none.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        }
+      }
+    },
+    "draftDiscardResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "discarded"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "discarded": {
+          "const": true
+        }
+      }
+    },
+    "createRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/documents/new: creates an untitled file (`Untitled photo`, the kit's base name) in the folder and opens it.",
+      "properties": {
+        "folder": {
+          "type": "string",
+          "description": "Workspace-relative folder; empty for the workspace root."
+        },
+        "extension": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+$",
+          "default": "psd"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 1920
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 1080
+        }
+      }
+    },
+    "documentView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kitId",
+        "documentId",
+        "path",
+        "title",
+        "format",
+        "readOnly",
+        "dirty",
+        "canUndo",
+        "canRedo",
+        "conflict",
+        "version",
+        "summary",
+        "details"
+      ],
+      "properties": {
+        "kitId": {
+          "$ref": "#/$defs/kitId"
+        },
+        "documentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "description": "Workspace-relative path; null until the document is saved.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/workspacePath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "canUndo": {
+          "type": "boolean"
+        },
+        "canRedo": {
+          "type": "boolean"
+        },
+        "conflict": {
+          "type": "boolean",
+          "description": "The file changed on disk under unsaved edits: the next save fails with data.reason file_conflict until the document is reloaded or saved to another file (Kit Process Protocol section 5)."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Increments whenever the kit reports a change, including agent edits."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "description": "Kit-defined structure from view.describe. kit.photo reports width, height, mode, depth, and layers.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "photoLayer": {
+      "type": "object",
+      "required": [
+        "name",
+        "kind",
+        "visible"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "opacity": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "blend": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selected": {
+          "type": "boolean"
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nesting inside groups; 0 at the top level."
+        }
+      }
+    },
+    "photoColor": {
+      "type": "array",
+      "description": "RGBA, each 0 to 1.",
+      "items": {
+        "type": "number"
+      }
+    },
+    "photoDetails": {
+      "type": "object",
+      "required": [
+        "width",
+        "height",
+        "mode",
+        "depth",
+        "layers"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/photoLayer"
+          }
+        },
+        "activeLayer": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tool": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The embedded editor's active tool, for example Brush."
+        },
+        "brushSize": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "zoom": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "1 is 100%."
+        },
+        "foreground": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/photoColor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/photoColor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "executeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "executeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed",
+        "result",
+        "document"
+      ],
+      "properties": {
+        "changed": {
+          "type": "boolean"
+        },
+        "result": {},
+        "document": {
+          "$ref": "#/$defs/documentView"
+        }
+      }
+    },
+    "bridgeDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kit",
+        "dirty",
+        "revision"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "A document open in a kit editor in the renderer (Kit AI bridge, kit/documents)."
+    },
+    "bridgeDocumentsResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documents"
+      ],
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeDocument"
+          }
+        }
+      }
+    },
+    "bridgeCallParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kit",
+        "tool",
+        "arguments"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "tool": {
+          "enum": [
+            "inspect",
+            "commands",
+            "run",
+            "draft_ready",
+            "draft_reopen",
+            "describe",
+            "batch",
+            "check"
+          ]
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "description": "kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save, draft?}; `inspect` takes {draft?}. With `draft: true` they work on the agent's draft of the document (KHP A12); `draft_ready` and `draft_reopen` take {} and answer the draft's {state, revision}. `describe` takes {draft?} and answers the kit's model/describe; `batch` takes {origin, ops, load, save?, draft?} and answers the model/batch {refs, results, loaded} with `saved` (Kit UI protocol section 7a; the agent's `<prefix>_query` and `<prefix>_batch`). `check` takes {draft?} and answers the kit's {diagnostics: [{code, severity, target, message, fix?}]} (KHP A21; the agent's `<prefix>_check`), refused with `data.code` `unsupported` by an editor whose kit cannot check. A refusal's JSON-RPC error carries `data` ({code, index, message} for the object model). Merging and discarding a draft are the person's, never a bridge call."
+    },
+    "bridgeLiveDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "summary",
+        "dirty",
+        "canUndo",
+        "canRedo",
+        "details"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "canUndo": {
+          "type": "boolean"
+        },
+        "canRedo": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The kit engine's inspect() JSON."
+        },
+        "draft": {
+          "$ref": "#/$defs/bridgeDraftInfo"
+        }
+      }
+    },
+    "bridgeDraftInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "revision"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "none",
+            "open",
+            "ready"
+          ]
+        },
+        "revision": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "description": "The agent's draft of a kit document (Kit UI protocol section 7d): `open` while the agent works on it, `ready` once it asks for review."
+    },
+    "bridgeInspectResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/bridgeLiveDocument"
+        }
+      }
+    },
+    "bridgeCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "enabled",
+        "mutates"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "mutates": {
+          "type": "boolean"
+        }
+      }
+    },
+    "bridgeCommandsResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commands",
+        "total"
+      ],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeCommand"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "bridgeRunStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "changed",
+        "result"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The command's JSON result."
+        }
+      }
+    },
+    "bridgeRunResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed",
+        "saved",
+        "document"
+      ],
+      "properties": {
+        "completed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeRunStep"
+          }
+        },
+        "saved": {
+          "type": "boolean"
+        },
+        "document": {
+          "$ref": "#/$defs/bridgeLiveDocument"
+        }
+      }
+    },
+    "bridgePreviewParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "maxSize"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "maxSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "draft": {
+          "type": "boolean",
+          "description": "Preview the agent's draft of the document instead."
+        }
+      }
+    },
+    "bridgePreviewResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "png"
+      ],
+      "properties": {
+        "png": {
+          "type": "string",
+          "description": "The preview as base64 PNG."
+        }
+      }
+    },
+    "bridgeChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "revision",
+        "by"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by": {
+          "enum": [
+            "person",
+            "agent"
+          ]
+        }
+      },
+      "description": "kit.changed: a live document changed."
+    }
+  }
+}

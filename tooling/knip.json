@@ -1,0 +1,61 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "src-tauri/scripts/*.mjs",
+    "scripts/*.mjs",
+    "tooling/*.{ts,js,cjs}",
+    "src/**/*.spec.{ts,tsx}",
+    "src-tauri/scripts/**/*.spec.ts",
+    "scripts/**/*.spec.ts",
+    "e2e/**/*.spec.ts",
+    "e2e/helpers/**/*.ts",
+    "src/features/kits/host/*.ts",
+    "src/lib/kdm/*.ts",
+    "src/lib/sync/*.ts",
+    "src/lib/script/*.ts",
+    "src/lib/script/kits/*.ts",
+    "src/lib/extensions/*.ts",
+    "src/lib/extensions/generated/*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "src-tauri/scripts/**/*.{mjs,ts}",
+    "scripts/**/*.{mjs,ts}",
+    "e2e/**/*.ts"
+  ],
+  "ignore": [
+    "dist/**",
+    "dist-desktop/**",
+    "src-tauri/target/**",
+    "test-results/**",
+    "src/api/generated/**"
+  ],
+  "ignoreDependencies": [
+    "@fontsource-variable/inter",
+    "@tauri-apps/cli",
+    "tailwindcss-animate",
+    "autoprefixer",
+    "postcss"
+  ],
+  "rules": {
+    "files": "error",
+    "dependencies": "error",
+    "devDependencies": "error",
+    "unlisted": "error",
+    "exports": "error",
+    "types": "error",
+    "duplicates": "warn",
+    "enumMembers": "off",
+    "nsExports": "off",
+    "nsTypes": "off"
+  },
+  "ignoreBinaries": [
+    "cargo",
+    "ffmpeg",
+    "ffprobe",
+    "magick",
+    "rustc",
+    "xvfb-run"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/errors.schema.json",
+  "title": "Kition Runtime Compatibility Error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "runtime_missing",
+        "runtime_download_failed",
+        "runtime_checksum_mismatch",
+        "runtime_archive_invalid",
+        "runtime_protocol_incompatible",
+        "runtime_platform_unsupported"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "details": {
+      "type": "object"
+    }
+  }
+}

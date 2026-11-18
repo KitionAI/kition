@@ -1,0 +1,24 @@
+{
+  "common": {
+    "unknown": "未知错误",
+    "createFailed": "创建失败",
+    "saveFailed": "保存失败",
+    "loadFailed": "加载失败",
+    "deleteFailed": "删除失败",
+    "renameFailed": "重命名失败",
+    "copyFailed": "复制失败",
+    "operationFailed": "操作失败",
+    "networkError": "网络错误",
+    "permissionDenied": "无权限"
+  },
+  "document": {
+    "extractFailed": "抽取失败",
+    "selectContentToExtract": "请先选中要抽取为新笔记的内容",
+    "selectionEmpty": "选区为空",
+    "notOnHeading": "当前行不是标题",
+    "notFoundCreatePrompt": "未找到 \"{{target}}\"，创建新笔记？"
+  },
+  "agent": {},
+  "table": {},
+  "workspace": {}
+}

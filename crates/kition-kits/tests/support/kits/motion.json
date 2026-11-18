@@ -1,0 +1,70 @@
+{
+  "khp": "1.0",
+  "id": "kit.motion",
+  "name": "Motion",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "motion",
+      "extensions": [
+        "kmotion"
+      ],
+      "mime": "application/vnd.kition.motion+json",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "motion",
+      "extension": "kmotion",
+      "baseName": "Untitled motion"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "mp4",
+      "mime": "video/mp4",
+      "command": "file.exportMovie"
+    }
+  ],
+  "capabilities": [
+    "lent-files",
+    "timeline",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "motion",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "render": "file.render",
+    "parts": [
+      "comp"
+    ],
+    "export": {
+      "command": "file.exportMovie",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "motion graphics project"
+    }
+  },
+  "headless": {
+    "executable": "kition-motion",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  }
+}

@@ -1,0 +1,3687 @@
+{
+  "$defs": {
+    "diagnostic": {
+      "properties": {
+        "code": {
+          "description": "Stable `<kit>.<name>`.",
+          "type": "string"
+        },
+        "fix": {
+          "description": "A command for `<prefix>_run` that may fix it; never run by the host itself.",
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
+          "type": "string"
+        },
+        "target": {
+          "description": "Empty for the whole document.",
+          "properties": {
+            "cell": {
+              "type": "string"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "page": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "sheet": {
+              "type": "string"
+            },
+            "slide": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "target",
+        "message"
+      ],
+      "type": "object"
+    },
+    "document": {
+      "properties": {
+        "canRedo": {
+          "type": "boolean"
+        },
+        "canUndo": {
+          "type": "boolean"
+        },
+        "details": {
+          "description": "What the kit reports about the document."
+        },
+        "dirty": {
+          "description": "It has unsaved changes.",
+          "type": "boolean"
+        },
+        "draft": {
+          "description": "This is the agent's draft of the file.",
+          "type": "boolean"
+        },
+        "path": {
+          "description": "The file's workspace path.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "summary": {
+          "description": "One line on the document.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "error": {
+      "properties": {
+        "code": {
+          "enum": [
+            "invalid-op",
+            "not-found",
+            "invalid-value",
+            "read-only",
+            "command-failed",
+            "invalid-params",
+            "not-open",
+            "draft-required",
+            "unknown-command",
+            "not-allowed",
+            "unsupported",
+            "unavailable",
+            "timeout",
+            "memory-limit",
+            "cancelled",
+            "conflict",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "index": {
+          "description": "The failing step or operation.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The arguments (`input`) and structured results (`output`) of every kit tool, as kition-kits-mcp and Kition's agent offer them, generated from crates/kition-kits (`kition-kits-mcp --schemas`). `<prefix>` is the kit's `kit.json` agent prefix. A failed call answers `isError: true` and `error` in its structured content, beside what it had done. `<prefix>_query` and `<prefix>_batch` arguments name the kit's object types and fields once the server has seen its `model.describe`.",
+  "title": "Kition kit tools (KHP agent tools, `<prefix>_*`)",
+  "tools": {
+    "<prefix>_batch": {
+      "description": "Edit a document in <Kit> through its object model: one model/batch of `ops`, run in order as one undoable step (nothing changes when an op fails: a `command` op among other ops is taken back when a later op fails, and refused before anything runs where only undo could take it back, a file open in its editor or with unsaved edits; run commands with <prefix>_run then), then `load` reads objects back. Ops: create {type, fields?, ref?: \"$name\", in?: \"<target>.<field>\", at?, parent?}, set {target, field, value}, delete {target}, text.insert {target, field, index, text}, text.delete {target, field, index, count}, text.set {target, field, text}, text.mark/text.unmark {target, field, start, end, key, value?}, list.insert {target, field, item, index?}, list.move {target, field, from, to}, list.remove {target, field, index}, map.set/map.delete {target, field, key, value?}, tree.insert/tree.move {target, field, item, parent?}, command {id, params?}. A target is `root`, an object id from <prefix>_query, or a `$name` bound by an earlier create. Saves the file unless `save` is false; with `draft`, edits your draft instead (never saved). Failures answer `error.code` and the op's `index`. The answer says what the call changed (`changes`: created, changed with each field before and after, moved, deleted, by the ids the inspect and query tools use; `revision`), so there is no need to inspect again just to see that, and which diagnostics it introduced or resolved (`diagnostics: { new, resolved }`); `changesUnavailable` says why when it cannot. Pass the latest `revision` you were given for the file as `basis`: the answer then lists what others changed since (`others`), and a `conflict` (nothing ran) means others deleted, moved or changed what this call acts on: look at `others` and `conflicts`, decide again, and pass the `revision` the refusal gives. Low level: `text.set` here replaces the text together with its formatting, and created objects get default styles; for ordinary edits prefer the kit's commands (its commands and run tools), which keep formatting.",
+      "input": {
+        "properties": {
+          "basis": {
+            "description": "The `revision` of the last answer you were given for this file. The answer then says what others (other agents, edits to the file) changed since (`others`); a write whose objects or part they deleted, moved or changed is refused with `conflict` and runs nothing.",
+            "type": "string"
+          },
+          "changes": {
+            "description": "What the answer's `changes` lists: true (the default) the objects the call created, changed, moved and deleted, at most 50 with `truncated` counting the rest; \"all\" every one; false leaves `changes` out.",
+            "enum": [
+              true,
+              false,
+              "all"
+            ],
+            "type": [
+              "boolean",
+              "string"
+            ]
+          },
+          "check": {
+            "description": "Check the document before and after the call and answer `diagnostics: { new, resolved }`. Defaults to true; false skips both checks.",
+            "type": "boolean"
+          },
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "load": {
+            "description": "Objects to read after the ops.",
+            "items": {
+              "properties": {
+                "fields": {
+                  "description": "Only these fields.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "target": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "ops": {
+            "items": {
+              "properties": {
+                "field": {
+                  "description": "The field an op edits.",
+                  "type": "string"
+                },
+                "fields": {
+                  "description": "`create`: the new object's fields.",
+                  "type": "object"
+                },
+                "id": {
+                  "description": "`command`: the command id.",
+                  "type": "string"
+                },
+                "in": {
+                  "description": "`create`: the list or tree to add it to, as `<target>.<field>`.",
+                  "type": "string"
+                },
+                "item": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "op": {
+                  "enum": [
+                    "create",
+                    "set",
+                    "delete",
+                    "text.insert",
+                    "text.delete",
+                    "text.set",
+                    "text.mark",
+                    "text.unmark",
+                    "list.insert",
+                    "list.move",
+                    "list.remove",
+                    "map.set",
+                    "map.delete",
+                    "tree.insert",
+                    "tree.move",
+                    "command"
+                  ],
+                  "type": "string"
+                },
+                "params": {
+                  "description": "`command`: its parameters.",
+                  "type": "object"
+                },
+                "ref": {
+                  "description": "`create`: a `$name` later ops use for the new object.",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "`root`, an object id (an integer tool id as a number or its digits), or a `$name`.",
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "type": {
+                  "description": "`create`: the new object's type.",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The value to set."
+                }
+              },
+              "required": [
+                "op"
+              ],
+              "type": "object"
+            },
+            "maxItems": 200,
+            "type": "array"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "save": {
+            "description": "Save the file after the batch. Defaults to true; a draft is never saved.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "ops"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "changes": {
+            "description": "What the call changed, objects named by the ids the inspect and query tools use (tool ids where the kit declares them), each list ordered by id. A value is given as it is, except a text over 80 characters (`{ excerpt, length }`) and a blob after value (`{ size }`); blob before values keep `{ hash, mime, size, name? }`. A list or tree field's change is told by `moved`, `created` and `deleted`. `null` when the kit cannot say (`changesUnavailable` says why); left out with `changes: false`.",
+            "properties": {
+              "changed": {
+                "items": {
+                  "properties": {
+                    "edits": {
+                      "description": "Each changed field but list and tree fields. Before and after values are optional when unavailable or intentionally omitted, including large derived values; an omitted value is not null.",
+                      "items": {
+                        "properties": {
+                          "after": {},
+                          "before": {},
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "description": "The fields that changed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "created": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "description": "The fields holding a value.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Each of them but list and tree fields, by name.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deleted": {
+                "description": "Objects removed, each with `at`, where a list or tree held it before.",
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "footprint": {
+                "description": "A shift of many objects stated once: the `count` objects of `parent`'s list `field` from index `from` (as the list is after the change) had only `shift.field` changed, each by `shift.by`; or the objects `ids` had only `edits` changed, each field by its `by`. They are in no other list. Pass `changes: \"all\"` to have each listed.",
+                "items": {
+                  "properties": {
+                    "count": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "edits": {
+                      "items": {
+                        "properties": {
+                          "by": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "by"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The first object's index in the list, after the change.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "description": "Objects stated by their ids: each had only `edits` changed, each field by its `by`.",
+                      "items": {
+                        "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "shift": {
+                      "properties": {
+                        "by": {
+                          "description": "after - before; a string for whole numbers written as strings.",
+                          "type": [
+                            "number",
+                            "string"
+                          ]
+                        },
+                        "field": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "moved": {
+                "description": "Objects whose place in a list or tree changed (also in `changed` when their fields did).",
+                "items": {
+                  "properties": {
+                    "from": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "truncated": {
+                "description": "The lists were cut to 50 objects in all: how many of each were left out. Pass `changes: \"all\"` for every one.",
+                "properties": {
+                  "changed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "created": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "deleted": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "moved": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "changesUnavailable": {
+            "description": "Why `changes` is null: the kit has no object model, the document was replaced while the call ran, or the file is open in its editor.",
+            "type": "string"
+          },
+          "conflicts": {
+            "description": "With `error.code` `conflict`: what others changed of what the write acts on. Nothing ran.",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The object or part (`slide:3`; a whole number for a kit whose tool ids are numbers); absent when the whole document is concerned.",
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "now": {
+                  "description": "Where it is now: `{ parent, field, index }` (and `spelled`, its place in the command's index spelling, `\"#2\"`, for a step that named it so) and the fields its kit marks as its position (`start`; one named `parent`, `field` or `index` in `fields`), or a part as `{ \"slide\": n }`.",
+                  "type": "object"
+                },
+                "place": {
+                  "description": "For a step that names what it acts on by a place: that place as the step named it (`time`, `part`, the place parameters) and `under`, the objects it names now (`unknown` when the kit cannot say).",
+                  "type": "object"
+                },
+                "reason": {
+                  "description": "`deleted`; `relocated` (moved, its index, position fields or part number shifted, or for a step that names its objects by a place, under that place now or there at `basis` and moved by others); `changed` (a field the write replaces, any field of a command's target, or another agent's step at the top of the agents' undo history); `unknown` (inspect again).",
+                  "enum": [
+                    "deleted",
+                    "relocated",
+                    "changed",
+                    "unknown"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "diagnostics": {
+            "description": "The kit's check before and after the call, matched by `code` and `target`: what the call introduced and what it resolved. Left out with `check: false` or when the kit does not check documents.",
+            "properties": {
+              "new": {
+                "items": {
+                  "$ref": "#/$defs/diagnostic"
+                },
+                "type": "array"
+              },
+              "resolved": {
+                "items": {
+                  "$ref": "#/$defs/diagnostic"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "new",
+              "resolved"
+            ],
+            "type": "object"
+          },
+          "document": {
+            "$ref": "#/$defs/document"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "guardUnavailable": {
+            "description": "The call gave `basis`, but the file is open in its editor, where this server does not journal changes: why nothing was checked.",
+            "type": "string"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "loaded": {
+            "description": "The objects `load` asked for.",
+            "type": "array"
+          },
+          "others": {
+            "description": "What others changed since the call's `basis` (other agents, edits to the file made outside this server), merged into one change set by the ids the tools use, at most 50 objects with `truncated`; left out when nothing.",
+            "properties": {
+              "by": {
+                "description": "Who: each other agent's name on this server, `outside` for edits to the file.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "changed": {
+                "items": {
+                  "properties": {
+                    "edits": {
+                      "description": "Each changed field but list and tree fields. Before and after values are optional when unavailable or intentionally omitted, including large derived values; an omitted value is not null.",
+                      "items": {
+                        "properties": {
+                          "after": {},
+                          "before": {},
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "description": "The fields that changed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "created": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "description": "The fields holding a value.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Each of them but list and tree fields, by name.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deleted": {
+                "description": "Objects removed, each with `at`, where a list or tree held it before.",
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "footprint": {
+                "description": "A shift of many objects stated once: the `count` objects of `parent`'s list `field` from index `from` (as the list is after the change) had only `shift.field` changed, each by `shift.by`; or the objects `ids` had only `edits` changed, each field by its `by`. They are in no other list. Pass `changes: \"all\"` to have each listed.",
+                "items": {
+                  "properties": {
+                    "count": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "edits": {
+                      "items": {
+                        "properties": {
+                          "by": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "by"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The first object's index in the list, after the change.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "description": "Objects stated by their ids: each had only `edits` changed, each field by its `by`.",
+                      "items": {
+                        "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "shift": {
+                      "properties": {
+                        "by": {
+                          "description": "after - before; a string for whole numbers written as strings.",
+                          "type": [
+                            "number",
+                            "string"
+                          ]
+                        },
+                        "field": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "moved": {
+                "description": "Objects whose place in a list or tree changed (also in `changed` when their fields did).",
+                "items": {
+                  "properties": {
+                    "from": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "renumbered": {
+                "description": "One line naming the ids another program renumbered in the file: each may now name another object, and what changed in them is not known. A write on one is refused (`unknown`) until an inspect gives the ids as they are now.",
+                "type": "string"
+              },
+              "truncated": {
+                "description": "The lists were cut to 50 objects in all: how many of each were left out. Pass `changes: \"all\"` for every one.",
+                "properties": {
+                  "changed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "created": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "deleted": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "moved": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "unknown": {
+                "description": "Some of it cannot be told object by object (a kit without an object model, a document read again with unsaved edits).",
+                "type": "boolean"
+              },
+              "unnamed": {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "description": "Changes, made in the file by another program, of objects no tool id names (a layout, shared media), counted by type and list: `{ \"Media\": { \"changed\": 1 } }`.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "results": {
+            "description": "One result per operation (KitObjectModel 1.0 `model/batch`).",
+            "type": "array"
+          },
+          "revision": {
+            "description": "The document's state this answer describes, a short opaque token: pass it as `basis` to your next call on the file. Left out of a write of a kit without an object model.",
+            "maxLength": 12,
+            "type": "string"
+          },
+          "saved": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": true
+    },
+    "<prefix>_check": {
+      "description": "Check a document in <Kit>: lists what the kit finds wrong with it (broken references, overflowing text, formula errors), each with a stable `code`, a `severity` (error, warning, info), its `target` (object id, slide, page, sheet, cell), a message, and sometimes a `fix` command for <prefix>_run. Call it after editing and fix the errors it reports. Changes nothing.",
+      "input": {
+        "properties": {
+          "basis": {
+            "description": "The `revision` of the last answer you were given for this file. The answer then says what others (other agents, edits to the file) changed since (`others`); a write whose objects or part they deleted, moved or changed is refused with `conflict` and runs nothing.",
+            "type": "string"
+          },
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "diagnostics": {
+            "description": "Errors first.",
+            "items": {
+              "$ref": "#/$defs/diagnostic"
+            },
+            "type": "array"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "diagnostics"
+        ],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_commands": {
+      "description": "Search <Kit>'s editing commands (the kit's commands) by keywords. Returns command ids, what each does, and its parameters in one line; pass `detail: true` (or a command id as the query) for the full parameter schema, with what the command acts on (`targets`, the parameter a run step's `on` fills) and the editor state it reads (`reads`: selection, part, time). Without a query it lists every command by id, a page at a time (`cursor`, `limit`). Pass an id to <prefix>_run.",
+      "input": {
+        "properties": {
+          "cursor": {
+            "description": "Without a query: the `next` of the previous page.",
+            "type": "string"
+          },
+          "detail": {
+            "description": "List each command's full parameter and result schemas instead of one line.",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Without a query: commands a page, at most 200 (default 50).",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Keywords to match in the command id, title, or description, for example `<keywords>`. Leave it out to list every command.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "commands": {
+            "items": {
+              "properties": {
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "mutates": {
+                  "type": "boolean"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "total": {
+            "description": "How many matched; at most 40 are listed.",
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_create": {
+      "description": "Create a new, empty document in <Kit> at `path` () and save it. The file is always new: when `path` exists the next free name is used. Lists the file it wrote; edit it with the other tools.",
+      "input": {
+        "properties": {
+          "path": {
+            "description": "Workspace-relative path of the new file, for example `deck.kslide`.",
+            "type": "string"
+          },
+          "size": {
+            "description": "The document size in pixels, for example {\"width\": 1920, \"height\": 1080}.",
+            "properties": {
+              "height": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "width": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "document": {
+            "$ref": "#/$defs/document"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "files": {
+            "description": "The files written (KHP A30).",
+            "items": {
+              "properties": {
+                "created": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "description": "The new file's workspace path.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "created"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "type": "object"
+      },
+      "writes": true
+    },
+    "<prefix>_draft_ready": {
+      "description": "Ask the person to review your draft of a document in <Kit>: they see a comparison with the document and merge it or discard it. Call it when the draft is done; do not merge or discard it yourself.",
+      "input": {
+        "properties": {
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "ready"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_draft_reopen": {
+      "description": "Take your draft of a document in <Kit> back from review to keep editing it (after <prefix>_draft_ready); edits with `draft` also do.",
+      "input": {
+        "properties": {
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "ready"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_export": {
+      "description": "Export a document from <Kit> to a new file, as the kit's engine draws it. The file is always new: when `to` exists the next free name is used. Lists the file it wrote; changes nothing in the document.",
+      "input": {
+        "properties": {
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "format": {
+            "description": "The format, a file extension; defaults to the extension of `to`.",
+            "type": "string"
+          },
+          "options": {
+            "description": "Parameters for the kit's export command, as <prefix>_commands documents it.",
+            "type": "object"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "to": {
+            "description": "Workspace-relative path of the new file, for example `exports/Screen.png`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "to"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "files": {
+            "description": "The files written (KHP A30).",
+            "items": {
+              "properties": {
+                "created": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "description": "The new file's workspace path.",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The SHA-256 of the file written.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "version",
+                "created"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "format": {
+            "type": "string"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "type": "object"
+      },
+      "writes": true
+    },
+    "<prefix>_inspect": {
+      "description": "Open a document (<formats>) in <Kit> and report the document. With `preview: true` it also attaches a rendered preview to the next turn, for when you need to see it (layout, overlaps, colours); without it, it answers JSON only. With `target` (for example {\"slide\": 3}) it looks at only that part and lists its objects (ids, kinds, names, boxes, text, fills), which is the usual way to find what to edit; with `preview`, `target` is also the view drawn (for a timeline {\"time\": 3}), and `preview` in the answer says what the picture shows (its size and scale, a timeline's frames and their times). Use it before and after editing. It answers `revision`: pass it as `basis` to your next call on the file.",
+      "input": {
+        "properties": {
+          "basis": {
+            "description": "The `revision` of the last answer you were given for this file. The answer then says what others (other agents, edits to the file) changed since (`others`); a write whose objects or part they deleted, moved or changed is refused with `conflict` and runs nothing.",
+            "type": "string"
+          },
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "maxSize": {
+            "description": "The most preview pixels on the longer side (default 1024 for kits without their own render command).",
+            "maximum": 4096,
+            "minimum": 16,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "preview": {
+            "description": "Attach a rendered preview image of what you look at. Defaults to false: pass true when you need to see it (layout, overlaps, colours).",
+            "type": "boolean"
+          },
+          "scale": {
+            "description": "Preview pixels per document unit, up to 2 (default 1). A kit that cannot draw that scale fails the preview with `unsupported`, saying the scale it draws at most.",
+            "exclusiveMinimum": 0,
+            "maximum": 2,
+            "type": "number"
+          },
+          "target": {
+            "description": "Look at one part: {\"slide\": 3} or {\"page\": 2} (counted from 1), or {\"slideId\": 260} or {\"pageId\": 7} (the part's `id` as inspect lists it, which stays the same when parts are added, deleted or moved), lists its objects (and previews it with `preview: true`); a diagnostic's `target` from the check tool (for example {\"path\": \"layer:12\"}) previews what it is about; {\"range\": \"A1:J20\", \"sheet\": \"name\"} lists those cells of a spreadsheet; {\"paragraphs\": [0, 30]} lists those paragraphs of a document (counted from 0). With `preview`, it is the view the picture shows, passed whole to a kit's own render command (`agent.render`): for a timeline {\"time\": 3} (seconds) for one frame or {\"range\": [0, 4], \"frames\": 6} for a contact sheet, with the kit's part, for example {\"sequence\": 2} or {\"comp\": 3}. A kit's render command takes the members its parameter schema lists (the commands tool shows it); any other is `invalid-params`, naming those it takes. A preview of a target the kit cannot draw fails with `unsupported` or `invalid-params`, never the whole document instead: inspect without `target` to see the whole document.",
+            "properties": {
+              "comp": {
+                "description": "A motion-graphics composition, as the kit names it.",
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "frames": {
+                "description": "How many frames a timeline's contact sheet of `range` shows.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "objectId": {
+                "type": "string"
+              },
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pageId": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "paragraphs": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "path": {
+                "type": "string"
+              },
+              "range": {
+                "description": "A spreadsheet's cells (`A1:J20`), or a timeline's [from, to] in seconds for a contact sheet of `frames`.",
+                "items": {
+                  "type": "number"
+                },
+                "type": [
+                  "string",
+                  "array"
+                ]
+              },
+              "sequence": {
+                "description": "A timeline's sequence, as the kit names it.",
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "sheet": {
+                "type": "string"
+              },
+              "slide": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "slideId": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "time": {
+                "description": "A timeline's time in seconds: the frame shown then.",
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "canRedo": {
+            "type": "boolean"
+          },
+          "canUndo": {
+            "type": "boolean"
+          },
+          "changedOutside": {
+            "description": "Without `basis`: the file changed outside your calls since your last one (`path`, `was`, `now`); the next write is refused once.",
+            "type": "object"
+          },
+          "conflicts": {
+            "description": "With `error.code` `conflict`: what others changed of what the write acts on. Nothing ran.",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The object or part (`slide:3`; a whole number for a kit whose tool ids are numbers); absent when the whole document is concerned.",
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "now": {
+                  "description": "Where it is now: `{ parent, field, index }` (and `spelled`, its place in the command's index spelling, `\"#2\"`, for a step that named it so) and the fields its kit marks as its position (`start`; one named `parent`, `field` or `index` in `fields`), or a part as `{ \"slide\": n }`.",
+                  "type": "object"
+                },
+                "place": {
+                  "description": "For a step that names what it acts on by a place: that place as the step named it (`time`, `part`, the place parameters) and `under`, the objects it names now (`unknown` when the kit cannot say).",
+                  "type": "object"
+                },
+                "reason": {
+                  "description": "`deleted`; `relocated` (moved, its index, position fields or part number shifted, or for a step that names its objects by a place, under that place now or there at `basis` and moved by others); `changed` (a field the write replaces, any field of a command's target, or another agent's step at the top of the agents' undo history); `unknown` (inspect again).",
+                  "enum": [
+                    "deleted",
+                    "relocated",
+                    "changed",
+                    "unknown"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "details": {
+            "description": "What the kit reports about the document."
+          },
+          "dirty": {
+            "description": "It has unsaved changes.",
+            "type": "boolean"
+          },
+          "document": {
+            "$ref": "#/$defs/document",
+            "description": "The document, when its open editor answered."
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "guardUnavailable": {
+            "description": "The call gave `basis`, but the file is open in its editor, where this server does not journal changes: why nothing was checked.",
+            "type": "string"
+          },
+          "interface": {
+            "description": "The protocol, the kit and its version the tools speak for this file (`khp/2 kit.slide@1.4.0`); the MCP server's `serverInfo.version` is the kit's.",
+            "type": "string"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "others": {
+            "description": "What others changed since the call's `basis` (other agents, edits to the file made outside this server), merged into one change set by the ids the tools use, at most 50 objects with `truncated`; left out when nothing.",
+            "properties": {
+              "by": {
+                "description": "Who: each other agent's name on this server, `outside` for edits to the file.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "changed": {
+                "items": {
+                  "properties": {
+                    "edits": {
+                      "description": "Each changed field but list and tree fields. Before and after values are optional when unavailable or intentionally omitted, including large derived values; an omitted value is not null.",
+                      "items": {
+                        "properties": {
+                          "after": {},
+                          "before": {},
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "description": "The fields that changed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "created": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "description": "The fields holding a value.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Each of them but list and tree fields, by name.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deleted": {
+                "description": "Objects removed, each with `at`, where a list or tree held it before.",
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "footprint": {
+                "description": "A shift of many objects stated once: the `count` objects of `parent`'s list `field` from index `from` (as the list is after the change) had only `shift.field` changed, each by `shift.by`; or the objects `ids` had only `edits` changed, each field by its `by`. They are in no other list. Pass `changes: \"all\"` to have each listed.",
+                "items": {
+                  "properties": {
+                    "count": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "edits": {
+                      "items": {
+                        "properties": {
+                          "by": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "by"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The first object's index in the list, after the change.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "description": "Objects stated by their ids: each had only `edits` changed, each field by its `by`.",
+                      "items": {
+                        "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "shift": {
+                      "properties": {
+                        "by": {
+                          "description": "after - before; a string for whole numbers written as strings.",
+                          "type": [
+                            "number",
+                            "string"
+                          ]
+                        },
+                        "field": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "moved": {
+                "description": "Objects whose place in a list or tree changed (also in `changed` when their fields did).",
+                "items": {
+                  "properties": {
+                    "from": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "renumbered": {
+                "description": "One line naming the ids another program renumbered in the file: each may now name another object, and what changed in them is not known. A write on one is refused (`unknown`) until an inspect gives the ids as they are now.",
+                "type": "string"
+              },
+              "truncated": {
+                "description": "The lists were cut to 50 objects in all: how many of each were left out. Pass `changes: \"all\"` for every one.",
+                "properties": {
+                  "changed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "created": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "deleted": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "moved": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "unknown": {
+                "description": "Some of it cannot be told object by object (a kit without an object model, a document read again with unsaved edits).",
+                "type": "boolean"
+              },
+              "unnamed": {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "description": "Changes, made in the file by another program, of objects no tool id names (a layout, shared media), counted by type and list: `{ \"Media\": { \"changed\": 1 } }`.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "path": {
+            "description": "The file's workspace path.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preview": {
+            "description": "What the attached preview shows, as the kit's render command (`agent.render`) answered it beside the image: `width`, `height` and `scale`, and the kit's own members, for a timeline `sequence`, `frames` ([{time, frame, label}], the times the picture shows), `columns` and `rows`. Only for kits with a render command.",
+            "properties": {
+              "frames": {
+                "items": {
+                  "properties": {
+                    "frame": {
+                      "type": "integer"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "scale": {
+                "type": "number"
+              },
+              "width": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "revision": {
+            "description": "The document's state this answer describes, a short opaque token: pass it as `basis` to your next call on the file. Left out of a write of a kit without an object model.",
+            "maxLength": 12,
+            "type": "string"
+          },
+          "summary": {
+            "description": "One line on the document.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_query": {
+      "description": "Read a document's objects in <Kit> from its object model: by id (`objects`, `root` for the document itself), or by following fields from the root (`follow`, for example `slides` or `slides.0.shapes`). Answers each object's id, type, and fields (all, or those in `fields`). Use the ids with <prefix>_batch. Low level: to find what to edit, the inspect tool with a `target` is usually enough. Call it with `describe: true` first to learn the document's object types and fields.",
+      "input": {
+        "properties": {
+          "basis": {
+            "description": "The `revision` of the last answer you were given for this file. The answer then says what others (other agents, edits to the file) changed since (`others`); a write whose objects or part they deleted, moved or changed is refused with `conflict` and runs nothing.",
+            "type": "string"
+          },
+          "describe": {
+            "description": "true: also answer the kit's object types and their fields, one line each; a type name or a comma-separated list: those types in full; \"*\": every type in full and their JSON Schema.",
+            "type": [
+              "boolean",
+              "string"
+            ]
+          },
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "fields": {
+            "description": "Only these fields of each object. Defaults to all.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "follow": {
+            "description": "A field path from the first object (the root by default): field names, and list or tree positions, joined with dots. Reads the objects it ends at.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "At most this many objects. Defaults to 50.",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "objects": {
+            "description": "Object ids to read (an integer tool id as the number the answers show, or its digits); `root` is the document's root object. Defaults to the root.",
+            "items": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "type": "array"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "conflicts": {
+            "description": "With `error.code` `conflict`: what others changed of what the write acts on. Nothing ran.",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The object or part (`slide:3`; a whole number for a kit whose tool ids are numbers); absent when the whole document is concerned.",
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "now": {
+                  "description": "Where it is now: `{ parent, field, index }` (and `spelled`, its place in the command's index spelling, `\"#2\"`, for a step that named it so) and the fields its kit marks as its position (`start`; one named `parent`, `field` or `index` in `fields`), or a part as `{ \"slide\": n }`.",
+                  "type": "object"
+                },
+                "place": {
+                  "description": "For a step that names what it acts on by a place: that place as the step named it (`time`, `part`, the place parameters) and `under`, the objects it names now (`unknown` when the kit cannot say).",
+                  "type": "object"
+                },
+                "reason": {
+                  "description": "`deleted`; `relocated` (moved, its index, position fields or part number shifted, or for a step that names its objects by a place, under that place now or there at `basis` and moved by others); `changed` (a field the write replaces, any field of a command's target, or another agent's step at the top of the agents' undo history); `unknown` (inspect again).",
+                  "enum": [
+                    "deleted",
+                    "relocated",
+                    "changed",
+                    "unknown"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "describe": {
+            "description": "With `describe`: what the kit's `model.describe` answered."
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "guardUnavailable": {
+            "description": "The call gave `basis`, but the file is open in its editor, where this server does not journal changes: why nothing was checked.",
+            "type": "string"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "objects": {
+            "items": {
+              "description": "An object as `{ id, type, fields }` read with the fields asked for.",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "others": {
+            "description": "What others changed since the call's `basis` (other agents, edits to the file made outside this server), merged into one change set by the ids the tools use, at most 50 objects with `truncated`; left out when nothing.",
+            "properties": {
+              "by": {
+                "description": "Who: each other agent's name on this server, `outside` for edits to the file.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "changed": {
+                "items": {
+                  "properties": {
+                    "edits": {
+                      "description": "Each changed field but list and tree fields. Before and after values are optional when unavailable or intentionally omitted, including large derived values; an omitted value is not null.",
+                      "items": {
+                        "properties": {
+                          "after": {},
+                          "before": {},
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "description": "The fields that changed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "created": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "description": "The fields holding a value.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Each of them but list and tree fields, by name.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deleted": {
+                "description": "Objects removed, each with `at`, where a list or tree held it before.",
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "footprint": {
+                "description": "A shift of many objects stated once: the `count` objects of `parent`'s list `field` from index `from` (as the list is after the change) had only `shift.field` changed, each by `shift.by`; or the objects `ids` had only `edits` changed, each field by its `by`. They are in no other list. Pass `changes: \"all\"` to have each listed.",
+                "items": {
+                  "properties": {
+                    "count": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "edits": {
+                      "items": {
+                        "properties": {
+                          "by": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "by"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The first object's index in the list, after the change.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "description": "Objects stated by their ids: each had only `edits` changed, each field by its `by`.",
+                      "items": {
+                        "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "shift": {
+                      "properties": {
+                        "by": {
+                          "description": "after - before; a string for whole numbers written as strings.",
+                          "type": [
+                            "number",
+                            "string"
+                          ]
+                        },
+                        "field": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "moved": {
+                "description": "Objects whose place in a list or tree changed (also in `changed` when their fields did).",
+                "items": {
+                  "properties": {
+                    "from": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "renumbered": {
+                "description": "One line naming the ids another program renumbered in the file: each may now name another object, and what changed in them is not known. A write on one is refused (`unknown`) until an inspect gives the ids as they are now.",
+                "type": "string"
+              },
+              "truncated": {
+                "description": "The lists were cut to 50 objects in all: how many of each were left out. Pass `changes: \"all\"` for every one.",
+                "properties": {
+                  "changed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "created": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "deleted": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "moved": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "unknown": {
+                "description": "Some of it cannot be told object by object (a kit without an object model, a document read again with unsaved edits).",
+                "type": "boolean"
+              },
+              "unnamed": {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "description": "Changes, made in the file by another program, of objects no tool id names (a layout, shared media), counted by type and list: `{ \"Media\": { \"changed\": 1 } }`.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "revision": {
+            "description": "The document's state this answer describes, a short opaque token: pass it as `basis` to your next call on the file. Left out of a write of a kit without an object model.",
+            "maxLength": 12,
+            "type": "string"
+          },
+          "schema": {
+            "description": "With `describe`: the object types as JSON Schema."
+          },
+          "total": {
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "More objects matched than `limit`.",
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": false
+    },
+    "<prefix>_run": {
+      "description": "Edit a document in <Kit> by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by <prefix>_commands; `on` names the objects a step acts on by the ids <prefix>_inspect lists, and `at` where it acts (a part, a time). The kit's selection and current part are set for each step and put back after the call, so a call leaves no state behind. Stops at the first failing step and rolls the run back: the file and the document are as they were before the call, and nothing is saved. Answers each step's result and a short document summary. The answer says what the call changed (`changes`: created, changed with each field before and after, moved, deleted, by the ids the inspect and query tools use; `revision`), so there is no need to inspect again just to see that, and which diagnostics it introduced or resolved (`diagnostics: { new, resolved }`); `changesUnavailable` says why when it cannot. Pass the latest `revision` you were given for the file as `basis`: the answer then lists what others changed since (`others`), and a `conflict` (nothing ran) means others deleted, moved or changed what this call acts on: look at `others` and `conflicts`, decide again, and pass the `revision` the refusal gives. With `draft`, the steps edit your draft of the file instead (never saved); call <prefix>_draft_ready when it is done.",
+      "input": {
+        "properties": {
+          "basis": {
+            "description": "The `revision` of the last answer you were given for this file. The answer then says what others (other agents, edits to the file) changed since (`others`); a write whose objects or part they deleted, moved or changed is refused with `conflict` and runs nothing.",
+            "type": "string"
+          },
+          "changes": {
+            "description": "What the answer's `changes` lists: true (the default) the objects the call created, changed, moved and deleted, at most 50 with `truncated` counting the rest; \"all\" every one; false leaves `changes` out.",
+            "enum": [
+              true,
+              false,
+              "all"
+            ],
+            "type": [
+              "boolean",
+              "string"
+            ]
+          },
+          "check": {
+            "description": "Check the document before and after the call and answer `diagnostics: { new, resolved }`. Defaults to true; false skips both checks.",
+            "type": "boolean"
+          },
+          "draft": {
+            "description": "Work on your draft of the file instead of the live document: the person reviews it and merges or discards it. Defaults to the run's mode.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Workspace-relative path to a <formats> file.",
+            "type": "string"
+          },
+          "preview": {
+            "description": "Attach a rendered preview of the document after the steps: the whole document, or `view`. Defaults to false.",
+            "type": "boolean"
+          },
+          "save": {
+            "description": "Save the file after the steps. Defaults to true; a draft is never saved.",
+            "type": "boolean"
+          },
+          "steps": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "at": {
+                  "additionalProperties": false,
+                  "description": "Where the step acts, for this step only: `part` as in `target` (it overrides the run's `target`), `time` in seconds for kits with a timeline.",
+                  "properties": {
+                    "part": {
+                      "additionalProperties": false,
+                      "maxProperties": 1,
+                      "minProperties": 1,
+                      "properties": {
+                        "page": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "pageId": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "slide": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "slideId": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "time": {
+                      "minimum": 0,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "command": {
+                  "description": "A command id from <prefix>_commands, for example `<command>`.",
+                  "type": "string"
+                },
+                "on": {
+                  "description": "The objects the step acts on, by the ids <prefix>_inspect lists. They go into the command's id parameter (its `targets` in <prefix>_commands with `detail`; do not give that parameter too), or are selected for a command that acts on the selection (`reads` lists `selection`); the selection is put back afterwards. A command that takes neither refuses `on`.",
+                  "items": {
+                    "type": [
+                      "string",
+                      "integer"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "params": {
+                  "description": "Command parameters.",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "command"
+              ],
+              "type": "object"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "type": "array"
+          },
+          "target": {
+            "additionalProperties": false,
+            "description": "The part the steps act on, as in the inspect tool's target: {\"slideId\": 260} (the slide's `id` as inspect lists it; it names the same slide after slides are added, deleted or moved) or {\"slide\": 3} (counted from 1; whatever slide is third then). The ids the inspect tool listed for that part work in the steps; a step's `at.part` overrides it for that step. The kit's current part is as it was after the call.",
+            "maxProperties": 1,
+            "minProperties": 1,
+            "properties": {
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pageId": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "slide": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "slideId": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "view": {
+            "description": "What the preview shows, for a kit with its own render command (`agent.render`): a view as the inspect tool's `target` names it, for example {\"time\": 3} or {\"slide\": 2}. It is checked before any step runs; `preview` in the answer says what the picture shows. Not for drafts.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "path",
+          "steps"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "properties": {
+          "changes": {
+            "description": "What the call changed, objects named by the ids the inspect and query tools use (tool ids where the kit declares them), each list ordered by id. A value is given as it is, except a text over 80 characters (`{ excerpt, length }`) and a blob after value (`{ size }`); blob before values keep `{ hash, mime, size, name? }`. A list or tree field's change is told by `moved`, `created` and `deleted`. `null` when the kit cannot say (`changesUnavailable` says why); left out with `changes: false`.",
+            "properties": {
+              "changed": {
+                "items": {
+                  "properties": {
+                    "edits": {
+                      "description": "Each changed field but list and tree fields. Before and after values are optional when unavailable or intentionally omitted, including large derived values; an omitted value is not null.",
+                      "items": {
+                        "properties": {
+                          "after": {},
+                          "before": {},
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "description": "The fields that changed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "created": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "description": "The fields holding a value.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Each of them but list and tree fields, by name.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deleted": {
+                "description": "Objects removed, each with `at`, where a list or tree held it before.",
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "footprint": {
+                "description": "A shift of many objects stated once: the `count` objects of `parent`'s list `field` from index `from` (as the list is after the change) had only `shift.field` changed, each by `shift.by`; or the objects `ids` had only `edits` changed, each field by its `by`. They are in no other list. Pass `changes: \"all\"` to have each listed.",
+                "items": {
+                  "properties": {
+                    "count": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "edits": {
+                      "items": {
+                        "properties": {
+                          "by": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "by"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The first object's index in the list, after the change.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "description": "Objects stated by their ids: each had only `edits` changed, each field by its `by`.",
+                      "items": {
+                        "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "shift": {
+                      "properties": {
+                        "by": {
+                          "description": "after - before; a string for whole numbers written as strings.",
+                          "type": [
+                            "number",
+                            "string"
+                          ]
+                        },
+                        "field": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "moved": {
+                "description": "Objects whose place in a list or tree changed (also in `changed` when their fields did).",
+                "items": {
+                  "properties": {
+                    "from": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "truncated": {
+                "description": "The lists were cut to 50 objects in all: how many of each were left out. Pass `changes: \"all\"` for every one.",
+                "properties": {
+                  "changed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "created": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "deleted": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "moved": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "changesUnavailable": {
+            "description": "Why `changes` is null: the kit has no object model, the document was replaced while the call ran, or the file is open in its editor.",
+            "type": "string"
+          },
+          "closed": {
+            "description": "A successful terminal close; no document view, save, restore or preview follows it.",
+            "type": "boolean"
+          },
+          "completed": {
+            "description": "The steps that ran, in order. On failure it is empty: a run is atomic (KHP A53), and the steps before the failing one are in `rolledBack`; only when they could not be rolled back are they here. `changed` is there only when false (the step changed nothing), `result` only when the command answered one.",
+            "items": {
+              "properties": {
+                "changed": {
+                  "type": "boolean"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "result": {},
+                "truncated": {
+                  "description": "The result was cut to fit: `shown` of `total` items (of `field` when the result is an object).",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "command"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "conflicts": {
+            "description": "With `error.code` `conflict`: what others changed of what the write acts on. Nothing ran.",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The object or part (`slide:3`; a whole number for a kit whose tool ids are numbers); absent when the whole document is concerned.",
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                "now": {
+                  "description": "Where it is now: `{ parent, field, index }` (and `spelled`, its place in the command's index spelling, `\"#2\"`, for a step that named it so) and the fields its kit marks as its position (`start`; one named `parent`, `field` or `index` in `fields`), or a part as `{ \"slide\": n }`.",
+                  "type": "object"
+                },
+                "place": {
+                  "description": "For a step that names what it acts on by a place: that place as the step named it (`time`, `part`, the place parameters) and `under`, the objects it names now (`unknown` when the kit cannot say).",
+                  "type": "object"
+                },
+                "reason": {
+                  "description": "`deleted`; `relocated` (moved, its index, position fields or part number shifted, or for a step that names its objects by a place, under that place now or there at `basis` and moved by others); `changed` (a field the write replaces, any field of a command's target, or another agent's step at the top of the agents' undo history); `unknown` (inspect again).",
+                  "enum": [
+                    "deleted",
+                    "relocated",
+                    "changed",
+                    "unknown"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "diagnostics": {
+            "description": "The kit's check before and after the call, matched by `code` and `target`: what the call introduced and what it resolved. Left out with `check: false` or when the kit does not check documents.",
+            "properties": {
+              "new": {
+                "items": {
+                  "$ref": "#/$defs/diagnostic"
+                },
+                "type": "array"
+              },
+              "resolved": {
+                "items": {
+                  "$ref": "#/$defs/diagnostic"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "new",
+              "resolved"
+            ],
+            "type": "object"
+          },
+          "document": {
+            "$ref": "#/$defs/document"
+          },
+          "draft": {
+            "description": "Edited or read the agent's draft, not the file.",
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/$defs/error"
+          },
+          "guardUnavailable": {
+            "description": "The call gave `basis`, but the file is open in its editor, where this server does not journal changes: why nothing was checked.",
+            "type": "string"
+          },
+          "live": {
+            "description": "Edited or read in the file's open editor.",
+            "type": "boolean"
+          },
+          "notRun": {
+            "description": "Remaining steps after a terminal close.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "others": {
+            "description": "What others changed since the call's `basis` (other agents, edits to the file made outside this server), merged into one change set by the ids the tools use, at most 50 objects with `truncated`; left out when nothing.",
+            "properties": {
+              "by": {
+                "description": "Who: each other agent's name on this server, `outside` for edits to the file.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "changed": {
+                "items": {
+                  "properties": {
+                    "edits": {
+                      "description": "Each changed field but list and tree fields. Before and after values are optional when unavailable or intentionally omitted, including large derived values; an omitted value is not null.",
+                      "items": {
+                        "properties": {
+                          "after": {},
+                          "before": {},
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "description": "The fields that changed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "created": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "description": "The fields holding a value.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Each of them but list and tree fields, by name.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "fields"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deleted": {
+                "description": "Objects removed, each with `at`, where a list or tree held it before.",
+                "items": {
+                  "properties": {
+                    "at": {
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "description": "Among its siblings, counted from 0.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "parent": {
+                          "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                          "type": [
+                            "string",
+                            "integer"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parent",
+                        "field",
+                        "index"
+                      ],
+                      "type": "object"
+                    },
+                    "fields": {
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "footprint": {
+                "description": "A shift of many objects stated once: the `count` objects of `parent`'s list `field` from index `from` (as the list is after the change) had only `shift.field` changed, each by `shift.by`; or the objects `ids` had only `edits` changed, each field by its `by`. They are in no other list. Pass `changes: \"all\"` to have each listed.",
+                "items": {
+                  "properties": {
+                    "count": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "edits": {
+                      "items": {
+                        "properties": {
+                          "by": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "field": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "by"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The first object's index in the list, after the change.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ids": {
+                      "description": "Objects stated by their ids: each had only `edits` changed, each field by its `by`.",
+                      "items": {
+                        "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "shift": {
+                      "properties": {
+                        "by": {
+                          "description": "after - before; a string for whole numbers written as strings.",
+                          "type": [
+                            "number",
+                            "string"
+                          ]
+                        },
+                        "field": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "moved": {
+                "description": "Objects whose place in a list or tree changed (also in `changed` when their fields did).",
+                "items": {
+                  "properties": {
+                    "from": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "description": "A tool id; a whole number for a kit whose tool ids are numbers (as its commands take them).",
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "index": {
+                              "description": "Among its siblings, counted from 0.",
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "parent": {
+                              "description": "The object whose list or tree holds it (in a tree, the parent node's object, or the tree's owner for a root node); a number for a kit whose tool ids are whole numbers.",
+                              "type": [
+                                "string",
+                                "integer"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "parent",
+                            "field",
+                            "index"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "from",
+                    "to"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "renumbered": {
+                "description": "One line naming the ids another program renumbered in the file: each may now name another object, and what changed in them is not known. A write on one is refused (`unknown`) until an inspect gives the ids as they are now.",
+                "type": "string"
+              },
+              "truncated": {
+                "description": "The lists were cut to 50 objects in all: how many of each were left out. Pass `changes: \"all\"` for every one.",
+                "properties": {
+                  "changed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "created": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "deleted": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "moved": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "unknown": {
+                "description": "Some of it cannot be told object by object (a kit without an object model, a document read again with unsaved edits).",
+                "type": "boolean"
+              },
+              "unnamed": {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "description": "Changes, made in the file by another program, of objects no tool id names (a layout, shared media), counted by type and list: `{ \"Media\": { \"changed\": 1 } }`.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "preview": {
+            "description": "What the attached preview shows, as the kit's render command (`agent.render`) answered it beside the image: `width`, `height` and `scale`, and the kit's own members, for a timeline `sequence`, `frames` ([{time, frame, label}], the times the picture shows), `columns` and `rows`. Only for kits with a render command.",
+            "properties": {
+              "frames": {
+                "items": {
+                  "properties": {
+                    "frame": {
+                      "type": "integer"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "scale": {
+                "type": "number"
+              },
+              "width": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "previewError": {
+            "$ref": "#/$defs/error",
+            "description": "The preview could not be drawn; the run went as `completed` says."
+          },
+          "revision": {
+            "description": "The document's state this answer describes, a short opaque token: pass it as `basis` to your next call on the file. Left out of a write of a kit without an object model.",
+            "maxLength": 12,
+            "type": "string"
+          },
+          "rolledBack": {
+            "description": "On failure: the steps that ran before the failing one and were undone, so the document is as it was before the call and nothing was saved (KHP A53).",
+            "items": {
+              "properties": {
+                "command": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "command"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "saved": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "writes": true
+    }
+  }
+}

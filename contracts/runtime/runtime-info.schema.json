@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/runtime-info.schema.json",
+  "title": "Kition Runtime Info",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pid",
+    "workspace_id",
+    "runtime_version",
+    "protocol_version",
+    "build_commit",
+    "capabilities"
+  ],
+  "properties": {
+    "pid": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16}$"
+    },
+    "runtime_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "protocol_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "build_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capabilities": {
+      "$ref": "capabilities.schema.json"
+    }
+  }
+}

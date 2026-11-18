@@ -1,0 +1,50 @@
+{
+  "$comment": "A batch that writes a reference (a `ref` field) names an object that exists, run in order on one new document of `schema` by kition-kdm (tests/batch.rs) and @kition/kdm (test/batch.test.ts). A step answers `result` or fails with `error`, message included, and changes nothing.",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.refs",
+    "schemaVersion": 1,
+    "root": "Page",
+    "types": {
+      "Page": { "fields": { "layout": { "kind": "ref", "of": "Layout", "optional": true }, "layouts": { "kind": "list", "of": "Layout" } } },
+      "Layout": { "fields": { "name": { "kind": "string" }, "base": { "kind": "ref", "of": "Layout", "optional": true } } }
+    }
+  },
+  "steps": [
+    {
+      "request": { "ops": [
+        { "op": "create", "type": "Page", "id": "page1" },
+        { "op": "create", "type": "Layout", "id": "lay1", "in": "page1.layouts", "fields": { "name": "One" } },
+        { "op": "set", "target": "page1", "field": "layout", "value": "lay1" }
+      ], "load": [{ "target": "page1", "fields": ["layout"] }] },
+      "result": { "refs": {}, "results": ["page1", "lay1", null], "loaded": [{ "id": "page1", "type": "Page", "fields": { "layout": "lay1" } }] }
+    },
+    {
+      "request": { "ops": [{ "op": "set", "target": "page1", "field": "layout", "value": "nowhere" }] },
+      "error": { "code": "not-found", "index": 0, "message": "`Page.layout` holds the id of a `Layout`, and no object has the id `nowhere`: give the id of an existing `Layout` (a load or query answers them), or create one earlier in the batch and use its `$name`" }
+    },
+    {
+      "request": { "ops": [{ "op": "create", "type": "Layout", "in": "page1.layouts", "fields": { "name": "Two", "base": "gone" } }] },
+      "error": { "code": "not-found", "index": 0, "message": "`Layout.base` holds the id of a `Layout`, and no object has the id `gone`: give the id of an existing `Layout` (a load or query answers them), or create one earlier in the batch and use its `$name`" }
+    },
+    {
+      "request": { "ops": [
+        { "op": "create", "type": "Layout", "id": "lay2", "in": "page1.layouts", "ref": "$two", "fields": { "name": "Two", "base": "lay1" } },
+        { "op": "delete", "target": "lay1" },
+        { "op": "set", "target": "page1", "field": "layout", "value": "lay1" }
+      ] },
+      "error": { "code": "not-found", "index": 2, "message": "`Page.layout` holds the id of a `Layout`, and no object has the id `lay1`: give the id of an existing `Layout` (a load or query answers them), or create one earlier in the batch and use its `$name`" }
+    },
+    {
+      "request": { "ops": [
+        { "op": "create", "type": "Layout", "id": "lay2", "in": "page1.layouts", "ref": "$two", "fields": { "name": "Two", "base": "lay1" } },
+        { "op": "set", "target": "page1", "field": "layout", "value": "$two" }
+      ], "load": [{ "target": "page1", "fields": ["layout"] }] },
+      "result": { "refs": { "$two": "lay2" }, "results": ["lay2", null], "loaded": [{ "id": "page1", "type": "Page", "fields": { "layout": "lay2" } }] }
+    },
+    {
+      "request": { "ops": [{ "op": "set", "target": "page1", "field": "layout", "value": null }], "load": [{ "target": "page1", "fields": ["layout"] }] },
+      "result": { "refs": {}, "results": [null], "loaded": [{ "id": "page1", "type": "Page", "fields": { "layout": null } }] }
+    }
+  ]
+}

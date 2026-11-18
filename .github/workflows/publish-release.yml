@@ -1,0 +1,376 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.19.0'
+  PNPM_VERSION: '10.33.0'
+  RELEASE_TAG: v${{ inputs.version }}
+
+jobs:
+  validate-release:
+    runs-on: ubuntu-latest
+    environment: release
+    outputs:
+      build_identity: ${{ steps.classify.outputs.build_identity }}
+      prerelease: ${{ steps.classify.outputs.prerelease }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Validate source version
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          if (pkg.version !== process.env.RELEASE_TAG.slice(1)) {
+            throw new Error('release tag and package version are not aligned')
+          }
+          NODE
+
+      - name: Classify immutable release tag
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          import { classifyReleaseTag } from './src-tauri/scripts/build-identity.mjs'
+
+          const result = classifyReleaseTag(process.env.RELEASE_TAG)
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `build_identity=${result.buildIdentity}\nprerelease=${result.prerelease}\n`,
+          )
+          NODE
+
+      - name: Verify installer draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          release_json="$(jq -e -c --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then .[0] else empty end
+          ' <<<"$releases_json")"
+          if [[ "$(jq -r '.draft' <<<"$release_json")" != "true" ]]; then
+            echo "Release $RELEASE_TAG must still be a draft" >&2
+            exit 1
+          fi
+
+  verify-client:
+    name: Verify release client
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          lfs: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Fetch the kit packages
+        env:
+          # Reads the Releases of the kit repositories (kits/kits.lock.json); most are still private.
+          GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
+        run: node scripts/fetch-kits.mjs
+
+      - name: Check the kit engines against the kit engine contract
+        run: pnpm run check:kit-modules
+
+      - name: Run repository, security, build, and unit checks
+        run: pnpm run check
+
+      - name: Enforce the production performance budget
+        run: pnpm run perf:budget
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run renderer and desktop end-to-end tests
+        run: xvfb-run -a pnpm run test:e2e:ci
+
+      - name: Run the table regression completion gate
+        run: pnpm run test:table:e2e
+
+      - name: Run the Table kit completion gate
+        run: pnpm run test:ktable:e2e
+
+  build-desktop:
+    needs:
+      - validate-release
+      - verify-client
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            triple: aarch64-apple-darwin
+            platform: darwin
+            artifact: desktop-darwin-arm64
+          - os: macos-15-intel
+            triple: x86_64-apple-darwin
+            platform: darwin
+            artifact: desktop-darwin-x64
+          - os: windows-2022
+            triple: x86_64-pc-windows-msvc
+            platform: win32
+            artifact: desktop-windows-x64
+          - os: ubuntu-22.04
+            triple: x86_64-unknown-linux-gnu
+            platform: linux
+            artifact: desktop-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          lfs: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+
+      - name: Install Linux web view libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+
+      - name: Install client dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Fetch the kit packages
+        env:
+          # Reads the Releases of the kit repositories (kits/kits.lock.json); most are still private.
+          GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
+        run: node scripts/fetch-kits.mjs
+
+      - name: Configure macOS signing and notarization
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          MACOS_CSC_P12_BASE64: ${{ secrets.MACOS_CSC_P12_BASE64 }}
+          MACOS_CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID_VALUE: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_VALUE: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$MACOS_CSC_P12_BASE64" || -z "$APPLE_API_KEY_P8" || -z "$APPLE_API_KEY_ID_VALUE" || -z "$APPLE_API_ISSUER_VALUE" ]]; then
+            echo "macOS signing and App Store Connect API key secrets are required" >&2
+            exit 1
+          fi
+          api_key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$api_key"
+          {
+            echo "APPLE_CERTIFICATE=$MACOS_CSC_P12_BASE64"
+            echo "APPLE_CERTIFICATE_PASSWORD=$MACOS_CSC_KEY_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=Developer ID Application: Heartie Technology Limited (X3FLP9863V)"
+            echo "APPLE_API_KEY=$APPLE_API_KEY_ID_VALUE"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER_VALUE"
+            echo "APPLE_API_KEY_PATH=$api_key"
+          } >> "$GITHUB_ENV"
+
+      - name: Build desktop installer
+        shell: bash
+        env:
+          KITION_BUILD_IDENTITY: ${{ needs.validate-release.outputs.build_identity }}
+          KITION_UPDATER_PUBKEY: ${{ vars.KITION_UPDATER_PUBKEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm run dist:desktop -- --target ${{ matrix.triple }}
+
+      - name: Verify installers
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+
+          const installerExtensions = {
+            darwin: ['.dmg'],
+            win32: ['-setup.exe'],
+            linux: ['.AppImage'],
+          }[process.env.PLATFORM]
+          const outputs = fs.readdirSync('dist-desktop')
+          const installers = outputs.filter((name) => installerExtensions.some((extension) => name.endsWith(extension)))
+          if (installers.length !== 1) {
+            throw new Error(`Expected one ${process.env.PLATFORM} installer, found ${installers.length}`)
+          }
+          const signatures = outputs.filter((name) => name.endsWith('.sig'))
+          if (signatures.length !== 1) {
+            throw new Error(`Expected one signed update archive, found ${signatures.length}`)
+          }
+          console.log(JSON.stringify({ outputs }))
+          NODE
+
+      - name: Verify macOS code signatures
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          TRIPLE: ${{ matrix.triple }}
+        run: |
+          set -euo pipefail
+          app="target/$TRIPLE/release/bundle/macos/Kition.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          details="$(codesign --display --verbose=4 "$app" 2>&1)"
+          grep -Fq 'Authority=Developer ID Application: Heartie Technology Limited' <<<"$details"
+          grep -Fq 'TeamIdentifier=X3FLP9863V' <<<"$details"
+          printf '%s\n' "$details" | grep -E '^(Authority|TeamIdentifier)='
+
+      - name: Upload desktop build outputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-desktop/*
+          if-no-files-found: error
+
+  publish:
+    needs:
+      - validate-release
+      - build-desktop
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Download desktop artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: desktop-artifacts
+
+      - name: Stage release assets and the updater manifest
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node src-tauri/scripts/stage-release-assets.mjs \
+            --artifacts desktop-artifacts \
+            --out release-assets \
+            --version "$VERSION" \
+            --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY"
+
+      - name: Upload installers to draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find release-assets -type f -print0)
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+
+      - name: Verify draft Release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          release_json="$(jq -e -c --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then .[0] else empty end
+          ' <<<"$releases_json")"
+          if [[ "$(jq -r '.draft' <<<"$release_json")" != "true" ]]; then
+            echo "Release $RELEASE_TAG was published before verification" >&2
+            exit 1
+          fi
+          assets="$(jq -r '.assets[].name' <<<"$release_json")"
+          while IFS= read -r file; do
+            name="$(basename "$file")"
+            if ! grep -Fxq "$name" <<<"$assets"; then
+              echo "Missing uploaded desktop asset: $name" >&2
+              exit 1
+            fi
+          done < <(find release-assets -type f -print | sort)
+
+      - name: Publish verified Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.validate-release.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease="$PRERELEASE"
+
+      - name: Point the beta update channel at this release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Beta installs read latest.json from the rolling updater-beta release,
+          # so they receive both prereleases and stable releases.
+          if ! gh release view updater-beta --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create updater-beta \
+              --repo "$GITHUB_REPOSITORY" \
+              --prerelease \
+              --target "$(git rev-parse HEAD)" \
+              --title "Updater beta channel" \
+              --notes "Update manifest for installs on the beta channel. Download installers from the versioned releases."
+          fi
+          gh release upload updater-beta release-assets/latest.json --repo "$GITHUB_REPOSITORY" --clobber

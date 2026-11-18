@@ -1,0 +1,75 @@
+{
+  "khp": "1.0",
+  "id": "kit.cad",
+  "name": "CAD",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "cad",
+      "extensions": [
+        "dxf"
+      ],
+      "mime": "image/vnd.dxf",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "cad",
+      "extension": "dxf",
+      "baseName": "Untitled CAD"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    },
+    {
+      "extension": "svg",
+      "mime": "image/svg+xml",
+      "command": "file.export"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "cad",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "export": {
+      "command": "file.export",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "CAD drawing"
+    }
+  },
+  "headless": {
+    "executable": "kition-cad",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  }
+}

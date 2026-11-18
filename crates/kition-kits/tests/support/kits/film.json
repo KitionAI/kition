@@ -1,0 +1,64 @@
+{
+  "khp": "1.0",
+  "id": "kit.film",
+  "name": "Film",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "film",
+      "extensions": [
+        "kfilm"
+      ],
+      "mime": "application/vnd.kition.film+json",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "film",
+      "extension": "kfilm",
+      "baseName": "Untitled film"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "mp4",
+      "mime": "video/mp4",
+      "command": "file.exportMedia"
+    }
+  ],
+  "capabilities": [
+    "lent-files",
+    "audio",
+    "stepped-export",
+    "timeline",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "film",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "describe": {
+      "noun": "video project"
+    }
+  },
+  "headless": {
+    "executable": "kition-film",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  }
+}

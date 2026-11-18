@@ -1,0 +1,66 @@
+/**
+ * Bridges the app's change signals to query invalidation so views refresh
+ * without hand-rolled refetch calls.
+ *
+ * Signals:
+ * - File watcher events from the desktop process (add / change / unlink),
+ *   scoped to the changed path; a changed table file also tells the table pickers
+ *   (`TABLE_FILES_CHANGED_EVENT`).
+ * - `kition:workspace-reload`, the manual "re-read the tree" event.
+ */
+import type { QueryClient } from '@tanstack/react-query'
+
+import { queryKeys, workspaceRootKey } from '@/api/queryKeys'
+import { subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
+import { isTableFilePath, notifyTableFilesChanged } from './kitTables'
+
+export const WORKSPACE_RELOAD_EVENT = 'kition:workspace-reload'
+
+let currentWorkspaceRoot = ''
+
+/** Called when the active workspace root changes so path-scoped keys resolve. */
+export function setInvalidationWorkspaceRoot(root: string | null | undefined) {
+  currentWorkspaceRoot = workspaceRootKey(root)
+}
+
+/** Invalidates the queries that a single file change can affect. */
+export function invalidateForWorkspaceChange(queryClient: QueryClient, change: WorkspaceDocumentExternalChange) {
+  const root = currentWorkspaceRoot
+  const tasks = [
+    queryClient.invalidateQueries({ queryKey: queryKeys.documentByPath(root, change.path) }),
+  ]
+  if (change.eventType !== 'change') {
+    tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.workspaceTree(root) }))
+  }
+  if (isTableFilePath(change.path) && typeof window !== 'undefined') notifyTableFilesChanged(change.path)
+  return Promise.all(tasks)
+}
+
+function invalidateWorkspace(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.workspace(currentWorkspaceRoot) })
+}
+
+/**
+ * Subscribes the query client to every change signal. Returns a disposer.
+ * Safe to call in a browser preview: the watcher subscription is a no-op
+ * when no desktop bridge is present.
+ */
+export function installWorkspaceInvalidation(queryClient: QueryClient) {
+  const disposers: Array<() => void> = []
+
+  disposers.push(subscribeWorkspaceDocumentExternalChanges((change) => {
+    void invalidateForWorkspaceChange(queryClient, change)
+  }))
+
+  if (typeof window !== 'undefined') {
+    const listen = (event: string, handler: () => void) => {
+      window.addEventListener(event, handler)
+      disposers.push(() => window.removeEventListener(event, handler))
+    }
+    listen(WORKSPACE_RELOAD_EVENT, () => { void invalidateWorkspace(queryClient) })
+  }
+
+  return () => {
+    for (const dispose of disposers) dispose()
+  }
+}

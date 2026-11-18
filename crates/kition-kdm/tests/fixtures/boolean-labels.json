@@ -1,0 +1,5 @@
+{
+  "kdm": 1, "kit": "kit.labels", "schemaVersion": 1, "root": "Image", "types": {
+    "Image": { "fields": { "isClipped": { "kind": "boolean", "label": "clipped" } } }
+  }
+}

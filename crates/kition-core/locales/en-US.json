@@ -1,0 +1,15 @@
+{
+  "common": {
+    "internal_error": "Internal server error",
+    "bad_request": "Invalid request parameters"
+  },
+  "auth": {
+    "invalid_credentials": "Invalid authentication credentials",
+    "local_debug_user_missing": "Local debug user does not exist",
+    "unauthorized": "Unauthorized, please sign in again",
+    "user_not_found": "User does not exist",
+    "user_disabled": "This account has been disabled",
+    "forbidden": "Insufficient permissions",
+    "ai_login_required": "Please sign in to your cloud account to use AI features"
+  }
+}

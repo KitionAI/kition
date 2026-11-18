@@ -1,0 +1,277 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { KitConnection } from '@/features/kits/public'
+import { registerKitConnection } from '@/features/kits/kition/kitConnections'
+import { isDocumentReadOnly } from '@/services/documentAccess'
+import { documentCommentAccess } from '@/services/documentComments'
+import { presencePeers, setLocalPresence } from '@/services/documentPresence'
+import { documentSchemaNotice } from '@/services/documentSchema'
+import { startCollab, type CollabDependencies } from './collabRelays'
+import { readRoom, toHex, writeRoom } from './rooms'
+
+function kitConnection(capabilities: string[]) {
+  const replica = {
+    info: vi.fn(async () => 'doc-1'),
+    version: vi.fn(async () => new ArrayBuffer(0)),
+    exportChanges: vi.fn(async () => ({ changes: new ArrayBuffer(0), blobs: new ArrayBuffer(0) })),
+    importChanges: vi.fn(async () => ({ damage: null })),
+    onChanged: vi.fn(() => () => undefined),
+  }
+  return { connection: { capabilities, replica } as unknown as KitConnection, replica }
+}
+
+function dependencies(configured: boolean) {
+  const client = vi.fn<CollabDependencies['client']>(async () => null)
+  return { client, deps: { configured: async () => configured, client, versions: vi.fn() } satisfies CollabDependencies }
+}
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+const cleanups: Array<() => void> = []
+
+afterEach(() => {
+  for (const cleanup of cleanups.splice(0)) cleanup()
+  localStorage.clear()
+})
+
+describe('startCollab', () => {
+  it('never connects or reads the replica without a sync server and a signed-in Kition account', async () => {
+    writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/1', name: 'Poster.psd', kit: 'kit.photo', role: 'owner' })
+    const { client, deps } = dependencies(false)
+    const { connection, replica } = kitConnection(['ai', 'replica'])
+    cleanups.push(startCollab(deps), registerKitConnection({ path: 'Poster.psd', kitId: 'kit.photo', connection }))
+    await flush()
+    expect(client).not.toHaveBeenCalled()
+    expect(replica.info).not.toHaveBeenCalled()
+  })
+
+  it('never connects for a document that is not shared, or a kit without a replica', async () => {
+    const { client, deps } = dependencies(true)
+    const shared = kitConnection(['ai'])
+    const unshared = kitConnection(['ai', 'replica'])
+    cleanups.push(
+      startCollab(deps),
+      registerKitConnection({ path: 'Old.psd', kitId: 'kit.photo', connection: shared.connection }),
+      registerKitConnection({ path: 'Poster.psd', kitId: 'kit.photo', connection: unshared.connection }),
+    )
+    await flush()
+    // Poster.psd has no room, and Old.psd's kit keeps no replica.
+    expect(shared.replica.info).not.toHaveBeenCalled()
+    expect(client).not.toHaveBeenCalled()
+  })
+
+  it('connects once a document it follows is shared', async () => {
+    const { client, deps } = dependencies(true)
+    const { connection } = kitConnection(['ai', 'replica'])
+    cleanups.push(startCollab(deps), registerKitConnection({ path: 'Poster.psd', kitId: 'kit.photo', connection }))
+    await flush()
+    expect(client).not.toHaveBeenCalled()
+    writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/1', name: 'Poster.psd', kit: 'kit.photo', role: 'owner' })
+    await flush()
+    expect(client).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('startCollab for notes', () => {
+  function fakeClient() {
+    const access: Array<(role: 'owner' | 'editor' | 'commenter' | 'viewer' | null) => void> = []
+    const joins: Array<{ docId: string; since: number | null | undefined }> = []
+    const client = {
+      state: 'online' as const,
+      principal: { id: 'u:me', name: 'Me' },
+      join: vi.fn(async (docId: string, since?: number | null) => {
+        joins.push({ docId, since })
+        return { changes: [], seq: 5, more: false, presence: [], role: 'editor' as const }
+      }),
+      leave: vi.fn(),
+      push: vi.fn(async () => ({ seq: 6 })),
+      onChanges: vi.fn(() => () => undefined),
+      onState: vi.fn(() => () => undefined),
+      setPresence: vi.fn(),
+      onPresence: vi.fn(() => () => undefined),
+      onAccess: vi.fn((_docId: string, listener: (role: 'owner' | 'editor' | 'commenter' | 'viewer' | null) => void) => {
+        access.push(listener)
+        return () => undefined
+      }),
+      blobs: { has: vi.fn(async (hashes: string[]) => ({ missing: hashes })), put: vi.fn(), get: vi.fn() },
+    }
+    return { client, joins, access }
+  }
+
+  /** An open note as its kit announces it: a kit connection over a KDM replica in this page. */
+  async function openDocument(path: string) {
+    const { newDocId, parseSchema, randomActor, Replica, Version } = await import('@/lib/kdm')
+    const schema = parseSchema({ kdm: 1, kit: 'kit.note', schemaVersion: 1, root: 'Note', types: { Note: { fields: { body: { kind: 'text' } } } } })
+    const replica = Replica.create(schema, newDocId(), randomActor())
+    const buffer = (bytes: Uint8Array) => bytes.slice().buffer as ArrayBuffer
+    const connection = {
+      capabilities: ['replica'],
+      replica: {
+        info: async () => replica.docId,
+        version: async () => buffer(replica.version().encode()),
+        exportChanges: async (since: ArrayBuffer) => ({
+          changes: buffer(replica.exportChanges(since.byteLength ? Version.decode(new Uint8Array(since)) : Version.empty())),
+          blobs: new ArrayBuffer(0),
+        }),
+        importChanges: async (changes: ArrayBuffer) => {
+          replica.importChanges(new Uint8Array(changes))
+          return { damage: null }
+        },
+        onChanged: () => () => undefined,
+      },
+    } as unknown as KitConnection
+    const withdraw = registerKitConnection({ path, kitId: 'kit.note', connection })
+    return { store: { getReplica: () => replica }, withdraw }
+  }
+
+  it('relays a shared document, joining from the seq an earlier session saw while the replica still holds it', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins } = fakeClient()
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { store, withdraw } = await openDocument('Plan.md')
+    const docId = store.getReplica().docId
+    const version = toHex(store.getReplica().version().encode())
+    writeRoom({ docId, shareLink: 'https://example.test/s/2', name: 'Plan.md', kit: 'kit.note', role: 'editor', seen: { seq: 3, version } })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toEqual([{ docId, since: 3 }]))
+    // The join's seq is kept for next time.
+    await vi.waitFor(() => expect(readRoom(docId)?.seen?.seq).toBe(5))
+  })
+
+  it('joins from the snapshot when the replica no longer holds what was seen', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins } = fakeClient()
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { store, withdraw } = await openDocument('Plan.md')
+    const docId = store.getReplica().docId
+    // A version with changes of an author this replica never had.
+    const elsewhere = await openDocument('Elsewhere.md')
+    cleanups.push(elsewhere.withdraw)
+    const ahead = elsewhere.store.getReplica().version().encode()
+    writeRoom({ docId, shareLink: 'https://example.test/s/2', name: 'Plan.md', kit: 'kit.note', role: 'editor', seen: { seq: 3, version: toHex(ahead) } })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toEqual([{ docId, since: null }]))
+  })
+
+  it('makes the documents of viewer rooms read-only, and follows a role the room answers', async () => {
+    writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.note', role: 'viewer', path: 'Shared/Notes.md' })
+    cleanups.push(startCollab({ configured: async () => false, client: async () => null, versions: vi.fn() }))
+    expect(isDocumentReadOnly('Shared/Notes.md')).toBe(true)
+    writeRoom({ docId: 'doc-v', shareLink: 'https://example.test/s/v', name: 'Notes.md', kit: 'kit.note', role: 'editor', path: 'Shared/Notes.md' })
+    expect(isDocumentReadOnly('Shared/Notes.md')).toBe(false)
+  })
+
+  it('keeps a commenter’s document read-only, yet lets them comment', async () => {
+    writeRoom({ docId: 'doc-c', shareLink: 'https://example.test/s/c', name: 'Notes.md', kit: 'kit.note', role: 'commenter', path: 'Shared/Notes.md' })
+    cleanups.push(startCollab({ configured: async () => false, client: async () => null, versions: vi.fn() }))
+    expect(isDocumentReadOnly('Shared/Notes.md')).toBe(true)
+  })
+
+  it('follows the owner changing this person’s role, and keeps a local copy once removed', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins, access } = fakeClient()
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { store, withdraw } = await openDocument('Shared/Plan.md')
+    const docId = store.getReplica().docId
+    writeRoom({ docId, shareLink: 'https://example.test/s/3', name: 'Plan.md', kit: 'kit.note', role: 'editor', path: 'Shared/Plan.md' })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toHaveLength(1))
+    // Joined as an editor: comments are written as the room's principal, and others' are not history.
+    await vi.waitFor(() => expect(documentCommentAccess('Shared/Plan.md', false)).toMatchObject({ me: 'u:me', canComment: true, othersReadOnly: false }))
+    await vi.waitFor(() => expect(access).toHaveLength(1))
+
+    access[0]('viewer')
+    expect(readRoom(docId)?.role).toBe('viewer')
+    expect(isDocumentReadOnly('Shared/Plan.md')).toBe(true)
+    expect(documentCommentAccess('Shared/Plan.md', true).canComment).toBe(false)
+
+    access[0](null)
+    expect(readRoom(docId)).toBeNull()
+    expect(isDocumentReadOnly('Shared/Plan.md')).toBe(false)
+    // No longer co-edited: others' threads are history.
+    expect(documentCommentAccess('Shared/Plan.md', false)).toMatchObject({ canComment: true, othersReadOnly: true })
+  })
+
+  it('shows the agent in presence while it edits the document, and then no longer', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { noteAgentEdit } = await import('@/services/agentPresence')
+    const { client, joins } = fakeClient()
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { store, withdraw } = await openDocument('Shared/Agent.md')
+    const docId = store.getReplica().docId
+    writeRoom({ docId, shareLink: 'https://example.test/s/4', name: 'Agent.md', kit: 'kit.note', role: 'editor', path: 'Shared/Agent.md' })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toHaveLength(1))
+    await vi.waitFor(() => expect(client.setPresence).toHaveBeenCalledTimes(1))
+    const [, joined] = client.setPresence.mock.calls[0] as unknown as [string, Record<string, unknown>]
+    expect(joined.agent).toBeUndefined()
+
+    noteAgentEdit('Shared/Agent.md', 20)
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { ...joined, agent: { name: 'Agent', origin: 'agent' } })
+    // Another edit while it is there changes nothing; once it is quiet, it leaves.
+    noteAgentEdit('Shared/Agent.md', 20)
+    expect(client.setPresence).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(client.setPresence).toHaveBeenLastCalledWith(docId, joined))
+  })
+
+  it('shares what the person selected in presence, and tells the editor what the others share', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins } = fakeClient()
+    const heard: Array<(peers: unknown[]) => void> = []
+    client.onPresence = vi.fn((_docId: string, listener: (peers: unknown[]) => void) => {
+      heard.push(listener)
+      return () => undefined
+    }) as never
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const path = 'Shared/Selection.md'
+    const { store, withdraw } = await openDocument(path)
+    const docId = store.getReplica().docId
+    writeRoom({ docId, shareLink: 'https://example.test/s/5', name: 'Selection.md', kit: 'kit.note', role: 'viewer', path })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toHaveLength(1))
+    await vi.waitFor(() => expect(client.setPresence).toHaveBeenCalledTimes(1))
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.note' })
+
+    // A viewer shares what it selected too: where it looks, never an edit.
+    setLocalPresence(path, { selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.note', selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
+
+    heard[0]([
+      { principalId: 'u:me', name: 'Me', color: '#111111', state: { kit: 'kit.note', selection: ['shape-1'] } },
+      { principalId: 'u:alice', name: 'Alice', color: '#e5484d', state: { kit: 'kit.note', selection: ['shape-2', 7], caret: { object: 'x', field: 'text', offset: -1 } } },
+      { principalId: 'u:bob', name: 'Bob', color: '#3e63dd', state: null },
+    ])
+    expect(presencePeers(path)).toEqual([
+      { principal: 'u:alice', name: 'Alice', color: '#e5484d', selection: ['shape-2'] },
+      { principal: 'u:bob', name: 'Bob', color: '#3e63dd', selection: [] },
+    ])
+    setLocalPresence(path, null)
+  })
+
+  it('keeps a document a newer kit migrated read-only, and never keeps the room position past the refused change', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins } = fakeClient()
+    client.join = vi.fn(async (docId: string, since?: number | null) => {
+      joins.push({ docId, since })
+      return { changes: [new Uint8Array([1, 2, 3])], seq: 5, more: false, presence: [], role: 'editor' as const }
+    }) as never
+    const pulled: Array<(notice: { changes: Uint8Array; seq: number }) => void> = []
+    client.onChanges = vi.fn((_docId: string, listener: (notice: { changes: Uint8Array; seq: number }) => void) => {
+      pulled.push(listener)
+      return () => undefined
+    }) as never
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { connection, replica } = kitConnection(['ai', 'replica'])
+    replica.importChanges.mockRejectedValueOnce(new Error('slide replica: the document needs schema version 4; this kit reads schema versions up to 3'))
+    writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/6', name: 'Slide.kslide', kit: 'kit.slide', role: 'editor', path: 'Shared/Slide.kslide' })
+    cleanups.push(startCollab(deps), registerKitConnection({ path: 'Shared/Slide.kslide', kitId: 'kit.slide', connection }))
+    await vi.waitFor(() => expect(replica.importChanges).toHaveBeenCalled())
+    await vi.waitFor(() => expect(isDocumentReadOnly('Shared/Slide.kslide')).toBe(true))
+    expect(documentSchemaNotice('Shared/Slide.kslide')).toEqual({ kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
+    // A later change the replica takes (it waits on the refused one) does not move the position on:
+    // the refused change is pulled again once the kit can read it.
+    pulled[0]({ changes: new Uint8Array([4, 5, 6]), seq: 7 })
+    await vi.waitFor(() => expect(replica.importChanges).toHaveBeenCalledTimes(2))
+    await flush()
+    expect(readRoom('doc-1')?.seen).toBeUndefined()
+    expect(readRoom('doc-1')?.role).toBe('editor')
+  })
+})

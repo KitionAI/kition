@@ -1,0 +1,452 @@
+format: 1
+kit: kition
+updated: "2026-11-10"
+gate_budget_s: 600
+features:
+  - id: kition.kits.doc-page-view
+    title: Document pages open at reading scale with visible margin corner guides
+    dimension: [function, fidelity, data-safety]
+    priority: P1
+    status: has
+    paths: [e2e/doc-page-view.spec.ts]
+    cases: [regressions/issue-doc-page-view, regressions/issue-doc-page-gap]
+    since: "2026-11-01"
+  - id: kition.kits.doc-scroll
+    title: Word documents scroll within their page bounds without moving onto empty canvas
+    dimension: [function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - e2e/doc-embedded.spec.ts
+      - e2e/doc-scrollbar.spec.ts
+    cases:
+      - regressions/issue-doc-scroll-bounds
+      - regressions/issue-doc-scrollbar
+    since: "2026-11-01"
+  - id: kition.kits.signed-files
+    title: Desktop kit files open through correctly signed runtime URLs at every filename length
+    dimension: [function, security]
+    priority: P0
+    status: has
+    paths:
+      - src/lib/hmacSha256.ts
+      - src/lib/hmacSha256.spec.ts
+      - src/features/kits/kition/kitionHost.spec.ts
+      - e2e/table-kit.spec.ts
+    cases:
+      - regressions/issue-kit-file-signature
+    since: "2026-10-31"
+  - id: kition.workspace.organize-files
+    title: Every workspace file renames and moves from the tree, a kit's too, without losing unsaved edits
+    dimension: [function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - src/features/workspace/components/WorkspaceTree.tsx
+      - src/features/workspace/components/WorkspaceTree.spec.tsx
+      - src/features/workspace/hooks/useWorkspaceTreeNodeActions.ts
+      - src/features/workspace/hooks/useWorkspaceTreeNodeActions.kitFiles.spec.ts
+      - src/features/workspace/lib/workspace.ts
+      - src/features/workspace/lib/workspaceOrganize.spec.ts
+      - src-tauri/src/workspace/files.rs
+    gap: Duplicate stays for notes only (a copy of a kit file would keep its document id), and no e2e case renames a kit file open in its tab.
+    cases:
+      - regressions/issue-rename-kit-files
+    since: "2026-11-10"
+  - id: kition.agent.kit-adaptation
+    title: Every installed kit accepts agent edits while preserving saved files, drafts and read-only access
+    dimension: [ai, function, data-safety, security]
+    priority: P0
+    status: has
+    paths:
+      - e2e/interaction/agent-adaptation.spec.ts
+      - src/features/kits/kition/kitBridge.ts
+      - src/features/kits/kition/kitBridgeModel.ts
+      - kits/modules.json
+      - scripts/check-kit-module.mjs
+      - scripts/lib/kitParameterSchema.mjs
+      - scripts/lib/kitParameterSchema.spec.ts
+    cases:
+      - kition.agent.kit-adaptation/layout
+      - kition.agent.kit-adaptation/note
+      - kition.agent.kit-adaptation/all-kits
+      - regressions/issue-agent-file-schema
+    since: "2026-10-31"
+  - id: kition.kits.html-preview
+    title: HTML previews run canvas interactions after the edited source is ready
+    dimension: [function, data-safety, security]
+    priority: P1
+    status: has
+    paths:
+      - e2e/html-embedded.spec.ts
+    cases:
+      - kition.kits.html-preview/hostile-page
+      - regressions/issue-release-html-source-ready
+    since: "2026-10-31"
+  - id: kition.kit-collab.sheet
+    title: Workbook collaboration preserves formulas and merges offline cell edits
+    dimension: [collab, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - e2e/collab-sheet.spec.ts
+    cases:
+      - regressions/issue-release-sheet-ribbon
+      - regressions/issue-release-sheet-latency
+    since: "2026-10-31"
+  - id: kition.kit-collab.slide
+    title: Shared slide viewers see remote edits while their documents remain read-only
+    dimension: [collab, security]
+    priority: P1
+    status: has
+    paths:
+      - e2e/collab-slide.spec.ts
+      - e2e/kit-role-change.spec.ts
+      - src/features/kits/kition/KitFrame.tsx
+    cases:
+      - regressions/issue-release-slide-view-mode
+      - regressions/issue-release-slide-title-reader
+    since: "2026-10-31"
+  - id: kition.platform.development-server
+    title: The development server watches sources without traversing build artifacts
+    dimension: [performance, robustness]
+    priority: P1
+    status: has
+    paths:
+      - tooling/vite.config.ts
+      - scripts/viteWatcher.spec.ts
+    cases:
+      - regressions/issue-release-vite-watcher
+    since: "2026-10-31"
+  - id: kition.platform.kit-dev-cache
+    title: make kit-dev-cache rebuilds only the kits whose checkout changed since their recorded build
+    dimension: [performance, platform]
+    priority: P2
+    status: has
+    paths:
+      - Makefile
+      - scripts/kit-dev-build.mjs
+      - scripts/kit-dev-build.spec.ts
+    cases:
+      - kition.platform.kit-dev-cache/rebuild-on-change
+    since: "2026-11-10"
+  - id: kition.platform.release-checks
+    title: Release checks preserve repository and document-store invariants across platforms
+    dimension: [platform, robustness, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - .gitattributes
+      - src/services/providerModelCatalog.ts
+      - src-tauri/src/workspace/docstore/lock.rs
+      - src-tauri/src/lib.rs
+      - scripts/repositoryCheckout.spec.ts
+      - e2e/shortcuts.spec.ts
+      - e2e/app-shell.spec.ts
+      - e2e/helpers/onboarding.ts
+      - e2e/onboarding-helper.spec.ts
+      - src/features/settings/DesktopSettingsPage.spec.tsx
+      - src/app/Shell.tsx
+      - src/features/workspace/hooks/useWorkspaceTreeLoader.ts
+      - src/features/workspace/hooks/useWorkspaceTreeLoader.spec.tsx
+    cases:
+      - regressions/issue-release-unused-export
+      - regressions/issue-release-vector-checkout
+      - regressions/issue-release-lock-state
+      - regressions/issue-release-platform-shortcut
+      - regressions/issue-release-settings-import
+      - regressions/issue-release-route-isolation
+      - regressions/issue-release-late-onboarding
+      - regressions/issue-release-welcome-focus
+      - regressions/issue-display-settings-revert
+      - regressions/issue-narrow-sidebar-controls
+      - regressions/issue-seed-error-toast
+      - regressions/issue-account-pane-title
+      - regressions/issue-about-switches
+      - regressions/issue-toast-over-settings
+      - regressions/issue-release-kit-manifests
+    since: "2026-10-31"
+  - id: kition.agent.kit-export
+    title: The agent exports a kit document to a new file (KHP A41)
+    dimension: [ai, function]
+    priority: P1
+    status: partial
+    commands: [file.export]
+    paths:
+      - crates/kition-kits/src/tools/export.rs
+      - crates/kition-kits/src/tools.rs
+      - crates/kition-kits/src/manager.rs
+    gap: Only Design declares an agent export so far; Scene and the other kits with exports do not offer `<prefix>_export` yet.
+    cases:
+      - kition.agent.kit-export/design-formats
+    since: "2026-10-28"
+  - id: kition.agent.kit-preview
+    title: The agent previews a part or a diagnostic's target with the kit's own render command (KHP A39)
+    dimension: [ai]
+    priority: P1
+    status: has
+    commands: [file.render]
+    paths:
+      - crates/kition-kits/src/tools.rs
+      - crates/kition-kits/src/manager.rs
+    cases:
+      - kition.agent.kit-preview/design-target
+    since: "2026-10-28"
+  - id: kition.kit-protocol.command-output
+    title: A kit command may declare the shape of its result (`output`, KHP A1)
+    dimension: [function]
+    priority: P2
+    status: has
+    paths:
+      - contracts/kit/kit-process-protocol.schema.json
+      - crates/kition-kit-process-protocol/src/types.rs
+    cases:
+      - regressions/issue-command-output
+    since: "2026-10-28"
+  - id: kition.shell.theme
+    title: The app follows the system's light or dark appearance until the person picks one
+    dimension: [function]
+    priority: P1
+    status: has
+    paths:
+      - src/services/desktopSettings.ts
+      - public/theme-bootstrap.js
+      - e2e/theme-bootstrap.spec.ts
+    cases:
+      - regressions/issue-theme-default-system
+    since: "2026-11-05"
+  - id: kition.shell.error-states
+    title: Empty and error states say what happened in plain words and offer a next step
+    dimension: [function, robustness]
+    priority: P0
+    status: has
+    paths:
+      - src/components/states.tsx
+      - src/features/kits/kition/kitFailures.ts
+      - src/features/kits/kition/KitFrame.tsx
+      - src/features/kits/kition/kitionHost.ts
+      - src/features/collab/collabErrors.ts
+      - e2e/error-states.spec.ts
+    gap: Chromium only; the co-editing dialog errors are unit-tested (no sync server in the mock sweep); the "not available in this build" view appears only in development builds without a kit's package and is not covered.
+    cases:
+      - kition.shell.error-states/all-states
+      - regressions/issue-open-failure-cause
+      - regressions/issue-save-error-plain
+      - regressions/issue-collab-error-plain
+      - regressions/issue-html-large-file
+    since: "2026-11-06"
+  - id: kition.kit-protocol.theme
+    title: Kits follow Kition's colour scheme at open and on every switch (`ui/theme`, UI-H6)
+    dimension: [function, fidelity]
+    priority: P1
+    status: has
+    paths:
+      - src/features/kits/kition/kitionTheme.ts
+      - src/features/kits/kition/KitFrame.tsx
+      - e2e/kit-theme.spec.ts
+    cases:
+      - regressions/issue-kit-dark-theme
+    since: "2026-11-04"
+  - id: kition.agent.kit-object-model
+    title: The agent reads and edits a kit document through its object model (`<prefix>_query`, `<prefix>_batch`), headless and in the open editor
+    dimension: [ai, function]
+    priority: P1
+    status: has
+    commands: [model.describe, model.batch]
+    paths:
+      - crates/kition-kits/src/tools/model.rs
+      - crates/kition-kits/src/manager.rs
+      - src/features/kits/kition/kitBridgeModel.ts
+      - src/features/kits/kition/kitBridge.ts
+    gap: Through the headless kit a Design batch's model ops arrive as a collaborator's changes (kition-sdk `session::model::Exchange`), so the agent's undo takes back only its commands, not its renames.
+    cases:
+      - kition.agent.kit-object-model/design-headless
+      - kition.agent.kit-object-model/design-open-editor
+      - regressions/issue-bridge-model-schema
+      - regressions/issue-agent-layout-schema
+      - regressions/issue-design-schema-version
+    since: "2026-10-28"
+  - id: kition.kit-collab.design
+    title: People co-edit a design live and across going offline (engine contract 2), and its replica is kept in Kition's store
+    dimension: [collab]
+    priority: P1
+    status: has
+    paths:
+      - e2e/collab-design.spec.ts
+      - src/features/kits/kition/KitFrame.tsx
+      - src/lib/sync/*.ts
+    cases:
+      - kition.kit-collab.design/live-and-offline
+    since: "2026-10-28"
+  - id: kition.extensions.kit-scripts
+    title: A workspace script edits the open kit document through the object model of the kit's registered schema (`src/lib/script/kits/`)
+    dimension: [function]
+    priority: P1
+    status: has
+    paths:
+      - src/lib/script/kits/*.ts
+      - src/lib/extensions/*.ts
+      - e2e/extensions.spec.ts
+      - src/features/extensions/public.ts
+      - src/features/extensions/public.spec.tsx
+      - src/features/extensions/extensionService.ts
+      - src/features/extensions/extensionService.spec.ts
+      - src/features/kits/public.ts
+      - src/features/kits/kition/kitConnections.ts
+      - src/features/kits/kition/kitConnections.spec.ts
+    cases:
+      - kition.extensions.kit-scripts/design-script
+      - regressions/issue-release-sdk-sync
+      - regressions/issue-release-extension-palette
+      - regressions/issue-release-active-kit-palette
+    since: "2026-10-28"
+  - id: kition.kit-links.pick-link
+    title: A kit links an existing workspace file where it is (`links/pick`, Kit UI protocol 2.5) and reads it by its document-relative path
+    dimension: [function, security]
+    priority: P1
+    status: has
+    paths:
+      - src/features/kits/kition/KitFrame.tsx
+      - src/features/kits/kition/WorkspaceFilePicker.tsx
+      - src/features/kits/host/mountKit.ts
+      - src/features/kits/host/protocol.ts
+      - e2e/design-embedded.spec.ts
+      - crates/kition-kits/tests/sdk_kits.rs
+    gap: Kition sends no `document/fileChanged`-style notice for a linked file; the kit watches its stamp (Design every 2 seconds). Only Design's Libraries view asks for `links/pick` so far.
+    cases:
+      - kition.kit-links.pick-link/design-library
+      - kition.kit-links.pick-link/design-library-webkit
+      - kition.kit-links.pick-link/design-library-headless
+      - kition.kit-links.pick-link/design-library-styles
+      - kition.kit-links.pick-link/design-library-styles-webkit
+      - kition.kit-links.pick-link/picker-scope
+    since: "2026-10-28"
+  - id: kition.platform.open-source-notices
+    title: The desktop app ships and shows the licence texts of the npm packages, Rust crates and kit packages it includes
+    dimension: [platform, function]
+    priority: P0
+    status: has
+    paths:
+      - scripts/generate-third-party-notices.mjs
+      - scripts/lib/rustCrateNotices.mjs
+      - scripts/lib/rustCrateNotices.spec.ts
+      - scripts/lib/npmLicenseOverrides.mjs
+      - scripts/lib/npmLicenseOverrides.spec.ts
+      - scripts/lib/kitPackageNotices.mjs
+      - scripts/lib/kitPackageNotices.spec.ts
+      - scripts/kit-package-notices.mjs
+      - scripts/build-kit-editor.mjs
+      - scripts/build-kit-ui.sh
+      - scripts/licenses/*.txt
+      - scripts/licenses/packages/*.txt
+      - docs/legal/THIRD_PARTY_NOTICES.txt
+      - src/features/settings/sections/AboutSettings.tsx
+      - src/features/settings/sections/OpenSourceLicenses.tsx
+      - src/features/settings/sections/OpenSourceLicenses.spec.tsx
+      - src/features/settings/sections/licenseTexts.ts
+      - Cargo.lock
+      - pnpm-lock.yaml
+    cases:
+      - kition.platform.open-source-notices/notices-current
+      - kition.platform.open-source-notices/rust-crates
+      - kition.platform.open-source-notices/licenses-view
+      - regressions/issue-kit-package-notices
+      - regressions/issue-notices-license-texts
+      - regressions/issue-notices-loro-repository
+    since: "2026-10-31"
+  - id: kition.kits.table-host
+    title: Host features (scenarios, triggers, attachments) read and write table files through the Table kit's commands
+    dimension: [function, data-safety]
+    priority: P1
+    status: has
+    paths: [crates/kition-tableclient/**]
+    cases: [regressions/issue-attachment-mime-type]
+    since: "2026-11-05"
+  - id: kition.agent.tool-policy
+    title: The agent's shell runs read-only commands without asking only inside the workspace, and its URL tools (web_fetch, web_article_save, save_image_asset) reach only sites the person named without asking
+    dimension: [security, ai]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-agent/src/execpolicy.rs
+      - crates/kition-agent/src/tools/exec.rs
+      - crates/kition-agent/src/tools/fetch_policy.rs
+      - crates/kition-agent/src/tools/web.rs
+      - crates/kition-agent/src/tools/images.rs
+      - crates/kition-agent/src/providers/core.rs
+      - src/features/agent/components/AgentShellApprovalCard.tsx
+      - src/features/agent/lib/agentShellApproval.ts
+    gap: A host named only in a hosted web_search result asks before it is fetched (search runs at the provider, so its results cannot be told apart from document content); research that searches then fetches asks once per new site.
+    cases:
+      - regressions/issue-security-shell-reads
+      - regressions/issue-security-web-fetch
+      - regressions/issue-security-url-tools
+    since: "2026-11-06"
+  - id: kition.kits.file-writes
+    title: Kit editors write files only inside the workspace
+    dimension: [security, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-kits-http/**
+      - crates/kition-workspace/src/fsutil.rs
+    cases:
+      - kition.kits.file-writes/path-escapes
+    since: "2026-11-06"
+  - id: kition.kits.host-protocol
+    title: Kition hosts kits on Kit Process Protocol 2, naming files to them only by handles
+    dimension: [security, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-kit-conformance/**
+    cases:
+      - kition.kits.host-protocol/handles-only
+    since: "2026-11-10"
+  - id: kition.kits.fetch-image
+    title: A kit keeps a picture pasted by its web address; Kition's runtime downloads it from public addresses only (Kit UI protocol host/fetchImage)
+    dimension: [security, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - crates/kition-api/src/kit_images.rs
+      - crates/kition-agent/src/tools/web.rs
+      - src/api/kits.ts
+      - src/features/kits/kition/kitFetchImage.ts
+      - src/features/kits/kition/KitFrame.tsx
+    cases:
+      - kition.kits.fetch-image/public-only
+      - kition.kits.fetch-image/reasons
+    since: "2026-11-10"
+  - id: kition.onboarding.ai-fields
+    title: The onboarding tables' AI fields run on request for the asked cell, from that row
+    dimension: [ai, function, data-safety]
+    priority: P0
+    status: has
+    paths:
+      - public/onboarding/ReadingTracker.ktable
+      - public/onboarding/product-content/**
+      - src/features/kits/kition/kitGenerate.ts
+      - src/features/kits/kition/kitActions.ts
+      - e2e/onboarding-reading-ai-summary.spec.ts
+      - e2e/onboarding-product-content-ai.spec.ts
+    cases:
+      - regressions/issue-onboarding-ai-field-prompts
+      - kition.onboarding.ai-fields/product-content
+      - regressions/issue-ai-field-no-model-action
+    since: "2026-11-06"
+  - id: kition.onboarding.ai-scenarios
+    title: The onboarding agent and extraction scenarios stay bound to the open file and write nothing unasked
+    dimension: [ai, data-safety, security]
+    priority: P0
+    status: has
+    paths:
+      - crates/kition-tableclient/src/scenario.rs
+      - crates/kition-agent/src/catalog.rs
+      - e2e/table-agent-document-flow.spec.ts
+    gap: The agent scenarios run on a mocked agent stream, so they test the binding and what the page writes, not what a real model chooses; the receipt extraction test needs the Table kit's headless program (sibling kition-table build or KITION_KIT_TABLE_BINARY) and skips without it.
+    cases:
+      - kition.onboarding.ai-scenarios/agent-document
+      - kition.onboarding.ai-scenarios/receipt-extraction
+      - regressions/issue-scenario-cancel-partial
+    since: "2026-11-06"

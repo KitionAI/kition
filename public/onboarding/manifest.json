@@ -1,0 +1,26 @@
+{
+  "version": 20,
+  "folder": "Getting Started",
+  "welcome": {
+    "filename": "Welcome to Kition.md",
+    "asset": "welcome.md",
+    "folder": "Getting Started"
+  },
+  "documents": [],
+  "images": [
+    { "asset": "logo.png", "filename": "logo.png" }
+  ],
+  "tables": [
+    { "asset": "templates/task-tracker.ktable", "filename": "Task Tracker.ktable", "folder": "Projects & Planning" },
+    { "asset": "templates/thumbnail-generator.ktable", "filename": "YouTube & TikTok Thumbnail Generator.ktable", "folder": "AI & Creative" },
+    { "asset": "templates/receipt-ocr-table.ktable", "filename": "Receipt OCR Table.ktable", "folder": "AI & Creative" },
+    { "asset": "templates/leads-landing-page.ktable", "filename": "Leads Landing Page.ktable", "folder": "Sales & Customer" },
+    { "asset": "templates/sdr-cold-call-manager.ktable", "filename": "SDR Cold Call Manager.ktable", "folder": "Sales & Customer" },
+    { "asset": "templates/product-launch-website.ktable", "filename": "Product Launch Website.ktable", "folder": "Projects & Planning" },
+    { "asset": "templates/batch-product-designer.ktable", "filename": "Batch Product Designer.ktable", "folder": "AI & Creative" },
+    { "asset": "templates/simple-client-crm.ktable", "filename": "Simple Client CRM.ktable", "folder": "Sales & Customer" },
+    { "asset": "templates/restaurant-operations.ktable", "filename": "Restaurant Operations.ktable", "folder": "Operations & Analytics" },
+    { "asset": "templates/business-analytics-dashboard.ktable", "filename": "Business Analytics Dashboard.ktable", "folder": "Operations & Analytics" },
+    { "asset": "templates/project-gantt-planner.ktable", "filename": "Project Gantt Planner.ktable", "folder": "Projects & Planning" }
+  ]
+}

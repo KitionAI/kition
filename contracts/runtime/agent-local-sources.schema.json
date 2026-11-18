@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-local-sources.schema.json",
+  "title": "Kition Agent Local Analysis Sources",
+  "description": "Turn-scoped read-only folders selected by the user as evidence for Agent tasks. The runtime may expose bounded path search, content search, line-range reads, project instructions, and read-only Git history for these sources. Local source contents are model-visible for the active run but must not be persisted in Agent timeline output.",
+  "type": "array",
+  "maxItems": 8,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "label", "root_path", "access"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+      },
+      "label": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "root_path": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Environment-native absolute directory path selected by the user. It is turn-scoped and must not be persisted into portable workspace data."
+      },
+      "access": {
+        "const": "read",
+        "description": "Local analysis sources are evidence-only. All generated files remain targeted at the current Kition workspace."
+      }
+    }
+  }
+}

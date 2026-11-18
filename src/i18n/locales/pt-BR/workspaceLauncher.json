@@ -1,0 +1,115 @@
+{
+  "title": "Espaço de trabalho",
+  "subtitle": "Versão {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "Novo espaço de trabalho",
+      "description": "Crie um novo espaço de trabalho na pasta que você escolher.",
+      "button": "Criar",
+      "nameLabel": "Nome do espaço de trabalho",
+      "namePlaceholder": "Meu espaço de trabalho",
+      "parentLabel": "Pasta pai",
+      "parentPlaceholder": "Escolha uma pasta…",
+      "pick": "Procurar…",
+      "confirm": "Criar espaço de trabalho",
+      "cancel": "Cancelar"
+    },
+    "open": {
+      "title": "Abrir espaço de trabalho local",
+      "description": "Use uma pasta existente nesta máquina como espaço de trabalho.",
+      "button": "Abrir"
+    },
+    "sync": {
+      "title": "Sincronizar espaço de trabalho remoto",
+      "description": "Sincronize um espaço de trabalho do Kition Sync nesta máquina.",
+      "button": "Entrar",
+      "disabledTooltip": "Em breve"
+    }
+  },
+  "openMode": {
+    "title": "Como você quer abrir {{name}}?",
+    "description": "Mantenha o workspace atual aberto ou substitua-o nesta janela.",
+    "current": {
+      "title": "Substituir a janela atual",
+      "description": "Alterne esta janela para o workspace selecionado.",
+      "button": "Abrir aqui"
+    },
+    "new": {
+      "title": "Abrir em nova janela",
+      "description": "Mantenha este workspace aberto e inicie uma janela independente.",
+      "button": "Abrir nova janela"
+    },
+    "cancel": "Cancelar"
+  },
+  "vault": {
+    "menu": {
+      "rename": "Renomear",
+      "remove": "Remover da lista",
+      "reveal": "Mostrar no Finder"
+    },
+    "renameTitle": "Renomear espaço de trabalho",
+    "renamePlaceholder": "Nome do espaço de trabalho",
+    "removeConfirm": "Remover este espaço de trabalho da lista? A pasta no disco permanece intacta.",
+    "empty": "Nenhum espaço de trabalho ainda. Crie ou abra um para começar.",
+    "more": "Mais"
+  },
+  "errors": {
+    "missingName": "Por favor, insira um nome para o espaço de trabalho.",
+    "missingParent": "Por favor, escolha uma pasta pai.",
+    "open": "Falha ao abrir o espaço de trabalho: {{message}}",
+    "create": "Falha ao criar o espaço de trabalho: {{message}}",
+    "switch": "Falha ao trocar de espaço de trabalho: {{message}}",
+    "newWindow": "Não foi possível abrir uma nova janela de workspace.",
+    "missingVault": "A pasta do espaço de trabalho não existe mais no disco."
+  },
+  "firstRun": {
+    "seeding": "Configurando seu workspace…",
+    "seedError": "Não foi possível preparar os arquivos iniciais. Tente novamente ou continue trabalhando sem eles.",
+    "seedRetry": "Tentar novamente",
+    "dialogLabel": "Primeiros passos",
+    "eyebrow": "Primeiros passos",
+    "progress": "Etapa {{step}} de 3",
+    "workspaceTitle": "Seu workspace está pronto",
+    "workspaceDescription": "Kition mantém documentos e arquivos table file na pasta que você selecionou.",
+    "workspaceLocal": "Armazenado localmente neste dispositivo",
+    "providerTitle": "Escolha como você quer trabalhar",
+    "providerDescription": "Você pode mudar de provedor depois. Documentos e tabelas funcionam sem conta ou chave de API.",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "IA hospedada com Kition Account e sem chave de API separada.",
+      "byo": "Usar sua própria chave de API",
+      "byoDescription": "Conecte OpenAI, Anthropic, DeepSeek ou outro provedor compatível.",
+      "local": "Somente local",
+      "localDescription": "Open the welcome guide and explore local documents and tables without an account or API key."
+    },
+    "successTitle": "Conclua uma ação útil",
+    "success": {
+      "cloud": {
+        "title": "Resumir a página de boas-vindas",
+        "description": "Entre na conta, abra o Agent e use um prompt preparado.",
+        "privacy": "O prompt e o contexto selecionado são enviados ao Kition Cloud. Seus arquivos ficam neste dispositivo."
+      },
+      "byo": {
+        "title": "Conectar seu provedor de IA",
+        "description": "Abra Modelos de IA e adicione o provedor que você já usa.",
+        "privacy": "Prompts e contexto selecionado são enviados diretamente ao provedor configurado."
+      },
+      "local": {
+        "title": "Explorar as tabelas de exemplo",
+        "description": "Abra o guia de boas-vindas e as tabelas de exemplo em Getting Started; nenhuma precisa de um modelo de IA.",
+        "privacy": "Tudo fica neste dispositivo; nenhum conteúdo é enviado a um serviço de IA."
+      }
+    },
+    "continue": "Continuar",
+    "back": "Voltar",
+    "skip": "Pular por enquanto",
+    "startCloud": "Entrar e abrir o Agent",
+    "agentPrompt": "Resuma esta página de boas-vindas e escreva abaixo uma lista curta de primeiros passos.",
+    "cancelSignIn": "Cancelar entrada",
+    "configureModels": "Abrir Modelos de IA",
+    "startLocal": "Open welcome guide",
+    "cloudCreditsEmpty": "Seus créditos do Kition Cloud acabaram. Recarregue em Kition Account.",
+    "cloudUnavailable": "Kition Account está temporariamente indisponível."
+  }
+}

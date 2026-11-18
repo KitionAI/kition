@@ -1,0 +1,17 @@
+{
+  "kdm": 1,
+  "kit": "kit.test-sheet",
+  "schemaVersion": 1,
+  "root": "Sheet",
+  "types": {
+    "Sheet": {
+      "fields": {
+        "rows": { "kind": "list", "of": "Line" },
+        "cols": { "kind": "list", "of": "Line" },
+        "cells": { "kind": "map" },
+        "merges": { "kind": "map" }
+      }
+    },
+    "Line": { "fields": {} }
+  }
+}

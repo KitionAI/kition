@@ -1,0 +1,84 @@
+{
+  "about": "A failed run on a document open in its editor (C3b). Each run is played twice: `packages/kit-editor/src/useKitSession.test.tsx` drives the editor's `ai/run` with the script and checks that the editor calls its engine with `calls` and answers `editor`; `crates/kition-kits/tests/live_editor.rs` answers `editor` from a fake editor window and checks that `<prefix>_run` answers `tool`. `script.fails` is the index of the step whose engine command throws `broken`; `script.unchanged` lists the commands that change nothing; `script.personEditsBefore` lists the steps before which the person edits the document; `script.origins` says whether the engine runs commands as an origin (its own agent undo scope); `script.undoChanges: false` makes the agent's undo change nothing.",
+  "runs": [
+    {
+      "name": "rolled-back",
+      "intent": "A step fails after one that changed the document: the editor undoes that step in the agent's undo scope and answers `completed` empty, the step in `rolledBack`.",
+      "steps": [{ "command": "layer.new" }, { "command": "image.crop" }],
+      "script": { "fails": 1, "unchanged": [], "personEditsBefore": [], "origins": true, "undoChanges": true },
+      "calls": ["layer.new", "image.crop", "edit.undo"],
+      "editor": {
+        "message": "step 1 (`image.crop`) failed: broken The 1 step(s) before it were rolled back: the document is as it was before the run.",
+        "data": { "command": "image.crop", "step": 1, "completed": [], "rolledBack": [{ "command": "layer.new", "changed": true, "result": null }] }
+      },
+      "tool": { "code": "command-failed", "index": 1, "output": { "completed": [], "rolledBack": [{ "command": "layer.new" }], "saved": false } }
+    },
+    {
+      "name": "nothing-changed",
+      "intent": "The step before the failing one changed nothing: nothing is undone, and it is still listed in `rolledBack`.",
+      "steps": [{ "command": "view.zoomIn" }, { "command": "image.crop" }],
+      "script": { "fails": 1, "unchanged": ["view.zoomIn"], "personEditsBefore": [], "origins": true, "undoChanges": true },
+      "calls": ["view.zoomIn", "image.crop"],
+      "editor": {
+        "message": "step 1 (`image.crop`) failed: broken The 1 step(s) before it were rolled back: the document is as it was before the run.",
+        "data": { "command": "image.crop", "step": 1, "completed": [], "rolledBack": [{ "command": "view.zoomIn", "changed": false, "result": null }] }
+      },
+      "tool": { "code": "command-failed", "index": 1, "output": { "completed": [], "rolledBack": [{ "command": "view.zoomIn", "changed": false }], "saved": false } }
+    },
+    {
+      "name": "edited-meanwhile",
+      "intent": "The person edited between the agent's steps: the agent's step is still undone in the agent's undo scope, which keeps the person's edit, and the answer says loudly that the document is not simply as it was (`editedMeanwhile`).",
+      "steps": [{ "command": "layer.new" }, { "command": "image.crop" }],
+      "script": { "fails": 1, "unchanged": [], "personEditsBefore": [1], "origins": true, "undoChanges": true },
+      "calls": ["layer.new", "person", "image.crop", "edit.undo"],
+      "editor": {
+        "message": "step 1 (`image.crop`) failed: broken The 1 step(s) before it were rolled back in the agent's undo scope, but someone else edited the document while the run was under way: their edits stay, and where they changed what those steps made or changed, their change was kept (an object a step created went, with what they did to it). Inspect the document before going on.",
+        "data": { "command": "image.crop", "step": 1, "completed": [], "rolledBack": [{ "command": "layer.new", "changed": true, "result": null }], "editedMeanwhile": true }
+      },
+      "tool": { "code": "command-failed", "index": 1, "output": { "completed": [], "rolledBack": [{ "command": "layer.new" }], "editedMeanwhile": true, "saved": false } }
+    },
+    {
+      "name": "cannot-roll-back",
+      "intent": "The person edited between the agent's steps and the engine has no agent undo scope (no `executeAs`): an undo would take back the person's edit, so nothing is undone, the agent's steps stay and are `completed`, and the answer says so.",
+      "steps": [{ "command": "layer.new" }, { "command": "image.crop" }],
+      "script": { "fails": 1, "unchanged": [], "personEditsBefore": [1], "origins": false, "undoChanges": true },
+      "calls": ["layer.new", "person", "image.crop"],
+      "editor": {
+        "message": "step 1 (`image.crop`) failed: broken The 1 step(s) before it could not be rolled back (someone else edited the document while the run was under way, and this kit's engine cannot take back the agent's steps alone: it does not run commands as an origin): they stay in the document; undo them (`edit.undo`) or keep them.",
+        "data": { "command": "image.crop", "step": 1, "completed": [{ "command": "layer.new", "changed": true, "result": null }], "editedMeanwhile": true }
+      },
+      "tool": { "code": "command-failed", "index": 1, "output": { "completed": [{ "command": "layer.new" }], "editedMeanwhile": true, "saved": false } }
+    },
+    {
+      "name": "undo-refused",
+      "intent": "The engine had nothing to undo for the agent: the step stays, `completed` lists it, and the answer says why.",
+      "steps": [{ "command": "layer.new" }, { "command": "image.crop" }],
+      "script": { "fails": 1, "unchanged": [], "personEditsBefore": [], "origins": true, "undoChanges": false },
+      "calls": ["layer.new", "image.crop", "edit.undo"],
+      "editor": {
+        "message": "step 1 (`image.crop`) failed: broken The 1 step(s) before it could not be rolled back (the kit had nothing more to undo): they stay in the document; undo them (`edit.undo`) or keep them.",
+        "data": { "command": "image.crop", "step": 1, "completed": [{ "command": "layer.new", "changed": true, "result": null }] }
+      },
+      "tool": { "code": "command-failed", "index": 1, "output": { "completed": [{ "command": "layer.new" }], "saved": false } }
+    },
+    {
+      "name": "own-undo",
+      "intent": "The run's own steps undid an edit: counting undos back would not restore the document, so nothing is undone and the steps stay, as on the headless path.",
+      "steps": [{ "command": "layer.new" }, { "command": "edit.undo", "params": { "scope": "agent" } }, { "command": "image.crop" }],
+      "script": { "fails": 2, "unchanged": [], "personEditsBefore": [], "origins": true, "undoChanges": true },
+      "calls": ["layer.new", "edit.undo", "image.crop"],
+      "editor": {
+        "message": "step 2 (`image.crop`) failed: broken The 2 step(s) before it could not be rolled back (the steps undid or redid edits themselves): they stay in the document; undo them (`edit.undo`) or keep them.",
+        "data": {
+          "command": "image.crop",
+          "step": 2,
+          "completed": [
+            { "command": "layer.new", "changed": true, "result": null },
+            { "command": "edit.undo", "changed": true, "result": null }
+          ]
+        }
+      },
+      "tool": { "code": "command-failed", "index": 2, "output": { "completed": [{ "command": "layer.new" }, { "command": "edit.undo" }], "saved": false } }
+    }
+  ]
+}

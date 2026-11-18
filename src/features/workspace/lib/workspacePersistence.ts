@@ -1,0 +1,429 @@
+import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
+
+export type WorkspaceTreeMetadata = {
+  icons: Record<string, string>
+  order: Record<string, string[]>
+  collapsed: string[]
+  expandedFolders: string[]
+}
+
+export type WorkspaceTreeMetadataMap = Record<string, WorkspaceTreeMetadata>
+
+const workspaceTreeMetadataStorageKey = 'kition.document.tree.metadata.v2'
+const workspaceSidebarWidthStorageKey = 'kition.document.sidebar.width.v1'
+const agentSidebarWidthStorageKey = 'kition.document.agent-sidebar.width.v1'
+const recentWorkspacePathsStorageKey = 'kition.document.recent.workspaces.v1'
+const lastActiveWorkspacePathStorageKey = 'kition.document.last-active-path.v1'
+const workspaceTabsStorageKey = 'kition.document.workspace-tabs.v2'
+const legacyWorkspaceTabsStorageKey = 'kition.document.workspace-tabs.v1'
+const workspaceAgentActiveSessionStorageKey =
+  'kition.workspace.agent.active-session.v2'
+const legacyWorkspaceAgentActiveSessionStorageKey =
+  'kition.workspace.agent.active-session.v1'
+const workspaceSidebarDefaultWidth = 276
+const workspaceSidebarMinWidth = 220
+const workspaceSidebarMaxWidth = 480
+const agentSidebarDefaultWidth = 408
+const agentSidebarMinWidth = 340
+const agentSidebarMaxWidth = 720
+
+export function getDefaultWorkspaceTreeMetadata(): WorkspaceTreeMetadata {
+  return { icons: {}, order: {}, collapsed: [], expandedFolders: [] }
+}
+
+function normalizeWorkspaceTreeMetadata(raw: unknown): WorkspaceTreeMetadata {
+  if (!raw || typeof raw !== 'object') {
+    return getDefaultWorkspaceTreeMetadata()
+  }
+  const candidate = raw as Partial<WorkspaceTreeMetadata>
+  return {
+    icons: candidate.icons && typeof candidate.icons === 'object' ? candidate.icons as Record<string, string> : {},
+    order: candidate.order && typeof candidate.order === 'object' ? candidate.order as Record<string, string[]> : {},
+    collapsed: Array.isArray(candidate.collapsed)
+      ? candidate.collapsed.filter((item): item is string => typeof item === 'string')
+      : [],
+    expandedFolders: Array.isArray(candidate.expandedFolders)
+      ? candidate.expandedFolders.filter((item): item is string => typeof item === 'string')
+      : [],
+  }
+}
+
+export function readWorkspaceTreeMetadataMap(): WorkspaceTreeMetadataMap {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  const rawValue = window.localStorage.getItem(workspaceTreeMetadataStorageKey)
+  if (!rawValue) {
+    return {}
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    if (!parsed || typeof parsed !== 'object') {
+      return {}
+    }
+    const result: WorkspaceTreeMetadataMap = {}
+    for (const [rootPath, bucket] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof rootPath !== 'string') continue
+      result[rootPath] = normalizeWorkspaceTreeMetadata(bucket)
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+export function writeWorkspaceTreeMetadataMap(map: WorkspaceTreeMetadataMap) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(workspaceTreeMetadataStorageKey, JSON.stringify(map))
+}
+
+export function clampWorkspaceSidebarWidth(width: number) {
+  return Math.min(workspaceSidebarMaxWidth, Math.max(workspaceSidebarMinWidth, Math.round(width)))
+}
+
+export function readWorkspaceSidebarWidth() {
+  if (typeof window === 'undefined') {
+    return workspaceSidebarDefaultWidth
+  }
+
+  const rawValue = window.localStorage.getItem(workspaceSidebarWidthStorageKey)
+  if (!rawValue) {
+    return workspaceSidebarDefaultWidth
+  }
+
+  const value = Number(rawValue)
+  return Number.isFinite(value) ? clampWorkspaceSidebarWidth(value) : workspaceSidebarDefaultWidth
+}
+
+export function writeWorkspaceSidebarWidth(width: number) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(workspaceSidebarWidthStorageKey, String(clampWorkspaceSidebarWidth(width)))
+}
+
+export function clampAgentSidebarWidth(width: number) {
+  return Math.min(agentSidebarMaxWidth, Math.max(agentSidebarMinWidth, Math.round(width)))
+}
+
+export function readAgentSidebarWidth() {
+  if (typeof window === 'undefined') {
+    return agentSidebarDefaultWidth
+  }
+
+  const rawValue = window.localStorage.getItem(agentSidebarWidthStorageKey)
+  if (!rawValue) {
+    return agentSidebarDefaultWidth
+  }
+
+  const value = Number(rawValue)
+  return Number.isFinite(value) ? clampAgentSidebarWidth(value) : agentSidebarDefaultWidth
+}
+
+export function writeAgentSidebarWidth(width: number) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(agentSidebarWidthStorageKey, String(clampAgentSidebarWidth(width)))
+}
+
+export function getWorkspaceDisplayName(rootPath: string) {
+  const trimmedPath = rootPath.trim()
+  if (!trimmedPath) {
+    return 'Kition'
+  }
+
+  return trimmedPath.split(/[\\/]/).filter(Boolean).pop() || trimmedPath
+}
+
+export function readRecentWorkspacePaths(): string[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  const rawValue = window.localStorage.getItem(recentWorkspacePathsStorageKey)
+  if (!rawValue) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string' && Boolean(item.trim())).slice(0, 10) : []
+  } catch {
+    return []
+  }
+}
+
+function writeRecentWorkspacePaths(paths: string[]) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(recentWorkspacePathsStorageKey, JSON.stringify(paths.slice(0, 10)))
+}
+
+export function rememberRecentWorkspacePath(rootPath: string) {
+  const trimmedPath = rootPath.trim()
+  if (!trimmedPath) {
+    return readRecentWorkspacePaths()
+  }
+
+  const nextPaths = [trimmedPath, ...readRecentWorkspacePaths().filter((item) => item !== trimmedPath)].slice(0, 10)
+  writeRecentWorkspacePaths(nextPaths)
+  return nextPaths
+}
+
+export function readLastActiveDocumentPath() {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  return String(window.localStorage.getItem(lastActiveWorkspacePathStorageKey) || '').trim()
+}
+
+export function writeLastActiveDocumentPath(path: string) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const normalizedPath = String(path || '').trim()
+  if (!normalizedPath) {
+    window.localStorage.removeItem(lastActiveWorkspacePathStorageKey)
+    return
+  }
+
+  window.localStorage.setItem(lastActiveWorkspacePathStorageKey, normalizedPath)
+}
+
+export function readWorkspaceTabs(rootPath: string): WorkspaceTab[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+  const key = String(rootPath || '').trim()
+  if (!key) {
+    return []
+  }
+
+  const rawMap = readWorkspaceTabsRawMap()
+  const rawEntry = rawMap[key]
+  if (Array.isArray(rawEntry)) {
+    return parseWorkspaceTabList(rawEntry)
+  }
+
+  const legacyRaw = readLegacyWorkspaceTabsRawArray()
+  if (legacyRaw && legacyRaw.length) {
+    const nextRaw = { ...rawMap, [key]: legacyRaw }
+    writeWorkspaceTabsRawMap(nextRaw)
+    window.localStorage.removeItem(legacyWorkspaceTabsStorageKey)
+    return parseWorkspaceTabList(legacyRaw)
+  }
+  if (window.localStorage.getItem(legacyWorkspaceTabsStorageKey) !== null) {
+    // Legacy key exists but is unparseable/empty — drop it to stop reattempts.
+    window.localStorage.removeItem(legacyWorkspaceTabsStorageKey)
+  }
+  return []
+}
+
+export function writeWorkspaceTabs(rootPath: string, tabs: WorkspaceTab[]) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const key = String(rootPath || '').trim()
+  if (!key) {
+    return
+  }
+
+  // Important: operate on the *raw* (unparsed) map so other workspaces' stored
+  // entries pass through untouched instead of being rewritten by
+  // parseWorkspaceTabList on every write.
+  const rawMap = readWorkspaceTabsRawMap()
+  if (tabs.length === 0) {
+    if (!(key in rawMap)) {
+      return
+    }
+    const { [key]: _omit, ...rest } = rawMap
+    writeWorkspaceTabsRawMap(rest)
+    return
+  }
+  writeWorkspaceTabsRawMap({ ...rawMap, [key]: tabs.slice(0, 12) as unknown[] })
+}
+
+type WorkspaceTabsRawMap = Record<string, unknown[]>
+
+function readWorkspaceTabsRawMap(): WorkspaceTabsRawMap {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+  const raw = window.localStorage.getItem(workspaceTabsStorageKey)
+  if (!raw) {
+    return {}
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {}
+    }
+    const result: WorkspaceTabsRawMap = {}
+    for (const [rootPath, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof rootPath !== 'string' || !rootPath) {
+        continue
+      }
+      if (!Array.isArray(value)) {
+        continue
+      }
+      result[rootPath] = value
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+function writeWorkspaceTabsRawMap(map: WorkspaceTabsRawMap) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  window.localStorage.setItem(workspaceTabsStorageKey, JSON.stringify(map))
+}
+
+function readLegacyWorkspaceTabsRawArray(): unknown[] | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  const raw = window.localStorage.getItem(legacyWorkspaceTabsStorageKey)
+  if (!raw) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
+  const parsed = items.flatMap((raw): WorkspaceTab[] => {
+    if (!raw || typeof raw !== 'object') {
+      return []
+    }
+    const item = raw as Record<string, unknown>
+    if (item.type === 'gallery' && typeof item.id === 'string' && typeof item.title === 'string' && item.kind === 'videos') {
+      return [{
+        id: item.id,
+        type: 'gallery',
+        title: item.title,
+        kind: item.kind,
+      }]
+    }
+    return []
+  })
+  const indexById = new Map<string, number>()
+  const deduped: WorkspaceTab[] = []
+  for (const tab of parsed) {
+    const existingIndex = indexById.get(tab.id)
+    if (existingIndex == null) {
+      indexById.set(tab.id, deduped.length)
+      deduped.push(tab)
+    } else {
+      deduped[existingIndex] = tab
+    }
+  }
+  return deduped
+}
+
+type WorkspaceAgentActiveSessionMap = Record<string, number>
+
+function readWorkspaceAgentActiveSessionMap(): WorkspaceAgentActiveSessionMap {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+  const raw = window.localStorage.getItem(workspaceAgentActiveSessionStorageKey)
+  if (!raw) {
+    return {}
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {}
+    }
+    const result: WorkspaceAgentActiveSessionMap = {}
+    for (const [rootPath, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof rootPath !== 'string' || !rootPath) {
+        continue
+      }
+      const sessionId = typeof value === 'number' ? value : Number(value)
+      if (Number.isFinite(sessionId) && sessionId > 0) {
+        result[rootPath] = sessionId
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+function writeWorkspaceAgentActiveSessionMap(map: WorkspaceAgentActiveSessionMap) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  window.localStorage.setItem(
+    workspaceAgentActiveSessionStorageKey,
+    JSON.stringify(map),
+  )
+}
+
+export function readWorkspaceAgentActiveSessionId(rootPath: string): number | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  const key = String(rootPath || '').trim()
+  if (!key) {
+    return null
+  }
+  const map = readWorkspaceAgentActiveSessionMap()
+  if (key in map) {
+    return map[key]
+  }
+  // Legacy single-value key predates per-workspace bucketing. Pull it over
+  // into the first workspace that asks so users keep their last chat focus
+  // after upgrade, then retire the old key.
+  const legacy = window.localStorage.getItem(legacyWorkspaceAgentActiveSessionStorageKey)
+  window.localStorage.removeItem(legacyWorkspaceAgentActiveSessionStorageKey)
+  const legacyId = Number(legacy || 0)
+  if (Number.isFinite(legacyId) && legacyId > 0) {
+    writeWorkspaceAgentActiveSessionMap({ ...map, [key]: legacyId })
+    return legacyId
+  }
+  return null
+}
+
+export function writeWorkspaceAgentActiveSessionId(
+  rootPath: string,
+  sessionId: number | null,
+) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const key = String(rootPath || '').trim()
+  if (!key) {
+    return
+  }
+  const map = readWorkspaceAgentActiveSessionMap()
+  if (!sessionId || sessionId <= 0) {
+    if (!(key in map)) {
+      return
+    }
+    const { [key]: _omit, ...rest } = map
+    writeWorkspaceAgentActiveSessionMap(rest)
+    return
+  }
+  writeWorkspaceAgentActiveSessionMap({ ...map, [key]: sessionId })
+}

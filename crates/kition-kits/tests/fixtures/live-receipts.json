@@ -1,0 +1,18 @@
+{
+  "about": "Receipts on a document open in its editor (C3b). An editor that lists the capability `changes` answers the bridge's `version` and `changes {since}` from its replica, as a headless kit answers Kit Process Protocol's `model.version` and `model.changes`. `packages/kit-editor/src/engine/kitEngine.changes.test.ts` makes `edit` on a replica of the KDM test schema holding the page `page` titled `One`, and checks that the editor answers `changes`; `crates/kition-kits/tests/live_editor.rs` answers `changes` and the diagnostics `checks` (before, after) from a fake editor window and checks the receipt of `<prefix>_run` and `<prefix>_batch`.",
+  "edit": { "command": "page.rename", "params": { "title": "Two" } },
+  "changes": {
+    "created": [],
+    "changed": [{ "id": "page", "type": "Page", "fields": ["title"], "edits": [{ "field": "title", "before": "One", "after": "Two" }] }],
+    "moved": [],
+    "deleted": []
+  },
+  "checks": [
+    [{ "code": "mock.empty", "severity": "warning", "target": { "objectId": "s1" }, "message": "Shape s1 is empty." }],
+    [{ "code": "mock.todo", "severity": "warning", "target": {}, "message": "The title says TODO." }]
+  ],
+  "diagnostics": {
+    "new": [{ "code": "mock.todo", "severity": "warning", "target": {}, "message": "The title says TODO." }],
+    "resolved": [{ "code": "mock.empty", "severity": "warning", "target": { "objectId": "s1" }, "message": "Shape s1 is empty." }]
+  }
+}

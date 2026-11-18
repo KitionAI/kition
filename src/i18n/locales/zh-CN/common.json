@@ -1,0 +1,96 @@
+{
+  "actions": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "open": "打开",
+    "retry": "重试",
+    "copy": "复制",
+    "rename": "重命名",
+    "remove": "移除",
+    "loading": "加载中…",
+    "submit": "提交",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
+    "dismiss": "关闭提示",
+    "closeDrawer": "关闭抽屉",
+    "resizeDrawer": "调整抽屉宽度"
+  },
+  "statusLabel": {
+    "success": "成功",
+    "failed": "失败",
+    "pending": "等待中",
+    "completed": "已完成",
+    "unknown": "未知"
+  },
+  "status": "状态",
+  "name": "名称",
+  "workspace": "工作区",
+  "commandPalette": {
+    "badge": "命令",
+    "hint": "运行命令、跳转",
+    "placeholder": "运行命令、跳转设置…",
+    "navigation": "导航",
+    "backToWorkspace": "回到工作区",
+    "backToWorkspaceHint": "当前主视图",
+    "openSettings": "打开设置",
+    "openSettingsHint": "运行时与 Provider 配置",
+    "close": "关闭",
+    "openShared": "打开共享文档",
+    "openSharedHint": "打开他人分享给你的协同编辑文档",
+    "extensions": "扩展",
+    "runScript": "运行脚本…",
+    "runScriptHint": "对此文档运行工作区中的 .mjs 脚本",
+    "shortcuts": "⌘K 打开命令面板；在套件编辑器中请按 ⌘.",
+    "syncedDocuments": "你同步的文档",
+    "syncedDocumentsHint": "在这里打开来自你其他设备的文档"
+  },
+  "viewport": {
+    "tooNarrow": "视口过窄，编辑器在此尺寸下可能无法完整使用，建议放大窗口至 480px 以上。"
+  },
+  "errorBoundary": {
+    "title": "出了点问题",
+    "paneTitle": "{{label}} 已停止响应",
+    "paneTitleGeneric": "此视图已停止响应",
+    "description": "Kition 的其他部分仍可正常使用。请重试；如果再次发生，请重新加载应用。",
+    "retry": "重试",
+    "reload": "重新加载 Kition",
+    "details": "错误详情"
+  },
+  "dialogs": {
+    "accountInfo": "账户信息",
+    "rightDrawer": "右侧抽屉",
+    "rightSheet": "右侧面板"
+  },
+  "credits": {
+    "exhaustedTitle": "Kition 额度已用完",
+    "topUp": "充值额度"
+  },
+  "extensions": {
+    "commandFailed": "{{title}} 失败",
+    "runScript": {
+      "title": "运行脚本",
+      "description": "对 {{document}} 运行工作区中的 .mjs 脚本。脚本可以读取和修改文档并运行其命令，但无法访问网络。",
+      "pathLabel": "脚本在工作区中的路径",
+      "placeholder": "scripts/review.mjs",
+      "run": "运行",
+      "cancel": "取消",
+      "notAScript": "请选择 .mjs 文件",
+      "noDocument": "请先打开一个套件文档",
+      "done": "已运行 {{name}}",
+      "failed": "{{name}} 运行失败"
+    },
+    "panel": {
+      "show": "显示面板：{{title}}",
+      "close": "关闭面板",
+      "opening": "正在打开面板…",
+      "failed": "无法打开面板"
+    }
+  },
+  "notice": {
+    "technicalDetails": "技术详情"
+  }
+}

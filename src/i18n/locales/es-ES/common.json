@@ -1,0 +1,96 @@
+{
+  "actions": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "open": "Abrir",
+    "retry": "Reintentar",
+    "copy": "Copiar",
+    "rename": "Renombrar",
+    "remove": "Quitar",
+    "loading": "Cargando…",
+    "submit": "Enviar",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "dismiss": "Descartar",
+    "closeDrawer": "Cerrar panel",
+    "resizeDrawer": "Redimensionar panel"
+  },
+  "statusLabel": {
+    "success": "Correcto",
+    "failed": "Con errores",
+    "pending": "Pendiente",
+    "completed": "Completado",
+    "unknown": "Desconocido"
+  },
+  "status": "Estado",
+  "name": "Nombre",
+  "workspace": "Espacio de trabajo",
+  "commandPalette": {
+    "badge": "Comando",
+    "hint": "Ejecuta comandos, navega",
+    "placeholder": "Ejecuta comandos, ir a ajustes…",
+    "navigation": "Navegación",
+    "backToWorkspace": "Volver al espacio de trabajo",
+    "backToWorkspaceHint": "Vista principal actual",
+    "openSettings": "Abrir ajustes",
+    "openSettingsHint": "Configuración de runtime y proveedor",
+    "close": "Cerrar",
+    "openShared": "Abrir documento compartido",
+    "openSharedHint": "Abre un documento que alguien compartió contigo para coeditar",
+    "extensions": "Extensiones",
+    "runScript": "Ejecutar script…",
+    "runScriptHint": "Ejecuta un script .mjs del espacio de trabajo en este documento",
+    "shortcuts": "⌘K abre la paleta; dentro de un editor de kit, pulsa ⌘.",
+    "syncedDocuments": "Tus documentos sincronizados",
+    "syncedDocumentsHint": "Abre aquí un documento de tus otros dispositivos"
+  },
+  "viewport": {
+    "tooNarrow": "La ventana es demasiado estrecha. Es posible que el editor no se pueda usar por completo en este tamaño. Amplía la ventana a al menos 480px."
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "paneTitle": "{{label}} stopped responding",
+    "paneTitleGeneric": "This view stopped responding",
+    "description": "The rest of Kition keeps working. Retry, or reload the app if it happens again.",
+    "retry": "Retry",
+    "reload": "Reload Kition",
+    "details": "Error details"
+  },
+  "dialogs": {
+    "accountInfo": "Información de la cuenta",
+    "rightDrawer": "Panel derecho",
+    "rightSheet": "Hoja derecha"
+  },
+  "credits": {
+    "exhaustedTitle": "Los créditos de Kition se han agotado",
+    "topUp": "Recargar créditos"
+  },
+  "extensions": {
+    "commandFailed": "{{title}} falló",
+    "runScript": {
+      "title": "Ejecutar script",
+      "description": "Ejecuta un script .mjs del espacio de trabajo en {{document}}. El script puede leer y modificar el documento y ejecutar sus comandos; no puede acceder a la red.",
+      "pathLabel": "Ruta del script en el espacio de trabajo",
+      "placeholder": "scripts/review.mjs",
+      "run": "Ejecutar",
+      "cancel": "Cancelar",
+      "notAScript": "Elige un archivo .mjs",
+      "noDocument": "Primero abre un documento de un kit",
+      "done": "{{name}} ejecutado",
+      "failed": "{{name}} falló"
+    },
+    "panel": {
+      "show": "Mostrar panel: {{title}}",
+      "close": "Cerrar panel",
+      "opening": "Abriendo panel…",
+      "failed": "No se pudo abrir el panel"
+    }
+  },
+  "notice": {
+    "technicalDetails": "Detalles técnicos"
+  }
+}

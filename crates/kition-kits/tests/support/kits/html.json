@@ -1,0 +1,51 @@
+{
+  "khp": "1.0",
+  "id": "kit.html",
+  "name": "HTML",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "html",
+      "extensions": [
+        "html",
+        "htm"
+      ],
+      "mime": "text/html",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "html",
+      "extension": "html",
+      "baseName": "Untitled HTML"
+    }
+  ],
+  "capabilities": [
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "html",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": false,
+    "layout": false,
+    "describe": {
+      "noun": "HTML document"
+    }
+  },
+  "headless": {
+    "executable": "kition-html",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

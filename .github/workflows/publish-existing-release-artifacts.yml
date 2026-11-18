@@ -1,0 +1,88 @@
+name: Publish Existing Desktop Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer without the v prefix
+        required: true
+        type: string
+      run_id:
+        description: Workflow run containing verified desktop artifacts
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+env:
+  RELEASE_TAG: v${{ inputs.version }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Download verified desktop artifacts
+        uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.run_id }}
+          path: desktop-artifacts
+
+      - name: Stage release assets and the updater manifest
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node src-tauri/scripts/stage-release-assets.mjs \
+            --artifacts desktop-artifacts \
+            --out release-assets \
+            --version "$VERSION" \
+            --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY"
+
+      - name: Upload installers to draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find release-assets -type f -print0)
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+
+      - name: Verify and publish Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          release_json="$(jq -e -c --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then .[0] else empty end
+          ' <<<"$releases_json")"
+          if [[ "$(jq -r '.draft' <<<"$release_json")" != "true" ]]; then
+            echo "Release $RELEASE_TAG was published before verification" >&2
+            exit 1
+          fi
+          assets="$(jq -r '.assets[].name' <<<"$release_json")"
+          while IFS= read -r file; do
+            name="$(basename "$file")"
+            if ! grep -Fxq "$name" <<<"$assets"; then
+              echo "Missing uploaded desktop asset: $name" >&2
+              exit 1
+            fi
+          done < <(find release-assets -type f -print | sort)
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease=false

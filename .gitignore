@@ -1,0 +1,82 @@
+# Root-level ignore rules.
+
+# Local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+.python-version
+*.p8
+*.p12
+/docs/license/
+/.kition/
+/UITest/
+/heartie/
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs and temporary files
+*.log
+*.pid
+*.pid.lock
+*.seed
+*.tmp
+*.temp
+.cache/
+
+# Local Python tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+openspec/*
+!openspec/specs/
+openspec/specs/*
+!openspec/specs/branding/
+!openspec/specs/branding/**
+
+logs
+
+kition-extension.pem
+src-tauri/binaries/
+src-tauri/gen/
+/target/
+src-tauri/target/
+test-workspace
+
+# JavaScript dependencies and build output
+node_modules/
+.vite/
+dist/
+dist-ssr/
+dist-desktop/
+# Kit packages: built by scripts/build-kit-ui.sh or fetched by scripts/fetch-kits.mjs.
+/public/kits/
+# Output of desktop builds made before the Tauri shell.
+dist-electron/
+playwright-report/
+test-results/
+/e2e/title-body-alignment.png
+.runtime-e2e/
+data/
+test-uploads-desktop/
+test-workspace-desktop/
+*.tsbuildinfo
+
+.agents
+/build/
+
+# Implementation plans and design specs are kept outside this public repository.
+/docs/superpowers/

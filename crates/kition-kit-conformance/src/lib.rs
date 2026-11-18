@@ -1,0 +1,1303 @@
+//! The Kit Process Protocol conformance suite (protocol section 14).
+//!
+//! The suite launches a kit executable in `headless` mode and checks it as a
+//! black box over the real transport, as its host: it serves the kit the files
+//! of a temporary workspace (`files.*`, section 5.1) and names them to the kit
+//! only by handles. Every kit release must pass it. Embedding behavior is
+//! accepted manually in the desktop client instead.
+
+pub mod schema;
+
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
+
+use base64::Engine as _;
+use kition_kit_host::files::{FilesManifest, GrantStore};
+use kition_kit_host::{
+    ClientError, HOST_PRINCIPAL, HostService, KitClient, KitFiles, KitProcess, LaunchOptions,
+};
+use kition_kit_process_protocol::launch::{SHUTDOWN_TIMEOUT, Surface};
+use kition_kit_process_protocol::methods::{self, RequestMethod};
+use kition_kit_process_protocol::types::*;
+use kition_kit_process_protocol::{ErrorReason, PROTOCOL_VERSION, RpcError};
+use serde_json::{Map, Value, json};
+
+use schema::Schemas;
+
+const NEGATIVE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// The DeepSeek Harness release a conformance report targets (platform D4): the one Kition's
+/// harness follows (`kition_harness::DSH_TARGET`) and `@kition/dsh-kits` is pinned to.
+pub const DSH_TARGET: &str = kition_harness::DSH_TARGET;
+const SCREENSHOT_MAX_SIZE: u32 = 512;
+
+/// A document the suite opens, edits with one command, saves, and reopens.
+#[derive(Clone, Debug)]
+pub struct Fixture {
+    pub file_name: String,
+    pub contents: Vec<u8>,
+    pub edit_command: String,
+    pub edit_params: Map<String, Value>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Options {
+    pub executable: PathBuf,
+    /// The kit's `kit.json`, checked against the schema and the running kit.
+    pub manifest: Option<PathBuf>,
+    pub fixture: Fixture,
+    /// Extra environment for the kit process.
+    pub env: Vec<(OsString, OsString)>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Outcome {
+    Passed,
+    Failed(String),
+    Skipped(String),
+}
+
+#[derive(Clone, Debug)]
+pub struct CheckResult {
+    pub id: &'static str,
+    pub title: &'static str,
+    pub outcome: Outcome,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Report {
+    pub checks: Vec<CheckResult>,
+    /// The Kition platform conformance levels a KHP manifest supports (`L1` to `L5`; kition-sdk
+    /// `docs/platform/kits/levels.md`), with what the others need. Empty without such a manifest.
+    pub levels: Vec<&'static str>,
+    pub level_notes: Vec<String>,
+}
+
+/// Whether `@kition/dsh-kits` registers the kit's tools in DeepSeek Harness (platform D1). The
+/// package mounts Kition's MCP server (`kition-kits-mcp`, `POST /v1/mcp/kits`), which serves every
+/// kit whose manifest declares one (`kition_kits::definitions`), so a kit is registered when its
+/// manifest does. Answers the tools' name pattern, or why it is not registered.
+fn dsh_registration(manifest: &Value) -> Result<String, String> {
+    let kit = kition_kits::KitDefinition::from_manifest(manifest)
+        .map_err(|error| format!("kition-kits-mcp cannot serve this manifest: {error}"))?;
+    Ok(format!("mcp__kition__{}_*", kit.agent.prefix))
+}
+
+impl Report {
+    pub fn passed(&self) -> bool {
+        !self.checks.is_empty()
+            && self
+                .checks
+                .iter()
+                .all(|check| check.outcome == Outcome::Passed)
+    }
+
+    pub fn outcome(&self, id: &str) -> Option<&Outcome> {
+        self.checks
+            .iter()
+            .find(|check| check.id == id)
+            .map(|check| &check.outcome)
+    }
+
+    fn record(
+        &mut self,
+        id: &'static str,
+        title: &'static str,
+        result: Result<(), String>,
+    ) -> bool {
+        let passed = result.is_ok();
+        let outcome = match result {
+            Ok(()) => Outcome::Passed,
+            Err(reason) => Outcome::Failed(reason),
+        };
+        self.checks.push(CheckResult { id, title, outcome });
+        passed
+    }
+
+    fn skip(&mut self, id: &'static str, title: &'static str, reason: &str) {
+        self.checks.push(CheckResult {
+            id,
+            title,
+            outcome: Outcome::Skipped(reason.to_owned()),
+        });
+    }
+
+    /// One line per check, for terminals and CI logs.
+    pub fn render(&self) -> String {
+        let mut out = String::new();
+        for check in &self.checks {
+            let line = match &check.outcome {
+                Outcome::Passed => format!("PASS {} - {}\n", check.id, check.title),
+                Outcome::Failed(reason) => {
+                    format!("FAIL {} - {}: {reason}\n", check.id, check.title)
+                }
+                Outcome::Skipped(reason) => {
+                    format!("SKIP {} - {}: {reason}\n", check.id, check.title)
+                }
+            };
+            out.push_str(&line);
+        }
+        let passed = self
+            .checks
+            .iter()
+            .filter(|check| check.outcome == Outcome::Passed)
+            .count();
+        out.push_str(&format!("{passed}/{} checks passed\n", self.checks.len()));
+        if !self.levels.is_empty() {
+            let levels = if self.passed() {
+                self.levels.join(" ")
+            } else {
+                "none (a check failed)".to_owned()
+            };
+            out.push_str(&format!("Levels: {levels}"));
+            if !self.level_notes.is_empty() {
+                out.push_str(&format!(" ({})", self.level_notes.join("; ")));
+            }
+            out.push('\n');
+            out.push_str(&format!("DeepSeek Harness target: {DSH_TARGET}\n"));
+        }
+        out
+    }
+}
+
+/// Every check id, in the order the suite runs them.
+pub const CHECKS: &[(&str, &str)] = &[
+    ("manifest", "kit.json matches the manifest schema"),
+    ("launch", "starts and reports ready within 10 seconds"),
+    ("pre-initialize", "rejects methods before kit.initialize"),
+    (
+        "protocol-version",
+        "rejects an unsupported protocol version",
+    ),
+    (
+        "wrong-token",
+        "rejects a wrong token and closes the connection",
+    ),
+    (
+        "agent-before-host",
+        "rejects an agent before the host initialized",
+    ),
+    ("initialize", "initializes the host within 10 seconds"),
+    ("commands", "lists commands with valid parameter schemas"),
+    ("round-trip", "opens, edits, saves, and reopens the fixture"),
+    (
+        "files",
+        "reads and saves only through granted handles, and a stale save is file_conflict",
+    ),
+    (
+        "agent-limits",
+        "limits the agent role to granted methods and handles",
+    ),
+    ("screenshot", "renders view.screenshot in headless mode"),
+    ("shutdown", "exits within 5 seconds of kit.shutdown"),
+    (
+        "quiet-stdout",
+        "writes nothing to standard output after ready",
+    ),
+];
+
+fn title(id: &str) -> &'static str {
+    CHECKS
+        .iter()
+        .find(|(known, _)| *known == id)
+        .map_or("", |(_, title)| title)
+}
+
+struct Context<'a> {
+    options: &'a Options,
+    schemas: Schemas,
+    manifest: Option<ManifestFacts>,
+    process: KitProcess,
+    workspace: PathBuf,
+    /// The files the host connection serves the kit: a grant session over `workspace`.
+    files: Arc<KitFiles>,
+}
+
+pub async fn run(options: &Options) -> Report {
+    let mut report = Report::default();
+    let schemas = match Schemas::load() {
+        Ok(schemas) => schemas,
+        Err(error) => {
+            report.record("manifest", title("manifest"), Err(error));
+            return report;
+        }
+    };
+
+    let manifest = match &options.manifest {
+        None => {
+            report.skip("manifest", title("manifest"), "no kit.json given");
+            None
+        }
+        Some(path) => match check_manifest(&schemas, path) {
+            Ok(manifest) => {
+                report.record("manifest", title("manifest"), Ok(()));
+                report.levels.clone_from(&manifest.levels.0);
+                report.level_notes.clone_from(&manifest.levels.1);
+                Some(manifest)
+            }
+            Err(error) => {
+                report.record("manifest", title("manifest"), Err(error));
+                None
+            }
+        },
+    };
+
+    let Ok(workspace) = tempfile::tempdir() else {
+        report.record(
+            "launch",
+            title("launch"),
+            Err("cannot create a temporary workspace".into()),
+        );
+        return report;
+    };
+    let root = canonical(workspace.path());
+    let kit_id = manifest.as_ref().map_or_else(
+        || {
+            options
+                .executable
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        },
+        |manifest| manifest.id.clone(),
+    );
+    let files = match KitFiles::open(
+        Arc::new(GrantStore::new(Some(root.clone()))),
+        &kit_id,
+        HOST_PRINCIPAL,
+        FilesManifest::default(),
+    ) {
+        Ok(files) => Arc::new(files),
+        Err(error) => {
+            report.record(
+                "launch",
+                title("launch"),
+                Err(format!("cannot open the host's file grants: {error}")),
+            );
+            return report;
+        }
+    };
+    let mut launch = LaunchOptions::new(&options.executable);
+    launch.env.clone_from(&options.env);
+    let process = match KitProcess::launch(launch).await {
+        Ok(process) => {
+            report.record("launch", title("launch"), Ok(()));
+            process
+        }
+        Err(error) => {
+            report.record("launch", title("launch"), Err(error.to_string()));
+            skip_rest(&mut report, "the kit did not launch");
+            return report;
+        }
+    };
+    let mut context = Context {
+        options,
+        schemas,
+        manifest,
+        process,
+        workspace: root,
+        files,
+    };
+
+    report.record(
+        "pre-initialize",
+        title("pre-initialize"),
+        context.pre_initialize().await,
+    );
+    report.record(
+        "protocol-version",
+        title("protocol-version"),
+        context.protocol_version().await,
+    );
+    report.record(
+        "wrong-token",
+        title("wrong-token"),
+        context.wrong_token().await,
+    );
+    report.record(
+        "agent-before-host",
+        title("agent-before-host"),
+        context.agent_before_host().await,
+    );
+
+    let host = match context.initialize_host().await {
+        Ok((host, result)) => {
+            report.record("initialize", title("initialize"), Ok(()));
+            Some((host, result))
+        }
+        Err(error) => {
+            report.record("initialize", title("initialize"), Err(error));
+            None
+        }
+    };
+
+    if let Some((host, initialized)) = host {
+        let commands = context.commands(&host).await;
+        let commands_ok = report.record(
+            "commands",
+            title("commands"),
+            commands.as_ref().map(|_| ()).map_err(Clone::clone),
+        );
+        match commands {
+            Ok(commands) if commands_ok => {
+                report.record(
+                    "round-trip",
+                    title("round-trip"),
+                    context.round_trip(&host, &commands, &initialized).await,
+                );
+                // It edits the fixture with the same command.
+                report.record("files", title("files"), context.files_check(&host).await);
+            }
+            _ => {
+                for id in ["round-trip", "files"] {
+                    report.skip(id, title(id), "commands.list failed");
+                }
+            }
+        }
+        report.record(
+            "agent-limits",
+            title("agent-limits"),
+            context.agent_limits().await,
+        );
+        report.record(
+            "screenshot",
+            title("screenshot"),
+            context.screenshot(&host).await,
+        );
+        report.record("shutdown", title("shutdown"), context.shutdown(&host).await);
+    } else {
+        for id in [
+            "commands",
+            "round-trip",
+            "files",
+            "agent-limits",
+            "screenshot",
+            "shutdown",
+        ] {
+            report.skip(id, title(id), "the host could not initialize");
+        }
+        context.process.kill().await;
+    }
+
+    let closed = context
+        .process
+        .wait_stdout_closed(Duration::from_secs(2))
+        .await;
+    let quiet = if !closed {
+        Err("standard output did not close after exit".to_owned())
+    } else if context.process.wrote_stdout_after_ready() {
+        Err("the kit wrote to standard output after its ready line".to_owned())
+    } else {
+        Ok(())
+    };
+    report.record("quiet-stdout", title("quiet-stdout"), quiet);
+    drop(context);
+    drop(workspace);
+    report
+}
+
+fn skip_rest(report: &mut Report, reason: &str) {
+    for (id, title) in CHECKS.iter().skip_while(|(id, _)| *id != "pre-initialize") {
+        report.skip(id, title, reason);
+    }
+}
+
+/// What the suite checks the running kit against, from its KHP `kit.json`.
+struct ManifestFacts {
+    id: String,
+    version: String,
+    /// The manifest's platform levels and notes ([`platform_levels`]).
+    levels: (Vec<&'static str>, Vec<String>),
+    /// The manifest's `headless.features`, which must be exactly what the executable's
+    /// `kit.initialize` answers (platform K9).
+    headless_features: Vec<String>,
+}
+
+/// What differs between a manifest's `headless.features` and the features `kit.initialize`
+/// answered (platform K9), as one message; `None` when they are the same set.
+fn feature_mismatch(declared: &[String], answered: &[String]) -> Option<String> {
+    let missing: Vec<&str> = answered
+        .iter()
+        .filter(|feature| !declared.contains(feature))
+        .map(String::as_str)
+        .collect();
+    let extra: Vec<&str> = declared
+        .iter()
+        .filter(|feature| !answered.contains(feature))
+        .map(String::as_str)
+        .collect();
+    if missing.is_empty() && extra.is_empty() {
+        return None;
+    }
+    let mut parts = Vec::new();
+    if !missing.is_empty() {
+        parts.push(format!("missing from kit.json: {}", missing.join(", ")));
+    }
+    if !extra.is_empty() {
+        parts.push(format!("not answered by the kit: {}", extra.join(", ")));
+    }
+    Some(format!(
+        "kit.json `headless.features` must list exactly what kit.initialize answers ({}); the kit answers [{}]",
+        parts.join("; "),
+        answered.join(", ")
+    ))
+}
+
+/// The Kition platform conformance levels a valid KHP manifest supports, as far as the manifest
+/// and this suite show them, and what the others need. They key off the platform fields, never
+/// `khp` (the KHP version): L5 needs engine contract 2 with a KDM schema and an object model
+/// namespace; L6 the kit's convergence suite (`kition-convergence`), which kition-sdk's
+/// `tools/check-manifest.mjs --convergence` reads.
+fn platform_levels(manifest: &Value) -> (Vec<&'static str>, Vec<String>) {
+    let mut levels = vec!["L1"];
+    let mut notes = Vec::new();
+    let has = |key: &str| manifest.get(key).is_some_and(|value| !value.is_null());
+    let creates = manifest["creates"]
+        .as_array()
+        .is_some_and(|items| !items.is_empty());
+    if has("ui") && creates {
+        levels.push("L2");
+        if has("agent") {
+            levels.push("L3");
+            match dsh_registration(manifest) {
+                Ok(tools) => {
+                    levels.push("L4");
+                    notes.push(format!(
+                        "L4 through @kition/dsh-kits as {tools}, DeepSeek Harness {DSH_TARGET}"
+                    ));
+                }
+                Err(reason) => notes.push(format!(
+                    "L4 needs registration in @kition/dsh-kits: {reason}"
+                )),
+            }
+        } else {
+            notes.push("L3 needs agent".to_owned());
+        }
+    } else {
+        notes.push("L2 needs ui and creates".to_owned());
+    }
+    if manifest["engine"]["contract"] == 2 && has("model") && has("objectModel") {
+        levels.push("L5");
+        notes.push("L6 needs the kit's convergence suite (kition-convergence)".to_owned());
+    } else {
+        notes.push(
+            "L5 needs engine contract 2, a KDM schema, and an object model namespace".to_owned(),
+        );
+    }
+    (levels, notes)
+}
+
+/// The protocol a KHP manifest's `headless` section must name: the version this suite speaks.
+fn headless_protocol() -> String {
+    format!("kition-kit/{PROTOCOL_VERSION}")
+}
+
+fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    let value: Value =
+        serde_json::from_str(&text).map_err(|error| format!("kit.json is not JSON: {error}"))?;
+    // A KHP manifest (`khp`, the KHP version; KHP `spec/manifest.md` and kition-sdk
+    // `docs/platform/kits/manifest.md`): its `headless` section names the executable under test
+    // and the protocol it speaks.
+    if value.get("khp").is_none() {
+        return Err("kit.json is not a KHP manifest: it has no `khp` version (KHP K2)".to_owned());
+    }
+    schemas.kit(&value)?;
+    let protocol = value["headless"]["protocol"].as_str();
+    let expected = headless_protocol();
+    if protocol != Some(expected.as_str()) {
+        return Err(format!(
+            "kit.json `headless.protocol` is {}, expected {expected}",
+            protocol.unwrap_or("missing")
+        ));
+    }
+    let text = |key: &str| value[key].as_str().unwrap_or_default().to_owned();
+    Ok(ManifestFacts {
+        id: text("id"),
+        version: text("version"),
+        levels: platform_levels(&value),
+        headless_features: value["headless"]["features"]
+            .as_array()
+            .map(|features| {
+                features
+                    .iter()
+                    .filter_map(|feature| feature.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default(),
+    })
+}
+
+fn canonical(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// A handle no host minted: well formed, granted to nobody.
+const UNGRANTED_HANDLE: &str = "fh_00000000000000000000000000000000";
+
+fn client_info() -> ClientInfo {
+    ClientInfo {
+        name: "kition-kit-conformance".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+    }
+}
+
+/// Expects a JSON-RPC error with `code`.
+fn expect_code<T: std::fmt::Debug>(
+    result: Result<T, ClientError>,
+    code: i64,
+) -> Result<(), String> {
+    match result {
+        Err(ClientError::Rpc(RpcError { code: actual, .. })) if actual == code => Ok(()),
+        Err(ClientError::Rpc(error)) => Err(format!(
+            "expected error {code}, got {} ({})",
+            error.code, error.message
+        )),
+        Err(error) => Err(format!("expected error {code}, got {error}")),
+        Ok(value) => Err(format!("expected error {code}, got success {value:?}")),
+    }
+}
+
+fn expect_reason<T: std::fmt::Debug>(
+    result: Result<T, ClientError>,
+    reason: ErrorReason,
+) -> Result<(), String> {
+    expect_code(result, reason.code())
+}
+
+impl Context<'_> {
+    fn initialize_params(
+        &self,
+        role: Role,
+        token: &str,
+        protocol_version: u32,
+    ) -> InitializeParams {
+        InitializeParams {
+            protocol_version,
+            token: token.to_owned(),
+            role,
+            client: client_info(),
+            locale: (role == Role::Host).then(|| "en-US".to_owned()),
+            appearance: (role == Role::Host).then_some(Appearance::Light),
+            host_services: match role {
+                Role::Host => self.files.services(),
+                Role::Agent => Vec::new(),
+            },
+        }
+    }
+
+    /// A connection that serves the kit nothing: an agent's, or one the kit must refuse.
+    async fn connect(&self) -> Result<KitClient, String> {
+        self.process
+            .connect()
+            .await
+            .map_err(|error| format!("cannot connect: {error}"))
+    }
+
+    /// The host connection, which answers the kit's `files.*` from the workspace.
+    async fn connect_host(&self) -> Result<KitClient, String> {
+        let service = Arc::clone(&self.files) as Arc<dyn HostService>;
+        self.process
+            .connect_serving(Some(service))
+            .await
+            .map_err(|error| format!("cannot connect: {error}"))
+    }
+
+    async fn pre_initialize(&self) -> Result<(), String> {
+        let client = self.connect().await?;
+        expect_reason(
+            client
+                .request(methods::Ping::NAME, json!({}), Some(NEGATIVE_TIMEOUT))
+                .await,
+            ErrorReason::NotInitialized,
+        )
+    }
+
+    async fn protocol_version(&self) -> Result<(), String> {
+        let client = self.connect().await?;
+        let params =
+            self.initialize_params(Role::Host, self.process.token(), PROTOCOL_VERSION + 98);
+        expect_reason(
+            client
+                .call_with_timeout::<methods::Initialize>(&params, Some(NEGATIVE_TIMEOUT))
+                .await,
+            ErrorReason::UnsupportedProtocol,
+        )
+    }
+
+    async fn wrong_token(&self) -> Result<(), String> {
+        let client = self.connect().await?;
+        let wrong = if self.process.token().starts_with('0') {
+            "1".repeat(64)
+        } else {
+            "0".repeat(64)
+        };
+        let params = self.initialize_params(Role::Host, &wrong, PROTOCOL_VERSION);
+        expect_reason(
+            client
+                .call_with_timeout::<methods::Initialize>(&params, Some(NEGATIVE_TIMEOUT))
+                .await,
+            ErrorReason::Unauthorized,
+        )?;
+        if client.wait_closed(NEGATIVE_TIMEOUT).await {
+            Ok(())
+        } else {
+            Err("the connection stayed open after the unauthorized error".into())
+        }
+    }
+
+    async fn agent_before_host(&self) -> Result<(), String> {
+        let client = self.connect().await?;
+        let params = self.initialize_params(Role::Agent, self.process.token(), PROTOCOL_VERSION);
+        match client
+            .call_with_timeout::<methods::Initialize>(&params, Some(NEGATIVE_TIMEOUT))
+            .await
+        {
+            Err(ClientError::Rpc(_)) => Ok(()),
+            Err(error) => Err(format!("expected an error response, got {error}")),
+            Ok(_) => Err("the agent initialized before the host".into()),
+        }
+    }
+
+    async fn initialize_host(&self) -> Result<(KitClient, InitializeResult), String> {
+        let host = self.connect_host().await?;
+        let params = self.initialize_params(Role::Host, self.process.token(), PROTOCOL_VERSION);
+        let raw = host
+            .request(
+                methods::Initialize::NAME,
+                serde_json::to_value(&params).map_err(|error| error.to_string())?,
+                Some(kition_kit_process_protocol::launch::INITIALIZE_TIMEOUT),
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        self.schemas.protocol_def("initializeResult", &raw)?;
+        let result: InitializeResult =
+            serde_json::from_value(raw).map_err(|error| error.to_string())?;
+        host.notify::<methods::Initialized>(&Empty {})
+            .await
+            .map_err(|error| error.to_string())?;
+        if result.protocol_version != PROTOCOL_VERSION {
+            return Err(format!("protocolVersion is {}", result.protocol_version));
+        }
+        if !result.capabilities.surfaces.contains(&Surface::Headless) {
+            return Err("capabilities.surfaces does not include headless".into());
+        }
+        if let Some(manifest) = &self.manifest
+            && (manifest.id != result.kit.id || manifest.version != result.kit.version)
+        {
+            return Err(format!(
+                "the kit reports {} {}, but kit.json says {} {}",
+                result.kit.id, result.kit.version, manifest.id, manifest.version
+            ));
+        }
+        if let Some(declared) = self
+            .manifest
+            .as_ref()
+            .map(|manifest| manifest.headless_features.as_slice())
+            && let Some(mismatch) = feature_mismatch(declared, &result.capabilities.features)
+        {
+            return Err(mismatch);
+        }
+        Ok((host, result))
+    }
+
+    async fn commands(&self, host: &KitClient) -> Result<Vec<CommandInfo>, String> {
+        let raw = host
+            .request(methods::CommandsList::NAME, json!({}), None)
+            .await
+            .map_err(|error| error.to_string())?;
+        self.schemas.protocol_def("commandsListResult", &raw)?;
+        let result: CommandsListResult =
+            serde_json::from_value(raw).map_err(|error| error.to_string())?;
+        let mut seen = std::collections::HashSet::new();
+        for command in &result.commands {
+            if !seen.insert(command.id.as_str()) {
+                return Err(format!("command `{}` is listed twice", command.id));
+            }
+            schema::is_valid_schema(&command.params).map_err(|error| {
+                format!(
+                    "command `{}` has an invalid params schema: {error}",
+                    command.id
+                )
+            })?;
+        }
+        let fixture = &self.options.fixture;
+        let Some(edit) = result
+            .commands
+            .iter()
+            .find(|command| command.id == fixture.edit_command)
+        else {
+            return Err(format!(
+                "the fixture command `{}` is not listed",
+                fixture.edit_command
+            ));
+        };
+        schema::validate(&edit.params, &Value::Object(fixture.edit_params.clone()))
+            .map_err(|error| format!("the fixture params do not match `{}`: {error}", edit.id))?;
+        Ok(result.commands)
+    }
+
+    /// Writes the fixture into the workspace and mints the host's handle on it (`read` and
+    /// `write`): the kit never sees its path.
+    fn write_fixture(&self) -> Result<String, String> {
+        let name = &self.options.fixture.file_name;
+        std::fs::write(self.workspace.join(name), &self.options.fixture.contents)
+            .map_err(|error| error.to_string())?;
+        self.files
+            .document(name, false, false)
+            .map(|stat| stat.handle)
+            .map_err(|error| format!("cannot grant the fixture: {error}"))
+    }
+
+    /// `document.open` of the file of `handle`, remembered as that document's file.
+    async fn open(&self, client: &KitClient, handle: &str) -> Result<DocumentState, String> {
+        let raw = client
+            .request(methods::DocumentOpen::NAME, json!({ "file": handle }), None)
+            .await
+            .map_err(|error| format!("document.open: {error}"))?;
+        self.schemas.protocol_def("documentState", &raw)?;
+        let state: DocumentState =
+            serde_json::from_value(raw).map_err(|error| error.to_string())?;
+        self.files.opened(&state.document_id, handle);
+        Ok(state)
+    }
+
+    async fn close(
+        &self,
+        client: &KitClient,
+        document_id: &str,
+        discard_changes: Option<bool>,
+    ) -> Result<(), String> {
+        client
+            .call::<methods::DocumentClose>(&DocumentCloseParams {
+                document_id: document_id.to_owned(),
+                discard_changes,
+            })
+            .await
+            .map_err(|error| format!("document.close: {error}"))?;
+        self.files.closed(document_id);
+        Ok(())
+    }
+
+    async fn describe(
+        &self,
+        client: &KitClient,
+        document_id: &str,
+        supported: bool,
+    ) -> Result<Option<Value>, String> {
+        if !supported {
+            return Ok(None);
+        }
+        let raw = client
+            .request(
+                methods::ViewDescribe::NAME,
+                json!({ "documentId": document_id }),
+                None,
+            )
+            .await
+            .map_err(|error| format!("view.describe: {error}"))?;
+        self.schemas.protocol_def("viewDescribeResult", &raw)?;
+        Ok(Some(raw["state"].clone()))
+    }
+
+    async fn round_trip(
+        &self,
+        host: &KitClient,
+        commands: &[CommandInfo],
+        initialized: &InitializeResult,
+    ) -> Result<(), String> {
+        let fixture = &self.options.fixture;
+        let handle = self.write_fixture()?;
+        let path = self.workspace.join(&fixture.file_name);
+        let describes = initialized
+            .capabilities
+            .features
+            .iter()
+            .any(|feature| feature == "view.describe");
+
+        let opened = self.open(host, &handle).await?;
+        if opened.dirty {
+            return Err("a freshly opened document is dirty".into());
+        }
+        if opened.name != fixture.file_name {
+            return Err(format!(
+                "document.open named the document `{}`, not the file's name `{}`",
+                opened.name, fixture.file_name
+            ));
+        }
+        let again = self.open(host, &handle).await?;
+        if again.document_id != opened.document_id {
+            return Err("opening the same handle twice returned a different documentId".into());
+        }
+        let mutates = commands
+            .iter()
+            .find(|command| command.id == fixture.edit_command)
+            .is_some_and(|command| command.mutates);
+        let executed = host
+            .call::<methods::CommandsExecute>(&CommandsExecuteParams {
+                document_id: opened.document_id.clone(),
+                command: fixture.edit_command.clone(),
+                params: fixture.edit_params.clone(),
+                origin: Origin::Agent,
+                origin_label: None,
+            })
+            .await
+            .map_err(|error| format!("commands.execute: {error}"))?;
+        if mutates && !executed.changed {
+            return Err(format!(
+                "`{}` mutates but reported changed: false",
+                fixture.edit_command
+            ));
+        }
+        let listed = host
+            .call::<methods::DocumentList>(&Empty {})
+            .await
+            .map_err(|error| format!("document.list: {error}"))?;
+        let Some(edited) = listed
+            .documents
+            .iter()
+            .find(|document| document.document_id == opened.document_id)
+        else {
+            return Err("document.list does not include the open document".into());
+        };
+        if executed.changed && !edited.dirty {
+            return Err("the document is not dirty after a change".into());
+        }
+        let described = self.describe(host, &opened.document_id, describes).await?;
+
+        let saved = host
+            .call::<methods::DocumentSave>(&DocumentRef {
+                document_id: opened.document_id.clone(),
+            })
+            .await
+            .map_err(|error| format!("document.save: {error}"))?;
+        if saved.name != fixture.file_name {
+            return Err(format!(
+                "document.save named `{}`, not the file's name `{}`",
+                saved.name, fixture.file_name
+            ));
+        }
+        let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
+        if executed.changed && bytes == fixture.contents {
+            return Err("the saved file is identical to the fixture".into());
+        }
+        let stat = self
+            .files
+            .serve("files.stat", json!({ "handle": handle }))
+            .map_err(|error| format!("files.stat: {}", error.message))?;
+        if stat["version"] != json!(saved.version) {
+            return Err(format!(
+                "document.save answered version {}, but the file's is {}",
+                saved.version, stat["version"]
+            ));
+        }
+        self.close(host, &opened.document_id, None)
+            .await
+            .map_err(|error| format!("{error} after save"))?;
+
+        let reopened = self.open(host, &handle).await?;
+        if reopened.dirty {
+            return Err("the reopened document is dirty".into());
+        }
+        let redescribed = self
+            .describe(host, &reopened.document_id, describes)
+            .await?;
+        if described != redescribed {
+            return Err(format!(
+                "view.describe differs after saving and reopening (state keys: {}); list session-only keys as volatile in the kit's headless executable",
+                differing_keys(described.as_ref(), redescribed.as_ref()).join(", ")
+            ));
+        }
+        expect_reason(
+            host.call::<methods::DocumentSave>(&DocumentRef {
+                document_id: "conformance-missing".into(),
+            })
+            .await,
+            ErrorReason::DocumentNotFound,
+        )?;
+        self.close(host, &reopened.document_id, Some(true)).await
+    }
+
+    /// Section 14 check 5 from the kit's side: it opens no file through a handle the host did not
+    /// grant (`file_not_granted`), and it saves with the version it read, so a file that changed
+    /// meanwhile fails `file_conflict` and leaves the document in conflict.
+    async fn files_check(&self, host: &KitClient) -> Result<(), String> {
+        expect_reason(
+            host.request(
+                methods::DocumentOpen::NAME,
+                json!({ "file": UNGRANTED_HANDLE }),
+                None,
+            )
+            .await,
+            ErrorReason::FileNotGranted,
+        )
+        .map_err(|error| format!("document.open of an ungranted handle: {error}"))?;
+
+        let fixture = &self.options.fixture;
+        let handle = self.write_fixture()?;
+        let opened = self.open(host, &handle).await?;
+        host.call::<methods::CommandsExecute>(&CommandsExecuteParams {
+            document_id: opened.document_id.clone(),
+            command: fixture.edit_command.clone(),
+            params: fixture.edit_params.clone(),
+            origin: Origin::Agent,
+            origin_label: None,
+        })
+        .await
+        .map_err(|error| format!("commands.execute: {error}"))?;
+        // Another program changes the file after the kit read it, while it has unsaved edits.
+        let mut changed = fixture.contents.clone();
+        changed.extend_from_slice(&fixture.contents);
+        changed.push(b'\n');
+        let path = self.workspace.join(&fixture.file_name);
+        std::fs::write(&path, &changed).map_err(|error| error.to_string())?;
+        expect_reason(
+            host.call::<methods::DocumentSave>(&DocumentRef {
+                document_id: opened.document_id.clone(),
+            })
+            .await,
+            ErrorReason::FileConflict,
+        )
+        .map_err(|error| format!("document.save over a file changed since it was read: {error}"))?;
+        if std::fs::read(&path).map_err(|error| error.to_string())? != changed {
+            return Err("a save refused file_conflict still replaced the file".into());
+        }
+        let listed = host
+            .call::<methods::DocumentList>(&Empty {})
+            .await
+            .map_err(|error| format!("document.list: {error}"))?;
+        if !listed
+            .documents
+            .iter()
+            .any(|document| document.document_id == opened.document_id && document.conflict)
+        {
+            return Err("a save refused file_conflict did not put the document in conflict".into());
+        }
+        self.close(host, &opened.document_id, Some(true)).await
+    }
+
+    async fn agent_limits(&self) -> Result<(), String> {
+        let agent = self.connect().await?;
+        let params = self.initialize_params(Role::Agent, self.process.token(), PROTOCOL_VERSION);
+        agent
+            .initialize(&params)
+            .await
+            .map_err(|error| format!("agent kit.initialize: {error}"))?;
+        expect_reason(
+            agent
+                .call::<methods::SetPreferences>(&SetPreferencesParams {
+                    locale: Some("en-US".into()),
+                    appearance: None,
+                })
+                .await,
+            ErrorReason::RoleForbidden,
+        )
+        .map_err(|error| format!("kit.setPreferences: {error}"))?;
+        expect_reason(
+            agent.call::<methods::Shutdown>(&Empty {}).await,
+            ErrorReason::RoleForbidden,
+        )
+        .map_err(|error| format!("kit.shutdown: {error}"))?;
+
+        expect_reason(
+            agent
+                .request(
+                    methods::DocumentOpen::NAME,
+                    json!({ "file": UNGRANTED_HANDLE }),
+                    None,
+                )
+                .await,
+            ErrorReason::FileNotGranted,
+        )
+        .map_err(|error| format!("document.open of an ungranted handle: {error}"))?;
+
+        // A handle the host minted for the agent's run opens through the host's files.
+        let handle = self.write_fixture()?;
+        let opened = self.open(&agent, &handle).await?;
+        self.close(&agent, &opened.document_id, Some(true)).await
+    }
+
+    async fn screenshot(&self, host: &KitClient) -> Result<(), String> {
+        let handle = self.write_fixture()?;
+        let opened = self.open(host, &handle).await?;
+        let raw = host
+            .request(
+                methods::ViewScreenshot::NAME,
+                json!({ "documentId": opened.document_id, "scope": "canvas", "maxSize": SCREENSHOT_MAX_SIZE }),
+                None,
+            )
+            .await
+            .map_err(|error| format!("view.screenshot: {error}"))?;
+        self.schemas.protocol_def("image", &raw)?;
+        let image: Image = serde_json::from_value(raw).map_err(|error| error.to_string())?;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(&image.data)
+            .map_err(|error| format!("image data is not base64: {error}"))?;
+        let (width, height) = png_size(&bytes).ok_or("image data is not a PNG")?;
+        if (width, height) != (image.width, image.height) {
+            return Err(format!(
+                "the PNG is {width}x{height}, but the result says {}x{}",
+                image.width, image.height
+            ));
+        }
+        if width.max(height) > SCREENSHOT_MAX_SIZE {
+            return Err(format!(
+                "the PNG is {width}x{height}, larger than maxSize {SCREENSHOT_MAX_SIZE}"
+            ));
+        }
+        self.close(host, &opened.document_id, Some(true)).await
+    }
+
+    async fn shutdown(&mut self, host: &KitClient) -> Result<(), String> {
+        let replied = host.call::<methods::Shutdown>(&Empty {}).await;
+        let exited = self.process.wait_for_exit(SHUTDOWN_TIMEOUT).await;
+        if exited.is_none() {
+            self.process.kill().await;
+            return Err("the kit was still running 5 seconds after kit.shutdown".into());
+        }
+        match replied {
+            Ok(Empty {}) => Ok(()),
+            Err(error) => Err(format!("kit.shutdown did not return {{}}: {error}")),
+        }
+    }
+}
+
+/// The top-level keys whose values differ between two `view.describe` states.
+fn differing_keys(before: Option<&Value>, after: Option<&Value>) -> Vec<String> {
+    let empty = Map::new();
+    let before = before.and_then(Value::as_object).unwrap_or(&empty);
+    let after = after.and_then(Value::as_object).unwrap_or(&empty);
+    let mut keys: Vec<String> = before
+        .keys()
+        .chain(after.keys())
+        .filter(|key| before.get(*key) != after.get(*key))
+        .cloned()
+        .collect();
+    keys.sort_unstable();
+    keys.dedup();
+    keys
+}
+
+/// Reads the width and height from a PNG's IHDR chunk.
+fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+    if bytes.len() < 24 || &bytes[..8] != SIGNATURE || &bytes[12..16] != b"IHDR" {
+        return None;
+    }
+    let width = u32::from_be_bytes(bytes[16..20].try_into().ok()?);
+    let height = u32::from_be_bytes(bytes[20..24].try_into().ok()?);
+    Some((width, height))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_png_dimensions() {
+        let pixel = base64::engine::general_purpose::STANDARD
+            .decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
+            .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(png_size(&pixel), Some((1, 1)));
+        assert_eq!(png_size(b"GIF89a"), None);
+    }
+
+    #[test]
+    fn requires_the_manifest_to_list_exactly_the_features_the_kit_answers() {
+        let owned = |list: &[&str]| {
+            list.iter()
+                .map(|feature| (*feature).to_owned())
+                .collect::<Vec<_>>()
+        };
+        let answered = owned(&[
+            "view.describe",
+            "document.check",
+            "model.describe",
+            "model.batch",
+        ]);
+        assert_eq!(
+            feature_mismatch(
+                &owned(&[
+                    "model.batch",
+                    "document.check",
+                    "view.describe",
+                    "model.describe"
+                ]),
+                &answered
+            ),
+            None,
+            "the order does not matter"
+        );
+        let mismatch = feature_mismatch(
+            &owned(&["model.describe", "model.batch", "model.open"]),
+            &answered,
+        )
+        .unwrap_or_else(|| panic!("a mismatch"));
+        assert!(
+            mismatch.contains("missing from kit.json: view.describe, document.check"),
+            "{mismatch}"
+        );
+        assert!(
+            mismatch.contains("not answered by the kit: model.open"),
+            "{mismatch}"
+        );
+        assert!(
+            mismatch.contains("K9") || mismatch.contains("kit.initialize"),
+            "{mismatch}"
+        );
+    }
+
+    #[test]
+    fn names_the_describe_keys_that_differ() {
+        let before = json!({ "slides": 2, "selectedKinds": ["shape"], "title": "a" });
+        let after = json!({ "slides": 2, "selectedKinds": [], "zoom": 1 });
+        assert_eq!(
+            differing_keys(Some(&before), Some(&after)),
+            ["selectedKinds", "title", "zoom"]
+        );
+    }
+
+    #[test]
+    fn accepts_a_khp_manifest_with_an_embedded_editor() {
+        let schemas = Schemas::load().unwrap_or_else(|err| panic!("{err}"));
+        let mut manifest = json!({
+            "khp": "1.0",
+            "id": "kit.example",
+            "name": "Example",
+            "version": "0.1.0",
+            "license": "Apache-2.0",
+            "engine": { "module": "kition_example_kit", "class": "ExampleDocument", "contract": 1 },
+            "formats": [{ "id": "example", "extensions": ["example"], "role": "edit" }],
+            "ui": { "mode": "embedded", "entry": "ui/index.html", "layout": "canvas" }
+        });
+        schemas.kit(&manifest).unwrap_or_else(|err| panic!("{err}"));
+        manifest["ui"].as_object_mut().map(|ui| ui.remove("entry"));
+        assert!(
+            schemas.kit(&manifest).is_err(),
+            "an embedded editor needs an entry"
+        );
+        manifest["ui"]["entry"] = json!("ui/index.html");
+        manifest["khp"] = json!("2.0");
+        assert!(
+            schemas.kit(&manifest).is_err(),
+            "khp is the KHP version, 1.x"
+        );
+        let mut legacy = manifest.clone();
+        legacy.as_object_mut().map(|object| object.remove("khp"));
+        legacy["standard"] = json!("2.0");
+        assert!(
+            schemas.kit(&legacy).is_err(),
+            "there is no `standard` alias"
+        );
+    }
+
+    #[test]
+    fn reports_the_platform_levels_from_the_platform_fields() {
+        let mut manifest = json!({
+            "khp": "1.0",
+            "engine": { "contract": 2 },
+            "ui": { "mode": "embedded" },
+            "creates": [{ "id": "doc" }],
+            "agent": { "prefix": "doc", "tools": "document" },
+            "model": { "schema": "model/schema.json", "schemaVersion": 1 },
+            "objectModel": { "namespace": "Doc" }
+        });
+        let (levels, notes) = platform_levels(&manifest);
+        assert_eq!(levels, ["L1", "L2", "L3", "L5"]);
+        assert!(notes.iter().any(|note| note.starts_with("L6")));
+        assert!(
+            notes
+                .iter()
+                .any(|note| note.starts_with("L4 needs registration") && note.contains("no `id`")),
+            "{notes:?}"
+        );
+        // The KHP version says nothing about the platform: engine contract 1 is what stops L5.
+        manifest["engine"]["contract"] = json!(1);
+        let (levels, notes) = platform_levels(&manifest);
+        assert_eq!(levels, ["L1", "L2", "L3"]);
+        assert!(
+            notes
+                .iter()
+                .any(|note| note.starts_with("L5 needs engine contract 2")),
+            "{notes:?}"
+        );
+    }
+
+    #[test]
+    fn a_kit_kition_serves_over_mcp_reaches_l4_against_the_pinned_harness() {
+        let mut manifest = json!({
+            "id": "kit.slide",
+            "name": "Slide",
+            "formats": [{ "id": "slide", "extensions": ["kslide"], "role": "edit" }],
+            "khp": "1.0",
+            "engine": { "contract": 2 },
+            "ui": { "mode": "embedded" },
+            "creates": [{ "id": "slide file" }],
+            "agent": { "prefix": "slide", "tools": "document" },
+            "model": { "schema": "model/schema.json", "schemaVersion": 1 },
+            "objectModel": { "namespace": "Slide" }
+        });
+        let (levels, notes) = platform_levels(&manifest);
+        assert_eq!(levels, ["L1", "L2", "L3", "L4", "L5"]);
+        assert!(
+            notes
+                .iter()
+                .any(|note| note.contains("mcp__kition__slide_*") && note.contains(DSH_TARGET)),
+            "{notes:?}"
+        );
+        manifest["agent"]["prefix"] = json!("slide file");
+        let (levels, notes) = platform_levels(&manifest);
+        assert!(!levels.contains(&"L4"));
+        assert!(
+            notes.iter().any(|note| note.contains("`slide file`")),
+            "{notes:?}"
+        );
+        let report = Report {
+            checks: vec![CheckResult {
+                id: "manifest",
+                title: "t",
+                outcome: Outcome::Passed,
+            }],
+            levels,
+            level_notes: notes,
+        };
+        assert!(
+            report
+                .render()
+                .contains(&format!("DeepSeek Harness target: {DSH_TARGET}"))
+        );
+    }
+
+    /// `@kition/dsh-kits` (kition-sdk) pins the same release, when its checkout is beside this one.
+    #[test]
+    fn dsh_kits_pins_the_same_release() {
+        let package = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../kition-sdk/packages/dsh-kits/package.json");
+        let Ok(text) = std::fs::read_to_string(&package) else {
+            eprintln!("skipped: no kition-sdk checkout beside this repository");
+            return;
+        };
+        let package: Value = serde_json::from_str(&text).unwrap_or_else(|err| panic!("{err}"));
+        let pinned = &package["dsh"];
+        assert_eq!(
+            format!(
+                "{} ({})",
+                pinned["target"].as_str().unwrap_or_default(),
+                pinned["commit"].as_str().unwrap_or_default()
+            ),
+            DSH_TARGET,
+            "@kition/dsh-kits `dsh` pin: {pinned}"
+        );
+    }
+
+    #[test]
+    fn check_ids_are_unique() {
+        let mut ids: Vec<_> = CHECKS.iter().map(|(id, _)| *id).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), CHECKS.len());
+    }
+}

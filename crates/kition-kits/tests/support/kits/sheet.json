@@ -1,0 +1,134 @@
+{
+  "khp": "1.0",
+  "id": "kit.sheet",
+  "name": "Sheet",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "xlsx",
+      "extensions": [
+        "xlsx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "role": "edit"
+    },
+    {
+      "id": "xlsm",
+      "extensions": [
+        "xlsm"
+      ],
+      "mime": "application/vnd.ms-excel.sheet.macroEnabled.12",
+      "role": "edit"
+    },
+    {
+      "id": "xltx",
+      "extensions": [
+        "xltx",
+        "xltm"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+      "role": "view"
+    },
+    {
+      "id": "xls",
+      "extensions": [
+        "xls",
+        "xlt",
+        "et",
+        "ett"
+      ],
+      "mime": "application/vnd.ms-excel",
+      "role": "view"
+    },
+    {
+      "id": "xlsb",
+      "extensions": [
+        "xlsb"
+      ],
+      "mime": "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+      "role": "view"
+    },
+    {
+      "id": "ods",
+      "extensions": [
+        "ods"
+      ],
+      "mime": "application/vnd.oasis.opendocument.spreadsheet",
+      "role": "view"
+    },
+    {
+      "id": "csv",
+      "extensions": [
+        "csv"
+      ],
+      "mime": "text/csv",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "sheet",
+      "extension": "xlsx",
+      "baseName": "Untitled sheet"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    },
+    {
+      "extension": "csv",
+      "mime": "text/csv",
+      "command": "file.export"
+    },
+    {
+      "extension": "html",
+      "mime": "text/html",
+      "command": "file.export"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    },
+    {
+      "extension": "xltx",
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "sheet",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "export": {
+      "command": "file.export",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "spreadsheet"
+    }
+  },
+  "headless": {
+    "executable": "kition-sheet",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

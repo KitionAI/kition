@@ -1,0 +1,29 @@
+import { readBundledAssetText, resolveBundledAssetURL } from '@/lib/bundledAssets'
+
+export type OnboardingManifest = {
+  version: number
+  folder: string
+  welcome: {
+    filename: string
+    asset: string
+    folder?: string
+  }
+  documents?: Array<{ asset: string; filename: string; folder?: string }>
+  tables: Array<{ asset: string; filename: string; folder?: string }>
+  images?: Array<{ asset: string; filename: string }>
+  guides?: { manifest: string; folder?: string }
+}
+
+export const ONBOARDING_BASE = resolveBundledAssetURL('onboarding')
+export const ONBOARDING_WELCOME_PATH = 'Getting Started/Welcome to Kition.md'
+
+export async function fetchOnboardingManifest(
+  fetchText: (url: string) => Promise<string> = defaultFetchText,
+): Promise<OnboardingManifest> {
+  const text = await fetchText(`${ONBOARDING_BASE}/manifest.json`)
+  return JSON.parse(text) as OnboardingManifest
+}
+
+async function defaultFetchText(url: string): Promise<string> {
+  return readBundledAssetText(url)
+}

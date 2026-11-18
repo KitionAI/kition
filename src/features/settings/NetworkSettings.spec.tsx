@@ -1,0 +1,130 @@
+import { act, createElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { createDefaultDesktopProxyState } from '@/types/desktopProxy'
+
+vi.mock('@/services/desktopProxy', async () => {
+  const types: any = await vi.importActual('@/types/desktopProxy')
+  return {
+    getProxyState: vi.fn(async () => types.createDefaultDesktopProxyState()),
+    saveProxyState: vi.fn(async () => ({ state: types.createDefaultDesktopProxyState(), requiresRestart: false })),
+    testProxy: vi.fn(async () => ({ ok: true, latencyMs: 12 })),
+    restartBackend: vi.fn(async () => ({ ok: true })),
+  }
+})
+
+import { NetworkSettings } from './NetworkSettings'
+import * as desktopProxy from '@/services/desktopProxy'
+
+;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
+
+let container: HTMLDivElement
+let root: Root | null = null
+
+async function mount(node: ReturnType<typeof createElement>) {
+  container = document.createElement('div')
+  document.body.appendChild(container)
+  await act(async () => {
+    root = createRoot(container)
+    root.render(node)
+  })
+  // Two flushes: useEffect → setState from getProxyState → re-render.
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
+describe('NetworkSettings', () => {
+  beforeEach(async () => {
+    await act(async () => { root?.unmount() })
+    root = null
+    container?.remove()
+    vi.clearAllMocks()
+  })
+
+  it('renders the proxy section with the enable toggle defaulting off', async () => {
+    await mount(createElement(NetworkSettings))
+    const toggles = container.querySelectorAll('[role="switch"]')
+    expect(toggles.length).toBeGreaterThanOrEqual(1)
+    const enabledToggle = toggles[0] as HTMLButtonElement
+    expect(enabledToggle.getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('disables the Test button until proxy is enabled', async () => {
+    await mount(createElement(NetworkSettings))
+    const testButton = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Test') || b.getAttribute('aria-label') === 'Test',
+    )
+    expect(testButton).toBeTruthy()
+    expect(testButton?.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('describes where the proxy password is stored without claiming keychain encryption', async () => {
+    await mount(createElement(NetworkSettings))
+    const text = container.textContent ?? ''
+    expect(text).toContain("Saved unencrypted in Kition's data folder on this device, not in the system keychain.")
+    expect(text).not.toContain('Stored encrypted')
+    expect(container.querySelector('input[type="password"]')?.getAttribute('placeholder')).not.toMatch(/encrypt/i)
+  })
+
+  it('calls getProxyState on mount', async () => {
+    await mount(createElement(NetworkSettings))
+    expect(desktopProxy.getProxyState).toHaveBeenCalled()
+  })
+
+  it('payload helpers produce the expected default state shape', () => {
+    const state = createDefaultDesktopProxyState()
+    expect(state.enabled).toBe(false)
+    expect(state.scheme).toBe('http')
+    expect(state.hasPassword).toBe(false)
+    expect(state.noProxy).toContain('localhost')
+  })
+
+  it('restarts the backend after the user confirms a proxy change', async () => {
+    const nextState = {
+      ...createDefaultDesktopProxyState(),
+      noProxy: 'localhost, 127.0.0.1, ::1, example.test',
+    }
+    vi.mocked(desktopProxy.saveProxyState).mockResolvedValueOnce({
+      state: nextState,
+      requiresRestart: true,
+    })
+    vi.mocked(desktopProxy.restartBackend).mockResolvedValueOnce({ ok: true })
+    await mount(createElement(NetworkSettings))
+
+    const noProxyInput = Array.from(container.querySelectorAll('input')).find(
+      (input) => input.value.includes('localhost'),
+    ) as HTMLInputElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        noProxyInput,
+        nextState.noProxy,
+      )
+      noProxyInput.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const saveButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save',
+    ) as HTMLButtonElement
+    await act(async () => {
+      saveButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(container.querySelector('[role="dialog"]')).toBeTruthy()
+    const restartButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save and restart',
+    ) as HTMLButtonElement
+    await act(async () => {
+      restartButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(desktopProxy.restartBackend).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain('Background service restarted.')
+  })
+})

@@ -1,0 +1,115 @@
+{
+  "title": "Workspace",
+  "subtitle": "Version {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "New workspace",
+      "description": "Create a new workspace in the folder you choose.",
+      "button": "Create",
+      "nameLabel": "Workspace name",
+      "namePlaceholder": "My workspace",
+      "parentLabel": "Parent folder",
+      "parentPlaceholder": "Pick a folder…",
+      "pick": "Browse…",
+      "confirm": "Create workspace",
+      "cancel": "Cancel"
+    },
+    "open": {
+      "title": "Open local workspace",
+      "description": "Use an existing folder on this machine as a workspace.",
+      "button": "Open"
+    },
+    "sync": {
+      "title": "Sync remote workspace",
+      "description": "Sync a workspace from Kition Sync onto this machine.",
+      "button": "Sign in",
+      "disabledTooltip": "Coming soon"
+    }
+  },
+  "openMode": {
+    "title": "How do you want to open {{name}}?",
+    "description": "Keep the current workspace open, or replace it in this window.",
+    "current": {
+      "title": "Replace current window",
+      "description": "Switch this window to the selected workspace.",
+      "button": "Open here"
+    },
+    "new": {
+      "title": "Open in new window",
+      "description": "Keep this workspace open and launch an independent workspace window.",
+      "button": "Open new window"
+    },
+    "cancel": "Cancel"
+  },
+  "vault": {
+    "menu": {
+      "rename": "Rename",
+      "remove": "Remove from list",
+      "reveal": "Show in Finder"
+    },
+    "renameTitle": "Rename workspace",
+    "renamePlaceholder": "Workspace name",
+    "removeConfirm": "Remove this workspace from the list? The folder on disk stays untouched.",
+    "empty": "No workspaces yet. Create or open one to get started.",
+    "more": "More"
+  },
+  "errors": {
+    "missingName": "Please enter a workspace name.",
+    "missingParent": "Please choose a parent folder.",
+    "open": "Failed to open the workspace: {{message}}",
+    "create": "Failed to create the workspace: {{message}}",
+    "switch": "Failed to switch workspace: {{message}}",
+    "newWindow": "Failed to open a new workspace window.",
+    "missingVault": "The workspace folder no longer exists on disk."
+  },
+  "firstRun": {
+    "seeding": "Setting up your workspace…",
+    "seedError": "Couldn't set up your Getting Started files. Try again, or keep working without them.",
+    "seedRetry": "Retry",
+    "dialogLabel": "Getting started",
+    "eyebrow": "Getting started",
+    "progress": "Step {{step}} of 3",
+    "workspaceTitle": "Choose how to start",
+    "workspaceDescription": "Your workspace is ready. Pick an option now, or skip and start with the files in Getting Started.",
+    "workspaceLocal": "Stored locally on this device",
+    "providerTitle": "Choose how you want to work",
+    "providerDescription": "You can change this later in Settings. Documents and tables work without an account or AI provider.",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "Hosted AI with Kition Account sign-in and no separate API key.",
+      "byo": "Bring your own API key",
+      "byoDescription": "Connect OpenAI, Anthropic, DeepSeek, or another compatible provider.",
+      "local": "Continue without AI",
+      "localDescription": "Open the welcome guide and explore local documents and tables without an account or API key."
+    },
+    "successTitle": "Complete one useful action",
+    "success": {
+      "cloud": {
+        "title": "Summarize the Welcome document",
+        "description": "Sign in, open Agent, and start with a prepared prompt.",
+        "privacy": "The prompt and selected page context are sent to Kition Cloud. Your workspace files stay on this device."
+      },
+      "byo": {
+        "title": "Connect your AI provider",
+        "description": "Open AI Providers and connect the provider you already use.",
+        "privacy": "Prompts and selected context are sent directly to the provider you configure."
+      },
+      "local": {
+        "title": "Explore the example tables",
+        "description": "Open the welcome guide and the example tables in Getting Started; none of them needs an AI model.",
+        "privacy": "Everything stays on this device; no workspace content is sent to an AI service."
+      }
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "skip": "Skip for now",
+    "startCloud": "Sign in and open Agent",
+    "agentPrompt": "Summarize this welcome page and write a short getting-started checklist below it.",
+    "cancelSignIn": "Cancel sign-in",
+    "configureModels": "Open AI Providers",
+    "startLocal": "Open welcome guide",
+    "cloudCreditsEmpty": "Your Kition Cloud credits are empty. Top up from Kition Account before starting this action.",
+    "cloudUnavailable": "Kition Account is temporarily unavailable."
+  }
+}

@@ -1,0 +1,49 @@
+# Copied from kition-sdk crates/kition-kits/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-kits"
+description = "Kits through their KHP manifests and headless executables: the KHP agent tools, drafts, file grants, and the kits' MCP server (kition-kits-mcp)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kition-kdm = { path = "../kition-kdm" }
+kition-kit-host = { path = "../kition-kit-host" }
+kition-kit-process-protocol = { path = "../kition-kit-process-protocol", features = ["tokio"] }
+
+base64 = "0.22"
+hex = "0.4"
+rand = "0.9"
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"
+url = "2"
+
+[features]
+# The manifests of Kition's kits as fixtures (`definitions::fixture_kits`), for tests.
+test-kits = []
+
+[[bin]]
+name = "kition-kits-mcp"
+path = "src/bin/kition-kits-mcp.rs"
+
+[[bin]]
+name = "kition-kits"
+path = "src/bin/kition-kits.rs"
+
+[dev-dependencies]
+jsonschema = { version = "0.58", default-features = false }
+tempfile = "3"
+
+[[test]]
+name = "process_control"
+path = "tests/process_control.rs"
+harness = false

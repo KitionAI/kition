@@ -1,0 +1,868 @@
+{
+ "cases": [
+  {
+   "name": "ripple-delete",
+   "changes": {
+    "created": [],
+    "changed": [
+     {
+      "id": "2",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 1,
+        "after": 0
+       }
+      ]
+     },
+     {
+      "id": "3",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 2,
+        "after": 1
+       }
+      ]
+     },
+     {
+      "id": "4",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 3,
+        "after": 2
+       }
+      ]
+     },
+     {
+      "id": "5",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 4,
+        "after": 3
+       }
+      ]
+     },
+     {
+      "id": "6",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 5,
+        "after": 4
+       }
+      ]
+     },
+     {
+      "id": "V1",
+      "type": "Track",
+      "fields": [
+       "clips"
+      ],
+      "edits": []
+     }
+    ],
+    "moved": [],
+    "deleted": [
+     {
+      "id": "1",
+      "type": "Clip",
+      "fields": [],
+      "at": {
+       "parent": "V1",
+       "field": "clips",
+       "index": 0
+      }
+     }
+    ]
+   },
+   "lists": {
+    "V1/clips": [
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "expected": {
+    "created": [],
+    "changed": [],
+    "moved": [],
+    "deleted": [
+     {
+      "id": "1",
+      "type": "Clip",
+      "fields": [],
+      "at": {
+       "parent": "V1",
+       "field": "clips",
+       "index": 0
+      }
+     }
+    ],
+    "footprint": [
+     {
+      "parent": "V1",
+      "field": "clips",
+      "from": 0,
+      "count": 5,
+      "shift": {
+       "field": "start",
+       "by": -1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "short-run",
+   "changes": {
+    "created": [],
+    "changed": [
+     {
+      "id": "2",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 1,
+        "after": 0
+       }
+      ]
+     },
+     {
+      "id": "3",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 2,
+        "after": 1
+       }
+      ]
+     },
+     {
+      "id": "4",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 3,
+        "after": 2
+       }
+      ]
+     },
+     {
+      "id": "V1",
+      "type": "Track",
+      "fields": [
+       "clips"
+      ],
+      "edits": []
+     }
+    ],
+    "moved": [],
+    "deleted": [
+     {
+      "id": "1",
+      "type": "Clip",
+      "fields": [],
+      "at": {
+       "parent": "V1",
+       "field": "clips",
+       "index": 0
+      }
+     }
+    ]
+   },
+   "lists": {
+    "V1/clips": [
+     "2",
+     "3",
+     "4"
+    ]
+   },
+   "expected": {
+    "created": [],
+    "changed": [
+     {
+      "id": "2",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 1,
+        "after": 0
+       }
+      ]
+     },
+     {
+      "id": "3",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 2,
+        "after": 1
+       }
+      ]
+     },
+     {
+      "id": "4",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 3,
+        "after": 2
+       }
+      ]
+     }
+    ],
+    "moved": [],
+    "deleted": [
+     {
+      "id": "1",
+      "type": "Clip",
+      "fields": [],
+      "at": {
+       "parent": "V1",
+       "field": "clips",
+       "index": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ticks-and-a-break",
+   "changes": {
+    "created": [
+     {
+      "id": "10",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "values": {
+       "start": "0"
+      },
+      "at": {
+       "parent": "V1",
+       "field": "clips",
+       "index": 0
+      }
+     }
+    ],
+    "changed": [
+     {
+      "id": "2",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "254016000000",
+        "after": "508032000000"
+       }
+      ]
+     },
+     {
+      "id": "3",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "508032000000",
+        "after": "762048000000"
+       }
+      ]
+     },
+     {
+      "id": "4",
+      "type": "Clip",
+      "fields": [
+       "opacity",
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "opacity",
+        "before": 100,
+        "after": 50
+       },
+       {
+        "field": "start",
+        "before": "762048000000",
+        "after": "1016064000000"
+       }
+      ]
+     },
+     {
+      "id": "5",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "1016064000000",
+        "after": "1270080000000"
+       }
+      ]
+     },
+     {
+      "id": "5x",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 0.25,
+        "after": 0.75
+       }
+      ]
+     },
+     {
+      "id": "6",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "1270080000000",
+        "after": "1524096000000"
+       }
+      ]
+     },
+     {
+      "id": "7",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "1524096000000",
+        "after": "1778112000000"
+       }
+      ]
+     },
+     {
+      "id": "8",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "1778112000000",
+        "after": "2032128000000"
+       }
+      ]
+     },
+     {
+      "id": "9",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "2032128000000",
+        "after": "2286144000000"
+       }
+      ]
+     },
+     {
+      "id": "V1",
+      "type": "Track",
+      "fields": [
+       "clips",
+       "name"
+      ],
+      "edits": [
+       {
+        "field": "name",
+        "before": "A",
+        "after": "B"
+       }
+      ]
+     }
+    ],
+    "moved": [],
+    "deleted": []
+   },
+   "lists": {
+    "V1/clips": [
+     "10",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "5x"
+    ]
+   },
+   "expected": {
+    "created": [
+     {
+      "id": "10",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "values": {
+       "start": "0"
+      },
+      "at": {
+       "parent": "V1",
+       "field": "clips",
+       "index": 0
+      }
+     }
+    ],
+    "changed": [
+     {
+      "id": "2",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "254016000000",
+        "after": "508032000000"
+       }
+      ]
+     },
+     {
+      "id": "3",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": "508032000000",
+        "after": "762048000000"
+       }
+      ]
+     },
+     {
+      "id": "4",
+      "type": "Clip",
+      "fields": [
+       "opacity",
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "opacity",
+        "before": 100,
+        "after": 50
+       },
+       {
+        "field": "start",
+        "before": "762048000000",
+        "after": "1016064000000"
+       }
+      ]
+     },
+     {
+      "id": "5x",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 0.25,
+        "after": 0.75
+       }
+      ]
+     },
+     {
+      "id": "V1",
+      "type": "Track",
+      "fields": [
+       "clips",
+       "name"
+      ],
+      "edits": [
+       {
+        "field": "name",
+        "before": "A",
+        "after": "B"
+       }
+      ]
+     }
+    ],
+    "moved": [],
+    "deleted": [],
+    "footprint": [
+     {
+      "parent": "V1",
+      "field": "clips",
+      "from": 4,
+      "count": 5,
+      "shift": {
+       "field": "start",
+       "by": "254016000000"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "no-list-named",
+   "changes": {
+    "created": [],
+    "changed": [
+     {
+      "id": "1",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 1,
+        "after": 1.5
+       }
+      ]
+     },
+     {
+      "id": "2",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 2,
+        "after": 2.5
+       }
+      ]
+     },
+     {
+      "id": "3",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 3,
+        "after": 3.5
+       }
+      ]
+     },
+     {
+      "id": "4",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 4,
+        "after": 4.5
+       }
+      ]
+     },
+     {
+      "id": "5",
+      "type": "Clip",
+      "fields": [
+       "start"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "before": 5,
+        "after": 5.5
+       }
+      ]
+     }
+    ],
+    "moved": [],
+    "deleted": []
+   },
+   "lists": {},
+   "expected": {
+    "created": [],
+    "changed": [],
+    "moved": [],
+    "deleted": [],
+    "footprint": [
+     {
+      "ids": [
+       "1",
+       "2",
+       "3",
+       "4",
+       "5"
+      ],
+      "edits": [
+       {
+        "field": "start",
+        "by": 0.5
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "scattered-ids",
+   "changes": {
+    "created": [],
+    "changed": [
+     {
+      "id": "4",
+      "type": "Node",
+      "fields": [
+       "location.0",
+       "location.2"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 0,
+        "after": 0.5
+       },
+       {
+        "field": "location.2",
+        "before": 1,
+        "after": 2
+       }
+      ]
+     },
+     {
+      "id": "9",
+      "type": "Node",
+      "fields": [
+       "location.0",
+       "location.2"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 1,
+        "after": 1.5
+       },
+       {
+        "field": "location.2",
+        "before": 1,
+        "after": 2
+       }
+      ]
+     },
+     {
+      "id": "17",
+      "type": "Node",
+      "fields": [
+       "location.0",
+       "location.2"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 2,
+        "after": 2.5
+       },
+       {
+        "field": "location.2",
+        "before": 1,
+        "after": 2
+       }
+      ]
+     },
+     {
+      "id": "30",
+      "type": "Node",
+      "fields": [
+       "location.0",
+       "location.2"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 3,
+        "after": 3.5
+       },
+       {
+        "field": "location.2",
+        "before": 1,
+        "after": 2
+       }
+      ]
+     },
+     {
+      "id": "5",
+      "type": "Node",
+      "fields": [
+       "location.0",
+       "name"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 0,
+        "after": 0.5
+       },
+       {
+        "field": "name",
+        "before": "a",
+        "after": "b"
+       }
+      ]
+     },
+     {
+      "id": "6",
+      "type": "Node",
+      "fields": [
+       "location.0"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 0,
+        "after": 0.5
+       }
+      ]
+     }
+    ],
+    "moved": [],
+    "deleted": []
+   },
+   "lists": {},
+   "expected": {
+    "created": [],
+    "changed": [
+     {
+      "id": "5",
+      "type": "Node",
+      "fields": [
+       "location.0",
+       "name"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 0,
+        "after": 0.5
+       },
+       {
+        "field": "name",
+        "before": "a",
+        "after": "b"
+       }
+      ]
+     },
+     {
+      "id": "6",
+      "type": "Node",
+      "fields": [
+       "location.0"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "before": 0,
+        "after": 0.5
+       }
+      ]
+     }
+    ],
+    "moved": [],
+    "deleted": [],
+    "footprint": [
+     {
+      "ids": [
+       "4",
+       "9",
+       "17",
+       "30"
+      ],
+      "edits": [
+       {
+        "field": "location.0",
+        "by": 0.5
+       },
+       {
+        "field": "location.2",
+        "by": 1
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

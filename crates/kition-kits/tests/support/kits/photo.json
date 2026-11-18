@@ -1,0 +1,89 @@
+{
+  "khp": "1.0",
+  "id": "kit.photo",
+  "name": "Photo",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "psd",
+      "extensions": [
+        "psd",
+        "psb"
+      ],
+      "mime": "image/vnd.adobe.photoshop",
+      "role": "edit"
+    },
+    {
+      "id": "photo",
+      "extensions": [
+        "kphoto"
+      ],
+      "mime": "application/vnd.kition.photo+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "photo",
+      "extension": "psd",
+      "baseName": "Untitled photo"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.exportImage"
+    },
+    {
+      "extension": "jpg",
+      "mime": "image/jpeg",
+      "command": "file.exportImage"
+    },
+    {
+      "extension": "tiff",
+      "mime": "image/tiff",
+      "command": "file.exportImage"
+    },
+    {
+      "extension": "webp",
+      "mime": "image/webp",
+      "command": "file.exportImage"
+    }
+  ],
+  "capabilities": [
+    "selection-outline",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "photo",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "export": {
+      "command": "file.exportImage",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "layered image"
+    }
+  },
+  "headless": {
+    "executable": "kition-photo",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  }
+}

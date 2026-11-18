@@ -1,0 +1,9 @@
+<script>
+    window.setTimeout(function () {
+      window.location.href = 'kition://auth/complete';
+    }, 250);
+    window.setTimeout(function () {
+      var status = document.getElementById('launch-status');
+      if (status) status.textContent = "If Kition didn't open, use the button above.";
+    }, 1800);
+  </script>

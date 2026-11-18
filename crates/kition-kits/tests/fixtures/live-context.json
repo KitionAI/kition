@@ -1,0 +1,69 @@
+{
+  "about": "Call context on a document open in its editor (C3b). The server plans each `<prefix>_run` as on the headless path (`on` into the command's targets, else the selection; `at.part` else the run's `target`) and hands each step its `context` in the editor's `ai/run`; the editor runs each step in an editor state of the agent's own with that context. `crates/kition-kits/tests/live_editor.rs` checks that `<prefix>_run {input}` sends `editorSteps` (or is refused as `refused` says, sending nothing) to an editor that lists `commands`; `packages/kit-editor/src/useKitSession.test.tsx` checks that the editor runs `editorSteps` with each step's context.",
+  "commands": [
+    { "id": "shape.text", "title": "Set text", "description": null, "enabled": true, "mutates": true, "schema": { "type": "object", "properties": { "id": { "type": "string", "x-khp-role": "targets" }, "text": { "type": "string" } }, "x-khp-reads": ["part"] } },
+    { "id": "format.mark", "title": "Mark", "description": null, "enabled": true, "mutates": true, "schema": { "type": "object", "x-khp-reads": ["selection", "part"] } },
+    { "id": "text.append", "title": "Append", "description": null, "enabled": true, "mutates": true, "schema": { "type": "object", "properties": { "text": { "type": "string" } } } }
+  ],
+  "runs": [
+    {
+      "name": "target-on-at",
+      "input": {
+        "target": { "slide": 2 },
+        "steps": [
+          { "command": "shape.text", "params": { "id": "s1", "text": "X" } },
+          { "command": "format.mark", "on": ["s2"] },
+          { "command": "shape.text", "on": ["s3"], "params": { "text": "Y" }, "at": { "part": { "slide": 1 } } }
+        ]
+      },
+      "editorSteps": [
+        { "command": "shape.text", "params": { "id": "s1", "text": "X" }, "context": { "part": { "slide": 2 } } },
+        { "command": "format.mark", "params": {}, "context": { "on": ["s2"], "part": { "slide": 2 } } },
+        { "command": "shape.text", "params": { "text": "Y", "id": "s3" }, "context": { "part": { "slide": 1 } } }
+      ]
+    },
+    {
+      "name": "no-context",
+      "input": { "steps": [{ "command": "text.append", "params": { "text": "!" } }, { "command": "edit.undo" }] },
+      "editorSteps": [
+        { "command": "text.append", "params": { "text": "!" } },
+        { "command": "edit.undo", "params": { "scope": "agent" } }
+      ]
+    },
+    {
+      "name": "time",
+      "input": { "steps": [{ "command": "text.append", "params": { "text": "!" }, "at": { "time": 2.5 } }] },
+      "editorSteps": [{ "command": "text.append", "params": { "text": "!" }, "context": { "time": 2.5 } }]
+    }
+  ],
+  "refused": [
+    {
+      "name": "on-and-targets",
+      "input": { "steps": [{ "command": "text.append", "params": { "text": "a" } }, { "command": "shape.text", "on": ["s1"], "params": { "id": "s1" } }] },
+      "code": "invalid-params",
+      "index": 1,
+      "says": "`on` and `id`"
+    },
+    {
+      "name": "on-without-object",
+      "input": { "steps": [{ "command": "text.append", "on": ["s1"] }] },
+      "code": "invalid-params",
+      "index": 0,
+      "says": "acts on no object"
+    },
+    {
+      "name": "bad-part",
+      "input": { "target": { "slide": 0 }, "steps": [{ "command": "text.append" }] },
+      "code": "invalid-params",
+      "index": null,
+      "says": "counted from 1"
+    },
+    {
+      "name": "unknown-step-member",
+      "input": { "steps": [{ "command": "text.append", "as": 1 }] },
+      "code": "invalid-params",
+      "index": 0,
+      "says": "a step has no `as`"
+    }
+  ]
+}

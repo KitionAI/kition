@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PNPM_VERSION: 10.33.0
+  NODE_VERSION: '22.19.0'
+
+jobs:
+  repository-guards:
+    name: Repository identity guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - name: Check tracked filenames and text
+        run: python3 scripts/check-i18n.py
+      - name: Check canonical product identity
+        run: python3 scripts/check-branding.py
+      - name: Check for blanked comment blocks
+        run: python3 scripts/check-blank-comment-blocks.py
+
+  verify:
+    name: Verify public client
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Lint
+        run: pnpm run lint
+      - name: Unused code ratchet
+        run: pnpm run check:knip
+
+      - name: Module boundary ratchet
+        run: pnpm run check:deps
+
+      - name: Generated contract types are current
+        run: pnpm run check:contracts
+
+      - name: Audit tracked secrets and dependencies
+        run: pnpm run check:security
+
+      - name: Type-check and build
+        run: pnpm run build:check
+
+      - name: Run unit and component tests with coverage floors
+        run: pnpm run test:coverage
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Every e2e spec is run somewhere
+        run: pnpm run check:e2e-coverage
+
+      - name: Fetch the kit packages
+        env:
+          # Reads the Releases of the kit repositories (kits/kits.lock.json); most are still private.
+          GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
+        run: node scripts/fetch-kits.mjs
+
+      - name: Run every mock-backed renderer and desktop end-to-end spec
+        run: xvfb-run -a pnpm run test:e2e:ci
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-test-results
+          path: test-results
+          if-no-files-found: ignore
+
+  desktop-shell:
+    name: Rust runtime and desktop shell (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux web view libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+
+      - name: Provide an empty renderer bundle for compilation
+        shell: bash
+        run: mkdir -p dist && touch dist/index.html
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint the runtime and desktop shell
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test the runtime and desktop shell
+        run: cargo test --workspace --no-fail-fast

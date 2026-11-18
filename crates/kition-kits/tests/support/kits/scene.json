@@ -1,0 +1,101 @@
+{
+  "khp": "1.0",
+  "id": "kit.scene",
+  "name": "Scene",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "kscene",
+      "extensions": [
+        "kscene"
+      ],
+      "mime": "application/vnd.kition.scene+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "scene",
+      "extension": "kscene",
+      "baseName": "Untitled scene"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "glb",
+      "mime": "model/gltf-binary",
+      "command": "file.export"
+    },
+    {
+      "extension": "gltf",
+      "mime": "model/gltf+json",
+      "command": "file.export"
+    },
+    {
+      "extension": "obj",
+      "mime": "model/obj",
+      "command": "file.export"
+    },
+    {
+      "extension": "stl",
+      "mime": "model/stl",
+      "command": "file.export"
+    },
+    {
+      "extension": "fbx",
+      "mime": "application/octet-stream",
+      "command": "file.export"
+    },
+    {
+      "extension": "usda",
+      "mime": "model/vnd.usda",
+      "command": "file.export"
+    },
+    {
+      "extension": "usdc",
+      "mime": "application/octet-stream",
+      "command": "file.export"
+    },
+    {
+      "extension": "usdz",
+      "mime": "model/vnd.usdz+zip",
+      "command": "file.export"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "lent-files",
+    "files",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "scene",
+    "tools": "document",
+    "drafts": false,
+    "objectModel": true,
+    "layout": false,
+    "render": "file.render",
+    "describe": {
+      "noun": "3D scene"
+    }
+  },
+  "headless": {
+    "executable": "kition-scene",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

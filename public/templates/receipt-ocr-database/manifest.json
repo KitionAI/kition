@@ -1,0 +1,128 @@
+{
+  "templateId": "receipt-ocr-database",
+  "source": "Rendered by kition-table web/scripts/render-receipts.mjs (Kition)",
+  "assetCount": 10,
+  "totalSizeBytes": 446132,
+  "assets": [
+    {
+      "id": "record-01-receipt-image",
+      "record": 1,
+      "field": "Receipt Image",
+      "sourceName": "hearth-and-grain-bakery.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 39928,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "92370cb847ef1f98be1b5271ad72542e116d15b57fb0c00188c23b5e295de54c",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-01/receipt.webp"
+    },
+    {
+      "id": "record-02-receipt-image",
+      "record": 2,
+      "field": "Receipt Image",
+      "sourceName": "lantern-row-bistro.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 58936,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "d68785ea8e28d59a99f3de6dfae30085dd50ac7b54becf0fdace22a58f4a6b92",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-02/receipt.webp"
+    },
+    {
+      "id": "record-03-receipt-image",
+      "record": 3,
+      "field": "Receipt Image",
+      "sourceName": "cirruslane-invoice.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 28740,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "db112cad210592a6e896fc76246a7e430bea4811e34a3207b6db3ae1f9ce23fa",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-03/receipt.webp"
+    },
+    {
+      "id": "record-04-receipt-image",
+      "record": 4,
+      "field": "Receipt Image",
+      "sourceName": "greencrate-market.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 48314,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "c9c1fec488dabcd0ef2397badf1246ba04d5efffa6640f4087f4b945b9edb1f3",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-04/receipt.webp"
+    },
+    {
+      "id": "record-05-receipt-image",
+      "record": 5,
+      "field": "Receipt Image",
+      "sourceName": "birch-and-bun-burgers.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 35172,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "167534115dd97a5acca4d552a07abc95ca287971e37cdfe1c819fd2e616a6eaa",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-05/receipt.webp"
+    },
+    {
+      "id": "record-06-receipt-image",
+      "record": 6,
+      "field": "Receipt Image",
+      "sourceName": "tallpine-fuel.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 36072,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "34b8d3c6799a4a28da72260487164f18f5034c7c6f0abfe4214cb364a5ce37bc",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-06/receipt.webp"
+    },
+    {
+      "id": "record-07-receipt-image",
+      "record": 7,
+      "field": "Receipt Image",
+      "sourceName": "benchmark-hardware.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 84954,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "3f95df721455aa91a8952ea2ba347f47ed2ea99c58e6728594b01791ccc51e92",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-07/receipt.webp"
+    },
+    {
+      "id": "record-08-receipt-image",
+      "record": 8,
+      "field": "Receipt Image",
+      "sourceName": "morning-harbor-coffee.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 32940,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "878a25a75abdf5f007667d70b794b17805a39f5c05012b219a00ffe230a196b3",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-08/receipt.webp"
+    },
+    {
+      "id": "record-09-receipt-image",
+      "record": 9,
+      "field": "Receipt Image",
+      "sourceName": "suncrest-station.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 26922,
+      "width": 1536,
+      "height": 1024,
+      "sha256": "fbb38c7c4bec2b341c76312edf28f8630c5ed1aedb6661b04506071d3f513850",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-09/receipt.webp"
+    },
+    {
+      "id": "record-10-receipt-image",
+      "record": 10,
+      "field": "Receipt Image",
+      "sourceName": "redrock-gasoline.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 54154,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "f01b9216d3994fbbd0112225ed6ed15bf4bda0b8b7d89098ade60ad6400fdc48",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-10/receipt.webp"
+    }
+  ]
+}

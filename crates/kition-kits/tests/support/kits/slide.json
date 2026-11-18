@@ -1,0 +1,83 @@
+{
+  "khp": "1.0",
+  "id": "kit.slide",
+  "name": "Slide",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "slide",
+      "extensions": [
+        "kslide"
+      ],
+      "mime": "application/vnd.kition.slide+zip",
+      "role": "edit"
+    },
+    {
+      "id": "pptx",
+      "extensions": [
+        "pptx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "slide",
+      "extension": "kslide",
+      "baseName": "Untitled slide"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "jpg",
+      "mime": "image/jpeg",
+      "command": "file.exportBytes"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "slide",
+    "tools": "document",
+    "objectModel": true,
+    "drafts": true,
+    "render": "file.render",
+    "export": {
+      "command": "file.exportBytes",
+      "data": "data",
+      "params": {
+        "slide": 0
+      }
+    },
+    "describe": {
+      "noun": "slide file"
+    }
+  },
+  "headless": {
+    "executable": "kition-slide",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

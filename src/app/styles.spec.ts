@@ -1,0 +1,92 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const styles = readFileSync(resolve(process.cwd(), 'src/app/styles.css'), 'utf8')
+
+function themeBlock(selector: ':root' | '.dark') {
+  const block = styles.match(new RegExp(`\\${selector}\\s*\\{([\\s\\S]*?)\\n  \\}`))?.[1]
+  expect(block, `${selector} theme block`).toBeTruthy()
+  return block || ''
+}
+
+describe('brand theme tokens', () => {
+  it.each([':root', '.dark'] as const)(
+    'keeps Kition purple and white foreground in %s',
+    (selector) => {
+      const block = themeBlock(selector)
+
+      expect(block).toContain('--primary: 247.133 62.445% 55.098%;')
+      expect(block).toContain('--primary-foreground: 0 0% 100%;')
+      expect(block).toContain('--brand: 247.133 62.445% 55.098%;')
+      expect(block).toContain('--brand-foreground: 0 0% 100%;')
+      expect(block).toContain('--brand-active: 248.031 54.978% 45.294%;')
+    },
+  )
+})
+
+describe('workspace scroll containment', () => {
+  it('locks the document workspace to the desktop viewport', () => {
+    expect(styles).toMatch(
+      /html:has\(\.app-shell\.is-document-route\),[\s\S]*?#app:has\(\.app-shell\.is-document-route\)\s*\{[\s\S]*?overflow: hidden;[\s\S]*?overscroll-behavior: none;[\s\S]*?\}/,
+    )
+    expect(styles).toMatch(
+      /\.app-shell\.is-document-route\s*\{[\s\S]*?height: 100vh;[\s\S]*?overflow: hidden;[\s\S]*?overscroll-behavior: none;[\s\S]*?\}/,
+    )
+  })
+
+  it('keeps Agent scrolling isolated without changing the message width', () => {
+    expect(styles).toMatch(
+      /\.agent-chat-messages\s*\{[\s\S]*?scrollbar-gutter: stable;[\s\S]*?overscroll-behavior: contain;[\s\S]*?\}/,
+    )
+  })
+})
+
+function cssFilesUnder(directory: string): string[] {
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry)
+    if (statSync(path).isDirectory()) return cssFilesUnder(path)
+    return entry.endsWith('.css') ? [path] : []
+  })
+}
+
+describe('feature stylesheets', () => {
+  it('use semantic tokens instead of raw hex colors', () => {
+    const files = [
+      ...cssFilesUnder(resolve(process.cwd(), 'src/features')),
+      ...cssFilesUnder(resolve(process.cwd(), 'src/styles')),
+    ]
+    expect(files.length).toBeGreaterThan(0)
+    const offenders = files.flatMap((file) => {
+      const content = readFileSync(file, 'utf8')
+      return content.split('\n').flatMap((line, index) => (
+        /#[0-9a-fA-F]{3,8}\b/.test(line) && !line.trim().startsWith('/*') ? [`${file}:${index + 1}: ${line.trim()}`] : []
+      ))
+    })
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('theme token parity', () => {
+  it('defines every color and shadow token in both the light and the dark theme', () => {
+    const tokens = (selector: ':root' | '.dark') => new Set(
+      Array.from(themeBlock(selector).matchAll(/--([a-zA-Z0-9-]+)\s*:/g), (match) => match[1]),
+    )
+    // Geometry tokens are theme-independent and live only in :root.
+    const geometry = new Set(['radius', 'workspace-status-height'])
+    const light = tokens(':root')
+    const dark = tokens('.dark')
+    expect([...light].filter((token) => !dark.has(token) && !geometry.has(token))).toEqual([])
+    expect([...dark].filter((token) => !light.has(token))).toEqual([])
+  })
+})
+
+describe('palette backdrops', () => {
+  it('gives the command palette a dim scrim without blur, like Tessera\'s dialogs', () => {
+    expect(styles).toMatch(
+      /\.command-overlay\s*\{[\s\S]*?background: hsl\(var\(--shadow-color\) \/ 0\.4\);[\s\S]*?backdrop-filter: none;[\s\S]*?\}/,
+    )
+    const commandOverlay = styles.match(/\.command-overlay\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(commandOverlay).not.toMatch(/backdrop-blur|bg-black/)
+  })
+})

@@ -1,0 +1,67 @@
+{
+  "khp": "1.0",
+  "id": "kit.doc",
+  "name": "Doc",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "docx",
+      "extensions": [
+        "docx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "doc",
+      "extension": "docx",
+      "baseName": "Untitled doc"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "doc",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": true,
+    "export": {
+      "command": "file.export",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "doc"
+    }
+  },
+  "headless": {
+    "executable": "kition-doc",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

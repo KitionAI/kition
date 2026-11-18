@@ -1,0 +1,24 @@
+{
+  "common": {
+    "unknown": "Erreur inconnue",
+    "createFailed": "Échec de la création",
+    "saveFailed": "Échec de l'enregistrement",
+    "loadFailed": "Échec du chargement",
+    "deleteFailed": "Échec de la suppression",
+    "renameFailed": "Échec du renommage",
+    "copyFailed": "Échec de la copie",
+    "operationFailed": "Échec de l'opération",
+    "networkError": "Erreur réseau",
+    "permissionDenied": "Autorisation refusée"
+  },
+  "document": {
+    "extractFailed": "Échec de l'extraction",
+    "selectContentToExtract": "Sélectionnez d'abord le contenu que vous souhaitez extraire dans une nouvelle note",
+    "selectionEmpty": "La sélection est vide",
+    "notOnHeading": "La ligne actuelle n'est pas un titre",
+    "notFoundCreatePrompt": "{{target}} introuvable. Créer une nouvelle note ?"
+  },
+  "agent": {},
+  "table": {},
+  "workspace": {}
+}

@@ -1,0 +1,13 @@
+{
+  "docId": "01920000-0000-7000-8000-0000000000bb",
+  "schema": { "kdm": 1, "kit": "kit.blob-basis", "schemaVersion": 1, "root": "Holder", "types": {
+    "Holder": { "fields": { "key": { "kind": "integer", "readOnly": true, "optional": true }, "image": { "kind": "ref", "of": "Image", "owns": true, "optional": true } }, "toolId": { "field": "key" } },
+    "Image": { "fields": { "mask": { "kind": "blob" } } }
+  } },
+  "before": { "hash": "old-mask", "mime": "image/png", "size": 64, "name": "mask.png" },
+  "after": { "hash": "new-mask", "mime": "image/png", "size": 64 },
+  "setup": { "ops": [{ "op": "create", "type": "Holder", "id": "holder" }, { "op": "create", "type": "Image", "id": "image", "fields": {
+    "mask": { "hash": "old-mask", "mime": "image/png", "size": 64, "name": "mask.png" }
+  } }, { "op": "set", "target": "root", "field": "image", "value": "image" }] },
+  "edit": { "ops": [{ "op": "set", "target": "image", "field": "mask", "value": { "hash": "new-mask", "mime": "image/png", "size": 64 } }] }
+}

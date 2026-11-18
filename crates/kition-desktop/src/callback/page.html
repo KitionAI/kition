@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>__TITLE__</title>
+  <style>
+    :root { --brand: #5645d4; --brand-active: #4534b3; --canvas: #ffffff; --surface: #f6f5f4; --surface-soft: #fafaf9; --border: #e5e3df; --ink: #1a1a1a; --secondary: #5d5b54; --muted: #787671; --accent: #f1effb; --success-bg: #e7f6ec; --success: #16743a; --error-bg: #fff0f1; --error: #a12436; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--surface); -webkit-font-smoothing: antialiased; }
+    .portal-callback { position: relative; min-height: 100svh; display: grid; place-items: center; overflow: hidden; padding: 104px 32px 56px; background: linear-gradient(180deg, #fbfaff 0, var(--surface) 52%, #f3f2f0 100%); }
+    .portal-callback::before { content: ""; position: absolute; z-index: 0; top: -20rem; left: 50%; width: 62rem; height: 36rem; border-radius: 50%; background: radial-gradient(circle, rgba(86,69,212,.14) 0, rgba(86,69,212,.055) 38%, transparent 70%); transform: translateX(-50%); pointer-events: none; }
+    .portal-callback__brand { position: absolute; z-index: 2; top: 32px; left: 40px; display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-size: 15px; font-weight: 650; letter-spacing: -.025em; }
+    .portal-callback__brand-mark { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 9px; color: #fff; background: var(--brand); box-shadow: 0 6px 16px rgba(86,69,212,.2); font-size: 15px; font-weight: 750; }
+    .portal-callback__card { position: relative; z-index: 1; width: min(760px, 100%); overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); box-shadow: 0 24px 70px rgba(41,34,78,.1), 0 2px 8px rgba(41,34,78,.04); }
+    .portal-callback__card::before { content: ""; position: absolute; top: 0; right: 0; left: 0; height: 3px; background: linear-gradient(90deg, transparent 8%, var(--brand) 50%, transparent 92%); opacity: .72; }
+    .portal-callback__body { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 24px; padding: 42px 44px 36px; }
+    .portal-callback__status-mark { display: inline-flex; width: 64px; height: 64px; align-items: center; justify-content: center; border-radius: 16px; }
+    .portal-callback__status-mark svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .portal-callback--success .portal-callback__status-mark { color: var(--success); background: var(--success-bg); }
+    .portal-callback--error .portal-callback__status-mark { color: var(--error); background: var(--error-bg); }
+    .portal-callback__content { min-width: 0; }
+    .portal-callback__badge { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .portal-callback__badge::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--brand); box-shadow: 0 0 0 4px rgba(86,69,212,.09); }
+    h1 { margin: 12px 0 0; color: var(--ink); font-size: clamp(30px, 5vw, 38px); font-weight: 650; line-height: 1.12; letter-spacing: -.045em; }
+    .portal-callback__message { max-width: 48ch; margin: 12px 0 0; color: var(--secondary); font-size: 15px; line-height: 1.65; }
+    .portal-callback__status { display: flex; align-items: flex-start; gap: 10px; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px; }
+    .portal-callback__status > span { width: 8px; height: 8px; flex: 0 0 auto; margin-top: 5px; border-radius: 999px; }
+    .portal-callback--success .portal-callback__status > span { background: #25a45a; box-shadow: 0 0 0 4px var(--success-bg); }
+    .portal-callback--error .portal-callback__status > span { background: #d04458; box-shadow: 0 0 0 4px var(--error-bg); }
+    .portal-callback__status div { display: grid; gap: 3px; }
+    .portal-callback__status strong { color: var(--ink); font-size: 13px; font-weight: 650; }
+    .portal-callback__status small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .portal-callback__footer { display: flex; min-height: 88px; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--border); padding: 20px 44px; background: var(--surface-soft); }
+    .portal-callback__launch-state { display: flex; min-width: 0; align-items: center; gap: 12px; }
+    .portal-callback__launch-dot { position: relative; width: 10px; height: 10px; flex: 0 0 auto; border: 2px solid var(--canvas); border-radius: 999px; background: var(--brand); box-shadow: 0 0 0 4px var(--accent); }
+    .portal-callback__launch-state div { display: grid; min-width: 0; gap: 3px; }
+    .portal-callback__launch-state strong { color: var(--ink); font-size: 13px; font-weight: 650; }
+    .portal-callback__launch-state span:last-child { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .portal-callback__next-step { display: flex; align-items: center; gap: 10px; color: var(--secondary); font-size: 13px; line-height: 1.5; }
+    .portal-callback__next-icon { display: inline-flex; width: 28px; height: 28px; flex: 0 0 auto; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); background: var(--canvas); }
+    .portal-callback__action { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 10px; border-radius: 8px; padding: 0 18px; color: #fff; background: var(--brand); box-shadow: 0 8px 18px rgba(86,69,212,.2); font-size: 14px; font-weight: 650; text-decoration: none; transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+    .portal-callback__action svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .portal-callback__action:hover { color: #fff; background: var(--brand-active); box-shadow: 0 10px 22px rgba(86,69,212,.25); transform: translateY(-1px); }
+    .portal-callback__action:active { transform: translateY(0); }
+    .portal-callback__action:focus-visible { outline: 3px solid rgba(86,69,212,.25); outline-offset: 3px; }
+    @media (max-width: 640px) {
+      .portal-callback { place-items: start center; padding: 88px 16px 28px; }
+      .portal-callback__brand { top: 24px; left: 20px; }
+      .portal-callback__body { grid-template-columns: 1fr; gap: 20px; padding: 32px 24px 28px; }
+      .portal-callback__status-mark { width: 56px; height: 56px; border-radius: 14px; }
+      .portal-callback__status-mark svg { width: 30px; height: 30px; }
+      h1 { font-size: 30px; }
+      .portal-callback__footer { align-items: stretch; flex-direction: column; gap: 18px; padding: 20px 24px 24px; }
+      .portal-callback__action { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .portal-callback__action { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="portal-callback __STATE_CLASS__">
+    <div class="portal-callback__brand" aria-label="Kition">
+      <span class="portal-callback__brand-mark" aria-hidden="true">K</span>
+      <span>Kition</span>
+    </div>
+    <section class="portal-callback__card">
+      <div class="portal-callback__body">
+        <div class="portal-callback__status-mark">__STATUS_ICON__</div>
+        <div class="portal-callback__content">
+          <span class="portal-callback__badge">Kition Desktop</span>
+          <h1>__TITLE__</h1>
+          <p class="portal-callback__message">__MESSAGE__</p>
+          <div class="portal-callback__status">
+            <span aria-hidden="true"></span>
+            <div>
+              <strong>__STATUS_LABEL__</strong>
+              <small>__STATUS_DETAIL__</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="portal-callback__footer">
+        __FOOTER__
+      </div>
+    </section>
+  </main>
+  __LAUNCH_SCRIPT__
+</body>
+</html>

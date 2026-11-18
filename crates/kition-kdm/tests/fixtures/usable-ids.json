@@ -1,0 +1,60 @@
+{
+  "about": "a receipt names no object id an agent cannot use. A cell of a table whose rows and columns are in lists is told at `table.cells.<row index>:<column index>`; a ref to an object no tool id names and no holder with one holds (a layout) reads `{ unnamed: <type> }`. Run by kition-kdm's tests/changes.rs and @kition/kdm's test/changes.test.ts.",
+  "docId": "019a0000-0000-7000-8000-00000000c8f4",
+  "schema": {
+    "kdm": 1, "kit": "kit.usable-ids", "schemaVersion": 1, "root": "Doc",
+    "types": {
+      "Doc": { "fields": { "layouts": { "kind": "list", "of": "Layout" }, "slides": { "kind": "list", "of": "Slide" } } },
+      "Layout": { "fields": { "name": { "kind": "string" } } },
+      "Slide": { "fields": {
+        "number": { "kind": "integer", "optional": true, "readOnly": true },
+        "layout": { "kind": "ref", "of": "Layout", "optional": true },
+        "shapes": { "kind": "list", "of": "Shape" }
+      }, "toolId": { "field": "number", "prefix": "slide:" } },
+      "Shape": { "fields": {
+        "number": { "kind": "integer", "optional": true, "readOnly": true },
+        "table": { "kind": "ref", "of": "Table", "optional": true, "owns": true }
+      }, "toolId": { "field": "number", "prefix": "shape:" } },
+      "Table": { "fields": { "rows": { "kind": "list", "of": "Row" }, "cols": { "kind": "list", "of": "Col" }, "cells": { "kind": "map", "owns": true } } },
+      "Row": { "fields": {} },
+      "Col": { "fields": {} },
+      "TextBody": { "fields": { "paragraphs": { "kind": "list", "of": "Paragraph" } } },
+      "Paragraph": { "fields": { "text": { "kind": "text" } } }
+    }
+  },
+  "setup": { "ops": [
+    { "op": "create", "type": "Doc", "id": "doc" },
+    { "op": "create", "type": "Layout", "id": "lay1", "in": "doc.layouts", "fields": { "name": "Title" } },
+    { "op": "create", "type": "Slide", "id": "s1", "in": "doc.slides" },
+    { "op": "set", "target": "s1", "field": "layout", "value": "lay1" },
+    { "op": "create", "type": "Shape", "id": "sh1", "in": "s1.shapes" },
+    { "op": "create", "type": "Table", "id": "t1" },
+    { "op": "set", "target": "sh1", "field": "table", "value": "t1" },
+    { "op": "create", "type": "Row", "id": "r1", "in": "t1.rows" },
+    { "op": "create", "type": "Col", "id": "c1", "in": "t1.cols" },
+    { "op": "create", "type": "Col", "id": "c2", "in": "t1.cols" },
+    { "op": "create", "type": "TextBody", "id": "tb1" },
+    { "op": "create", "type": "Paragraph", "id": "p1", "in": "tb1.paragraphs" },
+    { "op": "text.set", "target": "p1", "field": "text", "text": "A1" },
+    { "op": "map.set", "target": "t1", "field": "cells", "key": "r1:c1", "value": { "body": "tb1" } },
+    { "op": "create", "type": "TextBody", "id": "tb2" },
+    { "op": "create", "type": "Paragraph", "id": "p2", "in": "tb2.paragraphs" },
+    { "op": "text.set", "target": "p2", "field": "text", "text": "B1" },
+    { "op": "map.set", "target": "t1", "field": "cells", "key": "r1:c2", "value": { "body": "tb2" } }
+  ] },
+  "cases": [
+    {
+      "name": "cell-by-position",
+      "edit": { "ops": [{ "op": "text.set", "target": "p2", "field": "text", "text": "Changed" }] },
+      "expected": { "created": [], "changed": [{ "id": "shape:1", "type": "Shape", "fields": ["table.cells.0:1.body.paragraphs.0.text"], "edits": [{ "field": "table.cells.0:1.body.paragraphs.0.text", "before": "B1", "after": "Changed" }] }], "moved": [], "deleted": [] }
+    },
+    {
+      "name": "layout-unnamed",
+      "edit": { "ops": [
+        { "op": "create", "type": "Slide", "id": "s2", "in": "doc.slides" },
+        { "op": "set", "target": "s2", "field": "layout", "value": "lay1" }
+      ] },
+      "expected": { "created": [{ "id": "slide:2", "type": "Slide", "fields": ["layout", "number"], "values": { "layout": { "unnamed": "Layout" }, "number": 2 }, "at": { "parent": "doc", "field": "slides", "index": 1 } }], "changed": [{ "id": "doc", "type": "Doc", "fields": ["slides"], "edits": [] }], "moved": [], "deleted": [] }
+    }
+  ]
+}

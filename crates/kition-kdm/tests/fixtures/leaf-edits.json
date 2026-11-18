@@ -1,0 +1,525 @@
+{
+  "$comment": "Changes of map and json fields told where they changed: a receipt (Replica::changes_since / changesSince) and two reads of a file compared (kition-kdm reread) tell a `map` field that owns no objects one edit per changed key (`attrs.stretch`), and a `json` value, or a key's value, down to its changed leaves (members of objects, items of arrays of one length) when that is at most 16 edits and fewer bytes than the value whole, else whole. Each edit's path stands in `fields` for the field. Run by kition-kdm (tests/changes.rs) and @kition/kdm (test/changes.test.ts).",
+  "docId": "01920000-0000-7000-8000-0000000000c8",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.leaves",
+    "schemaVersion": 1,
+    "root": "Doc",
+    "types": {
+      "Doc": {
+        "fields": {
+          "attrs": {
+            "kind": "map"
+          },
+          "look": {
+            "kind": "json",
+            "optional": true
+          },
+          "title": {
+            "kind": "string"
+          }
+        }
+      }
+    }
+  },
+  "setup": {
+    "ops": [
+      {
+        "op": "create",
+        "type": "Doc",
+        "id": "doc",
+        "fields": {
+          "title": "T",
+          "look": {
+            "kind": {
+              "start": "s1",
+              "end": "s2"
+            },
+            "fill": "red",
+            "path": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19
+            ]
+          }
+        }
+      },
+      {
+        "op": "map.set",
+        "target": "doc",
+        "field": "attrs",
+        "key": "stretch",
+        "value": 100
+      },
+      {
+        "op": "map.set",
+        "target": "doc",
+        "field": "attrs",
+        "key": "label",
+        "value": "a"
+      },
+      {
+        "op": "map.set",
+        "target": "doc",
+        "field": "attrs",
+        "key": "markers",
+        "value": [
+          {
+            "time": 1,
+            "comment": "A"
+          },
+          {
+            "time": 2,
+            "comment": "B"
+          }
+        ]
+      },
+      {
+        "op": "map.set",
+        "target": "doc",
+        "field": "attrs",
+        "key": "note",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "map-one-key",
+      "edit": {
+        "ops": [
+          {
+            "op": "map.set",
+            "target": "doc",
+            "field": "attrs",
+            "key": "stretch",
+            "value": 200
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "attrs.stretch"
+            ],
+            "edits": [
+              {
+                "field": "attrs.stretch",
+                "before": 100,
+                "after": 200
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "map-key-added-and-taken-out",
+      "edit": {
+        "ops": [
+          {
+            "op": "map.set",
+            "target": "doc",
+            "field": "attrs",
+            "key": "speed",
+            "value": 2
+          },
+          {
+            "op": "map.delete",
+            "target": "doc",
+            "field": "attrs",
+            "key": "label"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "attrs.label",
+              "attrs.speed"
+            ],
+            "edits": [
+              {
+                "field": "attrs.label",
+                "before": "a",
+                "after": null
+              },
+              {
+                "field": "attrs.speed",
+                "before": null,
+                "after": 2
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "map-value-down-to-its-leaf",
+      "edit": {
+        "ops": [
+          {
+            "op": "map.set",
+            "target": "doc",
+            "field": "attrs",
+            "key": "markers",
+            "value": [
+              {
+                "time": 1,
+                "comment": "A"
+              },
+              {
+                "time": 2,
+                "comment": "X"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "attrs.markers.1.comment"
+            ],
+            "edits": [
+              {
+                "field": "attrs.markers.1.comment",
+                "before": "B",
+                "after": "X"
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "map-long-text-excerpted",
+      "edit": {
+        "ops": [
+          {
+            "op": "map.set",
+            "target": "doc",
+            "field": "attrs",
+            "key": "note",
+            "value": "yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "attrs.note"
+            ],
+            "edits": [
+              {
+                "field": "attrs.note",
+                "before": {
+                  "excerpt": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…",
+                  "length": 120
+                },
+                "after": {
+                  "excerpt": "yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…",
+                  "length": 121
+                }
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "json-leaves",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "doc",
+            "field": "look",
+            "value": {
+              "kind": {
+                "start": "s1",
+                "end": "s3"
+              },
+              "fill": "blue",
+              "path": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "look.fill",
+              "look.kind.end"
+            ],
+            "edits": [
+              {
+                "field": "look.fill",
+                "before": "red",
+                "after": "blue"
+              },
+              {
+                "field": "look.kind.end",
+                "before": "s2",
+                "after": "s3"
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "json-whole-past-sixteen-leaves",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "doc",
+            "field": "look",
+            "value": {
+              "kind": {
+                "start": "s1",
+                "end": "s2"
+              },
+              "fill": "red",
+              "path": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "look"
+            ],
+            "edits": [
+              {
+                "field": "look",
+                "before": {
+                  "kind": {
+                    "start": "s1",
+                    "end": "s2"
+                  },
+                  "fill": "red",
+                  "path": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19
+                  ]
+                },
+                "after": {
+                  "kind": {
+                    "start": "s1",
+                    "end": "s2"
+                  },
+                  "fill": "red",
+                  "path": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19,
+                    20
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "json-array-of-another-length-told-whole-at-its-path",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "doc",
+            "field": "look",
+            "value": {
+              "kind": {
+                "start": "s1",
+                "end": "s2"
+              },
+              "fill": "red",
+              "path": [
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "look.path"
+            ],
+            "edits": [
+              {
+                "field": "look.path",
+                "before": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  8,
+                  9,
+                  10,
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "after": [
+                  0
+                ]
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    }
+  ]
+}

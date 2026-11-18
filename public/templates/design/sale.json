@@ -1,0 +1,108 @@
+{
+  "id": "sale",
+  "version": 1,
+  "name": "Promotion",
+  "width": 1080,
+  "height": 1440,
+  "background": "#f9e79f",
+  "brand": {
+    "background": "accent"
+  },
+  "layers": [
+    {
+      "id": "frame",
+      "type": "rectangle",
+      "name": "Frame",
+      "x": 60,
+      "y": 60,
+      "width": 960,
+      "height": 1320,
+      "fill": "transparent",
+      "stroke": "#1a1a1a",
+      "strokeWidth": 3,
+      "brand": {
+        "stroke": "text"
+      },
+      "constraints": {
+        "horizontal": "scale",
+        "vertical": "scale"
+      }
+    },
+    {
+      "id": "label",
+      "type": "text",
+      "slot": "label",
+      "text": "THE NEW SEASON",
+      "x": 110,
+      "y": 125,
+      "width": 880,
+      "height": 112,
+      "fontFamily": "Arial",
+      "fontSize": 28,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      }
+    },
+    {
+      "id": "headline",
+      "type": "text",
+      "slot": "headline",
+      "text": "GOOD THINGS ARE HERE",
+      "x": 110,
+      "y": 390,
+      "width": 860,
+      "height": 608,
+      "fontFamily": "Arial",
+      "fontSize": 152,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      }
+    },
+    {
+      "id": "button",
+      "type": "rectangle",
+      "name": "Button",
+      "x": 110,
+      "y": 1150,
+      "width": 860,
+      "height": 120,
+      "fill": "#1a1a1a",
+      "radius": 10,
+      "brand": {
+        "fill": "primary"
+      },
+      "constraints": {
+        "horizontal": "left",
+        "vertical": "bottom"
+      }
+    },
+    {
+      "id": "body",
+      "type": "text",
+      "slot": "body",
+      "text": "Discover the collection",
+      "x": 145,
+      "y": 1180,
+      "width": 790,
+      "height": 152,
+      "fontFamily": "Arial",
+      "fontSize": 38,
+      "lineHeight": 1.04,
+      "fill": "#ffffff",
+      "brand": {
+        "fill": "surface",
+        "font": true
+      },
+      "constraints": {
+        "horizontal": "left",
+        "vertical": "bottom"
+      }
+    }
+  ]
+}

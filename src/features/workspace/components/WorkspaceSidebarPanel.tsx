@@ -1,0 +1,129 @@
+import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
+import { HeadlessDraftReviewHost } from '@/features/kits/public'
+import { WorkspaceSidebar } from '@/features/workspace/components/WorkspaceSidebar'
+import { WorkspaceTree } from '@/features/workspace/components/WorkspaceTree'
+import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
+import type { WorkspaceTreeDropPosition, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
+
+type WorkspaceSidebarPanelProps = {
+  activePath: string
+  createMenuOpen: boolean
+  createMenuTriggerPath: string
+  loading: boolean
+  modifiedPaths: Set<string>
+  moveTargets: WorkspaceTreeNode[]
+  onCreateFolder: () => void
+  onCreateInside: (node: WorkspaceTreeNode) => void
+  onDelete: (node: WorkspaceTreeNode) => void
+  onDuplicate: (node: WorkspaceTreeNode) => void
+  onMoveToFolder: (node: WorkspaceTreeNode, targetNode: WorkspaceTreeNode | null) => void
+  onAddToChat?: (node: WorkspaceTreeNode) => void
+  onAddToNewChat?: (node: WorkspaceTreeNode) => void
+  onRevealInOS?: (node: WorkspaceTreeNode) => void
+  onOpen: (path: string) => void
+  onOpenCreateMenu: () => void
+  onCloseCreateMenu: () => void
+  onRefresh?: () => void
+  /** The create menu's kit items (Image, Video project). */
+  kitCreations?: readonly KitCreationItem[]
+  onRename: (node: WorkspaceTreeNode, nextTitle: string) => void
+  onSetIcon: (path: string, icon: string | null) => void
+  onToggleFolder: (path: string) => void
+  onTogglePrivate: () => void
+  onToggleSidebar?: () => void
+  onTreeDrop: (draggedPath: string, targetPath: string, position: WorkspaceTreeDropPosition) => void
+  onImportFiles?: (files: File[], folder?: string) => void
+  onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
+  privateExpanded: boolean
+  rootPath: string
+  treeExpandedPaths: Set<string>
+  treeIcons: Record<string, string>
+  workspaceDisplayName: string
+  workspaceTreeNodes: WorkspaceTreeNode[]
+}
+
+export function WorkspaceSidebarPanel({
+  activePath,
+  createMenuOpen,
+  createMenuTriggerPath,
+  loading,
+  modifiedPaths,
+  moveTargets,
+  onCreateFolder,
+  onCreateInside,
+  onDelete,
+  onDuplicate,
+  onMoveToFolder,
+  onOpen,
+  onOpenCreateMenu,
+  onCloseCreateMenu,
+  onRefresh,
+  kitCreations,
+  onRename,
+  onSetIcon,
+  onToggleFolder,
+  onTogglePrivate,
+  onToggleSidebar,
+  onTreeDrop,
+  onAddToChat,
+  onAddToNewChat,
+  onRevealInOS,
+  onImportFiles,
+  onPasteFiles,
+  privateExpanded,
+  rootPath,
+  treeExpandedPaths,
+  treeIcons,
+  workspaceDisplayName,
+  workspaceTreeNodes,
+}: WorkspaceSidebarPanelProps) {
+  return (
+    <WorkspaceSidebar
+      loading={loading}
+      rootPath={rootPath}
+      workspaceDisplayName={workspaceDisplayName}
+      privateExpanded={privateExpanded}
+      createMenuOpen={createMenuOpen}
+      createMenuTriggerPath={createMenuTriggerPath}
+      onToggleSidebar={onToggleSidebar}
+      onTogglePrivate={onTogglePrivate}
+      onOpenCreateMenu={onOpenCreateMenu}
+      onCloseCreateMenu={onCloseCreateMenu}
+      onCreateFolder={onCreateFolder}
+      onPasteFiles={onPasteFiles}
+      onRefresh={onRefresh}
+                  kitCreations={kitCreations}
+      treeContent={(
+        <>
+          <WorkspaceTree
+            nodes={workspaceTreeNodes}
+            activePath={activePath}
+            expandedPaths={treeExpandedPaths}
+            modifiedPaths={modifiedPaths}
+            icons={treeIcons}
+            moveTargets={moveTargets}
+            onToggleFolder={onToggleFolder}
+            onCreateInside={onCreateInside}
+            onDelete={onDelete}
+            onDuplicate={onDuplicate}
+            onRename={onRename}
+            onMoveToFolder={onMoveToFolder}
+            onSetIcon={onSetIcon}
+            onDropNode={onTreeDrop}
+            onAddToChat={onAddToChat}
+            onAddToNewChat={onAddToNewChat}
+            onRevealInOS={onRevealInOS}
+            onImportFiles={onImportFiles}
+            onOpen={onOpen}
+            createMenuOpen={createMenuOpen}
+            createMenuTriggerPath={createMenuTriggerPath}
+            onCloseCreateMenu={onCloseCreateMenu}
+            onCreateFolder={onCreateFolder}
+                  kitCreations={kitCreations}
+          />
+          <HeadlessDraftReviewHost />
+        </>
+      )}
+    />
+  )
+}

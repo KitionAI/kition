@@ -1,0 +1,87 @@
+import { defineConfig, devices } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repositoryDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+// Every test target is a loopback Vite server. Playwright's webServer readiness
+// probe sends its HTTP request through HTTP_PROXY even when NO_PROXY lists
+// 127.0.0.1; a proxy that answers for closed ports makes the probe report the
+// server as available, Vite is never started, and every test fails with
+// ERR_CONNECTION_REFUSED. Drop the proxy variables for this runner and its
+// children. Scripts that start a live runtime do so before Playwright runs and
+// keep their own environment.
+for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) {
+  delete process.env[key]
+}
+
+// KITION_E2E_SCOPE=ci runs every mock-backed spec in one sweep, including the
+// desktop specs, which drive the renderer through a mocked desktop bridge.
+// Specs that need the README capture flag run through their own scripts
+// instead, and
+// specs that currently fail against the UI are quarantined in
+// tooling/e2e-quarantine.json until they are fixed or deleted.
+const LIVE_SERVICE_SPECS = [
+  '**/readme-assets.spec.ts',
+]
+// The kit interaction suite (e2e/interaction/) is expensive: it runs only through
+// `pnpm test:interaction:e2e`, when a maintainer asks for it, never in the sweep.
+const ON_DEMAND_SPECS = ['**/interaction/**']
+const quarantine = JSON.parse(
+  readFileSync(resolve(repositoryDir, 'tooling/e2e-quarantine.json'), 'utf8'),
+) as { quarantined: Array<{ spec: string }> }
+const CI_SWEEP_IGNORE = [
+  ...LIVE_SERVICE_SPECS,
+  ...ON_DEMAND_SPECS,
+  // Run this benchmark alone after the functional sweep to avoid CPU contention.
+  '**/design-performance.spec.ts',
+  ...quarantine.quarantined.map((entry) => `**/${entry.spec}`),
+]
+
+const PORT = Number(process.env.KITION_E2E_PORT ?? 3000)
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`
+// Allow opting out of webServer auto-start when a dev server is already
+// running on an alternate port (e.g. when running e2e against an externally
+// launched vite to avoid contention with the desktop dev server on port 3000).
+const REUSE_ONLY = process.env.KITION_E2E_REUSE === 'true'
+
+export default defineConfig({
+  testDir: resolve(repositoryDir, 'e2e'),
+  testIgnore: process.env.KITION_E2E_SCOPE === 'ci' ? CI_SWEEP_IGNORE : [],
+  outputDir: resolve(repositoryDir, 'test-results'),
+  timeout: 30_000,
+  expect: {
+    timeout: 5_000,
+  },
+  fullyParallel: true,
+  reporter: 'list',
+  use: {
+    baseURL: BASE_URL,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  ...(REUSE_ONLY
+    ? {}
+    : {
+        webServer: {
+          command: `pnpm exec vite --config tooling/vite.config.ts --host 127.0.0.1 --port ${PORT}`,
+          cwd: repositoryDir,
+          // Each port pre-bundles its dependencies in its own folder, so runs on other ports at the
+          // same time never rewrite the modules this server's pages load (tooling/vite.config.ts).
+          env: { KITION_VITE_CACHE_DIR: resolve(repositoryDir, `node_modules/.vite/e2e-${PORT}`) },
+          url: BASE_URL,
+          reuseExistingServer: true,
+          timeout: 120_000,
+        },
+      }),
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+  ],
+})

@@ -1,0 +1,24 @@
+{
+  "common": {
+    "unknown": "Неизвестная ошибка",
+    "createFailed": "Не удалось создать",
+    "saveFailed": "Не удалось сохранить",
+    "loadFailed": "Не удалось загрузить",
+    "deleteFailed": "Не удалось удалить",
+    "renameFailed": "Не удалось переименовать",
+    "copyFailed": "Не удалось скопировать",
+    "operationFailed": "Операция не удалась",
+    "networkError": "Ошибка сети",
+    "permissionDenied": "Доступ запрещён"
+  },
+  "document": {
+    "extractFailed": "Не удалось извлечь",
+    "selectContentToExtract": "Сначала выберите содержимое, которое хотите извлечь в новую заметку",
+    "selectionEmpty": "Выделение пусто",
+    "notOnHeading": "Текущая строка не является заголовком",
+    "notFoundCreatePrompt": "{{target}} не найдено. Создать новую заметку?"
+  },
+  "agent": {},
+  "table": {},
+  "workspace": {}
+}

@@ -1,0 +1,25 @@
+# Copied from kition-sdk crates/kition-kit-mock/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-kit-mock"
+description = "A minimal headless kit for plain-text documents, used to test Kit Process Protocol hosts and the conformance suite."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "kition-kit-mock"
+path = "src/main.rs"
+
+[dependencies]
+kition-kdm = { path = "../kition-kdm" }
+kition-kit-process-protocol = { path = "../kition-kit-process-protocol", features = ["tokio"] }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+url = "2"

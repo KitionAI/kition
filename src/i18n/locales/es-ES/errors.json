@@ -1,0 +1,24 @@
+{
+  "common": {
+    "unknown": "Error desconocido",
+    "createFailed": "No se pudo crear",
+    "saveFailed": "No se pudo guardar",
+    "loadFailed": "No se pudo cargar",
+    "deleteFailed": "No se pudo eliminar",
+    "renameFailed": "No se pudo renombrar",
+    "copyFailed": "No se pudo copiar",
+    "operationFailed": "La operación falló",
+    "networkError": "Error de red",
+    "permissionDenied": "Permiso denegado"
+  },
+  "document": {
+    "extractFailed": "No se pudo extraer",
+    "selectContentToExtract": "Primero selecciona el contenido que quieres extraer a una nota nueva",
+    "selectionEmpty": "La selección está vacía",
+    "notOnHeading": "La línea actual no es un encabezado",
+    "notFoundCreatePrompt": "No se encontró {{target}}. ¿Crear una nota nueva?"
+  },
+  "agent": {},
+  "table": {},
+  "workspace": {}
+}

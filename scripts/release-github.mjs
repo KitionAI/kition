@@ -1,0 +1,499 @@
+#!/usr/bin/env node
+
+import fs from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
+import readline from 'node:readline/promises'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { expectedReleaseAssets } from '../src-tauri/scripts/release-artifacts.mjs'
+
+const PUBLIC_REPOSITORY = 'KitionAI/kition'
+const PUBLISH_WORKFLOW = 'publish-release.yml'
+const CI_WORKFLOW = 'ci.yml'
+const DEFAULT_SOURCE_REF = 'main'
+const DEFAULT_TIMEOUT_MINUTES = 90
+const POLL_INTERVAL_MS = 15_000
+export const REQUIRED_RELEASE_GITHUB_LOGIN = 'allentatakai'
+
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/
+const REF_PATTERN = /^(?!-)(?!.*\.\.)(?!.*\/\/)[0-9A-Za-z._/-]+$/
+
+export function releaseUsage() {
+  return [
+    'Usage: pnpm release:github <version> [options]',
+    '',
+    'Options:',
+    '  --source-ref <ref>       Branch to release (default: main)',
+    '  --timeout-minutes <n>    Overall workflow timeout (default: 90)',
+    '  --resume                 Resume an aligned release without repeating local checks',
+    '  --dry-run                Validate context without changing release state',
+    '  --yes                    Skip the interactive version confirmation',
+    '  --help                   Show this help',
+  ].join('\n')
+}
+
+export function parseReleaseArguments(argv) {
+  const options = {
+    version: '',
+    sourceRef: DEFAULT_SOURCE_REF,
+    timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
+    yes: false,
+    dryRun: false,
+    resume: false,
+    help: false,
+  }
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]
+    if (!argument.startsWith('-') && !options.version) {
+      options.version = argument
+      continue
+    }
+    if (argument === '--yes') {
+      options.yes = true
+      continue
+    }
+    if (argument === '--dry-run') {
+      options.dryRun = true
+      continue
+    }
+    if (argument === '--resume') {
+      options.resume = true
+      continue
+    }
+    if (argument === '--help' || argument === '-h') {
+      options.help = true
+      continue
+    }
+    if (argument === '--source-ref') {
+      options.sourceRef = argv[++index] || ''
+      continue
+    }
+    if (argument === '--timeout-minutes') {
+      options.timeoutMinutes = Number(argv[++index])
+      continue
+    }
+    throw new Error(`Unknown argument: ${argument}`)
+  }
+
+  if (options.help) return options
+  validateVersion(options.version)
+  validateRef(options.sourceRef, 'source ref')
+  if (!Number.isFinite(options.timeoutMinutes) || options.timeoutMinutes < 10) {
+    throw new Error('--timeout-minutes must be at least 10')
+  }
+  return options
+}
+
+export function validateVersion(version) {
+  if (!VERSION_PATTERN.test(String(version || ''))) {
+    throw new Error(`Invalid release version: ${version || '<empty>'}`)
+  }
+  return version
+}
+
+export function validateRef(ref, label = 'ref') {
+  if (!REF_PATTERN.test(String(ref || ''))) {
+    throw new Error(`Invalid ${label}: ${ref || '<empty>'}`)
+  }
+  return ref
+}
+
+export function assertReleaseGitHubLogin(login, expected = REQUIRED_RELEASE_GITHUB_LOGIN) {
+  const actual = String(login || '').trim()
+  if (actual !== expected) {
+    throw new Error(
+      `Official releases must be published as ${expected}, got ${actual || '<empty>'}. Run: gh auth switch --user ${expected}`,
+    )
+  }
+  return actual
+}
+
+export function alignReleaseVersion(packagePayload, version) {
+  if (!packagePayload || typeof packagePayload !== 'object') {
+    throw new Error('package.json is not a JSON object')
+  }
+  return { ...packagePayload, version }
+}
+
+export function desktopAssetNames(version) {
+  return [...expectedReleaseAssets(version), 'latest.json']
+}
+
+export function selectWorkflowRun(runs, { headSha, dispatchedAfter }) {
+  const threshold = new Date(dispatchedAfter).getTime() - 5_000
+  return [...runs]
+    .filter((run) => !headSha || run.headSha === headSha)
+    .filter((run) => new Date(run.createdAt).getTime() >= threshold)
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null
+}
+
+export function workflowRunOutcome(runInfo) {
+  if (runInfo?.status !== 'completed') return 'pending'
+  return runInfo.conclusion === 'success' ? 'success' : 'failure'
+}
+
+export function parseStatusPaths(output) {
+  const records = String(output || '').split('\0')
+  const paths = []
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]
+    if (!record) continue
+    const status = record.slice(0, 2)
+    paths.push(record.slice(3))
+    if (/[RC]/.test(status) && records[index + 1]) {
+      paths.push(records[index + 1])
+      index += 1
+    }
+  }
+  return paths.filter(Boolean)
+}
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd,
+    env: { ...process.env, ...options.env },
+    encoding: 'utf8',
+    stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+  })
+  if (result.error) {
+    throw result.error
+  }
+  if (result.status !== 0 && !options.allowFailure) {
+    const detail = options.capture ? String(result.stderr || result.stdout || '').trim() : ''
+    throw new Error(`${command} ${args.join(' ')} failed${detail ? `: ${detail}` : ''}`)
+  }
+  return result
+}
+
+function capture(command, args, options = {}) {
+  const result = run(command, args, { ...options, capture: true })
+  return String(result.stdout || '').trim()
+}
+
+function captureJson(command, args, options = {}) {
+  const output = capture(command, args, options)
+  return output ? JSON.parse(output) : null
+}
+
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+}
+
+function writeJson(filePath, payload) {
+  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`)
+}
+
+function getRepositoryRoot() {
+  return capture('git', ['rev-parse', '--show-toplevel'])
+}
+
+function getStatusPaths(rootDir) {
+  const result = run('git', ['status', '--porcelain=v1', '-z'], {
+    cwd: rootDir,
+    capture: true,
+  })
+  return parseStatusPaths(result.stdout)
+}
+
+function assertAllowedChanges(rootDir, allowedPaths) {
+  const unexpected = getStatusPaths(rootDir).filter((filePath) => !allowedPaths.includes(filePath))
+  if (unexpected.length) {
+    throw new Error(`Release requires a clean worktree. Unexpected changes: ${unexpected.join(', ')}`)
+  }
+}
+
+function assetNames(release) {
+  return new Set((release?.assets || []).map((asset) => asset.name))
+}
+
+function missingAssets(release, expected) {
+  const names = assetNames(release)
+  return expected.filter((name) => !names.has(name))
+}
+
+function viewRelease(repository, tag) {
+  const result = run('gh', [
+    'release', 'view', tag,
+    '--repo', repository,
+    '--json', 'tagName,isDraft,isPrerelease,url,publishedAt,assets',
+  ], { capture: true, allowFailure: true })
+  if (result.status !== 0) return null
+  return JSON.parse(String(result.stdout || '{}'))
+}
+
+function getHeadSha(rootDir) {
+  return capture('git', ['rev-parse', 'HEAD'], { cwd: rootDir })
+}
+
+function assertAlignedReleaseFiles(rootDir, version) {
+  if (readJson(path.join(rootDir, 'package.json')).version !== version) {
+    throw new Error(`--resume requires package.json to already match ${version}`)
+  }
+}
+
+function getTagCommit(rootDir, tag) {
+  const result = run('git', ['rev-parse', `${tag}^{commit}`], {
+    cwd: rootDir,
+    capture: true,
+    allowFailure: true,
+  })
+  return result.status === 0 ? String(result.stdout || '').trim() : ''
+}
+
+function assertTagVersion(rootDir, tag, version) {
+  const packagePayload = JSON.parse(capture('git', ['show', `${tag}:package.json`], { cwd: rootDir }))
+  if (packagePayload.version !== version) {
+    throw new Error(`Tag ${tag} does not contain the ${version} package version`)
+  }
+}
+
+async function sleep(milliseconds) {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+async function confirmRelease(options) {
+  if (options.yes || options.dryRun) return
+  if (!process.stdin.isTTY) {
+    throw new Error('Use --yes for non-interactive release execution')
+  }
+  const releaseKind = options.version.includes('-') ? 'prerelease' : 'stable release'
+  const prompt = readline.createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    const answer = await prompt.question(`Type v${options.version} to publish the GitHub ${releaseKind}: `)
+    if (answer.trim() !== `v${options.version}`) {
+      throw new Error('Release confirmation did not match')
+    }
+  } finally {
+    prompt.close()
+  }
+}
+
+async function waitForWorkflowRun({ repository, workflow, headSha, dispatchedAfter, timeoutAt }) {
+  while (Date.now() < timeoutAt) {
+    const runs = captureJson('gh', [
+      'run', 'list',
+      '--repo', repository,
+      '--workflow', workflow,
+      '--limit', '20',
+      '--json', 'databaseId,status,conclusion,createdAt,url,headSha',
+    ]) || []
+    const runInfo = selectWorkflowRun(runs, { headSha, dispatchedAfter })
+    if (runInfo) return runInfo
+    await sleep(POLL_INTERVAL_MS)
+  }
+  throw new Error(`Timed out waiting for ${workflow} to start`)
+}
+
+async function watchWorkflow({ repository = PUBLIC_REPOSITORY, workflow, headSha, dispatchedAfter, timeoutAt }) {
+  const runInfo = await waitForWorkflowRun({ repository, workflow, headSha, dispatchedAfter, timeoutAt })
+  console.log(`[release] watching ${workflow}: ${runInfo.url}`)
+  let lastReport = 0
+  while (Date.now() < timeoutAt) {
+    const result = run('gh', [
+      'run', 'view', String(runInfo.databaseId),
+      '--repo', repository,
+      '--json', 'status,conclusion,url',
+    ], { capture: true, allowFailure: true })
+    if (result.status === 0) {
+      const current = JSON.parse(String(result.stdout || '{}'))
+      const outcome = workflowRunOutcome(current)
+      if (outcome === 'success') return { ...runInfo, ...current }
+      if (outcome === 'failure') {
+        throw new Error(`${workflow} concluded with ${current.conclusion || 'failure'}: ${current.url || runInfo.url}`)
+      }
+    }
+    if (Date.now() - lastReport >= 60_000) {
+      const detail = result.status === 0
+        ? 'still running'
+        : 'GitHub status request failed; retrying'
+      console.log(`[release] ${workflow} ${detail}`)
+      lastReport = Date.now()
+    }
+    await sleep(POLL_INTERVAL_MS)
+  }
+  throw new Error(`Timed out waiting for ${workflow} to complete: ${runInfo.url}`)
+}
+
+async function waitForCi(headSha, timeoutAt) {
+  const dispatchedAfter = '1970-01-01T00:00:00.000Z'
+  await watchWorkflow({ workflow: CI_WORKFLOW, headSha, dispatchedAfter, timeoutAt })
+}
+
+function ensurePublicDraft(version, releaseCommit) {
+  const tag = `v${version}`
+  let tagCommit = getTagCommit(getRepositoryRoot(), tag)
+  if (!tagCommit) {
+    run('gh', [
+      'api', '--method', 'POST', `repos/${PUBLIC_REPOSITORY}/git/refs`,
+      '-f', `ref=refs/tags/${tag}`,
+      '-f', `sha=${releaseCommit}`,
+    ])
+    run('git', ['fetch', 'origin', `refs/tags/${tag}:refs/tags/${tag}`])
+    tagCommit = getTagCommit(getRepositoryRoot(), tag)
+  }
+  if (tagCommit !== releaseCommit) {
+    throw new Error(`Tag ${tag} points to ${tagCommit} instead of ${releaseCommit}`)
+  }
+
+  const release = viewRelease(PUBLIC_REPOSITORY, tag)
+  if (release) {
+    if (!release.isDraft) return verifyPublishedRelease(version)
+    return release
+  }
+  run('gh', [
+    'release', 'create', tag,
+    '--repo', PUBLIC_REPOSITORY,
+    '--draft',
+    '--target', releaseCommit,
+    '--title', `Kition ${version}`,
+    '--generate-notes',
+  ])
+  return viewRelease(PUBLIC_REPOSITORY, tag)
+}
+
+function dispatchPublish(options) {
+  run('gh', [
+    'workflow', 'run', PUBLISH_WORKFLOW,
+    '--repo', PUBLIC_REPOSITORY,
+    '--ref', options.sourceRef,
+    '-f', `version=${options.version}`,
+  ])
+}
+
+function verifyPublishedRelease(version) {
+  const release = viewRelease(PUBLIC_REPOSITORY, `v${version}`)
+  const expectedPrerelease = version.includes('-')
+  if (!release || release.isDraft || release.isPrerelease !== expectedPrerelease) {
+    throw new Error(`GitHub Release v${version} has the wrong publication state`)
+  }
+  const missing = missingAssets(release, desktopAssetNames(version))
+  if (missing.length) {
+    throw new Error(`GitHub Release v${version} is missing assets: ${missing.join(', ')}`)
+  }
+  return release
+}
+
+async function executeRelease(options) {
+  const rootDir = getRepositoryRoot()
+  process.chdir(rootDir)
+
+  run('gh', ['auth', 'status'])
+  assertReleaseGitHubLogin(capture('gh', ['api', 'user', '--jq', '.login']))
+  const repositoryName = capture('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'])
+  if (repositoryName !== PUBLIC_REPOSITORY) {
+    throw new Error(`Expected ${PUBLIC_REPOSITORY}, got ${repositoryName}`)
+  }
+  const currentBranch = capture('git', ['branch', '--show-current'], { cwd: rootDir })
+  if (currentBranch !== options.sourceRef) {
+    throw new Error(`Release source ref ${options.sourceRef} must be the current branch`)
+  }
+
+  const alreadyPublished = viewRelease(PUBLIC_REPOSITORY, `v${options.version}`)
+  if (alreadyPublished && !alreadyPublished.isDraft) {
+    const release = verifyPublishedRelease(options.version)
+    console.log(`[release] already published: ${release.url}`)
+    return release
+  }
+
+  assertAllowedChanges(rootDir, [])
+  if (options.dryRun) {
+    if (options.resume) {
+      assertAlignedReleaseFiles(rootDir, options.version)
+    } else {
+      alignReleaseVersion(readJson(path.join(rootDir, 'package.json')), options.version)
+    }
+    console.log(`[release] target=v${options.version} source=${options.sourceRef}`)
+    console.log('[release] dry run complete; no files or remote state changed')
+    return null
+  }
+
+  run('git', ['fetch', 'origin', options.sourceRef, '--tags'], { cwd: rootDir })
+  const divergence = capture('git', [
+    'rev-list', '--left-right', '--count', `HEAD...origin/${options.sourceRef}`,
+  ], { cwd: rootDir }).split(/\s+/).map(Number)
+  if (divergence[0] > 0 && divergence[1] > 0) {
+    throw new Error(`Local ${options.sourceRef} has diverged from origin/${options.sourceRef}`)
+  }
+  if (divergence[0] === 0 && divergence[1] > 0) {
+    run('git', ['pull', '--ff-only', 'origin', options.sourceRef], { cwd: rootDir })
+  }
+
+  await confirmRelease(options)
+  console.log(`[release] target=v${options.version} source=${options.sourceRef}`)
+
+  const packagePath = path.join(rootDir, 'package.json')
+  const currentPackage = readJson(packagePath)
+  if (options.resume) assertAlignedReleaseFiles(rootDir, options.version)
+  const aligned = alignReleaseVersion(currentPackage, options.version)
+  const needsVersionUpdate = currentPackage.version !== options.version
+
+  if (options.resume && needsVersionUpdate) {
+    throw new Error(`--resume requires release files to already match ${options.version}`)
+  }
+  if (!options.resume && needsVersionUpdate) {
+    writeJson(packagePath, aligned)
+  }
+  assertAllowedChanges(rootDir, ['package.json'])
+
+  if (!options.resume) {
+    console.log('[release] running repository checks')
+    run('pnpm', ['check'], { cwd: rootDir })
+    run('pnpm', ['perf:budget'], { cwd: rootDir })
+    run('pnpm', ['test:table:e2e'], { cwd: rootDir })
+    run('pnpm', ['test:ktable:e2e'], { cwd: rootDir })
+    assertAllowedChanges(rootDir, ['package.json'])
+
+    if (getStatusPaths(rootDir).length) {
+      run('git', ['add', 'package.json'], { cwd: rootDir })
+      run('git', ['commit', '-m', `Release Kition ${options.version}`], { cwd: rootDir })
+    }
+    run('git', ['push', 'origin', options.sourceRef], { cwd: rootDir })
+  } else {
+    console.log('[release] resume mode: reusing aligned files, pushed source, and completed CI')
+  }
+  const headSha = getHeadSha(rootDir)
+  const timeoutAt = Date.now() + options.timeoutMinutes * 60_000
+
+  if (!options.resume) {
+    console.log(`[release] waiting for CI on ${headSha.slice(0, 12)}`)
+    await waitForCi(headSha, timeoutAt)
+  }
+
+  const tag = `v${options.version}`
+  run('git', ['fetch', 'origin', '--tags'], { cwd: rootDir })
+  let releaseCommit = headSha
+  if (options.resume) {
+    releaseCommit = getTagCommit(rootDir, tag)
+    if (!releaseCommit) throw new Error(`--resume requires the immutable tag ${tag}`)
+    assertTagVersion(rootDir, tag, options.version)
+  }
+  ensurePublicDraft(options.version, releaseCommit)
+
+  const dispatchedAfter = new Date().toISOString()
+  console.log(`[release] dispatching ${PUBLISH_WORKFLOW}`)
+  dispatchPublish(options)
+  await watchWorkflow({ workflow: PUBLISH_WORKFLOW, headSha, dispatchedAfter, timeoutAt })
+
+  const release = verifyPublishedRelease(options.version)
+  console.log(`[release] published ${release.url}`)
+  return release
+}
+
+export async function main(argv = process.argv.slice(2)) {
+  const options = parseReleaseArguments(argv)
+  if (options.help) {
+    console.log(releaseUsage())
+    return null
+  }
+  return executeRelease(options)
+}
+
+const isDirectExecution = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isDirectExecution) {
+  main().catch((error) => {
+    console.error(`[release] ${error?.message || error}`)
+    process.exitCode = 1
+  })
+}

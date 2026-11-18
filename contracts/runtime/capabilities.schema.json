@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/capabilities.schema.json",
+  "title": "Kition Runtime Capabilities",
+  "type": "array",
+  "items": {
+    "type": "string",
+    "pattern": "^[a-z][a-z0-9_]*$"
+  },
+  "uniqueItems": true
+}

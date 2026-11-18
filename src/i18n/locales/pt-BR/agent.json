@@ -1,0 +1,248 @@
+{
+  "buildProgress": {
+    "buildingBase": "Construindo base...",
+    "buildingInProgress": "Construção em andamento",
+    "progressLabel": "Progresso da construção: {{percent}}%",
+    "stepRunning": "{{label}} em execução",
+    "subtasks": {
+      "generateFields": "Gerar campos",
+      "generateAiFields": "Gerar campos de IA",
+      "generateRecords": "Gerar registros",
+      "generateViews": "Gerar visualizações"
+    }
+  },
+  "planCard": {
+    "title": "Plano",
+    "summary": "{{total}} etapas · {{completed}} concluídas · {{inProgress}} em andamento · {{pending}} pendentes"
+  },
+  "shellApproval": {
+    "eyebrow": "A execução do shell requer aprovação",
+    "fetchEyebrow": "O agente quer acessar um site",
+    "articleEyebrow": "O agente quer salvar um artigo da web",
+    "imageEyebrow": "O agente quer baixar uma imagem",
+    "parseFailed": "Falha na análise: {{error}}",
+    "allowOnce": "Permitir uma vez",
+    "rememberTitle": "Permitir e lembrar o prefixo \"{{prefix}}\"",
+    "alwaysAllow": "Sempre permitir \"{{target}}\"",
+    "deny": "Negar"
+  },
+  "applyPatch": {
+    "preview": "Visualização do patch",
+    "applied": "Patch aplicado",
+    "stats_one": "{{count}} arquivo · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} arquivos · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "Adicionar",
+      "delete": "Excluir",
+      "update": "Atualizar"
+    },
+    "reject": "Rejeitar",
+    "apply": "Aplicar"
+  },
+  "modelPicker": {
+    "noModelConfigured": "Nenhum modelo configurado",
+    "chooseModel": "Escolher modelo de IA",
+    "modelLabel": "Modelo",
+    "searchPlaceholder": "Pesquisar modelos",
+    "noMatches": "Nenhum modelo corresponde a \"{{query}}\""
+  },
+  "mentions": {
+    "searchHint": "Digite após @ para pesquisar em todo o espaço de trabalho",
+    "resultCount": "{{count}} referências correspondentes",
+    "attached": "Anexado",
+    "noMatches": "Nenhum documento correspondente"
+  },
+  "analysisWorkspace": {
+    "contextTitle": "Context",
+    "addContext": "Add context",
+    "addCurrentDocument": "Adicionar documento atual · {{name}}",
+    "localFolder": "Local folder",
+    "workspaceDocument": "Workspace document",
+    "referenceDocument": "Reference in this turn",
+    "current": "Current",
+    "readOnlySource": "Read-only analysis source",
+    "removeReference": "Remove {{name}}",
+    "removeCurrentDocument": "Remove current document {{name}}",
+    "readOnly": "Read only",
+    "removeSource": "Remove {{name}}",
+    "contextCount": "Referências: {{count}}"
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "Configurar um modelo"
+    },
+    "kitionAccount": {
+      "checking": "Verificando a conta Kition…",
+      "signIn": "Entre para usar o Kition Cloud",
+      "signInAgain": "Entrar novamente",
+      "cancel": "Cancelar login",
+      "retry": "Tentar novamente com a conta Kition",
+      "topUp": "Recarregar créditos"
+    },
+    "document": {
+      "description": "Peça ao agente para pesquisar, escrever ou organizar esta página.",
+      "suggestions": {
+        "summarize": {
+          "label": "Resumir este documento",
+          "prompt": "Resuma o documento atual em um resumo em Markdown"
+        },
+        "launchPlan": {
+          "label": "Esboçar um plano de lançamento",
+          "prompt": "Esboce um plano de lançamento a partir desta página"
+        },
+        "checklist": {
+          "label": "Criar uma lista de verificação",
+          "prompt": "Crie uma lista de verificação e salve-a como Markdown"
+        }
+      }
+    },
+    "gallery": {
+      "description": "Peça ao agente para organizar, descrever ou reaproveitar as mídias desta galeria.",
+      "suggestions": {
+        "describeEach": {
+          "label": "Descrever cada item",
+          "prompt": "Descreva o que há em cada item desta galeria."
+        },
+        "groupByTopic": {
+          "label": "Agrupar por tema",
+          "prompt": "Agrupe estes arquivos de mídia por tema visual."
+        },
+        "pickHero": {
+          "label": "Escolher o destaque",
+          "prompt": "Escolha o melhor recurso de destaque para uma landing page."
+        }
+      }
+    }
+  },
+  "timeline": {
+    "status": {
+      "failed": "Failed"
+    },
+    "sections": {
+      "tool": "Tool",
+      "input": "Input",
+      "output": "Output",
+      "error": "Error",
+      "status": "Status",
+      "data": "Data",
+      "path": "Path",
+      "title": "Title",
+      "preview": "Preview",
+      "noDetail": "This step is waiting for more execution data."
+    },
+    "model": {
+      "titlePlanning": "Understanding the task",
+      "titleProcessing": "Processing tool results",
+      "detailPlanning": "The model is analyzing the goal, context, and available tools",
+      "detailProcessing": "Received {{tool}} results; the model is deciding the next step",
+      "expandedPlanning": "The model is considering your question, the available context, and tools to figure out the first step. Execution starts as soon as a plan is ready.",
+      "expandedProcessing": "The model just received results from “{{tool}}” and is using the context to decide what to do next (run more tools, or reply directly)."
+    },
+    "activity": {
+      "thinking": "Thinking…",
+      "completionUnknown": "Completion not confirmed",
+      "interruptedDetail": "The connection ended before completion was confirmed. Check saved results before retrying.",
+      "stopped": "Task stopped"
+    },
+    "event": {
+      "callingBackend": "Calling AI backend",
+      "backendCalled": "AI backend called",
+      "backendTurnCompleted": "AI backend turn completed",
+      "taskFailed": "Task failed",
+      "modelTurnFinished": "Model turn {{turn}} has finished",
+      "requestingModelTurn": "Requesting model turn {{turn}}",
+      "modelRequestedNTools": "The model requested {{count}} tools",
+      "modelReturnedChars": "The model returned {{chars}} characters of final content",
+      "thisTurnCompleted": "This model turn completed",
+      "reconnecting": "Reconnecting... {{attempt}}/{{maxRetries}}",
+      "reconnectingNow": "Retrying now",
+      "reconnectingInSeconds": "Retrying in {{seconds}} s",
+      "reconnectReason": {
+        "tls_handshake_timeout": "Secure connection timed out",
+        "connection_timeout": "Connection timed out",
+        "connection_closed": "Connection closed unexpectedly",
+        "connection_reset": "Connection was reset",
+        "dns_failure": "Network address lookup failed",
+        "network_error": "Temporary network error",
+        "request_timeout": "AI backend request timed out",
+        "rate_limited": "AI backend is temporarily busy",
+        "server_unavailable": "AI backend is temporarily unavailable"
+      },
+      "taskCompleted": "Task completed",
+      "reconnectingInSeconds_one": "Retrying in {{seconds}} second",
+      "reconnectingInSeconds_other": "Retrying in {{seconds}} seconds",
+      "stepLimit": "Parou após o número máximo de etapas do modelo por turno; restrinja a tarefa ou esclareça o próximo passo."
+    },
+    "tool": {
+      "inProgress": "{{label}} in progress",
+      "failed": "{{label}} failed",
+      "completed": "{{label}} completed",
+      "nResults": "{{count}} results",
+      "nImages": "{{count}} images",
+      "nEntries": "Entries: {{count}}"
+    },
+    "artifact": {
+      "title": "Save artifact"
+    },
+    "final": {
+      "streaming": "Streaming final reply"
+    },
+    "toolDisplayName": {
+      "source_adapter_catalog": "Inspect Source Context",
+      "web_search": "Web Search",
+      "web_fetch": "Web Fetch",
+      "save_image_asset": "Save Image",
+      "document_search": "Document Search",
+      "document_read": "Read Document",
+      "document_write": "Update Document",
+      "apply_patch": "Apply Patch",
+      "file_search": "Search Files",
+      "fs_read": "Read File",
+      "fs_stat": "Stat Path",
+      "fs_list": "List Directory",
+      "fs_mkdir": "Create Directory",
+      "fs_remove": "Remove Path",
+      "fs_copy": "Copy Path",
+      "create_markdown": "Create Markdown",
+      "artifact_write": "Save Artifact",
+      "register_artifact": "Register Artifact"
+    },
+    "toolActionLabel": {
+      "source_adapter_catalog": "Inspect source context",
+      "web_search": "Web search",
+      "web_fetch": "Web fetch",
+      "save_image_asset": "Save image",
+      "document_search": "Search documents",
+      "document_read": "Read document",
+      "document_write": "Update document",
+      "apply_patch": "Apply patch",
+      "file_search": "Search files",
+      "fs_read": "Read file",
+      "fs_stat": "Stat path",
+      "fs_list": "List directory",
+      "fs_mkdir": "Create directory",
+      "fs_remove": "Remove path",
+      "fs_copy": "Copy path",
+      "create_markdown": "Save Markdown",
+      "artifact_write": "Save artifact",
+      "register_artifact": "Register artifact",
+      "shell_exec": "Run command"
+    },
+    "mcpDisplayPrefix": "MCP",
+    "mcpActionTemplate": "MCP {{server}}: {{tool}}"
+  },
+  "results": {
+    "modifiedFiles": "Files modified: {{count}}",
+    "viewChanges": "View changes in {{name}}",
+    "view": "View",
+    "modifiedArtifact": "Modified {{path}}",
+    "imageResult": "Image result"
+  },
+  "kitEditMode": {
+    "label": "Edição de kits",
+    "live": "Ao vivo",
+    "draft": "Rascunho",
+    "liveHint": "O agente edita diretamente os documentos de kit abertos; você pode desfazer as edições.",
+    "draftHint": "O agente edita um rascunho dos documentos de kit abertos; você revisa e mescla ou descarta."
+  }
+}

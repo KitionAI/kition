@@ -1,0 +1,232 @@
+import { isDesktopRuntime, resolvePublicFileURL, resolvePublicFolderURL } from './desktop'
+
+const workspaceRootImageFolders = new Set(['agent', 'attachments', '.kition'])
+
+export function resolveAgentImageURL(value?: string) {
+  const raw = unwrapMarkdownDestination(value)
+  if (!raw) {
+    return ''
+  }
+  const legacyWorkspaceURL = resolveKitionWorkspaceURL(raw)
+  if (legacyWorkspaceURL) {
+    return legacyWorkspaceURL
+  }
+  if (isPublicOrExternalFileURL(raw)) {
+    return resolvePublicFileURL(raw)
+  }
+  if (isWorkspaceImagePath(raw)) {
+    return resolveWorkspaceFileURL(raw)
+  }
+  return resolvePublicFileURL(raw)
+}
+
+export function resolveAgentImageWorkspacePath(value?: string) {
+  const raw = unwrapMarkdownDestination(value)
+  const prefix = '/workspace-files/'
+  let path = raw
+  if (/^kition-workspace:/i.test(raw)) {
+    path = raw.replace(/^kition-workspace:\/{0,2}/i, '').replace(/^\/+/, '')
+  } else if (raw.startsWith(prefix)) {
+    path = raw.slice(prefix.length)
+  } else if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw)
+      const workspaceURL = new URL(resolvePublicFileURL(prefix), window.location.href)
+      if (url.origin !== workspaceURL.origin || !url.pathname.startsWith(prefix)) return ''
+      path = url.pathname.slice(prefix.length)
+    } catch {
+      return ''
+    }
+  } else if (isPublicOrExternalFileURL(raw) || /^[a-z][a-z\d+.-]*:/i.test(raw)) {
+    return ''
+  }
+  path = splitPathSuffix(path).path
+  return isWorkspaceImagePath(path) ? normalizeWorkspacePath(decodeURIPath(path)).join('/') : ''
+}
+
+export function resolveWorkspaceImageURL(value: string | undefined, documentPath: string) {
+  const raw = unwrapMarkdownDestination(value)
+  if (!raw) {
+    return ''
+  }
+  const legacyWorkspaceURL = resolveKitionWorkspaceURL(raw)
+  if (legacyWorkspaceURL) {
+    return legacyWorkspaceURL
+  }
+  if (isPublicOrExternalFileURL(raw)) {
+    return resolvePublicFileURL(raw)
+  }
+  if (!isWorkspaceImagePath(raw)) {
+    return raw
+  }
+
+  const { path, suffix } = splitPathSuffix(raw)
+  const workspacePath = resolveWorkspaceMarkdownImagePath(decodeURIPath(path), parentDocumentFolderPath(documentPath))
+  return workspacePath ? `${resolveWorkspaceFileURL(workspacePath)}${suffix}` : raw
+}
+
+export function resolveWorkspaceImageSources(html: string, documentPath: string) {
+  if (!html || !isDesktopRuntime()) {
+    return html
+  }
+  return html.replace(/<img\b([^>]*?)\bsrc="([^"]+)"([^>]*)>/gi, (match, before, src, after) => {
+    const raw = String(src || '').trim()
+    if (!raw) {
+      return match
+    }
+    const decoded = decodeHTMLAttribute(raw)
+    const workspaceURL = resolveWorkspaceImageURL(decoded, documentPath)
+    if (!workspaceURL || workspaceURL === decoded) {
+      return match
+    }
+    return `<img${before}src="${escapeHTMLAttribute(workspaceURL)}"${after}>`
+  })
+}
+
+export function resolveWorkspaceFileURL(path: string) {
+  return resolveFileServiceURL('/workspace-files/', path)
+}
+
+/**
+ * The URL of a workspace file as kits read it (`/kit-files/`): the runtime refuses hidden paths
+ * there, Kition's own store `.kition/` among them (rule LR2).
+ */
+export function resolveKitFileURL(path: string) {
+  return resolveFileServiceURL('/kit-files/', path)
+}
+
+/**
+ * The root under which a kit's engine reads lent files (`<root><path>`): the kit file service,
+ * signed for that folder only, so the kit is never handed the runtime's API token.
+ */
+export function resolveKitFilesRootURL() {
+  return resolvePublicFolderURL('/kit-files/')
+}
+
+function resolveFileServiceURL(service: string, path: string) {
+  const normalized = normalizeWorkspacePath(path)
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  return normalized ? resolvePublicFileURL(`${service}${normalized}`) : ''
+}
+
+export function resolveWorkspaceMarkdownImagePath(path: string, documentFolder: string) {
+  const decoded = String(path || '').trim().replace(/\\/g, '/')
+  if (!decoded) {
+    return ''
+  }
+  const folderParts = normalizeWorkspacePath(documentFolder)
+  const imageParts = decoded.split('/').filter(Boolean)
+  const documentRoot = folderParts[0] || ''
+  const imageRoot = imageParts[0] || ''
+  if (
+    workspaceRootImageFolders.has(imageRoot.toLowerCase())
+    || (documentRoot && imageRoot === documentRoot)
+  ) {
+    return imageParts.join('/')
+  }
+  return normalizeWorkspacePath([...folderParts, ...imageParts].join('/')).join('/')
+}
+
+export function normalizeWorkspacePath(path: string) {
+  const parts: string[] = []
+  String(path || '')
+    .trim()
+    .replace(/^\/+/, '')
+    .split('/')
+    .forEach((part) => {
+      if (!part || part === '.') {
+        return
+      }
+      if (part === '..') {
+        parts.pop()
+        return
+      }
+      parts.push(part)
+    })
+  return parts
+}
+
+export function isWorkspaceImagePath(path: string) {
+  const raw = unwrapMarkdownDestination(path)
+  if (!raw || isPublicOrExternalFileURL(raw)) {
+    return false
+  }
+  return /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(raw.split(/[?#]/)[0])
+}
+
+export function isPublicOrExternalFileURL(path: string) {
+  return /^(https?:|data:|blob:|file:|kition-workspace:|\/)/i.test(String(path || '').trim())
+}
+
+export function parentDocumentFolderPath(path: string) {
+  const normalized = String(path || '').replace(/\\/g, '/')
+  const index = normalized.lastIndexOf('/')
+  return index > 0 ? normalized.slice(0, index) : ''
+}
+
+function splitPathSuffix(path: string) {
+  const match = String(path || '').match(/^([^?#]*)([?#].*)?$/)
+  return {
+    path: match?.[1] || '',
+    suffix: match?.[2] || '',
+  }
+}
+
+function unwrapMarkdownDestination(value: string | undefined) {
+  const raw = String(value || '').trim()
+  return raw.startsWith('<') && raw.endsWith('>')
+    ? raw.slice(1, -1).trim()
+    : raw
+}
+
+function resolveKitionWorkspaceURL(path: string) {
+  if (!/^kition-workspace:/i.test(String(path || '').trim())) {
+    return ''
+  }
+  const { path: legacyPath, suffix } = splitPathSuffix(path)
+  const workspacePath = legacyPath.replace(/^kition-workspace:\/{0,2}/i, '').replace(/^\/+/, '')
+  if (!workspacePath) {
+    return ''
+  }
+  return `${resolveWorkspaceFileURL(decodeURIPath(workspacePath))}${suffix}`
+}
+
+function decodeURIPath(path: string) {
+  return String(path || '')
+    .split('/')
+    .map((part) => {
+      let decoded = part
+      for (let index = 0; index < 3; index += 1) {
+        try {
+          const next = decodeURIComponent(decoded)
+          if (next === decoded) {
+            break
+          }
+          decoded = next
+        } catch {
+          break
+        }
+      }
+      return decoded
+    })
+    .join('/')
+}
+
+function decodeHTMLAttribute(value: string) {
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = value
+    return textarea.value
+  } catch {
+    return value
+  }
+}
+
+function escapeHTMLAttribute(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}

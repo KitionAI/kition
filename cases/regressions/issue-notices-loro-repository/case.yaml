@@ -1,0 +1,22 @@
+format: 1
+id: regressions/issue-notices-loro-repository
+feature: kition.platform.open-source-notices
+intent: >-
+  The app links loro, loro-internal and five more crates built from KitionPkg/loro (Loro without
+  the MPL-2.0 im), but the third-party notices named upstream's repository, which the crates'
+  manifests still carry. Crates built from KitionPkg/loro now show
+  https://github.com/KitionPkg/loro; other crates keep the repository their manifest names.
+layer: gate
+source:
+  kind: issue
+  from: "card notices-loro report 2026-11-17 (Loro repository URL in THIRD_PARTY_NOTICES)"
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/rustCrateNotices.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-17"

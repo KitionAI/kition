@@ -1,0 +1,766 @@
+{
+  "$comment": "Change sets (standard 2.0 A13): what one batch `edit` created, changed, moved and deleted on a document `setup` built, run by kition-kdm (tests/changes.rs) and @kition/kdm (test/changes.test.ts). Each case starts from a new document of `schema` (document id `docId`, actor 1). `expected` is both the comparison of the whole states before and after the edit (diff_states / diffStates, less its `texts`) and the receipt from the version before the edit (Replica::changes_since / changesSince), which reads only the objects the edit touched. Texts longer than 80 characters are `{ excerpt, length }`, excerpts of at most 80 characters from 20 before the first change, cut with `…`; blobs are their size; list and tree fields are told by `moved`, `created.at` and `deleted`.",
+  "docId": "01920000-0000-7000-8000-0000000000c7",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.changes",
+    "schemaVersion": 1,
+    "root": "Doc",
+    "types": {
+      "Doc": {
+        "fields": {
+          "title": {
+            "kind": "string"
+          },
+          "pages": {
+            "kind": "list",
+            "of": "Page"
+          },
+          "outline": {
+            "kind": "tree",
+            "of": "Section"
+          },
+          "cover": {
+            "kind": "blob",
+            "optional": true
+          },
+          "settings": {
+            "kind": "json",
+            "optional": true
+          }
+        }
+      },
+      "Page": {
+        "fields": {
+          "name": {
+            "kind": "string"
+          },
+          "body": {
+            "kind": "text"
+          },
+          "shapes": {
+            "kind": "list",
+            "of": "Shape"
+          }
+        }
+      },
+      "Shape": {
+        "fields": {
+          "label": {
+            "kind": "string"
+          },
+          "x": {
+            "kind": "number"
+          }
+        }
+      },
+      "Section": {
+        "fields": {
+          "heading": {
+            "kind": "string"
+          }
+        }
+      }
+    }
+  },
+  "setup": {
+    "ops": [
+      {
+        "op": "create",
+        "type": "Doc",
+        "id": "doc",
+        "fields": {
+          "title": "Deck"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Page",
+        "id": "p1",
+        "in": "doc.pages",
+        "fields": {
+          "name": "One"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Page",
+        "id": "p2",
+        "in": "doc.pages",
+        "fields": {
+          "name": "Two"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Page",
+        "id": "p3",
+        "in": "doc.pages",
+        "fields": {
+          "name": "Three"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Shape",
+        "id": "s1",
+        "in": "p1.shapes",
+        "fields": {
+          "label": "a",
+          "x": 1
+        }
+      },
+      {
+        "op": "create",
+        "type": "Shape",
+        "id": "s2",
+        "in": "p1.shapes",
+        "fields": {
+          "label": "b",
+          "x": 2
+        }
+      },
+      {
+        "op": "create",
+        "type": "Shape",
+        "id": "s3",
+        "in": "p2.shapes",
+        "fields": {
+          "label": "c",
+          "x": 3
+        }
+      },
+      {
+        "op": "create",
+        "type": "Section",
+        "id": "sec-a",
+        "in": "doc.outline",
+        "fields": {
+          "heading": "A"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Section",
+        "id": "sec-b",
+        "in": "doc.outline",
+        "parent": "sec-a",
+        "fields": {
+          "heading": "B"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Section",
+        "id": "sec-c",
+        "in": "doc.outline",
+        "fields": {
+          "heading": "C"
+        }
+      },
+      {
+        "op": "text.set",
+        "target": "p3",
+        "field": "body",
+        "text": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "created-with-fields",
+      "edit": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Page",
+            "id": "p4",
+            "in": "doc.pages",
+            "fields": {
+              "name": "Four"
+            }
+          },
+          {
+            "op": "text.set",
+            "target": "p4",
+            "field": "body",
+            "text": "Hi"
+          }
+        ]
+      },
+      "expected": {
+        "created": [
+          {
+            "id": "p4",
+            "type": "Page",
+            "fields": [
+              "body",
+              "name"
+            ],
+            "values": {
+              "body": "Hi",
+              "name": "Four"
+            },
+            "at": {
+              "parent": "doc",
+              "field": "pages",
+              "index": 3
+            }
+          }
+        ],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "pages"
+            ],
+            "edits": []
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "scalar-change",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "p1",
+            "field": "name",
+            "value": "First"
+          },
+          {
+            "op": "set",
+            "target": "s1",
+            "field": "x",
+            "value": 5
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "p1",
+            "type": "Page",
+            "fields": [
+              "name"
+            ],
+            "edits": [
+              {
+                "field": "name",
+                "before": "One",
+                "after": "First"
+              }
+            ]
+          },
+          {
+            "id": "s1",
+            "type": "Shape",
+            "fields": [
+              "x"
+            ],
+            "edits": [
+              {
+                "field": "x",
+                "before": 1,
+                "after": 5
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "text-excerpts",
+      "edit": {
+        "ops": [
+          {
+            "op": "text.insert",
+            "target": "p3",
+            "field": "body",
+            "index": 90,
+            "text": "XYZ"
+          },
+          {
+            "op": "text.set",
+            "target": "p2",
+            "field": "body",
+            "text": "üüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "p2",
+            "type": "Page",
+            "fields": [
+              "body"
+            ],
+            "edits": [
+              {
+                "field": "body",
+                "before": "",
+                "after": {
+                  "excerpt": "üüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü…",
+                  "length": 85
+                }
+              }
+            ]
+          },
+          {
+            "id": "p3",
+            "type": "Page",
+            "fields": [
+              "body"
+            ],
+            "edits": [
+              {
+                "field": "body",
+                "before": {
+                  "excerpt": "…abcdefghijabcdefghijabcdefghij",
+                  "length": 100
+                },
+                "after": {
+                  "excerpt": "…abcdefghijabcdefghijXYZabcdefghij",
+                  "length": 103
+                }
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "move-within-a-list",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.move",
+            "target": "doc",
+            "field": "pages",
+            "from": 0,
+            "to": 3
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "pages"
+            ],
+            "edits": []
+          }
+        ],
+        "moved": [
+          {
+            "id": "p1",
+            "type": "Page",
+            "from": {
+              "parent": "doc",
+              "field": "pages",
+              "index": 0
+            },
+            "to": {
+              "parent": "doc",
+              "field": "pages",
+              "index": 2
+            }
+          }
+        ],
+        "deleted": []
+      }
+    },
+    {
+      "name": "move-to-another-parent",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.remove",
+            "target": "p1",
+            "field": "shapes",
+            "index": 0
+          },
+          {
+            "op": "list.insert",
+            "target": "p2",
+            "field": "shapes",
+            "item": "s1",
+            "index": 0
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "p1",
+            "type": "Page",
+            "fields": [
+              "shapes"
+            ],
+            "edits": []
+          },
+          {
+            "id": "p2",
+            "type": "Page",
+            "fields": [
+              "shapes"
+            ],
+            "edits": []
+          }
+        ],
+        "moved": [
+          {
+            "id": "s1",
+            "type": "Shape",
+            "from": {
+              "parent": "p1",
+              "field": "shapes",
+              "index": 0
+            },
+            "to": {
+              "parent": "p2",
+              "field": "shapes",
+              "index": 0
+            }
+          }
+        ],
+        "deleted": []
+      }
+    },
+    {
+      "name": "move-in-a-tree",
+      "edit": {
+        "ops": [
+          {
+            "op": "tree.move",
+            "target": "doc",
+            "field": "outline",
+            "item": "sec-b"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [],
+        "moved": [
+          {
+            "id": "sec-b",
+            "type": "Section",
+            "from": {
+              "parent": "sec-a",
+              "field": "outline",
+              "index": 0
+            },
+            "to": {
+              "parent": "doc",
+              "field": "outline",
+              "index": 2
+            }
+          }
+        ],
+        "deleted": []
+      }
+    },
+    {
+      "name": "delete",
+      "edit": {
+        "ops": [
+          {
+            "op": "delete",
+            "target": "s2"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "p1",
+            "type": "Page",
+            "fields": [
+              "shapes"
+            ],
+            "edits": []
+          }
+        ],
+        "moved": [],
+        "deleted": [
+          {
+            "id": "s2",
+            "type": "Shape",
+            "fields": [],
+            "at": {
+              "parent": "p1",
+              "field": "shapes",
+              "index": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "moved-and-changed",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.move",
+            "target": "doc",
+            "field": "pages",
+            "from": 2,
+            "to": 0
+          },
+          {
+            "op": "set",
+            "target": "p3",
+            "field": "name",
+            "value": "Third"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "pages"
+            ],
+            "edits": []
+          },
+          {
+            "id": "p3",
+            "type": "Page",
+            "fields": [
+              "name"
+            ],
+            "edits": [
+              {
+                "field": "name",
+                "before": "Three",
+                "after": "Third"
+              }
+            ]
+          }
+        ],
+        "moved": [
+          {
+            "id": "p3",
+            "type": "Page",
+            "from": {
+              "parent": "doc",
+              "field": "pages",
+              "index": 2
+            },
+            "to": {
+              "parent": "doc",
+              "field": "pages",
+              "index": 0
+            }
+          }
+        ],
+        "deleted": []
+      }
+    },
+    {
+      "name": "deterministic-order",
+      "edit": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Shape",
+            "id": "z9",
+            "in": "p3.shapes",
+            "fields": {
+              "label": "z",
+              "x": 0
+            }
+          },
+          {
+            "op": "create",
+            "type": "Shape",
+            "id": "a1",
+            "in": "p3.shapes",
+            "fields": {
+              "label": "a",
+              "x": 0
+            }
+          },
+          {
+            "op": "create",
+            "type": "Shape",
+            "id": "m5",
+            "in": "p3.shapes",
+            "fields": {
+              "label": "m",
+              "x": 0
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [
+          {
+            "id": "a1",
+            "type": "Shape",
+            "fields": [
+              "label",
+              "x"
+            ],
+            "values": {
+              "label": "a",
+              "x": 0
+            },
+            "at": {
+              "parent": "p3",
+              "field": "shapes",
+              "index": 1
+            }
+          },
+          {
+            "id": "m5",
+            "type": "Shape",
+            "fields": [
+              "label",
+              "x"
+            ],
+            "values": {
+              "label": "m",
+              "x": 0
+            },
+            "at": {
+              "parent": "p3",
+              "field": "shapes",
+              "index": 2
+            }
+          },
+          {
+            "id": "z9",
+            "type": "Shape",
+            "fields": [
+              "label",
+              "x"
+            ],
+            "values": {
+              "label": "z",
+              "x": 0
+            },
+            "at": {
+              "parent": "p3",
+              "field": "shapes",
+              "index": 0
+            }
+          }
+        ],
+        "changed": [
+          {
+            "id": "p3",
+            "type": "Page",
+            "fields": [
+              "shapes"
+            ],
+            "edits": []
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "blob-and-json",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "doc",
+            "field": "cover",
+            "value": {
+              "hash": "abababababababababababababababababababababababababababababababab",
+              "mime": "image/png",
+              "size": 2048
+            }
+          },
+          {
+            "op": "set",
+            "target": "doc",
+            "field": "settings",
+            "value": {
+              "grid": true
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "doc",
+            "type": "Doc",
+            "fields": [
+              "cover",
+              "settings"
+            ],
+            "edits": [
+              {
+                "field": "cover",
+                "before": null,
+                "after": {
+                  "size": 2048
+                }
+              },
+              {
+                "field": "settings",
+                "before": null,
+                "after": {
+                  "grid": true
+                }
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "no-effect",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "p1",
+            "field": "name",
+            "value": "Other"
+          },
+          {
+            "op": "set",
+            "target": "p1",
+            "field": "name",
+            "value": "One"
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [],
+        "moved": [],
+        "deleted": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+format: 1
+id: regressions/issue-about-switches
+feature: kition.platform.release-checks
+intent: >-
+  The update toggles in Settings → About (auto-check, beta channel) are the same switch control
+  as every other on/off setting, not native checkboxes.
+layer: gate
+source:
+  kind: probe
+  from: UI design review, 2026-11-04
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/settings/DesktopSettingsPage.spec.tsx, -t, "uses switches for the update toggles in About"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-04"
+timeout_s: 60

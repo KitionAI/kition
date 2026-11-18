@@ -1,0 +1,491 @@
+/**
+ * The desktop bridge as the renderer sees it: the `window.kitionDesktop` surface and every payload type it exchanges.
+ */
+import type { AgentLocalSource } from '@/types/agentLocalSource'
+
+type KitionDesktopBridge = {
+  shell?: string
+  backendOrigin?: string
+  DesktopInfo?: () => Promise<DesktopInfo>
+  BackendStatus?: () => Promise<DesktopBackendStatus>
+  RetryBackendStart?: () => Promise<DesktopBackendStatus>
+  OpenExternalURL?: (url: string) => Promise<void>
+  ShowNotification?: (title: string, message: string) => Promise<void>
+  WindowAction?: (action: string) => Promise<void>
+  OpenRuntimePath?: (kind: string) => Promise<void>
+  BootstrapInitialize?: () => Promise<BootstrapInitializeResult>
+  BootstrapCreateAttestation?: (request: BootstrapAttestationRequest) => Promise<BootstrapAttestationResult>
+  BootstrapStatus?: () => Promise<BootstrapStatus>
+  SaveBinaryFile?: (request: SaveFileRequest) => Promise<string>
+  SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
+  CopyImage?: (request: { url: string }) => Promise<boolean>
+  /** Prints a PDF with the system's print panel; answers whether the person printed. */
+  PrintPdf?: (bytes: Uint8Array, title: string) => Promise<boolean>
+  SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
+  ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
+  ReadWorkspaceImage?: (request: { path: string; expected_root: string }) => Promise<DesktopClipboardImage>
+  ReadWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocument>
+  StatWorkspaceDocument?: (request: { path: string }) => Promise<{ mtime_ms: number; size: number } | null>
+  WriteWorkspaceDocument?: (request: WorkspaceDocumentWriteRequest) => Promise<WorkspaceDocument>
+  CreateWorkspaceDocument?: (request: WorkspaceDocumentCreateRequest) => Promise<WorkspaceDocument>
+  ReadDocumentStore?: (request: DocumentStoreRequest) => Promise<DocumentStorePayload | null>
+  WriteDocumentStore?: (request: DocumentStoreWriteRequest) => Promise<DocumentStoreWritten | void | null>
+  DeleteDocumentStore?: (request: DocumentStoreRequest) => Promise<void | null>
+  ReadDocumentIndex?: (request: DocumentIndexRequest) => Promise<DocumentIndexPayload>
+  WriteDocumentIndex?: (request: DocumentIndexWriteRequest) => Promise<{ version: string }>
+  ReadDocumentHistory?: (request: DocumentStoreRequest) => Promise<{ checkpoints: DocumentCheckpoint[] }>
+  RecordDocumentCheckpoint?: (request: DocumentStoreRequest & { checkpoint: DocumentCheckpointInput }) => Promise<{ checkpoint: DocumentCheckpoint }>
+  ReadDocumentCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: DocumentCheckpoint; blobs_base64?: string } | null>
+  DocumentStoreStatus?: () => Promise<DocumentStoreStatus>
+  /** The event the shell sends with a new `DocumentStoreStatus` when this window takes the store lock over or loses it. */
+  documentStoreAccessEvent?: string
+  CreateWorkspaceFolder?: (request: WorkspaceFolderCreateRequest) => Promise<WorkspaceFolderCreateResponse>
+  MoveWorkspaceDocument?: (request: WorkspaceDocumentMoveRequest) => Promise<WorkspaceDocument>
+  MoveWorkspaceFolder?: (request: WorkspaceFolderMoveRequest) => Promise<WorkspaceFolderMoveResponse>
+  DeleteWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocumentListResponse>
+  DeleteWorkspaceFolder?: (request: WorkspaceFolderRequest) => Promise<WorkspaceDocumentListResponse>
+  OpenWorkspaceFile?: (request: WorkspaceDocumentPathRequest) => Promise<string>
+  ImportWorkspaceFile?: (request: WorkspaceFileImportRequest) => Promise<WorkspaceFileImportResponse>
+  ChooseFilesToImport?: () => Promise<WorkspaceFileChooseResponse>
+  RevealWorkspaceFolder?: (request?: Partial<WorkspaceDocumentPathRequest>) => Promise<string>
+  ChooseWorkspaceFolder?: () => Promise<WorkspaceDocumentListResponse | null>
+  SetWorkspaceFolder?: (request: WorkspaceFolderRequest) => Promise<WorkspaceDocumentListResponse>
+  ListVaults?: () => Promise<VaultListResponse>
+  AddVault?: (request: VaultAddRequest) => Promise<VaultMutationResponse>
+  RemoveVault?: (request: VaultPathRequest) => Promise<VaultListResponse>
+  RenameVault?: (request: VaultRenameRequest) => Promise<VaultMutationResponse>
+  SetActiveVault?: (request: VaultPathRequest) => Promise<SetActiveVaultResponse>
+  ChooseDirectory?: (request?: ChooseDirectoryRequest) => Promise<ChooseDirectoryResponse>
+  OpenWorkspaceWindow?: (request: VaultPathRequest) => Promise<OpenWorkspaceWindowResponse>
+  ChooseAgentAnalysisDirectory?: (request?: AgentAnalysisDirectoryRequest) => Promise<AgentLocalSource | null>
+  StoreSecureValue?: (key: string, value: string) => Promise<void>
+  ReadSecureValue?: (key: string) => Promise<string>
+  DeleteSecureValue?: (key: string) => Promise<void>
+  EventsOn?: (eventName: string, callback: (payload: any) => void) => (() => void) | void
+  documentExternalChangeEvent?: string
+  BrowserOpenURL?: (url: string) => void
+}
+
+export type DesktopInfo = {
+  is_desktop: boolean
+  platform: string
+  backend_base_url: string
+  data_dir: string
+  cache_dir: string
+  logs_dir: string
+  uploads_dir: string
+  exports_dir: string
+  workspace_dir?: string
+  app_version?: string
+  supports_secure_storage: boolean
+}
+
+export type WorkspaceDocumentTreeItem = {
+  type: 'folder' | 'file'
+  path: string
+  name: string
+  format?: WorkspaceDocumentFormat
+  size?: number
+  updated_at?: string
+  children?: WorkspaceDocumentTreeItem[]
+}
+
+export type WorkspaceDocumentListResponse = {
+  root_path: string
+  items: WorkspaceDocumentTreeItem[]
+}
+
+export type WorkspaceDocument = {
+  path: string
+  name: string
+  content: string
+  format?: WorkspaceDocumentFormat
+  updated_at?: string
+  size?: number
+  mtime_ms?: number
+}
+
+export type WorkspaceDocumentExternalChange = {
+  path: string
+  eventType: 'add' | 'change' | 'unlink'
+  mtimeMs?: number
+}
+
+export type WorkspaceDocumentFormat =
+  | 'markdown'
+  | 'docx'
+  | 'xlsx'
+  | 'pptx'
+  | 'pdf'
+  | 'csv'
+  | 'json'
+  | 'text'
+  | 'html'
+  | 'image'
+  | 'photo'
+  | 'film'
+  | 'vector'
+  | 'motion'
+  | 'cad'
+  | 'scene'
+  | 'design'
+  | 'slide'
+  | 'video'
+  | 'audio'
+  | 'binary'
+  | 'table'
+  | 'board'
+  | 'layout'
+
+export type WorkspaceDocumentPathRequest = {
+  expected_root?: string
+  path: string
+}
+
+export type WorkspaceFolderRequest = {
+  path: string
+}
+
+export type VaultEntry = {
+  path: string
+  name: string
+  added_at: string
+  last_opened_at: string
+}
+
+export type VaultListResponse = {
+  vaults: VaultEntry[]
+  active_vault_path: string
+}
+
+export type VaultPathRequest = {
+  path: string
+}
+
+export type VaultAddRequest = {
+  path?: string
+  parent_path?: string
+  name?: string
+}
+
+export type VaultRenameRequest = {
+  path: string
+  name: string
+}
+
+export type VaultMutationResponse = {
+  vault: VaultEntry
+  registry: VaultListResponse
+}
+
+export type SetActiveVaultResponse = {
+  list: WorkspaceDocumentListResponse
+  registry: VaultListResponse
+}
+
+export type ChooseDirectoryRequest = {
+  title?: string
+}
+
+export type ChooseDirectoryResponse = {
+  canceled: boolean
+  path: string
+}
+
+export type OpenWorkspaceWindowResponse = {
+  opened: boolean
+}
+
+export type AgentAnalysisDirectoryRequest = {
+  suggested_path?: string
+}
+
+export type WorkspaceDocumentWriteRequest = {
+  expected_root?: string
+  expected_content?: string | null
+  /** The write is refused when the file exists. */
+  expected_missing?: boolean
+  path: string
+  content: string
+}
+
+/**
+ * What the store keeps about a replica a kit editor keeps for its file (Kit UI protocol capability `replica`): the
+ * stamp of the file it was saved with.
+ */
+export type KitReplicaMeta = {
+  docId: string
+  kit: string
+  path: string
+  fileStamp: string
+  /** The replica's own KDM document id (hex): a later save that continues it appends only its new changes. */
+  replicaId?: string
+}
+
+export type DocumentStoreRequest = {
+  expected_root?: string
+  doc_id: string
+  /** Read only the stored meta and head (`seq`, `version`), not the replica's bytes. */
+  head_only?: boolean
+}
+
+/**
+ * A stored replica: load `snapshot_base64`, then import `changes_base64` in order. `seq` and `version` name the stored
+ * version (a later write appends after `seq`); `complete` is false when a change or blob the store names is missing or
+ * damaged, and the entry then holds what came before it, without blobs. Stores before append support answer only
+ * `meta` and `snapshot_base64` (and `blobs_base64`).
+ */
+export type DocumentStorePayload = {
+  meta: KitReplicaMeta
+  snapshot_base64: string
+  changes_base64?: string[]
+  /** A kit replica's blob bundle. */
+  blobs_base64?: string
+  seq?: number
+  version?: string | null
+  complete?: boolean
+}
+
+/** What the renderer asks to record in a document's version history. */
+export type DocumentCheckpointInput = {
+  /** `save`, `agent`, `script`, `edit`, `open`, `restore`, `before-restore`. */
+  origin: string
+  author?: string
+  label?: string
+  /** The replica version (hex); a write's checkpoint defaults to the written version. */
+  version?: string
+  time?: number
+}
+
+/** A point in a document's version history on this device, newest first in lists. */
+export type DocumentCheckpoint = {
+  id: string
+  /** Milliseconds since the Unix epoch. */
+  time: number
+  origin: string
+  author?: string
+  label?: string
+  version?: string
+  seq?: number
+  /** The store kept the blobs the replica named then (a kit replica's). */
+  hasBlobs: boolean
+}
+
+/**
+ * A replica write: a whole `snapshot_base64` (a first write, a compaction, a replica of a new lineage), or the
+ * `changes_base64` since the stored `base_seq`, which fails with `DOCUMENT_STORE_CONFLICT` when the store is not there.
+ */
+export type DocumentStoreWriteRequest = Omit<DocumentStoreRequest, 'head_only'> & {
+  meta: KitReplicaMeta
+  snapshot_base64?: string
+  changes_base64?: string
+  base_seq?: number
+  version?: string
+  blobs_base64?: string
+  /** The replica does not continue the stored one: its version history starts over. */
+  lineage?: 'new'
+  checkpoint?: DocumentCheckpointInput
+}
+
+/** `compact`: the next write should carry a snapshot (the change log is due for compaction). */
+export type DocumentStoreWritten = {
+  seq: number
+  version: string | null
+  compact: boolean
+  checkpoint?: DocumentCheckpoint
+}
+
+/**
+ * Whether this window writes the workspace's document store: one Kition does (the one holding its lock file); any
+ * other opens it read-only. `holder` names the one that does.
+ */
+export type DocumentStoreStatus = {
+  writable: boolean
+  holder: { host: string; pid: number; started: number; heartbeat: number; sameHost: boolean } | null
+}
+
+export type DocumentIndexRequest = {
+  expected_root?: string
+}
+
+/** The `.kition/docs/index.json` mapping of workspace paths to document ids; `version` is `null` before the first write. */
+export type DocumentIndexPayload = {
+  entries: Record<string, string>
+  version: string | null
+}
+
+export type DocumentIndexWriteRequest = DocumentIndexRequest & {
+  entries: Record<string, string>
+  expected_version: string | null
+}
+
+export type WorkspaceDocumentCreateRequest = {
+  title?: string
+  folder?: string
+  platform?: string
+  format?: WorkspaceDocumentFormat
+}
+
+export type WorkspaceFolderCreateRequest = {
+  parent_folder?: string
+  name?: string
+}
+
+export type WorkspaceFolderCreateResponse = WorkspaceDocumentListResponse & {
+  created_path: string
+}
+
+export type WorkspaceDocumentMoveRequest = {
+  path: string
+  target_folder?: string
+  target_name?: string
+}
+
+export type WorkspaceFolderMoveRequest = {
+  path: string
+  target_folder?: string
+  target_name?: string
+}
+
+export type WorkspaceFolderMoveResponse = WorkspaceDocumentListResponse & {
+  moved_path: string
+}
+
+export type DesktopClipboardImage = {
+  mime_type: string
+  base64_content: string
+}
+
+export type WorkspaceFileImportRequest = {
+  expected_root?: string
+  folder?: string
+  filename: string
+  source_path?: string
+  base64_content?: string
+}
+
+export type WorkspaceFileImportResponse = WorkspaceDocumentListResponse & {
+  imported_path: string
+}
+
+export type WorkspaceFileChooseResponse = {
+  canceled: boolean
+  paths: string[]
+}
+
+export type DesktopBackendStatus = {
+  base_url: string
+  health_url: string
+  running: boolean
+  last_error: string
+  logs: string
+  log_file: string
+  launch_mode: string
+  binary_path: string
+  config_path: string
+  working_dir: string
+  command: string
+  runtime_version?: string
+  protocol_version?: number
+  capabilities?: string[]
+  runtime_sha256?: string
+  runtime_label?: 'local-runtime' | 'dev-runtime' | ''
+}
+
+export type BootstrapDiagnostics = {
+  code: string
+  title: string
+  message: string
+  detail: string
+  support_id: string
+  retryable: boolean
+  next_action: string
+}
+
+export type BootstrapStatus = {
+  official_build: boolean
+  build_channel: string
+  available: boolean
+  state: string
+  installation_id: string
+  diagnostics: BootstrapDiagnostics
+}
+
+export type BootstrapInitializeResult = {
+  installation_id: string
+  status: BootstrapStatus
+}
+
+export type BootstrapAttestationRequest = {
+  startup_id: string
+  challenge_id: string
+  challenge: string
+  expires_at: string
+}
+
+export type BootstrapAttestationPayload = {
+  schema_version: string
+  module_version: string
+  integrity: {
+    packaged: boolean
+    signature_present: boolean
+    debugger_detected: boolean
+    tamper_flags: string[]
+  }
+  hardware: {
+    hardware_uuid_hash: string
+    serial_hash: string
+    board_serial_hash: string
+    mac_hashes: string[]
+  }
+  proof: {
+    challenge_binding: string
+    attestation_signature: string
+  }
+}
+
+export type BootstrapAttestationResult = {
+  status: BootstrapStatus
+  attestation?: BootstrapAttestationPayload
+}
+
+type SaveFileRequest = {
+  dialog_title: string
+  default_filename: string
+  base64_content: string
+}
+
+export type SavePdfFileRequest = {
+  dialog_title: string
+  default_filename: string
+  html: string
+  page_format?: string
+  document_path?: string
+  landscape?: boolean
+  margins_type?: 0 | 1 | 2
+  scale_factor?: number
+  /** Custom page size in CSS pixels; wins over page_format. */
+  page_width_px?: number
+  page_height_px?: number
+}
+
+export type FeedbackReportSubmissionRequest = {
+  description: string
+  contact_email?: string
+  access_token?: string
+}
+
+export type FeedbackReportSubmissionResponse = {
+  ticket_id: string
+  accepted_at: string
+}
+
+declare global {
+  interface Window {
+    kitionDesktop?: KitionDesktopBridge
+  }
+}
+
+export function getDesktopBridge(): KitionDesktopBridge | undefined {
+  return typeof window !== 'undefined' ? window.kitionDesktop : undefined
+}

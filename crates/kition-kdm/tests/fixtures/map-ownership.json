@@ -1,0 +1,291 @@
+{
+  "$comment": "A map field declared `owns` holds the objects its values name: a value that is an object id is held under its key, a member of an object value that is one under `<key>.<member>`. Change sets attribute a change inside such an object to the nearest holder with a tool id at that path, as through list, tree and owning ref fields. Run by kition-kdm (tests/changes.rs) and @kition/kdm (test/changes.test.ts) as `attribution.json` is: each case from `setup`, numbered, then `edit`, numbered again, `expected` from the receipt and from the comparison of the whole states.",
+  "docId": "01920000-0000-7000-8000-0000000000d4",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.map-ownership",
+    "schemaVersion": 1,
+    "root": "Doc",
+    "types": {
+      "Doc": {
+        "fields": {
+          "slides": {
+            "kind": "list",
+            "of": "Slide"
+          }
+        }
+      },
+      "Slide": {
+        "fields": {
+          "number": {
+            "kind": "integer",
+            "optional": true,
+            "readOnly": true
+          },
+          "shapes": {
+            "kind": "list",
+            "of": "Shape"
+          }
+        },
+        "toolId": {
+          "field": "number",
+          "prefix": "slide:"
+        }
+      },
+      "Shape": {
+        "fields": {
+          "number": {
+            "kind": "integer",
+            "optional": true,
+            "readOnly": true
+          },
+          "table": {
+            "kind": "ref",
+            "of": "Table",
+            "optional": true,
+            "owns": true
+          }
+        },
+        "toolId": {
+          "field": "number",
+          "prefix": "shape:"
+        }
+      },
+      "Table": {
+        "fields": {
+          "rows": {
+            "kind": "list",
+            "of": "Row"
+          },
+          "cells": {
+            "kind": "map",
+            "owns": true
+          },
+          "look": {
+            "kind": "map"
+          }
+        }
+      },
+      "Row": {
+        "fields": {
+          "height": {
+            "kind": "number",
+            "optional": true
+          }
+        }
+      },
+      "TextBody": {
+        "fields": {
+          "paragraphs": {
+            "kind": "list",
+            "of": "Paragraph"
+          }
+        }
+      },
+      "Paragraph": {
+        "fields": {
+          "text": {
+            "kind": "text"
+          }
+        }
+      }
+    }
+  },
+  "setup": {
+    "ops": [
+      {
+        "op": "create",
+        "type": "Doc",
+        "id": "doc"
+      },
+      {
+        "op": "create",
+        "type": "Slide",
+        "id": "s1",
+        "in": "doc.slides"
+      },
+      {
+        "op": "create",
+        "type": "Shape",
+        "id": "sh1",
+        "in": "s1.shapes"
+      },
+      {
+        "op": "create",
+        "type": "Table",
+        "id": "t1"
+      },
+      {
+        "op": "set",
+        "target": "sh1",
+        "field": "table",
+        "value": "t1"
+      },
+      {
+        "op": "create",
+        "type": "Row",
+        "id": "r1",
+        "in": "t1.rows"
+      },
+      {
+        "op": "create",
+        "type": "TextBody",
+        "id": "tb1"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p1",
+        "in": "tb1.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p1",
+        "field": "text",
+        "text": "A1"
+      },
+      {
+        "op": "map.set",
+        "target": "t1",
+        "field": "cells",
+        "key": "r1:c1",
+        "value": {
+          "body": "tb1",
+          "fill": "red"
+        }
+      },
+      {
+        "op": "create",
+        "type": "TextBody",
+        "id": "tb2"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p2",
+        "in": "tb2.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p2",
+        "field": "text",
+        "text": "B1"
+      },
+      {
+        "op": "map.set",
+        "target": "t1",
+        "field": "cells",
+        "key": "r1:c2",
+        "value": "tb2"
+      },
+      {
+        "op": "create",
+        "type": "TextBody",
+        "id": "tb3"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p3",
+        "in": "tb3.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p3",
+        "field": "text",
+        "text": "Loose"
+      },
+      {
+        "op": "map.set",
+        "target": "t1",
+        "field": "look",
+        "key": "note",
+        "value": "tb3"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "cell-text-in-an-object-value",
+      "intent": "A paragraph in the text body a cell's value names under `body`: told as the shape's edit at `table.cells.<key>.body.paragraphs.0.text`.",
+      "edit": {
+        "ops": [
+          {
+            "op": "text.set",
+            "target": "p1",
+            "field": "text",
+            "text": "Changed"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Changed",
+                "before": "A1",
+                "field": "table.cells.r1:c1.body.paragraphs.0.text"
+              }
+            ],
+            "fields": [
+              "table.cells.r1:c1.body.paragraphs.0.text"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "cell-text-in-an-id-value",
+      "intent": "A paragraph in the text body a cell's value is: told at `table.cells.<key>.paragraphs.0.text`.",
+      "edit": {
+        "ops": [
+          {
+            "op": "text.set",
+            "target": "p2",
+            "field": "text",
+            "text": "Other"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Other",
+                "before": "B1",
+                "field": "table.cells.r1:c2.paragraphs.0.text"
+              }
+            ],
+            "fields": [
+              "table.cells.r1:c2.paragraphs.0.text"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    }
+  ],
+  "schemaErrors": [
+    {
+      "type": "Row",
+      "field": "height",
+      "def": {
+        "kind": "number",
+        "optional": true,
+        "owns": true
+      },
+      "message": "schema: `Row.height`: only ref and map fields take `owns`"
+    }
+  ]
+}

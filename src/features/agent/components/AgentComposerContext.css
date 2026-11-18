@@ -1,0 +1,16 @@
+.agent-composer-context {
+  @apply flex max-h-24 min-w-0 flex-wrap items-center gap-x-2 gap-y-1 overflow-y-auto overscroll-contain px-1 pt-1;
+  scrollbar-width: thin;
+}
+
+.agent-composer-reference {
+  @apply inline-flex h-6 min-w-0 max-w-full items-center rounded-lg text-[13px] text-muted-foreground transition-colors hover:bg-muted/60 focus-within:bg-muted/60;
+}
+
+.agent-composer-reference__name {
+  @apply inline-flex h-full min-w-0 items-center gap-1.5 rounded-lg px-1 text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+.agent-composer-reference__remove {
+  @apply inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:text-muted-foreground;
+}

@@ -1,0 +1,547 @@
+{
+  "createMenu": {
+    "format": {
+      "table": "表格",
+      "board": "画板",
+      "note": "笔记",
+      "photo": "Photo",
+      "film": "Film",
+      "vector": "Vector",
+      "motion": "Motion",
+      "layout": "Layout",
+      "cad": "CAD",
+      "scene": "Scene",
+      "design": "Design",
+      "slide": "Slide",
+      "doc": "Doc",
+      "sheet": "Sheet",
+      "pdf": "PDF",
+      "html": "HTML"
+    },
+    "folder": "文件夹",
+    "group": {
+      "documents": "文档",
+      "data": "数据",
+      "visual": "视觉",
+      "media": "影音"
+    }
+  },
+  "emptyState": {
+    "title": "将创意转化为有组织的工作",
+    "description": "从侧边栏打开内容，从空白画布开始，或让 Kition AI 帮你构建下一个文档或表格。",
+    "prompt": {
+      "title": "描述您想要构建的内容",
+      "description": "使用 Kition AI 进行规划、研究、写作和整理。",
+      "action": "打开 AI 对话"
+    },
+    "quickStart": "快速入门",
+    "actions": {
+      "document": {
+        "title": "新文档",
+        "description": "记录笔记、计划和知识。"
+      },
+      "table": {
+        "title": "新建表格",
+        "description": "构建项目、记录和研究。"
+      }
+    }
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "文件"
+    },
+    "collapseSection": "折叠 {{name}}",
+    "expandSection": "展开 {{name}}",
+    "newPage": "新建页面",
+    "newPageIn": "在 {{name}} 中新建页面",
+    "refresh": "刷新工作区",
+    "collapseSidebar": "折叠侧边栏",
+    "loadingDirectory": "正在加载本地目录"
+  },
+  "tree": {
+    "collapse": "折叠",
+    "expand": "展开",
+    "modifiedByAgent": "已被 Agent 修改",
+    "createInside": "在此页面内创建",
+    "moreActions": "更多操作",
+    "addToChat": "添加到对话",
+    "addToNewChat": "添加到新对话",
+    "changeIcon": "更换图标",
+    "rename": "重命名",
+    "duplicate": "复制",
+    "moveTo": "移动到…",
+    "showInFinder": "在访达中显示",
+    "delete": "删除",
+    "moveToTitle": "移动到",
+    "moveToRoot": "根目录",
+    "noDestinations": "没有其他可用目标",
+    "clearIcon": "清除"
+  },
+  "tabs": {
+    "closeTab": "关闭标签页",
+    "expandSidebar": "展开侧边栏",
+    "previousTab": "上一个标签页",
+    "nextTab": "下一个标签页",
+    "showOverflow": "显示更多标签页",
+    "close": "关闭",
+    "closeOthers": "关闭其他标签页",
+    "closeAll": "关闭所有标签页",
+    "closeUnmodified": "关闭未修改的标签页",
+    "closeLeft": "关闭左侧标签页",
+    "closeRight": "关闭右侧标签页",
+    "closeReadOnly": "关闭所有只读标签页",
+    "copyReference": "复制路径/引用",
+    "unsavedTitle": "“{{name}}”有未保存的更改",
+    "unsavedMessage": "关闭标签页前要保存吗？未保存的更改将会丢失。",
+    "unsavedTitleMany": "{{count}} 个文档有未保存的更改",
+    "unsavedWindowMessage": "要先保存吗？未保存的更改将会丢失。",
+    "unsavedSave": "保存",
+    "unsavedDiscard": "不保存",
+    "unsavedCancel": "取消"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "今天",
+      "week": "过去 7 天",
+      "older": "更早"
+    },
+    "chat": "对话",
+    "newChatTitle": "新对话",
+    "openChat": "打开 AI 对话",
+    "collapseChat": "收起 AI 对话",
+    "emptyTitle": "AI 对话",
+    "newChat": "新对话",
+    "closeChat": "关闭对话",
+    "viewHistory": "查看历史",
+    "agentHistory": "Agent 历史",
+    "searchChats": "搜索对话…",
+    "noMatchingChats": "没有匹配的对话。",
+    "noChatsYet": "还没有对话，开始一个新的吧。"
+  },
+  "agentSidebar": {
+    "empty": "开始新对话，或从历史中打开已有对话。"
+  },
+  "fileViewer": {
+    "imageActions": "图片操作",
+    "copyImage": "复制图片",
+    "imageCopied": "图片已复制",
+    "imageCopyFailed": "无法复制图片",
+    "openInSystem": "用系统应用打开",
+    "showInFinder": "在访达中显示",
+    "previewUnsupported": "{{label}} · 暂不支持应用内预览",
+    "previewTip": "你仍可以用 @ 提及此文件，让 AI 直接解析，或点击“用系统应用打开”使用原生应用查看。"
+  },
+  "folderDialog": {
+    "title": "新建文件夹",
+    "description": "请输入文件夹名称。",
+    "placeholder": "未命名文件夹",
+    "cancel": "取消",
+    "create": "创建"
+  },
+  "media": {
+    "images": "图片",
+    "videos": "视频",
+    "items": "{{count}} 项",
+    "noImagesTitle": "暂无图片",
+    "noVideosTitle": "暂无视频",
+    "noImagesDescription": "此工作区中的图片将显示在这里。",
+    "noVideosDescription": "此工作区中的视频将显示在这里。"
+  },
+  "layout": {
+    "resizeSidebar": "调整侧边栏大小",
+    "resizeChat": "调整 AI 对话大小"
+  },
+  "footer": {
+    "switchWorkspace": "切换工作区",
+    "switchWorkspaceTitle": "切换工作区 (⌘⇧O)",
+    "profile": "个人资料",
+    "settings": "设置"
+  },
+  "errors": {
+    "fileTypeNotDeletable": "此类文件暂时无法从文档库中删除。",
+    "saveBeforeOrganizing": "“{{name}}”有未保存的修改，请先保存再重命名或移动。",
+    "onlyWorkspaceItemsDuplicable": "此处仅支持复制文档、表格和画板。",
+    "createDocumentFailed": "创建文档失败",
+    "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev 启动桌面应用后重试。",
+    "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev 启动桌面应用后重试。",
+    "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。"
+  },
+  "feedback": {
+    "refreshed": "已刷新工作区",
+    "documentCreated": "文档已创建",
+    "folderCreated": "文件夹已创建",
+    "renamed": "已重命名",
+    "alreadyInLocation": "已在当前位置"
+  },
+  "photoKit": {
+    "unavailableTitle": "此版本不支持 Photo 编辑",
+    "unavailableBody": "包含 Photo 引擎时，Photo 文件会在 Kition 中打开。"
+  },
+  "kitEditor": {
+    "conflictsTitle": "部分编辑无法合并",
+    "conflictsBody_one": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
+    "conflictsBody_other": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
+    "openFailedTitle": "无法打开 {{name}}",
+    "openFailedMessage": "文件可能已损坏，或不是有效的 {{type}} 文件。文件未被修改。",
+    "openUnreachableMessage": "Kition 暂时无法连接文件服务。文件没有被改动。",
+    "openEngineMessage": "{{type}} 文件的编辑器没能启动。文件没有被改动。",
+    "openTooLargeMessage": "此文件超过 {{limit}} MB，超出了 {{type}} 编辑器能打开的上限。文件未被更改。",
+    "openTooLargeNoLimitMessage": "此文件超出了 {{type}} 编辑器能打开的大小。文件未被更改。",
+    "tryAgain": "重试",
+    "saveFailed": {
+      "diskFull": "磁盘空间已满。请清理出空间后再保存。",
+      "notAllowed": "Kition 没有写入这个文件的权限。请检查文件权限后再保存。",
+      "unreachable": "Kition 暂时无法连接文件服务。你的改动还在，请稍后再保存。",
+      "other": "文件没能保存。你的改动还在，请再试一次保存。"
+    },
+    "opening": "正在打开…",
+    "draft": {
+      "title": "智能体草稿",
+      "bannerOpen": "智能体正在编辑此文档的草稿",
+      "bannerReady": "智能体的草稿已可审阅",
+      "bannerHint": "在你合并草稿之前，文档保持不变。",
+      "review": "审阅",
+      "merge": "合并",
+      "discard": "丢弃",
+      "reviewTitle": "审阅智能体的草稿",
+      "localHint": "合并之前只有你能看到此草稿。撤销可一步撤回整次合并。",
+      "compareFailed": "无法比较草稿",
+      "comparing": "正在比较草稿…",
+      "before": "当前文档",
+      "after": "合并草稿后",
+      "noPreview": "无预览",
+      "created_one": "新增 {{count}} 个对象",
+      "created_other": "新增 {{count}} 个对象",
+      "changed_one": "修改 {{count}} 个对象",
+      "changed_other": "修改 {{count}} 个对象",
+      "deleted_one": "删除 {{count}} 个对象",
+      "deleted_other": "删除 {{count}} 个对象",
+      "noChanges": "此草稿没有任何更改。",
+      "more_one": "另有 {{count}} 项",
+      "more_other": "另有 {{count}} 项",
+      "texts": "文字更改",
+      "merged": "已合并智能体的草稿",
+      "mergedHint": "撤销可撤回整次合并。",
+      "mergeFailed": "无法合并草稿",
+      "discarded": "已丢弃智能体的草稿",
+      "discardFailed": "无法丢弃草稿",
+      "tab": "草稿",
+      "tabOpen": "智能体正在编辑草稿",
+      "tabReady": "智能体的草稿已可审阅",
+      "change": {
+        "created": "新增",
+        "changed": "修改",
+        "deleted": "删除"
+      }
+    },
+    "headlessDraft": {
+      "badgeTitle": "这个文件有一份 agent 草稿等待你审阅",
+      "title": "审阅 agent 对 {{name}} 的草稿",
+      "hint": "Kition 之外的 agent 修改了这个文件的副本。合并之前，文件保持不变。",
+      "noDiff": "这个套件通过摘要和预览比较草稿，而不是逐个对象比较。",
+      "stale": "agent 开始草稿后，文件又被改过。合并会用草稿替换这些修改。",
+      "overwrite": "合并并替换",
+      "dirty": "这个文件在打开的编辑器里有未保存的修改。请先保存或放弃，再合并。",
+      "mergedHint": "文件现在是 agent 的草稿内容。"
+    },
+    "openUrl": {
+      "title": "打开这个网址？",
+      "body": "文档里的这个链接指向 Kition 以外的地方，会在浏览器中打开。",
+      "site": "网站：",
+      "ascii": "实际地址为 {{host}}",
+      "open": "打开",
+      "cancel": "取消"
+    },
+    "filePicker": {
+      "title": {
+        "open": "选择文件",
+        "folder": "选择文件夹",
+        "save": "保存到工作区",
+        "link": "链接文件"
+      },
+      "body": {
+        "open": "文档需要工作区中的一个文件。",
+        "folder": "文档需要工作区中的一个文件夹。",
+        "save": "为新文件命名，并选择保存的文件夹。",
+        "link": "文档将链接工作区中的一个文件。文件保留在原位置，文档会跟随它的更改。"
+      },
+      "name": "文件名",
+      "search": "搜索",
+      "workspaceRoot": "工作区",
+      "loading": "正在加载…",
+      "empty": "没有匹配的文件",
+      "replaces": "此文件夹中已有名为 {{name}} 的文件。保存会替换它。",
+      "import": "从这台电脑导入",
+      "confirm": {
+        "open": "打开",
+        "folder": "选择",
+        "save": "保存",
+        "link": "链接"
+      },
+      "cancel": "取消"
+    }
+  },
+  "filmKit": {
+    "unavailableTitle": "此版本不支持 Film 编辑",
+    "unavailableBody": "包含 Film 引擎时，Film 文件会在 Kition 中打开。",
+    "editInFilm": "在 Film 中编辑",
+    "editFailed": "无法创建视频项目"
+  },
+  "vectorKit": {
+    "unavailableTitle": "此版本不支持 Vector 编辑",
+    "unavailableBody": "包含 Vector 引擎时，Vector 文件会在 Kition 中打开。"
+  },
+  "motionKit": {
+    "unavailableTitle": "此版本不支持 Motion 编辑",
+    "unavailableBody": "包含 Motion 引擎时，Motion 文件会在 Kition 中打开。"
+  },
+  "layoutKit": {
+    "unavailableTitle": "此版本不支持 Layout 编辑",
+    "unavailableBody": "包含 Layout 引擎时，Layout 文件会在 Kition 中打开。"
+  },
+  "cadKit": {
+    "unavailableTitle": "此版本不支持 CAD 编辑",
+    "unavailableBody": "包含 CAD 引擎时，CAD 文件会在 Kition 中打开。"
+  },
+  "sceneKit": {
+    "unavailableTitle": "此版本不支持 Scene 编辑",
+    "unavailableBody": "包含 Scene 引擎时，Scene 文件会在 Kition 中打开。"
+  },
+  "designKit": {
+    "unavailableTitle": "此版本不支持 Design 编辑",
+    "unavailableBody": "包含 Design 引擎时，Design 文件会在 Kition 中打开。"
+  },
+  "slideKit": {
+    "unavailableTitle": "此版本不支持 Slide 编辑",
+    "unavailableBody": "包含 Slide 引擎时，Slide 文件会在 Kition 中打开。"
+  },
+  "docKit": {
+    "unavailableTitle": "此版本不支持 Doc 编辑",
+    "unavailableBody": "包含 Doc 引擎时，Doc 文件会在 Kition 中打开。"
+  },
+  "sheetKit": {
+    "unavailableTitle": "此版本不支持 Sheet 编辑",
+    "unavailableBody": "包含 Sheet 引擎时，Sheet 文件会在 Kition 中打开。"
+  },
+  "pdfKit": {
+    "unavailableTitle": "此版本不支持 PDF 编辑",
+    "unavailableBody": "包含 PDF 引擎时，PDF 文件会在 Kition 中打开。"
+  },
+  "tableKit": {
+    "unavailableTitle": "此版本不支持 Table 编辑",
+    "unavailableBody": "包含 Table 引擎时，Table 文件会在 Kition 中打开。"
+  },
+  "boardKit": {
+    "unavailableTitle": "此版本不支持编辑白板",
+    "unavailableBody": "包含白板引擎时，白板文件会在 Kition 中打开。"
+  },
+  "noteKit": {
+    "unavailableTitle": "此版本不支持编辑笔记",
+    "unavailableBody": "包含笔记引擎时，笔记会在 Kition 中打开。"
+  },
+  "collab": {
+    "share": "共享以协同编辑",
+    "sharing": "正在共享…",
+    "sharedTitle": "已共享以协同编辑",
+    "sharedDescription": "链接已复制。已登录 Kition 的人打开它后，可以按照链接允许的权限与你一起处理此文档。",
+    "linkLabel": "共享链接",
+    "copyLink": "复制链接",
+    "linkCopied": "链接已复制",
+    "close": "关闭",
+    "shareFailed": "无法共享此文档",
+    "openShared": "打开共享文档",
+    "openSharedDescription": "粘贴他人分享给你的协同编辑链接。文档会在你的 Shared 文件夹中打开。",
+    "linkPlaceholder": "粘贴共享链接",
+    "open": "打开",
+    "cancel": "取消",
+    "needsAccount": "协同编辑需要 Kition 账户和同步服务器。",
+    "unreachable": "无法连接同步服务器。请检查网络连接后重试。",
+    "linkNotFound": "此链接没有指向任何共享文档。",
+    "busy": "同步服务器繁忙，请稍后再试。",
+    "kitUnavailable": "这个版本的 Kition 打不开这类文档。",
+    "failed": "出了点问题，请再试一次。",
+    "peers": "也在编辑：{{names}}",
+    "agentPeer": "智能体",
+    "status": {
+      "online": "协同编辑：已连接",
+      "connecting": "协同编辑：正在连接",
+      "offline": "协同编辑：离线。重新连接后会同步你的编辑。"
+    },
+    "accessLabel": "通过链接可进行的操作",
+    "viewOnly": "仅查看",
+    "access": {
+      "editor": "可编辑",
+      "commenter": "可评论",
+      "viewer": "可查看"
+    },
+    "role": {
+      "owner": "所有者",
+      "editor": "编辑者",
+      "commenter": "评论者",
+      "viewer": "查看者"
+    },
+    "commentOnly": "仅可评论",
+    "members": "有权访问的人",
+    "memberYou": "{{name}}（你）",
+    "memberRole": "{{name}} 的角色",
+    "removeMember": "移除 {{name}}",
+    "revokeLink": "撤销此链接",
+    "linkRevoked": "链接已撤销，它将无法再打开此文档。",
+    "newLink": "创建链接",
+    "syncToDevices": "同步到我的设备",
+    "syncing": "正在同步到你的设备…",
+    "syncFailed": "无法同步此文档",
+    "synced": {
+      "title": "你同步的文档",
+      "description": "你同步到设备或协同编辑、但尚未在此工作区中的文档。在这里打开后，它也会在这台设备上保持同步。",
+      "folder": "打开到",
+      "workspaceRoot": "工作区（顶层）",
+      "loading": "正在加载",
+      "empty": "你同步的文档都已在此工作区中。",
+      "private": "仅你自己",
+      "shared": "已共享",
+      "meta": "{{access}} · 更新于 {{updated}} · {{size}}",
+      "openHere": "在此打开",
+      "cannotOpen": "此版本的 Kition 无法打开这类文档。",
+      "done": "已同步到你的设备",
+      "doneDescription": "现在的编辑会同步到你的其他设备。可在那台设备的“你同步的文档”中打开它。"
+    }
+  },
+  "documentSchema": {
+    "label": "新版本提示",
+    "title": "此文档已由更新版本的 {{kit}} 编辑。请更新以继续编辑。",
+    "blockedHint": "在此之前，它在这里为只读，保持你上次看到的样子。不会丢失任何内容：共享副本保留了所有更改。",
+    "newerHint": "在此之前，此版本无法识别的内容会保持原样，且无法在这里编辑。",
+    "versions": "此 Kition 附带 {{kit}} {{version}}，可读取最高版本 {{reads}} 的文档；此文档需要版本 {{needs}}。",
+    "versionsNoKit": "此 Kition 可读取最高版本 {{reads}} 的文档；此文档需要版本 {{needs}}。",
+    "check": "检查更新",
+    "install": "安装更新",
+    "updateAvailable": "Kition {{version}} 已可用。",
+    "upToDate": "Kition 已是最新版本：更新版本的 {{kit}} 尚未为其发布。",
+    "updateElsewhere": "请将 Kition 更新到最新版本以继续编辑。",
+    "updateFailed": "无法检查更新：{{message}}",
+    "kits": {
+      "board": "Board",
+      "cad": "CAD",
+      "design": "Design",
+      "document": "Document",
+      "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
+      "pdf": "PDF",
+      "photo": "Photo",
+      "scene": "Scene",
+      "sheet": "Sheet",
+      "slide": "Slide",
+      "table": "Table",
+      "vector": "Vector",
+      "doc": "Doc"
+    }
+  },
+  "templateLibrary": {
+    "categories": {
+      "all": "全部",
+      "work": "工作",
+      "planning": "规划",
+      "personal": "个人",
+      "workspace": "工作区"
+    },
+    "blank": {
+      "title": "空白文档",
+      "description": "从空白页面开始，构建自己的结构。"
+    },
+    "workspaceTemplateDescription": "来自 {{path}} 的个人模板",
+    "loadingWorkspaceTemplates": "正在加载工作区模板…",
+    "templateCount": "{{count}} 个模板可用",
+    "noMatches": "未找到模板",
+    "noMatchesHint": "尝试其他搜索或类别。",
+    "loadFailed": "无法加载此工作区模板。",
+    "createFailed": "无法创建文档。",
+    "templates": {
+      "projectBrief": {
+        "title": "项目简介",
+        "description": "在开始工作之前定义目标、范围、所有者和里程碑。"
+      },
+      "meetingNotes": {
+        "title": "会议笔记",
+        "description": "捕捉议程、决定、讨论笔记和行动项目。"
+      },
+      "taskTracker": {
+        "title": "任务跟踪器",
+        "description": "在一个视图中保留任务、所有者、优先级、截止日期和状态。"
+      },
+      "weeklyPlan": {
+        "title": "每周计划",
+        "description": "设定每周成果、安排重点工作并明确阻碍因素。"
+      },
+      "productLaunch": {
+        "title": "产品发布计划",
+        "description": "协调发布准备、工作流、截止日期和成功指标。"
+      },
+      "clientBrief": {
+        "title": "客户简介",
+        "description": "组织客户目标、利益相关者、机会、风险和后续行动。"
+      },
+      "researchNotes": {
+        "title": "研究笔记",
+        "description": "收集来源、证据、研究结果、待解决问题和最终结论。"
+      },
+      "weeklyReview": {
+        "title": "每周回顾",
+        "description": "复盘成果、经验、目标进度和下周优先事项。"
+      },
+      "teamDailyReport": {
+        "title": "团队每日报告",
+        "description": "分享已完成的工作、正在进行的优先事项、障碍和明天的计划。"
+      },
+      "personalDailyReport": {
+        "title": "个人每日报告",
+        "description": "记录一个主要成果、已完成的任务、笔记和第二天的优先事项。"
+      },
+      "brainstormingSession": {
+        "title": "头脑风暴会议",
+        "description": "收集想法，比较价值和努力，并将有希望的方向转化为实验。"
+      },
+      "quarterlyBusinessReview": {
+        "title": "季度业务回顾",
+        "description": "查看下一季度的绩效指标、经验教训、风险和优先事项。"
+      },
+      "meetingActionTracker": {
+        "title": "会议行动跟踪器",
+        "description": "将决策转化为包含负责人、截止日期、优先级和后续安排的行动项。"
+      },
+      "okrPlan": {
+        "title": "OKR计划",
+        "description": "定义目标、可衡量的关键结果、信心和支持计划。"
+      },
+      "productRequirements": {
+        "title": "产品要求",
+        "description": "描述问题、用户需求、要求、用户流程、指标和风险。"
+      },
+      "flowchart": {
+        "title": "流程图",
+        "description": "使用可编辑的美人鱼步骤、决策、循环和异常路径映射流程。"
+      },
+      "projectTimeline": {
+        "title": "项目时间表",
+        "description": "可视化交付阶段并跟踪里程碑、所有者、依赖关系和状态。"
+      },
+      "organizationChart": {
+        "title": "组织结构图",
+        "description": "记录下属关系、团队结构、领导、任务和联系人。"
+      },
+      "systemArchitecture": {
+        "title": "系统架构",
+        "description": "解释组件、集成、数据存储、所有权和可靠性问题。"
+      },
+      "productDevelopmentSwimlane": {
+        "title": "产品开发泳道",
+        "description": "明确交接的产品、设计、工程和发布所有权。"
+      }
+    }
+  },
+  "htmlKit": {
+    "unavailableTitle": "HTML 编辑器不可用",
+    "unavailableBody": "请构建 HTML Kit 包，以便在此开发版本中编辑 HTML 文件。"
+  }
+}

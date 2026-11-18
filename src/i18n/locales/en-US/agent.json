@@ -1,0 +1,248 @@
+{
+  "buildProgress": {
+    "buildingBase": "Building base...",
+    "buildingInProgress": "Building in progress",
+    "progressLabel": "Build progress: {{percent}}%",
+    "stepRunning": "{{label}} running",
+    "subtasks": {
+      "generateFields": "Generate fields",
+      "generateAiFields": "Generate AI fields",
+      "generateRecords": "Generate records",
+      "generateViews": "Generate views"
+    }
+  },
+  "planCard": {
+    "title": "Plan",
+    "summary": "{{total}} steps · {{completed}} done · {{inProgress}} in progress · {{pending}} pending"
+  },
+  "shellApproval": {
+    "eyebrow": "Shell execution requires approval",
+    "fetchEyebrow": "The agent wants to fetch a website",
+    "articleEyebrow": "The agent wants to save a web article",
+    "imageEyebrow": "The agent wants to download an image",
+    "parseFailed": "Parse failed: {{error}}",
+    "allowOnce": "Allow once",
+    "rememberTitle": "Allow and remember prefix \"{{prefix}}\"",
+    "alwaysAllow": "Always allow \"{{target}}\"",
+    "deny": "Deny"
+  },
+  "applyPatch": {
+    "preview": "Patch preview",
+    "applied": "Patch applied",
+    "stats_one": "{{count}} file · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} files · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "Add",
+      "delete": "Delete",
+      "update": "Update"
+    },
+    "reject": "Reject",
+    "apply": "Apply"
+  },
+  "modelPicker": {
+    "noModelConfigured": "No model configured",
+    "chooseModel": "Choose AI model",
+    "modelLabel": "Model",
+    "searchPlaceholder": "Search models",
+    "noMatches": "No models match \"{{query}}\""
+  },
+  "mentions": {
+    "searchHint": "Type after @ to search every workspace document",
+    "resultCount": "{{count}} matching references",
+    "attached": "Attached",
+    "noMatches": "No matching workspace documents"
+  },
+  "analysisWorkspace": {
+    "contextTitle": "Context",
+    "addContext": "Add context",
+    "addCurrentDocument": "Add current document · {{name}}",
+    "localFolder": "Local folder",
+    "workspaceDocument": "Workspace document",
+    "referenceDocument": "Reference in this turn",
+    "current": "Current",
+    "readOnlySource": "Read-only analysis source",
+    "removeReference": "Remove {{name}}",
+    "removeCurrentDocument": "Remove current document {{name}}",
+    "readOnly": "Read only",
+    "removeSource": "Remove {{name}}",
+    "contextCount": "References: {{count}}"
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "Configure a model"
+    },
+    "kitionAccount": {
+      "checking": "Checking Kition Account…",
+      "signIn": "Sign in to use Kition Cloud",
+      "signInAgain": "Sign in again",
+      "cancel": "Cancel sign-in",
+      "retry": "Retry Kition Account",
+      "topUp": "Top up credits"
+    },
+    "document": {
+      "description": "Ask the agent to research, write, or organize this document.",
+      "suggestions": {
+        "summarize": {
+          "label": "Summarize this document",
+          "prompt": "Summarize the current document into a Markdown brief"
+        },
+        "launchPlan": {
+          "label": "Draft a launch plan",
+          "prompt": "Draft a launch plan from this document"
+        },
+        "checklist": {
+          "label": "Create a checklist",
+          "prompt": "Create a checklist and save it as Markdown"
+        }
+      }
+    },
+    "gallery": {
+      "description": "Ask the agent to organise, describe, or repurpose the media in this gallery.",
+      "suggestions": {
+        "describeEach": {
+          "label": "Describe each item",
+          "prompt": "Describe what is in each item in this gallery."
+        },
+        "groupByTopic": {
+          "label": "Group by topic",
+          "prompt": "Group these media files by visual topic."
+        },
+        "pickHero": {
+          "label": "Pick the hero",
+          "prompt": "Pick the strongest hero asset for a landing page."
+        }
+      }
+    }
+  },
+  "timeline": {
+    "status": {
+      "failed": "Failed"
+    },
+    "sections": {
+      "tool": "Tool",
+      "input": "Input",
+      "output": "Output",
+      "error": "Error",
+      "status": "Status",
+      "data": "Data",
+      "path": "Path",
+      "title": "Title",
+      "preview": "Preview",
+      "noDetail": "This step is waiting for more execution data."
+    },
+    "model": {
+      "titlePlanning": "Understanding the task",
+      "titleProcessing": "Processing tool results",
+      "detailPlanning": "The model is analyzing the goal, context, and available tools",
+      "detailProcessing": "Received {{tool}} results; the model is deciding the next step",
+      "expandedPlanning": "The model is considering your question, the available context, and tools to figure out the first step. Execution starts as soon as a plan is ready.",
+      "expandedProcessing": "The model just received results from “{{tool}}” and is using the context to decide what to do next (run more tools, or reply directly)."
+    },
+    "activity": {
+      "thinking": "Thinking…",
+      "completionUnknown": "Completion not confirmed",
+      "interruptedDetail": "The connection ended before completion was confirmed. Check saved results before retrying.",
+      "stopped": "Task stopped"
+    },
+    "event": {
+      "callingBackend": "Calling AI backend",
+      "backendCalled": "AI backend called",
+      "backendTurnCompleted": "AI backend turn completed",
+      "taskFailed": "Task failed",
+      "modelTurnFinished": "Model turn {{turn}} has finished",
+      "requestingModelTurn": "Requesting model turn {{turn}}",
+      "modelRequestedNTools": "The model requested {{count}} tools",
+      "modelReturnedChars": "The model returned {{chars}} characters of final content",
+      "thisTurnCompleted": "This model turn completed",
+      "reconnecting": "Reconnecting... {{attempt}}/{{maxRetries}}",
+      "reconnectingNow": "Retrying now",
+      "reconnectingInSeconds": "Retrying in {{seconds}} s",
+      "reconnectReason": {
+        "tls_handshake_timeout": "Secure connection timed out",
+        "connection_timeout": "Connection timed out",
+        "connection_closed": "Connection closed unexpectedly",
+        "connection_reset": "Connection was reset",
+        "dns_failure": "Network address lookup failed",
+        "network_error": "Temporary network error",
+        "request_timeout": "AI backend request timed out",
+        "rate_limited": "AI backend is temporarily busy",
+        "server_unavailable": "AI backend is temporarily unavailable"
+      },
+      "taskCompleted": "Task completed",
+      "reconnectingInSeconds_one": "Retrying in {{seconds}} second",
+      "reconnectingInSeconds_other": "Retrying in {{seconds}} seconds",
+      "stepLimit": "Stopped after the most model steps a turn may take; narrow the task or clarify the next step."
+    },
+    "tool": {
+      "inProgress": "{{label}} in progress",
+      "failed": "{{label}} failed",
+      "completed": "{{label}} completed",
+      "nResults": "{{count}} results",
+      "nImages": "{{count}} images",
+      "nEntries": "Entries: {{count}}"
+    },
+    "artifact": {
+      "title": "Save artifact"
+    },
+    "final": {
+      "streaming": "Streaming final reply"
+    },
+    "toolDisplayName": {
+      "source_adapter_catalog": "Inspect Source Context",
+      "web_search": "Web Search",
+      "web_fetch": "Web Fetch",
+      "save_image_asset": "Save Image",
+      "document_search": "Document Search",
+      "document_read": "Read Document",
+      "document_write": "Update Document",
+      "apply_patch": "Apply Patch",
+      "file_search": "Search Files",
+      "fs_read": "Read File",
+      "fs_stat": "Stat Path",
+      "fs_list": "List Directory",
+      "fs_mkdir": "Create Directory",
+      "fs_remove": "Remove Path",
+      "fs_copy": "Copy Path",
+      "create_markdown": "Create Markdown",
+      "artifact_write": "Save Artifact",
+      "register_artifact": "Register Artifact"
+    },
+    "toolActionLabel": {
+      "source_adapter_catalog": "Inspect source context",
+      "web_search": "Web search",
+      "web_fetch": "Web fetch",
+      "save_image_asset": "Save image",
+      "document_search": "Search documents",
+      "document_read": "Read document",
+      "document_write": "Update document",
+      "apply_patch": "Apply patch",
+      "file_search": "Search files",
+      "fs_read": "Read file",
+      "fs_stat": "Stat path",
+      "fs_list": "List directory",
+      "fs_mkdir": "Create directory",
+      "fs_remove": "Remove path",
+      "fs_copy": "Copy path",
+      "create_markdown": "Save Markdown",
+      "artifact_write": "Save artifact",
+      "register_artifact": "Register artifact",
+      "shell_exec": "Run command"
+    },
+    "mcpDisplayPrefix": "MCP",
+    "mcpActionTemplate": "MCP {{server}}: {{tool}}"
+  },
+  "results": {
+    "modifiedFiles": "Files modified: {{count}}",
+    "viewChanges": "View changes in {{name}}",
+    "view": "View",
+    "modifiedArtifact": "Modified {{path}}",
+    "imageResult": "Image result"
+  },
+  "kitEditMode": {
+    "label": "Kit edits",
+    "live": "Live",
+    "draft": "Draft",
+    "liveHint": "The agent edits open kit documents directly; you can undo its edits.",
+    "draftHint": "The agent edits a draft of open kit documents; you review it and merge or discard it."
+  }
+}

@@ -1,0 +1,776 @@
+[
+  {
+    "type": "cycle",
+    "from": "src/features/analytics/lib/productAnalytics.ts",
+    "to": "src/services/desktopUpdates.ts",
+    "unresolvedTo": "@/services/desktopUpdates",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/services/desktopUpdates.ts",
+        "dependencyTypes": [
+          "aliased",
+          "aliased-tsconfig",
+          "aliased-tsconfig-paths",
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/features/analytics/lib/productAnalytics.ts",
+        "dependencyTypes": [
+          "aliased",
+          "aliased-tsconfig",
+          "aliased-tsconfig-paths",
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/lib/kdm/batch.ts",
+    "to": "src/lib/kdm/projection.ts",
+    "unresolvedTo": "./projection",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/lib/kdm/projection.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/lib/kdm/batch.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/lib/kdm/diff.ts",
+    "to": "src/lib/kdm/toolIds.ts",
+    "unresolvedTo": "./toolIds",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/lib/kdm/toolIds.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/lib/kdm/replica.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/lib/kdm/diff.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/lib/kdm/replica.ts",
+    "to": "src/lib/kdm/toolIds.ts",
+    "unresolvedTo": "./toolIds",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/lib/kdm/toolIds.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/lib/kdm/replica.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/lib/kdm/replica.ts",
+    "to": "src/lib/kdm/tx.ts",
+    "unresolvedTo": "./tx",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/lib/kdm/tx.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/lib/kdm/replica.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/account/components/KitionAccountPanel.tsx",
+    "to": "src/features/analytics/lib/productAnalytics.ts",
+    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/account/hooks/useKitionAccount.ts",
+    "to": "src/features/analytics/lib/productAnalytics.ts",
+    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/components/AgentAiComposer.tsx",
+    "to": "src/features/account/hooks/useKitionAccount.ts",
+    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/components/AgentChatPanel.tsx",
+    "to": "src/features/account/hooks/useKitionAccount.ts",
+    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/components/AgentChatPanel.tsx",
+    "to": "src/features/account/lib/accountState.ts",
+    "unresolvedTo": "@/features/account/lib/accountState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/components/AgentConversation.tsx",
+    "to": "src/features/settings/hooks/useDesktopSettings.ts",
+    "unresolvedTo": "@/features/settings/hooks/useDesktopSettings",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/components/BuildProgressCard.tsx",
+    "to": "src/features/scenario/types.ts",
+    "unresolvedTo": "@/features/scenario/types",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/hooks/useWorkspaceAgent.ts",
+    "to": "src/features/analytics/lib/productAnalytics.ts",
+    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/agent/lib/documentMentions.ts",
+    "to": "src/features/workspace/lib/workspace.ts",
+    "unresolvedTo": "@/features/workspace/lib/workspace",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/analytics/components/ProductAnalyticsInspector.tsx",
+    "to": "src/features/settings/primitives.tsx",
+    "unresolvedTo": "@/features/settings/primitives",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/analytics/lib/productAnalytics.ts",
+    "to": "src/features/account/lib/accountState.ts",
+    "unresolvedTo": "@/features/account/lib/accountState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/analytics/lib/productAnalytics.ts",
+    "to": "src/features/onboarding/onboardingState.ts",
+    "unresolvedTo": "@/features/onboarding/onboardingState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/onboarding/components/FirstRunActivationPanel.tsx",
+    "to": "src/features/account/hooks/useKitionAccount.ts",
+    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/onboarding/components/FirstRunActivationPanel.tsx",
+    "to": "src/features/account/lib/accountState.ts",
+    "unresolvedTo": "@/features/account/lib/accountState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/scenario/pages/ScenarioBuildPage.tsx",
+    "to": "src/features/agent/components/BuildProgressCard.tsx",
+    "unresolvedTo": "@/features/agent/components/BuildProgressCard",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/settings/AiModelsPane.tsx",
+    "to": "src/features/account/hooks/useKitionAccount.ts",
+    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/settings/AiModelsPane.tsx",
+    "to": "src/features/account/lib/accountLinks.ts",
+    "unresolvedTo": "@/features/account/lib/accountLinks",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/settings/AiModelsPane.tsx",
+    "to": "src/features/account/lib/accountState.ts",
+    "unresolvedTo": "@/features/account/lib/accountState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/settings/OnboardingGuidesPanel.tsx",
+    "to": "src/features/onboarding/onboardingGuideManifest.ts",
+    "unresolvedTo": "@/features/onboarding/onboardingGuideManifest",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/settings/useImportOnboardingGuides.ts",
+    "to": "src/features/onboarding/onboardingGuideManifest.ts",
+    "unresolvedTo": "@/features/onboarding/onboardingGuideManifest",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/support/components/SupportAndTrustSettings.tsx",
+    "to": "src/features/account/hooks/useKitionAccount.ts",
+    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/support/components/SupportAndTrustSettings.tsx",
+    "to": "src/features/account/lib/accountLinks.ts",
+    "unresolvedTo": "@/features/account/lib/accountLinks",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/support/components/SupportAndTrustSettings.tsx",
+    "to": "src/features/analytics/lib/productAnalytics.ts",
+    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/support/components/SupportAndTrustSettings.tsx",
+    "to": "src/features/settings/primitives.tsx",
+    "unresolvedTo": "@/features/settings/primitives",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/support/lib/supportDiagnostics.ts",
+    "to": "src/features/account/lib/accountState.ts",
+    "unresolvedTo": "@/features/account/lib/accountState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceAgentSidebar.tsx",
+    "to": "src/features/agent/components/AgentChatPanel.tsx",
+    "unresolvedTo": "@/features/agent/components/AgentChatPanel",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "to": "src/features/settings/DesktopSettingsPage.tsx",
+    "unresolvedTo": "@/features/settings/DesktopSettingsPage",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "to": "src/features/settings/hooks/useDesktopSettings.ts",
+    "unresolvedTo": "@/features/settings/hooks/useDesktopSettings",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceScreenSidebar.tsx",
+    "to": "src/features/account/hooks/useKitionAccount.ts",
+    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceScreenSidebar.tsx",
+    "to": "src/features/account/lib/accountLinks.ts",
+    "unresolvedTo": "@/features/account/lib/accountLinks",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceScreenSidebar.tsx",
+    "to": "src/features/account/lib/accountState.ts",
+    "unresolvedTo": "@/features/account/lib/accountState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceScreenSidebar.tsx",
+    "to": "src/features/updates/UpdateBanner.tsx",
+    "unresolvedTo": "@/features/updates/UpdateBanner",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/hooks/useWorkspaceEditorPanels.ts",
+    "to": "src/features/agent/lib/agentConfig.ts",
+    "unresolvedTo": "@/features/agent/lib/agentConfig",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/lib/agentPaneContext.ts",
+    "to": "src/features/agent/lib/paneEmptyState.ts",
+    "unresolvedTo": "@/features/agent/lib/paneEmptyState",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/services/desktopUpdates.ts",
+    "to": "src/features/analytics/lib/productAnalytics.ts",
+    "unresolvedTo": "@/features/analytics/lib/productAnalytics",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "shared-layers-do-not-import-features"
+    }
+  }
+]

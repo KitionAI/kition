@@ -1,0 +1,159 @@
+{
+  "$comment": "Tool ids (KitObjectModel OM9; KHP A44, A46, A47, A48): a type's `toolId` names the read-only field holding the id the kit's tools give its objects, and the object model answers and takes that id. Run in order on one new document of `schema` by kition-kdm (tests/tool_ids.rs) and @kition/kdm (test/tool-ids.test.ts), against a target standing in for a kit: after each transaction it numbers every object of a type with a `toolId` that has no number, one more than the highest of its type under the same holder (the type's parent), in type then id order, and its one command `echo` answers its parameters. A step answers `result` or fails with `error`, message included, and changes nothing; `diff` is the draft comparison of the states before and after the step. `Pin` and `Flag` are numbered apart but share the empty prefix, so their ids collide and they answer their object ids. `schemaErrors` gives a type another `toolId` (and `fields`, when given) and the error parsing the schema answers.",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.tool-ids",
+    "schemaVersion": 1,
+    "root": "Doc",
+    "types": {
+      "Doc": { "fields": {
+        "frames": { "kind": "list", "of": "Frame" },
+        "tags": { "kind": "list", "of": "Tag" },
+        "pins": { "kind": "list", "of": "Pin" },
+        "flags": { "kind": "list", "of": "Flag" }
+      } },
+      "Frame": { "fields": {
+        "number": { "kind": "integer", "optional": true, "readOnly": true },
+        "name": { "kind": "string", "optional": true },
+        "link": { "kind": "ref", "of": "Frame", "optional": true },
+        "cells": { "kind": "list", "of": "Cell" }
+      }, "toolId": { "field": "number", "prefix": "frame:" } },
+      "Cell": { "fields": {
+        "number": { "kind": "integer", "optional": true, "readOnly": true },
+        "label": { "kind": "string", "optional": true }
+      }, "toolId": { "field": "number", "prefix": "cell:", "parent": "Frame" } },
+      "Pin": { "fields": { "number": { "kind": "integer", "optional": true, "readOnly": true } }, "toolId": { "field": "number" } },
+      "Flag": { "fields": { "number": { "kind": "integer", "optional": true, "readOnly": true } }, "toolId": { "field": "number" } },
+      "Tag": { "fields": { "name": { "kind": "string" }, "frame": { "kind": "ref", "of": "Frame", "optional": true } } }
+    }
+  },
+  "steps": [
+    {
+      "$comment": "Objects created in a batch are named by `$name` or their object id within it, and answered with the tool ids the kit gave them; a type without `toolId` keeps object ids.",
+      "request": { "ops": [
+        { "op": "create", "type": "Doc", "id": "doc" },
+        { "op": "create", "type": "Frame", "id": "f1", "in": "doc.frames", "ref": "$f1", "fields": { "name": "One" } },
+        { "op": "create", "type": "Frame", "id": "f2", "in": "doc.frames", "fields": { "name": "Two" } },
+        { "op": "create", "type": "Cell", "id": "c1", "in": "$f1.cells", "fields": { "label": "a" } },
+        { "op": "create", "type": "Cell", "id": "c2", "in": "f1.cells", "fields": { "label": "b" } },
+        { "op": "create", "type": "Cell", "id": "c3", "in": "f2.cells", "fields": { "label": "c" } },
+        { "op": "create", "type": "Pin", "id": "p1", "in": "doc.pins" },
+        { "op": "create", "type": "Flag", "id": "g1", "in": "doc.flags" },
+        { "op": "create", "type": "Tag", "id": "t1", "in": "doc.tags", "fields": { "name": "t", "frame": "$f1" } }
+      ], "load": [{ "target": "root" }] },
+      "result": {
+        "refs": { "$f1": "frame:1" },
+        "results": ["doc", "frame:1", "frame:2", "frame:1/cell:1", "frame:1/cell:2", "frame:2/cell:1", "p1", "g1", "t1"],
+        "loaded": [{ "id": "doc", "type": "Doc", "fields": { "flags": ["g1"], "frames": ["frame:1", "frame:2"], "pins": ["p1"], "tags": ["t1"] } }]
+      }
+    },
+    {
+      "$comment": "Targets, references, and loads take tool ids, a parent's included; a reference loads as the tool id it names; an object id still names its object.",
+      "request": { "ops": [
+        { "op": "set", "target": "frame:2", "field": "link", "value": "frame:1" },
+        { "op": "set", "target": "t1", "field": "frame", "value": "frame:2" },
+        { "op": "set", "target": "frame:1/cell:2", "field": "label", "value": "B" }
+      ], "load": [
+        { "target": "frame:2" },
+        { "target": "t1" },
+        { "target": "frame:1/cell:2" },
+        { "target": "f1", "fields": ["name"] }
+      ] },
+      "result": {
+        "refs": {},
+        "results": [null, null, null],
+        "loaded": [
+          { "id": "frame:2", "type": "Frame", "fields": { "cells": ["frame:2/cell:1"], "link": "frame:1", "name": "Two", "number": 2 } },
+          { "id": "t1", "type": "Tag", "fields": { "frame": "frame:2", "name": "t" } },
+          { "id": "frame:1/cell:2", "type": "Cell", "fields": { "label": "B", "number": 2 } },
+          { "id": "frame:1", "type": "Frame", "fields": { "name": "One" } }
+        ]
+      }
+    },
+    {
+      "$comment": "A created object is addressed later in its batch by `$name`; a command's parameters get its tool id; after a command the next run names it by its tool id; the draft comparison names objects by tool ids.",
+      "request": { "ops": [
+        { "op": "create", "type": "Frame", "id": "f3", "in": "root.frames", "ref": "$f3" },
+        { "op": "set", "target": "$f3", "field": "name", "value": "Three" },
+        { "op": "create", "type": "Cell", "id": "c4", "in": "$f3.cells", "ref": "$c4", "fields": { "label": "d" } },
+        { "op": "command", "id": "echo", "params": { "frame": "$f3", "cell": "$c4" } },
+        { "op": "set", "target": "frame:3", "field": "link", "value": "frame:2" }
+      ], "load": [{ "target": "$f3", "fields": ["link", "name"] }] },
+      "result": {
+        "refs": { "$c4": "frame:3/cell:1", "$f3": "frame:3" },
+        "results": ["frame:3", null, "frame:3/cell:1", { "cell": "frame:3/cell:1", "frame": "frame:3" }, null],
+        "loaded": [{ "id": "frame:3", "type": "Frame", "fields": { "link": "frame:2", "name": "Three" } }]
+      },
+      "diff": {
+        "created": [
+          { "id": "frame:3", "type": "Frame", "fields": ["cells", "link", "name", "number"], "values": { "link": "frame:2", "name": "Three", "number": 3 }, "at": { "parent": "doc", "field": "frames", "index": 2 } },
+          { "id": "frame:3/cell:1", "type": "Cell", "fields": ["label", "number"], "values": { "label": "d", "number": 1 }, "at": { "parent": "frame:3", "field": "cells", "index": 0 } }
+        ],
+        "changed": [{ "id": "doc", "type": "Doc", "fields": ["frames"], "edits": [] }],
+        "moved": [],
+        "deleted": [],
+        "texts": [
+          { "id": "frame:3", "field": "link", "before": "", "after": "frame:2" },
+          { "id": "frame:3", "field": "name", "before": "", "after": "Three" },
+          { "id": "frame:3/cell:1", "field": "label", "before": "", "after": "d" }
+        ]
+      }
+    },
+    {
+      "$comment": "An unknown tool id is not-found, listing the ids of its domain when they are few.",
+      "request": { "ops": [{ "op": "set", "target": "frame:9", "field": "name", "value": "x" }] },
+      "error": { "code": "not-found", "index": 0, "message": "no object has the id `frame:9`; the ids starting `frame:` are `frame:1`, `frame:1/cell:1`, `frame:1/cell:2`, `frame:2`, `frame:2/cell:1`, `frame:3` and `frame:3/cell:1`" }
+    },
+    {
+      "$comment": "A bare number is no tool id: not-found, listing the ids that end in it.",
+      "request": { "ops": [{ "op": "delete", "target": "3" }] },
+      "error": { "code": "not-found", "index": 0, "message": "no object has the id `3`; these end in `3`: `frame:3` (an id is written whole, as query and load answer it)" }
+    },
+    {
+      "$comment": "A tool id two objects render (two types numbered apart in one domain) names neither: refused, listing them by the ids they answer (KHP A44).",
+      "request": { "ops": [{ "op": "delete", "target": "1" }] },
+      "error": { "code": "invalid-op", "index": 0, "message": "`1` names 2 objects (the `Flag` `g1` and the `Pin` `p1`), so it names none of them: give one of their object ids, which they answer until the kit gives each an id of its own" }
+    },
+    {
+      "$comment": "A reference given an unknown tool id is refused as a reference to no object (OM2b).",
+      "request": { "ops": [{ "op": "set", "target": "t1", "field": "frame", "value": "frame:8" }] },
+      "error": { "code": "not-found", "index": 0, "message": "`Tag.frame` holds the id of a `Frame`, and no object has the id `frame:8`: give the id of an existing `Frame` (a load or query answers them), or create one earlier in the batch and use its `$name`" }
+    },
+    {
+      "$comment": "A load of an unknown tool id is not-found the same way.",
+      "request": { "ops": [], "load": [{ "target": "frame:3/cell:7" }] },
+      "error": { "code": "not-found", "index": null, "message": "load 0: no object has the id `frame:3/cell:7`; the ids starting `frame:3/cell:` are `frame:3/cell:1`" }
+    },
+    {
+      "$comment": "Deleting by a parent's tool id; the comparison names the deleted object as it was named before.",
+      "request": { "ops": [{ "op": "delete", "target": "frame:2/cell:1" }], "load": [{ "target": "frame:2", "fields": ["cells"] }] },
+      "result": { "refs": {}, "results": [null], "loaded": [{ "id": "frame:2", "type": "Frame", "fields": { "cells": [] } }] },
+      "diff": {
+        "created": [],
+        "changed": [{ "id": "frame:2", "type": "Frame", "fields": ["cells"], "edits": [] }],
+        "moved": [],
+        "deleted": [{ "id": "frame:2/cell:1", "type": "Cell", "fields": [], "at": { "parent": "frame:2", "field": "cells", "index": 0 } }],
+        "texts": []
+      }
+    }
+  ],
+  "describe": {
+    "rootId": "doc",
+    "toolIds": {
+      "Cell": { "field": "number", "prefix": "cell:", "parent": "Frame" },
+      "Flag": { "field": "number", "prefix": "" },
+      "Frame": { "field": "number", "prefix": "frame:" },
+      "Pin": { "field": "number", "prefix": "" }
+    }
+  },
+  "schemaErrors": [
+    { "type": "Frame", "toolId": { "field": "count" }, "message": "schema: type `Frame`: `toolId` names undeclared field `count`" },
+    { "type": "Frame", "toolId": { "field": "name" }, "message": "schema: type `Frame`: `toolId` names `name`, which is not `readOnly`: only the kit writes an object's tool id" },
+    { "type": "Frame", "toolId": { "field": "link" }, "message": "schema: type `Frame`: `toolId` names `link`, which is not an integer or a string" },
+    { "type": "Frame", "toolId": { "field": "number", "prefix": "frame." }, "message": "schema: type `Frame`: `toolId` prefix `frame.`: a prefix holds ASCII letters, digits, `_`, `-`, `:`, and `/` only" },
+    { "type": "Frame", "toolId": { "field": "number", "prefix": "1:" }, "message": "schema: type `Frame`: `toolId` prefix `1:`: a prefix starts with a letter" },
+    { "type": "Cell", "toolId": { "field": "number", "parent": "Doc" }, "message": "schema: type `Cell`: `toolId` names parent `Doc`, which declares no `toolId`" },
+    { "type": "Cell", "toolId": { "field": "number", "parent": "Pin" }, "message": "schema: type `Cell`: `toolId` names parent `Pin`, which has no list, tree, or ref field of `Cell`" },
+    { "type": "Frame", "toolId": { "field": "number", "parent": "Frame" }, "message": "schema: type `Frame`: `toolId` parent `Frame` leads back to `Frame`: parents form no cycle" }
+  ]
+}

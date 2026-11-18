@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest'
+
+import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
+import {
+  bindInitialWorkspaceTabs,
+  closeTab,
+  EMPTY_TABS_STATE,
+  filterTabs,
+  remapTabPaths,
+  switchWorkspaceTabs,
+  updateTab,
+  upsertTab,
+  type TabsState,
+} from './tabs'
+
+const doc = (path: string, extra: Partial<Extract<WorkspaceTab, { type: 'file-viewer' }>> = {}): WorkspaceTab =>
+  ({ id: `file-viewer:${path}`, type: 'file-viewer', title: path, path, format: 'markdown', ...extra })
+
+const state = (tabs: WorkspaceTab[], activeTabId = tabs[0]?.id ?? ''): TabsState => ({ tabs, activeTabId })
+const ids = (s: TabsState) => s.tabs.map((tab) => tab.id)
+
+describe('upsertTab', () => {
+  it('appends and activates a new tab by default', () => {
+    const next = upsertTab(state([doc('a.md')]), doc('b.md'))
+    expect(ids(next)).toEqual(['file-viewer:a.md', 'file-viewer:b.md'])
+    expect(next.activeTabId).toBe('file-viewer:b.md')
+  })
+
+  it('can add without activating and insert after the active tab', () => {
+    const next = upsertTab(state([doc('a.md'), doc('c.md')], 'file-viewer:a.md'), doc('b.md'), {
+      activate: false,
+      insertAfterActive: true,
+    })
+    expect(ids(next)).toEqual(['file-viewer:a.md', 'file-viewer:b.md', 'file-viewer:c.md'])
+    expect(next.activeTabId).toBe('file-viewer:a.md')
+  })
+
+  it('replaces an existing tab in place', () => {
+    const next = upsertTab(state([doc('a.md'), doc('b.md')]), doc('a.md', { title: 'A!' }))
+    expect(next.tabs[0]).toMatchObject({ title: 'A!' })
+    expect(ids(next)).toEqual(['file-viewer:a.md', 'file-viewer:b.md'])
+  })
+})
+
+describe('updateTab', () => {
+  it('returns the same state when the tab does not exist', () => {
+    const start = state([doc('a.md')])
+    expect(updateTab(start, 'missing', (tab) => ({ ...tab, title: 'x' }))).toBe(start)
+    expect(updateTab(start, 'file-viewer:a.md', (tab) => ({ ...tab, title: 'x' })).tabs[0].title).toBe('x')
+  })
+})
+
+describe('closeTab', () => {
+  const start = state([doc('a.md'), doc('b.md'), doc('c.md')], 'file-viewer:b.md')
+
+  it('activates the previous tab when the active one closes', () => {
+    const { state: next, closed } = closeTab(start, 'file-viewer:b.md')
+    expect(closed?.id).toBe('file-viewer:b.md')
+    expect(ids(next)).toEqual(['file-viewer:a.md', 'file-viewer:c.md'])
+    expect(next.activeTabId).toBe('file-viewer:a.md')
+  })
+
+  it('falls back to the first tab when the first tab was active, and keeps the active id otherwise', () => {
+    expect(closeTab(state(start.tabs, 'file-viewer:a.md'), 'file-viewer:a.md').state.activeTabId).toBe('file-viewer:b.md')
+    expect(closeTab(start, 'file-viewer:c.md').state.activeTabId).toBe('file-viewer:b.md')
+    expect(closeTab(start, 'missing')).toEqual({ state: start, closed: null })
+  })
+
+  it('leaves no active tab when the last one closes', () => {
+    expect(closeTab(state([doc('a.md')]), 'file-viewer:a.md').state).toEqual(EMPTY_TABS_STATE)
+  })
+})
+
+describe('filterTabs', () => {
+  it('picks a neighbour when the active tab is filtered out', () => {
+    const start = state([doc('a.md'), doc('b.md'), doc('c.md')], 'file-viewer:c.md')
+    const next = filterTabs(start, (tab) => tab.id !== 'file-viewer:c.md')
+    expect(ids(next)).toEqual(['file-viewer:a.md', 'file-viewer:b.md'])
+    expect(next.activeTabId).toBe('file-viewer:b.md')
+    expect(filterTabs(start, () => true)).toBe(start)
+  })
+})
+
+describe('remapTabPaths', () => {
+  it('moves file tabs under the renamed folder', () => {
+    const start = state([doc('old/a.md'), doc('old/b.klayout', { format: 'layout' }), doc('other/c.md')], 'file-viewer:old/b.klayout')
+    const next = remapTabPaths(start, 'old', 'new')
+    expect(ids(next)).toEqual(['file-viewer:new/a.md', 'file-viewer:new/b.klayout', 'file-viewer:other/c.md'])
+    expect(next.tabs[1]).toMatchObject({ path: 'new/b.klayout', title: 'b' })
+    expect(next.activeTabId).toBe('file-viewer:new/b.klayout')
+    expect(remapTabPaths(start, 'x', 'x')).toBe(start)
+  })
+})
+
+describe('switchWorkspaceTabs', () => {
+  it('drops the old workspace tabs but keeps tabs added in the same batch as the root change', () => {
+    const committed = state([doc('old/a.md')])
+    const current = state([doc('old/a.md'), doc('new/home.md')], 'file-viewer:new/home.md')
+    const next = switchWorkspaceTabs(current, [doc('new/stored.md')], committed)
+    expect(ids(next)).toEqual(['file-viewer:new/stored.md', 'file-viewer:new/home.md'])
+    expect(next.activeTabId).toBe('file-viewer:new/home.md')
+  })
+
+  it('selects the first stored tab when the active id still points at the old workspace', () => {
+    const committed = state([doc('old/a.md')])
+    const next = switchWorkspaceTabs(committed, [doc('new/stored.md')], committed)
+    expect(ids(next)).toEqual(['file-viewer:new/stored.md'])
+    expect(next.activeTabId).toBe('file-viewer:new/stored.md')
+  })
+})
+
+describe('bindInitialWorkspaceTabs', () => {
+  it('merges stored tabs behind tabs opened before the root resolved', () => {
+    const current = state([doc('home.md')])
+    const next = bindInitialWorkspaceTabs(current, [doc('home.md'), doc('notes.md')])
+    expect(ids(next)).toEqual(['file-viewer:notes.md', 'file-viewer:home.md'])
+    expect(next.activeTabId).toBe('file-viewer:home.md')
+    expect(bindInitialWorkspaceTabs(EMPTY_TABS_STATE, [doc('x.md')])).toEqual(state([doc('x.md')]))
+  })
+})

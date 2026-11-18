@@ -1,0 +1,85 @@
+{
+  "khp": "1.0",
+  "id": "kit.vector",
+  "name": "Vector",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "vector",
+      "extensions": [
+        "kvector"
+      ],
+      "mime": "application/vnd.kition.vector+json",
+      "role": "edit"
+    },
+    {
+      "id": "vector-import",
+      "extensions": [
+        "svg",
+        "ai",
+        "eps"
+      ],
+      "mime": "image/svg+xml",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "vector",
+      "extension": "kvector",
+      "baseName": "Untitled vector"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "svg",
+      "mime": "image/svg+xml",
+      "command": "document.exportBytes"
+    },
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "document.exportBytes"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "document.exportBytes"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "vector",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "export": {
+      "command": "document.exportBytes",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "vector drawing"
+    }
+  },
+  "headless": {
+    "executable": "kition-vector",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  }
+}

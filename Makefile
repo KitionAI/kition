@@ -1,0 +1,123 @@
+# Kit (Photo, Film, Vector, Motion, Layout, CAD, Slide, Doc, Sheet, PDF, Table, Board, Note, Scene, Design) shortcuts for building, trying, and testing the kits.
+# See docs/kits.md. Kit repositories are sibling checkouts (../kition-photo,
+# ../kition-film, ../kition-vector, ../kition-motion, ../kition-layout, ../kition-cad, ../kition-slide, ../kition-doc, ../kition-sheet, ../kition-pdf, ../kition-table, ../kition-board, ../kition-note, ../kition-scene, ../kition-design); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# to use other paths.
+#
+#   make kit-dev        build every kit, then run Kition with the kits
+#   make kit-dev-cache  build only the kits that changed since their last build, then run Kition
+#   make kit-test     contract checks and the kit e2e specs
+#   make kit-uis      rebuild every kit's package (its editor and its engine)
+
+SHELL := /bin/bash
+REPO_ROOT := $(shell git rev-parse --show-toplevel)
+KIT_PHOTO_REPO ?= $(REPO_ROOT)/../kition-photo
+KIT_FILM_REPO ?= $(REPO_ROOT)/../kition-film
+KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kition-vector
+KIT_MOTION_REPO ?= $(REPO_ROOT)/../kition-motion
+KIT_LAYOUT_REPO ?= $(REPO_ROOT)/../kition-layout
+KIT_CAD_REPO ?= $(REPO_ROOT)/../kition-cad
+KIT_SLIDE_REPO ?= $(REPO_ROOT)/../kition-slide
+KIT_DOC_REPO ?= $(REPO_ROOT)/../kition-doc
+KIT_SHEET_REPO ?= $(REPO_ROOT)/../kition-sheet
+KIT_PDF_REPO ?= $(REPO_ROOT)/../kition-pdf
+KIT_TABLE_REPO ?= $(REPO_ROOT)/../kition-table
+KIT_BOARD_REPO ?= $(REPO_ROOT)/../kition-board
+KIT_NOTE_REPO ?= $(REPO_ROOT)/../kition-note
+KIT_HTML_REPO ?= $(REPO_ROOT)/../kition-html
+KIT_SCENE_REPO ?= $(REPO_ROOT)/../kition-scene
+KIT_DESIGN_REPO ?= $(REPO_ROOT)/../kition-design
+# Each kit's package (its own editor and its engine, Kit UI protocol), built into public/kits/<kit>-ui.
+KIT_UIS := photo film vector motion layout cad slide doc sheet pdf table board note html scene design
+
+# The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
+STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
+TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
+# The e2e web server is probed through any HTTP proxy; run without one.
+NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
+E2E_PORT ?= 3123
+KIT_E2E := e2e/html-embedded.spec.ts e2e/slide-embedded.spec.ts e2e/doc-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/layout-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/motion-embedded.spec.ts e2e/film-embedded.spec.ts e2e/table-kit.spec.ts e2e/board-embedded.spec.ts e2e/note-embedded.spec.ts e2e/note-history.spec.ts e2e/scene-embedded.spec.ts e2e/design-embedded.spec.ts e2e/kit-bridge.spec.ts e2e/kit-create.spec.ts e2e/kit-files.spec.ts e2e/kit-print.spec.ts e2e/kdm-smoke.spec.ts
+PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kition-photo
+# The SDK kits' headless executables for the agent (kition-film, kition-vector, ...), from kition-headless.
+SDK_KITS := film vector motion layout cad slide doc sheet pdf table board note html scene design
+kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kition-$(1)
+SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
+# Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
+KIT_BINARY_ENV := KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" $(foreach kit,$(SDK_KITS),KITION_KIT_$(shell echo $(kit) | tr a-z A-Z)_BINARY="$(call kit_binary,$(kit))")
+
+.PHONY: help kit-e2e-webkit kit-dev kit-dev-cache kit-dev-run kit-fetch kit-uis $(addprefix kit-ui-,$(KIT_UIS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
+
+help:
+	@echo "make kit-dev         build every kit's package and executable, then run Kition (pnpm dev)"
+	@echo "make kit-dev-cache   the same, building only kits changed since their last build (target/kit-dev-cache.json)"
+	@echo "make kit-test        kit contract checks, then the kit e2e specs"
+	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
+	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
+	@echo "make kit-uis         rebuild every kit's package, its editor and engine (public/kits/<kit>-ui); one: make kit-ui-slide"
+	@echo "make kit-fetch       download the kit packages pinned in kits/kits.lock.json into public/kits"
+	@echo "make kit-check       contract checks of the built kit engines only"
+	@echo "make kit-binaries    build every kit's headless executable for the agent"
+	@echo "make kit-clean       remove the built kit packages"
+
+# A kit's package, only when it is missing; `make kit-uis` always rebuilds.
+public/kits/%-ui/kit-ui.json:
+	@PATH="$(TOOLCHAIN_PATH)" KIT_REPO="$(KIT_$(shell echo $* | tr a-z A-Z)_REPO)" scripts/build-kit-ui.sh $*
+
+$(addprefix kit-ui-,$(KIT_UIS)): kit-ui-%:
+	@rm -f public/kits/$*-ui/kit-ui.json
+	@$(MAKE) --no-print-directory public/kits/$*-ui/kit-ui.json
+
+kit-uis: $(addprefix kit-ui-,$(KIT_UIS))
+
+# The published packages instead of local builds (scripts/publish-kit.sh publishes them).
+kit-fetch:
+	node scripts/fetch-kits.mjs
+
+# The headless Photo kit the agent uses (photo_inspect, photo_commands, photo_run; each kit's
+# tools are <prefix>_inspect, _commands, and _run).
+$(PHOTO_BINARY):
+	@cd "$(KIT_PHOTO_REPO)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p kition-photo
+
+kit-photo-binary: $(PHOTO_BINARY)
+
+# kition-film, kition-vector, kition-motion, kition-layout, kition-cad, kition-slide, kition-doc, kition-sheet, kition-pdf, kition-table, kition-board, kition-note, kition-scene, kition-design: the kit's own document over the Kit Protocol.
+$(SDK_BINARIES):
+	@cd "$(abspath $(dir $@)/../..)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p $(notdir $@)
+
+kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
+
+# Each kit as <kit>=<repo> for scripts/kit-dev-build.mjs, which builds its package and executable
+# and records them in target/kit-dev-cache.json.
+KIT_DEV_KITS := $(foreach kit,$(KIT_UIS),$(kit)=$(KIT_$(shell echo $(kit) | tr a-z A-Z)_REPO))
+
+kit-dev:
+	@PATH="$(TOOLCHAIN_PATH)" node scripts/kit-dev-build.mjs $(KIT_DEV_KITS)
+	@$(MAKE) --no-print-directory kit-dev-run
+
+# Rebuilds a kit's package or executable only when its commit, its uncommitted changes, or (for the
+# package) the kition-sdk and kition-tessera checkouts changed since it was built. A kit's editor
+# links those checkouts only when KITION_LINK=1 is exported (scripts/build-kit-ui.sh).
+kit-dev-cache:
+	@PATH="$(TOOLCHAIN_PATH)" node scripts/kit-dev-build.mjs --cache $(KIT_DEV_KITS)
+	@$(MAKE) --no-print-directory kit-dev-run
+
+kit-dev-run:
+	@echo "Kition with Photo, Film, Vector, Motion, Layout, CAD, Slide, Doc, Sheet, PDF, Table, Board, Note, Scene, and Design: open a .psd, .kfilm, .kvector, .kmotion, .klayout, .dxf, .kslide, .pptx, .docx, .xlsx, .pdf, .ktable, .kboard, .md, .kscene, or .kdesign, or use the New menu."
+	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
+
+kit-check: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
+	pnpm check:kit-modules
+
+kit-e2e: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
+	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.config.ts $(KIT_E2E) --reporter=line
+
+kit-e2e-headed: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
+	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.config.ts $(KIT_E2E) --headed --workers=1
+
+# WebKit is what the desktop app runs (WKWebView); `playwright install webkit` once.
+kit-e2e-webkit: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
+	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.webkit.config.ts $(KIT_E2E) --reporter=line
+
+kit-test: kit-check kit-e2e
+
+kit-clean:
+	rm -rf $(addprefix public/kits/,$(addsuffix -ui,$(KIT_UIS)))

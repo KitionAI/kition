@@ -1,0 +1,15 @@
+{
+  "kitExtensions": "1.0",
+  "id": "com.kition.examples.title-case",
+  "name": "Title case headings",
+  "version": "1.0.0",
+  "description": "Puts every heading of a note in title case.",
+  "publisher": "Kition examples",
+  "entry": "extension.mjs",
+  "activation": { "kits": ["kit.note"], "on": "command" },
+  "contributes": {
+    "commands": [{ "id": "titleCase.apply", "title": "Title case headings", "description": "Capitalize the words of every heading" }],
+    "panels": [{ "id": "titleCase.titles", "title": "Headings", "entry": "panel.html" }]
+  },
+  "permissions": ["model.read", "model.write"]
+}

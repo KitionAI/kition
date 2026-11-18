@@ -1,0 +1,945 @@
+{
+  "tools": [
+    {
+      "name": "apply_patch",
+      "description": "Apply incremental edits to one or more workspace files using the apply_patch envelope. Use this only for small localized edits when the exact old text was returned by a complete recent read. It never changes a note (a .md file): change notes with note_run. For a whole-document rewrite of a text file, use document_write. If a patch fails, reread the file and retry with a smaller patch or fall back to document_write; do not finish the task with an unresolved write failure.\n\n## apply_patch\n\nUse the apply_patch tool to make incremental edits to files in the workspace.\n\nThe patch language is a stripped-down, file-oriented diff format. The envelope is:\n\n*** Begin Patch\n[ one or more file sections ]\n*** End Patch\n\nEach file section starts with one of:\n\n*** Add File: <path>      // create a new file. Every following line is a + line.\n*** Delete File: <path>   // remove an existing file. Nothing follows.\n*** Update File: <path>   // patch an existing file in place. May be followed by:\n*** Move to: <new path>   // optional rename.\n@@ <optional header>      // hunk boundary. Body lines start with ' ', '+' or '-'.\n*** End of File           // optional sentinel anchoring the chunk at the file end.\n\nShow 3 lines of context above and below each change. If 3 lines isn't enough to\nuniquely locate the snippet, use @@ with the class/function header. Multiple\n@@ headers can stack to disambiguate.\n\nGrammar:\nPatch := Begin { FileOp } End\nFileOp := AddFile | DeleteFile | UpdateFile\nAddFile := \"*** Add File: \" path NEWLINE { \"+\" line NEWLINE }\nDeleteFile := \"*** Delete File: \" path NEWLINE\nUpdateFile := \"*** Update File: \" path NEWLINE [ MoveTo ] { Hunk }\nMoveTo := \"*** Move to: \" newPath NEWLINE\nHunk := \"@@\" [ header ] NEWLINE { HunkLine } [ \"*** End of File\" NEWLINE ]\nHunkLine := (\" \" | \"-\" | \"+\") text NEWLINE\n\nRules:\n- Always include the action header (Add/Delete/Update).\n- New file lines must be prefixed with '+' even when creating the file.\n- File references are relative to the workspace.\n",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "patch": {
+            "type": "string",
+            "description": "Patch body wrapped in *** Begin Patch / *** End Patch."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "If true, compute diffs without writing to disk."
+          }
+        },
+        "required": [
+          "patch"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "artifact_write",
+      "description": "Save a deliverable into the Kition document workspace at the given relative path. Supported extensions: .md / .markdown / .txt for readable text and .html / .htm for complete standalone HTML pages. DOCX and XLSX generation are not supported; PPTX files are made and edited through the Slide kit.",
+      "category": "artifact",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative workspace path including a .md, .markdown, .txt, .html, or .htm filename. Folder is created if missing; filename is deduplicated on collision."
+          },
+          "content": {
+            "type": "string",
+            "description": "Full raw text or complete standalone HTML content."
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "document_list",
+      "description": "List files inside a folder of the Kition document workspace so you can decide which files to read with document_read.",
+      "category": "document",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative folder path inside the Kition document workspace; empty means the workspace root"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "document_read",
+      "description": "Read the current document or a Markdown/TXT file inside the workspace. The result contains the complete document when it fits the bounded read budget. Change a note (a .md file) with note_run; for a TXT file use document_write for a whole-document rewrite, and apply_patch only for small localized edits whose exact old text is present in this result.",
+      "category": "document",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path inside the Kition document workspace"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "document_search",
+      "description": "Search Markdown/TXT content inside the Kition document workspace.",
+      "category": "document",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Keyword to search inside the document workspace"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "document_write",
+      "description": "Overwrite an existing TXT document in the workspace for iterative editing. Notes (.md files) are changed with note_run, never with this tool.",
+      "category": "document",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path of the Kition document to overwrite"
+          },
+          "content": {
+            "type": "string",
+            "description": "Full updated document content, not a diff fragment"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "exec_command",
+      "description": "Run a command inside the workspace and return its output. Provide cmd as argv; set shell to bash or sh to run cmd as one shell command line. Commands outside the execution policy pause for user approval.",
+      "category": "cli",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cmd": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "argv: program followed by arguments. Runs without shell interpolation unless shell is set."
+          },
+          "yield_time_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120000,
+            "description": "Maximum time to wait for the command before it is stopped. Defaults to 30000."
+          },
+          "shell": {
+            "type": "string",
+            "enum": [
+              "bash",
+              "sh"
+            ],
+            "description": "Optional shell to interpret a single-string command. When set, cmd is treated as a single shell command joined by spaces and run via the named shell with -c."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Human-readable reason recorded in the tool call payload."
+          }
+        },
+        "required": [
+          "cmd"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "file_search",
+      "description": "Fuzzy-search filenames in the workspace. Returns workspace-relative paths ranked by match quality. Prefer this over document_list when you don't already know the exact path.",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Substring or fuzzy fragment to look for in file paths."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "Maximum number of matches to return. Default 20."
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Additional directory names to skip."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "fs_copy",
+      "description": "Copy a workspace file or directory tree to another workspace path.",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "src": {
+            "type": "string"
+          },
+          "dst": {
+            "type": "string"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Allow overwriting an existing destination. Default false."
+          }
+        },
+        "required": [
+          "src",
+          "dst"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "fs_list",
+      "description": "List entries one level under a workspace directory. For recursive search use file_search.",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative directory (empty = workspace root)."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "Default 100."
+          }
+        }
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "fs_mkdir",
+      "description": "Create a directory inside the workspace. Always recursive (parents are created).",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative workspace directory to create."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "fs_read",
+      "description": "Read a UTF-8 text file from the workspace. Use document_read for the active editor document; use fs_read for arbitrary text files.",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative workspace path."
+          },
+          "max_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1048576,
+            "description": "Maximum number of bytes to return. Default 96 KiB."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "fs_remove",
+      "description": "Remove a file or directory from the workspace. Non-empty directory removal requires danger-full-access mode.",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Required for non-empty directories."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "fs_stat",
+      "description": "Stat a workspace path. Returns size, kind (file/dir/symlink), and modification time.",
+      "category": "filesystem",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "register_artifact",
+      "description": "Register a non-Office file that was just written under the workspace as an Agent artifact so it appears in the workspace document list and chat trace. Use this for existing PDF, HTML, image, Markdown, or plain-text deliverables. DOCX, XLSX, and PPTX creation or registration are not supported by generic Agent tools. The file must already exist at the given relative path.",
+      "category": "artifact",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path of the already-written non-Office file, e.g. \"Agent/Quarterly Report.pdf\"."
+          },
+          "mime": {
+            "type": "string",
+            "description": "MIME type, e.g. application/pdf, text/html, or image/png."
+          },
+          "title": {
+            "type": "string",
+            "description": "Optional human-readable title shown in the workspace list."
+          }
+        },
+        "required": [
+          "path",
+          "mime"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "save_image_asset",
+      "description": "Download an http/https image and save it into the Kition document workspace as an image artifact.",
+      "category": "artifact",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Image URL to download and save"
+          },
+          "title": {
+            "type": "string",
+            "description": "Image title or filename without extension"
+          },
+          "folder": {
+            "type": "string",
+            "description": "Relative folder inside the Kition document workspace; defaults to the current document folder or Agent"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Optional filename, preferred over title"
+          }
+        },
+        "required": [
+          "url",
+          "title"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "source_file_search",
+      "description": "Fuzzy-search file and directory paths in attached read-only local analysis folders. Results are ranked by path match quality and returned as source:// URIs. Use this before content search when you know part of a filename, symbol file, or directory name.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Fuzzy path fragment. Empty lists top paths."
+          },
+          "source_id": {
+            "type": "string",
+            "description": "Optional source id; omitted searches all attached sources."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "any",
+              "file",
+              "directory"
+            ],
+            "description": "Path type to return. Default any."
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "description": "Optional ** glob filters, for example **/*.go."
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "description": "Optional ** glob exclusions."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_git_blame",
+      "description": "Trace Git attribution for a bounded line range of one relative file in an attached local analysis folder. Use it only when the origin of specific lines matters.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Default 1."
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Default start_line + 199; maximum 500 lines."
+          },
+          "revision": {
+            "type": "string",
+            "description": "Optional safe revision. Default HEAD."
+          }
+        },
+        "required": [
+          "source_id",
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_git_log",
+      "description": "Read recent Git commit history for an attached local analysis folder, optionally limited to one relative path. Use it only when chronology or change rationale matters.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "Optional relative file or directory path."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Maximum commits. Default 12."
+          }
+        },
+        "required": [
+          "source_id"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_git_show",
+      "description": "Read Git commit metadata, a diff limited to one relative path, or one file as it existed at a revision in an attached local analysis folder. Revisions and paths are validated and output is bounded.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string",
+            "description": "Commit hash, tag, or safe revision expression."
+          },
+          "path": {
+            "type": "string",
+            "description": "Optional relative path. Required when mode=file."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "commit",
+              "file"
+            ],
+            "description": "commit returns metadata and diff; file returns file content at the revision. Default commit."
+          }
+        },
+        "required": [
+          "source_id",
+          "revision"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_git_status",
+      "description": "Inspect the read-only Git working-tree status of an attached local analysis folder. Returns source-relative paths and never changes repository state.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_list",
+      "description": "List one level inside a user-selected read-only local analysis folder with type, size, and modification metadata. Use source_file_search for recursive path discovery.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative directory; empty means source root"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "source_id"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_read",
+      "description": "Read an exact line range from a UTF-8 file in a user-selected read-only local analysis folder. Returns numbered lines, total line count, truncation state, and the next readable range using source:// paths.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative file path under the selected source"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "First 1-based line to read. Default 1."
+          },
+          "line_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Maximum lines to read. Default 200."
+          },
+          "max_bytes": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 131072,
+            "description": "Hard output byte budget. Default 49152."
+          }
+        },
+        "required": [
+          "source_id",
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "source_search",
+      "description": "Search UTF-8 file content across attached read-only local analysis folders using literal or regular-expression matching. Supports smart case, ** glob filters, line and column locations, bounded context, per-file limits, and full-candidate ranking before truncation.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string",
+            "description": "Optional source id; omitted searches all attached sources."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "literal",
+              "regex"
+            ],
+            "description": "Default literal."
+          },
+          "case_sensitive": {
+            "type": "boolean",
+            "description": "Optional explicit case behavior. Omitted uses smart case: uppercase query characters make search case-sensitive."
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "description": "Optional ** glob filters, for example **/*.go."
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "description": "Optional ** glob exclusions."
+          },
+          "context_lines": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8,
+            "description": "Lines before and after each match. Default 2."
+          },
+          "per_file_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Maximum matches collected from one file. Default 3."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum ranked matches returned. Default 20."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "update_plan",
+      "description": "Updates the task plan.\nProvide an optional explanation and a list of plan items, each with a step and status.\nAt most one step can be in_progress at a time.",
+      "category": "plan",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "type": "string",
+            "description": "Optional explanation for this plan update."
+          },
+          "plan": {
+            "type": "array",
+            "description": "The list of steps",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "step",
+                "status"
+              ],
+              "properties": {
+                "step": {
+                  "type": "string",
+                  "description": "Task step text."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "completed"
+                  ],
+                  "description": "Step status."
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "plan"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "view_image",
+      "description": "Attach a workspace image to the next model turn so the model can visually inspect it. Use when the user has uploaded or saved a chart, screenshot, photo, or diagram and answering requires looking at it.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path to an image file (png/jpg/jpeg/gif/webp/bmp/svg)."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "web_article_save",
+      "description": "Archive a web article (URL → workspace Markdown + local images). Fetches the page, extracts the main article, downloads inline images into an images/ subfolder, rewrites all <img src> to relative paths, and writes index.md with frontmatter (source_url, captured_at, title).",
+      "category": "artifact",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Article URL (http/https)"
+          },
+          "folder": {
+            "type": "string",
+            "description": "Optional parent folder; the article is written to <folder>/<title>/index.md. Defaults to the active document folder or Agent."
+          },
+          "title": {
+            "type": "string",
+            "description": "Override the article title; defaults to the extracted page title."
+          },
+          "max_images": {
+            "type": "integer",
+            "description": "Maximum number of inline images to download (default 50)"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
+      "name": "web_fetch",
+      "description": "Read a specific http/https page when the user explicitly provides the URL. Do NOT use this to follow up on web_search results or to verify URLs you recall from memory — for general research questions, call web_search instead and write your answer from its hosted snippets.",
+      "category": "web",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "A single http/https URL to read"
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Up to 3 http/https URLs to read"
+          }
+        }
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "web_search",
+      "description": "Use the current Codex/OpenAI Responses model's hosted web_search to find recent web information without a third-party search key.",
+      "category": "web",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search question or keywords for web research"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "permission": "read-only"
+    }
+  ],
+  "skills": [
+    {
+      "name": "deep-research",
+      "description": "Multi-source research, citation synthesis, and report generation.",
+      "triggers": [
+        "research",
+        "deep research",
+        "find sources",
+        "investigation"
+      ],
+      "tools": [
+        "web_search",
+        "web_fetch",
+        "document_search",
+        "document_list",
+        "document_write",
+        "artifact_write",
+        "file_search",
+        "fs_read",
+        "fs_list",
+        "fs_stat"
+      ],
+      "system_prompt": "Enable the deep-research skill.\nDecompose the research question first, then synthesize conclusions from tool results.\nWhen the task involves facts, data, news, or sourced claims, include a source list.\nPrefer a Markdown-friendly research report structure in the final output."
+    },
+    {
+      "name": "document-writer",
+      "description": "Generate articles, plans, summaries, reports, and Markdown documents.",
+      "triggers": [
+        "write article",
+        "create document",
+        "markdown",
+        ".md",
+        "plan",
+        "report",
+        "summary"
+      ],
+      "tools": [
+        "document_read",
+        "document_search",
+        "document_list",
+        "source_read",
+        "source_file_search",
+        "source_search",
+        "source_list",
+        "source_git_status",
+        "source_git_log",
+        "source_git_show",
+        "source_git_blame",
+        "document_write",
+        "artifact_write",
+        "register_artifact",
+        "apply_patch",
+        "file_search",
+        "fs_read",
+        "fs_list",
+        "fs_stat"
+      ],
+      "system_prompt": "Enable the document-writer skill.\nOutputs must be clear, complete, and editable Markdown.\nIf the user refers to the current document, incorporate that document context first."
+    },
+    {
+      "name": "document-review",
+      "description": "Review the current document for structure, tone, gaps, and actionability.",
+      "triggers": [
+        "review",
+        "revise this",
+        "improve current document",
+        "edit this document",
+        "feedback"
+      ],
+      "tools": [
+        "document_read",
+        "document_search",
+        "document_list",
+        "document_write",
+        "apply_patch",
+        "file_search",
+        "fs_read"
+      ],
+      "system_prompt": "Enable the document-review skill.\nLead with the main issues, then provide a directly rewritable version or an actionable revision list.\nIf the user asks for direct edits to the current note, read it first and change it with note_run (find its commands with note_commands).\nFeedback should be concrete at the level of headings, paragraphs, structure, factual gaps, and action items."
+    },
+    {
+      "name": "document-report-agent",
+      "description": "Analyze workspace documents and folders and emit reports, dashboards, HTML pages, and charts.",
+      "triggers": [
+        "report",
+        "dashboard",
+        "visualization",
+        "chart",
+        "summary",
+        "analyze document"
+      ],
+      "tools": [
+        "document_list",
+        "document_read",
+        "document_search",
+        "source_list",
+        "source_file_search",
+        "source_read",
+        "source_search",
+        "source_git_status",
+        "source_git_log",
+        "source_git_show",
+        "source_git_blame",
+        "artifact_write",
+        "register_artifact",
+        "apply_patch",
+        "file_search",
+        "fs_read",
+        "fs_list",
+        "fs_stat",
+        "exec_command"
+      ],
+      "system_prompt": "Enable the document-report-agent skill.\nFollow an AI-first flow: explore the context with tools, extract what the answer needs, synthesize, then emit the matching artifact. Do not dump or guess folder contents.\nFor a referenced folder, call document_list first, then document_read only the files that matter.\nChoose the artifact from intent: a readable report, dashboard, or visualization/HTML page uses artifact_write with a `.html` path and a complete standalone HTML document; plain prose uses artifact_write with a `.md` path.\nFor charts, embed ECharts or Chart.js via CDN inside the HTML payload using only data you actually read; never invent numbers.\nThe artifact you produce is this turn's result; do not also restate the whole thing as plain chat. If the user asked for a report or HTML, the task is not complete until artifact_write succeeds or you state a concrete blocker."
+    },
+    {
+      "name": "web-archive-agent",
+      "description": "Archive arbitrary web articles (URL → workspace Markdown + local images) so the saved doc keeps its title, source URL, and inline images as relative paths.",
+      "triggers": [
+        "archive",
+        "scrape article",
+        "save article",
+        "save url",
+        "save webpage",
+        "web archive"
+      ],
+      "tools": [
+        "web_article_save",
+        "document_list",
+        "web_search",
+        "web_fetch"
+      ],
+      "system_prompt": "Enable the web-archive-agent skill.\nWhen the user provides one or more http(s) article URLs and wants them saved, call web_article_save once per URL. Each call writes <folder>/<title>/index.md plus images/img-NNN.<ext> and rewrites <img src> to relative paths.\nDo not batch multiple URLs into a single call. Do not loop through manual fetch + parse + save; web_article_save is atomic.\nIf the user named a parent folder (e.g. book/blog-archive/20260401/), pass it as folder. Otherwise let the tool default (active document folder, or Agent/).\nReport each URL's outcome on its own line; do not stop the batch on the first failure.\nIf web_article_save returns an HTTP 4xx/5xx error (rare; usually means the URL itself is wrong), report the error verbatim. Do not invent shell commands or fallback scrapers."
+    }
+  ]
+}

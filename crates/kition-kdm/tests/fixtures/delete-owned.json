@@ -1,0 +1,25 @@
+{
+  "schema": {
+    "kdm": 1, "kit": "kit.delete-owned", "schemaVersion": 1, "root": "Project",
+    "types": {
+      "Project": { "fields": { "items": { "kind": "list", "of": "Item" }, "media": { "kind": "list", "of": "Media" } } },
+      "Item": { "fields": { "comp": { "kind": "ref", "of": "Comp", "owns": true, "optional": true } } },
+      "Comp": { "fields": { "layers": { "kind": "list", "of": "Layer" } } },
+      "Layer": { "fields": { "media": { "kind": "ref", "of": "Media" }, "props": { "kind": "map", "owns": true } } },
+      "Prop": { "fields": { "value": { "kind": "number" } } },
+      "Media": { "fields": { "name": { "kind": "string" } } }
+    }
+  },
+  "setup": { "ops": [
+    { "op": "create", "type": "Project", "id": "project" },
+    { "op": "create", "type": "Media", "id": "media", "in": "root.media", "fields": { "name": "shared" } },
+    { "op": "create", "type": "Comp", "id": "comp" },
+    { "op": "create", "type": "Prop", "id": "prop", "fields": { "value": 1 } },
+    { "op": "create", "type": "Layer", "id": "layer", "in": "comp.layers", "fields": { "media": "media" } },
+    { "op": "map.set", "target": "layer", "field": "props", "key": "opacity", "value": { "body": "prop" } },
+    { "op": "create", "type": "Item", "id": "item", "in": "root.items", "fields": { "comp": "comp" } }
+  ] },
+  "edit": { "ops": [{ "op": "delete", "target": "item" }] },
+  "deleted": ["comp", "item", "layer", "prop"],
+  "remaining": ["media", "project"]
+}

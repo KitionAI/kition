@@ -1,0 +1,98 @@
+{
+  "khp": "1.0",
+  "id": "kit.layout",
+  "name": "Layout",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "layout",
+      "extensions": [
+        "klayout"
+      ],
+      "mime": "application/vnd.kition.layout+zip",
+      "role": "edit"
+    },
+    {
+      "id": "layout-import",
+      "extensions": [
+        "idml"
+      ],
+      "mime": "application/vnd.adobe.indesign-idml-package",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "layout",
+      "extension": "klayout",
+      "baseName": "Untitled layout"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "jpg",
+      "mime": "image/jpeg",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "html",
+      "mime": "text/html",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "idml",
+      "mime": "application/vnd.adobe.indesign-idml-package",
+      "command": "file.exportBytes"
+    },
+    {
+      "extension": "epub",
+      "mime": "application/epub+zip",
+      "command": "file.exportBytes"
+    }
+  ],
+  "capabilities": [
+    "kdm",
+    "engine-tools",
+    "pages"
+  ],
+  "agent": {
+    "prefix": "layout",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": true,
+    "render": "file.render",
+    "export": {
+      "command": "file.exportBytes",
+      "data": "data",
+      "params": {}
+    },
+    "describe": {
+      "noun": "page layout"
+    }
+  },
+  "headless": {
+    "executable": "kition-layout",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

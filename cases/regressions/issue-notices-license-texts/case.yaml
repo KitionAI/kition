@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-notices-license-texts
+feature: kition.platform.open-source-notices
+intent: >-
+  The app's third-party notices listed 19 npm packages (Radix subpackages, react-remove-scroll-bar,
+  fastdom and others that publish no licence file) without any licence text, called khroma's
+  licence Unknown although its licence file is MIT, and did not say which of DOMPurify's two
+  licences Kition uses. Every package now has its upstream text, khroma is MIT, DOMPurify is used
+  under Apache-2.0, and the generator fails when a package has no text.
+layer: gate
+source:
+  kind: issue
+  from: "license audit 2026-11-17 (npm F6 and the dompurify note)"
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/npmLicenseOverrides.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-17"

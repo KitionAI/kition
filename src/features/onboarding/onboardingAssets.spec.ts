@@ -1,0 +1,138 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
+
+const dir = resolve(__dirname, '../../../public/onboarding')
+
+describe('onboarding static assets', () => {
+  it('manifest references files that all exist on disk', () => {
+    const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
+    expect(manifest.version).toBe(20)
+    expect(manifest.folder).toBe('Getting Started')
+    expect(typeof manifest.welcome.filename).toBe('string')
+    expect(manifest.welcome.asset).toBe('welcome.md')
+    expect(manifest.welcome.folder).toBe('Getting Started')
+    expect(existsSync(resolve(dir, manifest.welcome.asset))).toBe(true)
+    expect(manifest.documents).toEqual([])
+    expect(manifest.tables.map((table: { filename: string }) => table.filename)).toEqual([
+      'Task Tracker.ktable',
+      'YouTube & TikTok Thumbnail Generator.ktable',
+      'Receipt OCR Table.ktable',
+      'Leads Landing Page.ktable',
+      'SDR Cold Call Manager.ktable',
+      'Product Launch Website.ktable',
+      'Batch Product Designer.ktable',
+      'Simple Client CRM.ktable',
+      'Restaurant Operations.ktable',
+      'Business Analytics Dashboard.ktable',
+      'Project Gantt Planner.ktable',
+    ])
+    expect(manifest.tables.map((table: { folder?: string }) => table.folder)).toEqual([
+      'Projects & Planning',
+      'AI & Creative',
+      'AI & Creative',
+      'Sales & Customer',
+      'Sales & Customer',
+      'Projects & Planning',
+      'AI & Creative',
+      'Sales & Customer',
+      'Operations & Analytics',
+      'Operations & Analytics',
+      'Projects & Planning',
+    ])
+    for (const table of manifest.tables) {
+      const bytes = readFileSync(resolve(dir, table.asset))
+      expect(bytes.subarray(0, 16).toString('utf8')).toBe('SQLite format 3\u0000')
+      expect(bytes.byteLength).toBeGreaterThan(100_000)
+      expect(typeof table.filename).toBe('string')
+      if ([
+        'Batch Product Designer.ktable',
+        'Receipt OCR Table.ktable',
+        'YouTube & TikTok Thumbnail Generator.ktable',
+      ].includes(table.filename)) {
+        expect(bytes.includes(Buffer.from('kition-bundled:/templates/'))).toBe(true)
+        expect(bytes.includes(Buffer.from('image/webp'))).toBe(true)
+        expect(bytes.includes(Buffer.from('image/png'))).toBe(false)
+      }
+    }
+    expect(manifest.images).toEqual([
+      { asset: 'logo.png', filename: 'logo.png' },
+    ])
+    expect(existsSync(resolve(dir, manifest.images[0].asset))).toBe(true)
+    expect(manifest.guides).toBeUndefined()
+    expect(existsSync(resolve(dir, 'demos'))).toBe(false)
+  })
+
+  it('keeps every first-run file inside Getting Started', () => {
+    const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
+    expect(manifest.folder).toBe('Getting Started')
+    expect(manifest.welcome).toMatchObject({
+      filename: 'Welcome to Kition.md',
+      folder: 'Getting Started',
+    })
+    expect([...new Set(manifest.tables.map((table: { folder: string }) => table.folder))].sort()).toEqual([
+      'AI & Creative',
+      'Operations & Analytics',
+      'Projects & Planning',
+      'Sales & Customer',
+    ])
+  })
+
+  it('keeps every optional onboarding guide valid for on-demand import', () => {
+    const manifest = JSON.parse(readFileSync(resolve(dir, 'guides.json'), 'utf8'))
+    const referenced = new Set(['guides.json'])
+
+    const receiptGuide = manifest.guides.find(
+      (guide: { slug: string }) => guide.slug === 'receipt-extraction',
+    )
+    expect(receiptGuide?.assets).toBeUndefined()
+    expect(manifest.guides.map((guide: { displayName: string }) => guide.displayName)).toEqual([
+      'Receipt Extraction',
+      'Product Content',
+    ])
+
+    for (const guide of manifest.guides) {
+      expect(guide.slug.toLowerCase()).not.toContain('case')
+      expect(guide.displayName.toLowerCase()).not.toContain('case')
+      referenced.add(`${guide.slug}/${guide.intro}`)
+      expect(guide.seeds).toEqual([])
+      expect(existsSync(resolve(dir, guide.slug, 'seeds'))).toBe(false)
+      if (guide.tableFile) referenced.add(`${guide.slug}/${guide.tableFile}`)
+      for (const seed of guide.seeds) referenced.add(`${guide.slug}/seeds/${seed}`)
+      for (const asset of guide.assets ?? []) referenced.add(`${guide.slug}/assets/${asset}`)
+    }
+
+    const guideSlugs = new Set(manifest.guides.map((guide: { slug: string }) => guide.slug))
+    const actual = readdirSync(dir, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => relative(dir, resolve(entry.parentPath, entry.name)))
+      .filter((path) => path === 'guides.json' || guideSlugs.has(path.split('/')[0]))
+
+    expect(actual.sort()).toEqual([...referenced].sort())
+  })
+
+  it('ships a rich English welcome guide focused on the starter files', () => {
+    const english = readFileSync(resolve(dir, 'welcome.md'), 'utf8')
+    expect(english).toContain('# Welcome to Kition')
+    expect(english).toContain('![Kition](logo.png)')
+    expect(english).toContain('```mermaid')
+    expect(english).toContain('V_n = V_0(1 + r)^n')
+    expect(english).toContain('Template Center')
+    expect(english).toContain('Receipt OCR Table')
+    expect(english).toContain('[[Getting Started/Operations & Analytics/Restaurant Operations.ktable]]')
+    expect(english).toContain('Settings > Onboarding Guides')
+    expect(english).toContain('```text')
+    expect(english).toContain('| Capability | What it means | What to try |')
+    expect(english).toContain('> [!tip]')
+    expect(english).toContain('> [!note]')
+    expect(english).toContain('- [ ] Edit this page and save it.')
+    expect(english.split('\n').length).toBeGreaterThan(100)
+    expect(english).not.toContain('Contact Directory')
+    expect(english).toContain('[[Getting Started/Projects & Planning/Task Tracker.ktable]]')
+    expect(english).not.toContain('Workflow Examples/')
+    expect(english.toLowerCase()).not.toContain('workflow')
+    expect(english).not.toContain('Guides/Email Automation/')
+
+    expect(readdirSync(dir).filter((name) => /^welcome\..+\.md$/.test(name))).toEqual([])
+  })
+})

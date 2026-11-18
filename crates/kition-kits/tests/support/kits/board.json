@@ -1,0 +1,71 @@
+{
+  "khp": "1.0",
+  "id": "kit.board",
+  "name": "Board",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "kboard",
+      "extensions": [
+        "kboard"
+      ],
+      "mime": "application/vnd.kition.board+zip",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "board",
+      "extension": "kboard",
+      "baseName": "Untitled board"
+    }
+  ],
+  "exports": [
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    },
+    {
+      "extension": "svg",
+      "mime": "image/svg+xml",
+      "command": "file.export"
+    },
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "board",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "export": {
+      "command": "file.export",
+      "data": "base64"
+    },
+    "describe": {
+      "noun": "board"
+    }
+  },
+  "headless": {
+    "executable": "kition-board",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "buildProgress": {
+    "buildingBase": "正在构建数据库…",
+    "buildingInProgress": "构建进行中",
+    "progressLabel": "构建进度：{{percent}}%",
+    "stepRunning": "{{label}}进行中",
+    "subtasks": {
+      "generateFields": "生成字段",
+      "generateAiFields": "生成 AI 字段",
+      "generateRecords": "生成记录",
+      "generateViews": "生成视图"
+    }
+  },
+  "planCard": {
+    "title": "计划",
+    "summary": "{{total}} 步 · 已完成 {{completed}} · 进行中 {{inProgress}} · 待处理 {{pending}}"
+  },
+  "shellApproval": {
+    "eyebrow": "执行 Shell 命令需要授权",
+    "fetchEyebrow": "Agent 想要访问一个网站",
+    "articleEyebrow": "Agent 想要保存一篇网页文章",
+    "imageEyebrow": "Agent 想要下载一张图片",
+    "parseFailed": "解析失败：{{error}}",
+    "allowOnce": "允许一次",
+    "rememberTitle": "允许并记住前缀“{{prefix}}”",
+    "alwaysAllow": "始终允许“{{target}}”",
+    "deny": "拒绝"
+  },
+  "applyPatch": {
+    "preview": "补丁预览",
+    "applied": "补丁已应用",
+    "stats_one": "{{count}} 个文件 · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} 个文件 · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "新增",
+      "delete": "删除",
+      "update": "更新"
+    },
+    "reject": "拒绝",
+    "apply": "应用"
+  },
+  "modelPicker": {
+    "noModelConfigured": "未配置模型",
+    "chooseModel": "选择 AI 模型",
+    "modelLabel": "模型",
+    "searchPlaceholder": "搜索模型",
+    "noMatches": "没有匹配“{{query}}”的模型"
+  },
+  "mentions": {
+    "searchHint": "在 @ 后输入关键词，搜索整个工作区",
+    "resultCount": "找到 {{count}} 个引用",
+    "attached": "已在上下文",
+    "noMatches": "没有匹配的工作区文档"
+  },
+  "analysisWorkspace": {
+    "contextTitle": "上下文",
+    "addContext": "添加上下文",
+    "addCurrentDocument": "添加当前文档 · {{name}}",
+    "localFolder": "本机目录",
+    "workspaceDocument": "工作区文档",
+    "referenceDocument": "在本轮中引用",
+    "current": "当前",
+    "readOnlySource": "只读分析目录",
+    "removeReference": "移除 {{name}}",
+    "removeCurrentDocument": "移除当前文档 {{name}}",
+    "readOnly": "只读",
+    "removeSource": "移除 {{name}}",
+    "contextCount": "{{count}} 个参考来源"
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "去配置模型"
+    },
+    "kitionAccount": {
+      "checking": "正在检查 Kition 账户…",
+      "signIn": "登录后使用 Kition Cloud",
+      "signInAgain": "重新登录",
+      "cancel": "取消登录",
+      "retry": "重试 Kition 账户",
+      "topUp": "充值积分"
+    },
+    "document": {
+      "description": "让 agent 帮你研究、撰写或整理当前页面。",
+      "suggestions": {
+        "summarize": {
+          "label": "总结当前文档",
+          "prompt": "把当前文档总结成一份 Markdown 简报"
+        },
+        "launchPlan": {
+          "label": "起草上线计划",
+          "prompt": "基于当前页面起草一份上线计划"
+        },
+        "checklist": {
+          "label": "生成清单",
+          "prompt": "生成一份清单并保存为 Markdown"
+        }
+      }
+    },
+    "gallery": {
+      "description": "让 agent 帮你整理、描述或复用当前画廊里的素材。",
+      "suggestions": {
+        "describeEach": {
+          "label": "逐个描述",
+          "prompt": "描述当前画廊中每个素材的内容。"
+        },
+        "groupByTopic": {
+          "label": "按主题分组",
+          "prompt": "把这些媒体文件按视觉主题分组。"
+        },
+        "pickHero": {
+          "label": "挑选主视觉",
+          "prompt": "从里面挑出最适合做落地页主视觉的那一份素材。"
+        }
+      }
+    }
+  },
+  "timeline": {
+    "status": {
+      "failed": "失败"
+    },
+    "sections": {
+      "tool": "工具",
+      "input": "输入",
+      "output": "输出",
+      "error": "错误",
+      "status": "状态",
+      "data": "数据",
+      "path": "路径",
+      "title": "标题",
+      "preview": "预览",
+      "noDetail": "正在等待此步骤的执行信息。"
+    },
+    "model": {
+      "titlePlanning": "理解任务",
+      "titleProcessing": "处理工具结果",
+      "detailPlanning": "正在分析目标、上下文和可用工具",
+      "detailProcessing": "已收到“{{tool}}”的结果，正在确定下一步",
+      "expandedPlanning": "正在结合你的要求、已有上下文和可用工具确定执行步骤。",
+      "expandedProcessing": "已收到“{{tool}}”的结果，正在结合上下文确定下一步操作。"
+    },
+    "activity": {
+      "thinking": "思考中…",
+      "completionUnknown": "完成状态未确认",
+      "interruptedDetail": "连接已结束，但尚未确认任务完成。请先检查已保存的结果，再决定是否重试。",
+      "stopped": "任务已停止"
+    },
+    "event": {
+      "callingBackend": "正在请求模型",
+      "backendCalled": "已请求模型",
+      "backendTurnCompleted": "本轮模型请求已结束",
+      "taskFailed": "任务失败",
+      "modelTurnFinished": "第 {{turn}} 轮模型请求已结束",
+      "requestingModelTurn": "正在请求第 {{turn}} 轮模型",
+      "modelRequestedNTools": "模型请求调用 {{count}} 个工具",
+      "modelReturnedChars": "模型返回 {{chars}} 个字符的最终内容",
+      "thisTurnCompleted": "本轮模型请求已结束",
+      "reconnecting": "正在重新连接… {{attempt}}/{{maxRetries}}",
+      "reconnectingNow": "正在重试",
+      "reconnectingInSeconds": "{{seconds}} 秒后重试",
+      "reconnectReason": {
+        "tls_handshake_timeout": "安全连接超时",
+        "connection_timeout": "连接超时",
+        "connection_closed": "连接意外关闭",
+        "connection_reset": "连接被重置",
+        "dns_failure": "网络地址解析失败",
+        "network_error": "临时网络错误",
+        "request_timeout": "模型请求超时",
+        "rate_limited": "模型服务暂时繁忙",
+        "server_unavailable": "模型服务暂时不可用"
+      },
+      "taskCompleted": "任务已完成",
+      "reconnectingInSeconds_one": "{{seconds}} 秒后重试",
+      "reconnectingInSeconds_other": "{{seconds}} 秒后重试",
+      "stepLimit": "已达到单轮模型步数上限而停止；请缩小任务范围或明确下一步。"
+    },
+    "tool": {
+      "inProgress": "正在{{label}}",
+      "failed": "{{label}}失败",
+      "completed": "{{label}}已完成",
+      "nResults": "{{count}} 条结果",
+      "nImages": "{{count}} 张图片",
+      "nEntries": "{{count}} 个条目"
+    },
+    "artifact": {
+      "title": "保存产物"
+    },
+    "final": {
+      "streaming": "正在输出回复"
+    },
+    "toolDisplayName": {
+      "source_adapter_catalog": "检查来源上下文",
+      "web_search": "搜索网页",
+      "web_fetch": "读取网页",
+      "save_image_asset": "保存图片",
+      "document_search": "搜索文档",
+      "document_read": "读取文档",
+      "document_write": "更新文档",
+      "apply_patch": "应用修改",
+      "file_search": "搜索文件",
+      "fs_read": "读取文件",
+      "fs_stat": "查看路径信息",
+      "fs_list": "列出目录",
+      "fs_mkdir": "创建目录",
+      "fs_remove": "删除路径",
+      "fs_copy": "复制路径",
+      "create_markdown": "创建 Markdown",
+      "artifact_write": "保存产物",
+      "register_artifact": "登记产物"
+    },
+    "toolActionLabel": {
+      "source_adapter_catalog": "检查来源上下文",
+      "web_search": "搜索网页",
+      "web_fetch": "读取网页",
+      "save_image_asset": "保存图片",
+      "document_search": "搜索文档",
+      "document_read": "读取文档",
+      "document_write": "更新文档",
+      "apply_patch": "应用修改",
+      "file_search": "搜索文件",
+      "fs_read": "读取文件",
+      "fs_stat": "查看路径信息",
+      "fs_list": "列出目录",
+      "fs_mkdir": "创建目录",
+      "fs_remove": "删除路径",
+      "fs_copy": "复制路径",
+      "create_markdown": "创建 Markdown",
+      "artifact_write": "保存产物",
+      "register_artifact": "登记产物",
+      "shell_exec": "运行命令"
+    },
+    "mcpDisplayPrefix": "MCP",
+    "mcpActionTemplate": "MCP {{server}}：{{tool}}"
+  },
+  "results": {
+    "modifiedFiles": "已修改 {{count}} 个文件",
+    "viewChanges": "查看 {{name}} 的修改",
+    "view": "查看",
+    "modifiedArtifact": "已修改 {{path}}",
+    "imageResult": "图片结果"
+  },
+  "kitEditMode": {
+    "label": "套件编辑",
+    "live": "实时",
+    "draft": "草稿",
+    "liveHint": "智能体直接编辑打开的套件文档，你可以撤销其编辑。",
+    "draftHint": "智能体编辑打开的套件文档的草稿，由你审阅后合并或丢弃。"
+  }
+}

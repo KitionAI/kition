@@ -1,0 +1,12 @@
+/* Load the settings backdrop only when its dialog is opened. */
+.settings-modal-stage {
+  @apply fixed inset-0 z-[100] grid place-items-center p-8;
+  background: rgb(0 0 0 / 0.32);
+  animation: overlay-backdrop-in 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (max-width: 600px) {
+  .settings-modal-stage {
+    padding: 8px;
+  }
+}

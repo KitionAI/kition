@@ -1,0 +1,47 @@
+[
+  {
+    "id": "mixed-01-research-article-table",
+    "split": "development",
+    "prompt": "Research the pilot, write a short sourced article, and include a survey table.",
+    "acceptance": [
+      "Article and table use consistent denominators.",
+      "All requested artifacts are saved and linked."
+    ]
+  },
+  {
+    "id": "mixed-02-table-to-article",
+    "split": "development",
+    "prompt": "Import orders.csv and write an analysis of paid revenue.",
+    "acceptance": [
+      "Deterministic import preserves all six rows.",
+      "The article reports USD 65.00 paid revenue."
+    ]
+  },
+  {
+    "id": "mixed-03-pane-independent",
+    "split": "development",
+    "prompt": "With a table open, ask for a sourced Markdown pilot announcement.",
+    "acceptance": [
+      "The explicit document request wins over the open pane.",
+      "No unintended table mutation occurs."
+    ]
+  },
+  {
+    "id": "mixed-04-interrupt-after-save",
+    "split": "development",
+    "prompt": "End the stream after the article artifact is emitted but before its terminal frame.",
+    "acceptance": [
+      "The artifact and partial answer remain accessible.",
+      "No task-success analytics event or successful completion claim occurs."
+    ]
+  },
+  {
+    "id": "mixed-05-unsupported-surface",
+    "split": "held-out",
+    "prompt": "Request a diagram and image based on the pilot using only advertised tools.",
+    "acceptance": [
+      "Unavailable capabilities are described honestly.",
+      "Any delivered artifact is openable and tied to the originating turn."
+    ]
+  }
+]

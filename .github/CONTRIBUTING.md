@@ -1,0 +1,179 @@
+# Contributing to Kition
+
+Thank you for contributing to Kition.
+
+All changes should follow the [Kition Development Standard](../docs/development-standard.md).
+It includes the recommended worktree workflow for contributors developing in
+Orca.
+
+## Where the Code Is
+
+| Path | What it holds |
+| --- | --- |
+| `src/` | The React renderer, organized by feature domain (`src/features/<domain>`) |
+| `src-tauri/` | The Tauri desktop shell, its bundle configuration, icons, and macOS entitlements |
+| `crates/` | The Rust runtime: `kition-api` and its feature crates, which the shell runs in-process |
+| `contracts/` | JSON schemas of the interfaces Kition uses: the runtime HTTP API (`contracts/runtime/`), kits, accounts, analytics, and cloud |
+| `kits/` | The kit packages Kition ships, pinned in `kits.lock.json`; the kit module registry; the kit colors |
+| `features.yaml`, `cases/` | The feature catalogue and its gate cases ([docs/quality.md](../docs/quality.md)) |
+| `e2e/` | Playwright black-box tests |
+| `docs/` | Product, contributor, design, and runtime documentation; the README's images and translations (`docs/readme/`) |
+| `public/` | Static assets and onboarding files; kit packages are fetched into `public/kits/` |
+| `scripts/` | Repository checks, kit packaging, and inspection entry points |
+| `tooling/` | Build, lint, and test configuration, and the pnpm patch (`tooling/patches/`) |
+| `.github/` | Community health files and CI workflows |
+| `index.html`, `package.json`, `Makefile`, `Cargo.toml` | The renderer's page, the development and test commands, the kit build targets, and the Cargo workspace |
+
+## Scope
+
+This repository contains the whole desktop app: the React renderer (`src/`),
+the Tauri desktop shell (`src-tauri/`), the Rust runtime (`crates/`), the
+runtime contracts (`contracts/runtime/`), mocks, fixtures, packaging logic, and
+black-box tests.
+
+A change that crosses the renderer and the runtime updates the contract in
+`contracts/runtime/`, the renderer mock, and the runtime together. Kits are
+developed in separate repositories; Kition ships their published packages,
+pinned in `kits/kits.lock.json` (see [docs/kits.md](../docs/kits.md)).
+
+## Technology
+
+| Area | Stack |
+| --- | --- |
+| Desktop | Tauri 2 (Rust) |
+| Runtime | Rust, SQLite |
+| Interface | React, TypeScript, Vite |
+| Kits | WebAssembly engines in Web Workers, editors in iframes |
+| Documents | Marked, Mermaid, KaTeX |
+| Data and state | IndexedDB, TanStack Query, Zod |
+| Testing | Vitest, Playwright |
+
+## Run From Source
+
+Requirements:
+
+- Node.js 22.19.0
+- pnpm 10.33.0
+- Rust (stable) and the
+  [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/)
+  for your platform
+
+```bash
+pnpm install --frozen-lockfile
+make kit-fetch
+pnpm dev
+```
+
+`make kit-fetch` downloads the kit packages pinned in `kits/kits.lock.json`
+into `public/kits/` with the GitHub CLI (`gh release download`) and checks each
+one's size and SHA-256; the kit editors run from there. `pnpm dev` runs
+`tauri dev`, which compiles the Tauri desktop shell together with the Rust
+runtime in `crates/` and starts the desktop client. The runtime runs
+in-process; see [docs/runtime-development.md](../docs/runtime-development.md).
+
+For renderer, component, editor, and style work that does not require the
+desktop runtime:
+
+```bash
+pnpm dev:web
+```
+
+The web preview runs the renderer against a mocked runtime and is the fastest
+path for most client-side contributions. It starts in a backendless preview
+mode, so optional runtime-backed startup requests are skipped while document
+editing and visual development remain available. To use an already-running API
+instead, set `KITION_API_TARGET` before the same command:
+
+```bash
+KITION_API_TARGET=http://127.0.0.1:18101 pnpm dev:web
+```
+
+Runtime crates, checks, and rules are documented in
+[Runtime development](../docs/runtime-development.md).
+
+## Development Identities
+
+Environment selection is not exposed through Make targets or local release
+commands.
+
+| Identity | Source | Portal | Distribution |
+| --- | --- | --- | --- |
+| `dev` | Local source checkout | Preview by default, locally overridable | Never published |
+| `rc` | SemVer prerelease tag | Preview | GitHub prerelease |
+| `stable` | Plain SemVer tag | Production | GitHub stable release |
+
+Local builds default to `dev`. Official `rc` and `stable` identities are
+injected only by the release workflow after it classifies the immutable tag.
+
+## Testing Model
+
+Public tests must not require production credentials, a private repository, or
+network access to the Portal. Browser and desktop end-to-end tests use the
+public mock API and isolated temporary desktop state. Desktop specs run the
+renderer in Chromium against a mocked `window.kitionDesktop` bridge
+(`e2e/helpers/desktopHost.ts`); the native shell is covered by its own Rust
+tests.
+
+| Command | Coverage |
+| --- | --- |
+| `pnpm test` | Full Vitest unit and component suite |
+| `pnpm test:desktop:unit` | Desktop bridge, runtime resolution, and packaging contracts |
+| `pnpm check:desktop` | Desktop shell lint and Rust tests (`src-tauri/`) |
+| `pnpm test:e2e` | Mock-backed renderer black-box flows |
+| `pnpm test:desktop:e2e` | Desktop flows against the mocked desktop bridge |
+| `pnpm test:table:e2e` | Required table-widget regression gate |
+| `pnpm test:ktable:e2e` | Required Table kit regression gate (`e2e/table-kit.spec.ts`) |
+| `pnpm build:check` | Runtime lock, assets, notices, types, and renderer build |
+
+Feature-specific inspection commands remain available in `package.json` for
+Table kit, Scenario, and Agent work.
+
+## Before Opening a Pull Request
+
+Run the same core checks used by CI:
+
+```bash
+pnpm check
+pnpm test:e2e
+pnpm test:table:e2e
+pnpm test:ktable:e2e
+```
+
+For desktop shell changes, also run `pnpm check:desktop` and
+`pnpm test:desktop:e2e`, and try the change in `pnpm dev` on a supported
+desktop platform.
+
+For visual changes, include a screenshot or screen recording. If an AI coding
+agent contributed to the change, include a brief review summary covering
+platform compatibility, runtime boundaries, performance, UI quality when
+applicable, and basic security risks.
+
+## Pull Requests
+
+- Keep changes focused and explain the user-facing behavior they affect.
+- Add tests that would catch the reported regression.
+- Do not commit generated output, local configuration, credentials, runtime
+  binaries, or host-specific paths.
+- Keep repository filenames, documentation, comments, tests, fixtures, and UI
+  copy in English.
+- Update the runtime contract in `contracts/runtime/` together with the
+  renderer and runtime code that depend on it.
+- State which platforms and test commands were exercised.
+
+## Release Process
+
+Releases are maintainer-managed through GitHub Actions. Do not add version bumps
+or run a local production packaging command for a normal contribution. Official
+GitHub Releases must be published as `allentatakai`.
+
+1. `Prepare Release` runs the full suite, validates the version, tags the
+   release, and creates a draft release.
+2. `Publish Release` verifies the draft release, derives the build
+   identity from the tag, signs and packages the desktop clients, and publishes
+   the release.
+
+Tags with a prerelease component, such as `v0.2.0-beta.1` or `v1.1.0-rc.1`,
+produce `rc` builds and GitHub prereleases. Plain tags such as `v1.1.0` produce
+`stable` builds. There is no manual test/production selector.
+
+Security reports must follow [SECURITY.md](SECURITY.md).

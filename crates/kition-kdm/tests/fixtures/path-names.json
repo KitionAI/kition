@@ -1,0 +1,353 @@
+{
+  "$comment": "Paths in the words of the kit's commands: a type that declares `pathName` (a field, or a member of a json field) names its objects among the items of their list; a change inside an object a tool id holds then gives each edit `named` beside its positional `field`: the names on the way joined by `/` (the fields leading to the first and between them not written), then the path below the last; `#<n>` for an empty, numeric or unsafe name (`/. # @`), `<name>#<n>` for the n-th of one name. Run by kition-kdm (tests/changes.rs) and @kition/kdm (test/changes.test.ts) on the receipt (changes_since / changesSince). The setup's layer is numbered after it (`testing::number_tool_ids`, `numberToolIds`): its tool id is `1`.",
+  "docId": "01920000-0000-7000-8000-0000000000c9",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.paths",
+    "schemaVersion": 1,
+    "root": "Doc",
+    "types": {
+      "Doc": {
+        "fields": {
+          "layers": {
+            "kind": "list",
+            "of": "Layer"
+          }
+        }
+      },
+      "Layer": {
+        "fields": {
+          "id": {
+            "kind": "integer",
+            "readOnly": true,
+            "optional": true
+          },
+          "props": {
+            "kind": "ref",
+            "of": "Node",
+            "owns": true,
+            "optional": true
+          }
+        },
+        "toolId": {
+          "field": "id"
+        }
+      },
+      "Node": {
+        "fields": {
+          "meta": {
+            "kind": "json"
+          },
+          "value": {
+            "kind": "json",
+            "optional": true
+          },
+          "children": {
+            "kind": "list",
+            "of": "Node"
+          },
+          "keys": {
+            "kind": "list",
+            "of": "Key"
+          }
+        },
+        "pathName": "meta.match"
+      },
+      "Key": {
+        "fields": {
+          "time": {
+            "kind": "string"
+          },
+          "value": {
+            "kind": "json"
+          }
+        }
+      }
+    }
+  },
+  "setup": {
+    "ops": [
+      {
+        "op": "create",
+        "type": "Doc",
+        "id": "doc"
+      },
+      {
+        "op": "create",
+        "type": "Layer",
+        "id": "l",
+        "in": "doc.layers",
+        "fields": {}
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "top",
+        "fields": {
+          "meta": {
+            "match": "layer"
+          }
+        }
+      },
+      {
+        "op": "set",
+        "target": "l",
+        "field": "props",
+        "value": "top"
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "effects",
+        "in": "top.children",
+        "fields": {
+          "meta": {
+            "match": "effects"
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "transform",
+        "in": "top.children",
+        "fields": {
+          "meta": {
+            "match": "transform"
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "anchor",
+        "in": "transform.children",
+        "fields": {
+          "meta": {
+            "match": "anchor"
+          },
+          "value": {
+            "v": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "opacity",
+        "in": "transform.children",
+        "fields": {
+          "meta": {
+            "match": "opacity"
+          },
+          "value": {
+            "v": 100
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "blur1",
+        "in": "effects.children",
+        "fields": {
+          "meta": {
+            "match": "blur"
+          },
+          "value": {
+            "v": 1
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "blur2",
+        "in": "effects.children",
+        "fields": {
+          "meta": {
+            "match": "blur"
+          },
+          "value": {
+            "v": 2
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Node",
+        "id": "odd",
+        "in": "effects.children",
+        "fields": {
+          "meta": {
+            "match": "a.b"
+          },
+          "value": {
+            "v": 3
+          }
+        }
+      },
+      {
+        "op": "create",
+        "type": "Key",
+        "id": "k0",
+        "in": "opacity.keys",
+        "fields": {
+          "time": "0",
+          "value": 100
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "a-value-inside-a-named-node",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "opacity",
+            "field": "value",
+            "value": {
+              "v": 50
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "1",
+            "type": "Layer",
+            "fields": [
+              "props.children.1.children.1.value.v"
+            ],
+            "edits": [
+              {
+                "field": "props.children.1.children.1.value.v",
+                "before": 100,
+                "after": 50,
+                "named": "transform/opacity.value.v"
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "a-second-node-of-one-name",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "blur2",
+            "field": "value",
+            "value": {
+              "v": 9
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "1",
+            "type": "Layer",
+            "fields": [
+              "props.children.0.children.1.value.v"
+            ],
+            "edits": [
+              {
+                "field": "props.children.0.children.1.value.v",
+                "before": 2,
+                "after": 9,
+                "named": "effects/blur#2.value.v"
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "an-unsafe-name-by-its-place",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "odd",
+            "field": "value",
+            "value": {
+              "v": 4
+            }
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "1",
+            "type": "Layer",
+            "fields": [
+              "props.children.0.children.2.value.v"
+            ],
+            "edits": [
+              {
+                "field": "props.children.0.children.2.value.v",
+                "before": 3,
+                "after": 4,
+                "named": "effects/#3.value.v"
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    },
+    {
+      "name": "a-key-below-a-named-node",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "k0",
+            "field": "value",
+            "value": 20
+          }
+        ]
+      },
+      "expected": {
+        "created": [],
+        "changed": [
+          {
+            "id": "1",
+            "type": "Layer",
+            "fields": [
+              "props.children.1.children.1.keys.0.value"
+            ],
+            "edits": [
+              {
+                "field": "props.children.1.children.1.keys.0.value",
+                "before": 100,
+                "after": 20,
+                "named": "transform/opacity.keys.0.value"
+              }
+            ]
+          }
+        ],
+        "moved": [],
+        "deleted": []
+      }
+    }
+  ]
+}

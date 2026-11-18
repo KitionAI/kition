@@ -1,0 +1,547 @@
+{
+  "createMenu": {
+    "format": {
+      "table": "Tabela",
+      "board": "Quadro",
+      "note": "Nota",
+      "photo": "Photo",
+      "film": "Film",
+      "vector": "Vector",
+      "motion": "Motion",
+      "layout": "Layout",
+      "cad": "CAD",
+      "scene": "Scene",
+      "design": "Design",
+      "slide": "Slide",
+      "doc": "Doc",
+      "sheet": "Sheet",
+      "pdf": "PDF",
+      "html": "HTML"
+    },
+    "folder": "Pasta",
+    "group": {
+      "documents": "Documentos",
+      "data": "Dados",
+      "visual": "Visual",
+      "media": "Mídia"
+    }
+  },
+  "emptyState": {
+    "title": "Turn ideas into organized work",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document or table.",
+    "prompt": {
+      "title": "Describe what you want to build",
+      "description": "Plan, research, write, and organize with Kition AI.",
+      "action": "Open AI Chat"
+    },
+    "quickStart": "Quick start",
+    "actions": {
+      "document": {
+        "title": "New document",
+        "description": "Capture notes, plans, and knowledge."
+      },
+      "table": {
+        "title": "New table",
+        "description": "Structure projects, records, and research."
+      }
+    }
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Arquivos"
+    },
+    "collapseSection": "Recolher {{name}}",
+    "expandSection": "Expandir {{name}}",
+    "newPage": "Nova página",
+    "newPageIn": "Nova página em {{name}}",
+    "refresh": "Atualizar espaço de trabalho",
+    "collapseSidebar": "Recolher barra lateral",
+    "loadingDirectory": "Carregando diretório local"
+  },
+  "tree": {
+    "collapse": "Recolher",
+    "expand": "Expandir",
+    "modifiedByAgent": "Modificado pelo Agente",
+    "createInside": "Criar dentro desta página",
+    "moreActions": "Mais ações",
+    "addToChat": "Adicionar ao chat",
+    "addToNewChat": "Adicionar a um novo chat",
+    "changeIcon": "Alterar ícone",
+    "rename": "Renomear",
+    "duplicate": "Duplicar",
+    "moveTo": "Mover para...",
+    "showInFinder": "Mostrar no Finder",
+    "delete": "Excluir",
+    "moveToTitle": "Mover para",
+    "moveToRoot": "Raiz",
+    "noDestinations": "Nenhum outro destino disponível",
+    "clearIcon": "Limpar"
+  },
+  "tabs": {
+    "closeTab": "Fechar aba",
+    "expandSidebar": "Expandir barra lateral",
+    "previousTab": "Aba anterior",
+    "nextTab": "Próxima aba",
+    "showOverflow": "Mostrar abas excedentes",
+    "close": "Fechar",
+    "closeOthers": "Fechar outras abas",
+    "closeAll": "Fechar todas as abas",
+    "closeUnmodified": "Fechar abas não modificadas",
+    "closeLeft": "Fechar abas à esquerda",
+    "closeRight": "Fechar abas à direita",
+    "closeReadOnly": "Fechar todas as abas somente leitura",
+    "copyReference": "Copiar caminho/referência",
+    "unsavedTitle": "“{{name}}” tem alterações não salvas",
+    "unsavedMessage": "Salvá-las antes de fechar a aba? As alterações não salvas serão perdidas.",
+    "unsavedTitleMany": "Alterações não salvas em {{count}} documentos",
+    "unsavedWindowMessage": "Salvá-las primeiro? As alterações não salvas serão perdidas.",
+    "unsavedSave": "Salvar",
+    "unsavedDiscard": "Não salvar",
+    "unsavedCancel": "Cancelar"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Hoje",
+      "week": "Últimos 7 dias",
+      "older": "Mais antigos"
+    },
+    "chat": "Chat",
+    "newChatTitle": "Novo chat",
+    "openChat": "Abrir Chat de IA",
+    "collapseChat": "Recolher Chat de IA",
+    "emptyTitle": "Chat de IA",
+    "newChat": "Novo chat",
+    "closeChat": "Fechar chat",
+    "viewHistory": "Ver histórico",
+    "agentHistory": "Histórico do agente",
+    "searchChats": "Pesquisar chats...",
+    "noMatchingChats": "Nenhum chat correspondente.",
+    "noChatsYet": "Nenhum chat ainda. Inicie um novo."
+  },
+  "agentSidebar": {
+    "empty": "Inicie um novo chat ou abra um existente a partir do histórico."
+  },
+  "fileViewer": {
+    "imageActions": "Ações da imagem",
+    "copyImage": "Copiar imagem",
+    "imageCopied": "Imagem copiada",
+    "imageCopyFailed": "Não foi possível copiar a imagem",
+    "openInSystem": "Abrir no sistema",
+    "showInFinder": "Mostrar no Finder",
+    "previewUnsupported": "{{label}} · A visualização no app ainda não é suportada",
+    "previewTip": "Você ainda pode usar @ para mencionar este arquivo e a IA analisá-lo diretamente, ou clicar em \"Abrir no sistema\" para visualizá-lo com um aplicativo nativo."
+  },
+  "folderDialog": {
+    "title": "Nova pasta",
+    "description": "Digite um nome para a pasta.",
+    "placeholder": "Pasta sem título",
+    "cancel": "Cancelar",
+    "create": "Criar"
+  },
+  "media": {
+    "images": "Imagens",
+    "videos": "Vídeos",
+    "items": "{{count}} itens",
+    "noImagesTitle": "Nenhuma imagem ainda",
+    "noVideosTitle": "Nenhum vídeo ainda",
+    "noImagesDescription": "As imagens deste espaço de trabalho aparecerão aqui.",
+    "noVideosDescription": "Os vídeos deste espaço de trabalho aparecerão aqui."
+  },
+  "layout": {
+    "resizeSidebar": "Redimensionar barra lateral",
+    "resizeChat": "Redimensionar Chat de IA"
+  },
+  "footer": {
+    "switchWorkspace": "Trocar de espaço de trabalho",
+    "switchWorkspaceTitle": "Trocar de espaço de trabalho (⌘⇧O)",
+    "profile": "Perfil",
+    "settings": "Configurações"
+  },
+  "errors": {
+    "fileTypeNotDeletable": "Este tipo de arquivo ainda não pode ser excluído da biblioteca de documentos.",
+    "saveBeforeOrganizing": "Salve “{{name}}” antes de renomeá-lo ou movê-lo: ele tem alterações não salvas.",
+    "onlyWorkspaceItemsDuplicable": "Somente documentos, tabelas e quadros podem ser duplicados aqui.",
+    "createDocumentFailed": "Falha ao criar o documento",
+    "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev e tente novamente.",
+    "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev e tente novamente.",
+    "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos."
+  },
+  "feedback": {
+    "refreshed": "Espaço de trabalho atualizado",
+    "documentCreated": "Documento criado",
+    "folderCreated": "Pasta criada",
+    "renamed": "Renomeado",
+    "alreadyInLocation": "Já está neste local"
+  },
+  "photoKit": {
+    "unavailableTitle": "A edição de Photo não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Photo abrem no Kition quando o mecanismo Photo está incluído."
+  },
+  "kitEditor": {
+    "conflictsTitle": "Algumas edições não puderam ser mescladas",
+    "conflictsBody_one": "{{count}} edição feita por outra pessoa ao mesmo tempo não pôde ser mesclada. Ela fica no documento até ser resolvida.",
+    "conflictsBody_other": "{{count}} edições feitas por outra pessoa ao mesmo tempo não puderam ser mescladas. Elas ficam no documento até serem resolvidas.",
+    "openFailedTitle": "Não foi possível abrir {{name}}",
+    "openFailedMessage": "O arquivo pode estar danificado ou não ser um arquivo {{type}} válido. Ele não foi alterado.",
+    "openUnreachableMessage": "O Kition não consegue acessar o serviço de arquivos agora. O arquivo não foi alterado.",
+    "openEngineMessage": "O editor de arquivos {{type}} não pôde iniciar. O arquivo não foi alterado.",
+    "openTooLargeMessage": "Este arquivo tem mais de {{limit}} MB, o máximo que o editor de {{type}} abre. Ele não foi alterado.",
+    "openTooLargeNoLimitMessage": "Este arquivo é maior do que o editor de {{type}} abre. Ele não foi alterado.",
+    "tryAgain": "Tentar novamente",
+    "saveFailed": {
+      "diskFull": "Não há espaço livre neste disco. Libere espaço e salve novamente.",
+      "notAllowed": "O Kition não tem permissão para gravar este arquivo. Verifique as permissões e salve novamente.",
+      "unreachable": "O Kition não consegue acessar o serviço de arquivos agora. Suas alterações foram mantidas; salve novamente em instantes.",
+      "other": "Não foi possível salvar o arquivo. Suas alterações foram mantidas; tente salvar novamente."
+    },
+    "opening": "Abrindo…",
+    "draft": {
+      "title": "Rascunho do agente",
+      "bannerOpen": "O agente está editando um rascunho deste documento",
+      "bannerReady": "O rascunho do agente está pronto para revisão",
+      "bannerHint": "O documento não muda até você mesclar o rascunho.",
+      "review": "Revisar",
+      "merge": "Mesclar",
+      "discard": "Descartar",
+      "reviewTitle": "Revisar o rascunho do agente",
+      "localHint": "Só você vê este rascunho até mesclá-lo. Desfazer reverte a mesclagem em um passo.",
+      "compareFailed": "Não foi possível comparar o rascunho",
+      "comparing": "Comparando o rascunho…",
+      "before": "Documento atual",
+      "after": "Com o rascunho mesclado",
+      "noPreview": "Sem prévia",
+      "created_one": "{{count}} objeto adicionado",
+      "created_other": "{{count}} objetos adicionados",
+      "changed_one": "{{count}} objeto alterado",
+      "changed_other": "{{count}} objetos alterados",
+      "deleted_one": "{{count}} objeto removido",
+      "deleted_other": "{{count}} objetos removidos",
+      "noChanges": "O rascunho não altera nada.",
+      "more_one": "e mais {{count}}",
+      "more_other": "e mais {{count}}",
+      "texts": "Alterações de texto",
+      "merged": "Rascunho do agente mesclado",
+      "mergedHint": "Desfazer reverte toda a mesclagem.",
+      "mergeFailed": "Não foi possível mesclar o rascunho",
+      "discarded": "Rascunho do agente descartado",
+      "discardFailed": "Não foi possível descartar o rascunho",
+      "tab": "Rascunho",
+      "tabOpen": "O agente está editando um rascunho",
+      "tabReady": "O rascunho do agente está pronto para revisão",
+      "change": {
+        "created": "Adicionado",
+        "changed": "Alterado",
+        "deleted": "Removido"
+      }
+    },
+    "headlessDraft": {
+      "badgeTitle": "Um rascunho de um agente para este arquivo aguarda sua revisão",
+      "title": "Revisar o rascunho do agente de {{name}}",
+      "hint": "Um agente fora do Kition editou uma cópia deste arquivo. O arquivo fica como está até você mesclar.",
+      "noDiff": "Este kit compara um rascunho pelo resumo e pela prévia, não objeto por objeto.",
+      "stale": "O arquivo mudou depois que o agente começou o rascunho. Mesclar substitui essas alterações pelo rascunho.",
+      "overwrite": "Mesclar e substituir",
+      "dirty": "Este arquivo tem edições não salvas no editor aberto. Salve ou descarte-as e depois mescle.",
+      "mergedHint": "O arquivo agora contém o rascunho do agente."
+    },
+    "openUrl": {
+      "title": "Abrir este endereço da web?",
+      "body": "Um link deste documento leva para fora do Kition. Ele será aberto no seu navegador.",
+      "site": "Site:",
+      "ascii": "exibido como {{host}}",
+      "open": "Abrir",
+      "cancel": "Cancelar"
+    },
+    "filePicker": {
+      "title": {
+        "open": "Escolher um arquivo",
+        "folder": "Escolher uma pasta",
+        "save": "Salvar no espaço de trabalho",
+        "link": "Vincular um arquivo"
+      },
+      "body": {
+        "open": "O documento pede um arquivo do seu espaço de trabalho.",
+        "folder": "O documento pede uma pasta do seu espaço de trabalho.",
+        "save": "Dê um nome ao novo arquivo e escolha a pasta dele.",
+        "link": "O documento vincula um arquivo do seu espaço de trabalho. O arquivo fica onde está, e o documento acompanha as alterações dele."
+      },
+      "name": "Nome do arquivo",
+      "search": "Pesquisar",
+      "workspaceRoot": "Espaço de trabalho",
+      "loading": "Carregando…",
+      "empty": "Nenhum arquivo correspondente",
+      "replaces": "Já existe um arquivo chamado {{name}} nesta pasta. Salvar vai substituí-lo.",
+      "import": "Importar deste computador",
+      "confirm": {
+        "open": "Abrir",
+        "folder": "Escolher",
+        "save": "Salvar",
+        "link": "Vincular"
+      },
+      "cancel": "Cancelar"
+    }
+  },
+  "filmKit": {
+    "unavailableTitle": "A edição de Film não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Film abrem no Kition quando o mecanismo Film está incluído.",
+    "editInFilm": "Editar no Film",
+    "editFailed": "Não foi possível criar o projeto de vídeo"
+  },
+  "vectorKit": {
+    "unavailableTitle": "A edição de Vector não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Vector abrem no Kition quando o mecanismo Vector está incluído."
+  },
+  "motionKit": {
+    "unavailableTitle": "A edição de Motion não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Motion abrem no Kition quando o mecanismo Motion está incluído."
+  },
+  "layoutKit": {
+    "unavailableTitle": "A edição de Layout não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Layout abrem no Kition quando o mecanismo Layout está incluído."
+  },
+  "cadKit": {
+    "unavailableTitle": "A edição de CAD não está disponível nesta versão",
+    "unavailableBody": "Arquivos do CAD abrem no Kition quando o mecanismo CAD está incluído."
+  },
+  "sceneKit": {
+    "unavailableTitle": "A edição de Scene não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Scene abrem no Kition quando o mecanismo Scene está incluído."
+  },
+  "designKit": {
+    "unavailableTitle": "A edição de Design não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Design abrem no Kition quando o mecanismo Design está incluído."
+  },
+  "slideKit": {
+    "unavailableTitle": "A edição de Slide não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Slide abrem no Kition quando o mecanismo Slide está incluído."
+  },
+  "docKit": {
+    "unavailableTitle": "A edição de Doc não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Doc abrem no Kition quando o mecanismo Doc está incluído."
+  },
+  "sheetKit": {
+    "unavailableTitle": "A edição de Sheet não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Sheet abrem no Kition quando o mecanismo Sheet está incluído."
+  },
+  "pdfKit": {
+    "unavailableTitle": "A edição de PDF não está disponível nesta versão",
+    "unavailableBody": "Arquivos do PDF abrem no Kition quando o mecanismo PDF está incluído."
+  },
+  "tableKit": {
+    "unavailableTitle": "A edição de Table não está disponível nesta versão",
+    "unavailableBody": "Arquivos do Table abrem no Kition quando o mecanismo Table está incluído."
+  },
+  "boardKit": {
+    "unavailableTitle": "A edição de quadros não está disponível nesta versão",
+    "unavailableBody": "Os quadros abrem no Kition quando o mecanismo Board está incluído."
+  },
+  "noteKit": {
+    "unavailableTitle": "A edição de notas não está disponível nesta versão",
+    "unavailableBody": "As notas abrem no Kition quando o mecanismo de notas está incluído."
+  },
+  "collab": {
+    "share": "Compartilhar para coedição",
+    "sharing": "Compartilhando…",
+    "sharedTitle": "Compartilhado para coedição",
+    "sharedDescription": "O link foi copiado. Qualquer pessoa conectada ao Kition que o abrir pode trabalhar neste documento com você, conforme o link permitir.",
+    "linkLabel": "Link de compartilhamento",
+    "copyLink": "Copiar link",
+    "linkCopied": "Link copiado",
+    "close": "Fechar",
+    "shareFailed": "Não foi possível compartilhar este documento",
+    "openShared": "Abrir documento compartilhado",
+    "openSharedDescription": "Cole um link de coedição que alguém compartilhou com você. O documento abre na sua pasta Shared.",
+    "linkPlaceholder": "Cole um link de compartilhamento",
+    "open": "Abrir",
+    "cancel": "Cancelar",
+    "needsAccount": "A coedição requer uma conta Kition e um servidor de sincronização.",
+    "unreachable": "Não foi possível acessar o servidor de sincronização. Verifique sua conexão e tente novamente.",
+    "linkNotFound": "Este link não leva a nenhum documento compartilhado.",
+    "busy": "O servidor de sincronização está ocupado. Aguarde um momento e tente novamente.",
+    "kitUnavailable": "Esta versão do Kition não abre este tipo de documento.",
+    "failed": "Algo deu errado. Tente novamente.",
+    "peers": "Também editando: {{names}}",
+    "agentPeer": "Agente",
+    "status": {
+      "online": "Coedição: conectado",
+      "connecting": "Coedição: conectando",
+      "offline": "Coedição: offline. Suas edições serão sincronizadas ao reconectar."
+    },
+    "accessLabel": "O que o link permite",
+    "viewOnly": "Somente leitura",
+    "access": {
+      "editor": "Pode editar",
+      "commenter": "Pode comentar",
+      "viewer": "Pode ver"
+    },
+    "role": {
+      "owner": "Proprietário",
+      "editor": "Editor",
+      "commenter": "Comentarista",
+      "viewer": "Leitor"
+    },
+    "commentOnly": "Somente comentar",
+    "members": "Pessoas com acesso",
+    "memberYou": "{{name}} (você)",
+    "memberRole": "Função de {{name}}",
+    "removeMember": "Remover {{name}}",
+    "revokeLink": "Revogar este link",
+    "linkRevoked": "Link revogado. Ele não abre mais este documento.",
+    "newLink": "Criar um link",
+    "syncToDevices": "Sincronizar com meus dispositivos",
+    "syncing": "Sincronizando com seus dispositivos…",
+    "syncFailed": "Não foi possível sincronizar este documento",
+    "synced": {
+      "title": "Seus documentos sincronizados",
+      "description": "Documentos que você sincroniza com seus dispositivos ou edita com outras pessoas e que ainda não estão neste espaço de trabalho. Abra um aqui para mantê-lo sincronizado também neste dispositivo.",
+      "folder": "Abrir em",
+      "workspaceRoot": "Espaço de trabalho (nível superior)",
+      "loading": "Carregando",
+      "empty": "Todos os documentos que você sincroniza já estão neste espaço de trabalho.",
+      "private": "Só você",
+      "shared": "Compartilhado",
+      "meta": "{{access}} · Atualizado em {{updated}} · {{size}}",
+      "openHere": "Abrir aqui",
+      "cannotOpen": "Esta versão do Kition não abre este tipo de documento.",
+      "done": "Sincronizado com seus dispositivos",
+      "doneDescription": "Suas edições agora chegam aos seus outros dispositivos. Abra-o lá em Seus documentos sincronizados."
+    }
+  },
+  "documentSchema": {
+    "label": "Aviso de versão mais recente",
+    "title": "Este documento foi editado com uma versão mais recente do {{kit}}. Atualize para continuar editando.",
+    "blockedHint": "Até lá, ele fica somente leitura aqui, como você o viu por último. Nada se perde: a cópia compartilhada mantém todas as alterações.",
+    "newerHint": "Até lá, o que esta versão não conhece fica como está e não pode ser editado aqui.",
+    "versions": "Este Kition inclui o {{kit}} {{version}}, que lê documentos até a versão {{reads}}; este precisa da versão {{needs}}.",
+    "versionsNoKit": "Este Kition lê documentos até a versão {{reads}}; este precisa da versão {{needs}}.",
+    "check": "Verificar atualizações",
+    "install": "Instalar atualização",
+    "updateAvailable": "O Kition {{version}} está disponível.",
+    "upToDate": "O Kition está atualizado: a versão mais recente do {{kit}} ainda não foi publicada para ele.",
+    "updateElsewhere": "Atualize o Kition para a versão mais recente para continuar editando.",
+    "updateFailed": "Não foi possível verificar atualizações: {{message}}",
+    "kits": {
+      "board": "Board",
+      "cad": "CAD",
+      "design": "Design",
+      "document": "Document",
+      "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
+      "pdf": "PDF",
+      "photo": "Photo",
+      "scene": "Scene",
+      "sheet": "Sheet",
+      "slide": "Slide",
+      "table": "Table",
+      "vector": "Vector",
+      "doc": "Doc"
+    }
+  },
+  "templateLibrary": {
+    "categories": {
+      "all": "All",
+      "work": "Work",
+      "planning": "Planning",
+      "personal": "Personal",
+      "workspace": "Workspace"
+    },
+    "blank": {
+      "title": "Blank document",
+      "description": "Start with an empty page and build your own structure."
+    },
+    "workspaceTemplateDescription": "Personal template from {{path}}",
+    "loadingWorkspaceTemplates": "Loading workspace templates...",
+    "templateCount": "{{count}} templates available",
+    "noMatches": "No templates found",
+    "noMatchesHint": "Try another search or category.",
+    "loadFailed": "This workspace template could not be loaded.",
+    "createFailed": "The document could not be created.",
+    "templates": {
+      "projectBrief": {
+        "title": "Project brief",
+        "description": "Define goals, scope, owners, and milestones before work begins."
+      },
+      "meetingNotes": {
+        "title": "Meeting notes",
+        "description": "Capture the agenda, decisions, discussion notes, and action items."
+      },
+      "taskTracker": {
+        "title": "Task tracker",
+        "description": "Keep tasks, owners, priorities, due dates, and status in one view."
+      },
+      "weeklyPlan": {
+        "title": "Weekly plan",
+        "description": "Set weekly outcomes, schedule focused work, and surface blockers."
+      },
+      "productLaunch": {
+        "title": "Product launch plan",
+        "description": "Coordinate launch readiness, workstreams, deadlines, and success measures."
+      },
+      "clientBrief": {
+        "title": "Client brief",
+        "description": "Organize account goals, stakeholders, opportunities, risks, and next actions."
+      },
+      "researchNotes": {
+        "title": "Research notes",
+        "description": "Collect sources, evidence, findings, open questions, and a final synthesis."
+      },
+      "weeklyReview": {
+        "title": "Weekly review",
+        "description": "Reflect on wins, lessons, goal progress, and priorities for the next week."
+      },
+      "teamDailyReport": {
+        "title": "Team daily report",
+        "description": "Share completed work, active priorities, blockers, and tomorrow's plan."
+      },
+      "personalDailyReport": {
+        "title": "Personal daily report",
+        "description": "Record one main outcome, completed tasks, notes, and the next day's priorities."
+      },
+      "brainstormingSession": {
+        "title": "Brainstorming session",
+        "description": "Collect ideas, compare value and effort, and turn promising directions into experiments."
+      },
+      "quarterlyBusinessReview": {
+        "title": "Quarterly business review",
+        "description": "Review performance metrics, lessons, risks, and priorities for the next quarter."
+      },
+      "meetingActionTracker": {
+        "title": "Meeting action tracker",
+        "description": "Turn decisions into owned actions with deadlines, priorities, and follow-up."
+      },
+      "okrPlan": {
+        "title": "OKR plan",
+        "description": "Define objectives, measurable key results, confidence, and supporting initiatives."
+      },
+      "productRequirements": {
+        "title": "Product requirements",
+        "description": "Describe the problem, user needs, requirements, user flow, metrics, and risks."
+      },
+      "flowchart": {
+        "title": "Flowchart",
+        "description": "Map a process with editable Mermaid steps, decisions, loops, and exception paths."
+      },
+      "projectTimeline": {
+        "title": "Project timeline",
+        "description": "Visualize delivery phases and track milestones, owners, dependencies, and status."
+      },
+      "organizationChart": {
+        "title": "Organization chart",
+        "description": "Document reporting lines, team structure, leaders, missions, and contacts."
+      },
+      "systemArchitecture": {
+        "title": "System architecture",
+        "description": "Explain components, integrations, data stores, ownership, and reliability concerns."
+      },
+      "productDevelopmentSwimlane": {
+        "title": "Product development swimlane",
+        "description": "Clarify product, design, engineering, and launch ownership across handoffs."
+      }
+    }
+  },
+  "htmlKit": {
+    "unavailableTitle": "Editor HTML indisponível",
+    "unavailableBody": "Compile o pacote HTML Kit para editar arquivos HTML nesta versão de desenvolvimento."
+  }
+}

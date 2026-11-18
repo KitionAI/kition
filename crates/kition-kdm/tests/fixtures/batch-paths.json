@@ -1,0 +1,417 @@
+{
+ "$comment": "Batch `set` and `text.set` with `field` a path from the target: through owning fields to a field of a held object without a tool id, positional or in the kit's words (`pathName`), past a json field into its value. Run by kition-kdm (tests/changes.rs) and @kition/kdm (test/changes.test.ts) on path-names.json's schema and setup, the layer numbered `1`; each case answers its receipt or its refusal (`error`: code and message).",
+ "docId": "01920000-0000-7000-8000-0000000000c9",
+ "schema": {
+  "kdm": 1,
+  "kit": "kit.paths",
+  "schemaVersion": 1,
+  "root": "Doc",
+  "types": {
+   "Doc": {
+    "fields": {
+     "layers": {
+      "kind": "list",
+      "of": "Layer"
+     }
+    }
+   },
+   "Layer": {
+    "fields": {
+     "id": {
+      "kind": "integer",
+      "readOnly": true,
+      "optional": true
+     },
+     "props": {
+      "kind": "ref",
+      "of": "Node",
+      "owns": true,
+      "optional": true
+     }
+    },
+    "toolId": {
+     "field": "id"
+    }
+   },
+   "Node": {
+    "fields": {
+     "meta": {
+      "kind": "json"
+     },
+     "value": {
+      "kind": "json",
+      "optional": true
+     },
+     "children": {
+      "kind": "list",
+      "of": "Node"
+     },
+     "keys": {
+      "kind": "list",
+      "of": "Key"
+     }
+    },
+    "pathName": "meta.match"
+   },
+   "Key": {
+    "fields": {
+     "time": {
+      "kind": "string"
+     },
+     "value": {
+      "kind": "json"
+     }
+    }
+   }
+  }
+ },
+ "setup": {
+  "ops": [
+   {
+    "op": "create",
+    "type": "Doc",
+    "id": "doc"
+   },
+   {
+    "op": "create",
+    "type": "Layer",
+    "id": "l",
+    "in": "doc.layers",
+    "fields": {}
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "top",
+    "fields": {
+     "meta": {
+      "match": "layer"
+     }
+    }
+   },
+   {
+    "op": "set",
+    "target": "l",
+    "field": "props",
+    "value": "top"
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "effects",
+    "in": "top.children",
+    "fields": {
+     "meta": {
+      "match": "effects"
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "transform",
+    "in": "top.children",
+    "fields": {
+     "meta": {
+      "match": "transform"
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "anchor",
+    "in": "transform.children",
+    "fields": {
+     "meta": {
+      "match": "anchor"
+     },
+     "value": {
+      "v": [
+       0,
+       0
+      ]
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "opacity",
+    "in": "transform.children",
+    "fields": {
+     "meta": {
+      "match": "opacity"
+     },
+     "value": {
+      "v": 100
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "blur1",
+    "in": "effects.children",
+    "fields": {
+     "meta": {
+      "match": "blur"
+     },
+     "value": {
+      "v": 1
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "blur2",
+    "in": "effects.children",
+    "fields": {
+     "meta": {
+      "match": "blur"
+     },
+     "value": {
+      "v": 2
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Node",
+    "id": "odd",
+    "in": "effects.children",
+    "fields": {
+     "meta": {
+      "match": "a.b"
+     },
+     "value": {
+      "v": 3
+     }
+    }
+   },
+   {
+    "op": "create",
+    "type": "Key",
+    "id": "k0",
+    "in": "opacity.keys",
+    "fields": {
+     "time": "0",
+     "value": 100
+    }
+   }
+  ]
+ },
+ "cases": [
+  {
+   "name": "a-positional-path",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "props.children.1.children.1.value.v",
+      "value": 50
+     }
+    ]
+   },
+   "expected": {
+    "changed": [
+     {
+      "edits": [
+       {
+        "after": 50,
+        "before": 100,
+        "field": "props.children.1.children.1.value.v",
+        "named": "transform/opacity.value.v"
+       }
+      ],
+      "fields": [
+       "props.children.1.children.1.value.v"
+      ],
+      "id": "1",
+      "type": "Layer"
+     }
+    ],
+    "created": [],
+    "deleted": [],
+    "moved": []
+   }
+  },
+  {
+   "name": "the-same-in-the-kits-words",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "transform/opacity.value.v",
+      "value": 50
+     }
+    ]
+   },
+   "expected": {
+    "changed": [
+     {
+      "edits": [
+       {
+        "after": 50,
+        "before": 100,
+        "field": "props.children.1.children.1.value.v",
+        "named": "transform/opacity.value.v"
+       }
+      ],
+      "fields": [
+       "props.children.1.children.1.value.v"
+      ],
+      "id": "1",
+      "type": "Layer"
+     }
+    ],
+    "created": [],
+    "deleted": [],
+    "moved": []
+   }
+  },
+  {
+   "name": "a-whole-field-in-the-kits-words",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "transform/opacity.value",
+      "value": {
+       "v": 7
+      }
+     }
+    ]
+   },
+   "expected": {
+    "changed": [
+     {
+      "edits": [
+       {
+        "after": 7,
+        "before": 100,
+        "field": "props.children.1.children.1.value.v",
+        "named": "transform/opacity.value.v"
+       }
+      ],
+      "fields": [
+       "props.children.1.children.1.value.v"
+      ],
+      "id": "1",
+      "type": "Layer"
+     }
+    ],
+    "created": [],
+    "deleted": [],
+    "moved": []
+   }
+  },
+  {
+   "name": "a-repeated-name",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "effects/blur#2.value.v",
+      "value": 9
+     }
+    ]
+   },
+   "expected": {
+    "changed": [
+     {
+      "edits": [
+       {
+        "after": 9,
+        "before": 2,
+        "field": "props.children.0.children.1.value.v",
+        "named": "effects/blur#2.value.v"
+       }
+      ],
+      "fields": [
+       "props.children.0.children.1.value.v"
+      ],
+      "id": "1",
+      "type": "Layer"
+     }
+    ],
+    "created": [],
+    "deleted": [],
+    "moved": []
+   }
+  },
+  {
+   "name": "past-a-lists-end",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "props.children.7.value",
+      "value": 1
+     }
+    ]
+   },
+   "error": {
+    "code": "invalid-op",
+    "message": "`field` `props.children.7.value`: `children` has 2 items, not 8"
+   }
+  },
+  {
+   "name": "no-such-words",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "nowhere/x.value",
+      "value": 1
+     }
+    ]
+   },
+   "error": {
+    "code": "invalid-op",
+    "message": "`field` `nowhere/x.value`: no object the target holds has that name in the kit's words"
+   }
+  },
+  {
+   "name": "text-set-inside-a-value",
+   "edit": {
+    "ops": [
+     {
+      "op": "text.set",
+      "target": "1",
+      "field": "transform/opacity.value.v",
+      "text": "a"
+     }
+    ]
+   },
+   "error": {
+    "code": "invalid-op",
+    "message": "`field` `transform/opacity.value.v`: `text.set` replaces a text field, not a path inside a value"
+   }
+  },
+  {
+   "name": "no-such-field",
+   "edit": {
+    "ops": [
+     {
+      "op": "set",
+      "target": "1",
+      "field": "props.colour",
+      "value": 1
+     }
+    ]
+   },
+   "error": {
+    "code": "invalid-op",
+    "message": "`field` `props.colour`: `Node` has no field `colour`"
+   }
+  }
+ ]
+}

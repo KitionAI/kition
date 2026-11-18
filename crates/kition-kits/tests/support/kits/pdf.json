@@ -1,0 +1,53 @@
+{
+  "khp": "1.0",
+  "id": "kit.pdf",
+  "name": "PDF",
+  "version": "0.1.0",
+  "formats": [
+    {
+      "id": "pdf",
+      "extensions": [
+        "pdf"
+      ],
+      "mime": "application/pdf",
+      "role": "edit"
+    }
+  ],
+  "creates": [
+    {
+      "id": "pdf",
+      "extension": "pdf",
+      "baseName": "Untitled PDF"
+    }
+  ],
+  "capabilities": [
+    "kdm"
+  ],
+  "agent": {
+    "prefix": "pdf",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": true,
+    "describe": {
+      "noun": "PDF"
+    }
+  },
+  "headless": {
+    "executable": "kition-pdf",
+    "protocol": "kition-kit/2",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  }
+}

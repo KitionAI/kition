@@ -1,0 +1,89 @@
+{
+  "id": "quote",
+  "version": 1,
+  "name": "Quote",
+  "width": 1080,
+  "height": 1440,
+  "background": "#d9f3e1",
+  "brand": {
+    "background": "surface"
+  },
+  "layers": [
+    {
+      "id": "mark",
+      "type": "text",
+      "text": "\u201c",
+      "x": 70,
+      "y": 140,
+      "width": 900,
+      "height": 1280,
+      "fontFamily": "Georgia",
+      "fontSize": 320,
+      "lineHeight": 1.04,
+      "fill": "#2a9d99",
+      "brand": {
+        "fill": "accent",
+        "font": true
+      },
+      "name": "Quotation mark"
+    },
+    {
+      "id": "headline",
+      "type": "text",
+      "slot": "headline",
+      "text": "Small steps. Remarkable places.",
+      "x": 110,
+      "y": 420,
+      "width": 860,
+      "height": 400,
+      "fontFamily": "Georgia",
+      "fontSize": 100,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      }
+    },
+    {
+      "id": "body",
+      "type": "text",
+      "slot": "body",
+      "text": "A thought for today.",
+      "x": 110,
+      "y": 1170,
+      "width": 880,
+      "height": 128,
+      "fontFamily": "Arial",
+      "fontSize": 32,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      },
+      "constraints": {
+        "horizontal": "left",
+        "vertical": "bottom"
+      }
+    },
+    {
+      "id": "label",
+      "type": "text",
+      "slot": "label",
+      "text": "A MOMENT TO REFLECT",
+      "x": 110,
+      "y": 100,
+      "width": 880,
+      "height": 96,
+      "fontFamily": "Arial",
+      "fontSize": 24,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      }
+    }
+  ]
+}

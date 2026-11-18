@@ -1,0 +1,7 @@
+order_id,team,quantity,unit_price,currency,status
+001,Alpha,2,12.50,USD,paid
+002,Beta,3,10.00,USD,paid
+003,Alpha,1,20.00,USD,pending
+004,Gamma,0,15.00,USD,paid
+005,Beta,4,2.50,USD,paid
+006,Delta,,9.00,USD,pending

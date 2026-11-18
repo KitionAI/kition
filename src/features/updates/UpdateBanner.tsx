@@ -1,0 +1,103 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@kition/tessera-ui'
+import { openExternalURL } from '@/services/desktop'
+import { downloadUpdate, installUpdate } from '@/services/desktopUpdates'
+import { dismissVersion, isVersionDismissed } from './dismissedVersion'
+import { useUpdateState } from './useUpdateState'
+
+const RELEASES_BASE = 'https://github.com/KitionAI/kition/releases/tag'
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB'
+  const mb = bytes / (1024 * 1024)
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
+}
+
+export function UpdateBanner() {
+  const { t } = useTranslation('settings')
+  const state = useUpdateState()
+  const [tick, setTick] = useState(0)
+
+  const phase = state.phase
+  const dismissed =
+    phase === 'available' && isVersionDismissed((state as any).version)
+  const visible = (
+    phase === 'available' ||
+    phase === 'downloading' ||
+    phase === 'downloaded'
+  ) && !dismissed
+
+  if (!visible) {
+    return null
+  }
+
+  void tick
+
+  if (phase === 'available') {
+    const version = (state as any).version as string | undefined
+    return (
+      <div className="kition-update-banner kition-update-banner--info" role="status">
+        <span className="kition-update-banner__label">
+          {version ? t('updates.availableVersion', { version }) : t('updates.availableGeneric')}
+        </span>
+        <div className="kition-update-banner__actions">
+          <Button
+            variant="primary"
+            size="sm"
+            className="kition-update-banner__primary"
+            onClick={() => void downloadUpdate()}
+          >
+            {t('updates.download')}
+          </Button>
+          {version ? (
+            <Button variant="ghost" size="sm" onClick={() => void openExternalURL(`${RELEASES_BASE}/v${version}`)}>
+              {t('updates.viewReleaseNotes')}
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="sm" onClick={() => { if (version) dismissVersion(version); setTick((n) => n + 1) }}>
+            {t('updates.later')}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'downloading') {
+    const s = state as Extract<typeof state, { phase: 'downloading' }>
+    return (
+      <div className="kition-update-banner kition-update-banner--info" role="status">
+        <div className="kition-update-banner__download-row">
+          <span className="kition-update-banner__label">
+            {t('updates.downloadingProgress', { percent: Math.round(s.percent) })}
+          </span>
+          <span className="kition-update-banner__meta">
+            {formatBytes(s.transferred)} / {formatBytes(s.total)}
+          </span>
+        </div>
+        <span className="kition-update-banner__progress">
+          <span style={{ width: `${Math.round(s.percent)}%` }} />
+        </span>
+      </div>
+    )
+  }
+
+  if (phase === 'downloaded') {
+    const s = state as Extract<typeof state, { phase: 'downloaded' }>
+    return (
+      <div className="kition-update-banner kition-update-banner--success" role="status">
+        <span className="kition-update-banner__label">{t('updates.readyToInstall', { version: s.version })}</span>
+        <Button
+          variant="primary"
+          size="sm"
+          className="kition-update-banner__primary"
+          onClick={() => void installUpdate()}
+        >
+          {t('updates.restartAndInstall')}
+        </Button>
+      </div>
+    )
+  }
+
+  return null
+}

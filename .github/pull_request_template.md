@@ -1,0 +1,42 @@
+## Summary
+
+Describe the user-visible change and why it is useful.
+
+## Screenshots
+
+- Add screenshots or a screen recording for changed UI behavior.
+- If there is no visual change, write `No visual change`.
+
+## Verification
+
+- [ ] Focused unit or component tests
+- [ ] `pnpm run build:check`
+- [ ] `pnpm test:e2e`
+- [ ] `pnpm test:table:e2e`
+- [ ] `pnpm test:ktable:e2e`
+- [ ] Added or updated a regression test, or explained why one was not needed
+
+List the exact commands that were run and note any platform-specific coverage.
+
+## AI Review
+
+If an AI coding agent contributed, summarize its review of:
+
+- user-visible behavior and copy accuracy;
+- macOS, Windows, Linux, web-preview, and desktop shell differences;
+- runtime contracts in `contracts/runtime/`, renderer mocks, and runtime crates;
+- performance and accessibility risks;
+- English-only content, branding, and portable paths.
+
+If no AI coding agent contributed, write `Not applicable`.
+
+## Security Review
+
+Summarize the applicable input, path, credential, account, network, dependency,
+update, IPC, external URL, and destructive-action risks reviewed.
+
+## Release Boundary
+
+- [ ] No credentials, signing keys, host-specific paths, or generated local data are included.
+- [ ] Runtime behavior changes update the contract, the renderer mock, and the runtime together.
+- [ ] This pull request does not include an unrequested version bump, tag, or release action.

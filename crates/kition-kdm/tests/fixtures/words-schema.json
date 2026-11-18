@@ -1,0 +1,135 @@
+{
+ "$comment": "A type's `label` and a field's `display` and `sample`: kept by the schema and answered by `describe` alike by kition-kdm (tests/batch.rs) and @kition/kdm (test/batch.test.ts); the `refused` schemas are refused by both.",
+ "docId": "01920000-0000-7000-8000-0000000000d1",
+ "schema": {
+  "kdm": 1,
+  "kit": "kit.words",
+  "schemaVersion": 1,
+  "root": "Doc",
+  "types": {
+   "Doc": {
+    "fields": {
+     "clips": {
+      "kind": "list",
+      "of": "Clip"
+     }
+    }
+   },
+   "Clip": {
+    "fields": {
+     "props": {
+      "kind": "json"
+     },
+     "start": {
+      "kind": "string",
+      "position": true,
+      "display": {
+       "kind": "time",
+       "perSecond": 254016000000,
+       "fps": 30
+      }
+     },
+     "kind": {
+      "kind": "enum",
+      "values": [
+       "video",
+       "audio"
+      ],
+      "sample": false
+     }
+    },
+    "label": "props.name"
+   }
+  }
+ },
+ "described": {
+  "Clip": {
+   "fields": {
+    "kind": {
+     "kind": "enum",
+     "sample": false,
+     "values": [
+      "video",
+      "audio"
+     ]
+    },
+    "props": {
+     "kind": "json"
+    },
+    "start": {
+     "display": {
+      "fps": 30,
+      "kind": "time",
+      "perSecond": 254016000000
+     },
+     "kind": "string",
+     "position": true
+    }
+   },
+   "label": "props.name"
+  }
+ },
+ "refused": [
+  {
+   "why": "a label of a list",
+   "types": {
+    "Doc": {
+     "fields": {
+      "clips": {
+       "kind": "list",
+       "of": "Clip"
+      }
+     },
+     "label": "clips"
+    },
+    "Clip": {
+     "fields": {}
+    }
+   }
+  },
+  {
+   "why": "a display of another kind",
+   "types": {
+    "Doc": {
+     "fields": {
+      "at": {
+       "kind": "number",
+       "display": {
+        "kind": "money",
+        "perSecond": 1
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "why": "a display without perSecond",
+   "types": {
+    "Doc": {
+     "fields": {
+      "at": {
+       "kind": "number",
+       "display": {
+        "kind": "time"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "why": "a sample that is no boolean",
+   "types": {
+    "Doc": {
+     "fields": {
+      "at": {
+       "kind": "number",
+       "sample": "no"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

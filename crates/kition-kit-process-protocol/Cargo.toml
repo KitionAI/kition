@@ -1,0 +1,25 @@
+# Copied from kition-sdk crates/kition-kit-process-protocol/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-kit-process-protocol"
+description = "Kit Process Protocol v2 message types, error codes, launch constants, and line framing shared by hosts and kits."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+tokio = ["dep:tokio"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", optional = true, features = ["io-util"] }
+
+[dev-dependencies]
+jsonschema = { version = "0.58", default-features = false }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }

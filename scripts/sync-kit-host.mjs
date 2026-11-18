@@ -1,0 +1,322 @@
+#!/usr/bin/env node
+// Kition's copy of the Kit UI protocol's host side (kition-sdk packages/kit-ui-protocol and
+// packages/kit-host), in src/features/kits/host/, of the standard's kit.json schema
+// (schemas/kit.schema.json), in contracts/kit/kit.schema.json for the conformance suite,
+// of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, of the KDM's Rust crate
+// (crates/kition-kdm), in crates/kition-kdm/, of the sync client for kition-sync/1 and its
+// replica relay (packages/sync/src/*.ts), in src/lib/sync/, of the object model's page side
+// (@kition/script, packages/script/src and its generated kits), in src/lib/script/, and of the extension
+// host (@kition/extensions, packages/extensions/src with its built worker runtime), in
+// src/lib/extensions/, with its sandbox and panel pages in public/extensions/. Kition carries the
+// files instead of depending on the packages (kition-sdk was private when this copy was set up).
+//
+//   node scripts/sync-kit-host.mjs          copy them from ../kition-sdk (or KITION_SDK)
+//   node scripts/sync-kit-host.mjs --check  fail when the copy differs (skipped without kition-sdk)
+import fs from 'node:fs'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+
+const repo = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: path.dirname(new URL(import.meta.url).pathname) }).toString().trim()
+const sdk = process.env.KITION_SDK || path.join(repo, '..', 'kition-sdk')
+const header = (source) => `// Copied from kition-sdk ${source} by scripts/sync-kit-host.mjs; change it there, not here.\n`
+// Kition denies unwrap and expect in its own code; kition-sdk does not, and its copied crates
+// follow its lints: each crate root (a library, a program, a test) allows them, but for a lint
+// the file already allows itself (clippy refuses an attribute that names a lint twice).
+const crateRoot = (relative) => ['src/lib.rs', 'src/main.rs'].includes(relative) || /^src\/bin\/[^/]+\.rs$/.test(relative) || relative.startsWith('tests/')
+const allowUnwrap = (relative, text) => {
+  if (!crateRoot(relative)) return ''
+  const lints = ['clippy::unwrap_used', 'clippy::expect_used'].filter((lint) => !new RegExp(`^#!\\[allow\\([^)]*${lint}\\b`, 'm').test(text))
+  return lints.length ? `#![allow(${lints.join(', ')})]\n` : ''
+}
+const files = [
+  { source: 'packages/kit-ui-protocol/src/index.ts', out: 'src/features/kits/host/protocol.ts', rewrite: (text) => header('packages/kit-ui-protocol/src/index.ts') + text },
+  {
+    source: 'packages/kit-host/src/index.ts',
+    out: 'src/features/kits/host/mountKit.ts',
+    rewrite: (text) => header('packages/kit-host/src/index.ts') + text.replaceAll("from '@kition/kit-ui-protocol'", "from './protocol'"),
+  },
+  // The host side of KitFiles 1.0 (file handles and grants), which mountKit.ts imports.
+  {
+    source: 'packages/kit-host/src/files.ts',
+    out: 'src/features/kits/host/files.ts',
+    rewrite: (text) => header('packages/kit-host/src/files.ts') + text.replaceAll("from '@kition/kit-ui-protocol'", "from './protocol'"),
+  },
+  // JSON has no comments; the schema's $id names its source.
+  { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit.schema.json', rewrite: (text) => text },
+]
+
+if (!fs.existsSync(path.join(sdk, 'packages/kit-host')) || !fs.existsSync(path.join(sdk, 'packages/extensions'))) {
+  if (process.argv.includes('--check')) {
+    console.log(`SKIP kit host, kit.json schema, KDM, sync client, object model, and extension host copies: no kition-sdk at ${sdk}`)
+    process.exit(0)
+  }
+  console.error(`no kition-sdk at ${sdk}; set KITION_SDK`)
+  process.exit(1)
+}
+
+// Every KDM source file, unchanged: its imports are relative or `loro-crdt`, a dependency of Kition.
+const kdmSource = 'packages/kdm/src'
+for (const name of fs.readdirSync(path.join(sdk, kdmSource)).filter((name) => name.endsWith('.ts')).sort()) {
+  const source = `${kdmSource}/${name}`
+  files.push({ source, out: `src/lib/kdm/${name}`, rewrite: (text) => header(source) + text })
+}
+// Every sync client (@kition/sync) source file, with the relay between a replica and its room:
+// its imports are relative but for the KDM's (`@kition/kdm`), which is the copy in src/lib/kdm/,
+// and it needs nothing beyond Web Crypto, a WebSocket, and `loro-crdt`.
+const syncSource = 'packages/sync/src'
+for (const name of fs.readdirSync(path.join(sdk, syncSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts')).sort()) {
+  const source = `${syncSource}/${name}`
+  files.push({ source, out: `src/lib/sync/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
+}
+// The object model (@kition/script) as a page uses it: every source file but the Node-only ones,
+// with the KDM's and the sync client's imports pointing at the copies in src/lib/kdm/ and
+// src/lib/sync/, and its generated kit typings.
+const sdkSource = 'packages/script/src'
+const nodeOnly = new Set(['node.ts', 'headless.ts'])
+for (const name of fs.readdirSync(path.join(sdk, sdkSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && !nodeOnly.has(name)).sort()) {
+  const source = `${sdkSource}/${name}`
+  files.push({
+    source,
+    out: `src/lib/script/${name}`,
+    rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'").replaceAll("from '@kition/sync'", "from '../sync'"),
+  })
+}
+// kition-sdk generates the kits it publishes (Note and Table); Kition keeps the typings of the other
+// kits it ships, generated by kition-sdk before, and its own index.ts that registers them all, for
+// the agent's describe and batch and for draft reviews (ownedTypings).
+const ownedTypings = ['board', 'cad', 'design', 'doc', 'film', 'html', 'index', 'layout', 'motion', 'pdf', 'photo', 'scene', 'sheet', 'slide', 'vector']
+for (const name of fs.readdirSync(path.join(sdk, 'packages/script/kits')).filter((name) => name.endsWith('.ts') && name !== 'index.ts').sort()) {
+  const source = `packages/script/kits/${name}`
+  // A command's description may name the editor a syntax comes from, which this repository's
+  // branding check (scripts/check-branding.py) refuses; the copy says what the syntax is.
+  const named = `${'Obsi' + 'dian'}'s coloured highlight`
+  files.push({
+    source,
+    out: `src/lib/script/kits/${name}`,
+    rewrite: (text) => header(source) + text.replaceAll("from '../src/", "from '../").replaceAll(named, 'a coloured highlight'),
+  })
+}
+// The extension host (@kition/extensions): its host-side sources and the built worker runtime
+// (the runtime's own sources are bundled into it), and the sandbox page it loads in a frame.
+const extensionsSource = 'packages/extensions/src'
+const extensionFiles = [
+  ...fs.readdirSync(path.join(sdk, extensionsSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts')).sort(),
+  'generated/runtime.ts',
+]
+for (const name of extensionFiles) {
+  const source = `${extensionsSource}/${name}`
+  files.push({
+    source,
+    out: `src/lib/extensions/${name}`,
+    rewrite: (text) =>
+      header(source) +
+      text
+        .replaceAll("from '@kition/kdm'", `from '${name.includes('/') ? '../../kdm' : '../kdm'}'`)
+        .replaceAll("from '@kition/script'", "from '../script'")
+        .replaceAll("import '@kition/script/kits'", "import '../script/kits/index'"),
+  })
+}
+files.push({ source: 'packages/extensions/sandbox/sandbox.html', out: 'public/extensions/sandbox.html', binary: true })
+files.push({ source: 'packages/extensions/sandbox/panel.html', out: 'public/extensions/panel.html', binary: true })
+// The example extension, which the end-to-end tests install.
+for (const name of ['extension.json', 'extension.mjs', 'panel.html']) {
+  files.push({ source: `examples/extensions/title-case/${name}`, out: `e2e/fixtures/extensions/title-case/${name}`, binary: true })
+}
+// A copied crate's manifest from its features (or, without any, its dependencies) on: Kition writes
+// the [package] and [lints] sections itself.
+const manifestSections = (text) =>
+  text.slice(Math.min(...['[features]', '[dependencies]'].map((heading) => text.indexOf(heading)).filter((at) => at >= 0)))
+// The Rust KDM (crates/kition-kdm): its sources and tests, unchanged, so they run against this
+// workspace's dependency features (serde_json `preserve_order`), with a manifest written here.
+const rustKdm = 'crates/kition-kdm'
+// Tests that kition-sdk runs and this repository does not carry: nested_text.rs reads one of
+// kition-sdk's regression cases (cases/regressions/issue-29-nested-text) and, like
+// kition-kits' tests/draft_compare.rs, inserts CJK text, which this English-only repository
+// does not hold.
+const rustSkipped = new Set([`${rustKdm}/tests/nested_text.rs`, 'crates/kition-kits/tests/draft_compare.rs'])
+for (const dir of ['src', 'tests']) {
+  for (const name of fs.readdirSync(path.join(sdk, rustKdm, dir)).filter((name) => name.endsWith('.rs') && !rustSkipped.has(`${rustKdm}/${dir}/${name}`)).sort()) {
+    const source = `${rustKdm}/${dir}/${name}`
+    files.push({ source, out: source, rewrite: (text) => header(source) + allowUnwrap(`${dir}/${name}`, text) + text })
+  }
+}
+// ts-page.json and ts-shallow.json are the TypeScript fixtures' states as non-ASCII JSON, which
+// this English-only repository does not carry; the Rust tests compare their SHA-256 (ts-page.sha256,
+// ts-shallow.sha256) instead.
+const skippedFixtures = new Set(['ts-page.json', 'ts-shallow.json'])
+for (const name of fs.readdirSync(path.join(sdk, rustKdm, 'tests/fixtures')).filter((name) => !skippedFixtures.has(name)).sort()) {
+  const source = `${rustKdm}/tests/fixtures/${name}`
+  files.push({ source, out: source, binary: true })
+}
+// kition-sdk's lint (unwrap and expect allowed in tests) and format configurations, for this crate only.
+files.push({ source: '.clippy.toml', out: `${rustKdm}/.clippy.toml`, binary: true })
+files.push({ source: '.rustfmt.toml', out: `${rustKdm}/.rustfmt.toml`, binary: true })
+files.push({
+  source: `${rustKdm}/Cargo.toml`,
+  out: `${rustKdm}/Cargo.toml`,
+  rewrite: (text) => {
+    const dependencies = manifestSections(text)
+    return `# Copied from kition-sdk ${rustKdm} by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-kdm"
+description = "Kit Data Model: the typed, replicated document model every Kition kit declares its document in."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+${dependencies}`
+  },
+})
+// The Kit Process Protocol's host side and the kits' MCP server (crates/kition-kit-process-protocol,
+// kition-kit-host, kition-kit-mock, kition-kits, with kition-kits-mcp): their sources, tests, and
+// fixtures, unchanged but for the schemas' place (kition-sdk `schemas/`, here `contracts/kit/`),
+// with manifests written here. Kition serves them over HTTP in crates/kition-kits-http.
+const rustKitCrates = ['crates/kition-kit-process-protocol', 'crates/kition-kit-host', 'crates/kition-kit-mock', 'crates/kition-kits']
+const schemaPlace = (text) =>
+  text
+    .replaceAll('../../../schemas/', '../../../contracts/kit/')
+    .replaceAll('/../../schemas/', '/../../contracts/kit/')
+    .replaceAll('`schemas/kit-process-protocol.schema.json`', '`contracts/kit/kit-process-protocol.schema.json`')
+    .replaceAll('schemas/mcp-tools.schema.json', 'contracts/kit/mcp-tools.schema.json')
+    .replaceAll('schemas/kits-service.schema.json', 'contracts/kit/kits-service.schema.json')
+const walk = (dir, prefix = '') =>
+  fs
+    .readdirSync(path.join(dir, prefix), { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap((entry) => {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+      if (entry.isDirectory()) return entry.name === 'target' ? [] : walk(dir, relative)
+      return entry.name === '.DS_Store' ? [] : [relative]
+    })
+// kition-kits' tests/hosts.rs runs kition-sdk's host examples (examples/hosts: Python, Node, Go),
+// which this repository does not carry; it is kition-sdk's test of its examples, not of the host.
+rustSkipped.add('crates/kition-kits/tests/hosts.rs')
+// kition-kits' tests/sdk_kits.rs is Kition's own: kition-sdk's copy tests the Note kit alone, and
+// Kition's cases also run it on the kits Kition ships (the Design kit's previews, exports, object
+// model, and linked libraries among them), with these fixtures.
+rustSkipped.add('crates/kition-kits/tests/sdk_kits.rs')
+const kitionOwned = new Set([
+  ...ownedTypings.map((name) => `src/lib/script/kits/${name}.ts`),
+  'crates/kition-kits/tests/sdk_kits.rs',
+  ...[
+    'App.kdesign',
+    'Budget.xlsx',
+    'Design System.kdesign',
+    'Drawing.kvector',
+    'Edit.kfilm',
+    'Flyer.klayout',
+    'Letter.docx',
+    'Motion.kmotion',
+    'Page.html',
+    'Plan.dxf',
+    'Plan.kboard',
+    'Report.pdf',
+    'Room.kscene',
+    'Screen.kdesign',
+    'Slide.kslide',
+    'Tasks.ktable',
+  ].map((name) => `crates/kition-kits/tests/fixtures/${name}`),
+])
+const rustKitDirs = []
+for (const crate of rustKitCrates) {
+  const relatives = walk(path.join(sdk, crate)).filter((relative) => !rustSkipped.has(`${crate}/${relative}`))
+  for (const relative of relatives) {
+    if (relative === 'Cargo.toml') continue
+    const source = `${crate}/${relative}`
+    if (relative.endsWith('.rs')) files.push({ source, out: source, rewrite: (text) => header(source) + allowUnwrap(relative, text) + schemaPlace(text) })
+    else files.push({ source, out: source, binary: true })
+  }
+  for (const dir of new Set(relatives.map((relative) => path.posix.dirname(relative)).filter((dir) => dir !== '.'))) {
+    rustKitDirs.push({ dir: `${crate}/${dir}`, ext: dir.includes('fixtures') ? '' : '.rs', all: dir.includes('fixtures') })
+  }
+  files.push({ source: '.clippy.toml', out: `${crate}/.clippy.toml`, binary: true })
+  files.push({ source: '.rustfmt.toml', out: `${crate}/.rustfmt.toml`, binary: true })
+  files.push({
+    source: `${crate}/Cargo.toml`,
+    out: `${crate}/Cargo.toml`,
+    rewrite: (text) => {
+      const field = (key) => text.match(new RegExp(`^${key} = "(.*)"$`, 'm'))?.[1] ?? ''
+      const rest = text.slice(text.indexOf('\n', text.indexOf('[lints]')) + 1).replace(/^workspace = true\n+/, '')
+      return `# Copied from kition-sdk ${crate}/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "${field('name')}"
+description = "${field('description')}"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+${rest}`
+    },
+  })
+}
+// The Kit Process Protocol's schema, the kit tools' schemas, and the Kits Service API's schema
+// (`kition-kits serve`) (kition-sdk `schemas/`).
+for (const name of ['kit-process-protocol.schema.json', 'mcp-tools.schema.json', 'kits-service.schema.json']) {
+  files.push({ source: `schemas/${name}`, out: `contracts/kit/${name}`, rewrite: (text) => text })
+}
+// A KDM copy whose source file is gone is stale too. Only files this script wrote (they start
+// with its header, or sit in the copied fixtures folder) count, so a hand-written file is never
+// removed.
+const copyDirs = [
+  { dir: 'src/lib/kdm', ext: '.ts' },
+  { dir: 'src/lib/sync', ext: '.ts' },
+  { dir: 'src/lib/script', ext: '.ts' },
+  { dir: 'src/lib/script/kits', ext: '.ts' },
+  { dir: 'src/lib/extensions', ext: '.ts' },
+  { dir: 'src/lib/extensions/generated', ext: '.ts' },
+  { dir: `${rustKdm}/src`, ext: '.rs' },
+  { dir: `${rustKdm}/tests`, ext: '.rs' },
+  { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
+  ...rustKitDirs,
+]
+const copies = new Set(files.map((file) => file.out))
+const copiedHere = (file) => fs.readFileSync(file, 'utf8').startsWith('// Copied from kition-sdk ')
+const kdmOrphans = copyDirs.flatMap(({ dir, ext, all }) => {
+  const full = path.join(repo, dir)
+  if (!fs.existsSync(full)) return []
+  return fs
+    .readdirSync(full, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(ext) && !copies.has(`${dir}/${entry.name}`))
+    .filter((entry) => !kitionOwned.has(`${dir}/${entry.name}`))
+    .filter((entry) => all || copiedHere(path.join(full, entry.name)))
+    .map((entry) => `${dir}/${entry.name}`)
+})
+
+let stale = 0
+for (const name of kdmOrphans) {
+  if (process.argv.includes('--check')) {
+    console.log(`FAIL ${name} has no source in kition-sdk; run node scripts/sync-kit-host.mjs`)
+    stale += 1
+  } else {
+    fs.rmSync(path.join(repo, name))
+    console.log(`removed ${name}`)
+  }
+}
+for (const file of files) {
+  const out = path.join(repo, file.out)
+  const wanted = file.binary
+    ? fs.readFileSync(path.join(sdk, file.source))
+    : Buffer.from(file.rewrite(fs.readFileSync(path.join(sdk, file.source), 'utf8')))
+  const current = fs.existsSync(out) ? fs.readFileSync(out) : Buffer.alloc(0)
+  if (current.equals(wanted)) continue
+  if (process.argv.includes('--check')) {
+    console.log(`FAIL ${file.out} differs from kition-sdk ${file.source}; run node scripts/sync-kit-host.mjs`)
+    stale += 1
+  } else {
+    fs.mkdirSync(path.dirname(out), { recursive: true })
+    fs.writeFileSync(out, wanted)
+    console.log(`wrote ${file.out}`)
+  }
+}
+if (stale) process.exit(1)
+if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), sync client, object model, and extension host copies match kition-sdk')

@@ -1,0 +1,23 @@
+format: 1
+id: regressions/issue-kit-package-notices
+feature: kition.platform.open-source-notices
+intent: >-
+  A kit package carried only the kit's LICENSE and NOTICE, so the npm code its editor bundles and
+  the crates its WebAssembly engine links shipped without their licence texts, in the app and to
+  anyone embedding the package. scripts/build-kit-ui.sh now writes THIRD_PARTY_NOTICES.txt from
+  the modules the Vite build bundled and the engine's wasm32 crate graph, grouping the licence and
+  NOTICE files of each, and fails when one ships no licence text or an unaccepted licence.
+layer: gate
+source:
+  kind: issue
+  from: "license audit 2026-11-17 (npm F2, Rust FIX 1): kit packages carry no third-party notices"
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitPackageNotices.spec.ts, scripts/lib/rustCrateNotices.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-17"

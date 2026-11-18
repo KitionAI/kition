@@ -1,0 +1,5 @@
+{
+  "$comment": "Spec files excluded from the mock-backed CI sweep (KITION_E2E_SCOPE=ci) because they fail against the current UI. Each entry needs a reason and a date. Fix the spec or delete it; this list may only shrink. 'quarantinedTests' lists individual tests marked test.fixme inside spec files that otherwise still run.",
+  "quarantined": [],
+  "quarantinedTests": []
+}

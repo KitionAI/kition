@@ -1,0 +1,236 @@
+// Copied from kition-sdk crates/kition-kits/tests/mcp_stdio.rs by scripts/sync-kit-host.mjs; change it there, not here.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+//! `kition-kits-mcp` over stdio, as a harness launches it: tools (the object-model ones
+//! included), structured error codes, and `kit://` resources, against the mock kit standing in
+//! for Kition Example (`KITION_KIT_MOCK_AS`).
+//!
+//! The mock kit executable is built with the workspace (`cargo build -p kition-kit-mock`); when
+//! it is missing locally, the test says so and passes. CI requires it.
+
+use std::path::PathBuf;
+use std::process::Stdio;
+
+use serde_json::{Value, json};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
+use tokio::process::{Child, ChildStdin, ChildStdout};
+
+#[path = "support/binary.rs"]
+mod binary;
+use binary::mock_binary;
+
+/// The `version` of the manifest in `dir`.
+fn example_version(dir: &std::path::Path) -> String {
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("kit.json")).unwrap_or_else(|err| panic!("{err}"))).unwrap_or_else(|err| panic!("{err}"));
+    manifest["version"].as_str().unwrap_or_default().to_owned()
+}
+
+struct Server {
+    child: Child,
+    stdin: ChildStdin,
+    lines: Lines<BufReader<ChildStdout>>,
+    next: u64,
+}
+
+impl Server {
+    async fn request(&mut self, method: &str, params: Value) -> Value {
+        self.next += 1;
+        let message = json!({ "jsonrpc": "2.0", "id": self.next, "method": method, "params": params });
+        self.stdin.write_all(format!("{message}\n").as_bytes()).await.unwrap_or_else(|err| panic!("{err}"));
+        let line = tokio::time::timeout(std::time::Duration::from_secs(30), self.lines.next_line())
+            .await
+            .unwrap_or_else(|_| panic!("{method} timed out"))
+            .unwrap_or_else(|err| panic!("{err}"))
+            .unwrap_or_else(|| panic!("the server closed its output"));
+        let answer: Value = serde_json::from_str(&line).unwrap_or_else(|err| panic!("{err}: {line}"));
+        assert_eq!(answer["id"], self.next, "{answer}");
+        answer
+    }
+
+    async fn notify(&mut self, method: &str) {
+        let message = json!({ "jsonrpc": "2.0", "method": method });
+        self.stdin.write_all(format!("{message}\n").as_bytes()).await.unwrap_or_else(|err| panic!("{err}"));
+    }
+
+    async fn tool(&mut self, name: &str, arguments: Value) -> Value {
+        self.request("tools/call", json!({ "name": name, "arguments": arguments })).await["result"].clone()
+    }
+}
+
+#[tokio::test]
+async fn serves_tools_errors_and_resources_over_stdio() {
+    let Some(mock) = mock_binary() else {
+        eprintln!("skipped: build kition-kit-mock first (cargo build -p kition-kit-mock)");
+        return;
+    };
+    let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::create_dir_all(workspace.path().join("notes")).unwrap_or_else(|err| panic!("{err}"));
+    std::fs::write(workspace.path().join("notes/Plan.example"), "plan").unwrap_or_else(|err| panic!("{err}"));
+    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_kition-kits-mcp"));
+    // Only the stand-in kit is installed.
+    for (key, _) in std::env::vars() {
+        if key.starts_with("KITION_KIT_") && key.ends_with("_BINARY") {
+            command.env_remove(key);
+        }
+    }
+    // The mock stands in for the Example kit: a kits folder holds Example's manifest and, beside
+    // it, a `kition-example` that starts the mock as `kit.example`.
+    let kits = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    let example = kits.path().join("example-ui");
+    std::fs::create_dir_all(&example).unwrap_or_else(|err| panic!("{err}"));
+    std::fs::copy(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/support/example.json"), example.join("kit.json")).unwrap_or_else(|err| panic!("{err}"));
+    let launcher = example.join(format!("kition-example{}", std::env::consts::EXE_SUFFIX));
+    std::fs::write(&launcher, format!("#!/bin/sh\nexec '{}' \"$@\"\n", mock.display())).unwrap_or_else(|err| panic!("{err}"));
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
+    }
+    let mut child = command
+        .arg("--workspace")
+        .arg(workspace.path())
+        .arg("--kits-dir")
+        .arg(kits.path())
+        .env("KITION_KIT_MOCK_AS", "kit.example:example")
+        // The mock reports the manifest's version, as the executable of the package it serves (H11).
+        .env("KITION_KIT_MOCK_VERSION", example_version(&example))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap_or_else(|err| panic!("{err}"));
+    let stdin = child.stdin.take().unwrap_or_else(|| panic!("stdin"));
+    let stdout = child.stdout.take().unwrap_or_else(|| panic!("stdout"));
+    let mut server = Server { child, stdin, lines: BufReader::new(stdout).lines(), next: 0 };
+
+    let init =
+        server.request("initialize", json!({ "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": { "name": "test", "version": "1" } })).await;
+    assert_eq!(init["result"]["capabilities"]["resources"]["subscribe"], false, "{init}");
+    // One kit served: the server reports the kit's manifest version (KHP A34).
+    let manifest: Value =
+        serde_json::from_str(&std::fs::read_to_string(example.join("kit.json")).unwrap_or_else(|err| panic!("{err}"))).unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(init["result"]["serverInfo"]["version"], manifest["version"], "{init}");
+    assert!(
+        init["result"]["instructions"].as_str().is_some_and(|text| text.contains("example document")),
+        "the instructions come from the kit's manifest: {init}"
+    );
+    server.notify("notifications/initialized").await;
+
+    let listed = server.request("tools/list", json!({})).await;
+    let names: Vec<String> = listed["result"]["tools"]
+        .as_array()
+        .map(|tools| tools.iter().filter_map(|tool| tool["name"].as_str().map(str::to_owned)).collect())
+        .unwrap_or_default();
+    assert!(names.contains(&"example_query".to_owned()) && names.contains(&"example_batch".to_owned()), "{names:?}");
+
+    let path = "notes/Plan.example";
+    let queried = server.tool("example_query", json!({ "path": path, "describe": true })).await;
+    assert_eq!(queried["isError"], false, "{queried}");
+    assert_eq!(queried["structuredContent"]["objects"][0]["fields"]["text"], "plan");
+    let root = queried["structuredContent"]["objects"][0]["id"].as_str().unwrap_or_default().to_owned();
+
+    // The arguments now come from the kit's schema.
+    let listed = server.request("tools/list", json!({})).await;
+    let query = listed["result"]["tools"].as_array().and_then(|tools| tools.iter().find(|tool| tool["name"] == "example_query")).cloned().unwrap_or_default();
+    assert_eq!(query["inputSchema"]["properties"]["fields"]["items"]["enum"], json!(["name", "tags", "text"]));
+
+    let edited = server
+        .tool("example_batch", json!({ "path": path, "ops": [{ "op": "text.insert", "target": "root", "field": "text", "index": 4, "text": " B" }] }))
+        .await;
+    assert_eq!(edited["isError"], false, "{edited}");
+    assert_eq!(edited["structuredContent"]["saved"], true);
+    assert_eq!(std::fs::read_to_string(workspace.path().join(path)).unwrap_or_default(), "plan B");
+
+    let failed = server.tool("example_batch", json!({ "path": path, "ops": [{ "op": "set", "target": "missing", "field": "name", "value": 1 }] })).await;
+    assert_eq!(failed["isError"], true);
+    assert_eq!(failed["structuredContent"]["error"]["code"], "not-found", "{failed}");
+    assert_eq!(failed["structuredContent"]["error"]["index"], 0);
+    assert!(failed["content"][0]["text"].as_str().unwrap_or_default().contains("not-found"));
+
+    // Resources: the open file's object model and objects.
+    let templates = server.request("resources/templates/list", json!({})).await;
+    assert_eq!(templates["result"]["resourceTemplates"].as_array().map(Vec::len), Some(2));
+    let resources = server.request("resources/list", json!({})).await;
+    let uris: Vec<String> = resources["result"]["resources"]
+        .as_array()
+        .map(|items| items.iter().filter_map(|item| item["uri"].as_str().map(str::to_owned)).collect())
+        .unwrap_or_default();
+    assert_eq!(uris, ["khp://kits/kit.example/kit.json", "kit://notes%2FPlan.example/describe", "kit://notes%2FPlan.example/objects/root"], "{resources}");
+    // The kit's manifest is a resource, the same text as the package's kit.json (KHP K20).
+    let manifest = server.request("resources/read", json!({ "uri": uris[0] })).await;
+    let shipped = std::fs::read_to_string(example.join("kit.json")).unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(manifest["result"]["contents"][0]["text"], shipped.as_str(), "{manifest}");
+    assert_eq!(manifest["result"]["contents"][0]["mimeType"], "application/json");
+    let described = server.request("resources/read", json!({ "uri": uris[1] })).await;
+    let text: Value = serde_json::from_str(described["result"]["contents"][0]["text"].as_str().unwrap_or("null")).unwrap_or_default();
+    assert_eq!(text["describe"]["root"], "Note", "{described}");
+    assert_eq!(described["result"]["contents"][0]["mimeType"], "application/json");
+    let object = server.request("resources/read", json!({ "uri": format!("kit://notes%2FPlan.example/objects/{root}") })).await;
+    let text: Value = serde_json::from_str(object["result"]["contents"][0]["text"].as_str().unwrap_or("null")).unwrap_or_default();
+    assert_eq!(text["fields"]["text"], "plan B", "{object}");
+    let missing = server.request("resources/read", json!({ "uri": "kit://notes%2FPlan.example/objects/nothing-here" })).await;
+    assert_eq!(missing["error"]["code"], -32002, "{missing}");
+    assert_eq!(missing["error"]["data"]["error"]["code"], "not-found");
+
+    drop(server.stdin);
+    let status = tokio::time::timeout(std::time::Duration::from_secs(20), server.child.wait())
+        .await
+        .unwrap_or_else(|_| panic!("the server exits when its input closes"))
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert!(status.success());
+}
+
+/// The server answers tool calls on the default thread stack: a debug build an agent starts, with
+/// no `RUST_MIN_STACK`, must not overflow while it calls a kit.
+#[tokio::test]
+async fn answers_tool_calls_on_the_default_thread_stack() {
+    let Some(mock) = mock_binary() else {
+        eprintln!("skipped: build kition-kit-mock first (cargo build -p kition-kit-mock)");
+        return;
+    };
+    let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::write(workspace.path().join("Plan.example"), "plan").unwrap_or_else(|err| panic!("{err}"));
+    let kits = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    let example = kits.path().join("example-ui");
+    std::fs::create_dir_all(&example).unwrap_or_else(|err| panic!("{err}"));
+    std::fs::copy(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/support/example.json"), example.join("kit.json")).unwrap_or_else(|err| panic!("{err}"));
+    let launcher = example.join(format!("kition-example{}", std::env::consts::EXE_SUFFIX));
+    std::fs::write(&launcher, format!("#!/bin/sh\nexec '{}' \"$@\"\n", mock.display())).unwrap_or_else(|err| panic!("{err}"));
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap_or_else(|err| panic!("{err}"));
+    }
+    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_kition-kits-mcp"));
+    for (key, _) in std::env::vars() {
+        if key == "RUST_MIN_STACK" || (key.starts_with("KITION_KIT_") && key.ends_with("_BINARY")) {
+            command.env_remove(key);
+        }
+    }
+    let mut child = command
+        .arg("--workspace")
+        .arg(workspace.path())
+        .arg("--kits-dir")
+        .arg(kits.path())
+        .env("KITION_KIT_MOCK_AS", "kit.example:example")
+        .env("KITION_KIT_MOCK_VERSION", example_version(&example))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap_or_else(|err| panic!("{err}"));
+    let stdin = child.stdin.take().unwrap_or_else(|| panic!("stdin"));
+    let stdout = child.stdout.take().unwrap_or_else(|| panic!("stdout"));
+    let mut server = Server { child, stdin, lines: BufReader::new(stdout).lines(), next: 0 };
+    server.request("initialize", json!({ "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": { "name": "test", "version": "1" } })).await;
+    server.notify("notifications/initialized").await;
+
+    let inspected = server.tool("example_inspect", json!({ "path": "Plan.example", "preview": false })).await;
+    assert_eq!(inspected["isError"], false, "{inspected}");
+    let queried = server.tool("example_query", json!({ "path": "Plan.example" })).await;
+    assert_eq!(queried["structuredContent"]["objects"][0]["fields"]["text"], "plan", "{queried}");
+    let checked = server.tool("example_check", json!({ "path": "Plan.example" })).await;
+    assert_eq!(checked["isError"], false, "{checked}");
+}

@@ -1,0 +1,547 @@
+{
+  "createMenu": {
+    "format": {
+      "table": "Таблица",
+      "board": "Доска",
+      "note": "Заметка",
+      "photo": "Photo",
+      "film": "Film",
+      "vector": "Vector",
+      "motion": "Motion",
+      "layout": "Layout",
+      "cad": "CAD",
+      "scene": "Scene",
+      "design": "Design",
+      "slide": "Slide",
+      "doc": "Doc",
+      "sheet": "Sheet",
+      "pdf": "PDF",
+      "html": "HTML"
+    },
+    "folder": "Папка",
+    "group": {
+      "documents": "Документы",
+      "data": "Данные",
+      "visual": "Графика",
+      "media": "Медиа"
+    }
+  },
+  "emptyState": {
+    "title": "Turn ideas into organized work",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document or table.",
+    "prompt": {
+      "title": "Describe what you want to build",
+      "description": "Plan, research, write, and organize with Kition AI.",
+      "action": "Open AI Chat"
+    },
+    "quickStart": "Quick start",
+    "actions": {
+      "document": {
+        "title": "New document",
+        "description": "Capture notes, plans, and knowledge."
+      },
+      "table": {
+        "title": "New table",
+        "description": "Structure projects, records, and research."
+      }
+    }
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Файлы"
+    },
+    "collapseSection": "Свернуть {{name}}",
+    "expandSection": "Развернуть {{name}}",
+    "newPage": "Новая страница",
+    "newPageIn": "Новая страница в {{name}}",
+    "refresh": "Обновить рабочую область",
+    "collapseSidebar": "Свернуть боковую панель",
+    "loadingDirectory": "Загрузка локального каталога"
+  },
+  "tree": {
+    "collapse": "Свернуть",
+    "expand": "Развернуть",
+    "modifiedByAgent": "Изменено Агентом",
+    "createInside": "Создать внутри этой страницы",
+    "moreActions": "Ещё действия",
+    "addToChat": "Добавить в чат",
+    "addToNewChat": "Добавить в новый чат",
+    "changeIcon": "Изменить значок",
+    "rename": "Переименовать",
+    "duplicate": "Дублировать",
+    "moveTo": "Переместить в...",
+    "showInFinder": "Показать в Finder",
+    "delete": "Удалить",
+    "moveToTitle": "Переместить в",
+    "moveToRoot": "Корень",
+    "noDestinations": "Нет других доступных мест назначения",
+    "clearIcon": "Очистить"
+  },
+  "tabs": {
+    "closeTab": "Закрыть вкладку",
+    "expandSidebar": "Развернуть боковую панель",
+    "previousTab": "Предыдущая вкладка",
+    "nextTab": "Следующая вкладка",
+    "showOverflow": "Показать скрытые вкладки",
+    "close": "Закрыть",
+    "closeOthers": "Закрыть другие вкладки",
+    "closeAll": "Закрыть все вкладки",
+    "closeUnmodified": "Закрыть неизменённые вкладки",
+    "closeLeft": "Закрыть вкладки слева",
+    "closeRight": "Закрыть вкладки справа",
+    "closeReadOnly": "Закрыть все вкладки только для чтения",
+    "copyReference": "Копировать путь/ссылку",
+    "unsavedTitle": "В «{{name}}» есть несохранённые изменения",
+    "unsavedMessage": "Сохранить их перед закрытием вкладки? Несохранённые изменения будут потеряны.",
+    "unsavedTitleMany": "Несохранённые изменения в документах: {{count}}",
+    "unsavedWindowMessage": "Сначала сохранить их? Несохранённые изменения будут потеряны.",
+    "unsavedSave": "Сохранить",
+    "unsavedDiscard": "Не сохранять",
+    "unsavedCancel": "Отмена"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Сегодня",
+      "week": "Предыдущие 7 дней",
+      "older": "Ранее"
+    },
+    "chat": "Чат",
+    "newChatTitle": "Новый чат",
+    "openChat": "Открыть чат с ИИ",
+    "collapseChat": "Свернуть чат с ИИ",
+    "emptyTitle": "Чат с ИИ",
+    "newChat": "Новый чат",
+    "closeChat": "Закрыть чат",
+    "viewHistory": "Просмотр истории",
+    "agentHistory": "История агента",
+    "searchChats": "Поиск чатов...",
+    "noMatchingChats": "Нет подходящих чатов.",
+    "noChatsYet": "Пока нет чатов. Начните новый."
+  },
+  "agentSidebar": {
+    "empty": "Начните новый чат или откройте существующий из истории."
+  },
+  "fileViewer": {
+    "imageActions": "Действия с изображением",
+    "copyImage": "Копировать изображение",
+    "imageCopied": "Изображение скопировано",
+    "imageCopyFailed": "Не удалось скопировать изображение",
+    "openInSystem": "Открыть в системе",
+    "showInFinder": "Показать в Finder",
+    "previewUnsupported": "{{label}} · Предпросмотр в приложении пока не поддерживается",
+    "previewTip": "Вы всё равно можете упомянуть этот файл через @, чтобы ИИ разобрал его напрямую, или нажать «Открыть в системе», чтобы просмотреть его в стандартном приложении."
+  },
+  "folderDialog": {
+    "title": "Новая папка",
+    "description": "Введите имя папки.",
+    "placeholder": "Папка без названия",
+    "cancel": "Отмена",
+    "create": "Создать"
+  },
+  "media": {
+    "images": "Изображения",
+    "videos": "Видео",
+    "items": "Элементов: {{count}}",
+    "noImagesTitle": "Пока нет изображений",
+    "noVideosTitle": "Пока нет видео",
+    "noImagesDescription": "Изображения из этой рабочей области появятся здесь.",
+    "noVideosDescription": "Видео из этой рабочей области появятся здесь."
+  },
+  "layout": {
+    "resizeSidebar": "Изменить размер боковой панели",
+    "resizeChat": "Изменить размер чата с ИИ"
+  },
+  "footer": {
+    "switchWorkspace": "Сменить рабочую область",
+    "switchWorkspaceTitle": "Сменить рабочую область (⌘⇧O)",
+    "profile": "Профиль",
+    "settings": "Настройки"
+  },
+  "errors": {
+    "fileTypeNotDeletable": "Этот тип файла пока нельзя удалить из библиотеки документов.",
+    "saveBeforeOrganizing": "Сохраните «{{name}}», прежде чем переименовать или переместить его: в нём есть несохранённые изменения.",
+    "onlyWorkspaceItemsDuplicable": "Сюда можно дублировать только документы, таблицы и доски.",
+    "createDocumentFailed": "Не удалось создать документ",
+    "browserDevModeOpenDirectory": "Вы работаете в режиме разработки в браузере и не можете открывать нативные каталоги. Запустите настольное приложение через pnpm dev и повторите попытку.",
+    "browserDevModePickDirectory": "Вы работаете в режиме разработки в браузере и не можете выбрать нативный каталог. Запустите настольное приложение через pnpm dev и повторите попытку.",
+    "browserDevModeSwitchDirectory": "Вы работаете в режиме разработки в браузере и не можете переключать нативные каталоги."
+  },
+  "feedback": {
+    "refreshed": "Рабочая область обновлена",
+    "documentCreated": "Документ создан",
+    "folderCreated": "Папка создана",
+    "renamed": "Переименовано",
+    "alreadyInLocation": "Уже находится в этом месте"
+  },
+  "photoKit": {
+    "unavailableTitle": "Редактирование Photo недоступно в этой сборке",
+    "unavailableBody": "Файлы Photo открываются в Kition, когда в сборку включён движок Photo."
+  },
+  "kitEditor": {
+    "conflictsTitle": "Некоторые правки не удалось объединить",
+    "conflictsBody_one": "Не удалось объединить правки, сделанные другим человеком одновременно: {{count}}. Они сохранены в документе до разрешения.",
+    "conflictsBody_other": "Не удалось объединить правки, сделанные другим человеком одновременно: {{count}}. Они сохранены в документе до разрешения.",
+    "openFailedTitle": "Не удалось открыть {{name}}",
+    "openFailedMessage": "Возможно, файл повреждён или не является корректным файлом {{type}}. Файл не был изменён.",
+    "openUnreachableMessage": "Kition сейчас не может связаться со своей файловой службой. Файл не изменён.",
+    "openEngineMessage": "Редактор файлов {{type}} не смог запуститься. Файл не изменён.",
+    "openTooLargeMessage": "Этот файл больше {{limit}} МБ — это максимум, который открывает редактор {{type}}. Файл не изменён.",
+    "openTooLargeNoLimitMessage": "Этот файл слишком большой для редактора {{type}}. Файл не изменён.",
+    "tryAgain": "Повторить",
+    "saveFailed": {
+      "diskFull": "На диске не осталось места. Освободите место и сохраните снова.",
+      "notAllowed": "У Kition нет разрешения записывать этот файл. Проверьте права доступа и сохраните снова.",
+      "unreachable": "Kition сейчас не может связаться со своей файловой службой. Изменения сохранены в редакторе; повторите сохранение чуть позже.",
+      "other": "Не удалось сохранить файл. Изменения сохранены в редакторе; попробуйте сохранить снова."
+    },
+    "opening": "Открытие…",
+    "draft": {
+      "title": "Черновик агента",
+      "bannerOpen": "Агент редактирует черновик этого документа",
+      "bannerReady": "Черновик агента готов к проверке",
+      "bannerHint": "Документ не изменится, пока вы не объедините черновик.",
+      "review": "Проверить",
+      "merge": "Объединить",
+      "discard": "Отклонить",
+      "reviewTitle": "Проверка черновика агента",
+      "localHint": "До объединения этот черновик видите только вы. Отмена отменяет объединение за один шаг.",
+      "compareFailed": "Не удалось сравнить черновик",
+      "comparing": "Сравнение черновика…",
+      "before": "Документ сейчас",
+      "after": "С черновиком",
+      "noPreview": "Нет предпросмотра",
+      "created_one": "Добавлено объектов: {{count}}",
+      "created_other": "Добавлено объектов: {{count}}",
+      "changed_one": "Изменено объектов: {{count}}",
+      "changed_other": "Изменено объектов: {{count}}",
+      "deleted_one": "Удалено объектов: {{count}}",
+      "deleted_other": "Удалено объектов: {{count}}",
+      "noChanges": "Черновик ничего не меняет.",
+      "more_one": "и ещё: {{count}}",
+      "more_other": "и ещё: {{count}}",
+      "texts": "Изменения текста",
+      "merged": "Черновик агента объединён",
+      "mergedHint": "Отмена отменяет объединение целиком.",
+      "mergeFailed": "Не удалось объединить черновик",
+      "discarded": "Черновик агента отклонён",
+      "discardFailed": "Не удалось отклонить черновик",
+      "tab": "Черновик",
+      "tabOpen": "Агент редактирует черновик",
+      "tabReady": "Черновик агента готов к проверке",
+      "change": {
+        "created": "Добавлен",
+        "changed": "Изменён",
+        "deleted": "Удалён"
+      }
+    },
+    "headlessDraft": {
+      "badgeTitle": "Черновик агента для этого файла ждёт вашей проверки",
+      "title": "Проверить черновик агента для {{name}}",
+      "hint": "Агент вне Kition изменил копию этого файла. Файл не меняется, пока вы не выполните слияние.",
+      "noDiff": "Этот набор сравнивает черновик по сводке и превью, а не по отдельным объектам.",
+      "stale": "Файл изменился после того, как агент начал черновик. Слияние заменит эти изменения черновиком.",
+      "overwrite": "Слить и заменить",
+      "dirty": "В открытом редакторе этого файла есть несохранённые правки. Сохраните или отмените их, затем выполните слияние.",
+      "mergedHint": "Теперь файл содержит черновик агента."
+    },
+    "openUrl": {
+      "title": "Открыть этот веб-адрес?",
+      "body": "Ссылка в этом документе ведёт за пределы Kition. Она откроется в браузере.",
+      "site": "Сайт:",
+      "ascii": "отображается как {{host}}",
+      "open": "Открыть",
+      "cancel": "Отмена"
+    },
+    "filePicker": {
+      "title": {
+        "open": "Выберите файл",
+        "folder": "Выберите папку",
+        "save": "Сохранить в рабочее пространство",
+        "link": "Связать файл"
+      },
+      "body": {
+        "open": "Документ запрашивает файл из вашего рабочего пространства.",
+        "folder": "Документ запрашивает папку в вашем рабочем пространстве.",
+        "save": "Назовите новый файл и выберите папку для него.",
+        "link": "Документ связывается с файлом рабочего пространства. Файл остаётся на месте, а документ следит за его изменениями."
+      },
+      "name": "Имя файла",
+      "search": "Поиск",
+      "workspaceRoot": "Рабочее пространство",
+      "loading": "Загрузка…",
+      "empty": "Нет подходящих файлов",
+      "replaces": "В этой папке уже есть файл {{name}}. При сохранении он будет заменён.",
+      "import": "Импортировать с этого компьютера",
+      "confirm": {
+        "open": "Открыть",
+        "folder": "Выбрать",
+        "save": "Сохранить",
+        "link": "Связать"
+      },
+      "cancel": "Отмена"
+    }
+  },
+  "filmKit": {
+    "unavailableTitle": "Редактирование Film недоступно в этой сборке",
+    "unavailableBody": "Файлы Film открываются в Kition, когда в сборку включён движок Film.",
+    "editInFilm": "Изменить в Film",
+    "editFailed": "Не удалось создать видеопроект"
+  },
+  "vectorKit": {
+    "unavailableTitle": "Редактирование Vector недоступно в этой сборке",
+    "unavailableBody": "Файлы Vector открываются в Kition, когда в сборку включён движок Vector."
+  },
+  "motionKit": {
+    "unavailableTitle": "Редактирование Motion недоступно в этой сборке",
+    "unavailableBody": "Файлы Motion открываются в Kition, когда в сборку включён движок Motion."
+  },
+  "layoutKit": {
+    "unavailableTitle": "Редактирование Layout недоступно в этой сборке",
+    "unavailableBody": "Файлы Layout открываются в Kition, когда в сборку включён движок Layout."
+  },
+  "cadKit": {
+    "unavailableTitle": "Редактирование CAD недоступно в этой сборке",
+    "unavailableBody": "Файлы CAD открываются в Kition, когда в сборку включён движок CAD."
+  },
+  "sceneKit": {
+    "unavailableTitle": "Редактирование Scene недоступно в этой сборке",
+    "unavailableBody": "Файлы Scene открываются в Kition, когда в сборку включён движок Scene."
+  },
+  "designKit": {
+    "unavailableTitle": "Редактирование Design недоступно в этой сборке",
+    "unavailableBody": "Файлы Design открываются в Kition, когда в сборку включён движок Design."
+  },
+  "slideKit": {
+    "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
+    "unavailableBody": "Файлы Slide открываются в Kition, когда в сборку включён движок Slide."
+  },
+  "docKit": {
+    "unavailableTitle": "Редактирование Doc недоступно в этой сборке",
+    "unavailableBody": "Файлы Doc открываются в Kition, когда в сборку включён движок Doc."
+  },
+  "sheetKit": {
+    "unavailableTitle": "Редактирование Sheet недоступно в этой сборке",
+    "unavailableBody": "Файлы Sheet открываются в Kition, когда в сборку включён движок Sheet."
+  },
+  "pdfKit": {
+    "unavailableTitle": "Редактирование PDF недоступно в этой сборке",
+    "unavailableBody": "Файлы PDF открываются в Kition, когда в сборку включён движок PDF."
+  },
+  "tableKit": {
+    "unavailableTitle": "Редактирование Table недоступно в этой сборке",
+    "unavailableBody": "Файлы Table открываются в Kition, когда в сборку включён движок Table."
+  },
+  "boardKit": {
+    "unavailableTitle": "Редактирование досок недоступно в этой сборке",
+    "unavailableBody": "Доски открываются в Kition, когда в сборку включён движок Board."
+  },
+  "noteKit": {
+    "unavailableTitle": "Редактирование заметок недоступно в этой сборке",
+    "unavailableBody": "Заметки открываются в Kition, если в сборку входит движок заметок."
+  },
+  "collab": {
+    "share": "Открыть для совместного редактирования",
+    "sharing": "Открываем доступ…",
+    "sharedTitle": "Совместное редактирование включено",
+    "sharedDescription": "Ссылка скопирована. Любой пользователь, вошедший в Kition и открывший её, сможет работать с этим документом вместе с вами в пределах, которые даёт ссылка.",
+    "linkLabel": "Ссылка для доступа",
+    "copyLink": "Копировать ссылку",
+    "linkCopied": "Ссылка скопирована",
+    "close": "Закрыть",
+    "shareFailed": "Не удалось открыть доступ к документу",
+    "openShared": "Открыть общий документ",
+    "openSharedDescription": "Вставьте ссылку для совместного редактирования, которой с вами поделились. Документ откроется в папке Shared.",
+    "linkPlaceholder": "Вставьте ссылку",
+    "open": "Открыть",
+    "cancel": "Отмена",
+    "needsAccount": "Для совместного редактирования нужны учётная запись Kition и сервер синхронизации.",
+    "unreachable": "Сервер синхронизации недоступен. Проверьте подключение и повторите попытку.",
+    "linkNotFound": "Эта ссылка не ведёт к общему документу.",
+    "busy": "Сервер синхронизации занят. Подождите немного и попробуйте снова.",
+    "kitUnavailable": "Эта версия Kition не может открыть документ такого типа.",
+    "failed": "Что-то пошло не так. Попробуйте снова.",
+    "peers": "Также редактируют: {{names}}",
+    "agentPeer": "Агент",
+    "status": {
+      "online": "Совместное редактирование: подключено",
+      "connecting": "Совместное редактирование: подключение",
+      "offline": "Совместное редактирование: нет связи. Изменения синхронизируются после подключения."
+    },
+    "accessLabel": "Что разрешает ссылка",
+    "viewOnly": "Только просмотр",
+    "access": {
+      "editor": "Может редактировать",
+      "commenter": "Может комментировать",
+      "viewer": "Может просматривать"
+    },
+    "role": {
+      "owner": "Владелец",
+      "editor": "Редактор",
+      "commenter": "Комментатор",
+      "viewer": "Читатель"
+    },
+    "commentOnly": "Только комментарии",
+    "members": "Люди с доступом",
+    "memberYou": "{{name}} (вы)",
+    "memberRole": "Роль: {{name}}",
+    "removeMember": "Удалить {{name}}",
+    "revokeLink": "Отозвать эту ссылку",
+    "linkRevoked": "Ссылка отозвана. Она больше не открывает этот документ.",
+    "newLink": "Создать ссылку",
+    "syncToDevices": "Синхронизировать с моими устройствами",
+    "syncing": "Синхронизация с вашими устройствами…",
+    "syncFailed": "Не удалось синхронизировать документ",
+    "synced": {
+      "title": "Ваши синхронизированные документы",
+      "description": "Документы, которые вы синхронизируете со своими устройствами или редактируете совместно, но которых ещё нет в этом рабочем пространстве. Откройте документ здесь, чтобы он синхронизировался и на этом устройстве.",
+      "folder": "Открыть в",
+      "workspaceRoot": "Рабочее пространство (верхний уровень)",
+      "loading": "Загрузка",
+      "empty": "Все синхронизируемые документы уже есть в этом рабочем пространстве.",
+      "private": "Только вы",
+      "shared": "Общий доступ",
+      "meta": "{{access}} · Обновлён {{updated}} · {{size}}",
+      "openHere": "Открыть здесь",
+      "cannotOpen": "Эта версия Kition не умеет открывать такие документы.",
+      "done": "Синхронизировано с вашими устройствами",
+      "doneDescription": "Теперь правки попадают на другие ваши устройства. Откройте документ там в разделе «Ваши синхронизированные документы»."
+    }
+  },
+  "documentSchema": {
+    "label": "Уведомление о более новой версии",
+    "title": "Этот документ изменён в более новой версии {{kit}}. Обновитесь, чтобы продолжить редактирование.",
+    "blockedHint": "До тех пор он здесь доступен только для чтения в том виде, в каком вы видели его в последний раз. Ничего не теряется: общая копия хранит все изменения.",
+    "newerHint": "До тех пор то, чего эта версия не знает, остаётся как есть и не может быть изменено здесь.",
+    "versions": "В этом Kition есть {{kit}} {{version}}, который читает документы до версии {{reads}}; этому документу нужна версия {{needs}}.",
+    "versionsNoKit": "Этот Kition читает документы до версии {{reads}}; этому документу нужна версия {{needs}}.",
+    "check": "Проверить обновления",
+    "install": "Установить обновление",
+    "updateAvailable": "Доступен Kition {{version}}.",
+    "upToDate": "Kition обновлён: более новая версия {{kit}} для него ещё не выпущена.",
+    "updateElsewhere": "Обновите Kition до последней версии, чтобы продолжить редактирование.",
+    "updateFailed": "Не удалось проверить обновления: {{message}}",
+    "kits": {
+      "board": "Board",
+      "cad": "CAD",
+      "design": "Design",
+      "document": "Document",
+      "film": "Film",
+      "layout": "Layout",
+      "motion": "Motion",
+      "pdf": "PDF",
+      "photo": "Photo",
+      "scene": "Scene",
+      "sheet": "Sheet",
+      "slide": "Slide",
+      "table": "Table",
+      "vector": "Vector",
+      "doc": "Doc"
+    }
+  },
+  "templateLibrary": {
+    "categories": {
+      "all": "All",
+      "work": "Work",
+      "planning": "Planning",
+      "personal": "Personal",
+      "workspace": "Workspace"
+    },
+    "blank": {
+      "title": "Blank document",
+      "description": "Start with an empty page and build your own structure."
+    },
+    "workspaceTemplateDescription": "Personal template from {{path}}",
+    "loadingWorkspaceTemplates": "Loading workspace templates...",
+    "templateCount": "{{count}} templates available",
+    "noMatches": "No templates found",
+    "noMatchesHint": "Try another search or category.",
+    "loadFailed": "This workspace template could not be loaded.",
+    "createFailed": "The document could not be created.",
+    "templates": {
+      "projectBrief": {
+        "title": "Project brief",
+        "description": "Define goals, scope, owners, and milestones before work begins."
+      },
+      "meetingNotes": {
+        "title": "Meeting notes",
+        "description": "Capture the agenda, decisions, discussion notes, and action items."
+      },
+      "taskTracker": {
+        "title": "Task tracker",
+        "description": "Keep tasks, owners, priorities, due dates, and status in one view."
+      },
+      "weeklyPlan": {
+        "title": "Weekly plan",
+        "description": "Set weekly outcomes, schedule focused work, and surface blockers."
+      },
+      "productLaunch": {
+        "title": "Product launch plan",
+        "description": "Coordinate launch readiness, workstreams, deadlines, and success measures."
+      },
+      "clientBrief": {
+        "title": "Client brief",
+        "description": "Organize account goals, stakeholders, opportunities, risks, and next actions."
+      },
+      "researchNotes": {
+        "title": "Research notes",
+        "description": "Collect sources, evidence, findings, open questions, and a final synthesis."
+      },
+      "weeklyReview": {
+        "title": "Weekly review",
+        "description": "Reflect on wins, lessons, goal progress, and priorities for the next week."
+      },
+      "teamDailyReport": {
+        "title": "Team daily report",
+        "description": "Share completed work, active priorities, blockers, and tomorrow's plan."
+      },
+      "personalDailyReport": {
+        "title": "Personal daily report",
+        "description": "Record one main outcome, completed tasks, notes, and the next day's priorities."
+      },
+      "brainstormingSession": {
+        "title": "Brainstorming session",
+        "description": "Collect ideas, compare value and effort, and turn promising directions into experiments."
+      },
+      "quarterlyBusinessReview": {
+        "title": "Quarterly business review",
+        "description": "Review performance metrics, lessons, risks, and priorities for the next quarter."
+      },
+      "meetingActionTracker": {
+        "title": "Meeting action tracker",
+        "description": "Turn decisions into owned actions with deadlines, priorities, and follow-up."
+      },
+      "okrPlan": {
+        "title": "OKR plan",
+        "description": "Define objectives, measurable key results, confidence, and supporting initiatives."
+      },
+      "productRequirements": {
+        "title": "Product requirements",
+        "description": "Describe the problem, user needs, requirements, user flow, metrics, and risks."
+      },
+      "flowchart": {
+        "title": "Flowchart",
+        "description": "Map a process with editable Mermaid steps, decisions, loops, and exception paths."
+      },
+      "projectTimeline": {
+        "title": "Project timeline",
+        "description": "Visualize delivery phases and track milestones, owners, dependencies, and status."
+      },
+      "organizationChart": {
+        "title": "Organization chart",
+        "description": "Document reporting lines, team structure, leaders, missions, and contacts."
+      },
+      "systemArchitecture": {
+        "title": "System architecture",
+        "description": "Explain components, integrations, data stores, ownership, and reliability concerns."
+      },
+      "productDevelopmentSwimlane": {
+        "title": "Product development swimlane",
+        "description": "Clarify product, design, engineering, and launch ownership across handoffs."
+      }
+    }
+  },
+  "htmlKit": {
+    "unavailableTitle": "Редактор HTML недоступен",
+    "unavailableBody": "Соберите пакет HTML Kit, чтобы редактировать HTML-файлы в этой версии для разработки."
+  }
+}

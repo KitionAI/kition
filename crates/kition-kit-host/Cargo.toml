@@ -1,0 +1,29 @@
+# Copied from kition-sdk crates/kition-kit-host/Cargo.toml by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-kit-host"
+description = "Launches kit processes and talks to them over the Kit Process Protocol."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kition-kit-process-protocol = { path = "../kition-kit-process-protocol", features = ["tokio"] }
+
+hex = "0.4"
+rand = "0.9"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"
+
+# The sandbox for kit processes on Linux (`sandbox.rs`): Landlock for the file system, a seccomp
+# filter for the network. Both apply only to the thread that starts the kit.
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4"
+seccompiler = "0.4"

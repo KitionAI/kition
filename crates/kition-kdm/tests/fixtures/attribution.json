@@ -1,0 +1,920 @@
+{
+  "$comment": "Change sets attribute an object without a tool id to the nearest object holding it that has one, through list and tree fields and refs declared `owns`, run by kition-kdm (tests/changes.rs) and @kition/kdm (test/changes.test.ts). Each case starts from `setup` numbered as a kit numbers tool ids (testing::number_tool_ids), runs `edit`, numbers again, and expects `expected` both from the receipt (Replica::changes_since / changesSince) and from the comparison of the whole states named by tool ids (diff_states + with_tool_ids / diffStates + diffWithToolIds, less its `texts`); `texts`, when given, is that comparison's `texts`. An attributed edit's `field` is the path from the holder (field names and positions joined by `.`); a created one's `after` and a deleted one's `before` are its values; a moved one's `before` and `after` are its paths.",
+  "docId": "01920000-0000-7000-8000-0000000000d2",
+  "schema": {
+    "kdm": 1,
+    "kit": "kit.attribution",
+    "schemaVersion": 1,
+    "root": "Doc",
+    "types": {
+      "Doc": {
+        "fields": {
+          "slides": {
+            "kind": "list",
+            "of": "Slide"
+          },
+          "media": {
+            "kind": "list",
+            "of": "Media"
+          }
+        }
+      },
+      "Slide": {
+        "fields": {
+          "number": {
+            "kind": "integer",
+            "optional": true,
+            "readOnly": true
+          },
+          "shapes": {
+            "kind": "list",
+            "of": "Shape"
+          }
+        },
+        "toolId": {
+          "field": "number",
+          "prefix": "slide:"
+        }
+      },
+      "Shape": {
+        "fields": {
+          "number": {
+            "kind": "integer",
+            "optional": true,
+            "readOnly": true
+          },
+          "name": {
+            "kind": "string",
+            "optional": true
+          },
+          "body": {
+            "kind": "ref",
+            "of": "TextBody",
+            "optional": true,
+            "owns": true
+          },
+          "caption": {
+            "kind": "ref",
+            "of": "Caption",
+            "optional": true,
+            "owns": true
+          },
+          "media": {
+            "kind": "ref",
+            "of": "Media",
+            "optional": true
+          }
+        },
+        "toolId": {
+          "field": "number",
+          "prefix": "shape:"
+        }
+      },
+      "TextBody": {
+        "fields": {
+          "paragraphs": {
+            "kind": "list",
+            "of": "Paragraph"
+          }
+        }
+      },
+      "Paragraph": {
+        "fields": {
+          "text": {
+            "kind": "text"
+          }
+        }
+      },
+      "Caption": {
+        "fields": {
+          "number": {
+            "kind": "integer",
+            "optional": true,
+            "readOnly": true
+          },
+          "paragraphs": {
+            "kind": "list",
+            "of": "Paragraph"
+          }
+        },
+        "toolId": {
+          "field": "number",
+          "prefix": "caption:"
+        }
+      },
+      "Media": {
+        "fields": {
+          "name": {
+            "kind": "string"
+          }
+        }
+      }
+    }
+  },
+  "setup": {
+    "ops": [
+      {
+        "op": "create",
+        "type": "Doc",
+        "id": "doc"
+      },
+      {
+        "op": "create",
+        "type": "Media",
+        "id": "m1",
+        "in": "doc.media",
+        "fields": {
+          "name": "Logo"
+        }
+      },
+      {
+        "op": "create",
+        "type": "Slide",
+        "id": "s1",
+        "in": "doc.slides"
+      },
+      {
+        "op": "create",
+        "type": "Shape",
+        "id": "sh1",
+        "in": "s1.shapes",
+        "fields": {
+          "name": "Title"
+        }
+      },
+      {
+        "op": "create",
+        "type": "TextBody",
+        "id": "b1"
+      },
+      {
+        "op": "set",
+        "target": "sh1",
+        "field": "body",
+        "value": "b1"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p1",
+        "in": "b1.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p1",
+        "field": "text",
+        "text": "Hello"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p2",
+        "in": "b1.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p2",
+        "field": "text",
+        "text": "World"
+      },
+      {
+        "op": "create",
+        "type": "Caption",
+        "id": "c1"
+      },
+      {
+        "op": "set",
+        "target": "sh1",
+        "field": "caption",
+        "value": "c1"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p4",
+        "in": "c1.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p4",
+        "field": "text",
+        "text": "Cap"
+      },
+      {
+        "op": "set",
+        "target": "sh1",
+        "field": "media",
+        "value": "m1"
+      },
+      {
+        "op": "create",
+        "type": "Shape",
+        "id": "sh2",
+        "in": "s1.shapes",
+        "fields": {
+          "name": "Other"
+        }
+      },
+      {
+        "op": "create",
+        "type": "TextBody",
+        "id": "b2"
+      },
+      {
+        "op": "set",
+        "target": "sh2",
+        "field": "body",
+        "value": "b2"
+      },
+      {
+        "op": "create",
+        "type": "Paragraph",
+        "id": "p3",
+        "in": "b2.paragraphs"
+      },
+      {
+        "op": "text.set",
+        "target": "p3",
+        "field": "text",
+        "text": "Else"
+      },
+      {
+        "op": "set",
+        "target": "sh2",
+        "field": "media",
+        "value": "m1"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "text-inside-a-shape",
+      "intent": "A paragraph's text changed: told as an edit of the shape holding it through its body, at `body.paragraphs.0.text`.",
+      "edit": {
+        "ops": [
+          {
+            "op": "text.set",
+            "target": "p1",
+            "field": "text",
+            "text": "Hello there"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Hello there",
+                "before": "Hello",
+                "field": "body.paragraphs.0.text"
+              }
+            ],
+            "fields": [
+              "body.paragraphs.0.text"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      },
+      "texts": [
+        {
+          "id": "shape:1",
+          "field": "body.paragraphs.0.text",
+          "before": "Hello",
+          "after": "Hello there"
+        }
+      ]
+    },
+    {
+      "name": "paragraph-added",
+      "intent": "A paragraph added to a shape's body: the shape's edit at the new item's path, with its values.",
+      "edit": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p5",
+            "in": "b1.paragraphs"
+          },
+          {
+            "op": "text.set",
+            "target": "p5",
+            "field": "text",
+            "text": "New"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": {
+                  "text": "New"
+                },
+                "before": null,
+                "field": "body.paragraphs.2"
+              }
+            ],
+            "fields": [
+              "body.paragraphs",
+              "body.paragraphs.2"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "paragraph-deleted",
+      "intent": "A paragraph taken out of a shape's body and deleted: the shape's edit at the item's former path, with its values before.",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.remove",
+            "target": "b1",
+            "field": "paragraphs",
+            "index": 1
+          },
+          {
+            "op": "delete",
+            "target": "p2"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": null,
+                "before": {
+                  "text": "World"
+                },
+                "field": "body.paragraphs.1"
+              }
+            ],
+            "fields": [
+              "body.paragraphs",
+              "body.paragraphs.1"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "paragraphs-reordered",
+      "intent": "Paragraphs reordered in a shape's body: the shape's edit of the list, from one path to another.",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.move",
+            "target": "b1",
+            "field": "paragraphs",
+            "from": 1,
+            "to": 0
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "body.paragraphs.0",
+                "before": "body.paragraphs.1",
+                "field": "body.paragraphs"
+              }
+            ],
+            "fields": [
+              "body.paragraphs"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "nearest-holder",
+      "intent": "Text inside a caption, which has a tool id of its own inside the shape: told under the caption, the nearest holder with one.",
+      "edit": {
+        "ops": [
+          {
+            "op": "text.set",
+            "target": "p4",
+            "field": "text",
+            "text": "Caption"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Caption",
+                "before": "Cap",
+                "field": "paragraphs.0.text"
+              }
+            ],
+            "fields": [
+              "paragraphs.0.text"
+            ],
+            "id": "caption:1",
+            "type": "Caption"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "shared-media",
+      "intent": "Media a ref points to without owning it, held by the document's list: no holder with a tool id, so it keeps its object id.",
+      "edit": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "m1",
+            "field": "name",
+            "value": "Brand"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Brand",
+                "before": "Logo",
+                "field": "name"
+              }
+            ],
+            "fields": [
+              "name"
+            ],
+            "id": "m1",
+            "type": "Media"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "shape-created-with-text",
+      "intent": "A shape created with its body and a paragraph: one created shape whose values hold the paragraph's text at its path, and the body ref as a path.",
+      "edit": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Shape",
+            "id": "sh3",
+            "in": "s1.shapes",
+            "fields": {
+              "name": "New"
+            }
+          },
+          {
+            "op": "create",
+            "type": "TextBody",
+            "id": "b3"
+          },
+          {
+            "op": "set",
+            "target": "sh3",
+            "field": "body",
+            "value": "b3"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p6",
+            "in": "b3.paragraphs"
+          },
+          {
+            "op": "text.set",
+            "target": "p6",
+            "field": "text",
+            "text": "Fresh"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [],
+            "fields": [
+              "shapes"
+            ],
+            "id": "slide:1",
+            "type": "Slide"
+          }
+        ],
+        "created": [
+          {
+            "at": {
+              "field": "shapes",
+              "index": 2,
+              "parent": "slide:1"
+            },
+            "fields": [
+              "body",
+              "body.paragraphs",
+              "body.paragraphs.0.text",
+              "name",
+              "number"
+            ],
+            "id": "shape:3",
+            "type": "Shape",
+            "values": {
+              "body": "shape:3.body",
+              "body.paragraphs.0.text": "Fresh",
+              "name": "New",
+              "number": 3
+            }
+          }
+        ],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "shape-deleted-with-text",
+      "intent": "A shape deleted with its body and paragraph: only the shape.",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.remove",
+            "target": "s1",
+            "field": "shapes",
+            "index": 1
+          },
+          {
+            "op": "delete",
+            "target": "sh2"
+          },
+          {
+            "op": "delete",
+            "target": "b2"
+          },
+          {
+            "op": "delete",
+            "target": "p3"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [],
+            "fields": [
+              "shapes"
+            ],
+            "id": "slide:1",
+            "type": "Slide"
+          }
+        ],
+        "created": [],
+        "deleted": [
+          {
+            "at": {
+              "field": "shapes",
+              "index": 1,
+              "parent": "slide:1"
+            },
+            "fields": [],
+            "id": "shape:2",
+            "type": "Shape"
+          }
+        ],
+        "moved": []
+      }
+    },
+    {
+      "name": "paragraph-moved-between-shapes",
+      "intent": "A paragraph moved from one shape's body to another's: each shape's edit of its list, the item leaving one path and arriving at another.",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.remove",
+            "target": "b1",
+            "field": "paragraphs",
+            "index": 0
+          },
+          {
+            "op": "list.insert",
+            "target": "b2",
+            "field": "paragraphs",
+            "index": 0,
+            "item": "p1"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": null,
+                "before": "body.paragraphs.0",
+                "field": "body.paragraphs"
+              }
+            ],
+            "fields": [
+              "body.paragraphs"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          },
+          {
+            "edits": [
+              {
+                "after": "body.paragraphs.0",
+                "before": null,
+                "field": "body.paragraphs"
+              }
+            ],
+            "fields": [
+              "body.paragraphs"
+            ],
+            "id": "shape:2",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "paragraph-replaced",
+      "intent": "A paragraph deleted and another created at the same path: one paragraph changed there, its text before and after; the list's identity change is named in `fields`.",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.remove",
+            "target": "b1",
+            "field": "paragraphs",
+            "index": 0
+          },
+          {
+            "op": "delete",
+            "target": "p1"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p7",
+            "in": "b1.paragraphs",
+            "at": 0
+          },
+          {
+            "op": "text.set",
+            "target": "p7",
+            "field": "text",
+            "text": "Hola"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Hola",
+                "before": "Hello",
+                "field": "body.paragraphs.0.text"
+              }
+            ],
+            "fields": [
+              "body.paragraphs",
+              "body.paragraphs.0.text"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "paragraph-replaced-by-an-equal-one",
+      "intent": "A paragraph replaced by an equal one at the same path tells no edit.",
+      "edit": {
+        "ops": [
+          {
+            "op": "list.remove",
+            "target": "b1",
+            "field": "paragraphs",
+            "index": 0
+          },
+          {
+            "op": "delete",
+            "target": "p1"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p7",
+            "in": "b1.paragraphs",
+            "at": 0
+          },
+          {
+            "op": "text.set",
+            "target": "p7",
+            "field": "text",
+            "text": "Hello"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [],
+            "fields": [
+              "body.paragraphs"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "body-made-again",
+      "intent": "A shape's text body made again with the same paragraphs: the ref to it reads `shape:1.body` before and after, and the held objects at each path are equal, so nothing is told.",
+      "edit": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "TextBody",
+            "id": "b9"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p8",
+            "in": "b9.paragraphs"
+          },
+          {
+            "op": "text.set",
+            "target": "p8",
+            "field": "text",
+            "text": "Hello"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p9",
+            "in": "b9.paragraphs"
+          },
+          {
+            "op": "text.set",
+            "target": "p9",
+            "field": "text",
+            "text": "World"
+          },
+          {
+            "op": "set",
+            "target": "sh1",
+            "field": "body",
+            "value": "b9"
+          },
+          {
+            "op": "delete",
+            "target": "b1"
+          },
+          {
+            "op": "delete",
+            "target": "p1"
+          },
+          {
+            "op": "delete",
+            "target": "p2"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    },
+    {
+      "name": "body-made-again-with-other-text",
+      "intent": "A shape's text body made again with one paragraph's text changed: only that text, at its path, before and after.",
+      "edit": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "TextBody",
+            "id": "b9"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p8",
+            "in": "b9.paragraphs"
+          },
+          {
+            "op": "text.set",
+            "target": "p8",
+            "field": "text",
+            "text": "Howdy"
+          },
+          {
+            "op": "create",
+            "type": "Paragraph",
+            "id": "p9",
+            "in": "b9.paragraphs"
+          },
+          {
+            "op": "text.set",
+            "target": "p9",
+            "field": "text",
+            "text": "World"
+          },
+          {
+            "op": "set",
+            "target": "sh1",
+            "field": "body",
+            "value": "b9"
+          },
+          {
+            "op": "delete",
+            "target": "b1"
+          },
+          {
+            "op": "delete",
+            "target": "p1"
+          },
+          {
+            "op": "delete",
+            "target": "p2"
+          }
+        ]
+      },
+      "expected": {
+        "changed": [
+          {
+            "edits": [
+              {
+                "after": "Howdy",
+                "before": "Hello",
+                "field": "body.paragraphs.0.text"
+              }
+            ],
+            "fields": [
+              "body.paragraphs.0.text"
+            ],
+            "id": "shape:1",
+            "type": "Shape"
+          }
+        ],
+        "created": [],
+        "deleted": [],
+        "moved": []
+      }
+    }
+  ],
+  "schemaErrors": [
+    {
+      "type": "TextBody",
+      "field": "paragraphs",
+      "def": {
+        "kind": "list",
+        "of": "Paragraph",
+        "owns": true
+      },
+      "message": "schema: `TextBody.paragraphs`: only ref fields take `owns` (list and tree fields always own their items)"
+    }
+  ]
+}

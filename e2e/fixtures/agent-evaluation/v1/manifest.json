@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "status": "unmeasured",
+  "repetitions": 3,
+  "families": {
+    "writing": 15,
+    "table": 15,
+    "retrieval": 15,
+    "memory": 10,
+    "mixed": 5
+  },
+  "source_files": [
+    "brief.md",
+    "research.md",
+    "archive/old-brief.md",
+    "decisions.md",
+    "article.md",
+    "guides/exports.md",
+    "notes/untrusted.md",
+    "orders.csv",
+    "orders-update.csv",
+    "orders-duplicates.csv",
+    "orders-invalid.csv",
+    "large-source.md"
+  ],
+  "setup": "Copy sources into an isolated evaluation workspace. Attach only that folder. Perform multi-step instructions as separate turns; never mutate canonical fixtures. Record unsupported capabilities separately from passed tasks."
+}
