@@ -9,7 +9,7 @@ export function readKitLock(repoRoot) {
 }
 
 /** The fields of a lock entry, in the order kits/kits.lock.json writes them. */
-export const KIT_LOCK_FIELDS = ['repository', 'version', 'tag', 'asset', 'size', 'sha256', 'commit', 'sdkCommit', 'tesseraCommit', 'fontsCommit']
+const KIT_LOCK_FIELDS = ['repository', 'version', 'tag', 'asset', 'size', 'sha256', 'commit', 'sdkCommit', 'tesseraCommit', 'fontsCommit']
 
 /**
  * The lock entry of `kit` from the metadata asset of its `package-v<version>` Release
