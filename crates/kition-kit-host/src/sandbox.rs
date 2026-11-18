@@ -528,6 +528,7 @@ mod tests {
     }
 
     /// The profile's line that starts with `start`, which must be there once.
+    #[cfg(unix)]
     fn line<'a>(profile: &'a str, start: &str) -> &'a str {
         let lines: Vec<&str> = profile.lines().filter(|line| line.starts_with(start)).collect();
         assert_eq!(lines.len(), 1, "{start} once in:\n{profile}");
@@ -535,6 +536,7 @@ mod tests {
     }
 
     /// Every line is one balanced form: parentheses outside string literals close in order.
+    #[cfg(unix)]
     fn balanced(profile: &str) {
         for line in profile.lines() {
             let (mut depth, mut in_string, mut escaped) = (0i32, false, false);
@@ -556,7 +558,9 @@ mod tests {
 
     /// macOS: the profile denies everything by default and allows only the kit's own: the
     /// system's files and its package read, its private folder and endpoint's folder written, Unix
-    /// sockets only there, and never the network or a workspace it was not given.
+    /// sockets only there, and never the network or a workspace it was not given. The sample paths
+    /// are POSIX paths, absolute only where the profile is used.
+    #[cfg(unix)]
     #[test]
     fn the_darwin_profile_denies_by_default_and_names_only_the_kits_folders() {
         let profile = darwin_profile(&sample(None)).unwrap();
@@ -614,6 +618,7 @@ mod tests {
     }
 
     /// A workspace the host gives is read and written; one it does not give appears nowhere.
+    #[cfg(unix)]
     #[test]
     fn the_darwin_profile_names_a_workspace_only_when_given() {
         let without = darwin_profile(&sample(None)).unwrap();
@@ -626,6 +631,7 @@ mod tests {
 
     /// A path a profile cannot hold, a relative one, and a profile without the kit's executable
     /// (which would allow starting any program) are refused, never written loosely.
+    #[cfg(unix)]
     #[test]
     fn the_darwin_profile_refuses_what_it_cannot_name() {
         let mut quote = sample(None);

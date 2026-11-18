@@ -623,6 +623,9 @@ impl KitManager {
     }
 
     pub(crate) async fn in_document<F: std::future::Future>(&self, key: Option<String>, future: F) -> F::Output {
+        // On the heap: a document call's future is large, and held inline in each branch below it
+        // took several times its size on the stack of whatever polls it.
+        let future = Box::pin(future);
         match key {
             Some(key) if crate::control::DOCUMENT.try_with(|held| held == &key).unwrap_or(false) => future.await,
             Some(key) => {
