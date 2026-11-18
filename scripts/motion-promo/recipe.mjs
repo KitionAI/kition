@@ -21,10 +21,12 @@ export function productLaunch({ width = 1920, height = 1080, frameRate = 24 } = 
     for (const [time, value] of [[start, 0], [start + 0.35, 100], [scene.end - 0.3, 100], [scene.end, scene.id === 'closing' ? 100 : 0]]) {
       push(scene, 'prop.addKey', { layer: name, path: 'transform/opacity', time, value })
     }
-    for (const [time, value] of [[start, [x * scale, (y + 20) * scale, 0]], [start + 0.6, [x * scale, y * scale, 0]]]) {
+    const moves = [[start, [x * scale, (y + 20) * scale, 0]], [start + 0.6, [x * scale, y * scale, 0]]]
+    for (const [time, value] of moves) {
       push(scene, 'prop.addKey', { layer: name, path: 'transform/position', time, value })
     }
-    push(scene, 'prop.select', { layer: name, path: 'transform/position' })
+    // Keyframes have no ids: a run selects them by layer, property and time (the Motion kit's agent guide).
+    push(scene, 'keys.select', { keys: moves.map(([time]) => ({ layer: name, path: 'transform/position', time })) })
     push(scene, 'keys.easyEase', {})
   }
   function shape(scene, suffix, x, y, w, h, fill, { delay = 0, kind = 'rounded', radius = 12 } = {}) {
@@ -93,8 +95,13 @@ export function productLaunch({ width = 1920, height = 1080, frameRate = 24 } = 
 export function toolCalls(recipe, documentPath) {
   const calls = []
   for (const [scene, steps] of [['setup', recipe.setup], ...recipe.scenes.map(scene => [scene.id, scene.steps])]) {
-    for (let offset = 0; offset < steps.length; offset += 50) {
-      calls.push({ scene, tool: 'motion_run', arguments: { path: documentPath, steps: steps.slice(offset, offset + 50), save: true } })
+    // At most 50 steps a run. A run puts the selection back when it ends, so a keys.select stays in
+    // the run of the step that acts on the keyframes it selects.
+    for (let offset = 0; offset < steps.length;) {
+      let end = Math.min(offset + 50, steps.length)
+      if (end < steps.length && steps[end - 1].command === 'keys.select') end -= 1
+      calls.push({ scene, tool: 'motion_run', arguments: { path: documentPath, steps: steps.slice(offset, end), save: true } })
+      offset = end
     }
   }
   return calls

@@ -18,12 +18,14 @@ for (const [orientation, width, height] of [['landscape', 320, 180], ['portrait'
     const recipe = productLaunch({ width, height })
     const calls = toolCalls(recipe, name)
     const blank = sdk.MotionDocument.create(name, recipe.width, recipe.height)
+    // As long as the film, so the person can put the playhead in its closing scene before the agent starts.
+    blank.execute('comp.settings', JSON.stringify({ duration: recipe.duration }))
     const bytes = Buffer.from(blank.save())
     blank.free()
     const posted: Array<{ id?: number; result?: Record<string, unknown>; error?: unknown }> = []
     let release = () => {}
     const released = new Promise<void>(resolve => { release = resolve })
-    const previewBefore = calls.length + 2
+    const previewBefore = calls.length + 1
     const revision = previewBefore + 1
     const previewAfter = revision + 1
     const messages = [
@@ -32,7 +34,6 @@ for (const [orientation, width, height] of [['landscape', 320, 180], ['portrait'
         jsonrpc: '2.0', id: index + 1, method: 'kit/call',
         params: { path: name, kit: 'kit.motion', tool: 'run', arguments: call.arguments },
       })),
-      { jsonrpc: '2.0', id: calls.length + 1, method: 'kit/call', params: { path: name, kit: 'kit.motion', tool: 'run', arguments: { steps: [{ command: 'time.set', params: { time: 10.5 } }], save: false } } },
       { jsonrpc: '2.0', id: previewBefore, method: 'kit/preview', params: { path: name, maxSize: 320 } },
       { jsonrpc: '2.0', id: revision, method: 'kit/call', params: { path: name, kit: 'kit.motion', tool: 'run', arguments: {
         steps: [{ command: 'layer.setText', params: { layer: 'promo.closing.headline', text: 'Make your next move.' } }], save: true,
@@ -56,6 +57,11 @@ for (const [orientation, width, height] of [['landscape', 320, 180], ['portrait'
     })
     try {
       await expect(kit.getByTestId('motion-status')).toContainText('0 layers', { timeout: 60_000 })
+      // The person watches the closing scene (10.5 s of 12): an agent's run leaves the editor's
+      // current time where it was (the Motion kit's agent guide), so the previews show that scene.
+      const ruler = (await kit.getByTestId('motion-ruler').boundingBox())!
+      await page.mouse.click(ruler.x + ruler.width * (10.5 / recipe.duration), ruler.y + ruler.height / 2)
+      await expect(kit.getByTestId('motion-timecode')).toHaveText(/^0:00:10:/)
       release()
       const answer = async (id: number) => {
         await expect.poll(() => posted.find(message => message.id === id), { timeout: 60_000 }).toBeTruthy()
