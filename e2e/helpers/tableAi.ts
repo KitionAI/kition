@@ -83,7 +83,7 @@ export function promptText(request: Record<string, any>) {
 }
 
 export const recordCount = (kit: FrameLocator) => kit.locator('.data-inline-footer')
-const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
 
 /** Opens the record menu on the grid's `row`th row (0 is the first). */
 export async function recordMenu(kit: FrameLocator, row = 0) {

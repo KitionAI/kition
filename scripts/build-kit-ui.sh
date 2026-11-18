@@ -46,6 +46,12 @@ if [[ "${2:-}" == "--ui-only" ]]; then
 else
   pnpm --dir "$web" run engine
 fi
+# The faces a kit's editor and engine draw with go into the package (UI-K1: self-contained), when
+# the kit has a `fonts` script: it copies them from the kition-fonts checkout beside the kit
+# repository (KITION_FONTS_DIR to use another path) into web/public/fonts/, checked by hash.
+if [[ -n "$(node -p "require('$web/package.json').scripts?.fonts ?? ''")" ]]; then
+  KITION_FONTS_DIR="${KITION_FONTS_DIR:-$kit_repo/../kition-fonts}" pnpm --dir "$web" run fonts
+fi
 # The editor: web/package.json's `build` (`tsc --noEmit && vite build`), with Vite run through
 # scripts/build-kit-editor.mjs so the build records the npm packages its bundles contain.
 build_script="$(node -p "require('$web/package.json').scripts?.build ?? ''")"

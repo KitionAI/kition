@@ -20,7 +20,7 @@ async function firstRowButtons(kit: FrameLocator) {
 
 /** Scrolls the grid to its last (`dx` > 0) or first columns and waits until it stops moving. */
 async function scrollGrid(page: Page, kit: FrameLocator, dx: number) {
-  const stage = kit.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+  const stage = kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
   const box = (await stage.boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.wheel(dx, 0)

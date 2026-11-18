@@ -54,7 +54,7 @@ async function recordsOf(bytes: Buffer) {
 }
 
 const footer = (kit: FrameLocator) => kit.locator('.data-inline-footer')
-const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
 
 /** Duplicates the grid's first record from its menu. */
 async function duplicateFirst(kit: FrameLocator) {

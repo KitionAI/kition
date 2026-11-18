@@ -75,7 +75,7 @@ async function serveKitTables(page: Page) {
 }
 
 const records = (kit: FrameLocator) => kit.locator('.data-inline-footer')
-const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
 
 /** Opens the record menu on the grid's first row. */
 async function recordMenu(kit: FrameLocator) {
