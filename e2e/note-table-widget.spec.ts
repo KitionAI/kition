@@ -233,7 +233,11 @@ test('ArrowDown stays inside the cell when the caret is on the first visual line
   const first = await cell(kit, 1, 0)
   await page.mouse.click(first.x, first.y)
   await page.keyboard.press('End')
-  await page.keyboard.type(' ' + 'a'.repeat(300))
+  // The long text goes in as one input (as a paste or an input method commits it): typed key by
+  // key, each of the 301 keys is its own engine event, and on a loaded runner the engine was
+  // still working through them when the check below gave up (it read 22 of them when typing
+  // ended, then about 60 a second).
+  await page.keyboard.insertText(' ' + 'a'.repeat(300))
   await expect.poll(() => noteText(page)).toContain('a'.repeat(300))
 
   // From the cell's start, ArrowDown moves to the cell's second line, not to the next row.
