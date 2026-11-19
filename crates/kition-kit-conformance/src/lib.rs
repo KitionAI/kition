@@ -1174,6 +1174,15 @@ mod tests {
             "ui": { "mode": "embedded", "entry": "ui/index.html", "layout": "canvas" }
         });
         schemas.kit(&manifest).unwrap_or_else(|err| panic!("{err}"));
+        // The editor state the engine reports (kition-sdk platform K23).
+        manifest["engine"]["editorState"] = json!(["/view", "selected"]);
+        schemas.kit(&manifest).unwrap_or_else(|err| panic!("{err}"));
+        manifest["engine"]["editorState"] = json!(["view/zoom"]);
+        assert!(
+            schemas.kit(&manifest).is_err(),
+            "an editor-state entry is a JSON Pointer or a name"
+        );
+        manifest["engine"]["editorState"] = json!([]);
         manifest["ui"].as_object_mut().map(|ui| ui.remove("entry"));
         assert!(
             schemas.kit(&manifest).is_err(),

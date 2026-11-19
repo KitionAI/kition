@@ -89,6 +89,15 @@
         },
         "crate": {
           "type": "string"
+        },
+        "editorState": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(/([^~/]|~[01])*)+$|^[^/]+$"
+          },
+          "description": "The editor state the engine's inspect() reports (platform K23): a JSON Pointer (/selection, /view/zoom) for a place that is the editing session (the selection, the current part, the view, the playhead), or a name for a key that is editor state wherever it is. Exactly the list the engine gives kition-headless as its volatile keys and testing::check_context; [] for an engine that reports none. Hosts read inspect() without them as the document (kition_kit::document_content)."
         }
       }
     },

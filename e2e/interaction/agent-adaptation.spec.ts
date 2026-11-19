@@ -4,6 +4,7 @@ import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { mockDocumentBridge } from '../helpers/documentBridge'
 import { kitEngine, openInKitFrame } from '../helpers/embeddedKit'
+import { declaredEditorState, documentContent } from '../../src/features/kits/kition/editorState'
 
 type Step = { command: string; params?: Record<string, unknown> }
 type Entry = { module: string; class: string; name: string; edit: Step | Step[] }
@@ -109,9 +110,18 @@ for (const [id, entry] of Object.entries(registry).filter(([id]) => !id.startsWi
         const draft = result(await call('run', { steps: [draftStep], draft: true, save: true }))
         expect(draft.completed).toEqual([expect.objectContaining({ command: step.command, changed: true })])
         expect(draft.saved).toBe(false)
-        // Opening the draft bar resizes Note's viewport, changing its revision and size summary.
-        // Every engine detail, undo/redo state and dirty flag must still match the live file.
-        const content = ({ revision: _revision, summary: _summary, ...state }: Record<string, unknown>) => state
+        // A draft leaves the live document as it was (Kit UI protocol section 7d): its content, the
+        // details without the editor state the kit's manifest declares (engine.editorState), and its
+        // undo/redo state and dirty flag. Opening the draft bar resizes the canvas, which moves editor
+        // state that follows it (cad's view); a package whose manifest declares none is compared whole.
+        // Note's engine still counts a viewport resize as a revision and reports the viewport as its
+        // size, so its revision and size summary move with the draft bar; every other kit keeps both.
+        const editorState = declaredEditorState(manifest) ?? []
+        const content = ({ revision, summary, details, ...state }: Record<string, unknown>) => ({
+          ...state,
+          ...(id === 'note' ? {} : { revision, summary }),
+          details: documentContent(details, editorState),
+        })
         expect(content(await inspect())).toEqual(content(beforeDraft))
         expect(saves).toHaveLength(1)
         expect(await fs.readFile(path.join(host.root, entry.name))).toEqual(bytes)

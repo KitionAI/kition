@@ -1,0 +1,26 @@
+format: 1
+id: regressions/issue-inspect-editor-state
+feature: kition.agent.kit-adaptation
+intent: >-
+  The in-page agent bridge handed the agent a kit's whole inspect() as the document, editor state
+  included (cad's view, which follows the canvas), and the draft check of
+  e2e/interaction/agent-adaptation.spec.ts failed for cad when the draft bar resized it. The agent
+  now reads ai/inspect's details without the editor state the kit's manifest declares
+  (kit.json engine.editorState, kition-sdk platform K23) and without the session's bookkeeping, as
+  a headless kit's view.describe answers it; a package whose manifest declares none is read whole,
+  as before. The draft check compares the same content.
+layer: gate
+source:
+  kind: issue
+  from: e2e/interaction/agent-adaptation.spec.ts (cad, view.height 378.36 to 372.31)
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, src/features/kits/kition/editorState.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-19"
+timeout_s: 60

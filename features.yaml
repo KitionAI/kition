@@ -62,6 +62,9 @@ features:
       - e2e/interaction/agent-adaptation.spec.ts
       - src/features/kits/kition/kitBridge.ts
       - src/features/kits/kition/kitBridgeModel.ts
+      - src/features/kits/kition/editorState.ts
+      - src/features/kits/kition/editorState.spec.ts
+      - src/features/kits/kition/KitFrame.tsx
       - kits/modules.json
       - scripts/check-kit-module.mjs
       - scripts/lib/kitParameterSchema.mjs
@@ -71,6 +74,7 @@ features:
       - kition.agent.kit-adaptation/note
       - kition.agent.kit-adaptation/all-kits
       - regressions/issue-agent-file-schema
+      - regressions/issue-inspect-editor-state
     since: "2026-10-31"
   - id: kition.kits.html-preview
     title: HTML previews run canvas interactions after the edited source is ready

@@ -14,6 +14,7 @@ import { mountKit, type KitConnection, type KitHostHandlers, type KitLinksPickPa
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
+import { agentInspect, kitEditorState } from './editorState'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
 import { bridgeModel } from './kitBridgeModel'
 import { setKitDraft } from './kitDrafts'
@@ -427,12 +428,15 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           setConnection(mounted)
           return
         }
+        // The agent reads the document without the editor state the kit's manifest declares, as
+        // on the headless path (Kit UI protocol `ai/inspect`, platform K23).
+        const editorState = kitEditorState(kit.dir)
         const withdrawEditor = registerBridgeEditor({
           path,
           kitId: kit.kitId,
           revision: () => state.revision,
           dirty: () => state.dirty,
-          inspect: async (options) => (await mounted!.ai.inspect(options)) as never,
+          inspect: async (options) => agentInspect(await mounted!.ai.inspect(options), await editorState) as never,
           commands: async (query) => (await mounted!.ai.commands(query)) as never,
           run: async (steps, save, options) => (await mounted!.ai.run(steps, save, options)) as never,
           preview: async (maxSize, options) => (await mounted!.ai.preview(maxSize, options)).png,
