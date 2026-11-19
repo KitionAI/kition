@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test'
 
 import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
-import { dismissFirstRunActivation } from './helpers/onboarding'
 
 test('desktop shortcuts keep select-all in inputs', async ({ page, baseURL }) => {
   test.setTimeout(60_000)
@@ -12,7 +11,12 @@ test('desktop shortcuts keep select-all in inputs', async ({ page, baseURL }) =>
     await mockLocalWorkspaceApi(page)
     await page.goto(new URL('/settings?section=providers', baseURL as string).toString(), { waitUntil: 'commit' })
     await page.waitForLoadState('domcontentloaded')
-    await dismissFirstRunActivation(page)
+    // The mocked workspace is empty, so its first run seeds the guide and then opens activation
+    // over the page, a second or two in. It is skipped once it is there: opened later, between
+    // select-all and typing, it takes the focus and the typed text goes in front of the old key.
+    const activation = page.getByTestId('first-run-activation')
+    await activation.getByRole('button', { name: 'Skip for now' }).click()
+    await expect(activation).toHaveCount(0)
     // Native input editing follows the host operating system.
     await page.getByRole('button', { name: /OpenAI/ }).click()
     const providerInput = page.getByLabel('API key').first()
