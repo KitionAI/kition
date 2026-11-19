@@ -48,7 +48,7 @@ class MarkTests(unittest.TestCase):
                 self.assertRegex(colour, HEX)
             self.assertLess(palette.slot_opacity, .25)
 
-    def test_app_icon_uses_the_kit_icon_tile(self):
+    def test_in_app_tile_uses_the_kit_icon_tile(self):
         icon = mark.flat_icon_svg()
         self.assertIn(kit_icons.tile_svg('#5645d4'), icon)
         self.assertIn('fill="#e4e1f8"', icon)
@@ -71,6 +71,41 @@ class MarkTests(unittest.TestCase):
     def test_small_cut_has_no_slots(self):
         self.assertNotIn('fill-opacity', mark.small_icon_svg())
 
+    def test_desktop_icon_touch_icon_and_favicons_sit_on_the_dark_tile(self):
+        self.assertEqual(mark.APP.tile, '#17142e')
+        self.assertEqual((mark.APP.palette.stem, mark.APP.palette.keys), (mark.DARK.stem, mark.DARK.keys))
+        dark = mark._rgba(mark.APP.tile)
+        self.assertEqual(mark.app_icon(256).getpixel((128, 60)), dark)
+        self.assertEqual(mark.icon_tile(180, square=True, surface=mark.APP).getpixel((0, 0)), dark)
+        self.assertEqual(mark.small_icon_png(32).getpixel((17, 8)), dark)
+        self.assertIn(f'fill="{mark.APP.tile}"', mark.small_icon_svg())
+        # The in-app tile stays on the kit-icon tile.
+        self.assertEqual(mark.icon_tile(256).getpixel((128, 30)), mark._rgba(mark.TILE))
+        # Stem and keys stand out from the dark tile.
+        for colour in (mark.APP.palette.stem, *mark.APP.palette.keys):
+            self.assertGreaterEqual(_contrast(colour, mark.APP.tile), 4.5, colour)
+
+    def test_macos_icon_is_the_bare_dark_tile_with_a_flat_mark(self):
+        files = mark.icon_composer_icon()
+        self.assertEqual(set(files), {'icon.json', 'Assets/mark.svg'})
+        doc = json.loads(files['icon.json'])
+        # macOS draws the squircle, its edge and its shadow; a rim baked into the icon drew a
+        # second edge inside the system's, a tile within a tile.
+        self.assertEqual(doc['fill'], {'solid': 'srgb:0.09020,0.07843,0.18039,1.00000'})
+        [group] = doc['groups']
+        self.assertEqual(group['layers'], [{'image-name': 'mark.svg', 'name': 'mark', 'glass': False}])
+        self.assertFalse(group['specular'])
+        self.assertEqual(group['shadow']['kind'], 'none')
+        self.assertFalse(group['translucency']['enabled'])
+        layer = files['Assets/mark.svg']
+        self.assertIn('viewBox="0 0 1024 1024"', layer)
+        # The 256 master at 4x: the stem, a key in its dark-surface hue and a slot.
+        self.assertIn('<rect x="232" y="208" width="176" height="608" rx="36" fill="#8b7cf0"/>', layer)
+        self.assertIn(f'fill="{mark.APP.palette.keys[0]}"', layer)
+        self.assertIn('fill-opacity="0.22"', layer)
+        self.assertNotIn('stroke', layer)
+        self.assertNotIn(mark.APP.tile, layer)
+
     def test_small_cut_sits_on_whole_pixels(self):
         for size in mark.SMALL:
             stem, keys = mark.small_cells(size)
@@ -88,7 +123,7 @@ class MarkTests(unittest.TestCase):
     def test_app_icon_sizes(self):
         self.assertEqual(mark.icon_tile(256).size, (256, 256))
         self.assertEqual(mark.icon_tile(256).getpixel((0, 0))[3], 0)
-        touch = mark.icon_tile(180, square=True)
+        touch = mark.icon_tile(180, square=True, surface=mark.APP)
         self.assertEqual(touch.size, (180, 180))
         self.assertEqual(touch.getpixel((0, 0))[3], 255)
         icon = mark.app_icon(256)

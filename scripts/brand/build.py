@@ -5,8 +5,9 @@
     scripts/brand/.venv/bin/python scripts/brand/build.py
     scripts/brand/.venv/bin/python scripts/brand/build.py --kits   kit icons and kit colors only
 
-Writes public/brand, public/kit-icons, the logo PNGs, and src-tauri/icons
-(through `pnpm tauri icon`). Requires node_modules for the Inter font.
+Writes public/brand, public/kit-icons, the logo PNGs, and src-tauri/icons (through
+`pnpm tauri icon`, plus the Icon Composer `icon.icon` for macOS 26 and later). Requires
+node_modules for the Inter font.
 """
 import shutil
 import subprocess
@@ -57,7 +58,10 @@ def main():
         save(tile, ROOT / target)
     save(mark.small_icon_png(32), ROOT / 'public/favicon.png')
     save(mark.small_icon_png(16), ROOT / 'public/favicon-16.png')
-    save(mark.icon_tile(180, square=True), ROOT / 'public/brand/kition-apple-touch-icon.png')
+    save(mark.icon_tile(180, square=True, surface=mark.APP), ROOT / 'public/brand/kition-apple-touch-icon.png')
+
+    for name, text in mark.icon_composer_icon().items():
+        write(ROOT / 'src-tauri/icons/icon.icon' / name, text)
 
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / 'app-icon.png'

@@ -1,8 +1,9 @@
-"""The Kition mark: a mosaic K on the kit-icon tile (docs/design.md, Brand marks and kit icons).
+"""The Kition mark: a mosaic K on a tile (docs/design.md, Brand marks and kit icons).
 
 A K on a 3x3 grid: a full-height stem in Kition purple, three keys in kit hues (Layout pink,
 Photo cyan, Slide orange) and the three unused cells as faint purple slots, which make the mosaic.
 """
+import json
 from dataclasses import dataclass
 
 from PIL import Image, ImageDraw, ImageFilter
@@ -29,13 +30,29 @@ class Palette:
     slot_opacity: float
 
 
-# On the pastel tile (the app icon).
+# On the pastel tile (the in-app mark).
 ICON = Palette(PRIMARY, tuple(_KITS[k].hue for _, k in KEYS), PRIMARY, .16)
 # Without a tile on white and light surfaces.
 LIGHT = Palette(PRIMARY, ICON.keys, PRIMARY, .14)
 # Without a tile on dark surfaces: Kition purple and the kits' dark-theme hues.
 DARK = Palette(_KITS['note'].brand_dark, tuple(_KITS[k].brand_dark for _, k in KEYS), _KITS['note'].brand_dark, .2)
 TILE = kit_icons.tint(PRIMARY, kit_icons.TILE_TINT)
+
+
+@dataclass(frozen=True)
+class Surface:
+    """A tile the mark sits on: its fill, its rim, and the mark's palette on it."""
+    tile: str
+    rim: str
+    rim_opacity: float
+    palette: Palette
+
+
+# The kit-icon tile: the in-app mark, next to the kit icons on white surfaces.
+SOFT = Surface(TILE, PRIMARY, float(kit_icons.TILE_STROKE_OPACITY), ICON)
+# The dark tile: the desktop icon, the touch icon and the favicons, which sit on wallpapers,
+# docks and tab strips where the pastel tile washes out.
+APP = Surface('#17142e', DARK.stem, .28, Palette(DARK.stem, DARK.keys, DARK.stem, .22))
 WORDMARK_LIGHT = '#17171b'
 WORDMARK_DARK = '#ffffff'
 
@@ -85,8 +102,9 @@ def small_icon_svg():
     stem, keys = small_cells(16)
     body = ('<rect width="16" height="16" rx="3.75" fill="{tile}"/>'
             '<rect x=".5" y=".5" width="15" height="15" rx="3.25" fill="none" stroke="{hue}" stroke-opacity=".3"/>'
-            ).format(tile=TILE, hue=PRIMARY)
-    body += _rect(*stem, .6, ICON.stem) + ''.join(_rect(*k, .6, c) for k, c in zip(keys, ICON.keys))
+            ).format(tile=APP.tile, hue=APP.rim)
+    palette = APP.palette
+    body += _rect(*stem, .6, palette.stem) + ''.join(_rect(*k, .6, c) for k, c in zip(keys, palette.keys))
     return svg(body, view_box='0 0 16 16')
 
 
@@ -120,17 +138,19 @@ def _rgba(hex_colour, opacity=1.0):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (round(opacity * 255),)
 
 
-def _draw_tile(size, scale, stroke_width=3, stroke_opacity=float(kit_icons.TILE_STROKE_OPACITY)):
-    """The pastel tile at `size` px, drawn `scale` times larger for anti-aliasing."""
+def _draw_tile(surface, size, scale, stroke_width=3, stroke_opacity=None):
+    """The surface's tile at `size` px, drawn `scale` times larger for anti-aliasing."""
+    if stroke_opacity is None:
+        stroke_opacity = surface.rim_opacity
     big = size * scale
     k = big / 256
     tile = Image.new('RGBA', (big, big), (0, 0, 0, 0))
-    ImageDraw.Draw(tile).rounded_rectangle([0, 0, big - 1, big - 1], radius=kit_icons.TILE_RADIUS * k, fill=_rgba(TILE))
+    ImageDraw.Draw(tile).rounded_rectangle([0, 0, big - 1, big - 1], radius=kit_icons.TILE_RADIUS * k, fill=_rgba(surface.tile))
     rim = Image.new('RGBA', (big, big), (0, 0, 0, 0))
     inset = stroke_width * k / 2
     ImageDraw.Draw(rim).rounded_rectangle(
         [inset, inset, big - 1 - inset, big - 1 - inset], radius=(kit_icons.TILE_RADIUS - stroke_width / 2) * k,
-        outline=_rgba(PRIMARY, stroke_opacity), width=max(1, round(stroke_width * k)))
+        outline=_rgba(surface.rim, stroke_opacity), width=max(1, round(stroke_width * k)))
     tile.alpha_composite(rim)
     return tile
 
@@ -144,26 +164,27 @@ def _draw_rects(image, rects, unit):
     image.alpha_composite(layer)
 
 
-def icon_tile(size, scale=4, square=False):
-    """The full-bleed app tile: pastel tile with the mosaic K, flat like the kit icons.
+def icon_tile(size, scale=4, square=False, surface=SOFT):
+    """The full-bleed tile with the mosaic K, flat like the kit icons.
 
     `square` fills the whole square with no rim, for platforms that round the corners themselves
     (apple-touch-icon).
     """
-    tile = Image.new('RGBA', (size * scale,) * 2, _rgba(TILE)) if square else _draw_tile(size, scale)
+    tile = Image.new('RGBA', (size * scale,) * 2, _rgba(surface.tile)) if square else _draw_tile(surface, size, scale)
+    palette = surface.palette
     stem, keys, slots = grid_cells()
-    rects = [(*stem, RADIUS, _rgba(ICON.stem))]
-    rects += [(*k, RADIUS, _rgba(c)) for k, c in zip(keys, ICON.keys)]
-    rects += [(*s, RADIUS, _rgba(ICON.slot, ICON.slot_opacity)) for s in slots]
+    rects = [(*stem, RADIUS, _rgba(palette.stem))]
+    rects += [(*k, RADIUS, _rgba(c)) for k, c in zip(keys, palette.keys)]
+    rects += [(*s, RADIUS, _rgba(palette.slot, palette.slot_opacity)) for s in slots]
     _draw_rects(tile, rects, size * scale / 256)
     return tile.resize((size, size), Image.LANCZOS)
 
 
 def app_icon(size=1024):
-    """macOS icon grid: an 824/1024 tile centred on a transparent canvas with a soft shadow."""
+    """macOS icon grid: an 824/1024 dark tile centred on a transparent canvas with a soft shadow."""
     inner = round(size * 824 / 1024)
     offset = (size - inner) // 2
-    tile = icon_tile(inner)
+    tile = icon_tile(inner, surface=APP)
     canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     shadow = Image.new('RGBA', (size, size), (24, 16, 80, 0))
     alpha = Image.new('L', (size, size), 0)
@@ -174,12 +195,41 @@ def app_icon(size=1024):
     return canvas
 
 
+def _composer_colour(hex_colour):
+    return 'srgb:' + ','.join(f'{c / 255:.5f}' for c in _rgba(hex_colour))
+
+
+def icon_composer_icon():
+    """The macOS 26+ app icon as an Icon Composer `.icon` package, {relative path: text}.
+
+    The Tauri bundler compiles it with actool into Assets.car. macOS draws the squircle, its edge
+    and its shadow, so the icon is only the bare dark tile and the flat mark on the 1024 canvas:
+    the rim and shadow of `app_icon` (the icns for older macOS) would draw a second edge inside
+    the system's.
+    """
+    k = 1024 / 256
+    layer = svg(mosaic_svg(APP.palette, CELL * k, GAP * k, RADIUS * k, (ORIGIN[0] * k, ORIGIN[1] * k)),
+                view_box='0 0 1024 1024')
+    doc = {
+        'fill': {'solid': _composer_colour(APP.tile)},
+        'groups': [{
+            'layers': [{'image-name': 'mark.svg', 'name': 'mark', 'glass': False}],
+            'shadow': {'kind': 'none', 'opacity': 0.5},
+            'specular': False,
+            'translucency': {'enabled': False, 'value': 0.5},
+        }],
+        'supported-platforms': {'squares': ['macOS']},
+    }
+    return {'icon.json': json.dumps(doc, indent=2) + '\n', 'Assets/mark.svg': layer}
+
+
 def small_icon_png(size):
-    """The small cut at 16 or 32 px: tile, stem and keys, every key edge on a whole pixel."""
+    """The small cut at 16 or 32 px: dark tile, stem and keys, every key edge on a whole pixel."""
     scale = 8
-    tile = _draw_tile(size, scale, stroke_width=256 / size, stroke_opacity=.3)
+    tile = _draw_tile(APP, size, scale, stroke_width=256 / size, stroke_opacity=.3)
+    palette = APP.palette
     stem, keys = small_cells(size)
-    rects = [(*stem, .6 * size / 16, _rgba(ICON.stem))]
-    rects += [(*k, .6 * size / 16, _rgba(c)) for k, c in zip(keys, ICON.keys)]
+    rects = [(*stem, .6 * size / 16, _rgba(palette.stem))]
+    rects += [(*k, .6 * size / 16, _rgba(c)) for k, c in zip(keys, palette.keys)]
     _draw_rects(tile, rects, scale)
     return tile.resize((size, size), Image.LANCZOS)

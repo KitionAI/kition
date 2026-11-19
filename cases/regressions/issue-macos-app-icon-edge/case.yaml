@@ -1,0 +1,27 @@
+format: 1
+id: regressions/issue-macos-app-icon-edge
+feature: kition.platform.release-checks
+intent: >-
+  On macOS 26 and later the desktop icon showed a tile within a tile: the app carried only the
+  icns, whose tile has a rim and shadow baked in, and the system drew its own edge around it.
+  The bundle now lists the Icon Composer package src-tauri/icons/icon.icon (the bare tile and the
+  flat mark, from scripts/brand/mark.py), which the Tauri bundler compiles into Assets.car with
+  Xcode 26's actool, so the system draws the only edge; the icns stays for older macOS. The
+  desktop asset check requires the package and its layer images, and an official build fails
+  when Kition.app comes out without Assets.car and CFBundleIconName, which the bundler only logs.
+layer: gate
+source:
+  kind: issue
+  from: "desktop icon review 2026-11-18: the installed app icon shows a second edge inside the system's on macOS 27"
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src-tauri/scripts/validate-desktop-assets.spec.ts]
+  - exec:
+      cmd: [node, src-tauri/scripts/validate-desktop-assets.mjs]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-18"

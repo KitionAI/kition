@@ -149,6 +149,10 @@ features:
       - src/app/Shell.tsx
       - src/features/workspace/hooks/useWorkspaceTreeLoader.ts
       - src/features/workspace/hooks/useWorkspaceTreeLoader.spec.tsx
+      - src-tauri/tauri.conf.json
+      - src-tauri/icons/icon.icon/**
+      - src-tauri/scripts/validate-desktop-assets.mjs
+      - src-tauri/scripts/validate-desktop-assets.spec.ts
     cases:
       - regressions/issue-release-unused-export
       - regressions/issue-release-vector-checkout
@@ -165,6 +169,7 @@ features:
       - regressions/issue-about-switches
       - regressions/issue-toast-over-settings
       - regressions/issue-release-kit-manifests
+      - regressions/issue-macos-app-icon-edge
     since: "2026-10-31"
   - id: kition.agent.kit-export
     title: The agent exports a kit document to a new file (KHP A41)

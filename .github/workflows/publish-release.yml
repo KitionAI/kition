@@ -227,6 +227,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/fetch-kits.mjs
 
+      - name: Select Xcode 26 for the macOS app icon
+        # The bundler compiles icons/icon.icon into Assets.car with actool 26 or later; with an
+        # older Xcode it ships only the icns, which macOS 26 and later draw with a second edge.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcode="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)"
+          sudo xcode-select --switch "$xcode/Contents/Developer"
+          actool --version --output-format human-readable-text
+
       - name: Configure macOS signing and notarization
         if: runner.os == 'macOS'
         shell: bash

@@ -12,6 +12,7 @@ import { execFileSync, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { portalBaseURLForBuildIdentity, resolveBuildIdentity } from './build-identity.mjs'
 import { collectArtifacts, describeTarget } from './release-artifacts.mjs'
+import { macAppIconProblems } from './validate-desktop-assets.mjs'
 import { validateDesktopRenderer } from './validate-desktop-renderer.mjs'
 import { kitPackageProblems } from '../../scripts/lib/kitPackages.mjs'
 
@@ -107,9 +108,19 @@ await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', tauriArgs, {
   },
 })
 
+const bundleDir = path.join(appDir, 'target', triple, 'release', 'bundle')
+const macApp = path.join(bundleDir, 'macos', 'Kition.app')
+if (fs.existsSync(macApp)) {
+  const iconProblems = await macAppIconProblems(macApp)
+  if (iconProblems.length && buildIdentity !== 'dev') {
+    throw new Error(`[build] Kition.app lacks the macOS 26 app icon:\n${iconProblems.join('\n')}`)
+  }
+  for (const problem of iconProblems) console.warn(`[build] macOS app icon: ${problem}`)
+}
+
 const version = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8')).version
 const copied = await collectArtifacts({
-  bundleDir: path.join(appDir, 'target', triple, 'release', 'bundle'),
+  bundleDir,
   outputDir,
   version,
   triple,
