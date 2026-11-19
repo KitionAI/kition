@@ -264,7 +264,7 @@ describe('kit-release-assets.mjs', () => {
     fs.mkdirSync(path.join(sdk, 'tools'), { recursive: true })
     fs.mkdirSync(path.join(sdk, 'schemas'))
     fs.writeFileSync(path.join(sdk, 'schemas', 'kits-index.schema.json'), '{}')
-    fs.writeFileSync(path.join(sdk, 'tools', 'release-archives.mjs'), 'export const schemaProblems = (value) => (value.schemaVersion === 1 ? ["/kits/board: refused by the fake checker"] : [])\n')
+    fs.writeFileSync(path.join(sdk, 'tools', 'kits-index.mjs'), 'export const schemaProblems = (value) => (value.schemaVersion === 1 ? ["/kits/board: refused by the fake checker"] : [])\n')
     const out = path.join(work, 'fragment', 'kits-index-board-0.1.0.json')
     const result = run('fragment', '--kit', 'board', '--version', '0.1.0', '--archives', released, '--base-url', '.', '--out', out, '--sdk', sdk)
     expect(result.status).toBe(1)

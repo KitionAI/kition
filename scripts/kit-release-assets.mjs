@@ -37,7 +37,7 @@ const readAssets = (file) => fs.readFileSync(file, 'utf8').split(/\r?\n/).map((l
 
 async function schemaCheck(fragment, sdk) {
   // kition-sdk's own checker of its index schema, so the fragment is checked exactly as an index is.
-  const { schemaProblems } = await import(pathToFileURL(path.resolve(sdk, 'tools', 'release-archives.mjs')).href)
+  const { schemaProblems } = await import(pathToFileURL(path.resolve(sdk, 'tools', 'kits-index.mjs')).href)
   const schema = JSON.parse(fs.readFileSync(path.resolve(sdk, 'schemas', 'kits-index.schema.json'), 'utf8'))
   const problems = schemaProblems(fragment, schema)
   if (problems.length) throw new Error(`the index fragment is not a kit index (kition-sdk schemas/kits-index.schema.json):\n  ${problems.join('\n  ')}`)

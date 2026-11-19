@@ -681,9 +681,7 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
   `tools/kit-handshake.mjs --record`) with its kit.json's id, version and
   protocol before `node scripts/kit-release-assets.mjs pack` packs it as
   `kition-<kit>-<version>-<platform>.tar.gz`: kit.json and the executable
-  (`.exe` on Windows) at its top, packed as kition-sdk's
-  `tools/release-archives.mjs` packs a kit archive, which `kition kit install`
-  unpacks. A platform that fails does not stop the others.
+  (`.exe` on Windows) at its top, which `kition kit install` unpacks. A platform that fails does not stop the others.
 - **The index fragment**: the `publish-headless` job uploads the archives the
   Release lacks (never one it has), and then, if the Release has none yet,
   `kits-index-<kit>-<version>.json`: a kit index (kition-sdk's

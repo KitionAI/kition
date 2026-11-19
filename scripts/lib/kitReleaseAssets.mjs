@@ -5,8 +5,7 @@
 //   kition-<kit>-<version>.json                   its entry for kits/kits.lock.json
 //   kition-<kit>-<version>-<platform>.tar.gz      kit.json and the headless executable
 //                                                 `kition-<kit>` (.exe on Windows) at its top, as
-//                                                 `kition kit install` unpacks it (kition-sdk's
-//                                                 tools/release-archives.mjs packs the same way)
+//                                                 `kition kit install` unpacks it
 //   kits-index-<kit>-<version>.json               a kit index (kition-sdk's
 //                                                 schemas/kits-index.schema.json) holding this kit
 //                                                 version only, with each platform's archive at its
@@ -103,8 +102,7 @@ const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
  * executable `kition-<kit>` (.exe on Windows), and the `handshakes.json` kition-sdk's
  * `tools/kit-handshake.mjs --record` wrote after starting it on that platform. The executable must
  * be the file the handshake was recorded for and must have answered `kit.initialize` with the
- * kit.json's id and version, speaking the protocol its kit.json names (the same checks as
- * kition-sdk's tools/release-archives.mjs `platformKits`).
+ * kit.json's id and version, speaking the protocol its kit.json names.
  */
 function checkHeadlessBuild(kit, platform, dir) {
   if (!PLATFORM_NAMES.includes(platform)) throw new Error(`no platform ${platform} (${PLATFORM_NAMES.join(', ')})`)
@@ -132,8 +130,7 @@ function checkHeadlessBuild(kit, platform, dir) {
 }
 
 /**
- * `<archive>` holding `files` (`{ name, from, mode }`) at its top, packed as kition-sdk's
- * tools/release-archives.mjs packs a kit archive: tar runs in a folder beside the archive and is
+ * `<archive>` holding `files` (`{ name, from, mode }`) at its top: tar runs in a folder beside the archive and is
  * given relative names only (Git for Windows' GNU tar reads `D:\...` as a remote host), without
  * macOS's AppleDouble files.
  */
