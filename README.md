@@ -73,7 +73,7 @@ let it work in a draft that you review before anything changes.
 
 A kit is the editor for one kind of file. Its engine is written in Rust, compiled to WebAssembly
 and run in a Web Worker; the kit draws its own editor inside Kition. The agent drives the same
-engine through the kit's tools, over the [Kit Harness Protocol](https://github.com/kitharness/khp).
+engine through the kit's tools, over the [Kit Harness Protocol](https://github.com/kitharness/kitharness).
 Every kit is open source in its own repository, and the packages Kition ships are pinned in
 [`kits/kits.lock.json`](kits/kits.lock.json).
 
