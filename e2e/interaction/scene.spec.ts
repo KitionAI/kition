@@ -24,10 +24,17 @@ const room = (spheres: number) =>
     for (let index = 0; index < spheres; index += 1) doc.execute('add.uvSphere', JSON.stringify({ name: `Ball ${index + 1}`, location: [3 + index * 2, 0, 1] }))
   })
 
-/** Selects the cube in the middle of the view and duplicates it (Shift+D). */
+/**
+ * Selects the cube in the middle of the view and duplicates it (Shift+D). The cube is in the middle
+ * once the viewport is ready (the document is the viewport's size and its picture shows); until
+ * then the viewport takes no clicks (kition-scene regressions/issue-early-viewport-input), and a
+ * click there would leave the document's own selection to Shift+D.
+ */
 async function duplicateCube(page: Page, kit: FrameLocator) {
+  await expect(kit.getByTestId('scene-viewport')).toHaveAttribute('data-ready', 'true', { timeout: 30_000 })
   const viewport = (await kit.getByTestId('scene-viewport').boundingBox())!
   await page.mouse.click(viewport.x + viewport.width / 2, viewport.y + viewport.height / 2)
+  await expect(kit.locator('[data-testid="scene-outliner-item"][data-name="Cube"]')).toHaveAttribute('data-selected', 'true')
   await page.keyboard.press('Shift+D')
   // Shift+D starts a move of the copy; a click puts it down where it is.
   await page.keyboard.press('Enter')
