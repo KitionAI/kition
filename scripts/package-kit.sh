@@ -8,12 +8,17 @@
 #
 # It runs only in .github/workflows/kit-package.yml, the reusable workflow each kit repository's
 # Package workflow calls; packages are never built on a developer machine. The workflow checks out
-# the kit (the commit it was started on) and kition-sdk, kition-tessera and kition-fonts (main)
-# beside this repository, and sets GH_TOKEN to the kit repository's workflow token. A version is
-# published once: bump `version` in the kit's kit.json to publish a change. Whether it is published
-# is decided from the Release's asset names by scripts/kit-release-assets.mjs plan, as the
-# workflow's plan job decides it: a Release with both assets is left as it is (the run goes on with
-# the headless archives it lacks), and one with only one of them, or neither, is refused.
+# the kit (the commit its plan job chose: the run's, or the draft's target) and kition-sdk,
+# kition-tessera and kition-fonts (main) beside this repository, and sets GH_TOKEN to the kit repository's workflow token. A version is
+# published once: bump `version` in the kit's kit.json to publish a change.
+#
+# It makes the Release a draft, targeting the kit's commit, with the package and its lock entry;
+# the workflow's publish job adds the headless archives and the index fragment and publishes the
+# draft once it holds every asset (on a repository with GitHub's immutable releases, a published
+# Release can gain none). Whether to build is decided from the Release by
+# scripts/kit-release-assets.mjs plan, as the workflow's plan job decides it: a draft that has both
+# files, or a published Release with its .tgz, is left as it is; a draft without both gets both
+# again (a draft is seen by no one); a published Release without its .tgz is refused.
 set -euo pipefail
 kit="${1:?usage: scripts/package-kit.sh <kit>}"
 [[ "${GITHUB_ACTIONS:-}" == true ]] || { echo "scripts/package-kit.sh runs only in the kits' Package workflow (.github/workflows/kit-package.yml)" >&2; exit 2; }
@@ -39,19 +44,38 @@ version="$(node -p "require('$kit_dir/kit.json').version")"
 tag="package-v$version"
 asset="kition-$kit-$version.tgz"
 metadata="kition-$kit-$version.json"
-release_exists() { gh release view "$tag" --repo "$repository" >/dev/null 2>&1; }
-assets_file="$(mktemp)"
+# The Release as it is now: none (empty), or its draft state, target and asset names. gh finds a
+# draft by its tag name too, although the tag exists only once the draft is published.
+release_state() {
+  local error
+  error="$(mktemp)"
+  if gh release view "$tag" --repo "$repository" --json isDraft,isImmutable,targetCommitish,assets > "$1" 2> "$error"; then
+    node -e 'const r = require(process.argv[1]); require("fs").writeFileSync(process.argv[2], r.assets.map((a) => a.name).join("\n") + "\n")' "$1" "$1.assets"
+  elif grep -q 'release not found' "$error"; then
+    rm -f "$1"
+  else
+    cat "$error" >&2
+    exit 1
+  fi
+}
+state_file="$(mktemp)"
+release_state "$state_file"
 plan_args=()
-if gh release view "$tag" --repo "$repository" --json assets --jq '.assets[].name' > "$assets_file" 2> "$assets_file.error"; then
-  plan_args=(--assets "$assets_file")
-elif ! grep -q 'release not found' "$assets_file.error"; then
-  cat "$assets_file.error" >&2
-  exit 1
+draft=false
+if [[ -f "$state_file" ]]; then
+  draft="$(node -p "require('$state_file').isDraft")"
+  plan_args=(--assets "$state_file.assets")
+  if [[ "$draft" == true ]]; then plan_args+=(--draft); fi
+  if [[ "$(node -p "require('$state_file').isImmutable")" == true ]]; then plan_args+=(--immutable); fi
 fi
 package_state="$(node "$repo_root/scripts/kit-release-assets.mjs" plan --kit "$kit" --version "$version" "${plan_args[@]}" | sed -n 's/^package=//p')"
 if [[ "$package_state" == published ]]; then
-  echo "$repository $tag has $asset and $metadata already; they stay as published (bump version in the kit's kit.json to publish a change)"
+  echo "$repository $tag has its package already; it stays as it is (bump version in the kit's kit.json to publish a change)"
   exit 0
+fi
+if [[ "$draft" == true ]]; then
+  target="$(node -p "require('$state_file').targetCommitish")"
+  [[ "$target" == "$kit_commit" ]] || { echo "the draft $tag targets $target, not $kit_commit, the commit checked out" >&2; exit 1; }
 fi
 
 pnpm --dir "$workspace/kition-tessera" install --frozen-lockfile
@@ -84,14 +108,21 @@ fs.writeFileSync(outFile, JSON.stringify(entry, null, 2) + "\n")
 echo "packed $asset:"
 cat "$out/$metadata"
 
-if release_exists; then
-  echo "$repository already has $tag; bump version in the kit's kit.json to publish a change" >&2
+# Into the draft: a new one, or the draft this version has (a run that stopped while making it),
+# whose package files are replaced as a pair. A Release published meanwhile is never touched.
+release_state "$state_file"
+notes="The kit's package (editor and engine) for hosts of the Kit UI protocol, built by the kit's Package workflow from $kit_commit with kition-sdk $sdk_commit, kition-tessera $tessera_commit, and kition-fonts $fonts_commit. $metadata is its entry for Kition's kits/kits.lock.json."
+if [[ ! -f "$state_file" ]]; then
+  gh release create "$tag" "$out/$asset" "$out/$metadata" --repo "$repository" --target "$kit_commit" --draft \
+    --title "Kit package $version" --notes "$notes"
+elif [[ "$(node -p "require('$state_file').isDraft")" == true ]]; then
+  gh release upload "$tag" "$out/$asset" "$out/$metadata" --repo "$repository" --clobber
+  gh release edit "$tag" --repo "$repository" --notes "$notes"
+else
+  echo "$repository $tag was published meanwhile; bump version in the kit's kit.json to publish a change" >&2
   exit 1
 fi
-gh release create "$tag" "$out/$asset" "$out/$metadata" --repo "$repository" --target "$kit_commit" \
-  --title "Kit package $version" \
-  --notes "The kit's package (editor and engine) for hosts of the Kit UI protocol, built by the kit's Package workflow from $kit_commit with kition-sdk $sdk_commit, kition-tessera $tessera_commit, and kition-fonts $fonts_commit. $metadata is its entry for Kition's kits/kits.lock.json."
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-  printf '### %s %s\n\n```json\n%s\n```\n' "$repository" "$tag" "$(cat "$out/$metadata")" >> "$GITHUB_STEP_SUMMARY"
+  printf '### %s %s (draft)\n\n```json\n%s\n```\n' "$repository" "$tag" "$(cat "$out/$metadata")" >> "$GITHUB_STEP_SUMMARY"
 fi
-echo "published $repository $tag"
+echo "$repository $tag is a draft with $asset and $metadata; the publish job publishes it once it holds every asset"

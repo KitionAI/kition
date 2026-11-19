@@ -1,0 +1,24 @@
+format: 1
+id: regressions/issue-kit-release-tgz-only
+feature: kition.kits.headless-archives
+intent: >-
+  kition-html's package-v0.1.0 Release has its kition-html-0.1.0.tgz and no lock entry
+  (kition-html-0.1.0.json), and the plan refused it although the lock entry was read only for the
+  commit to build from. A published Release is now built from its tag's commit, which its lock
+  entry must name when it has one, so a Release with only its .tgz gains its headless archives and
+  fragment; its package files are still never added or replaced, and one without its .tgz is
+  refused.
+layer: gate
+source:
+  kind: issue
+  from: "kit packaging runs 2026-11-18: the kition-html Package run refuses package-v0.1.0 for having no kition-html-0.1.0.json"
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitReleaseAssets.spec.ts, -t, "a published Release with only the package"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-18"

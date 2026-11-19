@@ -11,9 +11,11 @@
 //                                                 version only, with each platform's archive at its
 //                                                 address in this Release
 //
-// An asset is published once and never replaced. A run on a version whose Release exists adds
-// only the assets it does not have yet. Everything here is pure or works on local files; the
-// workflow does the GitHub calls.
+// A new version's Release is a draft until it holds all of them, and is then published once. An
+// asset of a published Release is never replaced; a run on a published version adds only the
+// assets it does not have yet, unless the Release is immutable (GitHub's immutable releases), which
+// can gain none. Everything here is pure or works on local files; the workflow does the GitHub
+// calls.
 import { execFileSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -56,35 +58,80 @@ export function archivePlatform(kit, version, name) {
   return PLATFORM_NAMES.includes(platform) ? platform : null
 }
 
+/** Every asset a complete `package-v<version>` Release holds, in the order they are listed. */
+const completeAssets = (kit, version) => [...packageAssets(kit, version), ...PLATFORM_NAMES.map((platform) => headlessArchive(kit, version, platform)), indexFragment(kit, version)]
+
+/** The assets of a complete Release that `assets` (asset names) lacks; `[]` when it is complete. */
+export function releaseMissing(kit, version, assets) {
+  checkKitVersion(kit, version)
+  const names = new Set(assets)
+  return completeAssets(kit, version).filter((name) => !names.has(name))
+}
+
 /**
  * What a Package run has to publish, from the names of the assets the `package-v<version>` Release
- * has (`assets`), or `null` when there is no such Release yet:
+ * has (`assets`), or `null` when there is no such Release yet, and whether that Release is a draft
+ * (`draft`) and has been published immutable (`immutable`, GitHub's immutable releases):
  *
- * - `package`: `publish` when there is no Release (scripts/package-kit.sh creates it with the
- *   package and its lock entry), `published` when the Release has both. A Release with one of them,
- *   or with neither, is refused: its package is never replaced, and is not added afterwards.
+ * - `package`: `publish` when there is no Release, or a draft without both package files
+ *   (scripts/package-kit.sh makes the draft, or puts both files into it again: a draft is seen by
+ *   no one); `published` otherwise. A published Release without its `.tgz` is refused: its package
+ *   is never replaced or added afterwards. One without only its lock entry (`.json`) goes on: the
+ *   lock entry is not needed to complete it, the tag says which commit it was made from.
  * - `platforms`: the platforms whose headless archive the Release does not have.
  * - `fragment`: `publish` when the Release has no index fragment, else `published`.
+ *
+ * A published immutable Release can gain no asset, so one that lacks an archive or the fragment is
+ * refused before anything is built.
  */
-export function releasePlan(kit, version, assets) {
+export function releasePlan(kit, version, assets, { draft = false, immutable = false } = {}) {
   checkKitVersion(kit, version)
   const tag = releaseTag(version)
   const names = new Set(assets ?? [])
+  const missingPackage = packageAssets(kit, version).filter((name) => !names.has(name))
   let packageState = 'publish'
-  if (assets) {
-    const present = packageAssets(kit, version).filter((name) => names.has(name))
-    if (present.length !== 2) {
-      const missing = packageAssets(kit, version).filter((name) => !names.has(name))
-      throw new Error(`the ${tag} Release has no ${missing.join(' and ')}; a published Release's package is never replaced or added afterwards, so bump version in the kit's kit.json`)
-    }
+  if (assets && !draft) {
+    const [tgz] = packageAssets(kit, version)
+    if (!names.has(tgz)) throw new Error(`the ${tag} Release has no ${missingPackage.join(' and ')}; a published Release's package is never replaced or added afterwards, so bump version in the kit's kit.json`)
+    packageState = 'published'
+  } else if (assets && !missingPackage.length) {
     packageState = 'published'
   }
-  return {
+  const plan = {
     tag,
     package: packageState,
     platforms: PLATFORM_NAMES.filter((platform) => !names.has(headlessArchive(kit, version, platform))),
     fragment: names.has(indexFragment(kit, version)) ? 'published' : 'publish',
   }
+  if (assets && !draft && immutable && (plan.platforms.length || plan.fragment === 'publish')) {
+    const lacks = releaseMissing(kit, version, assets).filter((name) => !packageAssets(kit, version).includes(name))
+    throw new Error(`the ${tag} Release is immutable and cannot gain assets (it lacks ${lacks.join(', ')}): bump version in the kit's kit.json`)
+  }
+  return plan
+}
+
+const COMMIT = /^[0-9a-f]{40}$/
+
+/**
+ * The commit a run builds from: for a version with no Release, the run's (`run`); for a draft,
+ * the commit it targets (`target`, which scripts/package-kit.sh sets; the tag does not exist until
+ * the draft is published); for a published Release, its tag's commit (`tagCommit`). When the
+ * Release has a lock entry, the commit it was built from (`lock`) must be the same.
+ */
+export function releaseBuildRef({ release, run, target, tagCommit, lock }) {
+  let ref
+  if (release === 'none') ref = run
+  else if (release === 'draft') {
+    if (!COMMIT.test(target ?? '')) throw new Error(`the draft Release targets ${target}, not a commit; delete the draft and run Package again`)
+    if (lock && lock !== target) throw new Error(`its lock entry was built from ${lock}; the Release targets ${target}`)
+    ref = target
+  } else if (release === 'published') {
+    if (!COMMIT.test(tagCommit ?? '')) throw new Error(`a released version needs the commit of the published Release's tag, not ${tagCommit}`)
+    if (lock && lock !== tagCommit) throw new Error(`its lock entry was built from ${lock}; the Release's tag is at ${tagCommit}`)
+    ref = tagCommit
+  } else throw new Error(`no Release state ${release} (none, draft, published)`)
+  if (!COMMIT.test(ref ?? '')) throw new Error(`${ref} is not a commit`)
+  return ref
 }
 
 /** The build matrix (`include`) for these platforms, in HEADLESS_PLATFORMS order. */
@@ -230,7 +277,8 @@ export function fragmentPlatforms(fragment, kit, version) {
 /**
  * What the publishing job does once the builds ran: which built archives (file names in `built`)
  * to upload, because the Release (`assets`) does not have them, which it has already (they stay as
- * published), and which of the platforms the run set out to build (`wanted`) produced no archive.
+ * published), and which of the platforms the run set out to build (`wanted`) produced no archive
+ * and still have none in the Release.
  */
 export function publishPlan(kit, version, assets, built, wanted) {
   checkKitVersion(kit, version)
@@ -242,6 +290,8 @@ export function publishPlan(kit, version, assets, built, wanted) {
   return {
     upload: archives.filter((name) => !names.has(name)).sort(),
     kept: archives.filter((name) => names.has(name)).sort(),
-    failed: headlessMatrix(wanted).map(({ platform }) => platform).filter((platform) => !builtPlatforms.has(platform)),
+    // A platform whose archive is in the Release is not failed: a re-run of the failed jobs builds
+    // only those, and an earlier attempt's archive is in the draft already.
+    failed: headlessMatrix(wanted).map(({ platform }) => platform).filter((platform) => !builtPlatforms.has(platform) && !names.has(headlessArchive(kit, version, platform))),
   }
 }

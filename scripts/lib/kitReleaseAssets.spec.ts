@@ -13,6 +13,8 @@ import {
   indexFragment,
   packHeadless,
   publishPlan,
+  releaseBuildRef,
+  releaseMissing,
   releasePlan,
 } from './kitReleaseAssets.mjs'
 
@@ -91,8 +93,8 @@ describe('releasePlan', () => {
     expect(releasePlan('board', '0.1.0', assets)).toMatchObject({ package: 'published', platforms: [], fragment: 'published' })
   })
 
-  it('refuses a Release without its package or its lock entry rather than adding one', () => {
-    expect(() => releasePlan('board', '0.1.0', ['kition-board-0.1.0.tgz'])).toThrow(/no kition-board-0\.1\.0\.json; .*never replaced/)
+  it('refuses a Release without its package rather than adding one', () => {
+    expect(() => releasePlan('board', '0.1.0', ['kition-board-0.1.0.json'])).toThrow(/no kition-board-0\.1\.0\.tgz; .*never replaced/)
     expect(() => releasePlan('board', '0.1.0', [])).toThrow(/no kition-board-0\.1\.0\.tgz and kition-board-0\.1\.0\.json/)
   })
 
@@ -241,8 +243,107 @@ describe('publishPlan', () => {
   })
 })
 
+const runCli = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' })
+const planLines = (stdout: string) => Object.fromEntries(stdout.trim().split('\n').map((line) => line.split(/=(.*)/s).slice(0, 2)))
+const PACKAGE = ['kition-board-0.1.0.tgz', 'kition-board-0.1.0.json']
+const ARCHIVES = ALL.map((p) => headlessArchive('board', '0.1.0', p))
+const RUN = '1'.repeat(40)
+const TARGET = '2'.repeat(40)
+const TAG = '3'.repeat(40)
+
+// Regression (regressions/issue-kit-release-immutable): on a repository with GitHub's immutable
+// releases, a published Release can never gain an asset, so the package job used to publish the
+// Release before the headless archives existed and every upload after it failed (HTTP 422). A new
+// version's Release is now a draft until the last job finds every asset in it.
+describe('draft and immutable Releases', () => {
+  it('fills a draft the package job made: its archives and fragment, never its package', () => {
+    expect(releasePlan('board', '0.1.0', PACKAGE, { draft: true })).toEqual({ tag: 'package-v0.1.0', package: 'published', platforms: ALL, fragment: 'publish' })
+    expect(releasePlan('board', '0.1.0', [...PACKAGE, ARCHIVES[0], ARCHIVES[3]], { draft: true, immutable: true })).toMatchObject({ package: 'published', platforms: ['darwin-x64', 'linux-arm64', 'win32-x64'], fragment: 'publish' })
+  })
+
+  it('counts as built the platforms whose archive an earlier attempt put into the draft', () => {
+    const draft = [...PACKAGE, ARCHIVES[0], ARCHIVES[1], ARCHIVES[2], ARCHIVES[3]]
+    expect(publishPlan('board', '0.1.0', draft, [ARCHIVES[4]], ALL)).toEqual({ upload: [ARCHIVES[4]], kept: [], failed: [] })
+    expect(publishPlan('board', '0.1.0', draft, [], ALL).failed).toEqual(['win32-x64'])
+  })
+
+  it('makes the package again for a draft that lacks one of its package files: nobody has seen a draft', () => {
+    expect(releasePlan('board', '0.1.0', [], { draft: true })).toMatchObject({ package: 'publish', platforms: ALL })
+    expect(releasePlan('board', '0.1.0', ['kition-board-0.1.0.tgz', ARCHIVES[4]], { draft: true })).toMatchObject({ package: 'publish', platforms: ALL.slice(0, 4) })
+  })
+
+  it('refuses a published immutable Release that lacks an archive or the fragment, before anything is built', () => {
+    expect(() => releasePlan('board', '0.1.0', PACKAGE, { immutable: true })).toThrow(/the package-v0\.1\.0 Release is immutable and cannot gain assets \(it lacks kition-board-0\.1\.0-darwin-arm64\.tar\.gz, .*kits-index-board-0\.1\.0\.json\): bump version in the kit's kit\.json/)
+    expect(() => releasePlan('board', '0.1.0', [...PACKAGE, ...ARCHIVES], { immutable: true })).toThrow(/immutable and cannot gain assets \(it lacks kits-index-board-0\.1\.0\.json\)/)
+  })
+
+  it('has nothing to do for a complete published immutable Release, and backfills a published mutable one', () => {
+    expect(releasePlan('board', '0.1.0', [...PACKAGE, ...ARCHIVES, indexFragment('board', '0.1.0')], { immutable: true })).toMatchObject({ package: 'published', platforms: [], fragment: 'published' })
+    expect(releasePlan('board', '0.1.0', PACKAGE, { immutable: false })).toMatchObject({ package: 'published', platforms: ALL, fragment: 'publish' })
+  })
+
+  it('names what a Release lacks before its draft may be published', () => {
+    expect(releaseMissing('board', '0.1.0', [...PACKAGE, ...ARCHIVES, indexFragment('board', '0.1.0'), 'kition-note-0.1.0.tgz'])).toEqual([])
+    expect(releaseMissing('board', '0.1.0', [PACKAGE[0], ARCHIVES[1], ARCHIVES[2], ARCHIVES[3]])).toEqual(['kition-board-0.1.0.json', ARCHIVES[0], ARCHIVES[4], 'kits-index-board-0.1.0.json'])
+  })
+
+  it("builds a new version from the run's commit and a draft from the commit it targets", () => {
+    expect(releaseBuildRef({ release: 'none', run: RUN })).toBe(RUN)
+    expect(releaseBuildRef({ release: 'draft', run: RUN, target: TARGET })).toBe(TARGET)
+    expect(releaseBuildRef({ release: 'draft', run: RUN, target: TARGET, lock: TARGET })).toBe(TARGET)
+    expect(() => releaseBuildRef({ release: 'draft', run: RUN, target: 'main' })).toThrow(/the draft Release targets main, not a commit/)
+    expect(() => releaseBuildRef({ release: 'draft', run: RUN, target: TARGET, lock: TAG })).toThrow(/lock entry was built from 3{40}; the Release targets 2{40}/)
+  })
+
+  it('plans a draft and refuses a published immutable Release from the command line', () => {
+    const assets = path.join(work, 'assets.txt')
+    fs.writeFileSync(assets, `${PACKAGE.join('\n')}\n`)
+    const draft = runCli('plan', '--kit', 'board', '--version', '0.1.0', '--assets', assets, '--draft', '--immutable')
+    expect(draft.status).toBe(0)
+    expect(planLines(draft.stdout)).toMatchObject({ release: 'draft', package: 'published', fragment: 'publish', platforms: JSON.stringify(ALL) })
+    expect(planLines(runCli('plan', '--kit', 'board', '--version', '0.1.0').stdout)).toMatchObject({ release: 'none', package: 'publish' })
+    expect(planLines(runCli('plan', '--kit', 'board', '--version', '0.1.0', '--assets', assets).stdout)).toMatchObject({ release: 'published', package: 'published' })
+    const immutable = runCli('plan', '--kit', 'board', '--version', '0.1.0', '--assets', assets, '--immutable')
+    expect(immutable.status).toBe(1)
+    expect(immutable.stderr).toMatch(/immutable and cannot gain assets .*bump version/)
+    expect(immutable.stdout).toBe('')
+    const missing = runCli('missing', '--kit', 'board', '--version', '0.1.0', '--assets', assets)
+    expect(missing.status).toBe(0)
+    expect(missing.stdout.trim().split(' ')).toEqual([...ARCHIVES, 'kits-index-board-0.1.0.json'])
+  })
+})
+
+// Regression (regressions/issue-kit-release-tgz-only): kition-html's package-v0.1.0 Release has its
+// .tgz and no lock entry (.json), and the plan refused it although the .json was only read for the
+// commit to build from. A released version is built from its tag's commit.
+describe('a published Release with only the package .tgz', () => {
+  it('gains its headless archives and fragment, and its package files stay as they are', () => {
+    expect(releasePlan('board', '0.1.0', ['kition-board-0.1.0.tgz'])).toEqual({ tag: 'package-v0.1.0', package: 'published', platforms: ALL, fragment: 'publish' })
+    expect(releaseMissing('board', '0.1.0', ['kition-board-0.1.0.tgz', ...ARCHIVES, indexFragment('board', '0.1.0')])).toEqual(['kition-board-0.1.0.json'])
+  })
+
+  it("is built from its tag's commit, which the lock entry must agree with when there is one", () => {
+    expect(releaseBuildRef({ release: 'published', run: RUN, tagCommit: TAG })).toBe(TAG)
+    expect(releaseBuildRef({ release: 'published', run: RUN, tagCommit: TAG, lock: TAG })).toBe(TAG)
+    expect(() => releaseBuildRef({ release: 'published', run: RUN, tagCommit: TAG, lock: TARGET })).toThrow(/lock entry was built from 2{40}; the Release's tag is at 3{40}/)
+    expect(() => releaseBuildRef({ release: 'published', run: RUN })).toThrow(/needs the commit of the published Release's tag/)
+  })
+
+  it('prints the build ref from the command line, reading the lock entry when given', () => {
+    const lock = path.join(work, 'lock-entry.json')
+    fs.writeFileSync(lock, JSON.stringify({ commit: TAG }))
+    const ok = runCli('ref', '--release', 'published', '--run', RUN, '--tag-commit', TAG, '--lock-entry', lock)
+    expect(ok.status).toBe(0)
+    expect(ok.stdout).toBe(`${TAG}\n`)
+    expect(runCli('ref', '--release', 'published', '--run', RUN, '--tag-commit', TAG).stdout).toBe(`${TAG}\n`)
+    const differs = runCli('ref', '--release', 'published', '--run', RUN, '--tag-commit', TARGET, '--lock-entry', lock)
+    expect(differs.status).toBe(1)
+    expect(differs.stderr).toMatch(/lock entry was built from 3{40}/)
+  })
+})
+
 describe('kit-release-assets.mjs', () => {
-  const run = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' })
+  const run = runCli
 
   it('writes the plan as $GITHUB_OUTPUT lines', () => {
     const assets = path.join(work, 'assets.txt')

@@ -4,10 +4,16 @@
 // never calls GitHub: the workflow lists the Release's assets (`gh release view --json assets`)
 // into a file and passes it with --assets.
 //
-//   node scripts/kit-release-assets.mjs plan --kit <kit> --version <v> [--assets <file>]
-//       What the run publishes, as `key=value` lines for $GITHUB_OUTPUT: tag, package
-//       (publish|published), platforms and matrix (JSON) of the headless archives the Release
-//       lacks, fragment (publish|published). Without --assets there is no Release yet.
+//   node scripts/kit-release-assets.mjs plan --kit <kit> --version <v> [--assets <file> [--draft] [--immutable]]
+//       What the run publishes, as `key=value` lines for $GITHUB_OUTPUT: release
+//       (none|draft|published), tag, package (publish|published), platforms and matrix (JSON) of
+//       the headless archives the Release lacks, fragment (publish|published). Without --assets
+//       there is no Release yet; --draft when it is a draft, --immutable when it is immutable.
+//   node scripts/kit-release-assets.mjs ref --release <none|draft|published> --run <sha> [--target <sha>] [--tag-commit <sha>] [--lock-entry <file>]
+//       The commit the run builds from: the run's, the draft's target, or the published tag's,
+//       checked against the `commit` of the Release's lock entry when given.
+//   node scripts/kit-release-assets.mjs missing --kit <kit> --version <v> --assets <file>
+//       The assets of a complete Release that the Release lacks, on one line; empty when complete.
 //   node scripts/kit-release-assets.mjs pack --kit <kit> --platform <p> --dir <folder> --out <folder>
 //       Checks a platform's build folder (kit.json, kition-<kit>, handshakes.json) and writes
 //       kition-<kit>-<version>-<platform>.tar.gz in --out.
@@ -24,7 +30,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { fragmentFromArchives, fragmentPlatforms, headlessMatrix, packHeadless, publishPlan, releasePlan, archivePlatform } from './lib/kitReleaseAssets.mjs'
+import { fragmentFromArchives, fragmentPlatforms, headlessMatrix, packHeadless, publishPlan, releaseBuildRef, releaseMissing, releasePlan, archivePlatform } from './lib/kitReleaseAssets.mjs'
 
 const [command, ...args] = process.argv.slice(2)
 const flag = (name, required = true) => {
@@ -47,9 +53,21 @@ async function main() {
   switch (command) {
     case 'plan': {
       const assetsFile = flag('--assets', false)
-      const plan = releasePlan(flag('--kit'), flag('--version'), assetsFile ? readAssets(assetsFile) : null)
-      const lines = [`tag=${plan.tag}`, `package=${plan.package}`, `platforms=${JSON.stringify(plan.platforms)}`, `matrix=${JSON.stringify(headlessMatrix(plan.platforms))}`, `fragment=${plan.fragment}`]
+      const draft = args.includes('--draft')
+      const plan = releasePlan(flag('--kit'), flag('--version'), assetsFile ? readAssets(assetsFile) : null, { draft, immutable: args.includes('--immutable') })
+      const release = !assetsFile ? 'none' : draft ? 'draft' : 'published'
+      const lines = [`release=${release}`, `tag=${plan.tag}`, `package=${plan.package}`, `platforms=${JSON.stringify(plan.platforms)}`, `matrix=${JSON.stringify(headlessMatrix(plan.platforms))}`, `fragment=${plan.fragment}`]
       process.stdout.write(`${lines.join('\n')}\n`)
+      return
+    }
+    case 'ref': {
+      const lockFile = flag('--lock-entry', false)
+      const lock = lockFile ? JSON.parse(fs.readFileSync(lockFile, 'utf8')).commit : undefined
+      process.stdout.write(`${releaseBuildRef({ release: flag('--release'), run: flag('--run'), target: flag('--target', false), tagCommit: flag('--tag-commit', false), lock })}\n`)
+      return
+    }
+    case 'missing': {
+      process.stdout.write(`${releaseMissing(flag('--kit'), flag('--version'), readAssets(flag('--assets'))).join(' ')}\n`)
       return
     }
     case 'pack': {
@@ -83,7 +101,7 @@ async function main() {
       return
     }
     default:
-      process.stderr.write('usage: kit-release-assets.mjs plan|pack|publish-plan|fragment|compare ... (see the header of scripts/kit-release-assets.mjs)\n')
+      process.stderr.write('usage: kit-release-assets.mjs plan|ref|missing|pack|publish-plan|fragment|compare ... (see the header of scripts/kit-release-assets.mjs)\n')
       process.exit(2)
   }
 }
