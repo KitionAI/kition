@@ -51,6 +51,8 @@ hostMatrix({
   counts: { fixture: 1, edited: 2, variant: 3 },
   shows: (_page, kit, count) => shows(kit, count),
   edit: newText,
+  // H16: the composition keeps its own colour (the fixture's solid is black); the backdrop around it follows the scheme.
+  dark: { surface: 'sheet', sheet: 'black', area: (kit) => kit.getByTestId('motion-canvas-region') },
 })
 
 test.describe('motion details', () => {

@@ -57,6 +57,10 @@ hostMatrix({
   shows,
   edit: drawRectangle,
   unsaved: (kit) => kit.locator('[data-testid="design-save"]:not([disabled])'),
+  // H16: the canvas is the page's own colour, which is the file's (docs/parity/ui-parity.md: a page
+  // made in the dark theme gets #1E1E1E, in the light one #F5F5F5, 'changing the theme repaints no
+  // page'); the fixture's page is #F5F5F5, and a switch of scheme must not repaint it.
+  dark: { surface: 'document', area: (kit) => kit.getByTestId('design-canvas') },
 })
 
 test.describe('design details', () => {

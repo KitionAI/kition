@@ -10,7 +10,7 @@ import { expect, test, type FrameLocator, type Locator, type Page } from '@playw
 import type { DesktopHost } from '../helpers/desktopHost'
 import { kitEngine, openInKitFrame, openKitWorkspace, openTreeFile, type KitModes } from '../helpers/embeddedKit'
 import { dismissFirstRunActivation } from '../helpers/onboarding'
-import { collectErrors, tags, type HostRow } from './support'
+import { collectErrors, darkSchemeRow, startHostInDark, tags, type DarkScheme, type HostRow } from './support'
 
 /** A kit's engine loaded in Node: `create`, `open`, and the document's `execute`, `inspect`, `save`. */
 export type NodeDocument = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
@@ -75,6 +75,8 @@ export type KitCase = {
   viewport?: { width: number; height: number }
   /** Console messages known to be harmless for this kit. */
   ignoreErrors?: RegExp[]
+  /** What the kit's work area looks like in Kition's dark scheme (H16); none where the row cannot apply (the spec says why). */
+  dark?: DarkScheme
   /** Matrix rows this kit leaves out, with why (written in the spec's header too). */
   skip?: Partial<Record<HostRow, string>>
   timeout?: number
@@ -115,7 +117,7 @@ const lastSave = (saves: Array<{ path: string | null; bytes: Buffer }>, name: st
 /**
  * The host matrix for one kit: H1 create, H2 open, H3 round trip, H4 undo and redo, H5 a change on
  * disk with and without unsaved edits, H6 closing a tab with unsaved edits, H7 switching tabs,
- * H8 a damaged file, H15 the kit's own shortcuts. The rows Kition's mock desktop cannot drive
+ * H8 a damaged file, H15 the kit's own shortcuts, H16 the dark scheme. The rows Kition's mock desktop cannot drive
  * (H9-H14) are covered or excused in each kit's spec.
  */
 export function hostMatrix(c: KitCase) {
@@ -353,5 +355,19 @@ export function hostMatrix(c: KitCase) {
         await host.dispose()
       }
     })
+
+    if (c.dark) {
+      const dark = c.dark
+      test(`H16: the ${c.kit} kit opens in Kition's dark scheme with its work area drawn for it, and follows a live switch to light`, tags(c.kit, ['H16']), async ({ page, baseURL }) => {
+        await startHostInDark(page)
+        const { host, kit } = await openInKitFrame(page, baseURL!, c.file, await c.fixture(), await others(), options(false))
+        try {
+          await c.shows(page, kit, c.counts.fixture, c.file)
+          await darkSchemeRow(page, kit, c.kit, dark)
+        } finally {
+          await host.dispose()
+        }
+      })
+    }
   })
 }

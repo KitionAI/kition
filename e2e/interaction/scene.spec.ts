@@ -46,6 +46,9 @@ hostMatrix({
   counts: { fixture: 4, edited: 5, variant: 6 },
   shows: (_page, kit, count) => shows(kit, count),
   edit: duplicateCube,
+  // H16: the 3D viewport's background is the editor's, not the scene's (the world shows only in the
+  // rendered view), so it follows the scheme, as Blender's theme draws it.
+  dark: { surface: 'dark', area: (kit) => kit.getByTestId('scene-canvas') },
 })
 
 test.describe('scene details', () => {

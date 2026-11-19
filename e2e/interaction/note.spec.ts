@@ -47,6 +47,8 @@ hostMatrix({
   },
   create: { group: 'Documents', name: 'Untitled note.md', count: 0 },
   agent: { command: 'text.insert', params: { at: `# Plan\n\n${FIRST}`.length, text: ' +1' } },
+  // H16: the note's page is the work area, so it is dark in the dark scheme (note 0.1.1 shipped a white one).
+  dark: { surface: 'dark', area: (kit) => kit.getByTestId('note-canvas') },
 })
 
 test.describe('note details', () => {

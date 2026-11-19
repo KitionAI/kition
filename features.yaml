@@ -249,6 +249,8 @@ features:
       - src/features/kits/kition/kitionTheme.ts
       - src/features/kits/kition/KitFrame.tsx
       - e2e/kit-theme.spec.ts
+      - e2e/interaction/support.ts
+    gap: The scheme reaches every kit, but in the dark scheme the board, doc, layout, pdf, scene, sheet and slide kits still draw a light work area or backdrop, as row H16 of the on-demand kit interaction suite shows (`pnpm test:interaction:e2e --grep @H16`).
     cases:
       - regressions/issue-kit-dark-theme
     since: "2026-11-04"

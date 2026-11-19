@@ -67,6 +67,9 @@ hostMatrix({
   create: { group: 'Documents', name: 'Untitled layout.klayout', count: 1 },
   agent: { command: 'layout.pages.insert', params: {} },
   damaged: Buffer.from('this is not a layout'),
+  // H16: the page stays white; the pasteboard and backdrop around it follow the scheme (InDesign,
+  // the kit's target, matches the pasteboard to the theme).
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('layout-canvas-region') },
 })
 
 test.describe('layout details', () => {

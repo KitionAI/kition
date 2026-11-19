@@ -57,6 +57,8 @@ hostMatrix({
     const region = (await kit.getByTestId('cad-canvas-region').boundingBox())!
     await page.mouse.click(region.x + region.width - 20, region.y + 20)
   },
+  // H16: the drawing's limits are drawn as a white sheet with its grid; the backdrop around them follows the scheme.
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('cad-canvas-region') },
 })
 
 test.describe('cad details', () => {

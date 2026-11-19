@@ -50,6 +50,8 @@ hostMatrix({
   counts: { fixture: 1, edited: 2, variant: 3 },
   shows: (_page, kit, count) => shows(kit, count),
   edit: (page, kit) => drawRectangle(page, kit),
+  // H16: the artboard stays white; the backdrop around it follows the scheme.
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('vector-canvas-region') },
 })
 
 test.describe('vector details', () => {

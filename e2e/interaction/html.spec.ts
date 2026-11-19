@@ -46,6 +46,9 @@ hostMatrix({
   conflict: { bar: 'html-conflict', keep: 'html-keep-mine', reload: 'html-reload' },
   create: { group: 'Documents', name: 'Untitled HTML.html', count: 0 },
   agent: { command: 'html.setSource', params: { source: htmlPage(2) } },
+  // H16: the preview draws the page as a browser would (white, the page sets no colour); the
+  // backdrop around it follows the scheme.
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('html-preview') },
 })
 
 test.describe('html details', () => {

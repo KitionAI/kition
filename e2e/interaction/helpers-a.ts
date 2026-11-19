@@ -10,7 +10,7 @@ import type { DesktopHost } from '../helpers/desktopHost'
 import { openInKitFrame, openKitWorkspace, openTreeFile } from '../helpers/embeddedKit'
 import { pressCommand } from '../helpers/noteKit'
 import { dismissFirstRunActivation } from '../helpers/onboarding'
-import { collectErrors, tags } from './support'
+import { collectErrors, darkSchemeRow, startHostInDark, tags, type DarkScheme } from './support'
 
 /** The active tab's kit editor. */
 function activeKit(page: Page): FrameLocator {
@@ -123,6 +123,8 @@ export type KitSpec = {
   history?: boolean
   /** Runs before the page loads (a kit's stored preferences). */
   prepare?: (page: Page) => Promise<void>
+  /** What the kit's work area looks like in Kition's dark scheme (H16); none where the row cannot apply (the spec says why). */
+  dark?: DarkScheme
   /** After Load the new version (H5): the editor shows the file's version, nothing unsaved; a kit that merges checks its own way. */
   afterReload?: (kit: FrameLocator, page: Page) => Promise<void>
 }
@@ -169,7 +171,7 @@ export async function saveNow(kit: FrameLocator, prefix: string) {
 }
 
 /**
- * The host matrix (the interaction test plan, H1 to H15) for one kit: the rows every kit goes
+ * The host matrix (the interaction test plan, H1 to H16) for one kit: the rows every kit goes
  * through on the desktop host. Rows a kit cannot be checked on here are named in its spec's header.
  */
 export function hostMatrix(spec: KitSpec) {
@@ -499,5 +501,20 @@ export function hostMatrix(spec: KitSpec) {
         await host.dispose()
       }
     })
+
+    if (spec.dark) {
+      const dark = spec.dark
+      test(`H16 the ${id} kit opens in Kition's dark scheme with its work area drawn for it, and follows a live switch to light`, tags(id, ['H16']), async ({ page, baseURL }) => {
+        await startHostInDark(page)
+        const { host, kit } = await openFixture(page, baseURL!)
+        try {
+          await spec.ready(kit, page)
+          await shownIs(kit, page, spec.base)
+          await darkSchemeRow(page, kit, id, dark)
+        } finally {
+          await host.dispose()
+        }
+      })
+    }
   })
 }

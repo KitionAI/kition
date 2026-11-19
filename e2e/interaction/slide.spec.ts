@@ -68,6 +68,9 @@ hostMatrix({
   create: { group: 'Visual', name: 'Untitled slide.kslide', count: 1 },
   agent: { command: 'slide.new', params: {} },
   damaged: Buffer.from('this is not a slide file'),
+  // H16: the slide keeps its own (white) background; the backdrop around it follows the host's theme
+  // (docs/parity/ui-parity.md: 'Light / dark appearance ... follows the host's theme').
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('slides-canvas-region') },
 })
 
 test.describe('slide details', () => {

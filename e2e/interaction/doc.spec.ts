@@ -81,6 +81,8 @@ hostMatrix({
   create: { group: 'Documents', name: 'Untitled doc.docx', count: 1 },
   agent: { command: 'text.pageBreak', params: {} },
   damaged: Buffer.from('PK\u0003\u0004 this is not a document'),
+  // H16: the page stays white (the document's paper); the backdrop around it follows the scheme.
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('doc-canvas-region') },
 })
 
 test.describe('doc details', () => {

@@ -84,6 +84,9 @@ hostMatrix({
   create: { group: 'Data', name: 'Untitled sheet.xlsx', count: 1 },
   agent: { command: 'home.insertSheet', params: {} },
   damaged: Buffer.from('PK\u0003\u0004 this is not a workbook'),
+  // H16: the cell grid follows the scheme, as in the apps the kit matches (docs/parity/ui-parity.md:
+  // 'Dark mode, system appearance ... done'); a workbook is not a page.
+  dark: { surface: 'dark', area: (kit) => kit.getByTestId('sheet-canvas-region') },
 })
 
 test.describe('sheet details', () => {

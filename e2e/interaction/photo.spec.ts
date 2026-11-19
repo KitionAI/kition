@@ -34,6 +34,8 @@ hostMatrix({
   counts: { fixture: 2, edited: 3, variant: 4 },
   shows: async (_page, kit, count) => expect(kit.getByTestId('photo-status')).toContainText(`${count} layers`, { timeout: 60_000 }),
   edit: async (_page, kit) => kit.getByTestId('photo-layer-new').click(),
+  // H16: the image keeps its own pixels (a white background layer); the backdrop follows the scheme.
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('photo-canvas-region') },
 })
 
 test.describe('photo details', () => {

@@ -92,6 +92,8 @@ hostMatrix({
   create: { group: 'Data', name: 'Untitled table.ktable', count: 0 },
   agent: { command: 'table.records.create', params: { tableId: FIRST_TABLE, values: { title: 'From the agent' } } },
   damaged: Buffer.from('this is not a table file'),
+  // H16: the records grid is the work area and follows the scheme.
+  dark: { surface: 'dark', area: (kit) => kit.getByTestId('table-grid') },
 })
 
 test.describe('table details', () => {

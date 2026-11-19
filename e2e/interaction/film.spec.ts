@@ -71,6 +71,8 @@ hostMatrix({
   shows: (_page, kit, count) => shows(kit, count),
   edit: splitAtPlayhead,
   timeout: 240_000,
+  // H16: the timeline panel is the work area and follows the scheme (the monitors show the clips' own pixels).
+  dark: { surface: 'dark', area: (kit) => kit.getByTestId('film-workspace-frame-timeline') },
 })
 
 test.describe('film details', () => {

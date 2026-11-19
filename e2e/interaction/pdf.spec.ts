@@ -63,6 +63,8 @@ hostMatrix({
   create: { group: 'Documents', name: 'Untitled PDF.pdf', count: 1 },
   agent: { command: 'page_insert_blank', params: { at: 1 } },
   damaged: Buffer.from('this is not a PDF file at all'),
+  // H16: the PDF's pages stay white; the backdrop around them follows the scheme.
+  dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('pdf-canvas-region') },
 })
 
 test.describe('pdf details', () => {

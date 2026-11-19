@@ -46,6 +46,8 @@ hostMatrix({
   counts: { fixture: 1, edited: 2, variant: 3 },
   shows: (_page, kit, count) => shows(kit, count),
   edit: (page, kit) => drawRectangle(page, kit),
+  // H16: the board is an endless canvas with no page: it follows the scheme.
+  dark: { surface: 'dark', area: (kit) => kit.getByTestId('board-canvas') },
 })
 
 coEditing({
