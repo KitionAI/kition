@@ -31,7 +31,6 @@
 <p align="center">
   <a href="https://kition.ai">Website</a> ·
   <a href="https://developer.kition.ai">Developers</a> ·
-  <a href="https://github.com/KitionAI/kition/discussions">Discussions</a> ·
   <a href="https://discord.gg/bFSjRDjVY">Discord</a> ·
   <a href="https://www.reddit.com/r/Kition">Reddit</a> ·
   <a href="https://x.com/KitionAI">X</a> ·

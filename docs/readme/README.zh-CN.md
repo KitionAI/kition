@@ -34,7 +34,6 @@
 <p align="center">
   <a href="https://kition.ai">网站</a> ·
   <a href="https://github.com/KitionAI/kition/releases/latest">下载</a> ·
-  <a href="https://github.com/KitionAI/kition/discussions">讨论区</a> ·
   <a href="https://discord.gg/bFSjRDjVY">Discord</a> ·
   <a href="https://www.reddit.com/r/Kition">Reddit</a> ·
   <a href="https://x.com/KitionAI">X</a> ·
