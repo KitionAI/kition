@@ -101,6 +101,23 @@ Kits marked Preview are early: expect gaps. To embed a kit in your own app or gi
 agent, see the [Kition SDK](https://github.com/KitionAI/kition-sdk) and
 [developer.kition.ai](https://developer.kition.ai).
 
+### Give the kits to your agent
+
+Claude Code, Codex, Cursor and any other MCP client can use the kits without the app, through
+`kition`, the SDK's command line. Nothing is compiled:
+
+```sh
+npm install -g @kition/cli        # Node.js 20 or later; gives the kition command
+kition agent add claude           # or codex, cursor: registers kition's MCP server
+```
+
+Each kit downloads the first time the agent opens one of its files; `kition kit install <kit>`
+installs one ahead of time. Without installing:
+`claude mcp add kition -- npx -y @kition/cli mcp --workspace "$PWD"`. Without Node.js:
+`curl -fsSL https://github.com/KitionAI/kition-sdk/releases/latest/download/install.sh | sh`
+(Windows: `irm https://github.com/KitionAI/kition-sdk/releases/latest/download/install.ps1 | iex`).
+More in the SDK's [`kition` guide](https://github.com/KitionAI/kition-sdk/blob/main/docs/sdk/cli.md).
+
 ## Install
 
 Desktop builds of Kition 0.1.1 for macOS, Windows and Linux will be published on
