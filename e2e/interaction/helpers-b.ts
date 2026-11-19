@@ -120,7 +120,7 @@ const lastSave = (saves: Array<{ path: string | null; bytes: Buffer }>, name: st
  */
 export function hostMatrix(c: KitCase) {
   const engineMissing = `the ${c.kit} kit is not built into public/kits/${c.kit}-ui (scripts/fetch-kits.mjs)`
-  const built = kitEngine(c.kit, `kition_${c.kit}_sdk`).built
+  const built = kitEngine(c.kit, `kition_${c.kit}_kit`).built
   const others = async () => (c.others ? await c.others() : {})
   const options = (persist: boolean) => ({ persist, modes: c.modes ?? {} })
   const skipped = (row: HostRow) => c.skip?.[row]
