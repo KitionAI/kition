@@ -649,18 +649,56 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
   repository has a Package workflow (`.github/workflows/package.yml`, started
   by hand with `gh workflow run package.yml -R KitionAI/kition-<kit>`) that
   calls Kition's reusable `.github/workflows/kit-package.yml` with the kit's
-  name. It checks out the commit it was started on, beside Kition,
-  kition-sdk, kition-tessera, and kition-fonts (main), and runs
-  `scripts/package-kit.sh <kit>`: it refuses a version whose
-  `package-v<version>` Release exists, builds the package with
-  `scripts/build-kit-ui.sh` (machine paths in the engine remapped), refuses a
-  `level` its agent files do not back, and publishes the `package-v<version>`
-  Release of the kit's repository with that repository's workflow token,
-  targeting the built commit: `kition-<kit>-<version>.tgz` (the `<kit>-ui`
-  folder without the local-build stamp) and `kition-<kit>-<version>.json`,
-  its lock entry (repository, version, tag, asset, size, SHA-256, and the
-  kit, kition-sdk, kition-tessera, and kition-fonts commits). A version is
-  published once: bump `version` in the kit's `kit.json` to publish a change.
+  name. Its `plan` job reads `version` from kit.json at the commit the run
+  was started on and lists the assets of that version's `package-v<version>`
+  Release (`node scripts/kit-release-assets.mjs plan`); the other jobs
+  publish only what the Release lacks. An asset is published once and never
+  replaced: bump `version` in the kit's `kit.json` to publish a change.
+- **The package**, when the version has no Release yet: the `package` job
+  checks out that commit beside Kition, kition-sdk, kition-tessera, and
+  kition-fonts (main), and runs `scripts/package-kit.sh <kit>`: it builds the
+  package with `scripts/build-kit-ui.sh` (machine paths in the engine
+  remapped), refuses a `level` its agent files do not back, and creates the
+  `package-v<version>` Release of the kit's repository with that repository's
+  workflow token, targeting the built commit: `kition-<kit>-<version>.tgz`
+  (the `<kit>-ui` folder without the local-build stamp) and
+  `kition-<kit>-<version>.json`, its lock entry (repository, version, tag,
+  asset, size, SHA-256, and the kit, kition-sdk, kition-tessera, and
+  kition-fonts commits). A Release that has both is left as it is; one that
+  has only one of them, or neither, stops the run.
+- **The headless executables**, for whichever of darwin-arm64, darwin-x64,
+  linux-arm64, linux-x64 and win32-x64 the Release has no archive of: the
+  `headless` jobs build `kition-<kit>` (`cargo build --locked --release -p
+  kition-<kit>`) from the commit the Release was made from (the `commit` of
+  its lock entry; the run's commit for a new version), exactly as kition-sdk's
+  release builds its published kits' executables (its
+  `.github/workflows/release.yml`, job `executables`): the same runners and
+  targets, Linux linked against the glibc 2.17 floor with cargo-zigbuild and
+  checked with kition-sdk's `tools/glibc-floor.mjs`, the fonts of the kit's
+  `scripts/fetch-fonts.sh` when it has one (`KITION_FONTS_DIR`,
+  `KITION_FONTS_REQUIRED=1`), else kition-fonts beside the kit. On its own
+  platform the executable must answer `kit.initialize` (kition-sdk's
+  `tools/kit-handshake.mjs --record`) with its kit.json's id, version and
+  protocol before `node scripts/kit-release-assets.mjs pack` packs it as
+  `kition-<kit>-<version>-<platform>.tar.gz`: kit.json and the executable
+  (`.exe` on Windows) at its top, packed as kition-sdk's
+  `tools/release-archives.mjs` packs a kit archive, which `kition kit install`
+  unpacks. A platform that fails does not stop the others.
+- **The index fragment**: the `publish-headless` job uploads the archives the
+  Release lacks (never one it has), and then, if the Release has none yet,
+  `kits-index-<kit>-<version>.json`: a kit index (kition-sdk's
+  `schemas/kits-index.schema.json`, checked with kition-sdk's own checker)
+  with this kit version only, listing each archive the Release holds at its
+  `https://github.com/<repository>/releases/download/package-v<version>/`
+  address with its size and SHA-256. `kition kit install <kit> --index
+  <fragment>` installs from it; the kits' fragments are what kition-sdk's
+  kit index is to be gathered from. A platform whose archive is added after
+  the fragment was published is not in it (a warning says so). The run ends
+  failed, naming them, when a platform built no archive.
+- **Completing a Release**: running Package again on a version already
+  released adds only the headless archives and the fragment its Release
+  lacks, without touching the package, so the Releases made before the
+  headless archives existed are completed without a new version.
 - **Pinning**: `node scripts/pin-kits.mjs <kit>...` (or `--all`) reads the
   `version` in kit.json on the kit's main branch, downloads that version's
   Release with `gh`, checks the package's size and SHA-256 against its

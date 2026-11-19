@@ -10,7 +10,10 @@
 # Package workflow calls; packages are never built on a developer machine. The workflow checks out
 # the kit (the commit it was started on) and kition-sdk, kition-tessera and kition-fonts (main)
 # beside this repository, and sets GH_TOKEN to the kit repository's workflow token. A version is
-# published once: bump `version` in the kit's kit.json to publish a change.
+# published once: bump `version` in the kit's kit.json to publish a change. Whether it is published
+# is decided from the Release's asset names by scripts/kit-release-assets.mjs plan, as the
+# workflow's plan job decides it: a Release with both assets is left as it is (the run goes on with
+# the headless archives it lacks), and one with only one of them, or neither, is refused.
 set -euo pipefail
 kit="${1:?usage: scripts/package-kit.sh <kit>}"
 [[ "${GITHUB_ACTIONS:-}" == true ]] || { echo "scripts/package-kit.sh runs only in the kits' Package workflow (.github/workflows/kit-package.yml)" >&2; exit 2; }
@@ -37,9 +40,18 @@ tag="package-v$version"
 asset="kition-$kit-$version.tgz"
 metadata="kition-$kit-$version.json"
 release_exists() { gh release view "$tag" --repo "$repository" >/dev/null 2>&1; }
-if release_exists; then
-  echo "$repository already has $tag; bump version in the kit's kit.json to publish a change" >&2
+assets_file="$(mktemp)"
+plan_args=()
+if gh release view "$tag" --repo "$repository" --json assets --jq '.assets[].name' > "$assets_file" 2> "$assets_file.error"; then
+  plan_args=(--assets "$assets_file")
+elif ! grep -q 'release not found' "$assets_file.error"; then
+  cat "$assets_file.error" >&2
   exit 1
+fi
+package_state="$(node "$repo_root/scripts/kit-release-assets.mjs" plan --kit "$kit" --version "$version" "${plan_args[@]}" | sed -n 's/^package=//p')"
+if [[ "$package_state" == published ]]; then
+  echo "$repository $tag has $asset and $metadata already; they stay as published (bump version in the kit's kit.json to publish a change)"
+  exit 0
 fi
 
 pnpm --dir "$workspace/kition-tessera" install --frozen-lockfile

@@ -1,0 +1,23 @@
+format: 1
+id: kition.kits.headless-archives/archive-and-fragment
+feature: kition.kits.headless-archives
+intent: >-
+  A platform's headless archive holds kit.json and kition-<kit> (.exe on Windows) at its top, with
+  the modes kition kit install expects, and is written only for the executable whose recorded
+  kit.initialize answer is its kit.json's id, version and protocol; the index fragment is a kit
+  index of that kit version alone, each platform at its address in the Release with the size and
+  SHA-256 of the archive as published, refused when kition-sdk's index checker refuses it.
+layer: gate
+source:
+  kind: synthetic
+  from: scripts/lib/kitReleaseAssets.mjs
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitReleaseAssets.spec.ts, -t, "packHeadless|index fragment|index checker|published fragment"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-18"
