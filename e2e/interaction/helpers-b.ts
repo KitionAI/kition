@@ -130,9 +130,11 @@ export function hostMatrix(c: KitCase) {
   const save = (page: Page, kit: FrameLocator) => (c.save ? c.save(page, kit) : kit.getByTestId(`${c.kit}-save`).click())
   const undo = (page: Page, kit: FrameLocator) => (c.undo ? c.undo(page, kit) : kit.getByTestId(`${c.kit}-undo`).click())
   const redo = (page: Page, kit: FrameLocator) => (c.redo ? c.redo(page, kit) : kit.getByTestId(`${c.kit}-redo`).click())
-  // The mocked desktop's own noise: kit pages' CSP meta tags, and the mock API's answer to the
-  // runtime bridge's event stream.
-  const ignore = [/frame-ancestors' is ignored when delivered via a <meta> element/, /EventSource's response has a MIME type/, ...(c.ignoreErrors ?? [])]
+  // The mocked desktop's own noise: kit pages' CSP meta tags (frame-ancestors, which only a header
+  // may carry: Chromium "The Content Security Policy directive 'frame-ancestors' is ignored when
+  // delivered via a <meta> element.", WebKit "… is ignored when delivered via an HTML meta
+  // element."), and the mock API's answer to the runtime bridge's event stream.
+  const ignore = [/frame-ancestors' is ignored when delivered via (a <meta>|an HTML meta) element/, /EventSource's response has a MIME type/, ...(c.ignoreErrors ?? [])]
 
   test.describe(`${c.kit} host matrix`, () => {
     if (c.viewport) test.use({ viewport: c.viewport })

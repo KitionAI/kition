@@ -106,7 +106,9 @@ test.describe('table details', () => {
       await stage(kit).click({ position: { x: 145, y: 48 } })
       await stage(kit).click({ position: { x: 145, y: 48 }, button: 'right' })
       await kit.getByRole('button', { name: 'Delete record' }).click()
-      await expect(footer(kit)).toContainText('Showing 1–1')
+      // The footer's first part is the count of records the view shows: "1 records" in table 0.5.5,
+      // "1 record" once its plural is fixed (kition-table regressions/issue-footer-count-plural).
+      await expect(footer(kit).locator(':scope > span').first()).toHaveText(/^1 records?$/)
       await saveNow(kit, 'table')
       const saved = await recordsOf(await onDisk(host, 'Leads.ktable'))
       expect(saved).toHaveLength(1)

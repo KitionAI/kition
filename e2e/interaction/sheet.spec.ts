@@ -134,8 +134,11 @@ test.describe('sheet details', () => {
     try {
       await expect(kit.getByTestId('sheet-status')).toHaveText('Sheet1 · A1', { timeout: 60_000 })
       await goTo(kit, 'A3')
+      // Home › Insert lists rows with their count (WPS's "Insert [1] rows above"); the count starts
+      // at the selection's one row. Clicked on its label, the row inserts them.
       await kit.getByRole('button', { name: 'Insert', exact: true }).click()
-      await kit.getByTestId('sheet-cmd-home.insertRows').click()
+      await expect(kit.getByTestId('sheet-insert-rows-above-count')).toHaveValue('1')
+      await kit.getByTestId('sheet-insert-rows-above').click({ position: { x: 24, y: 10 } })
       await goTo(kit, 'B5')
       await expect(kit.getByTestId('sheet-formula')).toHaveValue('=SUM(B2:B4)')
       await setCell(kit, 'B3', '50')

@@ -75,8 +75,14 @@ async function setLocale(page: Page, language: string) {
   }, language)
 }
 
-/** Console noise of the mocked desktop host that says nothing about a kit. */
-const HOST_NOISE = [/frame-ancestors' is ignored when delivered via a <meta> element/, /EventSource's response has a MIME type/, /Failed to load resource: the server responded with a status of 404/]
+/**
+ * Console noise of the mocked desktop host that says nothing about a kit. The kit pages' CSP meta
+ * tag names frame-ancestors, which only a header may carry; each engine says so in its words:
+ * Chromium "The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a
+ * <meta> element.", WebKit "The Content Security Policy directive 'frame-ancestors' is ignored when
+ * delivered via an HTML meta element."
+ */
+const HOST_NOISE = [/frame-ancestors' is ignored when delivered via (a <meta>|an HTML meta) element/, /EventSource's response has a MIME type/, /Failed to load resource: the server responded with a status of 404/]
 
 /** The bar a kit shows when its file changed on disk while it has unsaved edits, and its two answers. */
 type ConflictBar = { bar: string; keep: string; reload: string }
