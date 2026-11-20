@@ -434,6 +434,18 @@ jobs:
             if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then echo "- published $name" >> "$GITHUB_STEP_SUMMARY"; fi
           done
 
+      # npmmirror (registry.npmmirror.com, which kition tries after npmjs.org and which mainland
+      # China reaches) copies npmjs.org on its own schedule, which can lag a day for a new package.
+      # Asking it to copy the kit's packages now makes them installable there sooner. A refusal is
+      # only a warning: kition falls back to npmjs.org.
+      - name: Ask npmmirror to copy the packages
+        continue-on-error: true
+        run: |
+          for name in $(jq -r '.publish[]' publish-plan.json | xargs -n1 -I{} tar -xzOf {} package/package.json | jq -r .name | sort -u); do
+            curl -fsS -X PUT "https://registry-direct.npmmirror.com/-/package/$name/syncs" || echo "::warning::npmmirror did not take the copy request for $name"
+            echo
+          done
+
       - name: Every package planned was built
         run: |
           set -euo pipefail

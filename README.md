@@ -114,8 +114,9 @@ kition agent add claude           # or codex, cursor: registers kition's MCP ser
 Each kit downloads the first time the agent opens one of its files; `kition kit install <kit>`
 installs one ahead of time. Without installing:
 `claude mcp add kition -- npx -y @kition/cli mcp --workspace "$PWD"`. Without Node.js:
-`curl -fsSL https://github.com/KitionAI/kition-sdk/releases/latest/download/install.sh | sh`
-(Windows: `irm https://github.com/KitionAI/kition-sdk/releases/latest/download/install.ps1 | iex`).
+`curl -fsSL https://unpkg.com/@kition/cli/dist/install.sh | sh`, which installs `kition` from npm
+(registry.npmjs.org, else registry.npmmirror.com)
+(Windows: `irm https://unpkg.com/@kition/cli/dist/install.ps1 | iex`).
 More in the SDK's [`kition` guide](https://github.com/KitionAI/kition-sdk/blob/main/docs/sdk/cli.md).
 
 ## Install
