@@ -403,7 +403,8 @@ jobs:
           cat publish-plan.json
 
       # `state` exits 1 when npm holds the version with other bytes, which stops the run: a version
-      # is published once. The registry's metadata may lag a publish by a few seconds.
+      # is published once. The registry's metadata lags a publish: five minutes for a package's
+      # first version (measured, 2026-11-20), so each package is waited for up to ten.
       - name: Publish what npm lacks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -424,7 +425,7 @@ jobs:
                 echo "::error::unexpected state of $name" >&2
                 exit 1 ;;
             esac
-            for attempt in $(seq 1 20); do
+            for attempt in $(seq 1 100); do
               now=$(state "$file")
               [ "$now" = published ] && break
               sleep 6
