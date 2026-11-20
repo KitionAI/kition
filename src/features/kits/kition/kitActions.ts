@@ -21,7 +21,7 @@ async function settingsSection(section: unknown): Promise<'models' | 'account'> 
 }
 
 /**
- * The host actions Kition serves a kit (Kit UI protocol 2.2 section 7j,
+ * The host actions Kition serves a kit (Kit UI protocol section 7j,
  * capabilities `action:<id>`): `settings.open` (`{ section: 'ai' | 'models' | 'account' }`) opens
  * Settings where the person sets up AI, the next step of a `host/generate` refused as `unavailable`.
  */

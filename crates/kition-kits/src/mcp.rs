@@ -155,10 +155,13 @@ pub async fn handle(kits: &KitManager, message: &Value) -> Option<Value> {
 
 /// One MCP connection: the agent it is, named on `initialize` from the client's name and a
 /// suffix drawn for the connection, so two connections of one client are two agents. Before
-/// `initialize`, or without a client name, it is `agent-` and the suffix.
+/// `initialize`, or without a client name, it is `agent-` and the suffix. Its requests in flight
+/// are its own: a request id or a cancellation of one connection never meets another's.
 #[derive(Debug, Default)]
 pub struct Session {
     agent: std::sync::OnceLock<String>,
+    /// The agent's suffix, when the transport fixes it ([`Session::for_connection`]).
+    suffix: Option<String>,
     requests: Arc<Mutex<HashMap<String, watch::Sender<bool>>>>,
     notifications: Option<mpsc::Sender<Value>>,
 }
@@ -169,9 +172,32 @@ impl Session {
         Self { notifications: Some(notifications), ..Self::default() }
     }
 
+    /// The connection a stateless transport tells apart by the id its client sends with every
+    /// message (`Kition-Mcp-Connection` over HTTP): the agent's suffix comes from the id, so a
+    /// connection that names itself again after the server restarted is the same agent.
+    pub fn for_connection(id: &str) -> Self {
+        use sha2::{Digest, Sha256};
+        const DIGITS: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
+        let digest = Sha256::digest(id.as_bytes());
+        let suffix = digest.iter().take(4).map(|byte| char::from(DIGITS[usize::from(*byte) % DIGITS.len()])).collect();
+        Self { suffix: Some(suffix), ..Self::default() }
+    }
+
+    /// One message of a transport that does not tell its clients apart (a plain HTTP client of
+    /// `POST /mcp/kits`): the process's agent, as [`handle`] answers, with requests in flight of
+    /// its own, so its request id never collides with another client's and nobody else's
+    /// `notifications/cancelled` reaches it.
+    pub fn single_message() -> Self {
+        Self { agent: std::sync::OnceLock::from(tools::process_agent().to_owned()), ..Self::default() }
+    }
+
+    fn suffix(&self) -> String {
+        self.suffix.clone().unwrap_or_else(tools::suffix)
+    }
+
     /// The connection's agent.
     pub fn agent(&self) -> &str {
-        self.agent.get_or_init(|| format!("agent-{}", tools::suffix()))
+        self.agent.get_or_init(|| format!("agent-{}", self.suffix()))
     }
 }
 
@@ -346,7 +372,7 @@ async fn handle_inner(kits: &KitManager, session: &Session, message: &Value, opt
     Some(match method {
         "initialize" => {
             if let Some(client) = params["clientInfo"]["name"].as_str() {
-                let _ = session.agent.set(format!("{}-{}", agent_name(client), tools::suffix()));
+                let _ = session.agent.set(format!("{}-{}", agent_name(client), session.suffix()));
             }
             let asked = params.get("protocolVersion").and_then(Value::as_str).unwrap_or_default();
             let version = PROTOCOL_VERSIONS.iter().find(|known| **known == asked).copied().unwrap_or(PROTOCOL_VERSIONS[0]);
@@ -579,6 +605,30 @@ mod tests {
         assert!(*registered.cancelled.borrow());
         drop(registered);
         assert!(session.requests.lock().unwrap().is_empty());
+    }
+
+    /// A connection a stateless transport tells apart is its own agent, named from its client on
+    /// `initialize`, and the same agent when it names itself again (a gateway restarted); a
+    /// message of no connection is the process's agent (regressions/issue-mcp-http-connections).
+    #[tokio::test]
+    async fn connections_are_agents_named_by_their_clients() {
+        let kits = KitManager::new(None, Vec::new());
+        let init = |name: &str| json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "protocolVersion": "2025-06-18", "clientInfo": { "name": name } } });
+        let options = tools::CallOptions::default();
+        let dsh = Session::for_connection("connection-one-0123456789");
+        assert!(handle_in(&kits, &dsh, &init("DeepSeek Harness"), options).await.is_some());
+        assert!(dsh.agent().starts_with("deepseek-harness-"), "{}", dsh.agent());
+        let restarted = Session::for_connection("connection-one-0123456789");
+        handle_in(&kits, &restarted, &init("DeepSeek Harness"), options).await;
+        assert_eq!(restarted.agent(), dsh.agent());
+        let claude = Session::for_connection("connection-two-0123456789");
+        handle_in(&kits, &claude, &init("Claude Code"), options).await;
+        assert!(claude.agent().starts_with("claude-code-") && claude.agent() != dsh.agent(), "{}", claude.agent());
+        let unnamed = Session::for_connection("connection-one-0123456789");
+        assert_eq!(unnamed.agent().strip_prefix("agent-"), dsh.agent().strip_prefix("deepseek-harness-"), "one connection, one suffix");
+        let single = Session::single_message();
+        handle_in(&kits, &single, &init("Someone Else"), options).await;
+        assert_eq!(single.agent(), tools::process_agent());
     }
 
     #[tokio::test]

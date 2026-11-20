@@ -56,7 +56,7 @@
   },
   "headless": {
     "executable": "kition-board",
-    "protocol": "kition-kit/2",
+    "protocol": "kition-kit/1",
     "features": [
       "view.describe",
       "document.check",

@@ -19,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::sync::{mpsc, oneshot};
 
+/// A bridge session id's bits: the integers a JavaScript number holds exactly (2^53 - 1).
+const SESSION_ID_MASK: u64 = (1 << 53) - 1;
 /// How long the renderer has to list its open documents.
 const DOCUMENTS_TIMEOUT: Duration = Duration::from_secs(3);
 /// How long one tool call on a live document may take (a long series of edits).
@@ -99,7 +101,6 @@ pub struct LiveChange {
 /// The runtime's end of the bridge: the connected renderer windows and their pending requests.
 pub struct Bridge {
     sessions: Mutex<HashMap<u64, Arc<Session>>>,
-    next_session: AtomicU64,
     next_request: AtomicU64,
     /// The last revision each live document reported through `kit.changed`, by path.
     revisions: Mutex<HashMap<String, (u64, String)>>,
@@ -109,13 +110,7 @@ pub struct Bridge {
 
 impl Default for Bridge {
     fn default() -> Self {
-        Self {
-            sessions: Mutex::default(),
-            next_session: AtomicU64::default(),
-            next_request: AtomicU64::default(),
-            revisions: Mutex::default(),
-            changes: tokio::sync::broadcast::channel(256).0,
-        }
+        Self { sessions: Mutex::default(), next_request: AtomicU64::default(), revisions: Mutex::default(), changes: tokio::sync::broadcast::channel(256).0 }
     }
 }
 
@@ -125,12 +120,20 @@ pub fn normalize(path: &str) -> String {
 }
 
 impl Bridge {
-    /// A new renderer stream: its session id, and the messages to send it.
+    /// A new renderer stream: its session id, and the messages to send it. The id is drawn at
+    /// random (53 bits, so a JavaScript number holds it exactly), never counted: who answers for
+    /// a session must have been told its id on the stream, not guess it.
     pub fn connect(self: &Arc<Self>) -> (u64, mpsc::UnboundedReceiver<Value>) {
-        let id = self.next_session.fetch_add(1, Ordering::Relaxed) + 1;
         let (tx, rx) = mpsc::unbounded_channel();
+        let mut sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
+        let id = loop {
+            let id = rand::random::<u64>() & SESSION_ID_MASK;
+            if id != 0 && !sessions.contains_key(&id) {
+                break id;
+            }
+        };
         let _ = tx.send(json!({ "jsonrpc": "2.0", "method": "bridge.ready", "params": { "session": id } }));
-        self.sessions.lock().unwrap_or_else(PoisonError::into_inner).insert(id, Arc::new(Session { tx, pending: Mutex::new(HashMap::new()) }));
+        sessions.insert(id, Arc::new(Session { tx, pending: Mutex::new(HashMap::new()) }));
         (id, rx)
     }
 
@@ -340,6 +343,19 @@ mod tests {
         assert_eq!(outcome, Err("the editor window closed".into()));
         assert!(!bridge.connected());
         assert!(bridge.receive(session, &json!({ "id": 1, "result": {} })).is_err());
+    }
+
+    /// Bridge session ids were a counter (1, 2, 3, ...), so whoever could post to the bridge could
+    /// answer for a window it was never told about (regressions/issue-bridge-session-ids).
+    #[tokio::test]
+    async fn session_ids_are_drawn_not_counted() {
+        let bridge = Arc::new(Bridge::default());
+        let ids: Vec<u64> = (0..64).map(|_| bridge.connect().0).collect();
+        assert!(ids.iter().all(|id| *id != 0 && *id <= SESSION_ID_MASK), "{ids:?}");
+        let distinct: std::collections::HashSet<_> = ids.iter().collect();
+        assert_eq!(distinct.len(), ids.len());
+        assert!(!ids.windows(2).all(|pair| pair[1] == pair[0] + 1), "not a counter: {ids:?}");
+        assert!(ids.iter().filter(|id| **id < 1 << 32).count() < 4, "drawn from 53 bits: {ids:?}");
     }
 
     #[tokio::test]

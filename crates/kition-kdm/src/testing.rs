@@ -164,3 +164,10 @@ fn holder(replica: &Replica, parent: &str, ty: &str, id: &crate::ObjectId) -> Op
         })
     })
 }
+
+/// Whether the replica's engine holds an index of the document's history, which it builds for a
+/// checkout (an undo of an engine step) and which an undo releases again: on a large document it
+/// holds more than the document.
+pub fn engine_history_cached(replica: &Replica) -> bool {
+    replica.engine_history_cached()
+}

@@ -12,6 +12,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
 
 pub mod batch;
+mod changes;
 pub mod comment;
 pub mod conflict;
 pub mod diff;
@@ -32,6 +33,7 @@ pub mod tool_ids;
 mod tx;
 mod value;
 
+pub use changes::{Changes, MapWrites};
 pub use error::{KdmError, Result};
 pub use ids::{ActorId, DocId, NodeRef, ObjectId};
 pub use marks::TextRun;

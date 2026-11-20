@@ -18,6 +18,13 @@ pub(crate) const SCHEMA_VERSION: &str = "schemaVersion";
 /// A root map, not one inside `meta`: replicas that each created a nested map concurrently would
 /// keep only one of them.
 pub(crate) const SCHEMA_RAISES: &str = "schemaRaises";
+/// The root map whose `root` key records a document's birth: the version its first state is at, as
+/// [`crate::Replica::copy_as_new_document`] makes it (data model, "A copy is a new document"). Only
+/// its value in a shallow replica's state at its root counts ([`crate::Replica::carries_whole_history`]).
+/// A root map, not a key of `meta`, so the canonical state (`meta` included) stays the source's.
+pub(crate) const BIRTH: &str = "birth";
+/// The key of [`BIRTH`] that holds the encoded version.
+pub(crate) const BIRTH_ROOT: &str = "root";
 
 pub(crate) fn check_projected_storage(doc: &LoroDoc, schema: &Schema) -> Result<()> {
     if !schema.types.values().any(|def| def.projected) {

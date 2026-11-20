@@ -6,11 +6,13 @@
 //! (its operations take effect as they are applied), so staging is what makes a failed transaction
 //! leave no operations behind.
 
+use std::collections::HashMap;
+
 use loro::{Container, LoroDoc, LoroMap, LoroMovableList, LoroText, LoroTree, TreeID, TreeParentId};
 use serde_json::{Map, Value};
 
 use crate::error::engine;
-use crate::overlay::NodeKey;
+use crate::overlay::{FieldKey, NodeKey};
 use crate::read::{self, META, NODE_OBJECT, OBJECTS, SCHEMA_RAISES, SCHEMA_VERSION, TYPE_KEY};
 use crate::value::to_loro;
 use crate::{FieldKind, KdmError, ObjectId, Result, Schema};
@@ -144,16 +146,20 @@ impl Op<'_> {
     }
 }
 
-/// Applies validated operations in order, calling `touched` with each one's object. Answers the
-/// engine ids of the created nodes, by creation index. Does not commit.
-pub(crate) fn apply(doc: &LoroDoc, schema: &Schema, ops: Vec<Op<'_>>, node_count: usize, mut touched: impl FnMut(&ObjectId)) -> Result<Vec<Option<TreeID>>> {
+/// Applies validated operations in order. Answers the engine ids of the created nodes, by
+/// creation index. Does not commit. `found` holds containers the transaction already found in
+/// the document (by object and field); the others are looked up.
+pub(crate) fn apply(
+    doc: &LoroDoc,
+    schema: &Schema,
+    ops: Vec<Op<'_>>,
+    node_count: usize,
+    found: &HashMap<FieldKey<'_>, Option<Container>>,
+) -> Result<Vec<Option<TreeID>>> {
     let mut nodes: Vec<Option<TreeID>> = vec![None; node_count];
     for (index, op) in ops.into_iter().enumerate() {
         fail_if_forced(index)?;
-        if let Some(id) = op.object() {
-            touched(id);
-        }
-        apply_one(doc, schema, op, &mut nodes)?;
+        apply_one(doc, schema, op, found, &mut nodes)?;
     }
     Ok(nodes)
 }
@@ -173,7 +179,13 @@ fn fail_if_forced(_index: usize) -> Result<()> {
     Ok(())
 }
 
-fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<TreeID>]) -> Result<()> {
+fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, found: &HashMap<FieldKey<'_>, Option<Container>>, nodes: &mut [Option<TreeID>]) -> Result<()> {
+    let container = |id: &ObjectId, field: &str| -> Result<Container> {
+        match found.get(&(id.clone(), field)) {
+            Some(Some(container)) => Ok(container.clone()),
+            _ => read::field_container(doc, id, field),
+        }
+    };
     match op {
         Op::Create { id, ty, fields } => {
             let map = doc.get_map(OBJECTS).insert_container(id.as_str(), LoroMap::new()).map_err(engine)?;
@@ -194,17 +206,17 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
         }
         Op::Set { id, field, value } => read::object_map(doc, &id)?.insert(field, to_loro(value)).map_err(engine)?,
         Op::Delete { id } => doc.get_map(OBJECTS).delete(id.as_str()).map_err(engine)?,
-        Op::TextInsert { id, field, index, content } => insert_in_pieces(&text(doc, &id, field)?, index, &content)?,
-        Op::TextDelete { id, field, index, count } => text(doc, &id, field)?.delete(index, count).map_err(engine)?,
-        Op::TextMark { id, field, start, end, key, value } => text(doc, &id, field)?.mark(start..end, key, to_loro(value)).map_err(engine)?,
-        Op::TextUnmark { id, field, start, end, key } => text(doc, &id, field)?.unmark(start..end, key).map_err(engine)?,
-        Op::ListInsert { id, field, index, item } => list(doc, &id, field)?.insert(index, item.as_str()).map_err(engine)?,
-        Op::ListMove { id, field, from, to } => list(doc, &id, field)?.mov(from, to).map_err(engine)?,
-        Op::ListRemove { id, field, index } => list(doc, &id, field)?.delete(index, 1).map_err(engine)?,
-        Op::MapSet { id, field, key, value } => map(doc, &id, field)?.insert(&key, to_loro(value)).map_err(engine)?,
-        Op::MapDelete { id, field, key } => map(doc, &id, field)?.delete(&key).map_err(engine)?,
+        Op::TextInsert { id, field, index, content } => insert_in_pieces(&text(container(&id, field), &id, field)?, index, &content)?,
+        Op::TextDelete { id, field, index, count } => text(container(&id, field), &id, field)?.delete(index, count).map_err(engine)?,
+        Op::TextMark { id, field, start, end, key, value } => text(container(&id, field), &id, field)?.mark(start..end, key, to_loro(value)).map_err(engine)?,
+        Op::TextUnmark { id, field, start, end, key } => text(container(&id, field), &id, field)?.unmark(start..end, key).map_err(engine)?,
+        Op::ListInsert { id, field, index, item } => list(container(&id, field), &id, field)?.insert(index, item.as_str()).map_err(engine)?,
+        Op::ListMove { id, field, from, to } => list(container(&id, field), &id, field)?.mov(from, to).map_err(engine)?,
+        Op::ListRemove { id, field, index } => list(container(&id, field), &id, field)?.delete(index, 1).map_err(engine)?,
+        Op::MapSet { id, field, key, value } => map(container(&id, field), &id, field)?.insert(&key, to_loro(value)).map_err(engine)?,
+        Op::MapDelete { id, field, key } => map(container(&id, field), &id, field)?.delete(&key).map_err(engine)?,
         Op::TreeCreate { id, field, parent, object, node } => {
-            let tree = tree(doc, &id, field)?;
+            let tree = tree(container(&id, field), &id, field)?;
             let parent = parent_id(nodes, parent)?;
             let created = tree.create(parent).map_err(engine)?;
             tree.get_meta(created).map_err(engine)?.insert(NODE_OBJECT, object.as_str()).map_err(engine)?;
@@ -214,11 +226,11 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
             }
         }
         Op::TreeMove { id, field, node, parent } => {
-            let tree = tree(doc, &id, field)?;
+            let tree = tree(container(&id, field), &id, field)?;
             let parent = parent_id(nodes, parent)?;
             tree.mov(node_id(nodes, node)?, parent).map_err(engine)?;
         }
-        Op::TreeDelete { id, field, node } => tree(doc, &id, field)?.delete(node_id(nodes, node)?).map_err(engine)?,
+        Op::TreeDelete { id, field, node } => tree(container(&id, field), &id, field)?.delete(node_id(nodes, node)?).map_err(engine)?,
         Op::RaiseSchema { version } => {
             if read::min_schema_version(doc).is_some_and(|current| current >= u64::from(version)) {
                 return Ok(());
@@ -273,29 +285,29 @@ fn parent_id(nodes: &[Option<TreeID>], parent: Option<NodeKey>) -> Result<TreePa
     })
 }
 
-fn text(doc: &LoroDoc, id: &ObjectId, field: &str) -> Result<LoroText> {
-    match read::field_container(doc, id, field)? {
+fn text(container: Result<Container>, id: &ObjectId, field: &str) -> Result<LoroText> {
+    match container? {
         Container::Text(found) => Ok(found),
         _ => Err(read::wrong_container(id, field)),
     }
 }
 
-fn list(doc: &LoroDoc, id: &ObjectId, field: &str) -> Result<LoroMovableList> {
-    match read::field_container(doc, id, field)? {
+fn list(container: Result<Container>, id: &ObjectId, field: &str) -> Result<LoroMovableList> {
+    match container? {
         Container::MovableList(found) => Ok(found),
         _ => Err(read::wrong_container(id, field)),
     }
 }
 
-fn map(doc: &LoroDoc, id: &ObjectId, field: &str) -> Result<LoroMap> {
-    match read::field_container(doc, id, field)? {
+fn map(container: Result<Container>, id: &ObjectId, field: &str) -> Result<LoroMap> {
+    match container? {
         Container::Map(found) => Ok(found),
         _ => Err(read::wrong_container(id, field)),
     }
 }
 
-fn tree(doc: &LoroDoc, id: &ObjectId, field: &str) -> Result<LoroTree> {
-    match read::field_container(doc, id, field)? {
+fn tree(container: Result<Container>, id: &ObjectId, field: &str) -> Result<LoroTree> {
+    match container? {
         Container::Tree(found) => Ok(found),
         _ => Err(read::wrong_container(id, field)),
     }

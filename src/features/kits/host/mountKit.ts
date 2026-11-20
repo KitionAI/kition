@@ -145,7 +145,7 @@ export type KitHostHandlers = {
    */
   actions?: Record<string, (params: Record<string, unknown>) => Result<'host/action'>>
   /**
-   * `host/service`: the host's services by id (minor version 2.6, section 7k; managed co-editing
+   * `host/service`: the host's services by id (section 7k; managed co-editing
    * D4), each listed as capability `service:<id>`. Params arrive checked (`parseServiceParams`,
    * UI-V3); a service not served is refused `not-allowed`.
    */
@@ -260,7 +260,7 @@ export type KitConnection = {
   state: () => Promise<DocumentState>
   save: () => Promise<{ saved: boolean; version: string | null }>
   fileChanged: (version: string) => void
-  /** Tells the kit the file is now `version` and its document already holds it (`document/held`, protocol 2.6): no conflict. */
+  /** Tells the kit the file is now `version` and its document already holds it (`document/held`): no conflict. */
   fileHeld: (version: string) => void
   setTheme: (theme: KitTheme) => void
   setLocale: (locale: string) => void
@@ -297,7 +297,7 @@ export type KitConnection = {
   check: (options?: { draft?: boolean }) => Promise<KitDiagnostic[]>
   /**
    * The Kit AI bridge; `draft` (capability `draft`) works on the agent's draft instead of the live
-   * document. `run`'s steps are the agent's, or with `origin: 'system'` (protocol 2.7) the host's
+   * document. `run`'s steps are the agent's, or with `origin: 'system'` the host's
    * own change, recorded with `originLabel` (`host` when absent) and no undo step in any history.
    * Only the host's own features send `origin`, never a model's call.
    */
@@ -334,7 +334,7 @@ export type KitConnection = {
     version: () => Promise<ArrayBuffer>
     exportChanges: (since: ArrayBuffer) => Promise<{ changes: ArrayBuffer; blobs: ArrayBuffer }>
     importChanges: (changes: ArrayBuffer, blobs: ArrayBuffer) => Promise<{ damage: unknown }>
-    /** The replica's own id (minor version 1.3), when the kit's engine has one; `null` otherwise. */
+    /** The replica's own id, when the kit's engine has one; `null` otherwise. */
     info: () => Promise<string | null>
     /** Hears every `replica/changed` (the replica's version after an edit); answers an unsubscribe. */
     onChanged: (listener: (version: ArrayBuffer) => void) => () => void

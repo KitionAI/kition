@@ -9,12 +9,12 @@
  * operation's values or a command's parameters, becomes its id. Text positions count Unicode
  * scalar values (rule M18), converted here to the UTF-16 units of this implementation's `Tx`.
  */
-import { KdmError } from './errors'
+import { errors, KdmError } from './errors'
 import type { NodeRef, ObjectId } from './ids'
 import { checkOrigin, type Origin } from './origin'
 import type { TreeEntry } from './ids'
 import type { Replica } from './replica'
-import { fieldDef, hasMarks, hasToolIds, mapHeld, owning, objectReadOnly, sortedKeys, typeDef, type FieldKind, type Schema, type TypeDef } from './schema'
+import { fieldDef, hasMarks, hasToolIds, KDM_VERSION, mapHeld, owning, objectReadOnly, parseSchema, sortedKeys, typeDef, type FieldKind, type Schema, type TypeDef } from './schema'
 import { isUnresolved, ToolIds, type Unresolved } from './toolIds'
 import type { Tx } from './tx'
 import { hasProjections, ProjectionView, routeProjection, type ProjectedObject } from './projection'
@@ -860,4 +860,25 @@ export function describeModel(replica: Replica) {
   const root = rootId(replica)
   const shown = root !== null && hasToolIds(schema) ? ToolIds.ofReplica(replica).show(root) : root
   return { capability: OBJECT_MODEL_CAPABILITY, kit: schema.kit, schemaVersion: schema.schemaVersion, root: schema.root, rootId: shown, types }
+}
+
+/**
+ * The schema a kit's `model/describe` answer describes (Rust's `kition_kits::drafts::schema_of`),
+ * for a reader that has no other. The description names a text field's marks by key (OM1), not
+ * their definitions (M4c): each expands after here, which only editing a marked text reads.
+ */
+export function schemaOfDescription(description: object): Schema {
+  const described = description as Record<string, unknown>
+  for (const name of ['kit', 'schemaVersion', 'root', 'types']) {
+    if (described[name] === undefined) throw errors.schema(`the kit's description has no \`${name}\``)
+  }
+  const types: Record<string, unknown> = {}
+  for (const [ty, def] of Object.entries(described.types as Record<string, { fields?: Record<string, Record<string, unknown>> }>)) {
+    const fields: Record<string, unknown> = {}
+    for (const [name, field] of Object.entries(def.fields ?? {})) {
+      fields[name] = Array.isArray(field.marks) ? { ...field, marks: Object.fromEntries(field.marks.map((mark) => [mark, { expand: 'after' }])) } : field
+    }
+    types[ty] = { ...def, fields }
+  }
+  return parseSchema({ kdm: KDM_VERSION, kit: described.kit, schemaVersion: described.schemaVersion, root: described.root, types })
 }

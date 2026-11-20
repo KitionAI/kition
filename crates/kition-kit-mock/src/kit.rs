@@ -119,6 +119,41 @@ static MODEL: LazyLock<bool> = LazyLock::new(|| std::env::var("KITION_KIT_MOCK_S
 /// kit without replica transport.
 static REPLICA: LazyLock<String> = LazyLock::new(|| std::env::var("KITION_KIT_MOCK_REPLICA").unwrap_or_default());
 
+/// `KITION_KIT_MOCK_FILE_REPLICA=1`: the file keeps the document's replica (as the board, table,
+/// layout, design and scene kits do): the text, [`REPLICA_MARK`], then the replica's snapshot in
+/// base64. A document opens from it, keeping its docId and object ids, and a save writes it again.
+/// The kit then serves `document.identity` and `document.fork` (feature `document.identity`) and
+/// `model.export` and `model.import`; without it, it declares neither and answers both "method not
+/// found", as a kit that has not declared the feature does.
+static FILE_REPLICA: LazyLock<bool> = LazyLock::new(|| std::env::var_os("KITION_KIT_MOCK_FILE_REPLICA").is_some_and(|value| value == "1"));
+
+/// Where a [`FILE_REPLICA`] file's replica starts.
+const REPLICA_MARK: &str = "\n%%kition-mock-replica%%\n";
+
+/// A file's text and the replica it embeds, when [`FILE_REPLICA`] and it has one.
+fn split_file(text: String) -> Result<(String, Option<Replica>), RpcError> {
+    if !*FILE_REPLICA {
+        return Ok((text, None));
+    }
+    let Some((body, replica)) = text.split_once(REPLICA_MARK) else { return Ok((text, None)) };
+    let damaged = |detail: String| RpcError::kit_detail(ErrorReason::UnsupportedFormat, format!("the file's replica is damaged: {detail}"));
+    let bytes = base64::decode(replica.trim()).ok_or_else(|| damaged("not base64".to_owned()))?;
+    let schema = Arc::new(Schema::parse(schema_text()).map_err(|error| RpcError::internal(error.to_string()))?);
+    let replica = Replica::load(schema, &bytes, ActorId::random()).map_err(|error| damaged(error.to_string()))?;
+    Ok((body.to_owned(), Some(replica)))
+}
+
+/// The file of `text` with `replica` embedded, or the text alone.
+fn joined_file(text: &str, replica: Option<&Replica>) -> Result<String, RpcError> {
+    match replica {
+        None => Ok(text.to_owned()),
+        Some(replica) => {
+            let snapshot = replica.snapshot().map_err(|error| RpcError::internal(error.to_string()))?;
+            Ok(format!("{text}{REPLICA_MARK}{}", base64::encode(&snapshot)))
+        }
+    }
+}
+
 /// The diagnostic `document.check` answers while the text holds [`TODO`]: a warning about the
 /// whole document, which goes once the text no longer holds it.
 const TODO: &str = "TODO";
@@ -798,10 +833,10 @@ impl Kit {
             capabilities: Capabilities {
                 surfaces: vec![Surface::Headless],
                 formats: Formats { open: vec![FORMAT.to_owned()], save: vec![FORMAT.to_owned()], export: vec![FORMAT.to_owned()] },
-                features: if *MODEL {
-                    vec!["view.describe".to_owned(), "model.describe".to_owned(), "model.batch".to_owned()]
-                } else {
-                    vec!["view.describe".to_owned()]
+                features: match (*MODEL, *FILE_REPLICA) {
+                    (true, true) => vec!["view.describe".to_owned(), "model.describe".to_owned(), "model.batch".to_owned(), "document.identity".to_owned()],
+                    (true, false) => vec!["view.describe".to_owned(), "model.describe".to_owned(), "model.batch".to_owned()],
+                    (false, _) => vec!["view.describe".to_owned()],
                 },
                 capabilities: Vec::new(),
             },
@@ -946,12 +981,40 @@ impl Kit {
                 }
                 Ok(json!({ "diagnostics": diagnostics }))
             }
+            "document.identity" if *FILE_REPLICA => {
+                let params: DocumentIdentityParams = parse(params)?;
+                let (text, _) = self.read_file(&params.file)?;
+                let (_, embedded) = split_file(text)?;
+                to_value(DocumentIdentityResult { doc_id: embedded.map(|replica| replica.doc_id().to_string()) })
+            }
+            "document.fork" if *FILE_REPLICA => self.fork(parse(params)?),
             method if method.starts_with("model.") && !*MODEL => Err(RpcError::method_not_found(method)),
-            "model.export" if matches!(REPLICA.as_str(), "full" | "export") => {
+            "model.import" if *FILE_REPLICA => {
                 let id = document_param(&params)?;
+                let changes = params["changes"].as_str().and_then(base64::decode).ok_or_else(|| RpcError::invalid_params("changes is base64 KDM"))?;
                 self.with_document(&id, |document| {
-                    let snapshot = document.model()?.snapshot().map_err(|error| RpcError::internal(error.to_string()))?;
-                    Ok(json!({ "changes": base64::encode(&snapshot) }))
+                    let replica = document.model()?;
+                    replica.import_changes(&changes).map_err(|error| RpcError::kit_detail(ErrorReason::InvalidParams, error.to_string()))?;
+                    let root = batch::root_id(replica).ok_or_else(|| RpcError::internal("no root"))?;
+                    document.text = replica.text(&root, "text").map_err(|error| RpcError::internal(error.to_string()))?;
+                    Ok(json!({}))
+                })
+            }
+            "model.export" if *FILE_REPLICA || matches!(REPLICA.as_str(), "full" | "export") => {
+                let id = document_param(&params)?;
+                // A file that keeps its replica answers as a kit on the change exchange does
+                // (`with_replica_port`): the replica's changes since `since`, every change without
+                // one. The other modes answer a snapshot.
+                let since = match params["since"].as_str() {
+                    Some(since) if *FILE_REPLICA => base64::decode(since)
+                        .and_then(|bytes| kition_kdm::Version::decode(&bytes).ok())
+                        .ok_or_else(|| RpcError::invalid_params("`since` is a base64 version, as `model.version` answers it"))?,
+                    _ => kition_kdm::Version::empty(),
+                };
+                self.with_document(&id, |document| {
+                    let replica = document.model()?;
+                    let bytes = if *FILE_REPLICA { replica.export_changes(&since) } else { replica.snapshot() };
+                    Ok(json!({ "changes": base64::encode(&bytes.map_err(|error| RpcError::internal(error.to_string()))?) }))
                 })
             }
             "model.open" if REPLICA.as_str() == "full" => {
@@ -1239,6 +1302,7 @@ impl Kit {
         }
         let created = params.create.is_some() && stat.version.is_none();
         let (text, version) = if created { (String::new(), None) } else { self.read_file(&params.file).map(|(text, version)| (text, Some(version)))? };
+        let (text, embedded) = split_file(text)?;
         let (text, current) = editor_line(text);
         let mut state = self.state();
         state.next_document += 1;
@@ -1252,7 +1316,7 @@ impl Kit {
             text,
             history: Vec::new(),
             read_only: params.read_only == Some(true),
-            model: None,
+            model: embedded,
             current,
             selection: Vec::new(),
             playhead: 0.0,
@@ -1265,16 +1329,37 @@ impl Kit {
         to_value(document_state)
     }
 
+    /// `document.fork`: the file of `params.file` as a new document, written to `params.target`. Its
+    /// embedded replica is replaced by a copy under a new docId (no history: KDM
+    /// `copy_as_new_document`); a file without one is written unchanged and has no identity.
+    fn fork(&self, params: DocumentForkParams) -> Handled {
+        let (text, _) = self.read_file(&params.file)?;
+        let (body, embedded) = split_file(text.clone())?;
+        let (contents, doc_id) = match embedded {
+            None => (text, None),
+            Some(source) => {
+                let doc_id = DocId::new();
+                let copy = source.copy_as_new_document(doc_id, ActorId::random()).map_err(|error| RpcError::internal(error.to_string()))?;
+                (joined_file(&body, Some(&copy))?, Some(doc_id.to_string()))
+            }
+        };
+        let stat = self.ask::<methods::FilesStat>(&FileRef { handle: params.target.clone() })?;
+        // A fork never replaces a file: the target is a `create` handle, committed once.
+        let version = self.write_file(&params.target, &contents, None)?;
+        to_value(DocumentForkResult { doc_id, name: stat.name, version })
+    }
+
     /// Writes the document to its file (or to `target`'s, which it then lives in), committed with
     /// the version it read: a file changed meanwhile is the host's `file_conflict`.
     fn save(&self, document_id: &str, target: Option<String>, step: &mut Step) -> Handled {
         // A failed save of the document's own file is a conflict (saving elsewhere is not).
         let own_file = target.is_none();
-        let (text, current, handle, name, expected) = self.with_document(document_id, |document| {
+        let (text, current, handle, name, expected, replica) = self.with_document(document_id, |document| {
             if document.read_only && target.is_none() {
                 return Err(RpcError::kit_detail(ErrorReason::IoError, "the document is read-only"));
             }
-            Ok((document.text.clone(), document.current, document.file.clone(), document.name.clone(), document.version.clone()))
+            let replica = if *FILE_REPLICA { Some(document.model()?.snapshot().map_err(|error| RpcError::internal(error.to_string()))?) } else { None };
+            Ok((document.text.clone(), document.current, document.file.clone(), document.name.clone(), document.version.clone(), replica))
         })?;
         let (handle, name, expected) = match target {
             Some(target) => {
@@ -1283,7 +1368,11 @@ impl Kit {
             }
             None => (handle, name, expected),
         };
-        let version = match self.write_file(&handle, &file_text(&text, current), expected) {
+        let mut contents = file_text(&text, current);
+        if let Some(snapshot) = &replica {
+            contents = format!("{contents}{REPLICA_MARK}{}", base64::encode(snapshot));
+        }
+        let version = match self.write_file(&handle, &contents, expected) {
             Ok(version) => version,
             Err(error) => {
                 if error.reason() == Some(ErrorReason::FileConflict) && own_file {
@@ -1342,6 +1431,7 @@ impl Kit {
     fn read_again(&self, document_id: &str) -> Result<DocumentState, RpcError> {
         let file = self.with_document(document_id, |document| Ok(document.file.clone()))?;
         let (text, version) = self.read_file(&file)?;
+        let (text, embedded) = split_file(text)?;
         let (text, current) = editor_line(text);
         self.with_document(document_id, |document| {
             if *DECK && !*deck::NESTED && std::env::var_os("KITION_KIT_MOCK_RETAIN_SESSION").is_some() {
@@ -1368,8 +1458,9 @@ impl Kit {
                 document.current = current;
             }
             document.version = Some(version);
-            // The document is replaced: its object model starts again from the text.
-            document.model = carried;
+            // The document is replaced: its object model starts again from the text (or from the
+            // replica the file embeds).
+            document.model = carried.or(embedded);
             document.history.clear();
             document.dirty = false;
             document.conflict = false;

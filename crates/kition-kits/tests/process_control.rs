@@ -127,7 +127,7 @@ async fn answer(shared: Arc<Shared>, peer: Arc<Peer>, request: Request) {
                 *shared.host.lock().await = Some(Arc::clone(&peer));
             }
             let manifest: Value = serde_json::from_str(MANIFEST).unwrap();
-            json!({ "protocolVersion": 2, "kit": { "id": "kit.example", "version": manifest["version"] },
+            json!({ "protocolVersion": 1, "kit": { "id": "kit.example", "version": manifest["version"] },
                 "capabilities": { "surfaces": ["headless"], "formats": { "open": ["example"], "save": ["example"], "export": [] } } })
         }
         "kit.shutdown" => {

@@ -266,6 +266,8 @@ export interface NoteCommands extends CommandMap {
   "selection.replace": { /** Plain text the person pasted: an address over a selection links it. */ paste?: boolean; /** The text that replaces the selection. */ text: string }
   /** Fit the page to the visible width. Sets the page to the editor's visible width (and height) so lines wrap to it; answers whether that changed and the page's width. Params: { width: number, height?: number }. */
   "view.width": { /** The visible height in document pixels: the room below the note is half of it. */ height?: number; /** The visible width in document pixels. */ width: number }
+  /** Paint the note in the host's color scheme. Paints the note with the light or the dark palette, as the host's color scheme is; nothing moves. Answers whether that changed. Params: { scheme: 'light' | 'dark' }. */
+  "view.scheme": { /** The host's color scheme. */ scheme: "light" | "dark" }
   /** The pointer left the note: nothing is hovered. Tells the editor the pointer left the note, so no heading or item is drawn hovered. Params: {}. */
   "view.hoverOut": Record<string, never>
   /** Where a character is drawn. Answers where the character at text position `at` is drawn on the page (x, top and height, in document pixels). Params: { at: number }. */

@@ -185,6 +185,54 @@ async fn an_agent_drafts_headless_and_the_person_merges() {
     }
 }
 
+/// A draft the person merged in another process (`drafts merge` from the command line, while the
+/// server that drafted it keeps running) is gone for the server too: the agent's next draft of the
+/// file forks a new one. The server kept the merged draft's document and edited it, and then had
+/// no folder to store it in: `draft-required`.
+#[tokio::test]
+async fn a_draft_merged_by_another_process_leaves_room_for_the_next() {
+    let (kit, executable) = replica_kit();
+    let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    let workspace = dir.path();
+    let file = workspace.join("Plan.example");
+    std::fs::copy(kit.path().join("Plan.example"), &file).unwrap_or_else(|err| panic!("{err}"));
+    let mut child = tokio::process::Command::new(MCP)
+        .arg("--workspace")
+        .arg(workspace)
+        .arg("--kit")
+        .arg(&executable)
+        .arg("--drafts")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap_or_else(|err| panic!("{err}"));
+    let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+        panic!("no pipes");
+    };
+    let mut server = Server { stdin, lines: BufReader::new(stdout).lines(), next: 0 };
+    server.request("initialize", json!({ "protocolVersion": "2025-06-18" })).await;
+    let step = || json!({ "command": "text.append", "params": { "text": "# Agenda\n\n" } });
+
+    let first = server.tool("example_run", json!({ "path": "Plan.example", "draft": true, "steps": [step()] })).await;
+    assert_eq!(first["isError"], false, "{first}");
+    let (merged, ok) = drafts(workspace, &executable, &["merge", "Plan.example"]).await;
+    assert!(ok, "{merged}");
+    let after_merge = sha256(&file);
+
+    let second = server.tool("example_run", json!({ "path": "Plan.example", "draft": true, "steps": [step()] })).await;
+    assert_eq!(second["isError"], false, "the next draft: {second}");
+    assert_eq!(second["structuredContent"]["draft"], true, "{second}");
+    assert_eq!(sha256(&file), after_merge, "the file is unchanged until the person merges again");
+    let (listed, ok) = drafts(workspace, &executable, &["list"]).await;
+    assert!(ok, "{listed}");
+    assert_eq!(listed["drafts"][0]["path"], "Plan.example", "{listed}");
+    assert_eq!(listed["drafts"][0]["stale"], false, "the new draft forked from the merged file: {listed}");
+    drop(server);
+    let _ = child.kill().await;
+}
+
 #[path = "support/binary.rs"]
 mod binary;
 use binary::mock_binary;

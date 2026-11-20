@@ -14,7 +14,7 @@ workspace = true
 [dependencies]
 # Loro from KitionPkg/loro, branch `kition`: upstream Loro 1.16 without the MPL-2.0 `im`
 # crate. The rev pins loro-internal too (a path dependency inside that repository).
-loro = { git = "https://github.com/KitionPkg/loro", rev = "c0f64d39c2125415c6fb21c7fcf344c32e360886" }
+loro = { git = "https://github.com/KitionPkg/loro", rev = "b7e6dfea82ac7dc4f5dcce282844911fba6d5c04" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "0.10"

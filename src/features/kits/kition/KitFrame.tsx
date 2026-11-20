@@ -243,7 +243,7 @@ async function stampForKit(document: string, { path: wanted }: { path: string })
 }
 
 /**
- * `links/pick` (Kit UI protocol 2.5, UI-N2): the person chooses existing workspace files in
+ * `links/pick` (Kit UI protocol, UI-N2): the person chooses existing workspace files in
  * Kition's own picker, which offers only `accept`'s visible files and not the document; nothing
  * is copied. Answers their workspace paths and stamps; `mountKit` names them from the document's
  * folder. `host/read` and `host/stamp` serve them like the other files a kit may read (UI-N3).

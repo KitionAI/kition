@@ -3,7 +3,7 @@
 //!
 //! A kit starts on first use, headless; it serves previews and the agent (kit editors run in the
 //! page, `KitFrame`). Each kit process gets two connections: the `host` connection serves people
-//! and answers the kit's `files.*` from the workspace (Kit Process Protocol 2, section 5.1, through a
+//! and answers the kit's `files.*` from the workspace (Kit Process Protocol, section 5.1, through a
 //! grant session of its own, `kition_kit_host::KitFiles`), and an `agent` connection serves agent
 //! tools, so the kit itself enforces the agent's role. The kit never sees a path: the manager
 //! mints a handle for every file it names to the kit. Kits stop when the manager is dropped, which
@@ -135,6 +135,8 @@ pub struct KitStatus {
     pub id: &'static str,
     pub name: &'static str,
     pub extensions: Vec<&'static str>,
+    /// Extensions it opens to view only, read-only.
+    pub views: Vec<&'static str>,
     /// Extensions this kit can create new documents in.
     pub creates: Vec<&'static str>,
     pub installed: bool,
@@ -644,6 +646,7 @@ impl KitManager {
                 id: kit.id,
                 name: kit.name,
                 extensions: kit.extensions.to_vec(),
+                views: kit.views.to_vec(),
                 creates: kit.creates.iter().map(|(extension, _)| *extension).collect(),
                 installed: binary.as_deref().is_some_and(Path::is_file),
             })
@@ -1632,7 +1635,7 @@ impl KitManager {
     /// way whether the file exists or not (KHP A29), when it leaves the workspace (`..`, an
     /// absolute path, or a symbolic link out) or has a hidden segment (`.git/`, `.env`, Kition's
     /// own `.kition/`): [`KitError::NotAllowed`].
-    pub(crate) fn resolve(&self, path: &str) -> Result<PathBuf, KitError> {
+    pub fn resolve(&self, path: &str) -> Result<PathBuf, KitError> {
         self.resolve_in(path, false)
     }
 
@@ -1672,13 +1675,18 @@ impl KitManager {
             absolute.push(part);
         }
         // Where the path really leads: its nearest existing folder, resolved, so a link out of
-        // the workspace is refused for a new file too.
+        // the workspace is refused for a new file too, and a link into a hidden folder (the
+        // host's own `.kition/`) is refused as the hidden path itself would be.
+        let hidden = |real: &Path| {
+            !own && real.strip_prefix(workspace).is_ok_and(|inside| inside.components().any(|part| part.as_os_str().to_string_lossy().starts_with('.')))
+        };
         let existing = absolute.ancestors().find(|ancestor| ancestor.exists()).unwrap_or(workspace);
         match std::fs::canonicalize(existing) {
-            Ok(real) if real.starts_with(workspace) => Ok(match std::fs::canonicalize(&absolute) {
+            Ok(real) if real.starts_with(workspace) && !hidden(&real) => Ok(match std::fs::canonicalize(&absolute) {
                 Ok(real) => real,
                 Err(_) => absolute,
             }),
+            Ok(real) if real.starts_with(workspace) => Err(KitError::NotAllowed(format!("`{path}` leads to a hidden file or folder"))),
             _ => Err(outside()),
         }
     }

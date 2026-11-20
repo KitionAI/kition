@@ -26,7 +26,7 @@ const metadata = (version = '0.4.7', overrides: Record<string, unknown> = {}) =>
   name: '@kition/kit-slide-ui',
   version,
   dist: { integrity: INTEGRITY, tarball: `${A}@kition/kit-slide-ui/-/kit-slide-ui-${version}.tgz` },
-  kition: { kit: 'slide', id: 'kit.slide', name: 'Slide', version, role: 'ui', protocol: 'kition-kit/2', extensions: ['kislide'], views: [], build },
+  kition: { kit: 'slide', id: 'kit.slide', name: 'Slide', version, role: 'ui', protocol: 'kition-kit/1', extensions: ['kislide'], views: [], build },
   ...overrides,
 })
 

@@ -1,14 +1,16 @@
 // Copied from kition-sdk crates/kition-kdm/src/tx.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::cell::RefCell;
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
-use loro::{Container, LoroDoc, ToJson, ValueOrContainer};
+use loro::{Container, ContainerID, ContainerTrait, LoroDoc, LoroMap, ToJson, ValueOrContainer};
 use serde_json::{Map, Value};
 
 use crate::ids::{NodeInner, PendingNode};
 use crate::op::{self, Op};
-use crate::overlay::{ListEdit, ListState, NodeKey, Overlay, TreeState};
+use crate::overlay::{FieldKey, ListEdit, ListState, NodeKey, Overlay, TreeState};
 use crate::read;
 use crate::value::{canonical, to_loro};
 use crate::{FieldDef, FieldKind, KdmError, NodeRef, ObjectId, Result, Schema};
@@ -48,17 +50,53 @@ pub struct Tx<'a> {
     nodes: Vec<Arc<PendingNode>>,
     /// The largest schema version this transaction raised the document to.
     raised: Option<u32>,
+    /// What the transaction read of the document, read once: each object's type (an object never
+    /// changes type) and each field's container. A large write (every record of a table) reads
+    /// each object once instead of once per operation, and applies its operations to the
+    /// containers it found instead of looking them up again; the engine keeps only a few thousand
+    /// containers decoded, so a second lookup decodes the object again.
+    read: RefCell<Reads<'a>>,
+}
+
+#[derive(Default)]
+struct Reads<'a> {
+    types: HashMap<ObjectId, &'a str>,
+    /// Each object's own map, found once in the document's objects.
+    objects: HashMap<ObjectId, LoroMap>,
+    containers: HashMap<FieldKey<'a>, Option<Container>>,
+}
+
+/// One register a transaction writes: a key of `container` (an object's own map for a register
+/// field, a map field's map for one of its keys), with the value written (`None`: deleted).
+pub(crate) struct RegisterWrite {
+    pub(crate) container: ContainerID,
+    pub(crate) key: String,
+    pub(crate) value: Option<loro::LoroValue>,
 }
 
 /// A successful transaction's operations, ready to apply.
 pub(crate) struct Staged<'a> {
     ops: Vec<Op<'a>>,
     nodes: Vec<Arc<PendingNode>>,
+    /// The containers the transaction found in the document ([`Tx`]'s reads).
+    containers: HashMap<FieldKey<'a>, Option<Container>>,
 }
 
-impl Staged<'_> {
+impl<'a> Staged<'a> {
+    /// The objects and fields the operations write, one touch per object sorted by id (see
+    /// [`crate::UndoTouch`]). Gathered in a map, so a transaction of many operations costs
+    /// O(n log n), not a merge per operation.
     pub(crate) fn undo_touches(&self, doc: &LoroDoc, schema: &Schema) -> Vec<crate::UndoTouch> {
-        let mut touches = Vec::new();
+        let mut touches: BTreeMap<String, Option<BTreeSet<String>>> = BTreeMap::new();
+        let mut touch = |id: String, fields: Option<BTreeSet<String>>| match touches.entry(id) {
+            Entry::Vacant(entry) => {
+                entry.insert(fields);
+            }
+            Entry::Occupied(mut entry) => match (entry.get_mut(), fields) {
+                (Some(held), Some(more)) => held.extend(more),
+                (held, _) => *held = None,
+            },
+        };
         for (before, op) in self.ops.iter().enumerate() {
             let Some(id) = op.object() else { continue };
             let field = match op {
@@ -75,10 +113,10 @@ impl Staged<'_> {
                 | Op::MapDelete { field, .. }
                 | Op::TreeCreate { field, .. }
                 | Op::TreeMove { field, .. }
-                | Op::TreeDelete { field, .. } => Some(std::collections::BTreeSet::from([(*field).to_owned()])),
+                | Op::TreeDelete { field, .. } => Some(BTreeSet::from([(*field).to_owned()])),
                 Op::RaiseSchema { .. } => continue,
             };
-            crate::replica::merge_undo_touches(&mut touches, &[crate::UndoTouch { id: id.to_string(), fields: field }]);
+            touch(id.to_string(), field);
             let item = match op {
                 Op::ListInsert { item, .. } | Op::TreeCreate { object: item, .. } => Some(item.clone()),
                 Op::ListMove { field, from: index, .. } | Op::ListRemove { field, index, .. } => self.undo_list_item(doc, schema, id, field, *index, before),
@@ -88,10 +126,10 @@ impl Staged<'_> {
                 _ => None,
             };
             if let Some(item) = item {
-                crate::replica::merge_undo_touches(&mut touches, &[crate::UndoTouch { id: item.to_string(), fields: Some(Default::default()) }]);
+                touch(item.to_string(), Some(Default::default()));
             }
         }
-        touches
+        touches.into_iter().map(|(id, fields)| crate::UndoTouch { id, fields }).collect()
     }
 
     fn undo_list_item(&self, doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str, mut index: usize, before: usize) -> Option<ObjectId> {
@@ -136,34 +174,110 @@ impl Staged<'_> {
         self.ops.is_empty()
     }
 
+    /// The objects the operations change, with the map keys of those whose only operations set
+    /// or delete map keys and each key's value once applied ([`crate::Changes`]).
+    pub(crate) fn changes(&self) -> crate::Changes {
+        let mut changes = crate::Changes::default();
+        for op in &self.ops {
+            match op {
+                Op::MapSet { id, field, key, value } => changes.insert_map_write(id, field, key, Some(stored_form(value))),
+                Op::MapDelete { id, field, key } => changes.insert_map_write(id, field, key, None),
+                op => {
+                    if let Some(id) = op.object() {
+                        changes.insert_object(id.clone());
+                    }
+                }
+            }
+        }
+        changes
+    }
+
     /// Whether the transaction raises the document's minimum schema version.
     pub(crate) fn raises_schema(&self) -> bool {
         self.ops.iter().any(|op| matches!(op, Op::RaiseSchema { .. }))
     }
 
-    /// The registers the operations write: `(object, map field, key, value)`, the map field `None`
-    /// for an object's own register field, the value `None` for a deleted map key. Writes to an
+    /// The registers the operations write ([`RegisterWrite`]), in order. Writes to an
     /// object the same operations create are left out, as its creation's own fields are: no undo
     /// reaches such a register before a later write replaces it (undoing the creation removes
-    /// the whole object), so the replica keeps no note of them.
-    pub(crate) fn register_writes(&self) -> Vec<(ObjectId, Option<String>, String, Option<Value>)> {
+    /// the whole object), so the replica keeps no note of them. Map fields the transaction read
+    /// are not looked up again.
+    pub(crate) fn register_writes(&self, doc: &LoroDoc) -> Vec<RegisterWrite> {
         let created: HashSet<&ObjectId> = self.ops.iter().filter_map(|op| if let Op::Create { id, .. } = op { Some(id) } else { None }).collect();
         self.ops
             .iter()
             .filter_map(|op| match op {
                 Op::Set { id, .. } | Op::MapSet { id, .. } | Op::MapDelete { id, .. } if created.contains(id) => None,
-                Op::Set { id, field, value } => Some((id.clone(), None, (*field).to_owned(), Some(value.clone()))),
-                Op::MapSet { id, field, key, value } => Some((id.clone(), Some((*field).to_owned()), key.clone(), Some(value.clone()))),
-                Op::MapDelete { id, field, key } => Some((id.clone(), Some((*field).to_owned()), key.clone(), None)),
-                _ => None,
+                op => self.register_write(doc, op).map(|(_, write)| write),
             })
             .collect()
     }
 
-    /// Applies the operations without committing, calling `touched` with each changed object.
-    /// On success the transaction's node handles resolve.
-    pub(crate) fn apply(self, doc: &LoroDoc, schema: &Schema, touched: impl FnMut(&ObjectId)) -> Result<()> {
-        let ids = op::apply(doc, schema, self.ops, self.nodes.len(), touched)?;
+    /// The register `op` writes, with the map holding it, when it is a write to a register field
+    /// or to a key of a map field.
+    fn register_write(&self, doc: &LoroDoc, op: &Op<'a>) -> Option<(LoroMap, RegisterWrite)> {
+        let map_field = |id: &ObjectId, field: &'a str| -> Option<LoroMap> {
+            match self.containers.get(&(id.clone(), field)) {
+                Some(Some(Container::Map(map))) => Some(map.clone()),
+                _ => match read::object_map(doc, id).ok()?.get(field) {
+                    Some(ValueOrContainer::Container(Container::Map(map))) => Some(map),
+                    _ => None,
+                },
+            }
+        };
+        let (map, key, value) = match op {
+            Op::Set { id, field, value } => (read::object_map(doc, id).ok()?, (*field).to_owned(), Some(to_loro(value.clone()))),
+            Op::MapSet { id, field, key, value } => (map_field(id, field)?, key.clone(), Some(to_loro(value.clone()))),
+            Op::MapDelete { id, field, key } => (map_field(id, field)?, key.clone(), None),
+            _ => return None,
+        };
+        let container = map.id();
+        Some((map, RegisterWrite { container, key, value }))
+    }
+
+    /// When every operation writes a register field or a key of a map field of an object that
+    /// existed before the transaction, the transaction's undo step as the replica keeps it
+    /// ([`crate::replica::Entry`]): each register it changes with the value it held before, read
+    /// now, before the operations apply. A register written twice is noted once; one the
+    /// transaction leaves at the value it held is not noted, as the engine writes nothing for it.
+    /// Also answers [`Staged::register_writes`]. `None` for any other transaction.
+    pub(crate) fn register_step(&self, doc: &LoroDoc) -> Option<(Vec<RegisterWrite>, Vec<crate::replica::Entry>)> {
+        let mut writes = Vec::with_capacity(self.ops.len());
+        let mut entries: Vec<crate::replica::Entry> = Vec::with_capacity(self.ops.len());
+        let mut noted: HashMap<(ContainerID, String), usize> = HashMap::with_capacity(self.ops.len());
+        for op in &self.ops {
+            let (map, write) = self.register_write(doc, op)?;
+            let (id, field) = match op {
+                Op::Set { id, .. } => (id, None),
+                Op::MapSet { id, field, .. } | Op::MapDelete { id, field, .. } => (id, Some((*field).to_owned())),
+                _ => return None,
+            };
+            let register = (write.container.clone(), write.key.clone());
+            if !noted.contains_key(&register) {
+                let before = match map.get(&write.key) {
+                    Some(ValueOrContainer::Value(value)) => Some(value),
+                    Some(ValueOrContainer::Container(_)) => return None,
+                    None => None,
+                };
+                noted.insert(register.clone(), entries.len());
+                entries.push(crate::replica::Entry { container: register.0, key: register.1, object: id.clone(), field, value: before });
+            }
+            writes.push(write);
+        }
+        // A register the transaction leaves at its value changes nothing.
+        let mut last: HashMap<(&ContainerID, &str), &Option<loro::LoroValue>> = HashMap::with_capacity(entries.len());
+        for write in &writes {
+            last.insert((&write.container, write.key.as_str()), &write.value);
+        }
+        let entries =
+            entries.into_iter().filter(|entry| last.get(&(&entry.container, entry.key.as_str())).is_none_or(|value| **value != entry.value)).collect();
+        Some((writes, entries))
+    }
+
+    /// Applies the operations without committing. On success the transaction's node handles
+    /// resolve.
+    pub(crate) fn apply(self, doc: &LoroDoc, schema: &Schema) -> Result<()> {
+        let ids = op::apply(doc, schema, self.ops, self.nodes.len(), &self.containers)?;
         for (pending, id) in self.nodes.iter().zip(ids) {
             if let Some(id) = id {
                 // Set exactly once: this transaction is the only writer.
@@ -176,11 +290,20 @@ impl Staged<'_> {
 
 impl<'a> Tx<'a> {
     pub(crate) fn new(doc: &'a LoroDoc, schema: &'a Schema) -> Self {
-        Self { doc, schema, serial: NEXT_SERIAL.fetch_add(1, Ordering::Relaxed), ops: Vec::new(), overlay: Overlay::default(), nodes: Vec::new(), raised: None }
+        Self {
+            doc,
+            schema,
+            serial: NEXT_SERIAL.fetch_add(1, Ordering::Relaxed),
+            ops: Vec::new(),
+            overlay: Overlay::default(),
+            nodes: Vec::new(),
+            raised: None,
+            read: RefCell::default(),
+        }
     }
 
     pub(crate) fn finish(self) -> Staged<'a> {
-        Staged { ops: self.ops, nodes: self.nodes }
+        Staged { ops: self.ops, nodes: self.nodes, containers: self.read.into_inner().containers }
     }
 
     /// Raises the document's minimum schema version to `version` (rule M20): replicas whose
@@ -317,7 +440,7 @@ impl<'a> Tx<'a> {
     }
 
     pub fn exists(&self, id: &ObjectId) -> bool {
-        self.overlay.exists(id, || read::object_map(self.doc, id).is_ok())
+        self.overlay.exists(id, || self.read.borrow().types.contains_key(id) || self.object(id).is_ok())
     }
 
     pub(crate) fn was_deleted(&self, id: &ObjectId) -> bool {
@@ -732,9 +855,14 @@ impl<'a> Tx<'a> {
         if let Some((ty, _)) = self.overlay.created.get(id) {
             return Ok(ty);
         }
-        let ty = read::object_type(self.doc, id)?;
+        if let Some(ty) = self.read.borrow().types.get(id) {
+            return Ok(ty);
+        }
+        let ty = read::type_of(&self.object(id)?, id)?;
         let schema: &'a Schema = self.schema;
-        schema.types.get_key_value(ty.as_str()).map(|(name, _)| name.as_str()).ok_or(KdmError::UnknownType(ty))
+        let ty = schema.types.get_key_value(ty.as_str()).map(|(name, _)| name.as_str()).ok_or(KdmError::UnknownType(ty))?;
+        self.read.borrow_mut().types.insert(id.clone(), ty);
+        Ok(ty)
     }
 
     /// The object's type, and the schema's name and definition of `field`.
@@ -783,15 +911,38 @@ impl<'a> Tx<'a> {
     /// The document's container for a field, or `None` when it starts empty: the object was
     /// created by this transaction, or (for reads) it predates the field. Writes to a field the
     /// stored object lacks fail with [`KdmError::NotFound`].
-    fn stored(&self, id: &ObjectId, name: &str, write: bool) -> Result<Option<Container>> {
+    /// The object's own map in the document, looked up in the document's objects once per
+    /// transaction.
+    fn object(&self, id: &ObjectId) -> Result<LoroMap> {
+        if let Some(map) = self.read.borrow().objects.get(id) {
+            return Ok(map.clone());
+        }
+        let map = read::object_map(self.doc, id)?;
+        self.read.borrow_mut().objects.insert(id.clone(), map.clone());
+        Ok(map)
+    }
+
+    fn stored(&self, id: &ObjectId, name: &'a str, write: bool) -> Result<Option<Container>> {
         if self.overlay.is_created(id) {
             return Ok(None);
         }
-        match read::object_map(self.doc, id)?.get(name) {
-            Some(ValueOrContainer::Container(found)) => Ok(Some(found)),
-            Some(ValueOrContainer::Value(_)) => Err(read::wrong_container(id, name)),
+        let key = (id.clone(), name);
+        let cached = self.read.borrow().containers.get(&key).cloned();
+        let found = match cached {
+            Some(found) => found,
+            None => {
+                let found = match self.object(id)?.get(name) {
+                    Some(ValueOrContainer::Container(found)) => Some(found),
+                    Some(ValueOrContainer::Value(_)) => return Err(read::wrong_container(id, name)),
+                    None => None,
+                };
+                self.read.borrow_mut().containers.insert(key, found.clone());
+                found
+            }
+        };
+        match found {
             None if write => Err(KdmError::NotFound(format!("{id}.{name}"))),
-            None => Ok(None),
+            found => Ok(found),
         }
     }
 
@@ -863,11 +1014,32 @@ impl<'a> Tx<'a> {
         self.overlay.lists.get_mut(&key).ok_or_else(|| KdmError::Engine(format!("{id}.{name} was not staged")))
     }
 
+    /// The name of a map field this transaction may write. The first write to a stored map
+    /// prepares it ([`Tx::prepare_write`]).
     fn writable_map(&self, id: &ObjectId, field: &str) -> Result<&'a str> {
         let name = self.container_field(id, field, FieldKind::Map)?;
         match self.stored(id, name, true)? {
-            None | Some(Container::Map(_)) => Ok(name),
+            None => Ok(name),
+            Some(Container::Map(map)) => {
+                if !self.overlay.maps.contains_key(&(id.clone(), name)) {
+                    self.prepare_write(id, &map);
+                }
+                Ok(name)
+            }
             Some(_) => Err(read::wrong_container(id, name)),
+        }
+    }
+
+    /// Has the engine build the full state of `map`, a map field of `id`, and of the object's
+    /// own map, which applying a write to it needs, now: the transaction has usually just read
+    /// both, and the engine builds a state from the value it decoded for that read. Applying the
+    /// write later, after the transaction's other reads, would decode them again: the engine
+    /// keeps a few thousand decoded values only, and a large write reads more. A read of the
+    /// last editor of a key reads a container's state.
+    fn prepare_write(&self, id: &ObjectId, map: &loro::LoroMap) {
+        map.get_last_editor("");
+        if let Ok(object) = self.object(id) {
+            object.get_last_editor(read::TYPE_KEY);
         }
     }
 

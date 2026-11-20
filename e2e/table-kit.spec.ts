@@ -305,7 +305,7 @@ test('Kition serves host/generate for a rewrite of the person’s selection, and
   try {
     await expect(records(kit)).toContainText('1 record', { timeout: 60_000 })
 
-    // `rewrite` is a defined purpose (Kit UI protocol 2.4 section 7j): Kition runs it on the person's model.
+    // `rewrite` is a defined purpose (Kit UI protocol section 7j): Kition runs it on the person's model.
     const rewritten = await generateFromKit(page, 'rewrite')
     expect(rewritten.error).toBeUndefined()
     expect(rewritten.result).toMatchObject({ text: 'Ada wrote the first program.', model: 'gpt-test' })

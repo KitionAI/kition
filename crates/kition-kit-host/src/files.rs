@@ -30,6 +30,14 @@ use serde::{Deserialize, Serialize};
 pub const FILE_HANDLE_PREFIX: &str = "fh_";
 /// The prefix of every grant session id.
 pub const SESSION_PREFIX: &str = "fs_";
+/// The prefix of every choice (`GrantStore::choices`).
+pub const CHOICE_PREFIX: &str = "ch_";
+/// How long a choice the host offered stays good.
+pub const CHOICE_LIFETIME: Duration = Duration::from_secs(10 * 60);
+/// The most entries one listing of choices offers.
+pub const CHOICES_PER_LISTING: usize = 2000;
+/// The most choices a session holds; the oldest go first.
+const CHOICES_PER_SESSION: usize = 20_000;
 
 /// What a handle allows (FA2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,6 +115,27 @@ pub struct FileStat {
     /// The host's opaque version stamp; `None` for a created file not committed yet.
     pub version: Option<String>,
     pub rights: Vec<Right>,
+}
+
+/// An entry of the workspace the host offers the person to pick (`GrantStore::choices`): an
+/// unguessable id standing for its path, its display name, and whether it is a file or a folder.
+/// The person's choice comes back as the id, so a grant never takes a path from its caller.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChoiceView {
+    pub choice: String,
+    /// The last path segment only.
+    pub name: String,
+    pub kind: Kind,
+}
+
+/// One listing of choices: the listed folder itself (a choice to grant it, browse it again, or
+/// name a new file in it), and its entries.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Choices {
+    pub folder: String,
+    pub choices: Vec<ChoiceView>,
 }
 
 /// A handle as the host shows it to the person (FA16): its stat and how it was granted.
@@ -329,6 +358,14 @@ impl Grant {
     }
 }
 
+/// A workspace entry offered to the person (`GrantStore::choices`).
+struct Choice {
+    /// The absolute path, inside the workspace, as it was when offered.
+    path: PathBuf,
+    kind: Kind,
+    offered: Instant,
+}
+
 /// One kit editor page: its identity is the kit and the document it opened, for the person.
 struct Session {
     kit: String,
@@ -343,6 +380,8 @@ struct Session {
     written: u64,
     touched: Instant,
     log: Vec<GrantLogEntry>,
+    /// The entries offered to the person, by choice id.
+    choices: HashMap<String, Choice>,
 }
 
 /// The log entry of `event` on `grant` in the session of `kit` and `principal`.
@@ -458,6 +497,7 @@ impl GrantStore {
             written: 0,
             touched: Instant::now(),
             log: Vec::new(),
+            choices: HashMap::new(),
         };
         let mut sessions = self.sessions();
         sessions.insert(id.clone(), session);
@@ -583,6 +623,115 @@ impl GrantStore {
         })
     }
 
+    /// The entries of a workspace folder the session's kit may be granted, offered to the person
+    /// to pick: the workspace's top folder, or the folder an earlier choice offered (`folder`).
+    /// Hidden entries, entries that a link leads out of the workspace or into a hidden folder,
+    /// and files of types the kit's manifest neither reads nor creates are not offered; folders
+    /// are, to browse into. At most [`CHOICES_PER_LISTING`] entries, by name. Each choice is good
+    /// for [`CHOICE_LIFETIME`] and only in this session; its path never leaves the store.
+    pub fn choices(&self, session: &str, principal: &str, folder: Option<&str>) -> Result<Choices, FileError> {
+        let workspace = self.workspace()?.to_path_buf();
+        self.with_session(session, principal, |_, session| {
+            session.choices.retain(|_, choice| choice.offered.elapsed() <= CHOICE_LIFETIME);
+            let parent = match folder {
+                None => workspace.clone(),
+                Some(id) => {
+                    let choice =
+                        session.choices.get(id).ok_or_else(|| FileError::NotGranted("this choice was not offered to this session, or it expired".into()))?;
+                    if choice.kind != Kind::Folder {
+                        return Err(FileError::BadParams("this choice is not a folder".into()));
+                    }
+                    choice.path.clone()
+                }
+            };
+            let real = still_inside(&workspace, &parent).filter(|real| real.is_dir()).ok_or_else(unavailable)?;
+            let listed = random_id(CHOICE_PREFIX);
+            session.choices.insert(listed.clone(), Choice { path: parent.clone(), kind: Kind::Folder, offered: Instant::now() });
+            let mut entries: Vec<(String, PathBuf)> = std::fs::read_dir(real)
+                .map_err(io)?
+                .filter_map(Result::ok)
+                .filter_map(|entry| {
+                    let name = entry.file_name().to_str()?.to_owned();
+                    (!name.starts_with('.')).then(|| (name, entry.path()))
+                })
+                .collect();
+            entries.sort();
+            let mut offered = Vec::new();
+            for (name, path) in entries {
+                if offered.len() >= CHOICES_PER_LISTING {
+                    break;
+                }
+                let Some(metadata) = still_inside(&workspace, &path).and_then(|real| std::fs::metadata(real).ok()) else {
+                    continue;
+                };
+                let kind = if metadata.is_dir() {
+                    Kind::Folder
+                } else if metadata.is_file() && (session.may_read(&name, &[]) || session.may_create(&name)) {
+                    Kind::File
+                } else {
+                    continue;
+                };
+                let choice = random_id(CHOICE_PREFIX);
+                session.choices.insert(choice.clone(), Choice { path, kind, offered: Instant::now() });
+                offered.push(ChoiceView { choice, name, kind });
+            }
+            if session.choices.len() > CHOICES_PER_SESSION {
+                let mut ages: Vec<(Instant, String)> = session.choices.iter().map(|(id, choice)| (choice.offered, id.clone())).collect();
+                ages.sort();
+                for (_, id) in ages.into_iter().take(session.choices.len() - CHOICES_PER_SESSION) {
+                    session.choices.remove(&id);
+                }
+            }
+            Ok(Choices { folder: listed, choices: offered })
+        })
+    }
+
+    /// A grant of the entry the person picked or dropped, named by the choice [`Self::choices`]
+    /// offered: the caller names no path. With `name`, the person named a new file in the folder
+    /// `choice` offers (a save-as): one plain file name, no folder, not hidden. The entry is
+    /// confined again now (it may have become a link out of the workspace since it was offered),
+    /// and the grant is checked as [`Self::grant`] checks one.
+    #[allow(clippy::too_many_arguments)]
+    pub fn grant_choice(
+        &self,
+        session: &str,
+        principal: &str,
+        choice: &str,
+        name: Option<&str>,
+        rights: &[Right],
+        accept: &[String],
+        flow: Flow,
+    ) -> Result<FileStat, FileError> {
+        if !matches!(flow, Flow::Pick | Flow::Drop) {
+            return Err(FileError::BadParams("flow is pick or drop".into()));
+        }
+        let workspace = self.workspace()?.to_path_buf();
+        let (path, kind) = self.with_session(session, principal, |_, session| {
+            session.choices.retain(|_, choice| choice.offered.elapsed() <= CHOICE_LIFETIME);
+            let choice =
+                session.choices.get(choice).ok_or_else(|| FileError::NotGranted("this choice was not offered to this session, or it expired".into()))?;
+            Ok((choice.path.clone(), choice.kind))
+        })?;
+        let (path, kind) = match name {
+            None => (path, kind),
+            Some(name) => {
+                if kind != Kind::Folder {
+                    return Err(FileError::BadParams("a new file's name goes with a folder choice".into()));
+                }
+                let plain = !name.is_empty() && name != ".." && !name.contains(['/', '\\', '\0']) && Path::new(name).components().count() == 1;
+                if !plain {
+                    return Err(FileError::BadParams("a new file's name is one file name".into()));
+                }
+                if name.starts_with('.') {
+                    return Err(unavailable());
+                }
+                (path.join(name), Kind::File)
+            }
+        };
+        let relative = relative_to(&workspace, &path).ok_or_else(unavailable)?;
+        self.grant(session, principal, GrantRequest { path: &relative, kind, rights, accept, flow, approved: false })
+    }
+
     /// `files/create`: a handle with right `create` on a new file, beside the session's document
     /// or in a granted folder, under an unused name (FA7, FA15). The file appears when committed.
     pub fn create(&self, session: &str, principal: &str, suggested_name: &str, mime: Option<&str>, folder: Option<&str>) -> Result<FileStat, FileError> {
@@ -634,9 +783,9 @@ impl GrantStore {
             if grant.kind != Kind::File || !grant.has(Right::Read) {
                 return Err(FileError::NotGranted("this handle has no read right on a file".into()));
             }
-            // The file may have become a link out of the workspace since it was granted.
-            let real = grant.reach(&workspace).ok_or_else(unavailable)?;
-            let mut file = File::open(real).map_err(io)?;
+            // The file may have become a link out of the workspace since it was granted; the file
+            // opened is the one checked (`open_inside`).
+            let (mut file, _) = open_inside(&workspace, &grant.path, grant.own).ok_or_else(unavailable)?;
             let metadata = file.metadata().map_err(io)?;
             if !metadata.is_file() {
                 return Err(unavailable());
@@ -1034,6 +1183,35 @@ fn reach(workspace: &Path, path: &Path, own: bool) -> Option<PathBuf> {
     (!hidden).then_some(real)
 }
 
+/// Opens `path` for reading when, links followed, it is inside `workspace` and no part of it
+/// below the workspace is hidden (but for the host's `own` files), and answers the file with its
+/// real path. A check and an open by path leave a gap a link swapped in between can use, so the
+/// path is checked again after the open, and the file opened must be the file at the checked real
+/// path (Unix: the same device and inode). A swap in that gap leads the open elsewhere and is
+/// refused. What std cannot close: a swap timed into the second check's own gap, between its
+/// resolving the path and reading the file there, and a hard link to a file outside the workspace
+/// (a hard link is that file, inside).
+pub fn open_inside(workspace: &Path, path: &Path, own: bool) -> Option<(File, PathBuf)> {
+    let checked = reach(workspace, path, own)?;
+    let file = File::open(&checked).ok()?;
+    let opened = file.metadata().ok()?;
+    let again = reach(workspace, path, own)?;
+    let at = std::fs::metadata(&again).ok()?;
+    (again == checked && same_file(&opened, &at)).then_some((file, again))
+}
+
+#[cfg(unix)]
+fn same_file(opened: &std::fs::Metadata, at: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    opened.dev() == at.dev() && opened.ino() == at.ino()
+}
+
+/// Without a stable file identity in std, the size, the type and the modification time.
+#[cfg(not(unix))]
+fn same_file(opened: &std::fs::Metadata, at: &std::fs::Metadata) -> bool {
+    opened.len() == at.len() && opened.is_file() == at.is_file() && opened.modified().ok() == at.modified().ok()
+}
+
 /// `path` relative to `workspace`, `/`-separated.
 fn relative_to(workspace: &Path, path: &Path) -> Option<String> {
     let parts: Option<Vec<&str>> = path
@@ -1221,6 +1399,56 @@ mod tests {
         let taken = ["Report.pdf", "Report 2.pdf"];
         assert_eq!(unused_name("Report.pdf", |name| taken.contains(&name)).as_deref(), Some("Report 3.pdf"));
         assert_eq!(unused_name("notes", |_| false).as_deref(), Some("notes"));
+    }
+
+    /// regressions/issue-link-swap-read: a file was checked (its link followed, inside the
+    /// workspace) and then opened by path, so a link swapped in between led the open out of the
+    /// workspace. `open_inside` checks again after the open and refuses a file that is not the
+    /// one at the checked path: a link flipping between a file inside and one outside, as fast
+    /// as a thread can rename it, never lets the outside file be read.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_swapped_between_check_and_open_never_leads_out() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let dir = tempfile::tempdir().unwrap();
+        let base = std::fs::canonicalize(dir.path()).unwrap();
+        let (workspace, outside) = (base.join("workspace"), base.join("outside"));
+        std::fs::create_dir_all(workspace.join("art")).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(workspace.join("art/inside.png"), "inside").unwrap();
+        std::fs::write(outside.join("secret.png"), "secret").unwrap();
+        let link = workspace.join("art/link.png");
+        std::os::unix::fs::symlink(workspace.join("art/inside.png"), &link).unwrap();
+        let stop = std::sync::Arc::new(AtomicBool::new(false));
+        let flipper = {
+            let (stop, art, outside) = (std::sync::Arc::clone(&stop), workspace.join("art"), outside.clone());
+            std::thread::spawn(move || {
+                let mut turn = 0u64;
+                while !stop.load(Ordering::Relaxed) {
+                    turn += 1;
+                    let target = if turn.is_multiple_of(2) { art.join("inside.png") } else { outside.join("secret.png") };
+                    let staged = art.join(format!(".next-{turn}"));
+                    if std::os::unix::fs::symlink(&target, &staged).is_ok() {
+                        let _ = std::fs::rename(&staged, art.join("link.png"));
+                    }
+                }
+            })
+        };
+        let (mut opened, mut refused) = (0, 0);
+        for _ in 0..20_000 {
+            match open_inside(&workspace, &link, false) {
+                Some((mut file, real)) => {
+                    let mut text = String::new();
+                    file.read_to_string(&mut text).unwrap();
+                    assert_eq!(text, "inside", "read {} through the link", real.display());
+                    opened += 1;
+                }
+                None => refused += 1,
+            }
+        }
+        stop.store(true, Ordering::Relaxed);
+        flipper.join().unwrap();
+        assert!(opened > 0 && refused > 0, "the link flipped while it was read: {opened} opened, {refused} refused");
     }
 
     #[test]

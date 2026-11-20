@@ -18,6 +18,12 @@ export type ReplicaVersions = {
   endOf: (changes: Uint8Array) => Uint8Array | null
   /** Whether `version` holds every change `other` holds. */
   includes: (version: Uint8Array, other: Uint8Array) => boolean
+  /**
+   * The version `changes` hold at their root, its own operations included, when they are a shallow
+   * replica's snapshot, which a KDM export answers for a `since` that does not reach the root
+   * (KitModel M16a); the empty version for a full snapshot; `null` for a change set.
+   */
+  snapshotRoot: (changes: Uint8Array) => Uint8Array | null
 }
 
 function counters(version: Uint8Array): Map<string, number> {
@@ -52,5 +58,20 @@ export const LORO_REPLICA_VERSIONS: ReplicaVersions = {
     } catch {
       return false
     }
+  },
+  snapshotRoot: (changes) => {
+    let meta: ReturnType<typeof decodeImportBlobMeta>
+    try {
+      meta = decodeImportBlobMeta(openEnvelope(changes).engine, false)
+    } catch {
+      return null
+    }
+    if (meta.mode === 'update' || meta.mode === 'outdated-update') return null
+    // A full snapshot's changes start at the empty version.
+    if (meta.mode !== 'shallow-snapshot') return new Uint8Array()
+    // A shallow snapshot's at its root: the version before the root's operations, and those.
+    const root = new Map(meta.partialStartVersionVector.toJSON())
+    for (const { peer, counter } of meta.startFrontiers) root.set(peer, Math.max(counter + 1, root.get(peer) ?? 0))
+    return VersionVector.parseJSON(root).encode()
   },
 }

@@ -68,7 +68,7 @@ function isDefinedPurpose(purpose: unknown): purpose is KitDefinedGeneratePurpos
 }
 
 /**
- * `host/generate` for a kit (Kit UI protocol 2.4 section 7j): runs the kit's prompt on the
+ * `host/generate` for a kit (Kit UI protocol section 7j): runs the kit's prompt on the
  * person's model through the runtime, which logs its usage; the kit writes the answer into its
  * document itself. Kition serves the defined purposes, `ai-field` (an AI field's cell) and
  * `rewrite` (text the person selected, rewritten as they asked), and refuses everything else as

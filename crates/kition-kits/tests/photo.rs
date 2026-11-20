@@ -12,9 +12,9 @@ use std::path::PathBuf;
 use kition_kits::{Caller, KitManager};
 use serde_json::{Map, json};
 
-/// The stand-in manifest of `kit.<name>` (`tests/support/kits/<name>.json`) as a kit.
+/// The published manifest of `kit.<name>` (`tests/fixtures/kits/<name>.json`) as a kit.
 fn fixture_kit(name: &str) -> &'static kition_kits::KitDefinition {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/support/kits/{name}.json"));
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/fixtures/kits/{name}.json"));
     let text = std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
     let manifest = serde_json::from_str(&text).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
     kition_kits::KitDefinition::from_manifest(&manifest).unwrap_or_else(|error| panic!("{error}"))

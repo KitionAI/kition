@@ -81,7 +81,7 @@ async fn owning_map_queries_use_tool_ids() {
     let name = "refreplies";
     let manifest = json!({"khp":"1.0","id":"kit.refreplies","name":"References","version":"0.0.0",
         "formats":[{"id":name,"extensions":[name],"role":"edit"}],"agent":{"prefix":name,"tools":"document","objectModel":true},
-        "headless":{"executable":"mock","protocol":"kition-kit/2"}});
+        "headless":{"executable":"mock","protocol":"kition-kit/1"}});
     let kit = kition_kits::KitDefinition::from_manifest(&manifest).unwrap();
     let script = bin.path().join("mock");
     std::fs::write(

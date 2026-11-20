@@ -107,7 +107,7 @@ async fn a_host_opens_edits_and_saves_by_path_and_hears_of_conflicts() {
     let initialized = service.call("kits.initialize", json!({ "client": { "name": "test", "version": "0" } })).await.unwrap();
     check("initializeResult", &initialized);
     assert_eq!(initialized["serviceVersion"], 1);
-    assert_eq!(initialized["protocolVersion"], 2);
+    assert_eq!(initialized["protocolVersion"], 1);
     let example = initialized["kits"].as_array().unwrap().iter().find(|kit| kit["id"] == "kit.example").cloned().unwrap();
     assert_eq!(example["installed"], true, "{initialized}");
 

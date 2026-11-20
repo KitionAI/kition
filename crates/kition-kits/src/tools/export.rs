@@ -110,7 +110,7 @@ pub(super) async fn export(kits: &KitManager, kit: &'static KitDefinition, input
         let id = drafts::document(kits, kit, &path, false).await?;
         let executed = kits.execute(Caller::Agent, kit.id, &id, export.command, params).await?;
         (decode(export, executed.result.as_ref())?, false, true)
-    } else if draft && (live(kits, kit, &path).await.is_some() || explicit) {
+    } else if draft && !kits.headless_drafts() && (live(kits, kit, &path).await.is_some() || explicit) {
         let document = draft_editor(kits, kit, &path).await?;
         let answer = kits
             .bridge()

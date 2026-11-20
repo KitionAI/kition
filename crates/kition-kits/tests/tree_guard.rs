@@ -36,7 +36,7 @@ fn kit(name: &str) -> &'static KitDefinition {
         "khp": "1.0", "id": format!("kit.{name}"), "name": format!("Kition {name}"), "version": "0.3.1",
         "formats": [{ "id": name, "extensions": [name], "role": "edit" }],
         "agent": { "prefix": name, "tools": "document" },
-        "headless": { "executable": "kition-kit-mock", "protocol": "kition-kit/2" }
+        "headless": { "executable": "kition-kit-mock", "protocol": "kition-kit/1" }
     });
     KitDefinition::from_manifest(&manifest).unwrap_or_else(|error| panic!("{error}"))
 }

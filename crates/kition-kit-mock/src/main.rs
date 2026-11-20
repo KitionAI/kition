@@ -1,7 +1,7 @@
 // Copied from kition-sdk crates/kition-kit-mock/src/main.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 //! A minimal kit for plain-text `.mocktext` documents. It implements the
-//! headless parts of Kit Process Protocol version 2, reading and writing its
+//! headless parts of Kit Process Protocol version 1, reading and writing its
 //! documents through the host's `files.*`, so a host and the conformance suite
 //! can be tested without a real editor. It shares no code with
 //! `kition-kit-server`: it is a second, independent kit side, which enforces what a kit process
@@ -17,7 +17,11 @@
 //! object model; `KITION_KIT_MOCK_SCHEMA=tool-ids` adds types it numbers and names by those
 //! numbers (tool ids, KitObjectModel OM9). `KITION_KIT_MOCK_REPLICA=full` enables snapshot export/open for draft review;
 //! `export` enables only export, exercising file-copy review when replica opening fails. Without
-//! this option replica transport is absent. `KITION_KIT_MOCK_SCHEMA=none` leaves documents without
+//! this option replica transport is absent. `KITION_KIT_MOCK_FILE_REPLICA=1` keeps the document's
+//! replica in its file (the text, a marker line, the snapshot in base64), as kits whose files embed
+//! their replica do, and serves `document.identity` and `document.fork` (feature
+//! `document.identity`), `model.export` and `model.import`; without it the mock declares neither
+//! request and answers both "method not found". `KITION_KIT_MOCK_SCHEMA=none` leaves documents without
 //! an object model (every `model.*` request is not found). Documents with one answer `model.version` and
 //! `model.changes` (a change set since a version, KDM `Replica::changes_since`); a reload starts the
 //! object model again from the text. `document.check` warns (`mock.todo`) while the text holds `TODO`. It reports its manifest's version (`kit.json`), or what

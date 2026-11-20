@@ -31,7 +31,7 @@ function flatten(items: WorkspaceDocumentTreeItem[], out: Entry[] = []) {
 /**
  * The workspace picker a kit's `files/pick` opens (KitFiles 1.0 FA6): only the workspace's own
  * files and folders, never hidden ones; "Import from this computer" copies a file into the
- * workspace first, beside the document. For `links/pick` (mode `link`, Kit UI protocol 2.5
+ * workspace first, beside the document. For `links/pick` (mode `link`, Kit UI protocol
  * UI-N2) it offers only existing workspace files of `accept`, not the document itself, and no
  * import: a linked file stays where it is. Answers the chosen workspace paths; none when cancelled.
  */

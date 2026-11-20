@@ -5,12 +5,18 @@
  * `changes/pull` come down as `replica/import`.
  *
  * - **Up.** On every `replica/changed` (and when the room is joined or the connection comes back)
- *   the relay takes the replica's version `v`, exports the changes since `lastSent` (what the room
- *   is known to hold from here), uploads the export's blobs the server lacks (`blob/has`, then
- *   `blob/put`), and only then pushes the changes, so no one can receive a change before its blobs.
- *   `lastSent` then includes `v`. Offline, a push waits in the sync client's queue; an export
- *   whose blobs cannot be uploaded yet is not pushed at all, and `lastSent` stays put, so the
- *   next attempt (when the connection is back) exports it again: nothing is lost.
+ *   the relay takes the replica's version `v`, exports the changes since what it has sent (what
+ *   the room holds from here, `lastSent`, and the pushes still on their way), uploads the export's
+ *   blobs the server lacks (`blob/has`, then `blob/put`), and only then pushes the changes, so no
+ *   one can receive a change before its blobs. Once the room takes the push, `lastSent` includes
+ *   `v` (`onSent`); a push the room refuses, or that fails, is exported again with the next one.
+ *   Offline, a push waits in the sync client's queue; an export whose blobs cannot be uploaded yet
+ *   is not pushed at all, so the next attempt (when the connection is back) exports it again:
+ *   nothing is lost.
+ * - **Shallow replicas.** `changes/push` takes change sets only. A shallow replica (a copy made as a
+ *   new document, a shallow start) answers its snapshot for a `since` that does not reach its root
+ *   (an empty `lastSent`, say); the room holds that root (it was made from it, or gave it), so the
+ *   relay sends the changes after it instead, never the snapshot.
  * - **Down.** A pulled change's blobs are found in the change itself (see `blobSection.ts`) and
  *   fetched (`blob/get`) before `replica/import`. `lastSent` then also includes the version the
  *   change reaches, so the import (which moves the replica's version too) is not sent back.
@@ -82,7 +88,10 @@ function buffer(view: Uint8Array): ArrayBuffer {
 
 export function startRelay(options: RelayOptions): Relay {
   const { docId, replica, sync, versions } = options
+  /** What the room is known to hold from this replica. */
   let lastSent = options.lastSent ?? new Uint8Array()
+  /** `lastSent` with the pushes still on their way: the next export starts here. */
+  let sending = lastSent
   /** Blobs both the server and this replica hold. */
   const known = new Set<string>()
   /** Pulled changes whose blobs could not be fetched yet; imported once the connection is back. */
@@ -111,18 +120,42 @@ export function startRelay(options: RelayOptions): Relay {
   async function sendLocal() {
     if (!joined || readOnly) return
     const version = bytes(await replica.version())
-    const exported = await replica.exportChanges(buffer(lastSent))
+    const from = sending
+    let since = from
+    let exported = await replica.exportChanges(buffer(since))
+    const root = versions.snapshotRoot(bytes(exported.changes))
+    if (root) {
+      // A shallow replica's snapshot: the room has its root, so the changes after it.
+      since = versions.merge(since, root)
+      exported = await replica.exportChanges(buffer(since))
+      if (versions.snapshotRoot(bytes(exported.changes))) {
+        options.onError?.(new Error('the replica answers a snapshot, not changes; changes/push takes change sets only'))
+        return
+      }
+    }
     const changes = bytes(exported.changes)
     if (versions.isEmpty(changes)) return
     try {
       await upload(decodeBlobSection(bytes(exported.blobs)))
     } catch {
-      // Offline (or the server failed): pushed later from the same `lastSent`, blobs first.
+      // Offline (or the server failed): pushed later from the same place, blobs first.
       return
     }
-    lastSent = versions.merge(lastSent, version)
-    const sent = lastSent
-    sync.push(docId, changes).then(() => options.onSent?.(sent), (error: unknown) => options.onError?.(error))
+    const to = versions.merge(since, version)
+    sending = versions.merge(sending, to)
+    sync.push(docId, changes).then(
+      () => {
+        // The room holds these changes, and what it held before them unless an earlier push failed.
+        if (!versions.includes(lastSent, from)) return
+        lastSent = versions.merge(lastSent, to)
+        options.onSent?.(lastSent)
+      },
+      (error: unknown) => {
+        // Refused or failed: the next push exports these changes again.
+        sending = lastSent
+        options.onError?.(error)
+      },
+    )
   }
 
   /** Imports one pulled change after fetching the blobs it needs; `false` when they could not be fetched. */
@@ -145,7 +178,10 @@ export function startRelay(options: RelayOptions): Relay {
     }
     await replica.importChanges(buffer(changes), buffer(blobs))
     const end = versions.endOf(changes)
-    if (end) lastSent = versions.merge(lastSent, end)
+    if (end) {
+      lastSent = versions.merge(lastSent, end)
+      sending = versions.merge(sending, end)
+    }
     return true
   }
 

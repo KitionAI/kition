@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.table",
   "name": "Table",
-  "version": "0.4.0",
+  "version": "0.5.6",
   "license": "Apache-2.0",
   "distribution": "default",
   "capabilities": [
@@ -15,7 +15,8 @@
     "module": "kition_table_kit",
     "class": "TableDocument",
     "contract": 2,
-    "crate": "kition-table-kit"
+    "crate": "kition-table-kit",
+    "editorState": []
   },
   "formats": [
     {
@@ -63,6 +64,95 @@
       "params": [],
       "returns": "string",
       "description": "The TableChanges of replica changes imported since the last call, as a JSON array of table/changed params."
+    },
+    "gridOpen": {
+      "params": [
+        "paramsJson"
+      ],
+      "returns": "Uint8Array",
+      "description": "Arranges a view for the editor ({tableId, viewId?, config?, query?, collapsed?}): the axis (kition-table-arrange format v2: record ids in order, group headers with counts)."
+    },
+    "gridHits": {
+      "params": [
+        "paramsJson"
+      ],
+      "returns": "Uint8Array",
+      "description": "Which cells of a run of the arrangement's rows hold the search ({epoch, from, count, fieldIds}): kition-table-arrange hits format v1, a bitmask over the fields per row; an error for an epoch that is not the latest."
+    },
+    "gridSync": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "The editor's arrangement brought to the document's current state: the new axis, or no bytes when it is the same."
+    },
+    "gridStats": {
+      "params": [],
+      "returns": "string",
+      "description": "How long arranging took (whole arrangements and relocations) and how long the grid's bands took (bands), as JSON, for performance tests."
+    },
+    "gridAxes": {
+      "params": [
+        "axis",
+        "paramsJson"
+      ],
+      "returns": "string",
+      "description": "Lays out an axis from gridOpen or gridSync for the grid ({tableId, viewId?, config?, zone?, theme?, brand?}; config is the view config as the editor holds it, unsaved keys first; zone the page's time zone as [from ms, minutes east of UTC] changes, where dates are read): row heights as runs, columns, header and row head sizes, band sizes, skeleton colors, the overlay's colors, sizes and row head control icons, and the group headers' ids, as JSON."
+    },
+    "gridRecords": {
+      "params": [
+        "paramsJson"
+      ],
+      "returns": "string",
+      "description": "The records of some ids for the grid to edit ({tableId, ids, fields?}): [{id, row_key, values}] in the order asked, values only of the fields named when some are, ids that name no record left out."
+    },
+    "gridClear": {
+      "params": [
+        "paramsJson",
+        "ids"
+      ],
+      "returns": "string",
+      "description": "Clears many records for the grid ({tableId, values}, the records' ids as a Float64Array): values (field name to empty value) set on each record of the table in one transact of one cells.set, the row keys found by the engine; answers { result, change } as JSON, result.cleared the records written."
+    },
+    "gridRows": {
+      "params": [],
+      "returns": "Uint8Array",
+      "description": "What each linear row of the grid gridAxes laid out is (a record and its id, a group header, an add row), for the page's hit testing and selection."
+    },
+    "gridBands": {
+      "params": [
+        "epoch",
+        "keys",
+        "dpr",
+        "icons",
+        "tilesJson"
+      ],
+      "returns": "Uint8Array",
+      "description": "The grid's bands (layer, column band, row band triples) as display lists (format v1), with the icons from an id on and the emoji tiles the page lacks, in one batch."
+    },
+    "gridRaster": {
+      "params": [
+        "epoch",
+        "layer",
+        "colBand",
+        "rowBand",
+        "dpr"
+      ],
+      "returns": "Uint8Array",
+      "description": "One band as the engine rasterizes it (width, height, RGBA8), for the parity test."
+    },
+    "gridPicture": {
+      "params": [
+        "bytes",
+        "maxSide"
+      ],
+      "returns": "Uint8Array",
+      "description": "A picture's bytes decoded as the headless picture decodes them (PNG, JPEG, WebP, GIF's first frame, SVG drawn by resvg, HEIC): width and height (u32 each), then straight RGBA8, at most maxSide on its longest side; no bytes for another format. For the pictures the page's browser does not decode."
+    },
+    "gridMeasure": {
+      "params": [
+        "asksJson"
+      ],
+      "returns": "string",
+      "description": "How the grid splits text into runs of one face and how wide each run is, as JSON, for the width test."
     }
   },
   "ui": {
@@ -103,7 +193,7 @@
   },
   "headless": {
     "executable": "kition-table",
-    "protocol": "kition-kit/2",
+    "protocol": "kition-kit/1",
     "features": [
       "view.describe",
       "document.check",

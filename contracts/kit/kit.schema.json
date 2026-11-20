@@ -551,11 +551,11 @@
           "type": "string"
         },
         "protocol": {
-          "const": "kition-kit/2"
+          "const": "kition-kit/1"
         },
         "features": {
           "type": "array",
-          "description": "Optional Kit Process Protocol features the executable serves, as kit.initialize lists them in capabilities.features (for example model.describe and model.batch, the object model).",
+          "description": "Optional Kit Process Protocol features the executable serves, as kit.initialize lists them in capabilities.features (for example model.describe and model.batch, the object model; document.identity, the document.identity and document.fork requests).",
           "uniqueItems": true,
           "items": {
             "type": "string",

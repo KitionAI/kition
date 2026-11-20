@@ -336,7 +336,7 @@ export async function signOpenToken(claims: Omit<OpenTokenClaims, 'v' | 'typ' | 
 }
 
 /**
- * What a kit host opens the kit with for a verified token (Kit UI protocol 2.6): read-only
+ * What a kit host opens the kit with for a verified token: read-only
  * without `edit`, comments without `comment`, the display permissions, and the watermark.
  */
 export function openTokenDocument(claims: Pick<OpenTokenClaims, 'perms' | 'watermark'>) {

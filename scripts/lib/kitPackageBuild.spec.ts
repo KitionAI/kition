@@ -18,7 +18,7 @@ const boardKitJson = {
   name: 'Board',
   version: '0.1.0',
   formats: [{ id: 'kboard', extensions: ['kboard'], role: 'edit' }],
-  headless: { executable: 'kition-board', protocol: 'kition-kit/2' },
+  headless: { executable: 'kition-board', protocol: 'kition-kit/1' },
 }
 
 let work: string
@@ -40,8 +40,8 @@ function buildFolder(platform: string, overrides: { kitJson?: object; answered?:
   const handshakes = {
     [file]: {
       sha256: overrides.recordedSha ?? sha256(bytes),
-      protocolVersion: overrides.protocolVersion ?? 2,
-      initialized: 2,
+      protocolVersion: overrides.protocolVersion ?? 1,
+      initialized: 1,
       kit: overrides.answered ?? { id: 'kit.board', version: '0.1.0' },
     },
   }
@@ -171,7 +171,7 @@ describe('planFromRegistry', () => {
 
 describe('checkHeadlessBuild', () => {
   it('accepts the executable whose recorded kit.initialize answer is its kit.json id, version and protocol', () => {
-    expect(checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64'))).toEqual({ kit: 'board', version: '0.1.0', platform: 'linux-x64', protocol: 'kition-kit/2', file: 'kition-board' })
+    expect(checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64'))).toEqual({ kit: 'board', version: '0.1.0', platform: 'linux-x64', protocol: 'kition-kit/1', file: 'kition-board' })
     expect(checkHeadlessBuild('board', 'win32-x64', buildFolder('win32-x64')).file).toBe('kition-board.exe')
   })
 
@@ -184,9 +184,9 @@ describe('checkHeadlessBuild', () => {
   })
 
   it('refuses a protocol other than the one kit.json names, and a kit.json of another kit or executable', () => {
-    expect(() => checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64', { protocolVersion: 3 }))).toThrow(/speaks kition-kit\/3; its kit\.json says kition-kit\/2/)
+    expect(() => checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64', { protocolVersion: 3 }))).toThrow(/speaks kition-kit\/3; its kit\.json says kition-kit\/1/)
     fs.rmSync(path.join(work, 'bin-linux-x64'), { recursive: true })
-    expect(() => checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64', { kitJson: { ...boardKitJson, headless: { executable: 'board', protocol: 'kition-kit/2' } } }))).toThrow(/headless\.executable is board, not kition-board/)
+    expect(() => checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64', { kitJson: { ...boardKitJson, headless: { executable: 'board', protocol: 'kition-kit/1' } } }))).toThrow(/headless\.executable is board, not kition-board/)
     fs.rmSync(path.join(work, 'bin-linux-x64'), { recursive: true })
     expect(() => checkHeadlessBuild('board', 'linux-x64', buildFolder('linux-x64', { kitJson: { ...boardKitJson, id: 'kit.note' } }))).toThrow(/its id is kit\.note, not kit\.board/)
   })

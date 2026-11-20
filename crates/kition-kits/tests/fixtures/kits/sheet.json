@@ -1,0 +1,203 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.sheet",
+  "name": "Sheet",
+  "version": "0.1.1",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_sheet_kit",
+    "class": "SheetDocument",
+    "contract": 2,
+    "crate": "kition-sheet-kit",
+    "editorState": ["/sheet", "/used", "/active", "/selection", "/stats", "/lines", "/content", "/editing", "/editText", "/editCaret", "/editAnchor", "/pointing", "/gridlines", "/gridColor", "/headings", "/freeze", "/freezeShift", "/freezePreview", "/activeRect", "/zoom", "/zoomAsked", "/editCell", "/formulaHint", "/formulaText", "/formulaReferences", "/table", "/shape", "/shapes", "/chart", "/shapeEditing", "/escape", "/formatPainter", "/style", "/tableInfo", "/dialog", "/validation", "/defaultSize", "/notice", "/checkbox"]
+  },
+  "formats": [
+    {
+      "id": "xlsx",
+      "extensions": [
+        "xlsx"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "role": "edit"
+    },
+    {
+      "id": "xlsm",
+      "extensions": [
+        "xlsm"
+      ],
+      "mime": "application/vnd.ms-excel.sheet.macroEnabled.12",
+      "role": "edit"
+    },
+    {
+      "id": "xltx",
+      "extensions": [
+        "xltx",
+        "xltm"
+      ],
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+      "role": "view"
+    },
+    {
+      "id": "xls",
+      "extensions": [
+        "xls",
+        "xlt",
+        "et",
+        "ett"
+      ],
+      "mime": "application/vnd.ms-excel",
+      "role": "view"
+    },
+    {
+      "id": "xlsb",
+      "extensions": [
+        "xlsb"
+      ],
+      "mime": "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+      "role": "view"
+    },
+    {
+      "id": "ods",
+      "extensions": [
+        "ods"
+      ],
+      "mime": "application/vnd.oasis.opendocument.spreadsheet",
+      "role": "view"
+    },
+    {
+      "id": "csv",
+      "extensions": [
+        "csv"
+      ],
+      "mime": "text/csv",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "sheet",
+      "extension": "xlsx",
+      "baseName": "Untitled sheet",
+      "size": {
+        "width": 1710,
+        "height": 2021
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "file.export"
+    },
+    {
+      "extension": "csv",
+      "mime": "text/csv",
+      "command": "file.export"
+    },
+    {
+      "extension": "html",
+      "mime": "text/html",
+      "command": "file.export"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "file.export"
+    },
+    {
+      "extension": "xltx",
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+      "command": "file.export"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "line",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Home",
+      "Insert",
+      "Draw",
+      "Page Layout",
+      "Formulas",
+      "Data",
+      "Review",
+      "View",
+      "Automate",
+      "Format",
+      "Table",
+      "Table Design",
+      "Chart Design",
+      "Pivot Table Analyze",
+      "Pivot Table Design",
+      "Window"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#1a8641",
+      "dark": "#4fd17b"
+    }
+  },
+  "agent": {
+    "prefix": "sheet",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "parts": [
+      "sheet"
+    ],
+    "render": "file.render",
+    "describe": {
+      "noun": "spreadsheet",
+      "fileTypes": ".xlsx (and opens .xlsm, .xls, .xltx, .csv, .ods, .xlsb)",
+      "reports": "every sheet with its id, name and position, its used range, and its drawing objects by id",
+      "covers": "cells, formulas, formatting, sorting, filtering, tables, charts, pivot tables, and more; `cell.set` enters a value or formula",
+      "queries": "`cell`, `sort`, or `format`",
+      "example": "cell.set"
+    },
+    "export": {
+      "command": "file.export",
+      "data": "data"
+    }
+  },
+  "headless": {
+    "executable": "kition-sheet",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 6
+  },
+  "collaboration": {
+    "merge": [
+      "grid"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Sheet"
+  }
+}

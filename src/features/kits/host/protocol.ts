@@ -78,7 +78,7 @@ export type KitUiElement = { id: string; kind: string; label: string; parent: st
 export type KitCommentAccess = { me: string | null; name?: string; canComment: boolean; othersReadOnly: boolean }
 
 /**
- * Where in a document (minor version 2.1, `KitLinks 1.0` section 2): a diagnostic target's shape
+ * Where in a document (`KitLinks 1.0` section 2): a diagnostic target's shape
  * (`objectId`, `path`, `page`, `slide`, `sheet`, `cell`) plus `time`, `heading`, and `blockId`, as
  * the document's kit understands them. A kit that cannot show it ignores it.
  */
@@ -123,7 +123,7 @@ export type KitDocumentInit = {
    */
   readOnly?: boolean
   /**
-   * Who comments and how (minor version 1.6; KitModel rule M23): the person's principal
+   * Who comments and how (KitModel rule M23): the person's principal
    * id (`null` when unknown) and display name, whether they may write comments (a commenter's
    * document is `readOnly` for its content yet takes comments), and whether threads others opened
    * are read-only history (the document is not co-edited now).
@@ -136,24 +136,24 @@ export type KitDocumentInit = {
    */
   lend?: { root: string; folder: string }
   /**
-   * Where in the document to show first (minor version 2.1, section 2): the host opened it from a
+   * Where in the document to show first (section 2): the host opened it from a
    * link or its own navigation (`host/open`, OP3). A kit that can show it scrolls to it and
    * selects it; otherwise it ignores it.
    */
   view?: KitView
   /**
-   * What the person may take out of the document (minor version 2.6, managed co-editing OT5): a
+   * What the person may take out of the document (managed co-editing OT5): a
    * kit hides Download, Export, Print, and Share controls the host withholds. Absent: all allowed.
    * Display permissions, not a security boundary: the host enforces them for bytes it serves.
    */
   permissions?: KitDocumentPermissions
-  /** Text the kit draws over its canvas, faint and repeated (minor version 2.6); absent: none. */
+  /** Text the kit draws over its canvas, faint and repeated; absent: none. */
   watermark?: KitWatermark | null
 }
 
-/** `document.permissions` (minor version 2.6): `export` covers Print too. */
+/** `document.permissions`: `export` covers Print too. */
 export type KitDocumentPermissions = { download: boolean; export: boolean; share: boolean }
-/** `document.watermark` (minor version 2.6): at most `WATERMARK_TEXT_LIMIT` characters, no control characters. */
+/** `document.watermark`: at most `WATERMARK_TEXT_LIMIT` characters, no control characters. */
 export type KitWatermark = { text: string }
 export const WATERMARK_TEXT_LIMIT = 256
 
@@ -187,7 +187,7 @@ export type InitializeParams = {
   /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`, `lease`, `presence`, `files`, `files-pick`, `print`, `generate`, `action:<id>`, `open-file`, `open-url`, `links-pick`, `fetch-image`. */
   capabilities: string[]
   /**
-   * The capability sets this host serves (Kition platform `docs/platform/index.md` section 3, minor version 1.5), such as
+   * The capability sets this host serves (Kition platform `docs/platform/index.md` section 3), such as
    * `KitModel 1.0` or `KitCollab 1.0`; absent from older hosts.
    */
   capabilitySets?: string[]
@@ -209,7 +209,7 @@ export type StoredReplica = { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileSta
 
 /** Kit AI bridge records (standard A7 to A10), as Kition's runtime defines them. */
 /**
- * `context` (minor version 2.9, capability `context`) is what the step acts on and in, as Kit Process
+ * `context` (capability `context`) is what the step acts on and in, as Kit Process
  * Protocol's `context.set` takes it: the ids it acts on (`on`), its part, its time. The kit runs
  * the step in an editor state of the agent's own, so the person's selection, part and time do not
  * move (section 2).
@@ -227,7 +227,7 @@ export type AiRunResult = { completed: Array<{ command: string; changed: boolean
  */
 export type AiRunParams = { steps: AiStep[]; save: boolean; draft?: boolean; origin?: 'system'; originLabel?: string }
 
-/** A host feature's name for a change it makes (`originLabel`, minor version 2.7): 1 to 64 letters, digits, `.`, `_`, `-`. */
+/** A host feature's name for a change it makes (`originLabel`): 1 to 64 letters, digits, `.`, `_`, `-`. */
 export const ORIGIN_LABEL = /^[A-Za-z0-9._-]{1,64}$/
 /** The label of a host's change that names no feature. */
 export const HOST_ORIGIN_LABEL = 'host'
@@ -321,7 +321,7 @@ export function parsePeers(value: unknown): KitPeerPresence[] {
 export type KitConflict = { id: string; kind: string; summary: string }
 
 /**
- * The schema versions of the kit's document (section 7f, minor version 1.8; standard 2.0 rule
+ * The schema versions of the kit's document (section 7f; standard 2.0 rule
  * M5a): `reads` is the schema version the kit's replica reads, `newestAuthor` the newest one its
  * changes were written under, which is above `reads` when a newer kit edited the document.
  */
@@ -417,14 +417,14 @@ export function fileErrorReason(error: unknown): KitFileErrorReason | null {
 }
 
 /**
- * Host generation (capability `generate`, protocol section 7j, minor version 2.2; a Kition platform
+ * Host generation (capability `generate`, protocol section 7j; a Kition platform
  * request, not KHP): the kit builds the prompt from what its document holds and asks the host for
  * the model call; the host runs the person's model settings and never hands the kit a key (UI-G2).
  */
 export type KitGeneratePart = { type: 'text'; text: string } | { type: 'image'; mime: string; bytes: ArrayBuffer } | { type: 'image'; url: string }
 export type KitGenerateMessage = { role: 'system' | 'user'; parts: KitGeneratePart[] }
 export type KitGenerateParams = {
-  /** What the kit generates for (section 7j, minor version 2.4): a defined purpose or the kit's own (`isGeneratePurpose`). */
+  /** What the kit generates for (section 7j): a defined purpose or the kit's own (`isGeneratePurpose`). */
   purpose: KitGeneratePurpose
   output: 'text' | 'image'
   /** The document's preference, a hint only: the host answers the model it used. */
@@ -436,7 +436,7 @@ export type KitGenerateParams = {
 export type KitGenerateResult = { text?: string; image?: { mime: string; bytes: ArrayBuffer }; model?: string; usage?: { inputTokens?: number; outputTokens?: number } }
 
 /**
- * The purposes section 7j defines (minor version 2.4), which every host that lists `generate`
+ * The purposes section 7j defines, which every host that lists `generate`
  * serves: `ai-field`, an AI field's cell; `rewrite`, text the person selected rewritten as they
  * asked (improve, shorten, expand, change the tone, translate), a suggestion the person accepts
  * or discards before the kit writes it.
@@ -479,7 +479,7 @@ export const ACTION_ERROR_REASONS = ['not-allowed', 'no-gesture', 'not-found', '
 export type KitActionErrorReason = (typeof ACTION_ERROR_REASONS)[number]
 
 /**
- * Host services (minor version 2.6, section 7k; managed co-editing D4): what a kit asks its host
+ * Host services (section 7k; managed co-editing D4): what a kit asks its host
  * for instead of doing it itself, so every kit behaves as a native part of the host. A host lists
  * each service it serves as the capability `service:<id>`.
  */
@@ -637,7 +637,7 @@ export function parseServiceParams(value: unknown): KitServiceParams | null {
 }
 
 /**
- * Opening (capabilities `open-file` and `open-url`, section 7i, minor version 2.1; KitLinks 1.0
+ * Opening (capabilities `open-file` and `open-url`, section 7i; KitLinks 1.0
  * section 5): the kit asks the host to open a workspace file or a web address, only from a
  * person's gesture (OP1, OP6). `linkRef` names the target as the document stores it: a path
  * relative to the document's folder, a bare name the host resolves (LR4), or a replica id.
@@ -686,7 +686,7 @@ export function parseOpenParams(value: unknown): KitOpenParams | null {
 }
 
 /**
- * Picking a file to link (capability `links-pick`, section 7i, minor version 2.5; rules UI-N2 to
+ * Picking a file to link (capability `links-pick`, section 7i; rules UI-N2 to
  * UI-N4): the person chooses existing workspace files, which stay where they are. `accept` lists
  * extensions without the dot (at least one); `multiple` lets the person choose several.
  */
@@ -727,7 +727,7 @@ export function openErrorReason(error: unknown): KitOpenErrorReason | null {
 }
 
 /**
- * Fetching a picture (capability `fetch-image`, section 7l, minor version 2.8): a picture the
+ * Fetching a picture (capability `fetch-image`, section 7l): a picture the
  * person pasted or dropped by its web address (an `<img>` in pasted HTML). The kit loads nothing
  * from the network (UI-K1), so the host downloads it, from public addresses only, and answers its
  * bytes; the kit keeps them as it keeps a pasted file. `mime` is one of `FETCH_IMAGE_TYPES`.
@@ -778,7 +778,7 @@ export type HostToKit = {
   'ui/initialize': [InitializeParams, InitializeResult]
   'document/state': [Record<string, never>, DocumentState]
   'document/save': [Record<string, never>, { saved: boolean; version: string | null }]
-  /** The engine's diagnostics on the document (capability `check`, minor version 1.9), errors first; `draft: true` checks the agent's draft. */
+  /** The engine's diagnostics on the document (capability `check`), errors first; `draft: true` checks the agent's draft. */
   'document/check': [{ draft?: boolean }, { diagnostics: KitDiagnostic[] }]
   /** `draft: true` (capability `draft`) inspects, runs on, and previews the agent's draft instead of the live document; `ai/run` opens one if there is none. */
   'ai/inspect': [{ draft?: boolean; context?: AiStep['context']; part?: number }, Record<string, unknown>]
@@ -812,11 +812,11 @@ export type HostToKit = {
   'replica/export': [{ since: ArrayBuffer }, { changes: ArrayBuffer; blobs: ArrayBuffer }]
   /** `damage` is what went stale on screen, as the kit's engine reports it. */
   'replica/import': [{ changes: ArrayBuffer; blobs: ArrayBuffer }, { damage: unknown }]
-  /** The replica's own id, when the kit's engine has one (minor version 1.3); `null` otherwise. */
+  /** The replica's own id, when the kit's engine has one; `null` otherwise. */
   'replica/info': [Record<string, never>, { docId: string | null }]
   'model/describe': [{ schema?: object }, Record<string, unknown>]
   'model/batch': [ModelBatchParams, ModelBatchResult]
-  /** Whether the kit finds each anchor in the document now (minor version 2.6, capability `comment-anchors`, section 7k). */
+  /** Whether the kit finds each anchor in the document now (capability `comment-anchors`, section 7k). */
   'comments/locate': [{ anchors: KitCommentAnchor[] }, { found: boolean[] }]
 }
 
@@ -840,9 +840,9 @@ export type HostNotifications = {
   'presence/peers': { peers: KitPeerPresence[] }
   /** The host revoked these handles, or they expired (KitFiles FA4); later calls with them fail `file-not-granted`. */
   'files/revoked': { handles: string[] }
-  /** Shows `view` in the open document (minor version 2.1, section 7i; OP3), as `document.view` does for a new editor. */
+  /** Shows `view` in the open document (section 7i; OP3), as `document.view` does for a new editor. */
   'document/reveal': { view: KitView }
-  /** The host's comment threads the kit marks (minor version 2.6, capability `comment-anchors`, section 7k): the whole list. */
+  /** The host's comment threads the kit marks (capability `comment-anchors`, section 7k): the whole list. */
   'comments/show': { threads: KitShownThread[] }
 }
 

@@ -9,7 +9,7 @@ import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedK
  * in its own editor (KitFrame). This covers what Kition adds around the kit: opening a design from
  * the tree, editing it, saving through Kition's file API, the create menu making a new design
  * with the kit's engine in the page, and a library file the design links where it is (Kit UI
- * protocol 2.5 `links/pick`). The editor's own behavior is tested in the kit's repository.
+ * protocol `links/pick`). The editor's own behavior is tested in the kit's repository.
  */
 
 type NodeDesignDocument = { execute(command: string, params: string): string; query(name: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }

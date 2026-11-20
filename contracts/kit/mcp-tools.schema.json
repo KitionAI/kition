@@ -1679,7 +1679,7 @@
             "type": "string"
           },
           "interface": {
-            "description": "The protocol, the kit and its version the tools speak for this file (`khp/2 kit.slide@1.4.0`); the MCP server's `serverInfo.version` is the kit's.",
+            "description": "The protocol, the kit and its version the tools speak for this file (`khp/1 kit.slide@1.4.0`); the MCP server's `serverInfo.version` is the kit's.",
             "type": "string"
           },
           "live": {

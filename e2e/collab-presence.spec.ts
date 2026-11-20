@@ -26,7 +26,7 @@ async function slideFixture() {
   return bytes
 }
 
-/** Whether the Slide kit package shares presence (Kit UI protocol 1.7): its editor speaks `presence/set`. */
+/** Whether the Slide kit package shares presence (Kit UI protocol): its editor speaks `presence/set`. */
 function kitPackageSharesPresence() {
   const assets = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'assets')
   if (!existsSync(assets)) return false

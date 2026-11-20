@@ -70,6 +70,10 @@ requests! {
     DocumentSaveAs = "document.saveAs" (DocumentSaveAsParams) -> DocumentWritten;
     DocumentExport = "document.export" (DocumentExportParams) -> DocumentWritten;
     DocumentClose = "document.close" (DocumentCloseParams) -> Empty;
+    /// Optional: a kit with the feature `document.identity` (section 5.6).
+    DocumentIdentity = "document.identity" (DocumentIdentityParams) -> DocumentIdentityResult;
+    /// Optional: a kit with the feature `document.identity` (section 5.6).
+    DocumentFork = "document.fork" (DocumentForkParams) -> DocumentForkResult;
     /// Host: reads the document's file again, dropping its unsaved edits (a conflict, section 5).
     DocumentReload = "document.reload" (DocumentRef) -> DocumentState;
     CommandsList = "commands.list" (CommandsListParams) -> CommandsListResult;

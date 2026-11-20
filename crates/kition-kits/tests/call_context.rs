@@ -55,7 +55,7 @@ fn kit_with_parts(name: &str, headless: bool, parts: Option<&[&str]>) -> &'stati
         manifest["agent"]["parts"] = json!(parts);
     }
     if headless {
-        manifest["headless"] = json!({ "executable": "kition-kit-mock", "protocol": "kition-kit/2" });
+        manifest["headless"] = json!({ "executable": "kition-kit-mock", "protocol": "kition-kit/1" });
     }
     KitDefinition::from_manifest(&manifest).unwrap_or_else(|error| panic!("{error}"))
 }

@@ -28,7 +28,7 @@ async fn the_unified_inspect_passes_the_view_to_the_render_command() {
         "khp": "1.0", "id": "kit.unireel", "name": "Kition unireel", "version": "0.0.0",
         "formats": [{ "id": "unireel", "extensions": ["unireel"], "role": "edit" }],
         "agent": { "prefix": "unireel", "tools": "document", "render": "file.render" },
-        "headless": { "executable": "kition-kit-mock", "protocol": "kition-kit/2" }
+        "headless": { "executable": "kition-kit-mock", "protocol": "kition-kit/1" }
     });
     let kit = KitDefinition::from_manifest(&manifest).unwrap_or_else(|error| panic!("{error}"));
     let bin = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));

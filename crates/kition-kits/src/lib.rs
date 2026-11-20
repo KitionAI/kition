@@ -3,7 +3,7 @@
 //! Kition's kits: each found from its KHP manifest (`definitions.rs`) with its headless executable,
 //! which speaks the Kit Process Protocol. A manager starts them on demand for one workspace and gives
 //! the agent its own connection to them; the KHP agent tools (`tools.rs`) and the kits' MCP server
-//! (`mcp.rs`, `kition-kits-mcp`) are built on it. Kition serves it over HTTP in `kition-kits-http`;
+//! (`mcp.rs`, `kition-kits-mcp`) are built on it. Kition and `kition gateway` serve it over HTTP in `kition-kits-http`;
 //! a host in another language runs it as `kition-kits serve` (`serve.rs`, the Kits Service API).
 
 pub mod bridge;

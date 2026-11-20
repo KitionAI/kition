@@ -417,9 +417,16 @@ export type CreateRoomOptions = Pick<RoomOptions, 'server' | 'token' | 'tokenPro
   kit: string
   /** The room's name, as its members see it. */
   name: string
-  /** The document as a KDM snapshot or a full change export (a kit engine's `exportChanges` from nothing). */
+  /**
+   * The document as a KDM snapshot or a full change export (a kit engine's `exportChanges` from
+   * nothing): a full document, or a copy made as a new document (`copyAsNewDocument`); a shallow
+   * replica truncated later is refused before anything reaches the server.
+   */
   document: Uint8Array
 }
+
+const TRUNCATED =
+  "a shallow replica truncated after the document's birth does not carry the document's whole history: a room starts from a full document or a copy made as a new document (sync protocol S20)"
 
 /**
  * Shares a document as a new room on a sync server (`room/create`, Kition Cloud: a Pro account):
@@ -432,6 +439,9 @@ export async function createRoom(options: CreateRoomOptions): Promise<{ docId: s
   if (!schema) throw new Error(`no schema for ${options.kit}: pass options.schema or registerKit() its descriptor`)
   const parsed = 'types' in schema && 'root' in schema && 'kit' in schema ? parseSchema(schema) : (schema as Schema)
   const replica = Replica.load(parsed, options.document, randomActor())
+  // A room starts with the document's whole history (sync protocol S20): a full document, or a
+  // copy made as a new document, never one truncated after that.
+  if (!replica.carriesWholeHistory()) throw new Error(TRUNCATED)
   const sync = new SyncClient({ createTransport: options.createTransport ?? webSocketTransport, client: options.client ?? { name: '@kition/script', version: '0.1.0' } })
   try {
     await sync.connect(syncEndpoint(options.server), token)

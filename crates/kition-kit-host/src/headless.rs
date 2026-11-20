@@ -6,8 +6,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use kition_kit_process_protocol::methods::{DocumentFork, DocumentIdentity};
 use kition_kit_process_protocol::methods::{Initialize, Initialized};
-use kition_kit_process_protocol::types::{ClientInfo, Empty, InitializeParams, Role};
+use kition_kit_process_protocol::types::{
+    ClientInfo, DocumentForkParams, DocumentForkResult, DocumentIdentityParams, DocumentIdentityResult, Empty, InitializeParams, Role,
+};
 use kition_kit_process_protocol::{PROTOCOL_VERSION, RequestMethod};
 use serde_json::{Value, json};
 
@@ -135,6 +138,27 @@ impl HeadlessKit {
             files.opened(id, &handle);
         }
         Ok(state)
+    }
+
+    /// `document.identity` (Kit Process Protocol section 5.6) of the workspace file `path`, through
+    /// a `read` handle minted for it: the document id the file carries, `None` when it carries none.
+    /// A kit without the feature `document.identity` answers "method not found" (`-32601`).
+    pub async fn identity(&self, path: &str, limit: Duration) -> Result<DocumentIdentityResult, ClientError> {
+        let files = self.workspace_files()?;
+        let file = files.document(path, true, false).map_err(|error| ClientError::Rpc(file_error(&error)))?.handle;
+        let answer = self.request(DocumentIdentity::NAME, serde_json::to_value(DocumentIdentityParams { file })?, limit).await?;
+        Ok(serde_json::from_value(answer)?)
+    }
+
+    /// `document.fork` (section 5.6): the workspace file `path` as a new document in the new
+    /// workspace file `target` (a `create` handle: a fork never replaces a file). Answers the new
+    /// document's id, or `None` when the file carries no identity and was copied unchanged.
+    pub async fn fork(&self, path: &str, target: &str, limit: Duration) -> Result<DocumentForkResult, ClientError> {
+        let files = self.workspace_files()?;
+        let file = files.document(path, true, false).map_err(|error| ClientError::Rpc(file_error(&error)))?.handle;
+        let target = files.export(target).map_err(|error| ClientError::Rpc(file_error(&error)))?.handle;
+        let answer = self.request(DocumentFork::NAME, serde_json::to_value(DocumentForkParams { file, target })?, limit).await?;
+        Ok(serde_json::from_value(answer)?)
     }
 
     /// `kit.<name>`, as `kit.initialize` answered.

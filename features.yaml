@@ -312,7 +312,7 @@ features:
       - regressions/issue-release-active-kit-palette
     since: "2026-10-28"
   - id: kition.kit-links.pick-link
-    title: A kit links an existing workspace file where it is (`links/pick`, Kit UI protocol 2.5) and reads it by its document-relative path
+    title: A kit links an existing workspace file where it is (`links/pick`, Kit UI protocol) and reads it by its document-relative path
     dimension: [function, security]
     priority: P1
     status: has

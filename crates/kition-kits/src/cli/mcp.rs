@@ -29,12 +29,27 @@ use serde_json::{Value, json};
 pub type StoreKits = (Vec<definitions::Found>, Option<Arc<dyn KitSupply>>);
 
 /// A program's kit store (`kition mcp`): the kits used when no `--kit` or `--kits-dir` is given.
+/// A program with a store serves the folder it starts in when no `--workspace` is given, and
+/// states the workspace it serves on stderr.
 pub struct Store {
     /// What the program's usage says about the store, after the kits section.
     pub usage: &'static str,
     /// The kits installed in the store, with their executables, and the supply that installs
     /// the others on demand (`None` when automatic installs are off).
-    pub kits: Box<dyn FnOnce() -> StoreKits>,
+    pub kits: Box<dyn FnOnce() -> StoreKits + Send>,
+}
+
+/// A server ready to serve: its kits on its workspace, and its options.
+pub struct Prepared {
+    pub kits: KitManager,
+    /// The call options (`--drafts`, `--guard`, `--require-basis`).
+    pub call: tools::CallOptions,
+    /// The workspace folder, as given.
+    pub workspace: PathBuf,
+    /// Whether the tools are the unified set (`--unified`; already set for this process).
+    pub unified: bool,
+    /// A fresh manager on the same kits and options, for after `kits` was shut down.
+    pub remake: Box<dyn Fn() -> Result<KitManager, String> + Send + Sync>,
 }
 
 const USAGE: &str = "\
@@ -235,35 +250,63 @@ fn usage(program: &str, store: Option<&Store>) -> String {
 /// Runs `program` (`kition-kits-mcp`, or `kition mcp` with its `store`) with `args`, the
 /// arguments after the program's name.
 pub fn main(program: &str, args: impl Iterator<Item = String>, store: Option<Store>) -> ExitCode {
+    let prepared = match prepare(program, args, store) {
+        Ok(prepared) => prepared,
+        Err(code) => return code,
+    };
+    let runtime = match crate::runtime() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            eprintln!("{program}: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match runtime.block_on(crate::mcp::serve_stdio(prepared.kits, prepared.call)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("{program}: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Reads `args` as [`main`] does and makes the server's kits, ready to serve; or does what the
+/// arguments ask instead (the usage, `--schemas`, `--list-kits`, a `drafts` command, or a
+/// mistake, said on stderr) and answers the exit status. Starts no kit.
+pub fn prepare(program: &str, args: impl Iterator<Item = String>, store: Option<Store>) -> Result<Prepared, ExitCode> {
     let options = match parse(args) {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{program}: {message}\n\n{}", usage(program, store.as_ref()));
-            return ExitCode::from(2);
+            return Err(ExitCode::from(2));
         }
     };
     if options.help {
         print!("{}", usage(program, store.as_ref()));
-        return ExitCode::SUCCESS;
+        return Err(ExitCode::SUCCESS);
     }
     if options.schemas {
         print(&tools::schemas::tool_schemas());
-        return ExitCode::SUCCESS;
+        return Err(ExitCode::SUCCESS);
     }
     tools::set_unified(options.unified);
+    // `kition mcp` serves the folder it starts in by default; `kition-kits-mcp` needs --workspace.
+    let defaulted = store.is_some() && options.workspace.is_none();
+    let workspace = if defaulted { std::env::current_dir().ok() } else { options.workspace.clone() };
     // No fallback: a sandbox that this machine cannot give is a refusal to start, never kits run
     // unconfined.
     if options.sandbox
         && let Err(reason) = kition_kit_host::sandbox::check()
     {
         eprintln!("{program}: --sandbox: {reason}");
-        return ExitCode::FAILURE;
+        return Err(ExitCode::FAILURE);
     }
+    let has_store = store.is_some();
     let (found, supply) = match found_kits(&options, store) {
         Ok(found) => found,
         Err(message) => {
             eprintln!("{program}: {message}");
-            return ExitCode::from(2);
+            return Err(ExitCode::from(2));
         }
     };
     if !options.list_kits {
@@ -274,40 +317,45 @@ pub fn main(program: &str, args: impl Iterator<Item = String>, store: Option<Sto
     }
     if options.list_kits {
         print(&list_kits(&found));
-        return ExitCode::SUCCESS;
+        return Err(ExitCode::SUCCESS);
     }
-    let Some(workspace) = options.workspace.clone().filter(|dir| dir.is_dir()) else {
+    let Some(workspace) = workspace.filter(|dir| dir.is_dir()) else {
         eprintln!("{program}: --workspace must name a folder\n\n{USAGE}");
-        return ExitCode::from(2);
+        return Err(ExitCode::from(2));
     };
-    let runtime = match crate::runtime() {
-        Ok(runtime) => runtime,
-        Err(error) => {
-            eprintln!("{program}: {error}");
-            return ExitCode::FAILURE;
+    if has_store {
+        let how = if defaulted { "the current folder; --workspace names another" } else { "--workspace" };
+        eprintln!("{program}: workspace {} ({how})", std::path::absolute(&workspace).unwrap_or_else(|_| workspace.clone()).display());
+    }
+    let (sandbox, limits) = (options.sandbox, options.limits);
+    let remake = {
+        let (workspace, found, supply) = (workspace.clone(), found.clone(), supply.clone());
+        move || {
+            let kits = KitManager::new(Some(workspace.clone()), found.clone()).with_headless_drafts().with_limits(limits)?;
+            let kits = if sandbox { kits.with_sandbox() } else { kits };
+            Ok(match &supply {
+                Some(supply) => kits.with_supply(Arc::clone(supply)),
+                None => kits,
+            })
         }
     };
-    let kits = match KitManager::new(Some(workspace), found).with_headless_drafts().with_limits(options.limits) {
+    let kits = match remake() {
         Ok(kits) => kits,
         Err(reason) => {
             eprintln!("{program}: {reason}");
-            return ExitCode::FAILURE;
+            return Err(ExitCode::FAILURE);
         }
-    };
-    let kits = if options.sandbox { kits.with_sandbox() } else { kits };
-    let kits = match supply {
-        Some(supply) => kits.with_supply(supply),
-        None => kits,
     };
     if !options.command.is_empty() {
-        return runtime.block_on(drafts_command(&kits, &options.command, &options));
+        let runtime = match crate::runtime() {
+            Ok(runtime) => runtime,
+            Err(error) => {
+                eprintln!("{program}: {error}");
+                return Err(ExitCode::FAILURE);
+            }
+        };
+        return Err(runtime.block_on(drafts_command(&kits, &options.command, &options)));
     }
     let call = tools::CallOptions { draft: options.drafts, guard: options.guard, require_basis: options.require_basis };
-    match runtime.block_on(crate::mcp::serve_stdio(kits, call)) {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            eprintln!("{program}: {error}");
-            ExitCode::FAILURE
-        }
-    }
+    Ok(Prepared { kits, call, workspace, unified: options.unified, remake: Box::new(remake) })
 }

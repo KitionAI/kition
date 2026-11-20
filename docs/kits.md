@@ -329,7 +329,7 @@ items with `primary`.
   (`host/write` in save mode) only of the frame's own document, new files
   and exports under unused names (a rendered movie arrives as `host/write` in
   export mode), `host/pick` (the person chooses a file, which Kition copies
-  next to the document), `links/pick` (Kit UI protocol 2.5, capability
+  next to the document), `links/pick` (Kit UI protocol, capability
   `links-pick`: the person chooses existing workspace files in Kition's
   picker in link mode, which lists only visible files of the request's
   `accept`, never the document, and offers no import; nothing is copied, and
@@ -340,7 +340,7 @@ items with `primary`.
   bridge forwarded to the frame as `ai/*`. Kition also answers `host/generate`
   with the person's models (`kitGenerate.ts`, `POST /v1/ai/generate`,
   `contracts/runtime/ai-generate.schema.json`) for the defined purposes of
-  Kit UI protocol 2.4 section 7j, `ai-field` and `rewrite` (the runtime
+  Kit UI protocol section 7j, `ai-field` and `rewrite` (the runtime
   puts its own rewrite instructions before the kit's prompt). It refuses a
   kit's own purposes (`<kit>.<name>`) as `not-allowed`, because Kition has no
   generic handling for them, and `mountKit` refuses any other string
@@ -773,7 +773,7 @@ Kit repository:
    and Sheet's `bindings/wasm/src/check.rs` are the examples).
 3. Add the headless executable `apps/kition-<kit>`:
    `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
-   Add `"headless": { "executable": "kition-<kit>", "protocol": "kition-kit/2" }`
+   Add `"headless": { "executable": "kition-<kit>", "protocol": "kition-kit/1" }`
    to `kit.json`. `SANDBOXED` lists commands whose file parameters the
    engine reads through lent files (otherwise commands naming files are
    refused for the agent); `VOLATILE` lists `inspect()` keys that are session

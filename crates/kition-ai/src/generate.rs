@@ -1,4 +1,4 @@
-//! `POST /ai/generate`: a model call a kit asks the host for (Kit UI protocol 2.4 section 7j,
+//! `POST /ai/generate`: a model call a kit asks the host for (Kit UI protocol section 7j,
 //! `host/generate`), run with the person's model settings.
 //!
 //! The runtime serves the protocol's defined purposes: `ai-field` (an AI field's cell) and
@@ -28,7 +28,7 @@ use serde_json::{Value, json};
 use crate::chat::{AiGate, require_ai};
 use crate::engine::{AiError, Engine, ImageRequest, Message, MessagePart, RuntimeModel};
 
-/// The purposes a kit may generate for (Kit UI protocol 2.4 section 7j's defined purposes).
+/// The purposes a kit may generate for (Kit UI protocol section 7j's defined purposes).
 const PURPOSES: &[&str] = &["ai-field", "rewrite"];
 /// The host's instructions for a `rewrite`, put before the kit's own messages. The kit's messages
 /// name the change the person asked for (improve, shorten, expand, change the tone, fix the

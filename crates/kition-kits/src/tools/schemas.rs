@@ -17,6 +17,7 @@ static GENERIC: KitDefinition = KitDefinition {
     id: "kit.<kit>",
     name: "<Kit>",
     extensions: &[],
+    views: &[],
     creates: &[],
     base_name: "Untitled <kit>",
     exports: &[],
@@ -313,7 +314,7 @@ pub fn output_schema(action: Action) -> Value {
             schema["properties"]["document"] = json!({ "$ref": "#/$defs/document", "description": "The document, when its open editor answered." });
             schema["properties"]["preview"] = preview_schema();
             revision_properties(&mut schema["properties"]);
-            schema["properties"]["interface"] = json!({ "type": "string", "description": "The protocol, the kit and its version the tools speak for this file (`khp/2 kit.slide@1.4.0`); the MCP server's `serverInfo.version` is the kit's." });
+            schema["properties"]["interface"] = json!({ "type": "string", "description": "The protocol, the kit and its version the tools speak for this file (`khp/1 kit.slide@1.4.0`); the MCP server's `serverInfo.version` is the kit's." });
             schema["properties"]["changedOutside"] = json!({ "type": "object", "description": "Without `basis`: the file changed outside your calls since your last one (`path`, `was`, `now`); the next write is refused once." });
             for (name, place) in place() {
                 schema["properties"][name] = place;

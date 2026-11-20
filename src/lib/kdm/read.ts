@@ -20,6 +20,15 @@ export const SCHEMA_VERSION = 'schemaVersion'
  * keep only one of them.
  */
 export const SCHEMA_RAISES = 'schemaRaises'
+/**
+ * The root map whose `root` key records a document's birth: the version its first state is at, as
+ * `Replica.copyAsNewDocument` makes it (data model, "A copy is a new document"). Only its value in a
+ * shallow replica's state at its root counts (`Replica.carriesWholeHistory`). A root map, not a key
+ * of `meta`, so the canonical state (`meta` included) stays the source's.
+ */
+export const BIRTH = 'birth'
+/** The key of `BIRTH` that holds the encoded version. */
+export const BIRTH_ROOT = 'root'
 
 const isVersion = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 

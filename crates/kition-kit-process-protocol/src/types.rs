@@ -52,7 +52,7 @@ pub struct InitializeParams {
     pub host_services: Vec<String>,
 }
 
-/// The host serves `files.*` to the kit (`KitFiles 1.1` FA12); every version 2 host does.
+/// The host serves `files.*` to the kit (`KitFiles 1.1` FA12); every host does.
 pub const HOST_SERVICE_FILES: &str = "files";
 /// The host prints (`files.print`).
 pub const HOST_SERVICE_FILES_PRINT: &str = "files.print";
@@ -179,6 +179,44 @@ pub struct DocumentExportParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub options: Option<Map<String, Value>>,
 }
+
+/// `document.identity` (section 5.6, feature [`DOCUMENT_IDENTITY_FEATURE`]): the file of a `read`
+/// handle, read without opening it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocumentIdentityParams {
+    pub file: String,
+}
+
+/// The permanent document id (KDM `DocId`, KitModel M7) the file carries, or `None` (`null`) when
+/// it carries none: the kit's files embed no replica, or this one has none yet.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocumentIdentityResult {
+    #[serde(rename = "docId")]
+    pub doc_id: Option<String>,
+}
+
+/// `document.fork` (section 5.6): the file of the `read` handle `file` as a new document, written
+/// to the `create` handle `target` (a fork never replaces a file).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocumentForkParams {
+    pub file: String,
+    pub target: String,
+}
+
+/// What `document.fork` wrote: the new document's id (the kit made it), or `None` (`null`) when
+/// the file carries no identity and was written unchanged; the target's display name and the
+/// version its commit answered.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocumentForkResult {
+    #[serde(rename = "docId")]
+    pub doc_id: Option<String>,
+    pub name: String,
+    pub version: String,
+}
+
+/// The feature a kit lists in `capabilities.features` (and its manifest's `headless.features`)
+/// when it answers `document.identity` and `document.fork` (section 5.6).
+pub const DOCUMENT_IDENTITY_FEATURE: &str = "document.identity";
 
 /// What `document.save`, `document.saveAs` and `document.export` wrote: the file's display name
 /// and the version its commit answered.

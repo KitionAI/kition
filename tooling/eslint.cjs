@@ -141,6 +141,11 @@ module.exports = {
       rules: { 'max-lines-per-function': 'off' },
     },
     {
+      // The KDM's replica, copied from kition-sdk by scripts/sync-kit-host.mjs: its size is decided there.
+      files: ['src/lib/kdm/replica.ts'],
+      rules: { 'max-lines': 'off' },
+    },
+    {
       // Object-model typings generated from each kit's schema (scripts/generate-kit.mjs in kition-sdk).
       files: ['src/lib/script/kits/**'],
       rules: { 'max-lines': 'off' },

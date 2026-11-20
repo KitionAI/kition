@@ -1,6 +1,6 @@
 // Copied from kition-sdk crates/kition-kit-process-protocol/src/lib.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-//! Kit Process Protocol, version 2.
+//! Kit Process Protocol, version 1.
 //!
 //! The wire contract between the Kition host and kits, the native executables
 //! that open and edit one family of documents, defined once for both sides:
@@ -29,4 +29,4 @@ pub use methods::{HostServiceMethod, NotificationMethod, RequestMethod};
 pub use types::*;
 
 /// The protocol version this crate implements.
-pub const PROTOCOL_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u32 = 1;

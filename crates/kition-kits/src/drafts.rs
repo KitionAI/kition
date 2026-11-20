@@ -135,13 +135,18 @@ fn draft_required(path: &str) -> KitToolError {
 /// kit does not hold it yet. With `create`, a file without a draft forks one; without, it is
 /// `draft-required`.
 pub(crate) async fn document(kits: &KitManager, kit: &'static KitDefinition, path: &str, create: bool) -> Result<String, KitToolError> {
-    let held = kits.inner.draft_documents.lock().await.get(path).cloned();
-    if let Some(id) = held
-        && kits.document(Caller::Agent, kit.id, &id).await.is_ok()
-    {
-        return Ok(id);
-    }
     let dir = folder(workspace(kits)?, path);
+    let held = kits.inner.draft_documents.lock().await.get(path).cloned();
+    if let Some(id) = held {
+        // A draft merged or discarded by another process (the person's `drafts` command) leaves
+        // the document held here and no folder: it is not the draft any more.
+        if read_meta(&dir).is_none() {
+            kits.inner.draft_documents.lock().await.remove(path);
+            let _ = kits.close(kit.id, &id, true).await;
+        } else if kits.document(Caller::Agent, kit.id, &id).await.is_ok() {
+            return Ok(id);
+        }
+    }
     let id = match read_meta(&dir) {
         Some(meta) if is_file_mode(&meta) => kits.open_own(Caller::Agent, &copy_path(path, "draft")).await?.document_id,
         Some(_) => {
@@ -203,7 +208,15 @@ async fn fork(kits: &KitManager, kit: &'static KitDefinition, path: &str, dir: &
         meta["replicaError"] = Value::String(reason);
     }
     write_meta(dir, path, &meta)?;
+    changed(kits, path);
     Ok(id)
+}
+
+/// Tells every editor window on the bridge that the draft of `path` changed (it was forked,
+/// edited, made ready or taken back, merged or discarded): `kit/draftsChanged {path}`, so an open
+/// editor's draft banner follows at once.
+fn changed(kits: &KitManager, path: &str) {
+    kits.bridge().broadcast("kit/draftsChanged", json!({ "path": path }));
 }
 
 /// The file's replica now, stored as the base and as the draft, and opened as the draft.
@@ -260,7 +273,9 @@ pub(crate) fn set_state(kits: &KitManager, path: &str, state: DraftState) -> Res
     let mut meta = read_meta(&dir).ok_or_else(|| draft_required(path))?;
     meta["state"] = Value::String(state.as_str().to_owned());
     meta["updated"] = json!(now());
-    write_meta(&dir, path, &meta)
+    write_meta(&dir, path, &meta)?;
+    changed(kits, path);
+    Ok(())
 }
 
 /// Whether `path` has a stored draft.
@@ -643,6 +658,7 @@ async fn discard_folder(kits: &KitManager, path: &str, dir: &Path) {
         kits.close_file(&copy_path(path, side)).await;
     }
     let _ = std::fs::remove_dir_all(dir);
+    changed(kits, path);
 }
 
 #[cfg(test)]

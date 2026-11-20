@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/kit/kit-process-protocol.schema.json",
-  "title": "Kition Kit Process Protocol v2",
-  "description": "Parameter and result shapes for Kit Process Protocol methods, version 2: the requests clients send to a kit, and the host services (files.*) a kit sends to its host. Messages are JSON-RPC 2.0; see kition-sdk's docs/platform/reference/kit-process-protocol.md.",
+  "title": "Kition Kit Process Protocol",
+  "description": "Parameter and result shapes for Kit Process Protocol methods, version 1: the requests clients send to a kit, and the host services (files.*) a kit sends to its host. Messages are JSON-RPC 2.0; see kition-sdk's docs/platform/reference/kit-process-protocol.md.",
   "$defs": {
     "historyBlobReadParams": {
       "type": "object", "additionalProperties": false,
@@ -38,7 +38,7 @@
       "additionalProperties": false,
       "required": ["protocolVersion", "token", "role", "client"],
       "properties": {
-        "protocolVersion": { "type": "integer", "minimum": 2 },
+        "protocolVersion": { "type": "integer", "minimum": 1 },
         "token": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "role": { "enum": ["host", "agent"] },
         "client": {
@@ -203,6 +203,46 @@
       "additionalProperties": false,
       "required": ["name", "version"],
       "properties": {
+        "name": { "$ref": "#/$defs/fileName" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "docId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "A document's permanent id (KDM DocId, KitModel M7): a lower-case hyphenated UUID."
+    },
+    "documentIdentityParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file"],
+      "properties": {
+        "file": { "$ref": "#/$defs/fileHandle" }
+      }
+    },
+    "documentIdentityResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["docId"],
+      "properties": {
+        "docId": { "oneOf": [{ "$ref": "#/$defs/docId" }, { "type": "null" }], "description": "The document id the file carries; null when it carries none (the kit's files embed no replica, or this one has none)." }
+      }
+    },
+    "documentForkParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "target"],
+      "properties": {
+        "file": { "$ref": "#/$defs/fileHandle", "description": "A read handle on the source file." },
+        "target": { "$ref": "#/$defs/fileHandle", "description": "A create handle: a fork never replaces a file." }
+      }
+    },
+    "documentForkResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["docId", "name", "version"],
+      "properties": {
+        "docId": { "oneOf": [{ "$ref": "#/$defs/docId" }, { "type": "null" }], "description": "The new document's id, which the kit made; null when the file carries no identity and was written unchanged." },
         "name": { "$ref": "#/$defs/fileName" },
         "version": { "type": "string", "minLength": 1 }
       }

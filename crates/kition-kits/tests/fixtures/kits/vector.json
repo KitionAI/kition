@@ -1,0 +1,143 @@
+{
+  "$schema": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "khp": "1.0",
+  "level": "basic",
+  "id": "kit.vector",
+  "name": "Vector",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "distribution": "plugin",
+  "engine": {
+    "runtime": "rust-wasm",
+    "module": "kition_vector_kit",
+    "class": "VectorDocument",
+    "contract": 2,
+    "crate": "kition-vector-kit",
+    "editorState": ["/currentLayer", "/layerRows", "/isolation", "/selection", "/selectionBounds", "/selectionRotation", "/target", "/tool", "/paint"]
+  },
+  "formats": [
+    {
+      "id": "vector",
+      "extensions": [
+        "kvector"
+      ],
+      "mime": "application/vnd.kition.vector+json",
+      "role": "edit"
+    },
+    {
+      "id": "vector-import",
+      "extensions": [
+        "svg",
+        "ai",
+        "eps"
+      ],
+      "mime": "image/svg+xml",
+      "role": "view"
+    }
+  ],
+  "creates": [
+    {
+      "id": "vector",
+      "extension": "kvector",
+      "baseName": "Untitled vector",
+      "size": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "exports": [
+    {
+      "extension": "svg",
+      "mime": "image/svg+xml",
+      "command": "document.exportBytes"
+    },
+    {
+      "extension": "pdf",
+      "mime": "application/pdf",
+      "command": "document.exportBytes"
+    },
+    {
+      "extension": "png",
+      "mime": "image/png",
+      "command": "document.exportBytes"
+    }
+  ],
+  "capabilities": [
+    "engine-tools",
+    "kdm"
+  ],
+  "ui": {
+    "mode": "embedded",
+    "display": "menus",
+    "entry": "ui/index.html",
+    "menus": [
+      "File",
+      "Edit",
+      "Object",
+      "Type",
+      "Select",
+      "Effect",
+      "View",
+      "Window",
+      "Help"
+    ],
+    "layout": "canvas",
+    "brand": {
+      "light": "#58810f",
+      "dark": "#a6d64a"
+    }
+  },
+  "agent": {
+    "prefix": "vector",
+    "tools": "document",
+    "drafts": true,
+    "objectModel": true,
+    "layout": false,
+    "export": {
+      "command": "document.exportBytes",
+      "data": "data"
+    },
+    "describe": {
+      "noun": "vector drawing",
+      "fileTypes": ".kvector",
+      "reports": "its artboards, layers, objects, and selection",
+      "covers": "shapes, paths, paint, type, alignment, effects, artboards, and more",
+      "queries": "`rectangle`, `align`, or `stroke`",
+      "example": "shape.rectangle"
+    }
+  },
+  "headless": {
+    "executable": "kition-vector",
+    "protocol": "kition-kit/1",
+    "features": [
+      "view.describe",
+      "document.check",
+      "model.open",
+      "model.import",
+      "model.export",
+      "model.save",
+      "model.describe",
+      "model.batch"
+    ],
+    "capabilities": [
+      "document-text"
+    ]
+  },
+  "model": {
+    "schema": "crates/kdm/kdm-model/model/schema.json",
+    "schemaVersion": 1
+  },
+  "collaboration": {
+    "merge": [
+      "structured",
+      "rich-text",
+      "binary"
+    ],
+    "leases": [],
+    "serverValidation": false
+  },
+  "objectModel": {
+    "namespace": "Vector"
+  }
+}

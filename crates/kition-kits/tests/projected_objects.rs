@@ -39,7 +39,7 @@ impl Fixture {
         )
         .unwrap();
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let kit=KitDefinition::from_manifest(&json!({"khp":"1.0","id":"kit.projected","name":"Projected","version":"0.0.0","formats":[{"id":"projected","extensions":["projected"],"role":"edit"}],"agent":{"prefix":"projected","tools":"document","objectModel":true},"headless":{"executable":"mock","protocol":"kition-kit/2"}})).unwrap();
+        let kit=KitDefinition::from_manifest(&json!({"khp":"1.0","id":"kit.projected","name":"Projected","version":"0.0.0","formats":[{"id":"projected","extensions":["projected"],"role":"edit"}],"agent":{"prefix":"projected","tools":"document","objectModel":true},"headless":{"executable":"mock","protocol":"kition-kit/1"}})).unwrap();
         std::fs::write(dir.path().join("a.projected"), contents).unwrap();
         let kits = KitManager::new(Some(dir.path().to_owned()), vec![(kit, Some(script.clone()))]);
         let native = editor::attach(&kits, dir.path(), kit, &script, "a.projected");

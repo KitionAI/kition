@@ -6,5 +6,5 @@
   "formats": [{ "id": "example", "extensions": ["example"], "mime": "text/plain", "role": "edit" }],
   "creates": [{ "id": "example", "extension": "example", "baseName": "Untitled example" }],
   "agent": { "prefix": "example", "tools": "document", "drafts": true, "objectModel": true, "layout": false, "describe": { "noun": "example document" } },
-  "headless": { "executable": "kition-example", "protocol": "kition-kit/2", "features": ["view.describe", "document.check", "model.describe", "model.batch"] }
+  "headless": { "executable": "kition-example", "protocol": "kition-kit/1", "features": ["view.describe", "document.check", "model.describe", "model.batch"] }
 }
