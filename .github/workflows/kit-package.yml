@@ -1,47 +1,38 @@
 name: Kit package
 
-# Builds a kit's package and its headless executables and publishes them in the
-# `package-v<version>` Release of the kit's repository (docs/kits.md, section 4b). Each kit
-# repository's Package workflow (.github/workflows/package.yml, started by hand) calls it with the
-# kit's name, so the Release is made with that repository's own workflow token (contents: write is
-# all it needs). Every repository it reads is public.
+# Builds a kit version's npm packages and publishes the ones npm lacks (docs/kits.md, section 4b).
+# Each kit repository's Package workflow (.github/workflows/package.yml, started by hand) calls it
+# with the kit's name and its NPM_TOKEN secret, and grants it `id-token: write` for npm provenance.
+# Per kit version (kit.json `version` at the commit the run was started on, which every package is
+# built from), the names and contents of kition-sdk's tools/kit-npm.mjs:
 #
-# A new version's Release is made once, complete: the package job makes it a draft, the other jobs
-# add to the draft, and the publish job publishes it only when it holds every asset. A published
-# Release on a repository with GitHub's immutable releases can gain no asset (HTTP 422), and a draft
-# can, so this is the one order that works on every repository.
+#   @kition/kit-<kit>-ui                the kit's package (editor, engine, fonts): the folder <kit>-ui/
+#   @kition/kit-<kit>-<platform>        kit.json and the headless executable kition-<kit> (.exe on
+#                                       Windows), for darwin-arm64, darwin-x64, linux-arm64,
+#                                       linux-x64 and win32-x64
 #
-# - plan: the version (kit.json `version` at the commit the run was started on), its Release's
-#   state (none, draft, published; immutable or not) and what it lacks
-#   (scripts/kit-release-assets.mjs plan), and the commit to build from
-#   (scripts/kit-release-assets.mjs ref): the run's for a new version, the target of the draft, or
-#   the commit of the published Release's tag, which its lock entry, when it has one, must name. A
-#   published immutable Release that lacks an archive or the fragment stops the run here, before
-#   anything is built: it cannot gain assets, so the kit's version is bumped instead.
-# - package: when there is no Release, or a draft without both package files:
-#   scripts/package-kit.sh builds the package and makes the draft (targeting the built commit) with
-#   kition-<kit>-<version>.tgz and kition-<kit>-<version>.json, or puts both into the draft again.
-# - headless: one job per platform whose archive the Release lacks, built and checked as
-#   kition-sdk's release builds the published kits' executables (its .github/workflows/release.yml,
-#   job `executables`), from the commit planned: the executable must answer kit.initialize with
-#   kit.json's version on its own platform, and is packed into
-#   kition-<kit>-<version>-<platform>.tar.gz (kit.json and kition-<kit> at its top).
-# - publish: uploads the archives the Release lacks; then, if it has no index fragment
-#   kits-index-<kit>-<version>.json yet (and, for a draft, once it has every platform's archive),
-#   writes it: a kit index (kition-sdk's schemas/kits-index.schema.json) of this kit version with
-#   the archives in the Release at their public addresses
-#   (https://github.com/<repository>/releases/download/<tag>/<archive>), with the size and SHA-256
-#   of the bytes this job uploaded (a draft's assets are not at that address until it is
-#   published). Last, a draft that holds every asset is published. A draft that does not stays a
-#   draft and the run ends failed, naming what it lacks: re-running the run's failed jobs (or
-#   running Package again) builds the rest into the same draft and publishes it. This holds on
-#   every repository, immutable or not, so a published Release is always complete.
+# each with a `kition` field in its package.json naming the commits it was built from.
 #
-# An asset of a published Release is never replaced. Running Package again on a published version
-# of a repository without immutable releases adds only the headless archives and the fragment its
-# Release lacks, without touching the package: that is how a Release made before the headless
-# archives existed is completed, with no new version. A published Release whose lock entry (.json)
-# is missing is completed too; one without its package (.tgz) is refused.
+# - plan: the version, what https://registry.npmjs.org lacks of it (kition-sdk's
+#   tools/kit-npm-package.mjs missing), and what to build (scripts/kit-package-build.mjs plan). A
+#   version is one build: when npm has some of its packages, they must have been built from the
+#   run's commit, or the run stops here. Nothing missing, nothing built.
+# - package: when the editor package is missing, scripts/package-kit.sh builds the kit's package
+#   and packs it with kition-sdk's tool.
+# - headless: one job per missing platform, built and checked as kition-sdk's release builds the
+#   published kits' executables (its .github/workflows/release.yml, job `executables`): the glibc
+#   floor on Linux, and on its own platform the executable must answer kit.initialize with
+#   kit.json's id, version and protocol (scripts/kit-package-build.mjs check); then kition-sdk's
+#   tool writes the package folder. It is packed in the publish job, on Linux: kition-sdk's `pack`
+#   runs npm, which it cannot start on Windows, and the folder travels as a tar, which keeps the
+#   executable's mode (an artifact does not).
+# - publish: packs the headless folders (kition-sdk's `pack` checks each tarball holds exactly its
+#   folder's files), then for each tarball asks the registry (`state`): `publish` runs
+#   `npm publish --provenance`, `published` (the same bytes) skips it, and a version npm holds with
+#   other bytes stops the run. A version on npm is never replaced. After publishing, `state` must
+#   say `published`. A platform that built nothing ends the run failed after the others are
+#   published; running Package again (or re-running the failed jobs) builds and publishes only what
+#   npm still lacks.
 
 on:
   workflow_call:
@@ -50,14 +41,19 @@ on:
         description: The kit's name in Kition's kits/modules.json, for example board
         required: true
         type: string
+    secrets:
+      NPM_TOKEN:
+        description: An npm token that may publish the @kition packages
+        required: true
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   PNPM_VERSION: 10.34.9
   NODE_VERSION: '24'
   WASM_PACK_VERSION: v0.13.1
+  NPM_REGISTRY: https://registry.npmjs.org/
 
 jobs:
   plan:
@@ -66,13 +62,10 @@ jobs:
     timeout-minutes: 10
     outputs:
       version: ${{ steps.plan.outputs.version }}
-      release: ${{ steps.plan.outputs.release }}
-      tag: ${{ steps.plan.outputs.tag }}
-      ref: ${{ steps.plan.outputs.ref }}
-      package: ${{ steps.plan.outputs.package }}
+      ui: ${{ steps.plan.outputs.ui }}
       platforms: ${{ steps.plan.outputs.platforms }}
       matrix: ${{ steps.plan.outputs.matrix }}
-      fragment: ${{ steps.plan.outputs.fragment }}
+      build: ${{ steps.plan.outputs.build }}
     steps:
       - name: Check out the kit
         uses: actions/checkout@v7
@@ -87,17 +80,22 @@ jobs:
           ref: main
           path: kition
 
+      - name: Check out kition-sdk
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition-sdk
+          ref: main
+          path: kition-sdk
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # gh finds a draft by its tag name too, although its tag is made only when it is published.
-      - name: What the Release lacks
+      - name: What npm lacks
         id: plan
         env:
           KIT: ${{ inputs.kit }}
-          GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -105,49 +103,26 @@ jobs:
             || { echo "kits/modules.json has no kit \"$KIT\"" >&2; exit 2; }
           [ "$expected" = "$REPOSITORY" ] || { echo "kit $KIT is published from $expected, not $REPOSITORY" >&2; exit 2; }
           version=$(node -p "require('./kition-$KIT/kit.json').version")
-          tag="package-v$version"
-          release=none
-          plan_args=()
-          if gh release view "$tag" --repo "$REPOSITORY" --json isDraft,isImmutable,targetCommitish,assets > release.json 2> release-error.txt; then
-            jq -r '.assets[].name' release.json > assets.txt
-            plan_args=(--assets assets.txt)
-            release=published
-            if [ "$(jq -r .isDraft release.json)" = true ]; then release=draft; plan_args+=(--draft); fi
-            if [ "$(jq -r .isImmutable release.json)" = true ]; then plan_args+=(--immutable); fi
-          elif ! grep -q 'release not found' release-error.txt; then
-            cat release-error.txt >&2
-            exit 1
-          fi
-          node kition/scripts/kit-release-assets.mjs plan --kit "$KIT" --version "$version" "${plan_args[@]}" > plan.txt
-          ref_args=(--release "$release" --run "$GITHUB_SHA")
-          case "$release" in
-            draft) ref_args+=(--target "$(jq -r .targetCommitish release.json)") ;;
-            published) ref_args+=(--tag-commit "$(gh api "repos/$REPOSITORY/commits/$tag" --jq .sha)") ;;
-          esac
-          if [ "$release" != none ] && grep -qx "kition-$KIT-$version.json" assets.txt; then
-            gh release download "$tag" --repo "$REPOSITORY" --pattern "kition-$KIT-$version.json" --output lock-entry.json
-            ref_args+=(--lock-entry lock-entry.json)
-          fi
-          ref=$(node kition/scripts/kit-release-assets.mjs ref "${ref_args[@]}")
-          {
-            echo "version=$version"
-            echo "ref=$ref"
-            cat plan.txt
-          } | tee -a "$GITHUB_OUTPUT"
+          node kition-sdk/tools/kit-npm-package.mjs missing --kit "$KIT" --version "$version" --registry "$NPM_REGISTRY" > missing.json
+          echo "$NPM_REGISTRY lacks of $KIT $version: $(cat missing.json)"
+          node kition/scripts/kit-package-build.mjs plan --kit "$KIT" --version "$version" --commit "$GITHUB_SHA" --missing missing.json --registry "$NPM_REGISTRY" > plan.txt
+          cat plan.txt >> "$GITHUB_OUTPUT"
+          cat plan.txt
+          if grep -qx 'build=false' plan.txt; then echo "::notice::npm has every package of $KIT $version; nothing to build"; fi
 
   package:
     name: Package ${{ inputs.kit }}
     needs: plan
-    if: needs.plan.outputs.package == 'publish'
+    if: needs.plan.outputs.ui == 'publish'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      # The layout scripts/package-kit.sh expects: the kit (the commit planned: the run's, or the
-      # draft's target), Kition, kition-sdk, kition-tessera and kition-fonts side by side.
+      # The layout scripts/package-kit.sh expects: the kit (the run's commit), Kition, kition-sdk,
+      # kition-tessera and kition-fonts side by side.
       - name: Check out the kit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ github.sha }}
           path: kition-${{ inputs.kit }}
 
       - name: Check out Kition
@@ -209,11 +184,16 @@ jobs:
           echo "CC_wasm32_unknown_unknown=$llvm/clang" >> "$GITHUB_ENV"
           echo "AR_wasm32_unknown_unknown=$llvm/llvm-ar" >> "$GITHUB_ENV"
 
-      - name: Build the package into the draft Release
-        run: kition/scripts/package-kit.sh "$KIT"
+      - name: Build and pack the editor package
+        run: kition/scripts/package-kit.sh "$KIT" npm-ui
         env:
           KIT: ${{ inputs.kit }}
-          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-ui
+          path: npm-ui/*.tgz
+          if-no-files-found: error
 
   # The kit's headless executable, built and checked on its own platform as kition-sdk's release
   # builds the published kits' executables (its .github/workflows/release.yml, job `executables`).
@@ -246,7 +226,7 @@ jobs:
       - name: Check out the kit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ github.sha }}
           path: kition-${{ inputs.kit }}
 
       - name: Check out Kition
@@ -301,7 +281,7 @@ jobs:
         run: |
           set -euo pipefail
           declared=$(node -p "require('./kition-$KIT/kit.json').version")
-          [ "$declared" = "$VERSION" ] || { echo "kition-$KIT kit.json is $declared at ${{ needs.plan.outputs.ref }}; the run publishes $VERSION" >&2; exit 1; }
+          [ "$declared" = "$VERSION" ] || { echo "kition-$KIT kit.json is $declared at $GITHUB_SHA; the run publishes $VERSION" >&2; exit 1; }
 
       # A kit that embeds fonts has scripts/fetch-fonts.sh; one without it embeds the fonts of
       # kition-fonts, or none. A relative path: Git Bash's sha256sum escapes a Windows path's
@@ -322,49 +302,54 @@ jobs:
           cd "kition-$KIT" && cargo "$CARGO_BUILD" --locked --release -p "kition-$KIT" --target "$BUILD_TARGET"
 
       # The executable and kit.json, the glibc floor on Linux, what it answers to kit.initialize
-      # here (handshakes.json), and the archive (scripts/kit-release-assets.mjs pack checks that
-      # answer against kit.json).
-      - name: Check and pack the executable
+      # here (handshakes.json), checked against kit.json (scripts/kit-package-build.mjs check); then
+      # the package folder @kition/kit-<kit>-<platform> (kition-sdk's tool), as a tar so the
+      # executable keeps its mode on the way to the publish job.
+      - name: Check the executable and write its package
         run: |
           set -euo pipefail
           exe=""; [ "$RUNNER_OS" = Windows ] && exe=".exe"
           out="headless/bin"
-          mkdir -p "$out" headless/archive
+          mkdir -p "$out" headless/npm
           cp "kition-$KIT/target/$TARGET/release/kition-$KIT$exe" "$out/"
           cp "kition-$KIT/kit.json" "$out/kit.json"
           if [ -n "$GLIBC" ]; then
             (cd "$out" && node "$GITHUB_WORKSPACE/kition-sdk/tools/glibc-floor.mjs" --max "$GLIBC" "kition-$KIT")
           fi
           node kition-sdk/tools/kit-handshake.mjs --record "$out"
-          node kition/scripts/kit-release-assets.mjs pack --kit "$KIT" --platform "$PLATFORM" --dir "$out" --out headless/archive
+          node kition/scripts/kit-package-build.mjs check --kit "$KIT" --platform "$PLATFORM" --dir "$out"
+          node kition-sdk/tools/kit-npm-package.mjs headless --dir "$out" --platform "$PLATFORM" --out headless/npm --commit "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY"
+          tar -cf "headless/kit-$KIT-$PLATFORM.tar" -C headless/npm "kit-$KIT-$PLATFORM"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: headless-${{ matrix.platform }}
-          path: headless/archive/*.tar.gz
+          name: npm-${{ matrix.platform }}
+          path: headless/kit-${{ inputs.kit }}-${{ matrix.platform }}.tar
           if-no-files-found: error
 
   publish:
-    name: Publish ${{ inputs.kit }}'s Release
+    name: Publish ${{ inputs.kit }} on npm
     needs: [plan, package, headless]
-    # After the package job made the draft or found the package there, and after every platform
-    # ran, also when some failed: their archives go into the Release and the run ends failed.
+    # After the package job built the editor package or was skipped, and after every platform
+    # ran, also when some failed: what built is published and the run ends failed.
     if: >-
-      always() && needs.plan.result == 'success'
+      always() && needs.plan.result == 'success' && needs.plan.outputs.build == 'true'
       && (needs.package.result == 'success' || needs.package.result == 'skipped')
       && needs.headless.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # npm provenance: the registry checks the run's OIDC token.
+      id-token: write
     concurrency:
       group: kit-package-publish-${{ github.repository }}
       cancel-in-progress: false
     env:
       KIT: ${{ inputs.kit }}
       VERSION: ${{ needs.plan.outputs.version }}
-      TAG: ${{ needs.plan.outputs.tag }}
       PLATFORMS: ${{ needs.plan.outputs.platforms }}
-      REPOSITORY: ${{ github.repository }}
-      GH_TOKEN: ${{ github.token }}
+      UI: ${{ needs.plan.outputs.ui == 'publish' }}
     steps:
       - name: Check out Kition
         uses: actions/checkout@v7
@@ -384,99 +369,76 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
 
-      - if: needs.headless.result != 'skipped'
-        uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v8
         with:
-          pattern: headless-*
+          pattern: npm-*
           path: built
           merge-multiple: true
 
-      # gh release upload refuses a name the Release has (no --clobber): an asset is never replaced.
-      - name: Upload the archives the Release lacks
+      # Each headless folder is packed here (kition-sdk's `pack` checks the tarball holds exactly
+      # its files); the editor package arrives packed. packed.jsonl lists every tarball.
+      - name: Pack the headless packages
         run: |
           set -euo pipefail
-          mkdir -p built
-          gh release view "$TAG" --repo "$REPOSITORY" --json assets --jq '.assets[].name' > assets.txt
-          node kition/scripts/kit-release-assets.mjs publish-plan --kit "$KIT" --version "$VERSION" --assets assets.txt --built built --wanted "$PLATFORMS" > publish-plan.json
-          jq -r '.kept[] | "\(.) is in the Release already; the one there stays"' publish-plan.json
-          mapfile -t upload < <(jq -r '.upload[] | "built/" + .' publish-plan.json)
-          if [ "${#upload[@]}" -gt 0 ]; then
-            gh release upload "$TAG" "${upload[@]}" --repo "$REPOSITORY"
-            printf 'uploaded %s\n' "${upload[@]}"
-          fi
-
-      # The fragment states the archives as the Release holds them (their size and SHA-256), at
-      # their public addresses, checked against kition-sdk's kit index schema with kition-sdk's
-      # checker. An archive this job uploaded is read from its own bytes; one the Release had before
-      # (a published Release's, or one an earlier attempt put into the draft) is downloaded with gh,
-      # which reads a draft's assets through the API.
-      - name: The index fragment
-        run: |
-          set -euo pipefail
-          fragment="kits-index-$KIT-$VERSION.json"
-          gh release view "$TAG" --repo "$REPOSITORY" --json isDraft,assets > release.json
-          jq -r '.assets[].name' release.json > assets.txt
-          mapfile -t archives < <(grep "^kition-$KIT-$VERSION-.*\.tar\.gz$" assets.txt || true)
-          if [ "${#archives[@]}" -eq 0 ]; then
-            echo "$TAG has no headless archive, so no $fragment"
-            exit 0
-          fi
-          lacking=$(node kition/scripts/kit-release-assets.mjs missing --kit "$KIT" --version "$VERSION" --assets assets.txt | tr ' ' '\n' | grep '\.tar\.gz$' | paste -sd ' ' - || true)
-          if [ "$(jq -r .isDraft release.json)" = true ] && [ -n "$lacking" ]; then
-            echo "the draft $TAG lacks $lacking, so no $fragment yet: it is written once every platform's archive is in"
-            exit 0
-          fi
-          mkdir -p released
-          for name in "${archives[@]}"; do
-            if jq -e --arg name "$name" '.upload | index($name)' publish-plan.json > /dev/null; then
-              cp "built/$name" released/
-            else
-              gh release download "$TAG" --repo "$REPOSITORY" --pattern "$name" --dir released
-            fi
+          mkdir -p built folders tarballs
+          : > packed.jsonl
+          for folder_tar in built/*.tar; do
+            [ -e "$folder_tar" ] || continue
+            tar -xf "$folder_tar" -C folders
           done
-          if grep -qx "$fragment" assets.txt; then
-            gh release download "$TAG" --repo "$REPOSITORY" --pattern "$fragment" --dir published
-            missing=$(node kition/scripts/kit-release-assets.mjs compare --kit "$KIT" --version "$VERSION" --archives released --published "published/$fragment")
-            if [ -n "$missing" ]; then
-              echo "::warning::$fragment was published before the archives of $missing; it is never replaced, so it does not list them"
-            else
-              echo "$fragment is in the Release already and lists every archive"
-            fi
-            exit 0
-          fi
-          node kition/scripts/kit-release-assets.mjs fragment --kit "$KIT" --version "$VERSION" --archives released \
-            --base-url "https://github.com/$REPOSITORY/releases/download/$TAG" --out "fragment/$fragment" --sdk kition-sdk
-          gh release upload "$TAG" "fragment/$fragment" --repo "$REPOSITORY"
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            printf '### %s %s\n\n```json\n%s\n```\n' "$REPOSITORY" "$fragment" "$(cat "fragment/$fragment")" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          for folder in folders/*/; do
+            [ -d "$folder" ] || continue
+            node kition-sdk/tools/kit-npm-package.mjs pack --folder "$folder" --out tarballs >> packed.jsonl
+          done
+          for tgz in built/*.tgz; do
+            [ -e "$tgz" ] || continue
+            cp "$tgz" tarballs/
+            file="$PWD/tarballs/$(basename "$tgz")"
+            tar -xzOf "$file" package/package.json | node -e 'const m = JSON.parse(require("fs").readFileSync(0, "utf8")); console.log(JSON.stringify({ file: process.argv[1], name: m.name, version: m.version }))' "$file" >> packed.jsonl
+          done
+          cat packed.jsonl
+          node kition/scripts/kit-package-build.mjs publish-plan --kit "$KIT" --version "$VERSION" --platforms "$PLATFORMS" --ui "$UI" --packed packed.jsonl > publish-plan.json
+          cat publish-plan.json
 
-      # A draft is published once it holds every asset, and stays a draft until then; a published
-      # Release's run ends failed when a platform built nothing.
-      - name: Publish the draft once it is complete
+      # `state` exits 1 when npm holds the version with other bytes, which stops the run: a version
+      # is published once. The registry's metadata may lag a publish by a few seconds.
+      - name: Publish what npm lacks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          state() { node kition-sdk/tools/kit-npm-package.mjs state --tarball "$1" --registry "$NPM_REGISTRY"; }
+          mapfile -t tarballs < <(jq -r '.publish[]' publish-plan.json)
+          for file in "${tarballs[@]}"; do
+            name=$(basename "$file")
+            current=$(state "$file")
+            case "$current" in
+              published)
+                echo "$name is on npm already, with the same bytes"
+                continue ;;
+              publish)
+                npm publish "$file" --access public --provenance ;;
+              *)
+                echo "::error::unexpected state of $name" >&2
+                exit 1 ;;
+            esac
+            for attempt in $(seq 1 20); do
+              now=$(state "$file")
+              [ "$now" = published ] && break
+              sleep 6
+            done
+            [ "$now" = published ] || { echo "::error::$name was published, but $NPM_REGISTRY does not show it with its bytes yet" >&2; exit 1; }
+            echo "published $name"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then echo "- published $name" >> "$GITHUB_STEP_SUMMARY"; fi
+          done
+
+      - name: Every package planned was built
         run: |
           set -euo pipefail
           failed=$(jq -r '.failed | join(", ")' publish-plan.json)
-          gh release view "$TAG" --repo "$REPOSITORY" --json isDraft,assets > release.json
-          jq -r '.assets[].name' release.json > assets.txt
-          if [ "$(jq -r .isDraft release.json)" = true ]; then
-            missing=$(node kition/scripts/kit-release-assets.mjs missing --kit "$KIT" --version "$VERSION" --assets assets.txt)
-            if [ -n "$missing" ]; then
-              [ -z "$failed" ] || echo "::error::no headless archive for $failed: see the Headless $KIT jobs of those platforms"
-              echo "::error::$TAG stays a draft: it lacks $missing. Re-run this run's failed jobs (or run Package again) to build them into the draft; it is published once it holds every asset"
-              exit 1
-            fi
-            gh release edit "$TAG" --repo "$REPOSITORY" --draft=false
-            gh release view "$TAG" --repo "$REPOSITORY" --json isDraft,url --jq 'if .isDraft then error("still a draft") else "published \(.url)" end'
-            fragment="fragment/kits-index-$KIT-$VERSION.json"
-            if [ -f "$fragment" ]; then
-              for url in $(jq -r '.kits[].versions[].platforms[].url' "$fragment"); do
-                curl -fsSIL -o /dev/null "$url" || echo "::warning::$url does not answer yet"
-              done
-            fi
-          fi
           if [ -n "$failed" ]; then
-            echo "::error::no headless archive for $failed: see the Headless $KIT jobs of those platforms"
+            echo "::error::no package built for $failed (see the jobs of those platforms or the package job). Running Package again, or re-running this run's failed jobs, builds and publishes only what npm lacks"
             exit 1
           fi

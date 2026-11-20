@@ -414,24 +414,29 @@ features:
     cases:
       - kition.kits.host-protocol/handles-only
     since: "2026-11-10"
-  - id: kition.kits.headless-archives
-    title: Each kit's Package workflow publishes its headless executable for every platform, checked by kit.initialize, with a kit index fragment, in one Release published once complete (a draft until then), and completes a released version without replacing an asset
+  - id: kition.kits.npm-packages
+    title: Each kit's Package workflow publishes the kit version's editor package and its headless executable for every platform on npm, checked by kit.initialize, each version once; Kition pins the editor packages from the registry's metadata and fetches them from npm or a mirror, checked by integrity
     dimension: [platform, function, data-safety]
     priority: P1
     status: has
     paths:
       - .github/workflows/kit-package.yml
       - scripts/package-kit.sh
-      - scripts/kit-release-assets.mjs
-      - scripts/lib/kitReleaseAssets.mjs
-      - scripts/lib/kitReleaseAssets.spec.ts
-    gap: The GitHub half (the five runners, cargo-zigbuild, the draft, the uploads and publishing it) runs only in a kit repository's Package run; locally the archive and fragment of one platform are checked by installing them with kition.
+      - scripts/kit-package-build.mjs
+      - scripts/lib/kitPackageBuild.mjs
+      - scripts/lib/kitPackageBuild.spec.ts
+      - scripts/pin-kits.mjs
+      - scripts/fetch-kits.mjs
+      - scripts/lib/kitNpm.mjs
+      - scripts/lib/kitNpm.spec.ts
+      - scripts/lib/kitPackages.mjs
+      - scripts/lib/kitPackages.spec.ts
+    gap: The GitHub half (the five runners, cargo-zigbuild, npm publish with provenance) runs only in a kit repository's Package run, and the registries only on the network; locally the plan, the checks, pinning and fetching run against fake registries.
     cases:
-      - kition.kits.headless-archives/release-plan
-      - kition.kits.headless-archives/archive-and-fragment
-      - regressions/issue-kit-release-immutable
-      - regressions/issue-kit-release-tgz-only
-    since: "2026-11-18"
+      - kition.kits.npm-packages/build-plan
+      - kition.kits.npm-packages/headless-check
+      - kition.kits.npm-packages/pin-and-fetch
+    since: "2026-11-20"
   - id: kition.kits.fetch-image
     title: A kit keeps a picture pasted by its web address; Kition's runtime downloads it from public addresses only (Kit UI protocol host/fetchImage)
     dimension: [security, data-safety]

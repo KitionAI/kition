@@ -1,63 +1,40 @@
 #!/usr/bin/env node
-// Pins published kit packages in kits/kits.lock.json (docs/kits.md, section 4b).
+// Pins kit packages published on npm in kits/kits.lock.json (docs/kits.md, section 4b).
 //
-//   node scripts/pin-kits.mjs board cad   pin these kits
-//   node scripts/pin-kits.mjs --all       pin every kit in kits/modules.json
+//   node scripts/pin-kits.mjs board cad@0.1.1   pin these kits: the version given, else the latest
+//   node scripts/pin-kits.mjs --all             pin the latest of every kit in kits/modules.json
 //
-// For each kit it reads `version` from kit.json on the main branch of the kit's repository, and
-// downloads that version's `package-v<version>` Release, which the kit's Package workflow made:
-// the package, kition-<kit>-<version>.tgz, and its lock entry, kition-<kit>-<version>.json. The
-// entry is written to the lock once the package's size and SHA-256 match it. It needs only gh.
-import crypto from 'node:crypto'
+// For each kit it reads the registry's metadata of its editor package @kition/kit-<kit>-ui at that
+// version (or its `latest`), which the kit repository's Package workflow published, and writes its
+// lock entry: the package, version, npm's integrity, and the kit, kition-sdk, kition-tessera and
+// kition-fonts commits from the package's `kition.build`. It reads metadata only; scripts/fetch-kits.mjs
+// downloads the package and checks it against the entry. The registries are read in order
+// (scripts/lib/kitNpm.mjs `registries`: KITION_NPM_REGISTRY, ~/.npmrc, npmjs.org, npmmirror.com);
+// the first that has the version answers.
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { kitLockEntry, writeKitLock } from './lib/kitPackages.mjs'
+import { configuredRegistries } from './lib/kitNpm.mjs'
+import { pinKit, readKitLock, writeKitLock } from './lib/kitPackages.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const { $comment: _comment, ...registry } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'modules.json'), 'utf8'))
-
-function gh(args) {
-  const result = spawnSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
-  if (result.error) throw result.error
-  if (result.status !== 0) throw new Error(`gh ${args.join(' ')} exited with ${result.status}`)
-  return result.stdout
-}
-
-function pin(kit) {
-  const { repository } = registry[kit]
-  const manifest = JSON.parse(gh(['api', '-H', 'Accept: application/vnd.github.raw+json', `repos/${repository}/contents/kit.json?ref=main`]))
-  const { version } = manifest
-  const tag = `package-v${version}`
-  const asset = `kition-${kit}-${version}.tgz`
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), `kition-pin-${kit}-`))
-  try {
-    gh(['release', 'download', tag, '--repo', repository, '--pattern', asset, '--pattern', `kition-${kit}-${version}.json`, '--dir', scratch])
-    const bytes = fs.readFileSync(path.join(scratch, asset))
-    const metadata = JSON.parse(fs.readFileSync(path.join(scratch, `kition-${kit}-${version}.json`), 'utf8'))
-    const sha256 = crypto.createHash('sha256').update(bytes).digest('hex')
-    const entry = kitLockEntry(kit, { repository, version }, metadata, { size: bytes.length, sha256 })
-    console.log(`${kit}: ${tag}, ${entry.size} bytes, commit ${entry.commit}`)
-    return entry
-  } finally {
-    fs.rmSync(scratch, { recursive: true, force: true })
-  }
-}
+const list = configuredRegistries()
 
 const args = process.argv.slice(2)
-const kits = args.includes('--all') ? Object.keys(registry) : args
-const unknown = kits.filter((kit) => !registry[kit])
-if (!kits.length || unknown.length) {
-  console.error(unknown.length ? `kits/modules.json has no kit ${unknown.join(', ')}` : 'usage: node scripts/pin-kits.mjs <kit>... | --all')
+const asked = args.includes('--all') ? Object.keys(registry).map((kit) => ({ kit })) : args.map((arg) => ({ kit: arg.split('@')[0], version: arg.includes('@') ? arg.split('@')[1] : undefined }))
+const unknown = asked.filter(({ kit }) => !registry[kit]).map(({ kit }) => kit)
+if (!asked.length || unknown.length) {
+  console.error(unknown.length ? `kits/modules.json has no kit ${unknown.join(', ')}` : 'usage: node scripts/pin-kits.mjs <kit>[@<version>]... | --all')
   process.exit(2)
 }
 const entries = {}
 let failed = 0
-for (const kit of kits) {
+for (const { kit, version } of asked) {
   try {
-    entries[kit] = pin(kit)
+    const { registry: from, entry } = await pinKit(kit, version, list)
+    entries[kit] = entry
+    console.log(`${kit}: ${entry.package}@${entry.version} from ${from}, commit ${entry.commit}`)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     failed += 1
@@ -65,4 +42,10 @@ for (const kit of kits) {
 }
 writeKitLock(repoRoot, entries)
 console.log(`pinned ${Object.keys(entries).length} kit(s) in kits/kits.lock.json${failed ? `; ${failed} failed` : ''}`)
+try {
+  readKitLock(repoRoot)
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error))
+  failed += 1
+}
 process.exit(failed ? 1 : 0)

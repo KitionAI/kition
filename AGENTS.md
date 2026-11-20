@@ -148,10 +148,10 @@ own interaction tests live in the kition-table repository and run there.
   removed. Native kit executables run only `headless`, for the agent.
 - A kit's package (`public/kits/<kit>-ui/`: editor, engine, fonts) must stay
   self-contained (platform rule UI-K1) so other applications can embed it. Kition
-  ships every kit's package inside the app, as built and published on GitHub
-  by the kit repository's Package workflow (Kition's reusable
-  `.github/workflows/kit-package.yml`) and pinned in `kits/kits.lock.json` by
-  `node scripts/pin-kits.mjs`; packages are never built for publishing on a
+  ships every kit's package inside the app, as built on GitHub and published
+  on npm (`@kition/kit-<kit>-ui`) by the kit repository's Package workflow
+  (Kition's reusable `.github/workflows/kit-package.yml`) and pinned in
+  `kits/kits.lock.json` by `node scripts/pin-kits.mjs`; packages are never built for publishing on a
   developer machine. Register a kit in
   `src/features/workspace/components/kits/kitEditors.ts` and
   `kits/modules.json`; see `docs/kits.md`.

@@ -1,0 +1,22 @@
+format: 1
+id: kition.kits.npm-packages/headless-check
+feature: kition.kits.npm-packages
+intent: >-
+  A platform's headless build is packaged only when its executable (kition-<kit>, .exe on Windows)
+  is the file whose kit.initialize answer was recorded on that platform, and that answer is its
+  kit.json's id, version and protocol; a build of another kit, executable name or protocol, or
+  without the recorded handshake, is refused.
+layer: gate
+source:
+  kind: synthetic
+  from: scripts/lib/kitPackageBuild.mjs
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitPackageBuild.spec.ts, -t, "checkHeadlessBuild"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-20"

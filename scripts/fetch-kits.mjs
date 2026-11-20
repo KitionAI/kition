@@ -5,70 +5,49 @@
 //   node scripts/fetch-kits.mjs          fetch the packages that are missing or not the pinned ones
 //   node scripts/fetch-kits.mjs --check  only compare public/kits with the lock
 //
+// Each package is the npm package @kition/kit-<kit>-ui at the pinned version, downloaded from the
+// first registry that serves it with the pinned integrity (scripts/lib/kitNpm.mjs `registries`:
+// KITION_NPM_REGISTRY, comma-separated; ~/.npmrc's @kition:registry; npm_config_registry or
+// ~/.npmrc's registry; npmjs.org; npmmirror.com). Its <kit>-ui folder replaces public/kits/<kit>-ui.
+//
 // A fetched package gets a stamp (.kition-package.json) with its lock entry. A package without
 // it, or with another one (a local build by scripts/build-kit-ui.sh, or another package), is not
 // the pinned one even when its version matches, so it is fetched again and `--check` fails. Set
 // KITION_KEEP_LOCAL_KITS=1 to keep local builds of the pinned version and commit instead.
-//
-// The packages are Release assets of the kit repositories, which are public, downloaded with
-// `gh release download`: locally with your gh login, in CI with GH_TOKEN set to the workflow's
-// token. Each download is checked against the pinned size and SHA-256.
-import crypto from 'node:crypto'
-import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { kitPackageProblem, publishedKitPackageStamp, readKitLock, writeKitPackageStamp } from './lib/kitPackages.mjs'
+import { configuredRegistries } from './lib/kitNpm.mjs'
+import { fetchKitPackage, kitPackageProblem, readKitLock } from './lib/kitPackages.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const kitsDir = path.join(repoRoot, 'public', 'kits')
-const lock = readKitLock(repoRoot)
-
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { stdio: 'inherit', ...options })
-  if (result.error) throw result.error
-  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited with ${result.status}`)
-}
-
-function fetchKit(kit, pinned) {
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), `kition-kit-${kit}-`))
-  try {
-    run('gh', ['release', 'download', pinned.tag, '--repo', pinned.repository, '--pattern', pinned.asset, '--dir', scratch])
-    const bytes = fs.readFileSync(path.join(scratch, pinned.asset))
-    const sha256 = crypto.createHash('sha256').update(bytes).digest('hex')
-    if (bytes.length !== pinned.size || sha256 !== pinned.sha256) {
-      throw new Error(`${pinned.asset}: ${bytes.length} bytes, sha256 ${sha256}; the lock pins ${pinned.size} bytes, sha256 ${pinned.sha256}`)
-    }
-    const target = path.join(kitsDir, `${kit}-ui`)
-    fs.rmSync(target, { recursive: true, force: true })
-    fs.mkdirSync(kitsDir, { recursive: true })
-    // The archive by its bare name: GNU tar reads a drive letter in it as a remote host.
-    run('tar', ['-xzf', pinned.asset, '-C', kitsDir], { cwd: scratch })
-    writeKitPackageStamp(kitsDir, kit, publishedKitPackageStamp(pinned))
+async function main() {
+  const lock = readKitLock(repoRoot)
+  const list = configuredRegistries()
+  const checkOnly = process.argv.includes('--check')
+  const keepLocal = process.env.KITION_KEEP_LOCAL_KITS === '1'
+  let problems = 0
+  for (const [kit, pinned] of Object.entries(lock)) {
     const problem = kitPackageProblem(kitsDir, kit, pinned)
-    if (problem) throw new Error(problem)
-    console.log(`fetched ${kit} ${pinned.version}`)
-  } finally {
-    fs.rmSync(scratch, { recursive: true, force: true })
+    if (!problem) {
+      console.log(`${kit} ${pinned.version}: up to date`)
+    } else if (!checkOnly && keepLocal && !kitPackageProblem(kitsDir, kit, pinned, { stamp: false })) {
+      console.warn(`${problem}; kept (KITION_KEEP_LOCAL_KITS=1)`)
+    } else if (checkOnly) {
+      console.error(problem)
+      problems += 1
+    } else {
+      const registry = await fetchKitPackage(kit, pinned, kitsDir, list)
+      console.log(`fetched ${kit} ${pinned.version} (${pinned.package}) from ${registry}`)
+    }
   }
+  if (!Object.keys(lock).length) console.log('kits/kits.lock.json pins no kits')
+  return problems
 }
 
-const checkOnly = process.argv.includes('--check')
-const keepLocal = process.env.KITION_KEEP_LOCAL_KITS === '1'
-let problems = 0
-for (const [kit, pinned] of Object.entries(lock)) {
-  const problem = kitPackageProblem(kitsDir, kit, pinned)
-  if (!problem) {
-    console.log(`${kit} ${pinned.version}: up to date`)
-  } else if (!checkOnly && keepLocal && !kitPackageProblem(kitsDir, kit, pinned, { stamp: false })) {
-    console.warn(`${problem}; kept (KITION_KEEP_LOCAL_KITS=1)`)
-  } else if (checkOnly) {
-    console.error(problem)
-    problems += 1
-  } else {
-    fetchKit(kit, pinned)
-  }
+try {
+  process.exit((await main()) ? 1 : 0)
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exit(1)
 }
-if (!Object.keys(lock).length) console.log('kits/kits.lock.json pins no kits')
-process.exit(problems ? 1 : 0)

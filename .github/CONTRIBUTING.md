@@ -65,8 +65,9 @@ pnpm dev
 ```
 
 `make kit-fetch` downloads the kit packages pinned in `kits/kits.lock.json`
-into `public/kits/` with the GitHub CLI (`gh release download`) and checks each
-one's size and SHA-256; the kit editors run from there. `pnpm dev` runs
+(npm packages `@kition/kit-<kit>-ui`) into `public/kits/` from npm, or a
+mirror (`KITION_NPM_REGISTRY`, your `~/.npmrc`, then npmjs.org and
+npmmirror.com), and checks each one's integrity; the kit editors run from there. `pnpm dev` runs
 `tauri dev`, which compiles the Tauri desktop shell together with the Rust
 runtime in `crates/` and starts the desktop client. The runtime runs
 in-process; see [docs/runtime-development.md](../docs/runtime-development.md).

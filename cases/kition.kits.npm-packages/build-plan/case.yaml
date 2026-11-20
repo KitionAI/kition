@@ -1,0 +1,25 @@
+format: 1
+id: kition.kits.npm-packages/build-plan
+feature: kition.kits.npm-packages
+intent: >-
+  From what npm lacks of a kit version (kition-sdk's kit-npm-package.mjs missing), a Package run
+  builds only the missing editor package and the missing platforms' headless packages (on the
+  runners, targets and glibc 2.17 floor of kition-sdk's release), builds nothing when npm has every
+  package, refuses to complete a version npm has in part from another commit, publishes only
+  tarballs of the packages it planned (headless in platform order, the editor package last), and
+  names every planned package that built nothing; the registry is read through a fake, never the
+  network.
+layer: gate
+source:
+  kind: synthetic
+  from: scripts/lib/kitPackageBuild.mjs
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitPackageBuild.spec.ts, -t, "headlessMatrix|buildPlan|planFromRegistry|publishPlan|kit-package-build"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-20"

@@ -3,7 +3,7 @@
 // are built into the renderer as lazily loaded chunks; each kit's NOTICE and LICENSE are read from
 // its package, which the app serves under /kits/<kit>-ui/ (kits/kits.lock.json pins them).
 
-export type BundledKit = { kit: string; version: string; repository: string }
+export type BundledKit = { kit: string; version: string }
 
 export type KitLicenseTexts = { notice: string | null; license: string | null }
 
@@ -21,8 +21,8 @@ export async function loadBundledKits(): Promise<BundledKit[]> {
   return Object.entries(lock)
     .filter(([kit]) => !kit.startsWith('$'))
     .map(([kit, entry]) => {
-      const { version, repository } = entry as { version: string; repository: string }
-      return { kit, version, repository }
+      const { version } = entry as { version: string }
+      return { kit, version }
     })
 }
 

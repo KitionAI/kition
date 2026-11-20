@@ -630,66 +630,64 @@ workspace file is the document. The Note kit's model of a `.md` file
 (schema `kit.note`, line endings, comments, identity, and merging a file
 changed on disk) is in kition-note's `docs/design.md`, section 2.
 
-## 4b. Kit Packages And Releases
+## 4b. Kit Packages And npm
 
 Kition ships every kit's package inside the app (decided 2026-10-15). All ten
 packages add about 57 MB compressed; the renderer is embedded in the
 executable with brotli, so the installer and the installed app grow by about
 that much, and every app update downloads it again.
 
-A kit package is also the kit's SDK deliverable: the same `.tgz` is what
-another application embeds. A web page embeds it with kition-sdk's
+A kit package is also the kit's SDK deliverable: the same `<kit>-ui` folder is
+what another application embeds. A web page embeds it with kition-sdk's
 `@kition/embed` (`KitionEmbed.mount`, capability set `KitEmbed 1.0`; see
 kition-sdk's `docs/platform/reference/embed.md`): the page serves the extracted package from an
 origin of its own, keeps documents in its own storage, and may co-edit them
 through a sync server. Kition consumes the package the way any other host
 would, through `@kition/kit-host`, so it never builds kits in its release.
 
+Kit versions are distributed as npm packages, so they download from npm's
+mirrors (registry.npmmirror.com) where GitHub is slow or unreachable. The
+names and contents are kition-sdk's contract (`tools/kit-npm.mjs`); per kit
+version (`version` in the kit's kit.json):
+
+| Package | Holds |
+| --- | --- |
+| `@kition/kit-<kit>-ui` | the folder `<kit>-ui/`: the kit's package (editor, engine, fonts), which Kition ships in `public/kits/` |
+| `@kition/kit-<kit>-<platform>` | `kit.json` and the headless executable `kition-<kit>` (`.exe` on Windows) at the package's top, for darwin-arm64, darwin-x64, linux-arm64, linux-x64 and win32-x64 (npm `os`, `cpu`, and `libc` on Linux) |
+
+Each package.json has a `kition` field (`kit`, `id`, `name`, `version`,
+`role` `ui` or `headless`, `platform`, `protocol`, `extensions`, `views`, and
+`build`: the kit, kition-sdk, kition-tessera and kition-fonts commits it was
+built from). A version is published once and never replaced; its integrity
+is npm's `dist.integrity` (SHA-512 of the tarball).
+
 - **Publishing** runs on GitHub, never on a developer machine. Each kit
   repository has a Package workflow (`.github/workflows/package.yml`, started
   by hand with `gh workflow run package.yml -R KitionAI/kition-<kit>`) that
   calls Kition's reusable `.github/workflows/kit-package.yml` with the kit's
-  name. Its `plan` job reads `version` from kit.json at the commit the run
-  was started on, looks up that version's `package-v<version>` Release (none,
-  a draft, or published, and whether it is immutable) and lists what it lacks
-  (`node scripts/kit-release-assets.mjs plan`); the other jobs publish only
-  that. An asset of a published Release is never replaced: bump `version` in
-  the kit's `kit.json` to publish a change.
-- **One Release, published once, complete.** Some kit repositories have
-  GitHub's immutable releases turned on (kition-table and kition-note): a
-  published Release there can gain no asset (`HTTP 422: Cannot upload assets
-  to an immutable release`), while a draft can, and its tag is made only when
-  it is published. So a new version's Release is a draft until the last job,
-  `publish`, finds every asset in it (the package, its lock entry, the five
-  archives and the fragment) and publishes it, on every repository. When a
-  platform builds nothing the draft stays a draft and the run ends failed,
-  naming what it lacks: re-running the run's failed jobs, or running Package
-  again, builds the rest into the same draft (the plan finds it by its tag
-  name) and publishes it.
-- **The commit built**: a new version is built from the run's commit, a
-  draft from the commit it targets, and a published Release from its tag's
-  commit, which the `commit` of its lock entry, when it has one, must name
-  (`node scripts/kit-release-assets.mjs ref`).
-- **The package**, when the version has no Release yet, or a draft without
-  both package files: the `package` job checks out that commit beside Kition,
-  kition-sdk, kition-tessera, and kition-fonts (main), and runs
-  `scripts/package-kit.sh <kit>`: it builds the package with
-  `scripts/build-kit-ui.sh` (machine paths in the engine remapped), refuses a
-  `level` its agent files do not back, and makes the `package-v<version>`
-  Release of the kit's repository a draft with that repository's workflow
-  token, targeting the built commit, holding `kition-<kit>-<version>.tgz`
-  (the `<kit>-ui` folder without the local-build stamp) and
-  `kition-<kit>-<version>.json`, its lock entry (repository, version, tag,
-  asset, size, SHA-256, and the kit, kition-sdk, kition-tessera, and
-  kition-fonts commits); a draft that has one of them gets both again (no one
-  has seen a draft). A published Release's package files are never added or
-  replaced: one without its `.tgz` stops the run; one with its `.tgz` and no
-  lock entry (kition-html 0.1.0) is completed like any other.
-- **The headless executables**, for whichever of darwin-arm64, darwin-x64,
-  linux-arm64, linux-x64 and win32-x64 the Release has no archive of: the
-  `headless` jobs build `kition-<kit>` (`cargo build --locked --release -p
-  kition-<kit>`) from the commit planned, exactly as kition-sdk's
-  release builds its published kits' executables (its
+  name and the repository's `NPM_TOKEN` secret, and grants it
+  `id-token: write` for npm provenance. Every package of a version is built
+  from the commit the run was started on.
+- **The plan**: the `plan` job reads `version` from kit.json at that commit,
+  asks https://registry.npmjs.org which of that version's six packages it
+  lacks (kition-sdk's `tools/kit-npm-package.mjs missing`), and plans to build
+  only those (`node scripts/kit-package-build.mjs plan`). When npm has every
+  package, nothing is built. A version is one build: when npm has some of its
+  packages and lacks others, the ones it has must name the run's commit in
+  `kition.build.commit`, or the run stops before building anything (re-run
+  the run that published them, or bump the version).
+- **The package**, when npm lacks `@kition/kit-<kit>-ui`: the `package` job
+  checks out the run's commit beside Kition, kition-sdk, kition-tessera and
+  kition-fonts (main), and runs `scripts/package-kit.sh <kit> <out-dir>`: it
+  builds the package with `scripts/build-kit-ui.sh` (machine paths in the
+  engine remapped), refuses a `level` its agent files do not back, and writes
+  and packs the npm package with kition-sdk's `tools/kit-npm-package.mjs ui`
+  and `pack` (the `<kit>-ui` folder without the local-build stamp, and the four
+  commits in `kition.build`; `pack` checks the tarball holds exactly the
+  folder's files).
+- **The headless executables**, for each platform npm lacks: the `headless`
+  jobs build `kition-<kit>` (`cargo build --locked --release -p kition-<kit>`)
+  exactly as kition-sdk's release builds its published kits' executables (its
   `.github/workflows/release.yml`, job `executables`): the same runners and
   targets, Linux linked against the glibc 2.17 floor with cargo-zigbuild and
   checked with kition-sdk's `tools/glibc-floor.mjs`, the fonts of the kit's
@@ -697,47 +695,48 @@ would, through `@kition/kit-host`, so it never builds kits in its release.
   `KITION_FONTS_REQUIRED=1`), else kition-fonts beside the kit. On its own
   platform the executable must answer `kit.initialize` (kition-sdk's
   `tools/kit-handshake.mjs --record`) with its kit.json's id, version and
-  protocol before `node scripts/kit-release-assets.mjs pack` packs it as
-  `kition-<kit>-<version>-<platform>.tar.gz`: kit.json and the executable
-  (`.exe` on Windows) at its top, which `kition kit install` unpacks. A platform that fails does not stop the others.
-- **The index fragment**: the `publish` job uploads the archives the
-  Release lacks (never one it has), and then, if the Release has none yet
-  (for a draft: once it holds every platform's archive),
-  `kits-index-<kit>-<version>.json`: a kit index (kition-sdk's
-  `schemas/kits-index.schema.json`, checked with kition-sdk's own checker)
-  with this kit version only, listing each archive the Release holds at its
-  public `https://github.com/<repository>/releases/download/package-v<version>/`
-  address with its size and SHA-256. Those are computed from the bytes the job
-  uploaded (a draft's assets are not at that address until it is published);
-  an archive the Release had before is downloaded with `gh`, which reads a
-  draft's assets through the API. `kition kit install <kit> --index
-  <fragment>` installs from it; the kits' fragments are what kition-sdk's
-  kit index is to be gathered from. A platform whose archive is added to a
-  published Release after its fragment was published is not in it (a warning
-  says so). Then a draft that holds every asset is published.
-- **Completing a published Release**: running Package again on a version
-  already published adds only the headless archives and the fragment its
-  Release lacks, without touching the package, so the Releases made before
-  the headless archives existed are completed without a new version. The run
-  ends failed, naming them, when a platform built no archive. A published
-  immutable Release cannot gain assets: when it lacks an archive or the
-  fragment, the plan says so and stops before building anything (kition-table
-  0.5.4 and kition-note 0.1.1); bump the kit's version.
-- **Pinning**: `node scripts/pin-kits.mjs <kit>...` (or `--all`) reads the
-  `version` in kit.json on the kit's main branch, downloads that version's
-  Release with `gh`, checks the package's size and SHA-256 against its
-  metadata, and writes the entry into `kits/kits.lock.json`.
-- **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads the
-  pinned packages into `public/kits/` with `gh release download`, checks size
-  and SHA-256, and checks the extracted `kit-ui.json` (kit id, version,
-  commit). Each fetched package gets a stamp, `<kit>-ui/.kition-package.json`
-  with its lock entry (version, SHA-256, commit, kition-sdk commit);
+  protocol (`node scripts/kit-package-build.mjs check`) before kition-sdk's
+  `tools/kit-npm-package.mjs headless` writes its package folder. The folder
+  travels to the publish job as a tar, which keeps the executable's mode, and
+  is packed there, on Linux (kition-sdk's `pack` runs npm, which it cannot
+  start on Windows). A platform that fails does not stop the others.
+- **Publishing**: the `publish` job packs the headless folders, checks that
+  every tarball is a package this run planned
+  (`node scripts/kit-package-build.mjs publish-plan`), and for each asks the
+  registry (`tools/kit-npm-package.mjs state`): `publish` runs
+  `npm publish --access public --provenance`, `published` (npm has the same
+  bytes) skips it, and a version npm holds with other bytes stops the run.
+  After publishing, `state` must say `published`. A package that built nothing
+  ends the run failed after the others are published; running Package again,
+  or re-running the run's failed jobs, builds and publishes only what npm
+  still lacks.
+- **Pinning**: `node scripts/pin-kits.mjs <kit>[@<version>]...` (or `--all`)
+  reads the registry's metadata of `@kition/kit-<kit>-ui` at that version, or
+  its `latest`, and writes the kit's entry into `kits/kits.lock.json`:
+  `package`, `version`, `integrity` (npm's `dist.integrity`), and `commit`,
+  `sdkCommit`, `tesseraCommit` and `fontsCommit` from its `kition.build`. It
+  reads metadata only, and no GitHub.
+- **The registries**, for pinning and fetching, in kition-sdk's and the
+  `kition` command's order (`scripts/lib/kitNpm.mjs`, `registries`):
+  `KITION_NPM_REGISTRY` (one address or several, comma-separated), then
+  `@kition:registry` in `~/.npmrc`, then `npm_config_registry` or the
+  `registry` in `~/.npmrc`, then https://registry.npmjs.org/, then
+  https://registry.npmmirror.com/. The first that answers wins; a registry
+  that fails, lacks the version, or serves other bytes is skipped for the next.
+- **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads each
+  pinned package's tarball
+  (`<registry>@kition/kit-<kit>-ui/-/kit-<kit>-ui-<version>.tgz`), checks its
+  integrity against the lock, checks it holds only `package/package.json` and
+  `package/<kit>-ui/` and that its package.json is the pinned package, version
+  and build, and puts `<kit>-ui` into `public/kits/`, where it checks the
+  extracted `kit-ui.json` (kit id, version, commit). Each fetched package gets
+  a stamp, `<kit>-ui/.kition-package.json`, with its lock entry;
   `scripts/build-kit-ui.sh` stamps a local build instead, so a package whose
   stamp is missing, local, or differs from the lock is fetched again even at
   the pinned version (`KITION_KEEP_LOCAL_KITS=1` keeps local builds of the
   pinned version and commit), and `--check` and the release build's
-  `dist/kits` check report it. `--check` only compares. Locally it uses your gh login; the
-  workflows use their own `github.token`, since the kit repositories are public.
+  `dist/kits` check report it. `--check` only compares. A lock entry that is
+  not such an npm pin is refused, naming what to pin.
 - **Releasing**: Kition's release workflow (a public repository, so its CI is
   free) fetches the packages, checks every engine against the contract
   (`pnpm check:kit-modules`), runs the kit e2e specs in its sweep, and fetches
