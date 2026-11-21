@@ -760,7 +760,10 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   `--keep-going` and `cargo test --workspace --no-fail-fast`, each run to the end so one run
   reports every failure, then the kit's `cargo xtask ci` when they pass), and the test jobs. The
   checkout (`.github/actions/kit-checkout`) puts kition-sdk, kition-tessera and kition-fonts
-  next to the kit, as the kits' scripts expect.
+  next to the kit, as the kits' scripts expect (Cargo reads kition-sdk through git; the editor's
+  `@kition/*` packages come from npm through the kit's lockfile). The test jobs set
+  `PLAYWRIGHT_NO_UA_PLATFORM=1`: otherwise Playwright's WebKit reports a Mac `navigator.platform`
+  on Linux and editors expect Cmd shortcuts where the tests press Ctrl.
 - **Per kit**: `.github/kit-ci.json` may `exclude` jobs that cannot run on a hosted runner (say
   why in the commit) and set `maxParallel` (default 6).
 - **Concurrency**: the organization's plan allows 20 concurrent jobs across all repositories (5 on

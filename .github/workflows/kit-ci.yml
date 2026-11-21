@@ -128,6 +128,7 @@ jobs:
         uses: KitionAI/kition/.github/actions/kit-checkout@main
         with:
           kit: ${{ inputs.kit }}
+          pnpm-cache: 'false'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -174,6 +175,10 @@ jobs:
     if: needs.plan.outputs.matrix != '{"include":[]}'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      # Playwright's WebKit reports a Mac navigator.platform on Linux unless this is set, so editors
+      # would expect Cmd shortcuts while the tests (and real Linux users) press Ctrl.
+      PLAYWRIGHT_NO_UA_PLATFORM: '1'
     strategy:
       fail-fast: false
       max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}

@@ -14,6 +14,11 @@ inputs:
   node-version:
     description: The Node.js version
     default: '24'
+  pnpm-cache:
+    description: >-
+      Cache pnpm's store ('true' or 'false'). Turn it off in jobs that never run pnpm install: the
+      cache's post-job step fails when the store does not exist.
+    default: 'true'
 
 runs:
   using: composite
@@ -53,5 +58,5 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
-        cache: pnpm
+        cache: ${{ inputs.pnpm-cache == 'true' && 'pnpm' || '' }}
         cache-dependency-path: kition-${{ inputs.kit }}/**/pnpm-lock.yaml
