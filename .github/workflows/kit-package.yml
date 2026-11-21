@@ -403,7 +403,9 @@ jobs:
           cat publish-plan.json
 
       # `state` exits 1 when npm holds the version with other bytes, which stops the run: a version
-      # is published once. The registry's metadata lags a publish: five minutes for a package's
+      # is published once. `--tag latest` is said outright: npm refuses to move `latest` by itself to
+      # a version below one already published, and kition reads the kit index, not the tag. The
+      # registry's metadata lags a publish: five minutes for a package's
       # first version (measured, 2026-11-20), so each package is waited for up to ten.
       - name: Publish what npm lacks
         env:
@@ -420,7 +422,7 @@ jobs:
                 echo "$name is on npm already, with the same bytes"
                 continue ;;
               publish)
-                npm publish "$file" --access public --provenance ;;
+                npm publish "$file" --access public --provenance --tag latest ;;
               *)
                 echo "::error::unexpected state of $name" >&2
                 exit 1 ;;
