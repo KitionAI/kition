@@ -279,22 +279,26 @@ pub(crate) fn object_json(doc: &LoroDoc, schema: &Schema, id: &ObjectId) -> Resu
     out.insert(TYPE_KEY.to_owned(), Value::String(ty.clone()));
     let Ok(def) = schema.type_def(&ty) else { return Ok(Value::Object(out)) };
     for (name, field) in &def.fields {
-        let value = match field.kind {
-            FieldKind::Text if field.has_marks() => {
-                crate::marks::runs_json(&text(doc, schema, id, name)?.map(|text| crate::marks::runs(&text, field)).unwrap_or_default())
-            }
-            FieldKind::Text => Value::String(text(doc, schema, id, name)?.map(|text| text.to_string()).unwrap_or_default()),
-            FieldKind::List => {
-                let items = list(doc, schema, id, name)?.map(|list| list_items(&list)).transpose()?.unwrap_or_default();
-                Value::Array(items.into_iter().map(|item| Value::String(item.to_string())).collect())
-            }
-            FieldKind::Tree => tree(doc, schema, id, name)?.map_or(Value::Array(Vec::new()), |tree| tree_json(&tree, TreeParentId::Root)),
-            FieldKind::Map => map(doc, schema, id, name)?.map_or(Value::Object(Map::new()), |map| map.get_deep_value().to_json_value()),
-            _ => register(doc, schema, id, name)?,
-        };
-        out.insert(name.clone(), value);
+        out.insert(name.clone(), field_json(doc, schema, id, name, field)?);
     }
     Ok(canonical(Value::Object(out)))
+}
+
+/// Field `name` (declared as `field`) of object `id`, as [`object_json`] reports it.
+pub(crate) fn field_json(doc: &LoroDoc, schema: &Schema, id: &ObjectId, name: &str, field: &crate::schema::FieldDef) -> Result<Value> {
+    Ok(match field.kind {
+        FieldKind::Text if field.has_marks() => {
+            crate::marks::runs_json(&text(doc, schema, id, name)?.map(|text| crate::marks::runs(&text, field)).unwrap_or_default())
+        }
+        FieldKind::Text => Value::String(text(doc, schema, id, name)?.map(|text| text.to_string()).unwrap_or_default()),
+        FieldKind::List => {
+            let items = list(doc, schema, id, name)?.map(|list| list_items(&list)).transpose()?.unwrap_or_default();
+            Value::Array(items.into_iter().map(|item| Value::String(item.to_string())).collect())
+        }
+        FieldKind::Tree => tree(doc, schema, id, name)?.map_or(Value::Array(Vec::new()), |tree| tree_json(&tree, TreeParentId::Root)),
+        FieldKind::Map => map(doc, schema, id, name)?.map_or(Value::Object(Map::new()), |map| map.get_deep_value().to_json_value()),
+        _ => register(doc, schema, id, name)?,
+    })
 }
 
 pub(crate) fn object_ids(doc: &LoroDoc) -> Vec<ObjectId> {

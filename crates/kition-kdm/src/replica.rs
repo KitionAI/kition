@@ -111,6 +111,10 @@ pub struct Replica {
 /// `map` field).
 type Register = (ContainerID, String);
 
+/// A register whose current value an undo or redo must keep, with that value and who wrote it:
+/// another replica (`None`), or another scope of this one (`Some`).
+type LaterWrite = (Register, Option<LoroValue>, Option<Option<UndoScope>>);
+
 /// Objects and fields written by one undo step. `fields: None` holds the whole object
 /// (creation or deletion); an empty set holds its existence and placement only.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -731,34 +735,75 @@ impl Replica {
         self.end_undo_group();
         // Who wrote each register's current value, when an undo must keep it: another replica
         // (`None`), or another scope of this one.
-        let mut others: Vec<(Register, Option<LoroValue>, Option<Option<UndoScope>>)> =
-            self.others_registers().into_iter().map(|(register, value)| (register, value, None)).collect();
+        let mut others: Vec<LaterWrite> = self.others_registers().into_iter().map(|(register, value)| (register, value, None)).collect();
         others.extend(self.other_scopes_registers(scope).into_iter().map(|(register, value, by)| (register, value, Some(by))));
+        // A step that replays nothing (what it wrote is gone: another replica deleted the
+        // objects), and a step of several transactions (an undo group) whose replay comes to
+        // nothing because its own changes cancel out (Enter then Backspace, a value written and
+        // written back), are passed over: the one before it replays in the same undo or redo, as
+        // the engine does with its own steps. What such a step replayed joins the next step that
+        // changes something, or else the step on top of the other stack, so the engine's steps
+        // stay in the order the replica's refer to them. A step that writes values back is not
+        // passed over when later changes of others keep those values (M12, M12a), nor is one
+        // transaction whose replay writes the values its registers hold already.
         let me = self.actor.get();
         let written = |doc: &LoroDoc| doc.oplog_vv().get(&me).copied().unwrap_or(0);
-        let mut registers = Vec::new();
-        loop {
-            let Some(step) = self.undo.of(scope).pop(undo) else { return Ok(false) };
-            let before = written(&self.doc);
+        let mut passed: Option<Step> = None;
+        let mut done = false;
+        while let Some(step) = self.undo.of(scope).pop(undo) {
+            let group = step.parts.len() > 1;
+            let engine = group && step.parts.iter().any(|part| matches!(part, Part::Engine(_)));
+            let before = (written(&self.doc), engine.then(|| self.footprint_digest(&step.touches)));
+            let mut registers = Vec::new();
+            let mut seen = BTreeSet::new();
             // The parts replay last first; each answers the part that replays it back, and those
             // are kept in the order they replayed, so the step they make replays last first too.
             let mut replayed = Vec::with_capacity(step.parts.len());
             for part in step.parts.into_iter().rev() {
                 let back = match part {
-                    Part::Engine(serial) => self.replay_engine(scope, undo, serial, &mut registers)?,
+                    Part::Engine(serial) => self.replay_engine(scope, undo, serial, &mut registers, &mut seen)?,
                     Part::Registers(entries) => self.write_back(entries, &mut registers)?,
                 };
                 replayed.extend(back);
             }
-            // A step with nothing left to replay (what it wrote is gone: another replica deleted
-            // the objects) is dropped, and the one before it replays instead, as the engine does
-            // with its own steps.
-            if written(&self.doc) != before {
-                self.undo.of(scope).push_replayed(undo, Step { parts: replayed, touches: step.touches });
+            let changed = written(&self.doc) != before.0
+                && match before.1 {
+                    // A group with steps of the engine: what the group wrote reads differently now,
+                    // or the engine changed an object outside it.
+                    Some(digest) => {
+                        let held: HashSet<&str> = step.touches.iter().map(|touch| touch.id.as_str()).collect();
+                        self.footprint_digest(&step.touches) != digest || seen.iter().any(|id| !held.contains(id.as_str()))
+                    }
+                    None if group => self.registers_changed(&replayed),
+                    None => true,
+                };
+            self.settle(scope, &registers, &others)?;
+            let mut step = Step { parts: replayed, touches: step.touches };
+            if let Some(earlier) = passed.take() {
+                step = earlier.then(step);
+            }
+            if changed {
+                self.undo.of(scope).push_replayed(undo, step);
+                done = true;
                 break;
             }
+            passed = Some(step);
         }
-        for register in &registers {
+        let history = self.undo.of(scope);
+        if let Some(step) = passed.filter(|step| !step.parts.is_empty()) {
+            let other = if undo { &mut history.redo } else { &mut history.undo };
+            if let Some(top) = other.pop() {
+                other.push(top.then(step));
+            }
+        }
+        history.drop_consumed(undo);
+        Ok(done)
+    }
+
+    /// After a step's replay wrote `registers`: notes them as this scope's writes, then puts back
+    /// the value of each one another replica or another scope (`others`) wrote later.
+    fn settle(&mut self, scope: UndoScope, registers: &[Register], others: &[LaterWrite]) -> Result<()> {
+        for register in registers {
             let map = self.doc.get_map(register.0.clone());
             let value = match map.get(&register.1) {
                 Some(ValueOrContainer::Value(value)) => Some(value),
@@ -773,7 +818,7 @@ impl Replica {
         // step), so the result is as if the undo had skipped them.
         let touched: HashSet<&Register> = registers.iter().collect();
         let mut restored = false;
-        for (register, value, by) in others {
+        for (register, value, by) in others.iter().cloned() {
             if !touched.contains(&register) {
                 continue;
             }
@@ -811,14 +856,22 @@ impl Replica {
             let ((), kept, _) = observe_changes(doc, || doc.commit());
             self.changed.extend(kept);
         }
-        Ok(true)
+        Ok(())
     }
 
     /// Undoes (or redoes) the engine's step `serial` of `scope`, adding the registers it changed
-    /// to `registers`. Answers the part that replays it back: the step the engine recorded for
-    /// it. The engine has no such step when it has nothing left to replay (an earlier replay
-    /// changed nothing, so the engine recorded none); then nothing happens.
-    fn replay_engine(&mut self, scope: UndoScope, undo: bool, serial: i64, registers: &mut Vec<Register>) -> Result<Option<Part>> {
+    /// to `registers` and the objects it changed to `seen`. Answers the part that replays it back:
+    /// the step the engine recorded for it. The engine has no such step when it has nothing left
+    /// to replay (an earlier replay changed nothing, so the engine recorded none); then nothing
+    /// happens.
+    fn replay_engine(
+        &mut self,
+        scope: UndoScope,
+        undo: bool,
+        serial: i64,
+        registers: &mut Vec<Register>,
+        seen: &mut BTreeSet<ObjectId>,
+    ) -> Result<Option<Part>> {
         let manager = &mut self.undo.of(scope).engine;
         let top = if undo { manager.top_undo_value() } else { manager.top_redo_value() };
         if history_serial(top) != Some(serial) {
@@ -831,6 +884,7 @@ impl Replica {
         // of it parsed and indexed: of a large document's history, more than the document. It
         // reads it again for the next engine step.
         self.doc.release_parsed_history();
+        seen.extend(changed.objects().iter().cloned());
         self.changed.extend(changed);
         done.map_err(engine)?;
         registers.extend(written);
@@ -900,6 +954,57 @@ impl Replica {
                 _ => None,
             },
         }
+    }
+
+    /// A digest of what `touches` holds now: whether each object exists, and its fields named
+    /// there (all of them for `fields: None`), read as [`Replica::state_json`] reads them. Two
+    /// digests differ when any of it does; neither keeps a copy of the state.
+    fn footprint_digest(&self, touches: &[UndoTouch]) -> Vec<u8> {
+        let mut digest = Sha256::new();
+        for touch in touches {
+            let id = ObjectId::from_string(touch.id.clone());
+            let state = match (&touch.fields, read::object_type(&self.doc, &id)) {
+                (_, Err(_)) => None,
+                (None, Ok(_)) => read::object_json(&self.doc, &self.schema, &id).ok(),
+                (Some(fields), Ok(ty)) => Some(Value::Array(
+                    fields
+                        .iter()
+                        .map(|name| {
+                            let field = self.schema.field(&ty, name).ok();
+                            field.and_then(|field| read::field_json(&self.doc, &self.schema, &id, name, field).ok()).map_or(Value::Null, canonical)
+                        })
+                        .collect(),
+                )),
+            };
+            digest.update(touch.id.as_bytes());
+            digest.update(serde_json::to_vec(&state).unwrap_or_default());
+            digest.update([0]);
+        }
+        digest.finalize().to_vec()
+    }
+
+    /// Whether the register parts `replayed` (each register with the value it held before its
+    /// part replayed, in the order they replayed) left any register with another value than it
+    /// held before the first of them.
+    fn registers_changed(&self, replayed: &[Part]) -> bool {
+        let many = replayed.len() > 1;
+        let mut first = HashSet::new();
+        replayed
+            .iter()
+            .flat_map(|part| match part {
+                Part::Registers(entries) => entries.as_slice(),
+                Part::Engine(_) => &[],
+            })
+            .filter(|entry| !many || first.insert((&entry.container, &entry.key)))
+            .any(|entry| {
+                let Some(map) = self.entry_map(entry) else { return false };
+                let now = match map.get(&entry.key) {
+                    Some(ValueOrContainer::Value(value)) => Some(value),
+                    Some(ValueOrContainer::Container(_)) => return true,
+                    None => None,
+                };
+                now != entry.value
+            })
     }
 
     /// The registers whose current value this replica wrote in another scope than `scope` (or in
@@ -1452,6 +1557,40 @@ impl History {
         } else {
             self.push(step);
         }
+    }
+
+    /// After an undo (`undo`) or a redo: drops from the stack it took steps from the engine steps
+    /// the engine no longer holds there. When the undo of one of its steps changes nothing, the
+    /// engine undoes the step below it in the same call, so the replica's step that refers to
+    /// that one would replay nothing. The engine's steps are numbered in the order it pushed
+    /// them, so those are the ones above the engine's top step.
+    fn drop_consumed(&mut self, undo: bool) {
+        let top = history_serial(if undo { self.engine.top_undo_value() } else { self.engine.top_redo_value() });
+        let steps = if undo { &mut self.undo } else { &mut self.redo };
+        let held = |part: &Part| match part {
+            Part::Engine(serial) => top.is_some_and(|top| *serial <= top),
+            Part::Registers(_) => true,
+        };
+        while let Some(step) = steps.last_mut() {
+            if step.parts.iter().all(held) {
+                break;
+            }
+            step.parts.retain(held);
+            if !step.parts.is_empty() {
+                break;
+            }
+            steps.pop();
+        }
+    }
+}
+
+impl Step {
+    /// This step and `later` (replayed after it) as one step: the engine holds `later`'s steps
+    /// above this one's, so they replay first.
+    fn then(mut self, later: Step) -> Step {
+        self.parts.extend(later.parts);
+        merge_undo_touches(&mut self.touches, &later.touches);
+        self
     }
 }
 
