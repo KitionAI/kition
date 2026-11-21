@@ -13,9 +13,16 @@
 //   node scripts/kit-package-build.mjs publish-plan --kit <kit> --version <v> --platforms <json> --ui <true|false> --packed <file>
 //       JSON { publish, failed }: the tarballs to publish, in order, and the wanted packages that
 //       built none. --packed holds one line per tarball, as `kit-npm-package.mjs pack` printed it.
+//   node scripts/kit-package-build.mjs wait --outcomes <file> --registry <url> --minutes <n>
+//       After every publish returned: asks the registry every 30 seconds, for at most <n> minutes,
+//       until it shows every package of --outcomes (one JSON line per tarball: file, name, version,
+//       outcome published|present|refused) with its bytes. Prints a status line per check and, when
+//       GITHUB_STEP_SUMMARY is set, a line per package to it. Exits 1 naming the packages still
+//       pending at the limit, or a package the registry holds with other bytes.
 import fs from 'node:fs'
 import path from 'node:path'
-import { checkHeadlessBuild, planFromRegistry, planOutput, publishPlan } from './lib/kitPackageBuild.mjs'
+import { checkHeadlessBuild, pendingMessage, planFromRegistry, planOutput, publishPlan, publishSummary, waitUntilVisible } from './lib/kitPackageBuild.mjs'
+import { integrityOf } from './lib/kitNpm.mjs'
 
 const [command, ...args] = process.argv.slice(2)
 const flag = (name) => {
@@ -48,8 +55,26 @@ async function main() {
       process.stdout.write(`${JSON.stringify(publishPlan({ kit: flag('--kit'), version: flag('--version'), wanted: { platforms: JSON.parse(flag('--platforms')), ui: ui === 'true' }, packed }))}\n`)
       return
     }
+    case 'wait': {
+      const limit = Number(flag('--minutes'))
+      if (!Number.isFinite(limit) || limit < 0) throw new Error(`--minutes is a number of minutes, not ${flag('--minutes')}`)
+      const limitMs = limit * 60_000
+      const registry = flag('--registry')
+      const packages = fs
+        .readFileSync(flag('--outcomes'), 'utf8')
+        .split(/\r?\n/)
+        .filter((line) => line.trim())
+        .map((line) => {
+          const { file, name, version, outcome } = JSON.parse(line)
+          return { name, version, outcome, integrity: integrityOf(fs.readFileSync(file)) }
+        })
+      const result = await waitUntilVisible({ packages, registry, limitMs, log: (line) => process.stdout.write(`${line}\n`) })
+      if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${publishSummary(result, limitMs).join('\n')}\n`)
+      if (result.pending.length) throw new Error(pendingMessage({ pending: result.pending, registry, limitMs }))
+      return
+    }
     default:
-      process.stderr.write('usage: kit-package-build.mjs plan|check|publish-plan ... (see the header of scripts/kit-package-build.mjs)\n')
+      process.stderr.write('usage: kit-package-build.mjs plan|check|publish-plan|wait ... (see the header of scripts/kit-package-build.mjs)\n')
       process.exit(2)
   }
 }
@@ -57,6 +82,8 @@ async function main() {
 try {
   await main()
 } catch (error) {
-  process.stderr.write(`kit-package-build: ${error instanceof Error ? error.message : String(error)}\n`)
+  // On GitHub as an error annotation, which the run's summary shows.
+  const prefix = process.env.GITHUB_ACTIONS === 'true' ? '::error::' : ''
+  process.stderr.write(`${prefix}kit-package-build: ${error instanceof Error ? error.message : String(error)}\n`)
   process.exit(1)
 }

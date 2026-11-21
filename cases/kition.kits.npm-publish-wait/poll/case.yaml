@@ -1,0 +1,27 @@
+format: 1
+id: kition.kits.npm-publish-wait/poll
+feature: kition.kits.npm-publish-wait
+intent: >-
+  After every publish returned, the Package workflow's wait asks the registry every 30 seconds
+  until it shows every package with its bytes: the metadata of that exact version (a 404 or npm's
+  placeholder 0.0.0-stage is "not yet") and the tarball with that integrity (metadata shown while
+  the tarball answers 404 is "not yet"). It ends at the first check when everything is shown, asks
+  only the packages still pending, and at the limit (40 minutes in the workflow) fails naming the
+  pending packages and saying they were published and that re-running publishes nothing again. A
+  version shown with other bytes stops it, also one npm refused to publish again. The job summary
+  lists each package as already there, or published and when npm showed it. Every registry and the
+  clock are fakes; no test reaches the network.
+layer: gate
+source:
+  kind: synthetic
+  from: scripts/lib/kitPackageBuild.mjs
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitPackageBuild.spec.ts, -t, "wait"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-21"

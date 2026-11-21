@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HEADLESS_PLATFORMS, buildPlan, checkHeadlessBuild, headlessMatrix, planFromRegistry, planOutput, publishPlan } from './kitPackageBuild.mjs'
+import { HEADLESS_PLATFORMS, buildPlan, checkHeadlessBuild, headlessMatrix, pendingMessage, planFromRegistry, planOutput, publishPlan, publishSummary, waitUntilVisible } from './kitPackageBuild.mjs'
 
 const ALL = ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64', 'win32-x64']
 const CLI = path.resolve(__dirname, '..', 'kit-package-build.mjs')
@@ -246,8 +246,152 @@ describe('publishPlan in another npm scope (KITION_NPM_SCOPE)', () => {
   })
 })
 
+describe('waitUntilVisible (after every publish returned)', () => {
+  const VERSION = '0.1.5'
+  const MIN = 60_000
+  const bytesOf = (name: string) => Buffer.from(`the tarball of ${name}`)
+  const integrityOf = (bytes: Buffer) => `sha512-${crypto.createHash('sha512').update(bytes).digest('base64')}`
+  const NAMES = ['@kitionstage/note-linux-x64', '@kitionstage/note-win32-x64', '@kitionstage/note']
+  const entries = (outcome = 'published') => NAMES.map((name) => ({ name, version: VERSION, outcome, integrity: integrityOf(bytesOf(name)) }))
+
+  type Shown = { metadataAt?: number; tarballAt?: number; placeholder?: boolean; integrity?: string }
+  /** A fake clock (sleeping moves it) and a fake registry that shows each package from the times `shown` gives (default: at once). */
+  function fakeRegistry(shown: Record<string, Shown> = {}) {
+    const clock = { t: 0 }
+    const sleeps: number[] = []
+    const fetchImpl = async (url: string) => {
+      for (const name of NAMES) {
+        const at = shown[name] ?? {}
+        if (url === `${REGISTRY}${name.replace('/', '%2f')}/${VERSION}`) {
+          if (clock.t < (at.metadataAt ?? 0)) {
+            // npm's view of a first publish it does not show yet: the placeholder, or no such version.
+            return at.placeholder ? new Response(JSON.stringify({ name, version: '0.0.0-stage' })) : new Response('{"error":"version not found"}', { status: 404 })
+          }
+          return new Response(JSON.stringify({ name, version: VERSION, dist: { integrity: at.integrity ?? integrityOf(bytesOf(name)) }, kition: { build: { commit: RUN } } }))
+        }
+        if (url === `${REGISTRY}${name}/-/${name.split('/').pop()}-${VERSION}.tgz`) {
+          if (clock.t < (at.tarballAt ?? at.metadataAt ?? 0)) return new Response('not found', { status: 404 })
+          return new Response(bytesOf(name))
+        }
+      }
+      return new Response('not found', { status: 404 })
+    }
+    const io = {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      now: () => clock.t,
+      sleep: async (ms: number) => {
+        sleeps.push(ms)
+        clock.t += ms
+      },
+    }
+    return { clock, sleeps, io }
+  }
+
+  it('ends at the first check when npm shows every package at once', async () => {
+    const { sleeps, io } = fakeRegistry()
+    const log: string[] = []
+    const result = await waitUntilVisible({ packages: entries(), registry: REGISTRY, limitMs: 40 * MIN, log: (line: string) => log.push(line) }, io)
+    expect(result.pending).toEqual([])
+    expect(result.packages.map(({ afterMs }: { afterMs: number }) => afterMs)).toEqual([0, 0, 0])
+    expect(sleeps).toEqual([])
+    expect(log).toEqual(['[0 min] 3 of 3 shown with their bytes'])
+  })
+
+  it('asks every 30 seconds while npm shows the placeholder 0.0.0-stage, and only the packages still pending', async () => {
+    const { sleeps, io } = fakeRegistry({ '@kitionstage/note': { metadataAt: 4 * 30_000, placeholder: true } })
+    const log: string[] = []
+    const asked: string[] = []
+    const counting = { ...io, fetchImpl: (async (url: string) => (asked.push(url), io.fetchImpl(url))) as unknown as typeof fetch }
+    const result = await waitUntilVisible({ packages: entries(), registry: REGISTRY, limitMs: 40 * MIN, log: (line: string) => log.push(line) }, counting)
+    expect(result.pending).toEqual([])
+    expect(result.packages.map(({ name, afterMs }: { name: string; afterMs: number }) => [name, afterMs])).toEqual([
+      ['@kitionstage/note-linux-x64', 0],
+      ['@kitionstage/note-win32-x64', 0],
+      ['@kitionstage/note', 120_000],
+    ])
+    expect(sleeps).toEqual([30_000, 30_000, 30_000, 30_000])
+    expect(log).toHaveLength(5)
+    expect(log[0]).toMatch(/^\[0 min\] 2 of 3 shown with their bytes; pending: @kitionstage\/note \(.*answered 0\.0\.0-stage\)$/)
+    expect(log[4]).toBe('[2 min] 3 of 3 shown with their bytes')
+    // The headless packages were asked once (metadata and tarball); the editor package at every check.
+    expect(asked.filter((url) => url.includes('note-linux-x64'))).toHaveLength(2)
+    expect(asked.filter((url) => url.endsWith(`%2fnote/${VERSION}`))).toHaveLength(5)
+  })
+
+  it('waits for the tarball when the metadata is shown first', async () => {
+    const { io } = fakeRegistry({ '@kitionstage/note-win32-x64': { metadataAt: 0, tarballAt: 60_000 } })
+    const log: string[] = []
+    const result = await waitUntilVisible({ packages: entries(), registry: REGISTRY, limitMs: 40 * MIN, log: (line: string) => log.push(line) }, io)
+    expect(result.pending).toEqual([])
+    expect(result.packages[1].afterMs).toBe(60_000)
+    expect(log[0]).toMatch(/pending: @kitionstage\/note-win32-x64 \(metadata shown, tarball not yet \(.*HTTP 404/)
+  })
+
+  it('stops at the limit naming the packages npm does not show, which were published', async () => {
+    const { sleeps, io } = fakeRegistry({ '@kitionstage/note': { metadataAt: Infinity } })
+    const log: string[] = []
+    const result = await waitUntilVisible({ packages: entries(), registry: REGISTRY, limitMs: 40 * MIN, log: (line: string) => log.push(line) }, io)
+    expect(result.pending).toEqual(['@kitionstage/note'])
+    expect(result.packages[2]).toMatchObject({ afterMs: null, reason: 'no such version yet (HTTP 404)' })
+    // A check at 0, every 30 seconds, and the last one at the limit.
+    expect(sleeps).toHaveLength(80)
+    expect(sleeps.reduce((sum, ms) => sum + ms, 0)).toBe(40 * MIN)
+    expect(log.at(-1)).toMatch(/^\[40 min\] 2 of 3 shown with their bytes; pending: @kitionstage\/note /)
+    const message = pendingMessage({ pending: result.pending, registry: REGISTRY, limitMs: 40 * MIN })
+    expect(message).toMatch(/^@kitionstage\/note WERE published .* within 40 min\./)
+    expect(message).toMatch(/Re-running this job publishes nothing again/)
+    expect(publishSummary(result, 40 * MIN)).toEqual([
+      '- `@kitionstage/note-linux-x64@0.1.5`: published, visible after 0 min',
+      '- `@kitionstage/note-win32-x64@0.1.5`: published, visible after 0 min',
+      '- `@kitionstage/note@0.1.5`: published, not shown yet after 40 min',
+    ])
+  })
+
+  it('stops when npm shows a version with other bytes, also one it refused to publish again', async () => {
+    const other = `sha512-${'A'.repeat(86)}==`
+    const { io } = fakeRegistry({ '@kitionstage/note': { integrity: other } })
+    await expect(waitUntilVisible({ packages: entries(), registry: REGISTRY, limitMs: 40 * MIN }, io)).rejects.toThrow(/@kitionstage\/note@0\.1\.5 is on .* with the integrity sha512-A+==.* published once and never replaced/)
+    const refused = await waitUntilVisible({ packages: entries('refused'), registry: REGISTRY, limitMs: 40 * MIN }, io).catch((error: Error) => error)
+    expect(String(refused)).toMatch(/npm refused this run's publish of it/)
+  })
+
+  it('sums each package up: already there, or published and when npm showed it', async () => {
+    const { io } = fakeRegistry({ '@kitionstage/note': { metadataAt: 13 * MIN } })
+    const packages = [{ ...entries('present')[0] }, { ...entries('refused')[1] }, { ...entries('published')[2] }]
+    const result = await waitUntilVisible({ packages, registry: REGISTRY, limitMs: 40 * MIN }, io)
+    expect(publishSummary(result, 40 * MIN)).toEqual([
+      '- `@kitionstage/note-linux-x64@0.1.5`: already there',
+      '- `@kitionstage/note-win32-x64@0.1.5`: already published by an earlier run (npm refused a second publish), visible after 0 min',
+      '- `@kitionstage/note@0.1.5`: published, visible after 13 min',
+    ])
+  })
+
+  it('refuses an outcome it does not know', async () => {
+    const { io } = fakeRegistry()
+    await expect(waitUntilVisible({ packages: [{ ...entries()[0], outcome: 'skipped' }], registry: REGISTRY, limitMs: MIN }, io)).rejects.toThrow(/outcome "skipped"/)
+  })
+})
+
 describe('kit-package-build.mjs', () => {
   const cli = (...args: string[]) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' })
+
+  it('waits for the packages of outcomes.jsonl and fails at the limit naming the ones pending', () => {
+    const tarball = path.join(work, 'note-0.1.5.tgz')
+    fs.writeFileSync(tarball, 'tarball bytes')
+    const outcomes = path.join(work, 'outcomes.jsonl')
+    fs.writeFileSync(outcomes, `${JSON.stringify({ file: tarball, name: '@kitionstage/note', version: '0.1.5', outcome: 'published' })}\n`)
+    const summary = path.join(work, 'summary.md')
+    // Nothing answers on port 9: the package stays pending, and a limit of 0 ends after one check.
+    const result = spawnSync(process.execPath, [CLI, 'wait', '--outcomes', outcomes, '--registry', 'http://127.0.0.1:9/', '--minutes', '0'], {
+      encoding: 'utf8',
+      env: { ...process.env, GITHUB_STEP_SUMMARY: summary },
+    })
+    expect(result.status).toBe(1)
+    expect(result.stdout).toMatch(/^\[0 min\] 0 of 1 shown with their bytes; pending: @kitionstage\/note \(/)
+    expect(result.stderr).toMatch(/@kitionstage\/note WERE published/)
+    expect(fs.readFileSync(summary, 'utf8')).toBe('- `@kitionstage/note@0.1.5`: published, not shown yet after 0 min\n')
+    expect(cli('wait', '--outcomes', outcomes, '--registry', 'http://127.0.0.1:9/', '--minutes', 'soon').status).toBe(1)
+  })
 
   it('plans a version npm lacks entirely without reading the registry', () => {
     const missing = path.join(work, 'missing.json')

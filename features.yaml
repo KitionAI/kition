@@ -455,6 +455,21 @@ features:
     cases:
       - kition.kits.npm-scope/layouts
     since: "2026-11-21"
+  - id: kition.kits.npm-publish-wait
+    title: The Package workflow publishes every package npm lacks first, then waits (every 30 seconds, at most 40 minutes) until npm shows each with its bytes; npm refusing a version it already holds counts as published, a version shown with other bytes stops the run, and at the limit the run fails naming the packages not shown yet, which a re-run of the job only waits for
+    dimension: [platform, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - .github/workflows/kit-package.yml
+      - scripts/kit-package-build.mjs
+      - scripts/lib/kitPackageBuild.mjs
+      - scripts/lib/kitPackageBuild.spec.ts
+      - docs/kits.md
+    gap: The workflow half (npm publish, npm's wording when it refuses a version it holds, the registry's real delay) runs only in a kit repository's Package run; locally the wait runs against a fake registry and a fake clock.
+    cases:
+      - kition.kits.npm-publish-wait/poll
+    since: "2026-11-21"
   - id: kition.kits.fetch-image
     title: A kit keeps a picture pasted by its web address; Kition's runtime downloads it from public addresses only (Kit UI protocol host/fetchImage)
     dimension: [security, data-safety]

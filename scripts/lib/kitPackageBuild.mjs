@@ -2,12 +2,13 @@
 // section 4b) builds and publishes on npm for one kit version, and the checks of what it built.
 // kition-sdk's tools/kit-npm-package.mjs writes, packs and compares the packages (kitNpm.mjs names
 // them); this decides which to build, checks each headless build before it is packaged, and which
-// packed tarballs to publish. Everything here is pure or reads local files, except
-// `planFromRegistry`, which reads the registry's metadata through the `fetch` it is given.
+// packed tarballs to publish, and waits until the registry shows what was published. Everything
+// here is pure or reads local files, except `planFromRegistry`, `packageVisibility` and
+// `waitUntilVisible`, which read the registry through the `fetch` they are given.
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { checkKitName, COMMIT, headlessPackageName, registryVersion, uiPackageName, VERSION } from './kitNpm.mjs'
+import { checkKitName, COMMIT, downloadTarball, headlessPackageName, registryVersion, uiPackageName, VERSION } from './kitNpm.mjs'
 
 /**
  * The platforms a kit's headless executable is built for, exactly as kition-sdk's release workflow
@@ -144,4 +145,113 @@ export function publishPlan({ kit, version, wanted, packed }) {
     publish: wantedNames.filter((name) => byName.has(name)).map((name) => byName.get(name).file),
     failed: wantedNames.filter((name) => !byName.has(name)),
   }
+}
+
+/** How often the publish job asks the registry whether it shows the packages it published. */
+export const VISIBLE_POLL_MS = 30_000
+
+/**
+ * What the publish job did with each tarball: `published` (`npm publish` took it), `present` (the
+ * registry already had the same bytes, nothing published) or `refused` (npm refused the publish
+ * because it holds that version already: an earlier run published it and the registry does not show
+ * it yet).
+ */
+export const PUBLISH_OUTCOMES = ['published', 'present', 'refused']
+
+const messageOf = (error) => (error instanceof Error ? error.message : String(error))
+
+/**
+ * Whether `registry` shows `name` at `version` with its bytes: its metadata of that exact version
+ * (kitNpm's `registryVersion`; a 404, another version such as npm's placeholder `0.0.0-stage`, or
+ * any failure is "not yet") and its tarball, downloaded and checked against `integrity`. Answers
+ * `{ visible: true }` or `{ visible: false, reason }`. Throws when the metadata names other bytes
+ * (another `dist.integrity`): a version is published once, never replaced, so that stops the run.
+ */
+export async function packageVisibility({ registry, name, version, integrity }, fetchImpl = globalThis.fetch) {
+  let metadata
+  try {
+    metadata = await registryVersion(registry, name, version, fetchImpl)
+  } catch (error) {
+    return { visible: false, reason: messageOf(error) }
+  }
+  if (!metadata) return { visible: false, reason: 'no such version yet (HTTP 404)' }
+  if (metadata.dist?.integrity !== integrity) {
+    throw new Error(
+      `${name}@${version} is on ${registry} with the integrity ${metadata.dist?.integrity} (built from ${metadata.kition?.build?.commit ?? 'an unnamed commit'}); this run's tarball's is ${integrity}. ` +
+        'A version is published once and never replaced: npm keeps the bytes it has. Bump the kit\'s version to publish a change',
+    )
+  }
+  try {
+    await downloadTarball([registry], name, version, integrity, fetchImpl)
+  } catch (error) {
+    return { visible: false, reason: `metadata shown, tarball not yet (${messageOf(error).split('\n').pop().trim()})` }
+  }
+  return { visible: true }
+}
+
+const minutes = (ms) => Math.round(ms / 60_000)
+
+/**
+ * Asks `registry` every `intervalMs` until it shows every one of `packages` (`{ name, version,
+ * integrity, outcome }`) with its bytes (`packageVisibility`), for at most `limitMs` from the first
+ * check; a package shown once is not asked again. `log` receives one status line per check, naming
+ * the packages still pending. Answers `{ packages, pending }`: every package with `afterMs` (when it
+ * was first shown, from the first check; null while pending) and `reason` (why it is pending), and
+ * the names still pending at the limit (none when everything is shown). Throws when the registry
+ * holds a package's version with other bytes. `now` and `sleep` are the clock, for tests.
+ */
+export async function waitUntilVisible(
+  { packages, registry, limitMs, intervalMs = VISIBLE_POLL_MS, log = () => {} },
+  { fetchImpl = globalThis.fetch, now = Date.now, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {},
+) {
+  if (!(limitMs >= 0)) throw new Error(`the wait limit is ${limitMs} ms, not a duration`)
+  for (const entry of packages) {
+    if (!PUBLISH_OUTCOMES.includes(entry.outcome)) throw new Error(`${entry.name}: outcome ${JSON.stringify(entry.outcome)} is not one of ${PUBLISH_OUTCOMES.join(', ')}`)
+  }
+  const start = now()
+  const states = packages.map((entry) => ({ ...entry, afterMs: null, reason: null }))
+  for (;;) {
+    for (const state of states.filter(({ afterMs }) => afterMs === null)) {
+      let seen
+      try {
+        seen = await packageVisibility({ registry, name: state.name, version: state.version, integrity: state.integrity }, fetchImpl)
+      } catch (error) {
+        if (state.outcome !== 'refused') throw error
+        // An earlier run published this version before the registry showed it, and this run built
+        // it again with other bytes; npm refused this run's publish and keeps the earlier bytes.
+        throw new Error(
+          `${messageOf(error)}. npm refused this run's publish of it, so an earlier run published that version: when it was built from this run's commit, the version is complete as that run published it, and running Package again finds nothing to do`,
+        )
+      }
+      if (seen.visible) state.afterMs = now() - start
+      else state.reason = seen.reason
+    }
+    const elapsed = now() - start
+    const pending = states.filter(({ afterMs }) => afterMs === null)
+    log(
+      `[${minutes(elapsed)} min] ${states.length - pending.length} of ${states.length} shown with their bytes` +
+        (pending.length ? `; pending: ${pending.map(({ name, reason }) => `${name} (${reason})`).join(', ')}` : ''),
+    )
+    if (!pending.length || elapsed >= limitMs) return { packages: states, pending: pending.map(({ name }) => name) }
+    await sleep(Math.min(intervalMs, limitMs - elapsed))
+  }
+}
+
+/** One Markdown line per package of `waitUntilVisible`'s answer, for the job summary. */
+export function publishSummary({ packages }, limitMs) {
+  return packages.map(({ name, version, outcome, afterMs }) => {
+    const id = `\`${name}@${version}\``
+    if (outcome === 'present') return `- ${id}: already there`
+    const what = outcome === 'published' ? 'published' : 'already published by an earlier run (npm refused a second publish)'
+    return afterMs === null ? `- ${id}: ${what}, not shown yet after ${minutes(limitMs)} min` : `- ${id}: ${what}, visible after ${minutes(afterMs)} min`
+  })
+}
+
+/** The error of a wait that ended with `pending` packages not shown after `limitMs`. */
+export function pendingMessage({ pending, registry, limitMs }) {
+  return (
+    `${pending.join(', ')} WERE published (npm took or already held each), but ${registry} did not show them with their bytes within ${minutes(limitMs)} min. ` +
+    'The version is not broken: npm shows a new package name\'s first version only after a delay. ' +
+    'Re-running this job publishes nothing again (npm refuses a version it holds); it only waits for them and checks their bytes'
+  )
 }

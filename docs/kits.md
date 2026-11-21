@@ -702,16 +702,31 @@ is npm's `dist.integrity` (SHA-512 of the tarball).
   start on Windows). A platform that fails does not stop the others.
 - **Publishing**: the `publish` job packs the headless folders, checks that
   every tarball is a package this run planned
-  (`node scripts/kit-package-build.mjs publish-plan`), and for each asks the
-  registry (`tools/kit-npm-package.mjs state`): `publish` runs
+  (`node scripts/kit-package-build.mjs publish-plan`), and asks the registry
+  about each (`tools/kit-npm-package.mjs state`): a version npm holds with
+  other bytes stops the run before anything is published. Then it publishes
+  every package without waiting: `publish` runs
   `npm publish --access public --provenance`, `published` (npm has the same
-  bytes) skips it, and a version npm holds with other bytes stops the run.
-  After publishing, `state` must say `published`. Nothing is published unless
+  bytes) skips it, and npm refusing a version it already holds (an earlier
+  run published it, not shown yet) counts as published. Only then does it
+  wait (`node scripts/kit-package-build.mjs wait`): every 30 seconds, for at
+  most 40 minutes (`VISIBLE_WAIT_MINUTES`), until npm shows every package
+  with its bytes, the metadata of that exact version and its tarball. npm
+  shows a new package name's first version only minutes later (until then
+  its placeholder `0.0.0-stage`; up to 24 minutes for an editor package). At
+  the limit the job fails naming the packages not shown yet: they were
+  published, and re-running the job publishes nothing again, it only waits
+  and checks their bytes. The job summary lists each package as already
+  there, or published and when npm showed it. Nothing is published unless
   every package the plan wanted was built: a failed platform or package job
   skips the `publish` job, so a build failure never leaves a version half
   published. Running Package again, or re-running the run's failed jobs,
-  builds and publishes only what npm still lacks, which also completes a
-  version npm stopped partway through publishing.
+  builds only what npm does not show and publishes only what npm still
+  lacks, which also completes a version npm stopped partway through
+  publishing. After a wait that timed out, re-run the failed `publish` job
+  rather than Package: Package builds again each package npm does not show
+  yet, and when that build's bytes differ from the published ones the wait
+  stops with an error (npm keeps the first; nothing is replaced).
 - **Another npm scope**: the reusable workflow's `scope` input (default
   `@kition`) is exported as `KITION_NPM_SCOPE`, which kition-sdk's tools and
   `scripts/lib/kitNpm.mjs` read. Any scope but `@kition` (a rehearsal on

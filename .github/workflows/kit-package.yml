@@ -32,14 +32,26 @@ name: Kit package
 #   runs npm, which it cannot start on Windows, and the folder travels as a tar, which keeps the
 #   executable's mode (an artifact does not).
 # - publish: packs the headless folders (kition-sdk's `pack` checks each tarball holds exactly its
-#   folder's files), then for each tarball asks the registry (`state`): `publish` runs
-#   `npm publish --provenance`, `published` (the same bytes) skips it, and a version npm holds with
-#   other bytes stops the run. A version on npm is never replaced. After publishing, `state` must
-#   say `published`. Nothing is published unless every package the plan wanted (each missing
-#   platform and the editor package) was built: a failed platform or package job skips the publish
-#   job, so a version is never half published by a build failure. Running Package again (or
-#   re-running the failed jobs) builds only what npm still lacks, and publishes only what npm still
-#   lacks, so a run cut short by npm after some packages were published completes the version.
+#   folder's files), then works in two phases. A: it asks the registry about every tarball
+#   (`state`), and a version npm holds with other bytes stops the run before anything is
+#   published; then `publish` runs `npm publish --provenance` and `published` (the same bytes)
+#   skips it, one tarball after another without waiting. A publish npm refuses because it holds
+#   that version already counts as published (an earlier run published it, and npm does not show
+#   it yet). B: once every publish returned, it asks the registry every 30 seconds until it shows
+#   every package with its bytes (the metadata of that exact version, not npm's placeholder
+#   0.0.0-stage, and the tarball with that integrity), for at most VISIBLE_WAIT_MINUTES (40): npm
+#   shows a new package name's first version only minutes after its publish (up to 24 for an
+#   editor package, measured 2026-11-21). The job summary lists each package: already there, or
+#   published and when npm showed it. At the limit the job fails naming the packages npm does not
+#   show yet; they were published, and re-running the job publishes nothing again, it only waits
+#   for them and checks their bytes (Package started anew builds again what npm does not show yet,
+#   and a rebuild whose bytes differ from the published ones stops at the wait with an error). A
+#   version on npm is never replaced. Nothing is published unless every package the plan wanted
+#   (each missing platform and the editor package) was built: a failed platform or package job
+#   skips the publish job, so a version is never half published by a build failure. Running
+#   Package again (or re-running the failed jobs) builds only what npm does not show, and publishes
+#   only what npm lacks, so a run cut short after some packages were published completes the
+#   version.
 
 on:
   workflow_call:
@@ -379,7 +391,8 @@ jobs:
       && (needs.package.result == 'success' || needs.package.result == 'skipped')
       && (needs.headless.result == 'success' || needs.headless.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The publishes, then at most VISIBLE_WAIT_MINUTES of waiting for npm to show them.
+    timeout-minutes: 60
     permissions:
       contents: read
       # npm provenance: the registry checks the run's OIDC token.
@@ -392,6 +405,11 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
       PLATFORMS: ${{ needs.plan.outputs.platforms }}
       UI: ${{ needs.plan.outputs.ui == 'publish' }}
+      # How long the job waits, after every publish returned, for npm to show every package with
+      # its bytes. npm shows a new package name's first version only after a delay (measured
+      # 2026-11-21 on a new scope: a few minutes for a headless package, 12 to 24 for an editor
+      # package); until then it shows a placeholder version 0.0.0-stage.
+      VISIBLE_WAIT_MINUTES: 40
     steps:
       - name: Check out Kition
         uses: actions/checkout@v7
@@ -455,11 +473,15 @@ jobs:
             exit 1
           fi
 
-      # `state` exits 1 when npm holds the version with other bytes, which stops the run: a version
-      # is published once. `--tag latest` is said outright: npm refuses to move `latest` by itself to
-      # a version below one already published, and kition reads the kit index, not the tag. The
-      # registry's metadata lags a publish: five minutes for a package's
-      # first version (measured, 2026-11-20), so each package is waited for up to ten.
+      # Phase A: publish every package npm lacks, without waiting for any. `state` is asked for every
+      # tarball first and exits 1 when npm holds the version with other bytes, which stops the run
+      # before anything is published: a version is published once. `--tag latest` is said outright:
+      # npm refuses to move `latest` by itself to a version below one already published, and kition
+      # reads the kit index, not the tag. npm refusing a publish because it holds that version
+      # already (an earlier run published it and npm does not show it yet, so `state` said
+      # `publish`) counts as published; phase B checks its bytes once npm shows it. outcomes.jsonl
+      # lists each tarball with what happened to it: published, present (npm had the same bytes)
+      # or refused.
       - name: Publish what npm lacks
         env:
           # @kition publishes with NPM_TOKEN; any other scope (a rehearsal) with NPM_TOKEN_STAGE.
@@ -472,28 +494,49 @@ jobs:
           fi
           state() { node kition-sdk/tools/kit-npm-package.mjs state --tarball "$1" --registry "$NPM_REGISTRY"; }
           mapfile -t tarballs < <(jq -r '.publish[]' publish-plan.json)
+          states=()
           for file in "${tarballs[@]}"; do
-            name=$(basename "$file")
             current=$(state "$file")
-            case "$current" in
+            states+=("$current")
+          done
+          : > outcomes.jsonl
+          published=()
+          for i in "${!tarballs[@]}"; do
+            file=${tarballs[$i]}
+            name=$(basename "$file")
+            case "${states[$i]}" in
               published)
-                echo "$name is on npm already, with the same bytes"
-                continue ;;
+                outcome=present
+                echo "$name is on npm already, with the same bytes" ;;
               publish)
-                npm publish "$file" --access public --provenance --tag latest ;;
+                if npm publish "$file" --access public --provenance --tag latest 2>&1 | tee npm-publish.log; then
+                  outcome=published
+                  published+=("$name")
+                  echo "published $name"
+                elif grep -qiE 'EPUBLISHCONFLICT|cannot publish over|previously published version' npm-publish.log; then
+                  outcome=refused
+                  echo "npm holds $name's version already (an earlier run published it); its bytes are checked once npm shows it"
+                else
+                  echo "::error::npm publish of $name failed (see the log above). Published by this run before it: ${published[*]:-none}. Re-running this job publishes only what npm lacks" >&2
+                  exit 1
+                fi ;;
               *)
                 echo "::error::unexpected state of $name" >&2
                 exit 1 ;;
             esac
-            for attempt in $(seq 1 100); do
-              now=$(state "$file")
-              [ "$now" = published ] && break
-              sleep 6
-            done
-            [ "$now" = published ] || { echo "::error::$name was published, but $NPM_REGISTRY does not show it with its bytes yet" >&2; exit 1; }
-            echo "published $name"
-            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then echo "- published $name" >> "$GITHUB_STEP_SUMMARY"; fi
+            jq -c --arg file "$file" --arg outcome "$outcome" 'select(.file == $file) | { file, name, version, outcome: $outcome }' packed.jsonl >> outcomes.jsonl
           done
+          cat outcomes.jsonl
+
+      # Phase B: once every publish returned, ask npm every 30 seconds, for at most
+      # VISIBLE_WAIT_MINUTES, until it shows every package of the version with its bytes (the
+      # metadata of that exact version, not the placeholder 0.0.0-stage, and the tarball with that
+      # integrity). A version npm shows with other bytes stops the run. At the limit the step fails
+      # naming the packages still pending: they were published, and re-running this job publishes
+      # nothing again; it only waits for them and checks their bytes. The job summary lists each
+      # package: already there, or published and when npm showed it.
+      - name: Wait until npm shows every package
+        run: node kition/scripts/kit-package-build.mjs wait --outcomes outcomes.jsonl --registry "$NPM_REGISTRY" --minutes "$VISIBLE_WAIT_MINUTES"
 
       # npmmirror (registry.npmmirror.com, which kition tries after npmjs.org and which mainland
       # China reaches) copies npmjs.org on its own schedule, which can lag a day for a new package.
