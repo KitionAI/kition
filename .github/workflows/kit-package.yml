@@ -140,22 +140,9 @@ jobs:
           version=$(node -p "require('./kition-$KIT/kit.json').version")
           node kition-sdk/tools/kit-npm-package.mjs missing --kit "$KIT" --version "$version" --registry "$NPM_REGISTRY" > missing.json
           echo "$NPM_REGISTRY lacks of $KIT $version: $(cat missing.json)"
-          # A rehearsal may name the platforms it wants (input `platforms`): the others are left out
-          # of the plan, so they are neither built nor published.
-          if [ -n "$ONLY_PLATFORMS" ]; then
-            node -e '
-              const fs = require("fs")
-              const all = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-x64"]
-              const only = process.argv[1].split(",").map((name) => name.trim()).filter(Boolean)
-              const unknown = only.filter((name) => !all.includes(name))
-              if (unknown.length) { console.error(`no platform ${unknown.join(", ")} (${all.join(", ")})`); process.exit(2) }
-              const missing = JSON.parse(fs.readFileSync("missing.json", "utf8"))
-              missing.platforms = missing.platforms.filter((name) => only.includes(name))
-              fs.writeFileSync("missing.json", JSON.stringify(missing))
-            ' "$ONLY_PLATFORMS"
-            echo "only $ONLY_PLATFORMS: $(cat missing.json)"
-          fi
-          node kition/scripts/kit-package-build.mjs plan --kit "$KIT" --version "$version" --commit "$GITHUB_SHA" --missing missing.json --registry "$NPM_REGISTRY" > plan.txt
+          # A rehearsal may name the platforms it wants (input `platforms`): the plan leaves the others
+          # out, so they are neither built nor published, nor expected on npm.
+          node kition/scripts/kit-package-build.mjs plan --kit "$KIT" --version "$version" --commit "$GITHUB_SHA" --missing missing.json --registry "$NPM_REGISTRY" --only "$ONLY_PLATFORMS" > plan.txt
           cat plan.txt >> "$GITHUB_OUTPUT"
           cat plan.txt
           if grep -qx 'build=false' plan.txt; then echo "::notice::npm has every package of $KIT $version; nothing to build"; fi

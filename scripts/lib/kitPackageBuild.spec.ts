@@ -163,6 +163,15 @@ describe('planFromRegistry', () => {
     await expect(planFromRegistry({ kit: 'board', version: '0.1.0', commit: RUN, missing: { platforms: ['linux-x64'], ui: true }, registry: REGISTRY }, empty.fetchImpl)).rejects.toThrow(/has no @kition\/kit-board-darwin-arm64@0\.1\.0/)
   })
 
+  it('limits the plan to the platforms a rehearsal names: the others are neither built nor expected on npm', async () => {
+    const empty = fakeRegistry({})
+    const plan = await planFromRegistry({ kit: 'board', version: '0.1.0', commit: RUN, missing: { platforms: ALL, ui: true }, registry: REGISTRY, only: ['darwin-arm64'] }, empty.fetchImpl)
+    expect(plan.platforms).toEqual(['darwin-arm64'])
+    expect(plan.ui).toBe('publish')
+    expect(empty.asked).toEqual([])
+    await expect(planFromRegistry({ kit: 'board', version: '0.1.0', commit: RUN, missing: { platforms: ALL, ui: true }, registry: REGISTRY, only: ['freebsd-x64'] }, empty.fetchImpl)).rejects.toThrow(/no platform freebsd-x64/)
+  })
+
   it('fails on a registry error rather than taking it for a missing package', async () => {
     const failing = async () => new Response('busy', { status: 503 })
     await expect(planFromRegistry({ kit: 'board', version: '0.1.0', commit: RUN, missing: { platforms: ['linux-x64'], ui: false }, registry: REGISTRY }, failing)).rejects.toThrow(/HTTP 503/)

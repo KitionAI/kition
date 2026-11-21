@@ -3,7 +3,7 @@
 // scripts/lib/kitPackageBuild.mjs; docs/kits.md, section 4b), which publishes a kit version's npm
 // packages. kition-sdk's tools/kit-npm-package.mjs writes, packs and compares the packages.
 //
-//   node scripts/kit-package-build.mjs plan --kit <kit> --version <v> --commit <sha> --missing <file> --registry <url>
+//   node scripts/kit-package-build.mjs plan --kit <kit> --version <v> --commit <sha> --missing <file> --registry <url> [--only <platforms>]
 //       What the run builds, as `key=value` lines for $GITHUB_OUTPUT: version, ui (publish|published),
 //       platforms and matrix (JSON) of the headless packages to build, build (true|false). --missing
 //       is what `kit-npm-package.mjs missing` printed; the packages of that version the registry
@@ -36,7 +36,9 @@ async function main() {
   switch (command) {
     case 'plan': {
       const missing = JSON.parse(fs.readFileSync(flag('--missing'), 'utf8'))
-      const plan = await planFromRegistry({ kit: flag('--kit'), version: flag('--version'), commit: flag('--commit'), missing, registry: flag('--registry') })
+      const at = args.indexOf('--only')
+      const only = at >= 0 ? (args[at + 1] ?? '').split(',').map((name) => name.trim()).filter(Boolean) : []
+      const plan = await planFromRegistry({ kit: flag('--kit'), version: flag('--version'), commit: flag('--commit'), missing, registry: flag('--registry'), only })
       process.stdout.write(`${planOutput(plan)}\n`)
       return
     }

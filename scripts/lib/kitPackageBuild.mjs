@@ -69,11 +69,17 @@ export function buildPlan({ kit, version, commit, missing, published = [] }) {
 
 /**
  * `buildPlan` with the metadata of the packages `missing` says `registry` has, read from it: every
- * platform's headless package and the editor package of `kit` `version`.
+ * platform's headless package and the editor package of `kit` `version`. `only` (platform names;
+ * none for every platform) limits the plan to those platforms, for a rehearsal: the other
+ * platforms are left out, neither built nor expected on the registry.
  */
-export async function planFromRegistry({ kit, version, commit, missing, registry }, fetchImpl = globalThis.fetch) {
+export async function planFromRegistry({ kit, version, commit, missing, registry, only = [] }, fetchImpl = globalThis.fetch) {
   checkKitVersion(kit, version)
-  const present = [...PLATFORM_NAMES.filter((platform) => !missing.platforms.includes(platform)).map((platform) => headlessPackageName(kit, platform)), ...(missing.ui ? [] : [uiPackageName(kit)])]
+  const unknown = only.filter((platform) => !PLATFORM_NAMES.includes(platform))
+  if (unknown.length) throw new Error(`no platform ${unknown.join(', ')} (${PLATFORM_NAMES.join(', ')})`)
+  const considered = only.length ? PLATFORM_NAMES.filter((platform) => only.includes(platform)) : PLATFORM_NAMES
+  missing = { ...missing, platforms: (missing?.platforms ?? []).filter((platform) => considered.includes(platform)) }
+  const present = [...considered.filter((platform) => !missing.platforms.includes(platform)).map((platform) => headlessPackageName(kit, platform)), ...(missing.ui ? [] : [uiPackageName(kit)])]
   const published = []
   if (missing.ui || missing.platforms.length) {
     for (const name of present) {
