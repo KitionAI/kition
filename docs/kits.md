@@ -766,7 +766,7 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
 - **Concurrency**: the organization's plan allows 20 concurrent jobs across all repositories (5 on
   macOS). One kit's run holds at most 8 (build, rust, 6 tests); further runs queue.
 - **The loop** (`scripts/kit-ci.sh <command> <kit>`): commit on `main` locally; `push` sends HEAD
-  to `ci/agent` (a newer push cancels the older run); `wait` follows the run; on failure,
+  to `ci/agent` (a newer push cancels the older run); `wait` follows the run with one API request a minute (`KIT_CI_POLL`), since many kits wait at once and the API allows 5000 requests an hour; on failure,
   `failures` writes the jobs' results, the log lines before each error and the evidence
   (`test-results`, `playwright-report`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
   `land` fast-forwards `origin/main` to HEAD only when HEAD's run passed, then deletes

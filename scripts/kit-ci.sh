@@ -50,20 +50,24 @@ case "$command" in
 
   wait)
     run=""
-    for _ in $(seq 1 60); do
-      run="$(latest_run)"
+    for _ in $(seq 1 20); do
+      run="$(latest_run 2>/dev/null || true)"
       [ -n "$run" ] && break
-      sleep 5
+      sleep 15
     done
     [ -n "$run" ] || { echo "no ci.yml run of ${sha:0:12} in $slug after 5 minutes (did you push?)" >&2; exit 2; }
     id="${run%% *}"
     echo "waiting for https://github.com/$slug/actions/runs/$id"
-    if gh run watch "$id" -R "$slug" --exit-status --interval 30 >/dev/null 2>&1; then
-      echo "PASSED: run $id of ${sha:0:12}"
-    else
-      echo "FAILED: run $id of ${sha:0:12} (scripts/kit-ci.sh failures $kit)"
-      exit 1
-    fi
+    # One API request per poll (KIT_CI_POLL seconds, default 60): many kits wait at once, and the
+    # API allows 5000 requests an hour per user. An API error (rate limit, network) is retried.
+    while :; do
+      state="$(gh api "repos/$slug/actions/runs/$id" -q '"\(.status) \(.conclusion)"' 2>/dev/null || true)"
+      case "$state" in
+        "completed success") echo "PASSED: run $id of ${sha:0:12}"; break ;;
+        completed\ *) echo "FAILED (${state#completed }): run $id of ${sha:0:12} (scripts/kit-ci.sh failures $kit)"; exit 1 ;;
+      esac
+      sleep "${KIT_CI_POLL:-60}"
+    done
     ;;
 
   failures)
