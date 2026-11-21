@@ -13,6 +13,11 @@ name: Kit package
 #
 # each with a `kition` field in its package.json naming the commits it was built from.
 #
+# The input `scope` (default @kition) is the npm scope, exported to every job as KITION_NPM_SCOPE.
+# Any other scope (a rehearsal on @kitionstage) names the packages by layout 1, <scope>/<kit> and
+# <scope>/<kit>-<platform>, publishes with the secret NPM_TOKEN_STAGE instead of NPM_TOKEN, and
+# asks npmmirror for no copy.
+#
 # - plan: the version, what https://registry.npmjs.org lacks of it (kition-sdk's
 #   tools/kit-npm-package.mjs missing), and what to build (scripts/kit-package-build.mjs plan). A
 #   version is one build: when npm has some of its packages, they must have been built from the
@@ -30,9 +35,11 @@ name: Kit package
 #   folder's files), then for each tarball asks the registry (`state`): `publish` runs
 #   `npm publish --provenance`, `published` (the same bytes) skips it, and a version npm holds with
 #   other bytes stops the run. A version on npm is never replaced. After publishing, `state` must
-#   say `published`. A platform that built nothing ends the run failed after the others are
-#   published; running Package again (or re-running the failed jobs) builds and publishes only what
-#   npm still lacks.
+#   say `published`. Nothing is published unless every package the plan wanted (each missing
+#   platform and the editor package) was built: a failed platform or package job skips the publish
+#   job, so a version is never half published by a build failure. Running Package again (or
+#   re-running the failed jobs) builds only what npm still lacks, and publishes only what npm still
+#   lacks, so a run cut short by npm after some packages were published completes the version.
 
 on:
   workflow_call:
@@ -41,10 +48,18 @@ on:
         description: The kit's name in Kition's kits/modules.json, for example board
         required: true
         type: string
+      scope:
+        description: The npm scope of the packages, @kition (legacy names) or another scope such as @kitionstage (layout 1)
+        required: false
+        default: '@kition'
+        type: string
     secrets:
       NPM_TOKEN:
         description: An npm token that may publish the @kition packages
         required: true
+      NPM_TOKEN_STAGE:
+        description: An npm token that may publish the packages of the scope when it is not @kition
+        required: false
 
 permissions:
   contents: read
@@ -54,6 +69,8 @@ env:
   NODE_VERSION: '24'
   WASM_PACK_VERSION: v0.13.1
   NPM_REGISTRY: https://registry.npmjs.org/
+  # Read by kition-sdk's tools and scripts/lib/kitNpm.mjs, which name the packages by it.
+  KITION_NPM_SCOPE: ${{ inputs.scope || '@kition' }}
 
 jobs:
   plan:
@@ -303,8 +320,9 @@ jobs:
 
       # The executable and kit.json, the glibc floor on Linux, what it answers to kit.initialize
       # here (handshakes.json), checked against kit.json (scripts/kit-package-build.mjs check); then
-      # the package folder @kition/kit-<kit>-<platform> (kition-sdk's tool), as a tar so the
-      # executable keeps its mode on the way to the publish job.
+      # the package folder @kition/kit-<kit>-<platform> (kition-sdk's tool, which prints the folder
+      # it wrote, named as the package of the scope), as a tar so the executable keeps its mode on
+      # the way to the publish job.
       - name: Check the executable and write its package
         run: |
           set -euo pipefail
@@ -318,8 +336,10 @@ jobs:
           fi
           node kition-sdk/tools/kit-handshake.mjs --record "$out"
           node kition/scripts/kit-package-build.mjs check --kit "$KIT" --platform "$PLATFORM" --dir "$out"
-          node kition-sdk/tools/kit-npm-package.mjs headless --dir "$out" --platform "$PLATFORM" --out headless/npm --commit "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY"
-          tar -cf "headless/kit-$KIT-$PLATFORM.tar" -C headless/npm "kit-$KIT-$PLATFORM"
+          folder=$(node kition-sdk/tools/kit-npm-package.mjs headless --dir "$out" --platform "$PLATFORM" --out headless/npm --commit "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY")
+          # The folder's name by Node, which reads a Windows path too.
+          name=$(node -e 'console.log(require("path").basename(process.argv[1]))' "$folder")
+          tar -cf "headless/kit-$KIT-$PLATFORM.tar" -C headless/npm "$name"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -330,12 +350,13 @@ jobs:
   publish:
     name: Publish ${{ inputs.kit }} on npm
     needs: [plan, package, headless]
-    # After the package job built the editor package or was skipped, and after every platform
-    # ran, also when some failed: what built is published and the run ends failed.
+    # Only when everything planned was built: the package job built the editor package or was
+    # skipped (npm has it), and every platform job built its package or none was planned. A failed
+    # or cancelled build publishes nothing, so a version is never half published by it.
     if: >-
       always() && needs.plan.result == 'success' && needs.plan.outputs.build == 'true'
       && (needs.package.result == 'success' || needs.package.result == 'skipped')
-      && needs.headless.result != 'cancelled'
+      && (needs.headless.result == 'success' || needs.headless.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -402,6 +423,17 @@ jobs:
           node kition/scripts/kit-package-build.mjs publish-plan --kit "$KIT" --version "$VERSION" --platforms "$PLATFORMS" --ui "$UI" --packed packed.jsonl > publish-plan.json
           cat publish-plan.json
 
+      # Nothing is published unless every package planned was built (the job's condition already
+      # waits for every build job; this also catches a build whose package did not arrive).
+      - name: Every package planned was built
+        run: |
+          set -euo pipefail
+          failed=$(jq -r '.failed | join(", ")' publish-plan.json)
+          if [ -n "$failed" ]; then
+            echo "::error::no package built for $failed (see the jobs of those platforms or the package job); nothing was published. Running Package again, or re-running this run's failed jobs, builds and publishes only what npm lacks"
+            exit 1
+          fi
+
       # `state` exits 1 when npm holds the version with other bytes, which stops the run: a version
       # is published once. `--tag latest` is said outright: npm refuses to move `latest` by itself to
       # a version below one already published, and kition reads the kit index, not the tag. The
@@ -409,9 +441,14 @@ jobs:
       # first version (measured, 2026-11-20), so each package is waited for up to ten.
       - name: Publish what npm lacks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # @kition publishes with NPM_TOKEN; any other scope (a rehearsal) with NPM_TOKEN_STAGE.
+          NODE_AUTH_TOKEN: ${{ (inputs.scope || '@kition') == '@kition' && secrets.NPM_TOKEN || secrets.NPM_TOKEN_STAGE }}
         run: |
           set -euo pipefail
+          if [ "$KITION_NPM_SCOPE" != '@kition' ] && [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::publishing in $KITION_NPM_SCOPE needs the secret NPM_TOKEN_STAGE, which the calling workflow did not pass" >&2
+            exit 1
+          fi
           state() { node kition-sdk/tools/kit-npm-package.mjs state --tarball "$1" --registry "$NPM_REGISTRY"; }
           mapfile -t tarballs < <(jq -r '.publish[]' publish-plan.json)
           for file in "${tarballs[@]}"; do
@@ -440,20 +477,12 @@ jobs:
       # npmmirror (registry.npmmirror.com, which kition tries after npmjs.org and which mainland
       # China reaches) copies npmjs.org on its own schedule, which can lag a day for a new package.
       # Asking it to copy the kit's packages now makes them installable there sooner. A refusal is
-      # only a warning: kition falls back to npmjs.org.
+      # only a warning: kition falls back to npmjs.org. Not for another scope than @kition (a rehearsal).
       - name: Ask npmmirror to copy the packages
+        if: (inputs.scope || '@kition') == '@kition'
         continue-on-error: true
         run: |
           for name in $(jq -r '.publish[]' publish-plan.json | xargs -n1 -I{} tar -xzOf {} package/package.json | jq -r .name | sort -u); do
             curl -fsS -X PUT "https://registry-direct.npmmirror.com/-/package/$name/syncs" || echo "::warning::npmmirror did not take the copy request for $name"
             echo
           done
-
-      - name: Every package planned was built
-        run: |
-          set -euo pipefail
-          failed=$(jq -r '.failed | join(", ")' publish-plan.json)
-          if [ -n "$failed" ]; then
-            echo "::error::no package built for $failed (see the jobs of those platforms or the package job). Running Package again, or re-running this run's failed jobs, builds and publishes only what npm lacks"
-            exit 1
-          fi

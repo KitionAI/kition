@@ -9,6 +9,8 @@
 // first registry that serves it with the pinned integrity (scripts/lib/kitNpm.mjs `registries`:
 // KITION_NPM_REGISTRY, comma-separated; ~/.npmrc's @kition:registry; npm_config_registry or
 // ~/.npmrc's registry; npmjs.org; npmmirror.com). Its <kit>-ui folder replaces public/kits/<kit>-ui.
+// KITION_NPM_SCOPE names another npm scope (default @kition): the lock must then pin that scope's
+// packages, <scope>/<kit> (layout 1, scripts/lib/kitNpm.mjs), and ~/.npmrc's <scope>:registry is read.
 //
 // A fetched package gets a stamp (.kition-package.json) with its lock entry. A package without
 // it, or with another one (a local build by scripts/build-kit-ui.sh, or another package), is not

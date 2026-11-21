@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { integrityOf, tarballUrl } from './kitNpm.mjs'
 import { fetchKitPackage, KIT_PACKAGE_STAMP, kitLockEntry, kitPackageProblem, pinKit, publishedKitPackageStamp, readKitLock, unpackKitPackage, writeKitLock, writeKitPackageStamp } from './kitPackages.mjs'
 
@@ -146,6 +146,21 @@ describe('pinKit', () => {
 
   it('fails when no registry has the version', async () => {
     await expect(pinKit('slide', '9.9.9', [A, B], fakeFetch({}).fetchImpl)).rejects.toThrow(/@kition\/kit-slide-ui@9\.9\.9: no registry has it/)
+  })
+})
+
+describe('another npm scope (KITION_NPM_SCOPE)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("pins the scope's editor package <scope>/<kit> and refuses @kition's", async () => {
+    vi.stubEnv('KITION_NPM_SCOPE', '@kitionstage')
+    const stage = metadata('0.4.7', { name: '@kitionstage/slide' })
+    const { asked, fetchImpl } = fakeFetch({ [`${A}@kitionstage%2fslide/latest`]: () => new Response(JSON.stringify(stage)) })
+    expect(await pinKit('slide', undefined, [A], fetchImpl)).toEqual({ registry: A, entry: { ...pinned, package: '@kitionstage/slide' } })
+    expect(asked).toEqual([`${A}@kitionstage%2fslide/latest`])
+    expect(() => kitLockEntry('slide', metadata('0.4.7'))).toThrow(/name @kition\/kit-slide-ui instead of @kitionstage\/slide/)
   })
 })
 

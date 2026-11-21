@@ -706,10 +706,19 @@ is npm's `dist.integrity` (SHA-512 of the tarball).
   registry (`tools/kit-npm-package.mjs state`): `publish` runs
   `npm publish --access public --provenance`, `published` (npm has the same
   bytes) skips it, and a version npm holds with other bytes stops the run.
-  After publishing, `state` must say `published`. A package that built nothing
-  ends the run failed after the others are published; running Package again,
-  or re-running the run's failed jobs, builds and publishes only what npm
-  still lacks.
+  After publishing, `state` must say `published`. Nothing is published unless
+  every package the plan wanted was built: a failed platform or package job
+  skips the `publish` job, so a build failure never leaves a version half
+  published. Running Package again, or re-running the run's failed jobs,
+  builds and publishes only what npm still lacks, which also completes a
+  version npm stopped partway through publishing.
+- **Another npm scope**: the reusable workflow's `scope` input (default
+  `@kition`) is exported as `KITION_NPM_SCOPE`, which kition-sdk's tools and
+  `scripts/lib/kitNpm.mjs` read. Any scope but `@kition` (a rehearsal on
+  `@kitionstage`) names the packages by layout 1, `<scope>/<kit>` and
+  `<scope>/<kit>-<platform>`, publishes with the secret `NPM_TOKEN_STAGE`, and
+  asks npmmirror for no copy; pinning and fetching with that variable set read
+  that scope's packages.
 - **Pinning**: `node scripts/pin-kits.mjs <kit>[@<version>]...` (or `--all`)
   reads the registry's metadata of `@kition/kit-<kit>-ui` at that version, or
   its `latest`, and writes the kit's entry into `kits/kits.lock.json`:

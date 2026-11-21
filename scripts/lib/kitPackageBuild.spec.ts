@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HEADLESS_PLATFORMS, buildPlan, checkHeadlessBuild, headlessMatrix, planFromRegistry, planOutput, publishPlan } from './kitPackageBuild.mjs'
 
 const ALL = ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64', 'win32-x64']
@@ -226,6 +226,23 @@ describe('publishPlan', () => {
     expect(() => publishPlan({ kit: 'board', version: '0.1.0', wanted, packed: [tarball('linux-x64', '0.1.1')] })).toThrow(/@kition\/kit-board-linux-x64@0\.1\.1/)
     expect(() => publishPlan({ kit: 'board', version: '0.1.0', wanted, packed: [{ ...tarball('linux-x64'), name: '@kition/kit-note-linux-x64' }] })).toThrow(/kit-note-linux-x64/)
     expect(() => publishPlan({ kit: 'board', version: '0.1.0', wanted, packed: [tarball('linux-x64'), { ...tarball('linux-x64'), file: '/u/again.tgz' }] })).toThrow(/two tarballs of @kition\/kit-board-linux-x64@0\.1\.0/)
+  })
+})
+
+describe('publishPlan in another npm scope (KITION_NPM_SCOPE)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("publishes the scope's packages by layout 1 and refuses @kition's", () => {
+    vi.stubEnv('KITION_NPM_SCOPE', '@kitionstage')
+    const stage = (part: string) => ({ file: `/t/${part}.tgz`, name: part === 'ui' ? '@kitionstage/board' : `@kitionstage/board-${part}`, version: '0.1.0' })
+    expect(publishPlan({ kit: 'board', version: '0.1.0', wanted: { platforms: ['linux-x64', 'win32-x64'], ui: true }, packed: [stage('ui'), stage('linux-x64')] })).toEqual({
+      publish: ['/t/linux-x64.tgz', '/t/ui.tgz'],
+      failed: ['@kitionstage/board-win32-x64'],
+    })
+    const legacy = { file: '/t/legacy.tgz', name: '@kition/kit-board-linux-x64', version: '0.1.0' }
+    expect(() => publishPlan({ kit: 'board', version: '0.1.0', wanted: { platforms: ['linux-x64'], ui: false }, packed: [legacy] })).toThrow(/which this run does not publish \(@kitionstage\/board-linux-x64@0\.1\.0\)/)
   })
 })
 

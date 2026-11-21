@@ -1,6 +1,7 @@
 // The kit packages Kition ships (docs/kits.md, section 4b): kits/kits.lock.json pins each kit's
-// editor package on npm, `@kition/kit-<kit>-ui` (scripts/lib/kitNpm.mjs), which each kit
-// repository's Package workflow publishes. Here: reading and writing the lock, pinning a version
+// editor package on npm, `@kition/kit-<kit>-ui` (scripts/lib/kitNpm.mjs; in another scope
+// `KITION_NPM_SCOPE` names, `<scope>/<kit>`, and the lock must pin that scope's packages), which
+// each kit repository's Package workflow publishes. Here: reading and writing the lock, pinning a version
 // from the registry's metadata, downloading and unpacking a pinned package into public/kits, and
 // checking a folder of kit packages (public/kits or dist/kits) against the lock.
 import { execFileSync } from 'node:child_process'

@@ -437,6 +437,24 @@ features:
       - kition.kits.npm-packages/headless-check
       - kition.kits.npm-packages/pin-and-fetch
     since: "2026-11-20"
+  - id: kition.kits.npm-scope
+    title: KITION_NPM_SCOPE (default @kition), and the Package workflow's scope input, name the npm scope of the kit packages; @kition keeps the legacy names (kit-<kit>-ui, kit-<kit>-<platform>), any other scope uses layout 1 (<kit>, <kit>-<platform>) and publishes with NPM_TOKEN_STAGE; a malformed scope is refused, and in layout 1 no kit is named like another package of the scope. The Package workflow publishes nothing unless every package it planned was built
+    dimension: [platform, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - .github/workflows/kit-package.yml
+      - scripts/lib/kitNpm.mjs
+      - scripts/lib/kitNpm.spec.ts
+      - scripts/lib/kitPackages.spec.ts
+      - scripts/lib/kitPackageBuild.spec.ts
+      - scripts/pin-kits.mjs
+      - scripts/fetch-kits.mjs
+      - docs/kits.md
+    gap: The workflow half (the scope input, the stage token, skipping the publish job when a build failed) runs only in a kit repository's Package run; locally the names, pinning and the publish plan run against fake registries.
+    cases:
+      - kition.kits.npm-scope/layouts
+    since: "2026-11-21"
   - id: kition.kits.fetch-image
     title: A kit keeps a picture pasted by its web address; Kition's runtime downloads it from public addresses only (Kit UI protocol host/fetchImage)
     dimension: [security, data-safety]

@@ -10,7 +10,8 @@
 // kition-fonts commits from the package's `kition.build`. It reads metadata only; scripts/fetch-kits.mjs
 // downloads the package and checks it against the entry. The registries are read in order
 // (scripts/lib/kitNpm.mjs `registries`: KITION_NPM_REGISTRY, ~/.npmrc, npmjs.org, npmmirror.com);
-// the first that has the version answers.
+// the first that has the version answers. KITION_NPM_SCOPE names another npm scope (default @kition),
+// whose editor packages are <scope>/<kit> (layout 1, scripts/lib/kitNpm.mjs).
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,7 +20,14 @@ import { pinKit, readKitLock, writeKitLock } from './lib/kitPackages.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const { $comment: _comment, ...registry } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'modules.json'), 'utf8'))
-const list = configuredRegistries()
+let list
+try {
+  list = configuredRegistries()
+} catch (error) {
+  // A malformed KITION_NPM_SCOPE, said without a stack.
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exit(2)
+}
 
 const args = process.argv.slice(2)
 const asked = args.includes('--all') ? Object.keys(registry).map((kit) => ({ kit })) : args.map((arg) => ({ kit: arg.split('@')[0], version: arg.includes('@') ? arg.split('@')[1] : undefined }))

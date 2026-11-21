@@ -1,6 +1,20 @@
 import crypto from 'node:crypto'
-import { describe, expect, it } from 'vitest'
-import { DEFAULT_REGISTRIES, downloadTarball, firstRegistry, headlessPackageName, integrityOf, metadataUrl, parseNpmrc, readVersion, registries, tarballUrl, uiPackageName } from './kitNpm.mjs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  DEFAULT_REGISTRIES,
+  downloadTarball,
+  firstRegistry,
+  headlessPackageName,
+  integrityOf,
+  LEGACY_LAYOUT_SCOPES,
+  metadataUrl,
+  npmScope,
+  parseNpmrc,
+  readVersion,
+  registries,
+  tarballUrl,
+  uiPackageName,
+} from './kitNpm.mjs'
 
 const A = 'https://a.example.test/'
 const B = 'https://b.example.test/npm/'
@@ -24,6 +38,52 @@ describe('names and addresses', () => {
     const bytes = Buffer.from('a tarball')
     expect(integrityOf(bytes)).toBe(`sha512-${crypto.createHash('sha512').update(bytes).digest('base64')}`)
     expect(integrityOf(bytes)).toMatch(/^sha512-[A-Za-z0-9+/]{86}==$/)
+  })
+})
+
+describe('the npm scope (KITION_NPM_SCOPE) and its layout', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('is @kition with the legacy names when the variable is unset or empty', () => {
+    expect(LEGACY_LAYOUT_SCOPES).toEqual(['@kition'])
+    expect(npmScope({})).toBe('@kition')
+    expect(npmScope({ KITION_NPM_SCOPE: '' })).toBe('@kition')
+    vi.stubEnv('KITION_NPM_SCOPE', '')
+    expect(uiPackageName('note')).toBe('@kition/kit-note-ui')
+    expect(headlessPackageName('note', 'linux-x64')).toBe('@kition/kit-note-linux-x64')
+    // The legacy names never collide with the scope's other packages.
+    expect(uiPackageName('cli', '@kition')).toBe('@kition/kit-cli-ui')
+  })
+
+  it("names another scope's packages by layout 1, <scope>/<kit> and <scope>/<kit>-<platform>, from the variable or as asked", () => {
+    expect(uiPackageName('note', '@kitionstage')).toBe('@kitionstage/note')
+    expect(headlessPackageName('note', 'darwin-arm64', '@kitionstage')).toBe('@kitionstage/note-darwin-arm64')
+    vi.stubEnv('KITION_NPM_SCOPE', '@kitionstage')
+    expect(npmScope()).toBe('@kitionstage')
+    expect(uiPackageName('note')).toBe('@kitionstage/note')
+    expect(headlessPackageName('note', 'linux-x64')).toBe('@kitionstage/note-linux-x64')
+    expect(tarballUrl(A, '@kitionstage/note', '0.1.3')).toBe('https://a.example.test/@kitionstage/note/-/note-0.1.3.tgz')
+    expect(metadataUrl(A, '@kitionstage/note', 'latest')).toBe('https://a.example.test/@kitionstage%2fnote/latest')
+    for (const other of ['cli', 'sdk', 'kits', 'tessera']) {
+      expect(() => uiPackageName(other)).toThrow(`${other} is not a kit name in @kitionstage`)
+      expect(() => headlessPackageName(other, 'linux-x64')).toThrow(/is not a kit name in @kitionstage/)
+    }
+  })
+
+  it('refuses a scope that is not @ and lowercase letters, digits and dashes', () => {
+    for (const bad of ['kition', '@Kition', '@-x', '@', '@kition/x', '@kit ion']) {
+      expect(() => npmScope({ KITION_NPM_SCOPE: bad })).toThrow(/KITION_NPM_SCOPE is .*, not an npm scope/)
+      expect(() => uiPackageName('note', bad)).toThrow(/not an npm scope/)
+      expect(() => registries({ KITION_NPM_SCOPE: bad }, '')).toThrow(/KITION_NPM_SCOPE is/)
+    }
+  })
+
+  it("reads .npmrc's registry of the scope", () => {
+    const npmrc = '@kition:registry=https://kition.example.test\n@kitionstage:registry=https://stage.example.test\n'
+    expect(registries({}, npmrc)[0]).toBe('https://kition.example.test/')
+    expect(registries({ KITION_NPM_SCOPE: '@kitionstage' }, npmrc)[0]).toBe('https://stage.example.test/')
   })
 })
 

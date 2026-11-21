@@ -1,0 +1,25 @@
+format: 1
+id: kition.kits.npm-scope/layouts
+feature: kition.kits.npm-scope
+intent: >-
+  Without KITION_NPM_SCOPE (or with it empty) the kit packages are @kition/kit-<kit>-ui and
+  @kition/kit-<kit>-<platform> as before. With KITION_NPM_SCOPE=@kitionstage they are
+  @kitionstage/<kit> and @kitionstage/<kit>-<platform> (layout 1): pinning reads that package and
+  refuses @kition's metadata, the publish plan wants that scope's tarballs and refuses @kition's,
+  and .npmrc's registry of that scope is read. A scope that is not @ and lowercase letters, digits
+  and dashes is refused, naming the variable; in layout 1 a kit named cli, sdk, kits or tessera is
+  refused. Every registry is a fake; no test reaches the network.
+layer: gate
+source:
+  kind: synthetic
+  from: scripts/lib/kitNpm.mjs
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, scripts/lib/kitNpm.spec.ts, scripts/lib/kitPackages.spec.ts, scripts/lib/kitPackageBuild.spec.ts, -t, "scope"]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-21"
