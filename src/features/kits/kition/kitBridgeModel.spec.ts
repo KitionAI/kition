@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { designKit } from '@/lib/script/kits/design'
-import { layoutKit } from '@/lib/script/kits/layout'
+import { designKit } from '@kition/sdk/script/kits/design'
+import { layoutKit } from '@kition/sdk/script/kits/layout'
 import type { KitConnection } from '@kition/sdk/host'
 import { bridgeModel } from './kitBridgeModel'
 

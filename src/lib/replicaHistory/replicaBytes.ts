@@ -5,23 +5,7 @@
  * read again (`stateAt`) and restored as one new change (`revertTo`). Loaded on demand: it carries the CRDT engine.
  */
 import { decodeImportBlobMeta, LoroDoc, VersionVector } from 'loro-crdt'
-import { openEnvelope } from '@kition/sdk/kdm'
-
-/**
- * The KDM envelope every byte string a replica exports carries: the 4-byte magic `KDM\x01`, the
- * 16-byte document UUID, then the engine's bytes. `@kition/sdk/kdm` opens it (`openEnvelope`) but
- * does not export its `wrap` (kition-sdk packages/kdm/src/envelope.ts), so it is written here; the
- * tests load every byte string made with it through `Replica.load`, which reads the envelope.
- */
-const ENVELOPE_MAGIC = [0x4b, 0x44, 0x4d, 0x01]
-
-function wrap(docId: Uint8Array, bytes: Uint8Array): Uint8Array {
-  const out = new Uint8Array(ENVELOPE_MAGIC.length + docId.length + bytes.length)
-  out.set(ENVELOPE_MAGIC)
-  out.set(docId, ENVELOPE_MAGIC.length)
-  out.set(bytes, ENVELOPE_MAGIC.length + docId.length)
-  return out
-}
+import { openEnvelope, wrapEnvelope } from '@kition/sdk/kdm'
 
 export function toHex(bytes: Uint8Array): string {
   let out = ''
@@ -68,7 +52,7 @@ export function mergeReplica(snapshot: Uint8Array, changes: readonly Uint8Array[
   if (!changes.length) return { bytes: snapshot, version: versionOf([snapshot]) }
   const { doc, docId } = load([snapshot, ...changes])
   const version = doc.oplogVersion().encode()
-  return { bytes: wrap(docId, doc.export({ mode: 'snapshot' })), version }
+  return { bytes: wrapEnvelope(docId, doc.export({ mode: 'snapshot' })), version }
 }
 
 /** Whether `version` holds every change of `other` (encoded version vectors; empty is the empty version). */
@@ -90,7 +74,7 @@ export function changesSince(replica: Uint8Array, since: Uint8Array, replicaId: 
   const version = doc.oplogVersion().encode()
   if (!includesVersion(version, since)) return null
   const from = since.length ? VersionVector.decode(since) : new VersionVector(null)
-  return { changes: wrap(docId, doc.export({ mode: 'update', from })), version }
+  return { changes: wrapEnvelope(docId, doc.export({ mode: 'update', from })), version }
 }
 
 function frontiersAt(doc: LoroDoc, version: Uint8Array) {
@@ -102,7 +86,7 @@ function frontiersAt(doc: LoroDoc, version: Uint8Array) {
 export function stateAt(full: readonly Uint8Array[], version: Uint8Array): Uint8Array {
   const { doc, docId } = load(full)
   const fork = doc.forkAt(frontiersAt(doc, version))
-  return wrap(docId, fork.export({ mode: 'snapshot' }))
+  return wrapEnvelope(docId, fork.export({ mode: 'snapshot' }))
 }
 
 /** Whether `full` holds `version` in its history (so it can be shown and restored). */
@@ -127,5 +111,5 @@ export function revertTo(full: readonly Uint8Array[], version: Uint8Array): Uint
   doc.commit({ origin: 'restore' })
   const after = doc.oplogVersion()
   if (before.compare(after) === 0) return null
-  return wrap(docId, doc.export({ mode: 'update', from: before }))
+  return wrapEnvelope(docId, doc.export({ mode: 'update', from: before }))
 }

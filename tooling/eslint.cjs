@@ -135,11 +135,6 @@ module.exports = {
       rules: { 'max-lines': 'off', 'max-lines-per-function': 'off' },
     },
     {
-      // Object-model typings generated from each kit's schema (scripts/generate-kit.mjs in kition-sdk).
-      files: ['src/lib/script/kits/**'],
-      rules: { 'max-lines': 'off' },
-    },
-    {
       files: ['src/lib/notify/**', 'src/app/Shell.tsx'],
       rules: { 'no-restricted-imports': 'off' },
     },

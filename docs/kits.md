@@ -419,23 +419,26 @@ items with `primary`.
   entry), under an unused name, written through the host.
 - The Kit UI protocol's host side (`mountKit`, KitFiles) comes from the npm
   package `@kition/sdk` (`@kition/sdk/host`, `@kition/sdk/protocol`), as do
-  the Kit Data Model (`@kition/sdk/kdm`) and the sync client
-  (`@kition/sdk/sync`). `node scripts/sync-kit-host.mjs` copies from a
-  kition-sdk checkout what the package does not give Kition, and
+  the Kit Data Model (`@kition/sdk/kdm`), the sync client
+  (`@kition/sdk/sync`), the object model (`@kition/sdk/script`) and the
+  extension host (`@kition/sdk/extensions`). `node scripts/sync-kit-host.mjs`
+  copies from a kition-sdk checkout what no npm package ships, and
   `pnpm check:kit-host` fails when those copies drift: kition-sdk's `kit.json`
   schema into `contracts/kit/kit.schema.json`, which the conformance suite
-  checks manifests against, the other schemas of `contracts/kit/`, and the
+  checks manifests against, the other schemas of `contracts/kit/`, the
   Rust crates (`crates/kition-kdm`, the Kit Process Protocol's host side and
-  `kition-kits`).
+  `kition-kits`), and the example extension the end-to-end tests install
+  (`e2e/fixtures/extensions/title-case/`).
 - Extensions and scripts (`KitExtensions 1.0`) work on open kit documents
-  through the object model (`KitObjectModel 1.0`). `src/lib/script/` (the
-  object model) and `src/lib/extensions/` (the extension host, with its built
-  worker runtime) are copies made by the same sync script, importing the KDM
-  and the sync client from `@kition/sdk`, as are
-  `public/extensions/sandbox.html` and `public/extensions/panel.html`, the
-  sandbox and panel pages: `@kition/sdk/script` and `@kition/sdk/extensions`
-  are the package's standalone build, which carries a Loro and a KDM of its
-  own, and it does not export the worker runtime. Settings >
+  through the object model (`KitObjectModel 1.0`): `@kition/sdk/script` (the
+  object model) and `@kition/sdk/extensions` (the extension host; its built
+  worker runtime is `@kition/sdk/extensions/runtime`), which share the page's
+  one Loro and one KDM with `@kition/sdk/kdm` and `/sync`. The sandbox and
+  panel pages (`@kition/sdk/extensions/sandbox.html` and `/panel.html`) are
+  copied into `public/extensions/` (git-ignored) by `tooling/vite.config.ts`
+  when the development server or a build starts, so the dev server, the
+  end-to-end tests, the web build and the desktop bundle serve the installed
+  package's pages. Settings >
   Extensions installs an extension from a workspace folder (with
   `extension.json`, one ES module, and its panels' HTML) or a zip of it into
   the app's own storage; its commands show in the command palette for the kit
@@ -448,7 +451,7 @@ items with `primary`.
   the kit's editor (`ExtensionPanelSlot` in `KitFilePane`), in a visible
   frame of the same kind with the extension's network origins, Kition's
   theme tokens, and a channel to the extension's worker; Kition's
-  `frame-src` keeps it on its page. `src/lib/script/kits/` registers the schema
+  `frame-src` keeps it on its page. `@kition/sdk/script/kits` registers the schema
   of every kit with an object model (Doc, Slide, Sheet, Photo, Vector,
   Motion, CAD, PDF, Table, Film, Board, Note, Scene, Design), generated in kition-sdk from each kit's
   `model/schema.json` at its pinned commit. `e2e/extensions.spec.ts`
@@ -562,7 +565,7 @@ libraries a design uses, `Library` objects in `Design.libraries`), carried insid
 the `.kdesign` file under `kdm/`, so people co-edit a shared design and the
 editor lists the `replica` capability (its replica also goes to Kition's
 store, below). Its object model (namespace `Design`, registered in
-`src/lib/script/kits/design.ts`) serves `design_query` and `design_batch`, in the open
+`@kition/sdk/script/kits/design`) serves `design_query` and `design_batch`, in the open
 editor through the Kit AI bridge and headless; workspace scripts use it too.
 Design claims no agent drafts. Through the headless kit a batch's model
 operations reach the engine as a collaborator's changes (kition-sdk

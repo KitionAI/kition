@@ -13,7 +13,7 @@ do not commit credentials or machine-specific paths. See [the kit module guide](
 Use `motion_inspect`, `motion_commands`, `motion_run`, and `motion_check`. The same commands reach
 an open editor through the live bridge, including its undo history. With no editor open, the kit
 runs headless. Discover available command parameters from `motion_commands`; the current Motion
-command types also appear in `src/lib/script/kits/motion.ts` (generated; never edit it).
+command types also appear in `@kition/sdk/script/kits/motion` (generated in kition-sdk).
 
 The repository provides an original four-shot, 12-second production fixture:
 

@@ -3,10 +3,10 @@ import { resolve } from 'node:path'
 import { deleteDB } from 'idb'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MountedKitDocument } from '@/features/kits/public'
-import { RpcPeer, SANDBOX_TAG, type ExtensionNotice, type SandboxFactory } from '@/lib/extensions'
-import { WORKER_RUNTIME } from '@/lib/extensions/generated/runtime'
+import { RpcPeer, SANDBOX_TAG, type ExtensionNotice, type SandboxFactory } from '@kition/sdk/extensions'
+import { WORKER_RUNTIME } from '@kition/sdk/extensions/runtime'
 import { parseSchema, person, Replica, Version } from '@kition/sdk/kdm'
-import { registerKit } from '@/lib/script'
+import { registerKit } from '@kition/sdk/script'
 
 const files = new Map<string, string>()
 const mounted: { listener: ((document: MountedKitDocument) => (() => void) | void) | null; active: MountedKitDocument | null } = { listener: null, active: null }

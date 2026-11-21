@@ -1,23 +1,23 @@
 /**
  * Kition's extension host: installed extensions (from the app's storage) loaded into one
  * `ExtensionHost`, every open kit editor offered to them, and scripts run against the kit document
- * shown now. Extensions run sandboxed (`@/lib/extensions`): only their declared permissions reach
+ * shown now. Extensions run sandboxed (`@kition/sdk/extensions`): only their declared permissions reach
  * the document, and only their declared origins the network.
  */
 import i18next from 'i18next'
 import { activeKitDocument, followKitConnections, subscribeActiveKitDocument, KITION_KIT_HOST, type MountedKitDocument } from '@/features/kits/public'
-import { ExtensionHost, iframeSandbox, openPanelFrame, type ContributedCommand, type ContributedPanel, type ExtensionNotice, type PanelFrame, type SandboxFactory } from '@/lib/extensions'
+import { ExtensionHost, iframeSandbox, openPanelFrame, type ContributedCommand, type ContributedPanel, type ExtensionNotice, type PanelFrame, type SandboxFactory } from '@kition/sdk/extensions'
 import { notify } from '@/lib/notify'
-import { portFromConnection, type ConnectionLike } from '@/lib/script'
+import { portFromConnection, type ConnectionLike } from '@kition/sdk/script'
 // Registers the kits whose documents extensions can work on (their object-model schemas).
-import '@/lib/script/kits/index'
+import '@kition/sdk/script/kits'
 import { deleteInstalledExtension, listInstalledExtensions, putInstalledExtension, type InstalledExtension } from './extensionStore'
 import { cleanWorkspacePath, readExtensionFromWorkspace } from './extensionPackage'
 import { announceExtensionService } from './serviceAnnouncement'
 
-/** Where Kition serves the sandbox page (public/extensions/sandbox.html). */
+/** Where Kition serves the sandbox page (@kition/sdk/extensions/sandbox.html, copied to public/extensions/ by tooling/vite.config.ts). */
 export const SANDBOX_URL = '/extensions/sandbox.html'
-/** Where Kition serves the panel page (public/extensions/panel.html). */
+/** Where Kition serves the panel page (@kition/sdk/extensions/panel.html, copied to public/extensions/ by tooling/vite.config.ts). */
 export const PANEL_URL = '/extensions/panel.html'
 
 export type ExtensionsSnapshot = { ready: boolean; installed: InstalledExtension[] }

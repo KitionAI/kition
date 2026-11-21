@@ -9,11 +9,7 @@
     "src-tauri/scripts/**/*.spec.ts",
     "scripts/**/*.spec.ts",
     "e2e/**/*.spec.ts",
-    "e2e/helpers/**/*.ts",
-    "src/lib/script/*.ts",
-    "src/lib/script/kits/*.ts",
-    "src/lib/extensions/*.ts",
-    "src/lib/extensions/generated/*.ts"
+    "e2e/helpers/**/*.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx}",

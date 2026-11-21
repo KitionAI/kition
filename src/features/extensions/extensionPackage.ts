@@ -1,4 +1,4 @@
-import { parseManifest, type ExtensionManifest } from '@/lib/extensions'
+import { parseManifest, type ExtensionManifest } from '@kition/sdk/extensions'
 import { readZip } from './zip'
 
 /**

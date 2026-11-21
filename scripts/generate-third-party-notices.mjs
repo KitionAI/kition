@@ -93,21 +93,15 @@ function buildInstalledPackageIndex() {
   return index
 }
 
-function licenseFilesIn(folder) {
-  if (!fs.existsSync(folder)) {
+function findLicenseFiles(packagePath) {
+  if (!fs.existsSync(packagePath)) {
     return []
   }
   return fs
-    .readdirSync(folder, { withFileTypes: true })
+    .readdirSync(packagePath, { withFileTypes: true })
     .filter((entry) => entry.isFile() && /^(licen[cs]e|copying|copyright|notice)(?:[._-].*)?$/i.test(entry.name))
-    .map((entry) => path.join(folder, entry.name))
+    .map((entry) => path.join(packagePath, entry.name))
     .sort(compareText)
-}
-
-/** The package root's licence files, else those in its dist/ (where @kition/sdk, built from a monorepo, keeps LICENSE). */
-function findLicenseFiles(packagePath) {
-  const root = licenseFilesIn(packagePath)
-  return root.length ? root : licenseFilesIn(path.join(packagePath, 'dist'))
 }
 
 function normalizeLicenseText(text) {

@@ -93,7 +93,7 @@
     "check:tessera": "node scripts/pin-tessera.mjs --check"
   },
   "dependencies": {
-    "@kition/sdk": "npm:@kitionstage/sdk@0.5.2-stage.2",
+    "@kition/sdk": "npm:@kitionstage/sdk@0.5.2-stage.14",
     "@kition/tessera": "npm:@kitionstage/tessera@0.1.1-stage.2",
     "loro-crdt": "1.16.4"
   },

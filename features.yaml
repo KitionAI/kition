@@ -290,13 +290,11 @@ features:
       - kition.kit-collab.design/live-and-offline
     since: "2026-10-28"
   - id: kition.extensions.kit-scripts
-    title: A workspace script edits the open kit document through the object model of the kit's registered schema (`src/lib/script/kits/`)
+    title: A workspace script edits the open kit document through the object model of the kit's registered schema (`@kition/sdk/script/kits`)
     dimension: [function]
     priority: P1
     status: has
     paths:
-      - src/lib/script/kits/*.ts
-      - src/lib/extensions/*.ts
       - e2e/extensions.spec.ts
       - src/features/extensions/public.ts
       - src/features/extensions/public.spec.tsx

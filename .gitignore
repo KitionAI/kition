@@ -64,6 +64,8 @@ dist-ssr/
 dist-desktop/
 # Kit packages: built by scripts/build-kit-ui.sh or fetched by scripts/fetch-kits.mjs.
 /public/kits/
+# The extension host's sandbox and panel pages: copied from @kition/sdk by tooling/vite.config.ts.
+/public/extensions/
 # Output of desktop builds made before the Tauri shell.
 dist-electron/
 playwright-report/

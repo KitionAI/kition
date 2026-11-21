@@ -2,12 +2,12 @@ import type { KitConnection, ModelBatchParams } from '@kition/sdk/host'
 import type { BridgeEditor } from './kitBridge'
 
 /**
- * The kit's KDM schema as `@kition/script` registers it (`src/lib/script/kits/`), which a kit whose
+ * The kit's KDM schema as `@kition/sdk/script` registers it (`@kition/sdk/script/kits`), which a kit whose
  * engine does not describe its own schema needs to answer the object model and to compare and
  * merge a draft; `undefined` for a kit Kition has none registered for.
  */
 export async function kitSchema(kitId: string) {
-  const [{ kitDescriptor }] = await Promise.all([import('@/lib/script/kits'), import('@/lib/script/kits/index')])
+  const [{ kitDescriptor }] = await Promise.all([import('@kition/sdk/script'), import('@kition/sdk/script/kits')])
   return kitDescriptor(kitId)?.schema
 }
 

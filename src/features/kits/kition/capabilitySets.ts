@@ -1,4 +1,4 @@
-import { advertiseCapabilitySets } from '@/lib/script'
+import { advertiseCapabilitySets } from '@kition/sdk/script'
 
 /**
  * The Kition kit platform's capability sets Kition serves (kition-sdk `docs/platform/index.md` section 3): the KDM replica of

@@ -4,7 +4,7 @@ import { Button, Switch, TextInput } from '@kition/tessera/ui'
 import { useExtensions, type ExtensionsApi, type InstalledExtension } from '@/features/extensions/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { networkSources, type ExtensionManifest } from '@/lib/extensions/manifest'
+import { networkSources, type ExtensionManifest } from '@kition/sdk/extensions'
 import { notify } from '@/lib/notify'
 
 /**

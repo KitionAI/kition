@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { ExtensionManifest } from '@/lib/extensions'
+import type { ExtensionManifest } from '@kition/sdk/extensions'
 
 /** An installed extension, kept in this app's own storage (not in the workspace). */
 export type InstalledExtension = {

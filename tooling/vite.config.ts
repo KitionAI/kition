@@ -2,7 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import wasm from 'vite-plugin-wasm'
 import { execSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import type { ClientRequest, IncomingMessage } from 'node:http'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -77,6 +78,30 @@ function runtimeProxy() {
   }
 }
 
+/**
+ * The extension host's sandbox and panel pages (`@kition/sdk/extensions/sandbox.html` and
+ * `/extensions/panel.html`), copied into public/extensions/ (git-ignored) when the development
+ * server or a build starts, so the dev server, the end-to-end tests, the web build and the desktop
+ * bundle (built from dist/) all serve the installed package's pages at /extensions/. A page is
+ * written only when it differs, so a running server's watcher sees no change.
+ */
+function extensionPages() {
+  const require = createRequire(import.meta.url)
+  return {
+    name: 'kition-extension-pages',
+    buildStart() {
+      const outDir = resolve(repositoryDir, 'public/extensions')
+      mkdirSync(outDir, { recursive: true })
+      for (const page of ['sandbox.html', 'panel.html']) {
+        const wanted = readFileSync(require.resolve(`@kition/sdk/extensions/${page}`))
+        const out = resolve(outDir, page)
+        if (existsSync(out) && readFileSync(out).equals(wanted)) continue
+        writeFileSync(out, wanted)
+      }
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   root: repositoryDir,
   // Dev servers started side by side (e2e runs on separate ports) each need their own pre-bundled
@@ -87,7 +112,7 @@ export default defineConfig(({ mode }) => ({
   base: '/',
   // vite-plugin-wasm loads WebAssembly that a module imports as an ES module, as loro-crdt's
   // bundler entry does (see the alias below).
-  plugins: [react(), wasm()],
+  plugins: [react(), wasm(), extensionPages()],
   resolve: {
     alias: [
       { find: '@', replacement: resolve(repositoryDir, 'src') },
