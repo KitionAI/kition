@@ -6,7 +6,7 @@
 #   scripts/kit-ci.sh push <kit>      push HEAD to the kit's ci/agent branch (starts a run)
 #   scripts/kit-ci.sh wait <kit>      wait for the run of HEAD; exit 0 when it passed
 #   scripts/kit-ci.sh failures <kit>  write $KIT_CI_DIR/<kit>/<run>/summary.txt (each job's result,
-#                                     the failed jobs' log tails) and download their evidence
+#                                     the lines before each failed job's errors) and download their evidence
 #   scripts/kit-ci.sh land <kit>      fast-forward origin/main to HEAD when its run passed;
 #                                     delete ci/agent
 #   scripts/kit-ci.sh status <kit>    print the latest run of HEAD
@@ -84,8 +84,10 @@ case "$command" in
       while IFS=$'\t' read -r job name; do
         {
           echo
-          echo "==== $name (job $job): last 150 lines of the failed steps ===="
-          gh run view -R "$slug" --job "$job" --log-failed 2>/dev/null | cut -f3- | tail -n 150
+          echo "==== $name (job $job): the 60 lines before each error ===="
+          gh api "repos/$slug/actions/jobs/$job/logs" 2>/dev/null |
+            perl -pe 's/^\d{4}-\S+Z ?//; s/\e\[[0-9;]*m//g' |
+            grep -B 60 '##\[error\]' | tail -n 200
         } >>"$summary"
       done
     gh run download "$id" -R "$slug" -D "$dir" -p 'evidence-*' >/dev/null 2>&1 || true

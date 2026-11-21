@@ -767,7 +767,7 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   macOS). One kit's run holds at most 8 (build, rust, 6 tests); further runs queue.
 - **The loop** (`scripts/kit-ci.sh <command> <kit>`): commit on `main` locally; `push` sends HEAD
   to `ci/agent` (a newer push cancels the older run); `wait` follows the run; on failure,
-  `failures` writes the jobs' results, the failed steps' log tails and the evidence
+  `failures` writes the jobs' results, the log lines before each error and the evidence
   (`test-results`, `playwright-report`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
   `land` fast-forwards `origin/main` to HEAD only when HEAD's run passed, then deletes
   `ci/agent`. Rerun a flaky-looking failure once with `gh run rerun <run> --failed` before

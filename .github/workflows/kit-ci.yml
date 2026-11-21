@@ -30,10 +30,11 @@ env:
   KIT: ${{ inputs.kit }}
   WASM_PACK_VERSION: v0.13.1
 
+# Ubuntu 24.04: Playwright 1.59 has no browsers for ubuntu-latest (26.04).
 jobs:
   plan:
     name: Plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -67,7 +68,7 @@ jobs:
   build:
     name: Build
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - name: Check out
@@ -120,7 +121,7 @@ jobs:
   rust:
     name: Rust
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - name: Check out
@@ -171,7 +172,7 @@ jobs:
     name: ${{ matrix.name }}
     needs: [plan, build]
     if: needs.plan.outputs.matrix != '{"include":[]}'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
