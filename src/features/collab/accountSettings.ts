@@ -4,7 +4,7 @@
  * of their devices changes it (`account/changed`). A server before 1.9 has none: it stays off.
  */
 import { useSyncExternalStore } from 'react'
-import type { AccountSettings, SyncClient } from '@/lib/sync'
+import type { AccountSettings, SyncClient } from '@kition/sdk/sync'
 
 let settings: AccountSettings = { syncAll: false }
 const listeners = new Set<() => void>()

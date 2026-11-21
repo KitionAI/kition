@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { TriangleAlertIcon as AlertTriangle, ExternalLinkIcon as ExternalLink, XIcon as X } from '@kition/tessera-icons/react'
+import { TriangleAlertIcon as AlertTriangle, ExternalLinkIcon as ExternalLink, XIcon as X } from '@kition/tessera/icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@kition/tessera-ui'
+import { Button } from '@kition/tessera/ui'
 import { openExternalURL } from '@/services/desktop'
 import {
   type ConsoleCreditsExhaustedDetail,

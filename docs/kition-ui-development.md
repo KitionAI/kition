@@ -86,17 +86,20 @@ Examples:
 - Let `src/app/Shell.tsx` stay focused on route-level shell chrome, modal routing, and app-wide entry concerns.
 - Let workspace screen components own editor-page composition, portal consumption, and feature orchestration.
 - Do not place new Agent presentation logic back into `src/app/Shell.tsx`.
-- Shared controls come from Kition Tessera (`@kition/tessera-ui`): buttons, form fields, Modal, Popover, Sheet, Switch, Confirm, Command. Add a missing generic control to Tessera, not to Kition; keep app-level business UI in `src/`.
+- Shared controls come from Kition Tessera (`@kition/tessera/ui`): buttons, form fields, Modal, Popover, Sheet, Switch, Confirm, Command. Add a missing generic control to Tessera, not to Kition; keep app-level business UI in `src/`.
 
 ## Kition Tessera
 
-`@kition/tessera-ui` (components) and `@kition/tessera-icons` (icons) are npm packages, built from
-the public `KitionAI/kition-tessera` repository and pinned to one exact version in `package.json`;
-`pnpm.overrides` holds the packages' own Tessera dependencies (`@kition/tessera-icons`,
-`@kition/tessera-tokens`) at the same version. Move all four together with
-`node scripts/pin-tessera.mjs <version>`; `pnpm run check:tessera` fails when they differ.
+Kition Tessera is one npm package, `@kition/tessera` (components `@kition/tessera/ui`, icons
+`@kition/tessera/icons`, tokens `@kition/tessera/tokens`), built from the public
+`KitionAI/kition-tessera` repository and pinned to one exact version in `package.json`. Until its
+first release under `@kition` it is installed from a rehearsal copy by alias
+(`npm:@kitionstage/tessera@<version>`), so the code already imports the final name. Move it with
+`node scripts/pin-tessera.mjs <version>` (or `npm:<scope>/tessera@<version>`);
+`pnpm run check:tessera` fails when it is not one exact version or an old Tessera package
+(`@kition/tessera-ui`, `-icons`, `-tokens`) is still named.
 
-- **Styles.** `src/app/styles.css` imports `@kition/tessera-ui/styles.css` into the `tessera` cascade
+- **Styles.** `src/app/styles.css` imports `@kition/tessera/ui/styles.css` into the `tessera` cascade
   layer, above Tailwind's reset (`reset` layer) and below everything unlayered, so a Tailwind class
   at a call site adjusts a Tessera control. The same file maps Tessera's theme tokens (`--kit-*`)
   to Kition's variables, light and dark.

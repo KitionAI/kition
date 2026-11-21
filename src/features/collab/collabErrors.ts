@@ -1,4 +1,4 @@
-import { SyncRpcError } from '@/lib/sync'
+import { SyncRpcError } from '@kition/sdk/sync'
 import { CollabUnavailableError } from './syncConnection'
 
 type Translate = (key: string) => string

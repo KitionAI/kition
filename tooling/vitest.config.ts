@@ -11,8 +11,6 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@', replacement: resolve(repositoryDir, 'src') },
-      // kition-sdk's @kition/kdm, which Kition carries as src/lib/kdm (scripts/sync-kit-host.mjs).
-      { find: /^@kition\/kdm$/, replacement: resolve(repositoryDir, 'src/lib/kdm/index.ts') },
     ],
   },
   test: {

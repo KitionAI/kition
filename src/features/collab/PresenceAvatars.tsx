@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { Presence } from '@/lib/sync'
+import type { Presence } from '@kition/sdk/sync'
 import { isAgentPeer } from './collabStore'
 
 const SHOWN = 3

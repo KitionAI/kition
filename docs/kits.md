@@ -144,7 +144,6 @@ Kition (this repository)
                                   (not committed; scripts/build-kit-ui.sh <kit>, make kit-uis)
   src/features/kits/kition/       KitFrame (the kit's editor in an iframe), the workspace
                                   host, and the Kit AI bridge
-  src/features/kits/host/         Kition's copy of @kition/kit-ui-protocol and @kition/kit-host
   src/features/kits/engine/          loads a kit's engine in the page; Kition makes new files
                                   with it (createKitFile); imports nothing else from Kition
   src/features/workspace/components/kits/kitEditors.ts
@@ -418,18 +417,25 @@ items with `primary`.
 - New files (the create menu, Film's "Edit in Film") are made in the page by
   the engine inside the package (`createKitFile`, the `engine` manifest of the
   entry), under an unused name, written through the host.
-- `src/features/kits/host/` is Kition's copy of `@kition/kit-ui-protocol` and
-  `@kition/kit-host` (kition-sdk is a separate repository):
-  `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
-  fails when they drift. The same script copies kition-sdk's `kit.json`
-  schema into `contracts/kit/kit.schema.json`, which the conformance
-  suite checks manifests against.
+- The Kit UI protocol's host side (`mountKit`, KitFiles) comes from the npm
+  package `@kition/sdk` (`@kition/sdk/host`, `@kition/sdk/protocol`), as do
+  the Kit Data Model (`@kition/sdk/kdm`) and the sync client
+  (`@kition/sdk/sync`). `node scripts/sync-kit-host.mjs` copies from a
+  kition-sdk checkout what the package does not give Kition, and
+  `pnpm check:kit-host` fails when those copies drift: kition-sdk's `kit.json`
+  schema into `contracts/kit/kit.schema.json`, which the conformance suite
+  checks manifests against, the other schemas of `contracts/kit/`, and the
+  Rust crates (`crates/kition-kdm`, the Kit Process Protocol's host side and
+  `kition-kits`).
 - Extensions and scripts (`KitExtensions 1.0`) work on open kit documents
   through the object model (`KitObjectModel 1.0`). `src/lib/script/` (the
-  object model, `@kition/script`) and `src/lib/extensions/` (the extension
-  host, `@kition/extensions`, with its built worker runtime) are copies made
-  by the same sync script, as are `public/extensions/sandbox.html` and
-  `public/extensions/panel.html`, the sandbox and panel pages. Settings >
+  object model) and `src/lib/extensions/` (the extension host, with its built
+  worker runtime) are copies made by the same sync script, importing the KDM
+  and the sync client from `@kition/sdk`, as are
+  `public/extensions/sandbox.html` and `public/extensions/panel.html`, the
+  sandbox and panel pages: `@kition/sdk/script` and `@kition/sdk/extensions`
+  are the package's standalone build, which carries a Loro and a KDM of its
+  own, and it does not export the worker runtime. Settings >
   Extensions installs an extension from a workspace folder (with
   `extension.json`, one ES module, and its panels' HTML) or a zip of it into
   the app's own storage; its commands show in the command palette for the kit
@@ -643,7 +649,7 @@ what another application embeds. A web page embeds it with kition-sdk's
 kition-sdk's `docs/platform/reference/embed.md`): the page serves the extracted package from an
 origin of its own, keeps documents in its own storage, and may co-edit them
 through a sync server. Kition consumes the package the way any other host
-would, through `@kition/kit-host`, so it never builds kits in its release.
+would, through `@kition/sdk/host`, so it never builds kits in its release.
 
 Kit versions are distributed as npm packages, so they download from npm's
 mirrors (registry.npmmirror.com) where GitHub is slow or unreachable. The
@@ -1102,7 +1108,7 @@ Slide and page kits (Slide):
   `../kition-tessera`) and rewrites the lockfile, which is not committed;
   `scripts/build-kit-ui.sh` honours it and `scripts/package-kit.sh` never uses it.
   Each kit's Vite config allows reading those checkouts. Kits draw icons
-  from `@kition/tessera-icons/react` or kit-editor's `TesseraIcons`, never
+  from `@kition/tessera/icons/react` or kit-editor's `TesseraIcons`, never
   from lucide-react, and name icons for their own engine commands in
   `web/src/commandIcons.ts` (`registerCommandIcons`).
 

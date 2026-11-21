@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeftIcon as ArrowLeft, MessageSquareIcon as MessageSquare } from '@kition/tessera-icons/react'
+import { ArrowLeftIcon as ArrowLeft, MessageSquareIcon as MessageSquare } from '@kition/tessera/icons/react'
 
 import { BuildProgressCard } from '@/features/agent/components/BuildProgressCard'
 import { RightDrawer } from '@/components/RightDrawer'

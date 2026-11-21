@@ -1,6 +1,6 @@
 /** Which open documents are co-edited right now, and who else is in each one: for the tab's indicators. */
 import { useSyncExternalStore } from 'react'
-import type { Presence, Role } from '@/lib/sync'
+import type { Presence, Role } from '@kition/sdk/sync'
 import { agentOf } from '@/services/agentPresence'
 
 /** A co-edited document: its room, the other people in it, and this person's role there. */

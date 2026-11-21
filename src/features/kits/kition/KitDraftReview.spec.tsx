@@ -1,7 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { KitConnection } from '../host/mountKit'
+import type { KitConnection } from '@kition/sdk/host'
 import { KitDraftControls } from './KitDraftReview'
 import { kitDraft, setKitDraft } from './kitDrafts'
 

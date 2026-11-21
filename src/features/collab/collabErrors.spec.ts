@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { getI18nInstance, i18nReady } from '@/i18n'
-import { SyncRpcError } from '@/lib/sync/protocol'
+import { SyncRpcError } from '@kition/sdk/sync'
 import { collabErrorText } from './collabErrors'
 import { CollabUnavailableError } from './syncConnection'
 

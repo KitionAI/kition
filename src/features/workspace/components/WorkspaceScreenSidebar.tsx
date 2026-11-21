@@ -1,4 +1,4 @@
-import { FolderOpenIcon as FolderOpen, Settings2Icon as Settings2, UserRoundIcon as UserRound } from '@kition/tessera-icons/react'
+import { FolderOpenIcon as FolderOpen, Settings2Icon as Settings2, UserRoundIcon as UserRound } from '@kition/tessera/icons/react'
 import type { ComponentProps } from 'react'
 import { useTranslation } from 'react-i18next'
 

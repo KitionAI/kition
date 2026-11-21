@@ -5,7 +5,7 @@
  * proxies; `sync()` sends them as one batch. `openRoom` opens a document in a sync server's room.
  */
 export { advertiseCapabilitySets, CAPABILITY_SETS, capabilitySets, supports } from './capabilities'
-export { BatchError, OBJECT_MODEL_CAPABILITY, type BatchOp, type BatchRequest, type BatchResult, type LoadedObject, type Origin } from '../kdm'
+export { BatchError, OBJECT_MODEL_CAPABILITY, type BatchOp, type BatchRequest, type BatchResult, type LoadedObject, type Origin } from '@kition/sdk/kdm'
 export { exchangeBackend, ModelDocument, openDocument, type ChangedEvent, type ModelBackend, type OpenOptions } from './document'
 export { Exchange, type ModelDescription } from './exchange'
 export { kitModelBackend } from './kitModel'

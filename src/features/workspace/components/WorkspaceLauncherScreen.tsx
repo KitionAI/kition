@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDownIcon as ChevronDown, EllipsisIcon as MoreHorizontal, XIcon as X } from '@kition/tessera-icons/react'
+import { ChevronDownIcon as ChevronDown, EllipsisIcon as MoreHorizontal, XIcon as X } from '@kition/tessera/icons/react'
 import { useTranslation } from 'react-i18next'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { cn } from '@/lib/cn'
-import { Button, Card, CardContent, TextInput, useConfirm, useDismissableLayer } from '@kition/tessera-ui'
+import { Button, Card, CardContent, TextInput, useConfirm, useDismissableLayer } from '@kition/tessera/ui'
 import { SkeletonRows } from '@/components/states'
 import type { VaultEntry } from '@/services/desktop'
 

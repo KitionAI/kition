@@ -285,7 +285,7 @@ features:
     paths:
       - e2e/collab-design.spec.ts
       - src/features/kits/kition/KitFrame.tsx
-      - src/lib/sync/*.ts
+      - src/features/collab/collabRelays.ts
     cases:
       - kition.kit-collab.design/live-and-offline
     since: "2026-10-28"
@@ -319,8 +319,6 @@ features:
     paths:
       - src/features/kits/kition/KitFrame.tsx
       - src/features/kits/kition/WorkspaceFilePicker.tsx
-      - src/features/kits/host/mountKit.ts
-      - src/features/kits/host/protocol.ts
       - e2e/design-embedded.spec.ts
       - crates/kition-kits/tests/sdk_kits.rs
     gap: Kition sends no `document/fileChanged`-style notice for a linked file; the kit watches its stamp (Design every 2 seconds). Only Design's Libraries view asks for `links/pick` so far.

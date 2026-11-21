@@ -5,7 +5,7 @@
  * (`revertTo`), never by replacing the document, so concurrent edits of others are kept.
  */
 import { readRoom, syncClient } from '@/features/collab/public'
-import type { Checkpoint as ServerCheckpoint } from '@/lib/sync'
+import type { Checkpoint as ServerCheckpoint } from '@kition/sdk/sync'
 import { readDocumentCheckpoint, readDocumentHistory, readDocumentIndex, recordDocumentCheckpoint, type DocumentCheckpoint } from '@/services/desktop'
 import type { HistoryDocument } from './historyDocuments'
 

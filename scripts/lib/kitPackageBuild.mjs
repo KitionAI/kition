@@ -154,7 +154,7 @@ export function publishPlan({ kit, version, wanted, packed }) {
 }
 
 /** How often the publish job asks the registry whether it shows the packages it published. */
-export const VISIBLE_POLL_MS = 30_000
+const VISIBLE_POLL_MS = 30_000
 
 /**
  * What the publish job did with each tarball: `published` (`npm publish` took it), `present` (the
@@ -162,7 +162,7 @@ export const VISIBLE_POLL_MS = 30_000
  * because it holds that version already: an earlier run published it and the registry does not show
  * it yet).
  */
-export const PUBLISH_OUTCOMES = ['published', 'present', 'refused']
+const PUBLISH_OUTCOMES = ['published', 'present', 'refused']
 
 const messageOf = (error) => (error instanceof Error ? error.message : String(error))
 
@@ -173,7 +173,7 @@ const messageOf = (error) => (error instanceof Error ? error.message : String(er
  * `{ visible: true }` or `{ visible: false, reason }`. Throws when the metadata names other bytes
  * (another `dist.integrity`): a version is published once, never replaced, so that stops the run.
  */
-export async function packageVisibility({ registry, name, version, integrity }, fetchImpl = globalThis.fetch) {
+async function packageVisibility({ registry, name, version, integrity }, fetchImpl = globalThis.fetch) {
   let metadata
   try {
     metadata = await registryVersion(registry, name, version, fetchImpl)

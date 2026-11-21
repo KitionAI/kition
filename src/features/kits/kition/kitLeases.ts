@@ -2,7 +2,7 @@ import { notify } from '@/lib/notify'
 import { DocumentLeaseRefused, acquireDocumentLease, documentLeases, onDocumentLeases, releaseDocumentLease } from '@/services/documentLeases'
 import { onPresencePeers, presencePeers, setLocalPresence } from '@/services/documentPresence'
 import { documentSchemaNotice, setDocumentSchemaNotice } from '@/services/documentSchema'
-import { KitRpcError, LEASE_HELD_REASON, type KitConnection, type KitHostHandlers } from '../host/mountKit'
+import { KitRpcError, LEASE_HELD_REASON, type KitConnection, type KitHostHandlers } from '@kition/sdk/host'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 

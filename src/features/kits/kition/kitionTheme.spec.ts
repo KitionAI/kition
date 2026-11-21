@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { KitTheme } from '../host/mountKit'
+import type { KitTheme } from '@kition/sdk/host'
 import { kitionTheme, watchKitionTheme } from './kitionTheme'
 
 /** What src/app/styles.css computes on the root for each scheme (a few of the tokens). */

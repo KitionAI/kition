@@ -3,7 +3,7 @@
  * `ExtensionHost`: loads extensions, runs each in its own sandbox, activates it per document, and
  * serves it the object model of the documents it is active on, checked against its permissions.
  */
-import { BatchError, type BatchRequest, type Origin } from '../kdm'
+import { BatchError, type BatchRequest, type Origin } from '@kition/sdk/kdm'
 import { kitDescriptor, openDocument, type KitCommandInfo, type ModelDocument, type ModelPort } from '../script'
 // Every generated kit's schema: extensions work on documents of any of them.
 import '../script/kits/index'

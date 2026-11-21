@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Card, Disclosure, Tabs } from '@kition/tessera-ui'
+import { Card, Disclosure, Tabs } from '@kition/tessera/ui'
 import { useTranslation } from '@/i18n'
 import {
   loadBundledKits,

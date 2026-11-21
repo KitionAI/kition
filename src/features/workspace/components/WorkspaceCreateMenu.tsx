@@ -1,7 +1,7 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
 import { KitIcon } from '@/components/KitIcon'
-import { FolderPlusIcon as FolderPlus } from '@kition/tessera-icons/react'
+import { FolderPlusIcon as FolderPlus } from '@kition/tessera/icons/react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'

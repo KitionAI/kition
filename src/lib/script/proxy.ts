@@ -3,7 +3,7 @@
  * Proxies and `sync()` (Office.js's request context): property writes and commands are queued as
  * operations, reads are queued with `load`, and `sync()` sends them as one `model/batch`.
  */
-import type { BatchOp, BatchRequest, BatchResult, FieldDef, LoadedObject, Origin, Schema } from '../kdm'
+import type { BatchOp, BatchRequest, BatchResult, FieldDef, LoadedObject, Origin, Schema } from '@kition/sdk/kdm'
 
 /** Reading a property that no `load` + `sync()` has fetched. */
 export class PropertyNotLoadedError extends Error {

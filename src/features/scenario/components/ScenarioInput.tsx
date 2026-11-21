@@ -1,4 +1,4 @@
-import { ArrowUpIcon as ArrowUp, PaperclipIcon as Paperclip, SettingsIcon as Settings } from '@kition/tessera-icons/react'
+import { ArrowUpIcon as ArrowUp, PaperclipIcon as Paperclip, SettingsIcon as Settings } from '@kition/tessera/icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'

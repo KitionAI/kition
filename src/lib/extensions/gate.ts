@@ -3,7 +3,7 @@
  * What each object-model call needs (`KitExtensions 1.0` permissions). The host checks every
  * call from an extension's worker here before it reaches the document.
  */
-import type { BatchRequest } from '../kdm'
+import type { BatchRequest } from '@kition/sdk/kdm'
 import type { KitCommandInfo } from '../script'
 import { hasPermission, type Permission } from './manifest'
 import { ExtensionError } from './rpc'

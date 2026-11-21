@@ -1,6 +1,6 @@
 import { loadDesktopSettings } from '@/services/desktopSettings'
 import { restorePortalAccountSession } from '@/services/portalAccount'
-import { KitRpcError } from '../host/protocol'
+import { KitRpcError } from '@kition/sdk/protocol'
 
 /** A refusal of `host/action` (Kit UI protocol section 7j), with its reason. */
 function refuse(reason: string, message: string): never {

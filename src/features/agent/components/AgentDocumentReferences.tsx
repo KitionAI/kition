@@ -1,4 +1,4 @@
-import { ChevronDownIcon as ChevronDown, FileTextIcon as FileText, FolderIcon as Folder, XIcon as X } from '@kition/tessera-icons/react'
+import { ChevronDownIcon as ChevronDown, FileTextIcon as FileText, FolderIcon as Folder, XIcon as X } from '@kition/tessera/icons/react'
 
 import { cn } from '@/lib/cn'
 

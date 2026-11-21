@@ -5,7 +5,7 @@
  * (`connect`), so a window that does not co-edit never touches a replica.
  */
 import { followKitConnections, mountedKitDocument, type MountedKitDocument } from '@/features/kits/public'
-import type { RelayReplica } from '@/lib/sync'
+import type { RelayReplica } from '@kition/sdk/sync'
 
 /** A document's relay side, and what sharing it needs. */
 export type CollabReplica = RelayReplica & {

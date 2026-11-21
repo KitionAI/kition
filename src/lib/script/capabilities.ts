@@ -4,7 +4,7 @@
  * server advertises and a script tests, never a product or its version. A minor version only adds
  * members, so `Name a.b` satisfies a request for `Name a.c` when `c` is at most `b`.
  */
-import { servesCapabilitySet } from '../sync'
+import { servesCapabilitySet } from '@kition/sdk/sync'
 
 /** The capability sets of the Kition kit platform. */
 export const CAPABILITY_SETS = {

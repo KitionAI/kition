@@ -4,7 +4,7 @@ import { buildDesktopRuntimeModel, canUseDesktopProvider, resolvePreferredDeskto
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
 import type { DesktopProviderKind } from '@/types/desktopSettings'
 import type { RuntimeWritingModel } from '@/types'
-import { GENERATE_PURPOSES, KitRpcError, type KitDefinedGeneratePurpose, type KitGeneratePart, type KitGenerateParams, type KitGenerateResult } from '../host/protocol'
+import { GENERATE_PURPOSES, KitRpcError, type KitDefinedGeneratePurpose, type KitGeneratePart, type KitGenerateParams, type KitGenerateResult } from '@kition/sdk/protocol'
 
 /** A refusal of `host/generate` (Kit UI protocol section 7j), with its reason. */
 function refuse(reason: string, message: string): never {

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getDesktopInfo, openRuntimePath, type DesktopInfo } from '@/services/desktop'
-import { Button } from '@kition/tessera-ui'
+import { Button } from '@kition/tessera/ui'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { FolderOpenIcon as FolderOpen } from '@kition/tessera-icons/react'
+import { FolderOpenIcon as FolderOpen } from '@kition/tessera/icons/react'
 
 export function RuntimeSettings() {
   const { t } = useTranslation('settings')

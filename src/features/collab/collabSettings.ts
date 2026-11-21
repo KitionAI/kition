@@ -3,7 +3,7 @@
  * session it connects with. Without both, co-editing is off and Kition opens no connection: a
  * free single-user Kition works exactly as before.
  */
-import { SyncClient, SyncRpcError, type SyncTransport } from '@/lib/sync'
+import { SyncClient, SyncRpcError, type SyncTransport } from '@kition/sdk/sync'
 import { loadStoredPortalAccountSession, PORTAL_ACCOUNT_SESSION_CHANGED_EVENT } from '@/services/portalAccount'
 
 const SERVER_URL_KEY = 'kition.collab.serverUrl.v1'

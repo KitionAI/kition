@@ -1,9 +1,9 @@
-import { BlocksIcon as Blocks, BookOpenTextIcon as BookOpenText, BriefcaseIcon as Briefcase, CalendarDaysIcon as CalendarDays, ChartGanttIcon as ChartGantt, ChartNoAxesCombinedIcon as ChartNoAxesCombined, SquareCheckBigIcon as CheckSquare, ClipboardListIcon as ClipboardList, ContactIcon as Contact, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FlaskConicalIcon as FlaskConical, GitBranchIcon as GitBranch, LightbulbIcon as Lightbulb, ListChecksIcon as ListChecks, LoaderCircleIcon as LoaderCircle, MegaphoneIcon as Megaphone, NetworkIcon as Network, NotebookPenIcon as NotebookPen, PanelsTopLeftIcon as PanelsTopLeft, RotateCcwIcon as RotateCcw, RocketIcon as Rocket, TargetIcon as Target, WorkflowIcon as Workflow } from '@kition/tessera-icons/react'
+import { BlocksIcon as Blocks, BookOpenTextIcon as BookOpenText, BriefcaseIcon as Briefcase, CalendarDaysIcon as CalendarDays, ChartGanttIcon as ChartGantt, ChartNoAxesCombinedIcon as ChartNoAxesCombined, SquareCheckBigIcon as CheckSquare, ClipboardListIcon as ClipboardList, ContactIcon as Contact, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FlaskConicalIcon as FlaskConical, GitBranchIcon as GitBranch, LightbulbIcon as Lightbulb, ListChecksIcon as ListChecks, LoaderCircleIcon as LoaderCircle, MegaphoneIcon as Megaphone, NetworkIcon as Network, NotebookPenIcon as NotebookPen, PanelsTopLeftIcon as PanelsTopLeft, RotateCcwIcon as RotateCcw, RocketIcon as Rocket, TargetIcon as Target, WorkflowIcon as Workflow } from '@kition/tessera/icons/react'
 import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
-import { Button, Modal, ModalContent } from '@kition/tessera-ui'
+import { Button, Modal, ModalContent } from '@kition/tessera/ui'
 import { loadTemplateContent, listTemplates, type TemplateEntry } from './workspaceTemplates'
 import type { DocumentCreationPreset } from './documentCreation'
 import {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const fetchKitImage = vi.hoisted(() => vi.fn())
 vi.mock('@/api/kits', () => ({ fetchKitImage }))
 
-import { fetchImageErrorReason } from '../host/protocol'
+import { fetchImageErrorReason } from '@kition/sdk/protocol'
 import { kitionFetchImage } from './kitFetchImage'
 
 afterEach(() => fetchKitImage.mockReset())

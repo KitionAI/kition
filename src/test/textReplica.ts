@@ -2,7 +2,7 @@
  * A KDM replica holding one text, for tests of what Kition does with replica bytes (stores,
  * histories, relays) without a kit's own document model.
  */
-import { newDocId, parseSchema, person, Replica, system, type ObjectId } from '@/lib/kdm'
+import { newDocId, parseSchema, person, Replica, system, type ObjectId } from '@kition/sdk/kdm'
 
 export const textSchema = parseSchema({ kdm: 1, kit: 'kit.test', schemaVersion: 1, root: 'Text', types: { Text: { fields: { body: { kind: 'text' } } } } })
 

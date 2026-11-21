@@ -1,4 +1,4 @@
-import { toast, type ToastOptions } from '@kition/tessera-ui'
+import { toast, type ToastOptions } from '@kition/tessera/ui'
 
 export type NotifyId = string | number
 

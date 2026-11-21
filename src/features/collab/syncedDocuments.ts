@@ -3,7 +3,7 @@
  * that are not in this workspace yet, the folders one can be opened into, and the account setting
  * "Sync all my documents".
  */
-import type { RoomListing } from '@/lib/sync'
+import type { RoomListing } from '@kition/sdk/sync'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import { receiveAccountSettings } from './accountSettings'
 import { documentIsHere } from './shareActions'

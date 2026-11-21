@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { DraftInfo } from '../host/mountKit'
+import type { DraftInfo } from '@kition/sdk/host'
 
 /**
  * The agent's drafts of the kit documents open in this window (KHP A12, Kit UI

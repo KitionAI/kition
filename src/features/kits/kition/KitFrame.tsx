@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircleIcon as Loader2 } from '@kition/tessera-icons/react'
+import { LoaderCircleIcon as Loader2 } from '@kition/tessera/icons/react'
 import { writeKitFile } from '@/api/kits'
 import { isTableFilePath, notifyTableFilesChanged } from '@/api/kitTables'
-import { Button } from '@kition/tessera-ui'
+import { Button } from '@kition/tessera/ui'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { FileNotice } from '@/components/states'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
-import { mountKit, type KitConnection, type KitHostHandlers, type KitLinksPickParams, type KitOpenParams, type KitOpenResult } from '../host/mountKit'
+import { mountKit, type KitConnection, type KitHostHandlers, type KitLinksPickParams, type KitOpenParams, type KitOpenResult } from '@kition/sdk/host'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
@@ -76,7 +76,7 @@ const docIdKey = (docId: string) => docId.replace(/-/g, '').toLowerCase()
  * recorded onto it as new objects) would take them as more objects: slides twice over.
  */
 async function continuesCarried(carried: Carried, opened: KitConnection) {
-  const [{ openEnvelope, uuidFromBytes }, { LORO_REPLICA_VERSIONS: versions }] = await Promise.all([import('@/lib/kdm'), import('@/lib/sync/replicaVersions')])
+  const [{ openEnvelope, uuidFromBytes }, { LORO_REPLICA_VERSIONS: versions }] = await Promise.all([import('@kition/sdk/kdm'), import('@kition/sdk/sync/replicaVersions')])
   const changes = new Uint8Array(carried.changes)
   const reached = versions.endOf(changes)
   const version = new Uint8Array(await opened.replica.version())

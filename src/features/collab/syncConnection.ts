@@ -4,7 +4,7 @@
  * store the indicators read.
  */
 import { useSyncExternalStore } from 'react'
-import { SyncClient, type ConnectionState, type SyncTransport } from '@/lib/sync'
+import { SyncClient, type ConnectionState, type SyncTransport } from '@kition/sdk/sync'
 import { setCommentIdentity } from '@/services/documentComments'
 import { followAccountSettings, resetAccountSettings } from './accountSettings'
 import { loadCollabToken, syncServerUrl } from './collabSettings'

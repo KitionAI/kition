@@ -1,4 +1,4 @@
-import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MonitorIcon as Monitor, NetworkIcon as Network, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera-icons/react'
+import { BotIcon as Bot, CircleUserRoundIcon as CircleUserRound, CodeXmlIcon as Code2, DatabaseIcon as Database, InfoIcon as Info, MonitorIcon as Monitor, NetworkIcon as Network, PuzzleIcon as Puzzle, SettingsIcon as Settings, UsersIcon as Users } from '@kition/tessera/icons/react'
 
 /** The settings sections in sidebar order, with where each one's searchable copy lives. */
 export const settingsSections = [

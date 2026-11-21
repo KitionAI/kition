@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/script/src/sources.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import { encodeOrigin, type Origin, type ProjectedObject } from '../kdm'
+import { encodeOrigin, type Origin, type ProjectedObject } from '@kition/sdk/kdm'
 import type { DocumentEventName, DocumentEvents, DocumentEventSource, KitCommandInfo, ModelPort } from './port'
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null

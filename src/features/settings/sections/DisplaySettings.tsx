@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { applyDesktopAppearance, applyDesktopDisplay, createDefaultDesktopDisplaySettings, createDefaultDesktopSettings, loadDesktopSettings, saveDesktopSettings } from '@/services/desktopSettings'
 import type { DesktopDisplaySettings, DesktopSettingsState, DesktopThemeMode } from '@/types/desktopSettings'
 import { cn } from '@/lib/cn'
-import { Button, Select, TextInput } from '@kition/tessera-ui'
+import { Button, Select, TextInput } from '@kition/tessera/ui'
 import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } from '@/features/settings/primitives'
 import { isPristine } from '@/features/settings/dirty'
 import { useTranslation } from '@/i18n'
-import { RotateCcwIcon as RotateCcw } from '@kition/tessera-icons/react'
+import { RotateCcwIcon as RotateCcw } from '@kition/tessera/icons/react'
 import { preserveLiveThemePreview } from '@/features/settings/sections/themePreview'
 
 const themeModeOptions: Array<{ value: DesktopThemeMode }> = [

@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import type { KitConnection } from '../host/mountKit'
-import type { KitView } from '../host/protocol'
+import type { KitConnection } from '@kition/sdk/host'
+import type { KitView } from '@kition/sdk/protocol'
 
 /**
  * Where in a document Kition asked a kit editor to show (Kit UI protocol `document.view` and

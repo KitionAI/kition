@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, LayoutDashboardIcon as LayoutDashboard, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, Table2Icon as Table2, TrashIcon as Trash2 } from '@kition/tessera-icons/react'
+import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, LayoutDashboardIcon as LayoutDashboard, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, Table2Icon as Table2, TrashIcon as Trash2 } from '@kition/tessera/icons/react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -21,7 +21,7 @@ import {
 import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
 import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
 import { cn } from '@/lib/cn'
-import { useDismissableLayer } from '@kition/tessera-ui'
+import { useDismissableLayer } from '@kition/tessera/ui'
 
 type WorkspaceTreeDropIndicator = { path: string; position: WorkspaceTreeDropPosition }
 

@@ -3,7 +3,7 @@
  * when they share it or open a shared link, so a document that opens later knows it has a room.
  * A document without a record is never relayed.
  */
-import type { Role } from '@/lib/sync'
+import type { Role } from '@kition/sdk/sync'
 
 export type CollabRoom = {
   docId: string

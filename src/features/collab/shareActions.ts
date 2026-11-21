@@ -15,7 +15,7 @@
  * stamp), as that same replica, so its editor opens the file as it and the relay joins its room.
  */
 import { KITION_KIT_HOST, writeKitFileFromReplica, type KitModuleManifest } from '@/features/kits/public'
-import { blobHashCandidates, decodeBlobSection, encodeBlobSection, SyncRpcError, type BlobEntry, type Role, type RoomListing, type RoomMembersResult, type SyncClient } from '@/lib/sync'
+import { blobHashCandidates, decodeBlobSection, encodeBlobSection, SyncRpcError, type BlobEntry, type Role, type RoomListing, type RoomMembersResult, type SyncClient } from '@kition/sdk/sync'
 import { createWorkspaceFolder, listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import { findCollabDocument, type CollabReplica } from './collabDocuments'
 import { readRoom, toHex, writeRoom } from './rooms'

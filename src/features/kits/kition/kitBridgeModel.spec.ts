@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { designKit } from '@/lib/script/kits/design'
 import { layoutKit } from '@/lib/script/kits/layout'
-import type { KitConnection } from '../host/mountKit'
+import type { KitConnection } from '@kition/sdk/host'
 import { bridgeModel } from './kitBridgeModel'
 
 /** A kit connection whose object model records what Kition asked it. */

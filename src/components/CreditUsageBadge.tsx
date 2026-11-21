@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, MouseEvent } from 'react'
-import { TriangleAlertIcon as AlertTriangle, ZapIcon as Zap } from '@kition/tessera-icons/react'
+import { TriangleAlertIcon as AlertTriangle, ZapIcon as Zap } from '@kition/tessera/icons/react'
 
 import { cn } from '@/lib/cn'
 

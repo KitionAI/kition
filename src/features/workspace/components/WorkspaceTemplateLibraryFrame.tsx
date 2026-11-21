@@ -1,8 +1,8 @@
 import type { ComponentType, ReactNode } from 'react'
-import { ExternalLinkIcon as ExternalLink, SearchIcon as Search } from '@kition/tessera-icons/react'
+import { ExternalLinkIcon as ExternalLink, SearchIcon as Search } from '@kition/tessera/icons/react'
 
 import { cn } from '@/lib/cn'
-import { ModalDescription, ModalTitle } from '@kition/tessera-ui'
+import { ModalDescription, ModalTitle } from '@kition/tessera/ui'
 
 export type WorkspaceTemplateCategoryItem<CategoryId extends string> = {
   id: CategoryId

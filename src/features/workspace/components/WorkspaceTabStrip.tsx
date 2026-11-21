@@ -1,4 +1,4 @@
-import { BotIcon as Bot, ChevronDownIcon as ChevronDown, ChevronLeftIcon as ChevronLeft, ChevronRightIcon as ChevronRight, FileVideoCameraIcon as FileVideo2, ImageIcon, PanelLeftOpenIcon as PanelLeftOpen, XIcon as X } from '@kition/tessera-icons/react'
+import { BotIcon as Bot, ChevronDownIcon as ChevronDown, ChevronLeftIcon as ChevronLeft, ChevronRightIcon as ChevronRight, FileVideoCameraIcon as FileVideo2, ImageIcon, PanelLeftOpenIcon as PanelLeftOpen, XIcon as X } from '@kition/tessera/icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'

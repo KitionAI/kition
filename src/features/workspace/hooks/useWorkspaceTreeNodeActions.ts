@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
-import { useConfirm } from '@kition/tessera-ui'
+import { useConfirm } from '@kition/tessera/ui'
 import { openFilesWithUnsavedEdits, openWithUnsavedEdits } from '@/features/kits/public'
 import {
   syncDocumentFileDeleted,

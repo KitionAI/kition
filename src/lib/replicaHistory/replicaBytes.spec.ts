@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { randomActor, Replica } from '@/lib/kdm'
+import { randomActor, Replica } from '@kition/sdk/kdm'
 import { createTextReplica, editText, textOf, textSchema } from '@/test/textReplica'
 import { changesSince, fromHex, holdsVersion, includesVersion, mergeReplica, replicaIdOf, revertTo, stateAt, toHex, versionOf } from './replicaBytes'
 

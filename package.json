@@ -93,8 +93,8 @@
     "check:tessera": "node scripts/pin-tessera.mjs --check"
   },
   "dependencies": {
-    "@kition/tessera-icons": "0.1.0",
-    "@kition/tessera-ui": "0.1.0",
+    "@kition/sdk": "npm:@kitionstage/sdk@0.5.2-stage.2",
+    "@kition/tessera": "npm:@kitionstage/tessera@0.1.1-stage.2",
     "loro-crdt": "1.16.4"
   },
   "devDependencies": {
@@ -157,9 +157,7 @@
       "@xmldom/xmldom@>=0.9.0 <0.9.12": "0.9.12",
       "postcss-selector-parser@>=6.0.0 <6.1.5": "6.1.5",
       "source-map-js": "1.2.2",
-      "katex@<0.18.2": "0.18.11",
-      "@kition/tessera-icons": "0.1.0",
-      "@kition/tessera-tokens": "0.1.0"
+      "katex@<0.18.2": "0.18.11"
     },
     "patchedDependencies": {
       "brace-expansion@5.0.12": "tooling/patches/brace-expansion@5.0.12.patch"

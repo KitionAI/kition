@@ -1,4 +1,4 @@
-import type { KitConnection } from '../host/mountKit'
+import type { KitConnection } from '@kition/sdk/host'
 
 /**
  * A kit editor open in this window: the workspace file it shows, its kit, its connection, and

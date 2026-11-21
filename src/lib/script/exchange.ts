@@ -12,7 +12,7 @@ import {
   type BatchTarget,
   type Schema,
   type Version,
-} from '../kdm'
+} from '@kition/sdk/kdm'
 import type { KitCommandInfo, ModelPort } from './port'
 
 const REFUSED = 'the kit refused the changes'

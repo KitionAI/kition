@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { CheckIcon as Check, ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, Clock3Icon as Clock3, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FileTypeCornerIcon as FileType2, FileVideoCameraIcon as FileVideo2, LoaderCircleIcon as LoaderCircle, PresentationIcon as Presentation, SparklesIcon as Sparkles, Volume2Icon as Volume2, XIcon as X, type IconComponent } from '@kition/tessera-icons/react'
+import { CheckIcon as Check, ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, Clock3Icon as Clock3, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FileTypeCornerIcon as FileType2, FileVideoCameraIcon as FileVideo2, LoaderCircleIcon as LoaderCircle, PresentationIcon as Presentation, SparklesIcon as Sparkles, Volume2Icon as Volume2, XIcon as X, type IconComponent } from '@kition/tessera/icons/react'
 import { Fragment, useEffect, useState } from 'react'
 import type { AgentShellApprovalDecision, AgentShellApprovalRequest } from '@/api/agent'
 import { InteractiveAgentMarkdown } from './InteractiveAgentMarkdown'

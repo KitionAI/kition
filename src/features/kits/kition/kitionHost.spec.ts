@@ -110,7 +110,7 @@ describe('kit replicas as appended changes', () => {
   it('appends only what a save adds, opens snapshot and changes as one replica, and compacts on close', async () => {
     const { createTextReplica, textOf, textSchema } = await import('@/test/textReplica')
     const { readDocumentStore, readDocumentHistory } = await import('@/services/desktop')
-    const { person, randomActor } = await import('@/lib/kdm')
+    const { person, randomActor } = await import('@kition/sdk/kdm')
     const { replica, rootId } = createTextReplica('one\n', randomActor())
     const save = async (stamp: string, origin = 'save') =>
       writeKitReplica('art/a.psd', 'kit.photo', { snapshot: replica.snapshot().slice().buffer, blobs: bytes(7), fileStamp: stamp }, { checkpoint: { origin } })
@@ -125,7 +125,7 @@ describe('kit replicas as appended changes', () => {
     // The kit gets one snapshot holding both, with the stamp of the last save.
     const read = await readKitReplica('art/a.psd', 'kit.photo')
     expect(read?.fileStamp).toBe('v2')
-    const { Replica } = await import('@/lib/kdm')
+    const { Replica } = await import('@kition/sdk/kdm')
     const opened = Replica.load(textSchema, new Uint8Array(read!.snapshot), randomActor())
     expect(textOf(opened, rootId)).toBe('one\ntwo\n')
 

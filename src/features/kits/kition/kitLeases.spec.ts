@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { localPresence, setPresencePeers } from '@/services/documentPresence'
 import { documentSchemaNotice, setDocumentSchemaNotice } from '@/services/documentSchema'
-import type { KitConnection } from '../host/mountKit'
+import type { KitConnection } from '@kition/sdk/host'
 import { kitCollabHandlers } from './kitLeases'
 
 describe('kitCollabHandlers presence (Kit UI protocol section 7e)', () => {

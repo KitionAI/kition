@@ -1,8 +1,8 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera/ui'
 import { openExternalURL } from '@/services/desktop'
-import type { KitOpenResult } from '../host/mountKit'
+import type { KitOpenResult } from '@kition/sdk/host'
 
 /**
  * What the confirmation shows of a web address a kit asks to open (KitLinks 1.0 OP8): the whole

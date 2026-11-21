@@ -1,4 +1,4 @@
-import type { KitTheme } from '../host/mountKit'
+import type { KitTheme } from '@kition/sdk/host'
 
 /**
  * The theme tokens of the Kit UI protocol (section 4). src/app/styles.css gives each of them on the

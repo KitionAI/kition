@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BotIcon as Bot, CheckIcon as Check, FileDiffIcon as FileDiff, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera-icons/react'
-import { Button, Sheet } from '@kition/tessera-ui'
+import { BotIcon as Bot, CheckIcon as Check, FileDiffIcon as FileDiff, LoaderCircleIcon as Loader2, XIcon as X } from '@kition/tessera/icons/react'
+import { Button, Sheet } from '@kition/tessera/ui'
 import { notify } from '@/lib/notify'
-import type { DraftComparison, DraftInfo, DraftOrigin, DraftSummary, KitConnection } from '../host/mountKit'
+import type { DraftComparison, DraftInfo, DraftOrigin, DraftSummary, KitConnection } from '@kition/sdk/host'
 import { kitSchema } from './kitBridgeModel'
 import { useKitDraft } from './kitDrafts'
 

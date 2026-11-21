@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { KdmError } from '@/lib/kdm'
+import { KdmError } from '@kition/sdk/kdm'
 import { documentSchemaNotice, schemaBlockedPaths, setDocumentSchemaNotice } from '@/services/documentSchema'
 import type { CollabReplica } from './collabDocuments'
 import { newerSchemaRefusal, watchSchema } from './schemaWatch'

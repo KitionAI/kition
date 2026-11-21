@@ -50,19 +50,19 @@ module.exports = {
       {
         paths: [
           {
-            name: '@kition/tessera-ui',
+            name: '@kition/tessera/ui',
             importNames: ['toast', 'Toaster'],
             message: 'Import from @/lib/notify instead. Tessera\'s toast is used directly only inside src/lib/notify/ and Shell.tsx (for <Toaster>).',
           },
           {
             name: 'radix-ui',
-            message: 'Use the components in @kition/tessera-ui instead of importing Radix directly in features.',
+            message: 'Use the components in @kition/tessera/ui instead of importing Radix directly in features.',
           },
         ],
         patterns: [
           {
             group: ['@radix-ui/*'],
-            message: 'Use the components in @kition/tessera-ui instead of importing Radix directly in features.',
+            message: 'Use the components in @kition/tessera/ui instead of importing Radix directly in features.',
           },
         ],
       },
@@ -135,17 +135,6 @@ module.exports = {
       rules: { 'max-lines': 'off', 'max-lines-per-function': 'off' },
     },
     {
-      // KitFiles' host side and the KDM's batch, copied from kition-sdk by scripts/sync-kit-host.mjs:
-      // their shape is decided there.
-      files: ['src/features/kits/host/files.ts', 'src/lib/kdm/batch.ts'],
-      rules: { 'max-lines-per-function': 'off' },
-    },
-    {
-      // The KDM's replica, copied from kition-sdk by scripts/sync-kit-host.mjs: its size is decided there.
-      files: ['src/lib/kdm/replica.ts'],
-      rules: { 'max-lines': 'off' },
-    },
-    {
       // Object-model typings generated from each kit's schema (scripts/generate-kit.mjs in kition-sdk).
       files: ['src/lib/script/kits/**'],
       rules: { 'max-lines': 'off' },
@@ -155,9 +144,9 @@ module.exports = {
       rules: { 'no-restricted-imports': 'off' },
     },
     {
-      // Shared components may wrap Radix; features use them or @kition/tessera-ui.
+      // Shared components may wrap Radix; features use them or @kition/tessera/ui.
       files: ['src/components/**'],
-      rules: { 'no-restricted-imports': ['error', { paths: [{ name: '@kition/tessera-ui', importNames: ['toast', 'Toaster'], message: 'Import from @/lib/notify instead.' }] }] },
+      rules: { 'no-restricted-imports': ['error', { paths: [{ name: '@kition/tessera/ui', importNames: ['toast', 'Toaster'], message: 'Import from @/lib/notify instead.' }] }] },
     },
     {
 

@@ -1,5 +1,5 @@
 import { setReadOnlyDocuments } from '@/services/documentAccess'
-import type { KitConnection } from '../host/mountKit'
+import type { KitConnection } from '@kition/sdk/host'
 
 declare global {
   interface Window {

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from '@kition/tessera-ui'
+import { toast } from '@kition/tessera/ui'
 import { notify } from './notify'
 
-vi.mock('@kition/tessera-ui', () => ({
+vi.mock('@kition/tessera/ui', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),

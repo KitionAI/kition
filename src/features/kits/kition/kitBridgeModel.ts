@@ -1,4 +1,4 @@
-import type { KitConnection, ModelBatchParams } from '../host/mountKit'
+import type { KitConnection, ModelBatchParams } from '@kition/sdk/host'
 import type { BridgeEditor } from './kitBridge'
 
 /**

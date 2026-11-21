@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/script/src/document.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import type { BatchRequest, BatchResult, Origin, Schema } from '../kdm'
+import type { BatchRequest, BatchResult, Origin, Schema } from '@kition/sdk/kdm'
 import { Exchange, type ModelDescription } from './exchange'
 import { kitModelBackend } from './kitModel'
 import { kitDescriptor } from './kits'

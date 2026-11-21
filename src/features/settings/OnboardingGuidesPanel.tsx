@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Button, Card, CardContent, useDialogFocus } from '@kition/tessera-ui'
+import { Button, Card, CardContent, useDialogFocus } from '@kition/tessera/ui'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import {
   onboardingGuideFolderExists,
   useImportOnboardingGuides,
   type OnboardingGuideManifest,
 } from './useImportOnboardingGuides'
-import { DownloadIcon as Download, FolderCheckIcon as FolderCheck, LoaderCircleIcon as Loader2, RefreshCwIcon as RefreshCw, SparklesIcon as Sparkles, XIcon as X } from '@kition/tessera-icons/react'
+import { DownloadIcon as Download, FolderCheckIcon as FolderCheck, LoaderCircleIcon as Loader2, RefreshCwIcon as RefreshCw, SparklesIcon as Sparkles, XIcon as X } from '@kition/tessera/icons/react'
 import { useTranslation } from '@/i18n'
 import { SettingsPaneHeader } from './primitives'
 import { ONBOARDING_GUIDE_MANIFEST_URL } from '@/features/onboarding/onboardingGuideManifest'

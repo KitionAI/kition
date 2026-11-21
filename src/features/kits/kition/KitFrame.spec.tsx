@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { newDocId, parseSchema, person, randomActor, Replica, system, Version } from '@/lib/kdm'
+import { newDocId, parseSchema, person, randomActor, Replica, system, Version } from '@kition/sdk/kdm'
 
 type Opened = {
   /** The frame the kit was mounted in: a kit page answers one handshake, so each open needs its own. */
@@ -108,7 +108,9 @@ async function openFakeKit(element: unknown, options: FakeOptions): Promise<Open
   }
 }
 
-vi.mock('../host/mountKit', () => ({
+// The rest of @kition/sdk/host (KitFiles' helpers, KitRpcError) stays real: only mounting is faked.
+vi.mock('@kition/sdk/host', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kition/sdk/host')>()),
   mountKit: vi.fn(async (element: unknown, options: FakeOptions) => {
     const kit = await openFakeKit(element, options)
     opened.push(kit)
@@ -207,7 +209,7 @@ vi.mock('@/services/desktop', async (importOriginal) => ({
 }))
 
 import { setReadOnlyDocuments } from '@/services/documentAccess'
-import { mountKit } from '../host/mountKit'
+import { mountKit } from '@kition/sdk/host'
 import { KitFrame } from './KitFrame'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

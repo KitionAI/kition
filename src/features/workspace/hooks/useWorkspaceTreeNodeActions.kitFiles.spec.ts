@@ -22,7 +22,7 @@ vi.mock('@/features/kits/public', async (importOriginal) => ({
   openWithUnsavedEdits: vi.fn(() => false),
 }))
 
-vi.mock('@kition/tessera-ui', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera-ui')>()), useConfirm: () => async () => true }))
+vi.mock('@kition/tessera/ui', async (importOriginal) => ({ ...(await importOriginal<typeof import('@kition/tessera/ui')>()), useConfirm: () => async () => true }))
 
 vi.mock('@/services/workspaceEditSessions', () => ({
   flushWorkspaceEditSessions: vi.fn(async () => {}),

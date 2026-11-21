@@ -1,5 +1,5 @@
 /**
- * Starts a relay (`startRelay`, `@/lib/sync`) for every open document that can be co-edited
+ * Starts a relay (`startRelay`, `@kition/sdk/sync`) for every open document that can be co-edited
  * (`collabDocuments.ts`: kit documents whose kit serves the `replica` capability, Markdown
  * documents, tables), when this window may co-edit (`collabConfigured`) and the document has a
  * room (`rooms.ts`, written by Share or Open shared document). Anything else is left alone: no
@@ -24,7 +24,7 @@
  * one the kit refuses keeps the document read-only until the kit is updated, and the room position
  * is not kept past it, so the change is pulled again then.
  */
-import { DocumentLeases, SyncRpcError, leaseHolder, startRelay, type Lease, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
+import { DocumentLeases, SyncRpcError, leaseHolder, startRelay, type Lease, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@kition/sdk/sync'
 import { DocumentLeaseRefused, setDocumentLeaseProvider, type DocumentLease, type DocumentLeaseProvider } from '@/services/documentLeases'
 import { AGENT_PRESENCE, agentEditing, onAgentEditing } from '@/services/agentPresence'
 import { setReadOnlyDocuments } from '@/services/documentAccess'
@@ -49,7 +49,7 @@ export type CollabDependencies = {
 const DEFAULT_DEPENDENCIES: CollabDependencies = {
   configured: collabConfigured,
   client: syncClient,
-  versions: async () => (await import('@/lib/sync/replicaVersions')).LORO_REPLICA_VERSIONS,
+  versions: async () => (await import('@kition/sdk/sync/replicaVersions')).LORO_REPLICA_VERSIONS,
 }
 
 /** The settings a connection depends on; without a server the session is not even read. */

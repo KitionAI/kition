@@ -30,7 +30,7 @@ import {
   type BatchTarget,
   type Origin,
   type Schema,
-} from '../kdm'
+} from '@kition/sdk/kdm'
 import {
   HEADLESS_CAPABILITY,
   SyncClient,
@@ -43,7 +43,7 @@ import {
   type SyncToken,
   type SyncTransport,
   type TransportFactory,
-} from '../sync'
+} from '@kition/sdk/sync'
 import { ModelDocument, type ModelBackend } from './document'
 import type { ModelDescription } from './exchange'
 import { kitDescriptor } from './kits'

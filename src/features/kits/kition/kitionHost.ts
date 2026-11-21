@@ -12,7 +12,7 @@ import {
 } from '@/services/desktop'
 import { resolveKitFilesRootURL, resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { stampFromHeaders, type KitHost } from '../engine/kitHost'
-import type { StoredReplica } from '../host/mountKit'
+import type { StoredReplica } from '@kition/sdk/host'
 import { saveFailureText } from './kitFailures'
 import { runtimeFetch } from '@/services/runtimeAuth'
 

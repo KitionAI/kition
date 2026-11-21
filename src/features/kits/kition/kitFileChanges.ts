@@ -1,5 +1,5 @@
 import { subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
-import type { KitConnection } from '../host/mountKit'
+import type { KitConnection } from '@kition/sdk/host'
 
 /**
  * Tells the kit editor of `path` when its file changes on disk (the desktop watcher's `add` and

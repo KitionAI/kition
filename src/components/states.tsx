@@ -5,11 +5,11 @@
  * docs/design.md: 12px cards, 8px buttons, restrained borders.
  */
 import type { HTMLAttributes, ReactNode } from 'react'
-import { FileExclamationPointIcon as FileWarning } from '@kition/tessera-icons/react'
+import { FileExclamationPointIcon as FileWarning } from '@kition/tessera/icons/react'
 
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/cn'
-import { Button } from '@kition/tessera-ui'
+import { Button } from '@kition/tessera/ui'
 
 /** A neutral placeholder block; size it with width and height classes. */
 function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

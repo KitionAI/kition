@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AccountSettings, ConnectionState } from '@/lib/sync'
+import type { AccountSettings, ConnectionState } from '@kition/sdk/sync'
 import { followAccountSettings, onSyncAllChanged, resetAccountSettings, syncAllDocuments } from './accountSettings'
 
 function fakeClient(settings: AccountSettings) {

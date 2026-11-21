@@ -98,7 +98,7 @@ describe('startCollab for notes', () => {
 
   /** An open note as its kit announces it: a kit connection over a KDM replica in this page. */
   async function openDocument(path: string) {
-    const { newDocId, parseSchema, randomActor, Replica, Version } = await import('@/lib/kdm')
+    const { newDocId, parseSchema, randomActor, Replica, Version } = await import('@kition/sdk/kdm')
     const schema = parseSchema({ kdm: 1, kit: 'kit.note', schemaVersion: 1, root: 'Note', types: { Note: { fields: { body: { kind: 'text' } } } } })
     const replica = Replica.create(schema, newDocId(), randomActor())
     const buffer = (bytes: Uint8Array) => bytes.slice().buffer as ArrayBuffer
@@ -123,7 +123,7 @@ describe('startCollab for notes', () => {
   }
 
   it('relays a shared document, joining from the seq an earlier session saw while the replica still holds it', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@kition/sdk/sync/replicaVersions')
     const { client, joins } = fakeClient()
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openDocument('Plan.md')
@@ -137,7 +137,7 @@ describe('startCollab for notes', () => {
   })
 
   it('joins from the snapshot when the replica no longer holds what was seen', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@kition/sdk/sync/replicaVersions')
     const { client, joins } = fakeClient()
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openDocument('Plan.md')
@@ -166,7 +166,7 @@ describe('startCollab for notes', () => {
   })
 
   it('follows the owner changing this person’s role, and keeps a local copy once removed', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@kition/sdk/sync/replicaVersions')
     const { client, joins, access } = fakeClient()
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openDocument('Shared/Plan.md')
@@ -191,7 +191,7 @@ describe('startCollab for notes', () => {
   })
 
   it('shows the agent in presence while it edits the document, and then no longer', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@kition/sdk/sync/replicaVersions')
     const { noteAgentEdit } = await import('@/services/agentPresence')
     const { client, joins } = fakeClient()
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
@@ -213,7 +213,7 @@ describe('startCollab for notes', () => {
   })
 
   it('shares what the person selected in presence, and tells the editor what the others share', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@kition/sdk/sync/replicaVersions')
     const { client, joins } = fakeClient()
     const heard: Array<(peers: unknown[]) => void> = []
     client.onPresence = vi.fn((_docId: string, listener: (peers: unknown[]) => void) => {
@@ -247,7 +247,7 @@ describe('startCollab for notes', () => {
   })
 
   it('keeps a document a newer kit migrated read-only, and never keeps the room position past the refused change', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@kition/sdk/sync/replicaVersions')
     const { client, joins } = fakeClient()
     client.join = vi.fn(async (docId: string, since?: number | null) => {
       joins.push({ docId, since })

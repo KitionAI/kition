@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/script/src/port.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import type { BatchRequest, BatchResult, Origin, ProjectedObject } from '../kdm'
+import type { BatchRequest, BatchResult, Origin, ProjectedObject } from '@kition/sdk/kdm'
 
 /** One kit command as a kit's catalogue lists it. */
 export type KitCommandInfo = {

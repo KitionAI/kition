@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/script/src/kitModel.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import { BatchError, parseSchema, type BatchErrorCode, type Schema } from '../kdm'
+import { BatchError, parseSchema, type BatchErrorCode, type Schema } from '@kition/sdk/kdm'
 import type { ModelBackend } from './document'
 import type { ModelDescription } from './exchange'
 import type { KitModel, ModelPort } from './port'

@@ -24,8 +24,7 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@kition/kdm": ["src/lib/kdm/index.ts"]
+      "@/*": ["src/*"]
     }
   },
   "include": [

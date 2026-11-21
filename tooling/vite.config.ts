@@ -91,12 +91,14 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: [
       { find: '@', replacement: resolve(repositoryDir, 'src') },
-      // kition-sdk's @kition/kdm, which Kition carries as src/lib/kdm (scripts/sync-kit-host.mjs).
-      { find: /^@kition\/kdm$/, replacement: resolve(repositoryDir, 'src/lib/kdm/index.ts') },
       // loro-crdt's default browser entry downloads and compiles its WebAssembly synchronously on
       // the page's thread. Its bundler entry imports the WebAssembly instead, which
       // vite-plugin-wasm fetches and instantiates asynchronously, in development and in builds
-      // alike. Vitest keeps the Node entry (tooling/vitest.config.ts has no such alias).
+      // alike. Vitest keeps the Node entry (tooling/vitest.config.ts has no such alias). The alias
+      // also applies to @kition/sdk's imports of loro-crdt (its /kdm and /sync/replicaVersions),
+      // which pnpm resolves to the same loro-crdt, so the page loads one Loro. Kition imports no
+      // @kition/sdk module that starts the editor's worker (/editor, /engine), so it needs no
+      // `worker: { format: 'es' }`.
       { find: /^loro-crdt$/, replacement: 'loro-crdt/bundler' },
     ],
   },
@@ -105,7 +107,7 @@ export default defineConfig(({ mode }) => ({
     entries: ['index.html'],
     // Vite's cold-start scanner cannot discover dependencies reached only through dynamic
     // imports from index.html (idb for the extension store; loro-crdt, which the e2e smoke test
-    // imports from src/lib/kdm). Pre-bundle them to prevent a full-page reload during renderer E2E.
+    // loads through @kition/sdk/kdm). Pre-bundle them to prevent a full-page reload during renderer E2E.
     include: ['idb', 'loro-crdt'],
   },
   css: {
@@ -145,7 +147,8 @@ export default defineConfig(({ mode }) => ({
             },
             {
               name: 'icons',
-              test: /\/node_modules\/@kition\/tessera-icons\//,
+              // @kition/tessera's icons (installed under the scope it was published to).
+              test: /\/node_modules\/@[^/]+\/tessera\/dist\/icons\//,
               priority: 20,
             },
             {

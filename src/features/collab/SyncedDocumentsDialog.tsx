@@ -6,9 +6,9 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera-icons/react'
-import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera-ui'
-import type { RoomListing } from '@/lib/sync'
+import { LoaderCircleIcon as LoaderCircle } from '@kition/tessera/icons/react'
+import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from '@kition/tessera/ui'
+import type { RoomListing } from '@kition/sdk/sync'
 import { canOpenKit, openSyncedDocument, type SharedKit } from './shareActions'
 import { listDocumentsElsewhere, onDocumentListChanged, workspaceFolders } from './syncedDocuments'
 

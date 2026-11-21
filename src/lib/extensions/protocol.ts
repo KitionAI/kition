@@ -4,7 +4,7 @@
  * the extension, activates it per document, and runs its commands; the worker reads and edits the
  * documents it is active on through the host, which checks every call against its permissions.
  */
-import type { BatchRequest, BatchResult } from '../kdm'
+import type { BatchRequest, BatchResult } from '@kition/sdk/kdm'
 import type { KitCommandInfo } from '../script'
 import type { ExtensionManifest } from './manifest'
 

@@ -5,8 +5,23 @@
  * read again (`stateAt`) and restored as one new change (`revertTo`). Loaded on demand: it carries the CRDT engine.
  */
 import { decodeImportBlobMeta, LoroDoc, VersionVector } from 'loro-crdt'
-import { openEnvelope } from '@/lib/kdm'
-import { wrap } from '@/lib/kdm/envelope'
+import { openEnvelope } from '@kition/sdk/kdm'
+
+/**
+ * The KDM envelope every byte string a replica exports carries: the 4-byte magic `KDM\x01`, the
+ * 16-byte document UUID, then the engine's bytes. `@kition/sdk/kdm` opens it (`openEnvelope`) but
+ * does not export its `wrap` (kition-sdk packages/kdm/src/envelope.ts), so it is written here; the
+ * tests load every byte string made with it through `Replica.load`, which reads the envelope.
+ */
+const ENVELOPE_MAGIC = [0x4b, 0x44, 0x4d, 0x01]
+
+function wrap(docId: Uint8Array, bytes: Uint8Array): Uint8Array {
+  const out = new Uint8Array(ENVELOPE_MAGIC.length + docId.length + bytes.length)
+  out.set(ENVELOPE_MAGIC)
+  out.set(docId, ENVELOPE_MAGIC.length)
+  out.set(bytes, ENVELOPE_MAGIC.length + docId.length)
+  return out
+}
 
 export function toHex(bytes: Uint8Array): string {
   let out = ''

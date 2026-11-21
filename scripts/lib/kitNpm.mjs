@@ -22,9 +22,9 @@ import os from 'node:os'
 import path from 'node:path'
 
 /** The variable naming the npm scope of the kit packages (kition-sdk tools/kit-npm.mjs). */
-export const SCOPE_VARIABLE = 'KITION_NPM_SCOPE'
+const SCOPE_VARIABLE = 'KITION_NPM_SCOPE'
 /** The scope when `KITION_NPM_SCOPE` is not set (or empty). */
-export const DEFAULT_SCOPE = '@kition'
+const DEFAULT_SCOPE = '@kition'
 const SCOPE_FORM = /^@[a-z0-9][a-z0-9-]*$/
 
 // The scopes whose packages keep the legacy names (kit-<kit>-ui, kit-<kit>-<platform>); every
@@ -34,7 +34,7 @@ const SCOPE_FORM = /^@[a-z0-9][a-z0-9-]*$/
 // crates/kition-cli/src/registry.rs (LEGACY_LAYOUT_SCOPES).
 export const LEGACY_LAYOUT_SCOPES = ['@kition']
 /** Whether `scope` names its packages by the legacy layout. */
-export const isLegacyLayout = (scope) => LEGACY_LAYOUT_SCOPES.includes(scope)
+const isLegacyLayout = (scope) => LEGACY_LAYOUT_SCOPES.includes(scope)
 
 /**
  * Names that are no kit's in layout 1, where a kit's packages are `<scope>/<kit>` and
@@ -42,10 +42,10 @@ export const isLegacyLayout = (scope) => LEGACY_LAYOUT_SCOPES.includes(scope)
  * (`<scope>/cli`, `<scope>/kits`, `<scope>/kit-editor`, ...). kition-sdk's tools/kit-npm.mjs
  * `NOT_KIT_NAMES`.
  */
-export const NOT_KIT_NAMES = ['cli', 'convergence', 'embed', 'extensions', 'gateway', 'kdm', 'kit', 'kition', 'kits', 'script', 'sdk', 'sync', 'tessera']
+const NOT_KIT_NAMES = ['cli', 'convergence', 'embed', 'extensions', 'gateway', 'kdm', 'kit', 'kition', 'kits', 'script', 'sdk', 'sync', 'tessera']
 
 /** `scope`, when it is an npm scope (`@`, then lowercase letters, digits and dashes); else throws, naming `what`. */
-export function checkScope(scope, what = 'the scope') {
+function checkScope(scope, what = 'the scope') {
   if (typeof scope !== 'string' || !SCOPE_FORM.test(scope)) throw new Error(`${what} is ${JSON.stringify(scope)}, not an npm scope (@ then lowercase letters, digits and dashes, such as @kition)`)
   return scope
 }

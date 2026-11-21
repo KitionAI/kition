@@ -33,8 +33,8 @@ vi.mock('@/features/onboarding/reconcileOnboardingWelcome', () => ({
   reconcileOnboardingWelcome: mocks.reconcileOnboardingWelcome,
 }))
 
-vi.mock('@kition/tessera-ui', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@kition/tessera-ui')>()
+vi.mock('@kition/tessera/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kition/tessera/ui')>()
   return { ...actual, toast: { ...actual.toast, error: mocks.toastError } }
 })
 

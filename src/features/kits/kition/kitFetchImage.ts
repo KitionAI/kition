@@ -4,7 +4,7 @@
  * addresses only; a refusal reaches the kit with the runtime's reason.
  */
 import { fetchKitImage } from '@/api/kits'
-import { FETCH_IMAGE_ERROR_REASONS, KitRpcError, type KitFetchImageResult, type KitFetchImageType } from '../host/protocol'
+import { FETCH_IMAGE_ERROR_REASONS, KitRpcError, type KitFetchImageResult, type KitFetchImageType } from '@kition/sdk/protocol'
 
 export async function kitionFetchImage({ url }: { url: string }): Promise<KitFetchImageResult> {
   try {
