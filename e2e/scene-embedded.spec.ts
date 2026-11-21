@@ -40,9 +40,15 @@ test('opens a scene in the Scene kit’s own editor, edits it, and saves it thro
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
     await expect(kit.getByTestId('scene-outliner-item').filter({ hasText: 'Ball' })).toBeVisible()
 
-    // Select the cube in the middle of the view and duplicate it.
+    // Select the cube in the middle of the view and duplicate it. The viewport takes pointer input
+    // only once the document is its size (`data-ready`, the kit's regressions/issue-early-viewport-input):
+    // a click before then selects nothing new, and the sphere the fixture added last stays selected.
+    const outliner = (name: string) => kit.locator(`[data-testid="scene-outliner-item"][data-name="${name}"]`)
+    await expect(kit.getByTestId('scene-viewport')).toHaveAttribute('data-ready', 'true', { timeout: 60_000 })
     const viewport = (await kit.getByTestId('scene-viewport').boundingBox())!
     await page.mouse.click(viewport.x + viewport.width / 2, viewport.y + viewport.height / 2)
+    await expect(outliner('Cube')).toHaveAttribute('data-selected', 'true')
+    await expect(outliner('Ball')).not.toHaveAttribute('data-selected', 'true')
     await page.keyboard.press('Shift+D')
     await expect(kit.getByTestId('scene-status')).toContainText('5 objects')
     await page.screenshot({ path: testInfo.outputPath('scene-embedded.png') })

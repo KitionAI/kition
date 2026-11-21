@@ -64,6 +64,12 @@ type WorkspaceScreenProps = {
   topbarLeadingPortal: HTMLElement | null
   desktopPlatform?: boolean
   onOpenVaultLauncher?: () => void
+  /**
+   * The workspace's first-run setup (Getting Started and the activation dialog) is still running:
+   * the sidebar and the empty home show loading until it settles, so the setup's tree reload and
+   * dialog never close a menu or dialog the person has just opened.
+   */
+  preparing?: boolean
 }
 
 
@@ -76,6 +82,7 @@ export function WorkspaceScreen({
   topbarLeadingPortal,
   desktopPlatform = false,
   onOpenVaultLauncher,
+  preparing = false,
 }: WorkspaceScreenProps) {
   const { t } = useTranslation('workspace')
   const { settings, setSettings } = useDesktopSettings()
@@ -446,6 +453,7 @@ export function WorkspaceScreen({
             desktop={isDesktopRuntime()}
             onOpen={openSidebarPath}
             onRefreshed={() => notify.success(t('feedback.refreshed'))}
+            preparing={preparing}
           />
         }
         sidebarFooter={
@@ -468,6 +476,7 @@ export function WorkspaceScreen({
               agentPanel,
               templateDialogs,
               onCreateTable: createTableFile,
+              preparing,
             }}
           />
         )}

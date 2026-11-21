@@ -1,0 +1,24 @@
+format: 1
+id: regressions/issue-first-run-create-menu
+feature: kition.platform.release-checks
+intent: >-
+  A new, empty workspace shows loading instead of its tree and its empty home until its first-run
+  setup (Getting Started, the tree reload and the activation dialog) has settled, so the setup never
+  closes a create menu the person opened while it ran.
+layer: gate
+source:
+  kind: probe
+  from: CI runs 44921915114 and 44929009365 (attempt 1), e2e/kit-create.spec.ts, 2026-11-21
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/first-run-workspace.spec.ts, --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-21"
+tags: [browser]
+requires: [chromium]
+timeout_s: 90

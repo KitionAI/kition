@@ -17,6 +17,8 @@ export type WorkspaceScreenEditorInput = {
   templateDialogs: Pick<ReturnType<typeof useWorkspaceTemplateDialogs>, 'openDocumentTemplateDialog'>
   /** A new table file, from the Table kit. */
   onCreateTable: () => void
+  /** The workspace's first-run setup is still running (Shell). */
+  preparing?: boolean
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
@@ -35,6 +37,7 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
       openAgentPanel()
       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
     },
+    preparing: input.preparing,
     workspaceTabs: input.workspaceTabs,
   }
 }

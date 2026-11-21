@@ -149,8 +149,11 @@ features:
       - e2e/app-shell.spec.ts
       - e2e/helpers/onboarding.ts
       - e2e/onboarding-helper.spec.ts
+      - e2e/first-run-workspace.spec.ts
+      - e2e/scene-embedded.spec.ts
       - src/features/settings/DesktopSettingsPage.spec.tsx
       - src/app/Shell.tsx
+      - src/features/workspace/components/WorkspaceScreen.tsx
       - src/features/workspace/hooks/useWorkspaceTreeLoader.ts
       - src/features/workspace/hooks/useWorkspaceTreeLoader.spec.tsx
       - src-tauri/tauri.conf.json
@@ -174,6 +177,8 @@ features:
       - regressions/issue-toast-over-settings
       - regressions/issue-release-kit-manifests
       - regressions/issue-macos-app-icon-edge
+      - regressions/issue-first-run-create-menu
+      - regressions/issue-scene-click-before-ready
     since: "2026-10-31"
   - id: kition.agent.kit-export
     title: The agent exports a kit document to a new file (KHP A41)

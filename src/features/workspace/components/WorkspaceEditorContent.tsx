@@ -61,6 +61,8 @@ type WorkspaceEditorContentProps = {
   onCreateDocument: () => void
   onCreateTable: () => void
   onOpenAgent: () => void
+  /** The workspace's first-run setup is still running: its empty home (and its create buttons) waits for it. */
+  preparing?: boolean
   workspaceTabs: WorkspaceTab[]
 }
 
@@ -71,11 +73,13 @@ export function WorkspaceEditorContent({
   onCreateDocument,
   onCreateTable,
   onOpenAgent,
+  preparing = false,
   workspaceTabs,
 }: WorkspaceEditorContentProps) {
   return (
     <>
-      {!activeWorkspaceTab ? (
+      {!activeWorkspaceTab && preparing ? <EditorPaneFallback /> : null}
+      {!activeWorkspaceTab && !preparing ? (
         <WorkspaceEmptyState
           onCreateDocument={onCreateDocument}
           onCreateTable={onCreateTable}

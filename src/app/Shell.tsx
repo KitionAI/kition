@@ -27,6 +27,7 @@ import { DocumentHistoryHost } from '@/features/history/public'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
 import { reconcileOnboardingWelcome } from '@/features/onboarding/reconcileOnboardingWelcome'
+import { isWorkspaceSeeded } from '@/features/onboarding/seedMarker'
 import { FirstRunActivationPanel } from '@/features/onboarding/components/FirstRunActivationPanel'
 import {
   trackProductEvent,
@@ -76,6 +77,9 @@ export function AppShell() {
   const [pendingWorkspaceOpen, setPendingWorkspaceOpen] = useState<{ path: string; name: string } | null>(null)
   const [workspaceOpenError, setWorkspaceOpenError] = useState('')
   const [onboardingOpen, setOnboardingOpen] = useState(false)
+  // The first-run setup of a workspace not set up before (Getting Started, then the activation
+  // dialog), by workspace path: running, then settled.
+  const [firstRuns, setFirstRuns] = useState<Readonly<Record<string, 'running' | 'settled'>>>({})
   const lastTrackedWorkspaceRef = useRef('')
 
   const isNarrowShell = useMediaQuery('(max-width: 1023px)')
@@ -223,8 +227,21 @@ export function AppShell() {
     if (!vaultsLoaded || !activeVaultPath) return
     if (seedAttemptedRef.current.has(activeVaultPath)) return
     seedAttemptedRef.current.add(activeVaultPath)
-    void runFirstRun(activeVaultPath)
+    const path = activeVaultPath
+    if (isWorkspaceSeeded(path)) {
+      void runFirstRun(path)
+      return
+    }
+    setFirstRuns((runs) => ({ ...runs, [path]: 'running' }))
+    void runFirstRun(path).finally(() => setFirstRuns((runs) => ({ ...runs, [path]: 'settled' })))
   }, [vaultsLoaded, activeVaultPath, runFirstRun])
+
+  // Until a new workspace's first-run setup settles, the workspace shows loading instead of its
+  // tree and its empty home: the setup ends by reloading the tree and opening the activation
+  // dialog, which would otherwise close a create menu (or cover a dialog) the person had just
+  // opened. A workspace set up before (its seed marker) is never held.
+  const firstRun = activeVaultPath ? firstRuns[activeVaultPath] : undefined
+  const workspacePreparing = !vaultsLoaded || (Boolean(activeVaultPath) && firstRun !== 'settled' && (firstRun === 'running' || !isWorkspaceSeeded(activeVaultPath)))
 
   useEffect(() => {
     if (!vaultsLoaded || !activeVaultPath) {
@@ -589,6 +606,7 @@ export function AppShell() {
             topbarLeadingPortal={topbarLeadingPortal}
             desktopPlatform={Boolean(desktopPlatform)}
             onOpenVaultLauncher={openVaultLauncherDialog}
+            preparing={workspacePreparing}
           />
         )}
       </main>

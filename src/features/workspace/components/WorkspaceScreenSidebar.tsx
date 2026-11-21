@@ -44,6 +44,8 @@ export type WorkspaceScreenSidebarInput = {
   onOpen: SidebarPanelProps['onOpen']
   /** Called after a manual refresh succeeds. */
   onRefreshed: () => void
+  /** The workspace's first-run setup is still running (Shell): the sidebar shows it loading until then. */
+  preparing?: boolean
 }
 
 export function buildWorkspaceSidebarPanelProps(input: WorkspaceScreenSidebarInput): SidebarPanelProps {
@@ -52,7 +54,7 @@ export function buildWorkspaceSidebarPanelProps(input: WorkspaceScreenSidebarInp
     activePath: input.activePath,
     createMenuOpen: tree.createMenuOpen,
     createMenuTriggerPath: tree.createMenuTriggerPath,
-    loading: tree.loading,
+    loading: tree.loading || input.preparing === true,
     modifiedPaths: input.modifiedPaths,
     ...input.createMenuActions,
     onDelete: rowActions.handleTreeNodeDelete,

@@ -88,4 +88,10 @@ describe('buildWorkspaceSidebarPanelProps', () => {
     props.onTogglePrivate()
     expect(input.chrome.onTogglePrivate).toHaveBeenCalled()
   })
+
+  it('shows the sidebar loading while the first-run setup of the workspace runs', () => {
+    expect(buildWorkspaceSidebarPanelProps(buildInput().input).loading).toBe(false)
+    expect(buildWorkspaceSidebarPanelProps(buildInput({ preparing: true }).input).loading).toBe(true)
+    expect(buildWorkspaceSidebarPanelProps(buildInput({ preparing: false }).input).loading).toBe(false)
+  })
 })

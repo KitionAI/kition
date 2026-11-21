@@ -1,0 +1,24 @@
+format: 1
+id: regressions/issue-scene-click-before-ready
+feature: kition.platform.release-checks
+intent: >-
+  Kition's Scene test selects the cube only once the kit's viewport is ready (`data-ready`, which
+  takes no pointer input before) and sees the cube selected in the outliner before it duplicates,
+  so the saved scene holds Cube.001 and never a copy of the object selected before the click.
+layer: gate
+source:
+  kind: probe
+  from: CI run 44929009365 (attempt 2), e2e/scene-embedded.spec.ts, 2026-11-21
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/scene-embedded.spec.ts, -g, "edits it, and saves it through Kition", --workers=1]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-21"
+tags: [browser]
+requires: [chromium]
+timeout_s: 180
