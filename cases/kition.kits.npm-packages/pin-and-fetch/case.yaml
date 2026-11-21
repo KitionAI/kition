@@ -2,13 +2,15 @@ format: 1
 id: kition.kits.npm-packages/pin-and-fetch
 feature: kition.kits.npm-packages
 intent: >-
-  kits/kits.lock.json pins each kit's npm editor package (package, version, npm integrity and the
-  four build commits from its kition.build), taken from the registry's metadata only; a lock entry
-  that is not such a pin is refused. Registries are read in kition-sdk's order (KITION_NPM_REGISTRY,
-  ~/.npmrc, npmjs.org, npmmirror.com), the first that answers winning and a failing one skipped;
-  a fetched tarball must have the pinned integrity, hold only package.json and <kit>-ui, and be
-  the pinned package, version and build before it replaces public/kits/<kit>-ui and is stamped
-  with its lock entry. Every registry is a fake; no test reaches the network.
+  kits/kits.lock.json pins each kit's npm packages (its scope, version, the four build commits from
+  the editor's kition.build, and the npm integrity and tarball size of the editor package and of
+  each platform's headless package), taken from the registry, each tarball checked against npm's
+  integrity; a lock entry that is neither such a pin nor a GitHub Release pin is refused. Registries
+  are read in kition-sdk's order (KITION_NPM_REGISTRY, ~/.npmrc, npmjs.org, npmmirror.com), the first
+  that answers winning and a failing one skipped; a fetched tarball must have the pinned integrity
+  and size, hold only package.json and <kit>-ui, and be the pinned package, version and build before
+  it replaces public/kits/<kit>-ui and is stamped. Every registry is a fake; no test reaches the
+  network.
 layer: gate
 source:
   kind: synthetic

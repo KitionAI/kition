@@ -413,7 +413,7 @@ features:
       - kition.kits.host-protocol/handles-only
     since: "2026-11-10"
   - id: kition.kits.npm-packages
-    title: Each kit's Package workflow publishes the kit version's editor package and its headless executable for every platform on npm, checked by kit.initialize, each version once; Kition pins the editor packages from the registry's metadata and fetches them from npm or a mirror, checked by integrity
+    title: Each kit's Package workflow publishes the kit version's editor package and its headless executable for every platform on npm, checked by kit.initialize, each version once; Kition pins the packages from the registry and fetches them from npm or a mirror, checked by integrity
     dimension: [platform, function, data-safety]
     priority: P1
     status: has
@@ -452,6 +452,23 @@ features:
     gap: The workflow half (the scope input, the stage token, skipping the publish job when a build failed) runs only in a kit repository's Package run; locally the names, pinning and the publish plan run against fake registries.
     cases:
       - kition.kits.npm-scope/layouts
+    since: "2026-11-21"
+  - id: kition.kits.npm-lock
+    title: kits/kits.lock.json pins a kit on npm by its name and scope (packages named by the scope's layout), version, build commits, and the npm integrity and tarball size of its editor package and of each platform's headless package; pin-kits fills it from the registry (KITION_NPM_SCOPE, with --dry-run and --lock), fetch-kits downloads and checks the editor into public/kits and, with --headless, the platform packages; GitHub Release pins stay readable until every kit is published in the new layout
+    dimension: [platform, function, data-safety]
+    priority: P1
+    status: has
+    paths:
+      - kits/kits.lock.json
+      - scripts/pin-kits.mjs
+      - scripts/fetch-kits.mjs
+      - scripts/lib/kitPackages.mjs
+      - scripts/lib/kitPackages.spec.ts
+      - scripts/lib/fixtures/kitionstage-packages.json
+      - docs/kits.md
+    gap: The 16 kits are still pinned as GitHub Release assets; the npm pins are checked against the real metadata of note 0.1.5 and html 0.1.3 on @kitionstage (fixtures, fake tarballs) and by hand against npm (pin-kits --dry-run, fetch-kits --lock --kits-dir --headless).
+    cases:
+      - kition.kits.npm-lock/entry-format
     since: "2026-11-21"
   - id: kition.kits.npm-publish-wait
     title: The Package workflow publishes every package npm lacks first, then waits (every 30 seconds, at most 40 minutes) until npm shows each with its bytes; npm refusing a version it already holds counts as published, a version shown with other bytes stops the run, and at the limit the run fails naming the packages not shown yet, which a re-run of the job only waits for

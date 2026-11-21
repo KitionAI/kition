@@ -45,7 +45,7 @@ const isLegacyLayout = (scope) => LEGACY_LAYOUT_SCOPES.includes(scope)
 const NOT_KIT_NAMES = ['cli', 'convergence', 'embed', 'extensions', 'gateway', 'kdm', 'kit', 'kition', 'kits', 'script', 'sdk', 'sync', 'tessera']
 
 /** `scope`, when it is an npm scope (`@`, then lowercase letters, digits and dashes); else throws, naming `what`. */
-function checkScope(scope, what = 'the scope') {
+export function checkScope(scope, what = 'the scope') {
   if (typeof scope !== 'string' || !SCOPE_FORM.test(scope)) throw new Error(`${what} is ${JSON.stringify(scope)}, not an npm scope (@ then lowercase letters, digits and dashes, such as @kition)`)
   return scope
 }

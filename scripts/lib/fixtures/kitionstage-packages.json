@@ -1,0 +1,209 @@
+{
+  "$comment": "The registry metadata (name, version, dist.integrity and dist.tarball, kition) of the rehearsal kit packages on npm under @kitionstage, as https://registry.npmjs.org/<name>/<version> answered on 2026-11-21: note 0.1.5 (editor and five platforms) and html 0.1.3 (editor and darwin-arm64 only). scripts/lib/kitPackages.spec.ts pins and checks against it.",
+  "packages": {
+    "@kitionstage/note": {
+      "name": "@kitionstage/note",
+      "version": "0.1.5",
+      "dist": {
+        "integrity": "sha512-JUzmH0EVTaZWBEon4RZvSSij1FI9R7sMISnDXR9m7F2pzdJoJljxGVHsr0J5JprGr7+UrBI8opcLgUz7xjcm8Q==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/note/-/note-0.1.5.tgz"
+      },
+      "kition": {
+        "id": "kit.note",
+        "kit": "note",
+        "name": "Note",
+        "role": "ui",
+        "build": {
+          "commit": "fdd1cd8f4bc875b3b875b4dca606603e1c6312b7",
+          "sdkCommit": "e67c64010050ba69fa36b69413110d6691029328",
+          "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf",
+          "tesseraCommit": "bbda88c619d48b09985f52e96f5a11aaba4f8fcd"
+        },
+        "views": [],
+        "version": "0.1.5",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "md",
+          "markdown"
+        ]
+      }
+    },
+    "@kitionstage/note-darwin-arm64": {
+      "name": "@kitionstage/note-darwin-arm64",
+      "version": "0.1.5",
+      "dist": {
+        "integrity": "sha512-gqg9OyecHSbvfNCP29BFwdzVZlEj2VM7MUCHOXrWWeGYzP0am+XgZCc/SYgf/EmPAXJsMnJAex8+fln9J/Iobw==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/note-darwin-arm64/-/note-darwin-arm64-0.1.5.tgz"
+      },
+      "kition": {
+        "id": "kit.note",
+        "kit": "note",
+        "name": "Note",
+        "role": "headless",
+        "build": {
+          "commit": "fdd1cd8f4bc875b3b875b4dca606603e1c6312b7"
+        },
+        "views": [],
+        "version": "0.1.5",
+        "platform": "darwin-arm64",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "md",
+          "markdown"
+        ]
+      }
+    },
+    "@kitionstage/note-darwin-x64": {
+      "name": "@kitionstage/note-darwin-x64",
+      "version": "0.1.5",
+      "dist": {
+        "integrity": "sha512-3poXWeGuAZxNPth0TsS9wr4rY/HWpuJR40nn6rQl+VTapcbZqaBNAkezmsgjvWoSoFMHi75SvYZLxRUhOFi1Xg==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/note-darwin-x64/-/note-darwin-x64-0.1.5.tgz"
+      },
+      "kition": {
+        "id": "kit.note",
+        "kit": "note",
+        "name": "Note",
+        "role": "headless",
+        "build": {
+          "commit": "fdd1cd8f4bc875b3b875b4dca606603e1c6312b7"
+        },
+        "views": [],
+        "version": "0.1.5",
+        "platform": "darwin-x64",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "md",
+          "markdown"
+        ]
+      }
+    },
+    "@kitionstage/note-linux-arm64": {
+      "name": "@kitionstage/note-linux-arm64",
+      "version": "0.1.5",
+      "dist": {
+        "integrity": "sha512-vwfQ8cAK9YwGAJnCiZx7e2ditc08/GOZd7Ugq73rK0Ez5st5OTkHirIic2T9bZVljCcvyt/uiZBC2cJ9qx+UHA==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/note-linux-arm64/-/note-linux-arm64-0.1.5.tgz"
+      },
+      "kition": {
+        "id": "kit.note",
+        "kit": "note",
+        "name": "Note",
+        "role": "headless",
+        "build": {
+          "commit": "fdd1cd8f4bc875b3b875b4dca606603e1c6312b7"
+        },
+        "views": [],
+        "version": "0.1.5",
+        "platform": "linux-arm64",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "md",
+          "markdown"
+        ]
+      }
+    },
+    "@kitionstage/note-linux-x64": {
+      "name": "@kitionstage/note-linux-x64",
+      "version": "0.1.5",
+      "dist": {
+        "integrity": "sha512-PA4xm++fnvzBhwRJbx2mHytS7WzP/TMYQorPlFLmEeRxtWR5b9L7OSC1KniXK21YxH5R19c9S/M15QtHGgU2ug==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/note-linux-x64/-/note-linux-x64-0.1.5.tgz"
+      },
+      "kition": {
+        "id": "kit.note",
+        "kit": "note",
+        "name": "Note",
+        "role": "headless",
+        "build": {
+          "commit": "fdd1cd8f4bc875b3b875b4dca606603e1c6312b7"
+        },
+        "views": [],
+        "version": "0.1.5",
+        "platform": "linux-x64",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "md",
+          "markdown"
+        ]
+      }
+    },
+    "@kitionstage/note-win32-x64": {
+      "name": "@kitionstage/note-win32-x64",
+      "version": "0.1.5",
+      "dist": {
+        "integrity": "sha512-F2JdGgE4waCDPuSHP8X0mIC2lG6PIm3Gy3ZDPYcXUMDTuaDWd3ibVO4nmBMCjIzEz6Bv95RXP8omutnOoiw0Sw==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/note-win32-x64/-/note-win32-x64-0.1.5.tgz"
+      },
+      "kition": {
+        "id": "kit.note",
+        "kit": "note",
+        "name": "Note",
+        "role": "headless",
+        "build": {
+          "commit": "fdd1cd8f4bc875b3b875b4dca606603e1c6312b7"
+        },
+        "views": [],
+        "version": "0.1.5",
+        "platform": "win32-x64",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "md",
+          "markdown"
+        ]
+      }
+    },
+    "@kitionstage/html": {
+      "name": "@kitionstage/html",
+      "version": "0.1.3",
+      "dist": {
+        "integrity": "sha512-m+B0QVx1EfS7SXxdoWI89th8w1BDPSD5QuYB9d1ROWeN1aUAL0XzAb3X6D+TdlxUQcw6WY+dVGympBv+zrN8kA==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/html/-/html-0.1.3.tgz"
+      },
+      "kition": {
+        "id": "kit.html",
+        "kit": "html",
+        "name": "HTML",
+        "role": "ui",
+        "build": {
+          "commit": "274b6b3bea57d699528e085adecda7113595c2c9",
+          "sdkCommit": "5a626dd284be945284ecf16051e8512272236273",
+          "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf",
+          "tesseraCommit": "bbda88c619d48b09985f52e96f5a11aaba4f8fcd"
+        },
+        "views": [],
+        "version": "0.1.3",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "html",
+          "htm"
+        ]
+      }
+    },
+    "@kitionstage/html-darwin-arm64": {
+      "name": "@kitionstage/html-darwin-arm64",
+      "version": "0.1.3",
+      "dist": {
+        "integrity": "sha512-7yD2Qjkz0bL2xpXEfQR3y9ImIVudTj3yZfxmuEeY5r0JGUqGkyh5z7EXBMCGhg7jjLok/+JjvJ3P6NVPYYYj+Q==",
+        "tarball": "https://registry.npmjs.org/@kitionstage/html-darwin-arm64/-/html-darwin-arm64-0.1.3.tgz"
+      },
+      "kition": {
+        "id": "kit.html",
+        "kit": "html",
+        "name": "HTML",
+        "role": "headless",
+        "build": {
+          "commit": "274b6b3bea57d699528e085adecda7113595c2c9"
+        },
+        "views": [],
+        "version": "0.1.3",
+        "platform": "darwin-arm64",
+        "protocol": "kition-kit/1",
+        "extensions": [
+          "html",
+          "htm"
+        ]
+      }
+    }
+  }
+}

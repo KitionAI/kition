@@ -658,8 +658,8 @@ version (`version` in the kit's kit.json):
 
 | Package | Holds |
 | --- | --- |
-| `@kition/kit-<kit>-ui` | the folder `<kit>-ui/`: the kit's package (editor, engine, fonts), which Kition ships in `public/kits/` |
-| `@kition/kit-<kit>-<platform>` | `kit.json` and the headless executable `kition-<kit>` (`.exe` on Windows) at the package's top, for darwin-arm64, darwin-x64, linux-arm64, linux-x64 and win32-x64 (npm `os`, `cpu`, and `libc` on Linux) |
+| `@kition/kit-<kit>-ui` (in another scope `<scope>/<kit>`) | the folder `<kit>-ui/`: the kit's package (editor, engine, fonts), which Kition ships in `public/kits/` |
+| `@kition/kit-<kit>-<platform>` (`<scope>/<kit>-<platform>`) | `kit.json` and the headless executable `kition-<kit>` (`.exe` on Windows) at the package's top, for darwin-arm64, darwin-x64, linux-arm64, linux-x64 and win32-x64 (npm `os`, `cpu`, and `libc` on Linux) |
 
 Each package.json has a `kition` field (`kit`, `id`, `name`, `version`,
 `role` `ui` or `headless`, `platform`, `protocol`, `extensions`, `views`, and
@@ -741,11 +741,37 @@ is npm's `dist.integrity` (SHA-512 of the tarball).
   asks npmmirror for no copy; pinning and fetching with that variable set read
   that scope's packages.
 - **Pinning**: `node scripts/pin-kits.mjs <kit>[@<version>]...` (or `--all`)
-  reads the registry's metadata of `@kition/kit-<kit>-ui` at that version, or
-  its `latest`, and writes the kit's entry into `kits/kits.lock.json`:
-  `package`, `version`, `integrity` (npm's `dist.integrity`), and `commit`,
-  `sdkCommit`, `tesseraCommit` and `fontsCommit` from its `kition.build`. It
-  reads metadata only, and no GitHub.
+  reads the registry's metadata of the kit's editor package in the scope
+  `KITION_NPM_SCOPE` names (default `@kition`) at that version, or its
+  `latest`, and of its headless package for every platform npm has at that
+  version (each must name the editor's commit), downloads each tarball once
+  to check it has npm's integrity and to record its size, and writes the
+  kit's npm pin into `kits/kits.lock.json`. A platform npm lacks is named and
+  left out; a registry that cannot be asked about a platform fails the pin.
+  `--dry-run` prints the entries and writes nothing; `--lock <file>` writes
+  another lock file. An npm pin names no package: the names come from the
+  kit (its key) and `scope`, by the scope's layout:
+
+  ```json
+  "note": {
+    "scope": "@kitionstage",
+    "version": "0.1.5",
+    "commit": "<40 hex>", "sdkCommit": "<40 hex>", "tesseraCommit": "<40 hex>", "fontsCommit": "<40 hex>",
+    "editor": { "integrity": "sha512-<base64>", "size": 12345678 },
+    "platforms": {
+      "darwin-arm64": { "integrity": "sha512-<base64>", "size": 9876543 },
+      "linux-x64": { "integrity": "sha512-<base64>", "size": 9876543 }
+    }
+  }
+  ```
+
+  Until every kit is published in the new layout, the lock also reads a
+  GitHub Release pin (`repository`, `version`, `tag`, `asset`, `size`,
+  `sha256` and the four commits), the form the kits are pinned in today; it
+  is downloaded from `https://github.com/<repository>/releases/download/<tag>/<asset>`
+  (the kit repositories are public) and checked by size and SHA-256. When the
+  16 kits are on npm under `@kition`, they are pinned again with
+  `node scripts/pin-kits.mjs --all` and the Release form is deleted.
 - **The registries**, for pinning and fetching, in kition-sdk's and the
   `kition` command's order (`scripts/lib/kitNpm.mjs`, `registries`):
   `KITION_NPM_REGISTRY` (one address or several, comma-separated), then
@@ -754,19 +780,25 @@ is npm's `dist.integrity` (SHA-512 of the tarball).
   https://registry.npmmirror.com/. The first that answers wins; a registry
   that fails, lacks the version, or serves other bytes is skipped for the next.
 - **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads each
-  pinned package's tarball
-  (`<registry>@kition/kit-<kit>-ui/-/kit-<kit>-ui-<version>.tgz`), checks its
-  integrity against the lock, checks it holds only `package/package.json` and
+  pinned editor package's tarball (for an npm pin
+  `<registry><package>/-/<name>-<version>.tgz`), checks its integrity and size
+  against the lock, checks it holds only `package/package.json` and
   `package/<kit>-ui/` and that its package.json is the pinned package, version
-  and build, and puts `<kit>-ui` into `public/kits/`, where it checks the
-  extracted `kit-ui.json` (kit id, version, commit). Each fetched package gets
-  a stamp, `<kit>-ui/.kition-package.json`, with its lock entry;
+  and build, checks the extracted `kit-ui.json` (kit id, version, commit), and
+  only then puts `<kit>-ui` into `public/kits/`. Each fetched package gets
+  a stamp, `<kit>-ui/.kition-package.json` (an npm pin's scope, version,
+  editor integrity and commits; a Release pin's repository, asset, SHA-256
+  and commits);
   `scripts/build-kit-ui.sh` stamps a local build instead, so a package whose
   stamp is missing, local, or differs from the lock is fetched again even at
   the pinned version (`KITION_KEEP_LOCAL_KITS=1` keeps local builds of the
   pinned version and commit), and `--check` and the release build's
-  `dist/kits` check report it. `--check` only compares. A lock entry that is
-  not such an npm pin is refused, naming what to pin.
+  `dist/kits` check report it. `--check` only compares. `--lock <file>` reads
+  another lock, `--kits-dir <dir>` puts the editors elsewhere, and
+  `--headless <dir>` also downloads every platform package an npm pin names,
+  checked by integrity, size, name, platform and commit, into
+  `<dir>/<kit>-<platform>/` (the app ships no headless executable yet). A lock
+  entry that is neither pin is refused, naming what to pin.
 - **Releasing**: Kition's release workflow (a public repository, so its CI is
   free) fetches the packages, checks every engine against the contract
   (`pnpm check:kit-modules`), runs the kit e2e specs in its sweep, and fetches
