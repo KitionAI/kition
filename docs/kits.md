@@ -746,6 +746,32 @@ is npm's `dist.integrity` (SHA-512 of the tarball).
 - The packages carry minified JavaScript and WebAssembly without source maps
   or debug names, so shipping them does not publish kit source.
 
+## 4c. Kit CI
+
+The kit repositories are public, so their tests run on GitHub-hosted runners for free; a
+developer's machine only compiles (fmt, `cargo check -p` on the touched crates, typecheck).
+
+- **The workflow**: each kit's `.github/workflows/ci.yml` (written by
+  `node scripts/kit-ci-install.mjs <kit>`) calls `.github/workflows/kit-ci.yml` here. It runs on
+  pushes to `ci/**`, on pull requests, by hand, and nightly on `main`. Jobs: `plan`
+  (`scripts/kit-ci-plan.mjs` lists one test job per `test`/`test:*` script of `web/` and the
+  root, skipping `test:ci`, `test:ci:full` and scripts that only chain other scripts), `build`
+  (the engine and `pnpm build`, shared as the artifact `engine`), `rust` (`cargo xtask ci`, or
+  fmt, clippy and `cargo test --workspace` for kits without xtask), and the test jobs. The
+  checkout (`.github/actions/kit-checkout`) puts kition-sdk, kition-tessera and kition-fonts
+  next to the kit, as the kits' scripts expect.
+- **Per kit**: `.github/kit-ci.json` may `exclude` jobs that cannot run on a hosted runner (say
+  why in the commit) and set `maxParallel` (default 6).
+- **Concurrency**: the organization's plan allows 20 concurrent jobs across all repositories (5 on
+  macOS). One kit's run holds at most 8 (build, rust, 6 tests); further runs queue.
+- **The loop** (`scripts/kit-ci.sh <command> <kit>`): commit on `main` locally; `push` sends HEAD
+  to `ci/agent` (a newer push cancels the older run); `wait` follows the run; on failure,
+  `failures` writes the jobs' results, the failed steps' log tails and the evidence
+  (`test-results`, `playwright-report`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
+  `land` fast-forwards `origin/main` to HEAD only when HEAD's run passed, then deletes
+  `ci/agent`. Rerun a flaky-looking failure once with `gh run rerun <run> --failed` before
+  changing code.
+
 ## 5. Adding A Kit: Checklist
 
 Kit repository:

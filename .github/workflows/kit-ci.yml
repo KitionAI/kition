@@ -1,0 +1,235 @@
+name: Kit CI
+
+# Tests one kit on GitHub-hosted runners. Each kit's .github/workflows/ci.yml calls it (written
+# by scripts/kit-ci-install.mjs); scripts/kit-ci.sh drives it from a developer's machine (push a
+# commit to the kit's ci/agent branch, wait, read the failures, land it on main). See docs/kits.md.
+#
+# Jobs:
+# - plan: the kit's test jobs (scripts/kit-ci-plan.mjs: one per `test`/`test:*` script).
+# - build: the WebAssembly engine and the editor build, shared with the test jobs as the
+#   artifact `engine`.
+# - rust: `cargo xtask ci` (fmt, clippy, tests, layer and wasm checks), or for kits without
+#   xtask, fmt, clippy and `cargo test --workspace`.
+# - test: one job per test script, at most `max_parallel` at once (6 unless the kit's
+#   .github/kit-ci.json says otherwise), so a kit's run holds at most 8 of the organization's
+#   concurrent jobs. A failed job uploads its test-results and playwright-report as
+#   `evidence-<job>`.
+
+on:
+  workflow_call:
+    inputs:
+      kit:
+        description: The kit's name, for example photo (its repository is kition-<kit>)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  KIT: ${{ inputs.kit }}
+  WASM_PACK_VERSION: v0.13.1
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      max_parallel: ${{ steps.plan.outputs.max_parallel }}
+      xtask: ${{ steps.plan.outputs.xtask }}
+    steps:
+      - name: Check out the kit
+        uses: actions/checkout@v7
+        with:
+          path: kition-${{ inputs.kit }}
+
+      - name: Check out Kition's scripts
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition
+          ref: main
+          path: kition
+          sparse-checkout: scripts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: List the test jobs
+        id: plan
+        run: |
+          set -euo pipefail
+          node kition/scripts/kit-ci-plan.mjs "kition-$KIT" --github-output | tee -a "$GITHUB_OUTPUT"
+
+  build:
+    name: Build
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: KitionAI/kition/.github/actions/kit-checkout@main
+        with:
+          kit: ${{ inputs.kit }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kition-${{ inputs.kit }} -> target
+
+      - name: Setup wasm-pack
+        run: curl -fsSL https://github.com/rustwasm/wasm-pack/releases/download/${WASM_PACK_VERSION}/wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar -xz --strip-components=1 -C "$HOME/.cargo/bin" "wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl/wasm-pack"
+
+      # C code in the engines' dependencies (psm's assembly, through loro) is compiled for wasm32
+      # with the runner's LLVM.
+      - name: Use LLVM for wasm32 C code
+        run: |
+          llvm="$(ls -d /usr/lib/llvm-*/bin | sort -V | tail -n 1)"
+          echo "CC_wasm32_unknown_unknown=$llvm/clang" >> "$GITHUB_ENV"
+          echo "AR_wasm32_unknown_unknown=$llvm/llvm-ar" >> "$GITHUB_ENV"
+
+      - name: Install the editor's dependencies
+        run: pnpm --dir "kition-$KIT/web" install --frozen-lockfile
+
+      - name: Build the engine
+        run: pnpm --dir "kition-$KIT/web" run engine
+
+      - name: Build the editor
+        run: pnpm --dir "kition-$KIT/web" run build
+
+      - name: Share the engine and the build
+        uses: actions/upload-artifact@v7
+        with:
+          name: engine
+          path: |
+            kition-${{ inputs.kit }}/web/public/engine/
+            kition-${{ inputs.kit }}/web/public/fonts/
+            kition-${{ inputs.kit }}/web/dist/
+            kition-${{ inputs.kit }}/engine/
+          retention-days: 3
+          if-no-files-found: error
+
+  rust:
+    name: Rust
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out
+        uses: KitionAI/kition/.github/actions/kit-checkout@main
+        with:
+          kit: ${{ inputs.kit }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kition-${{ inputs.kit }} -> target
+
+      - name: Use LLVM for wasm32 C code
+        run: |
+          llvm="$(ls -d /usr/lib/llvm-*/bin | sort -V | tail -n 1)"
+          echo "CC_wasm32_unknown_unknown=$llvm/clang" >> "$GITHUB_ENV"
+          echo "AR_wasm32_unknown_unknown=$llvm/llvm-ar" >> "$GITHUB_ENV"
+
+      - name: cargo xtask ci
+        if: needs.plan.outputs.xtask == 'true'
+        working-directory: kition-${{ inputs.kit }}
+        run: cargo xtask ci
+
+      - name: fmt, clippy and tests
+        if: needs.plan.outputs.xtask != 'true'
+        working-directory: kition-${{ inputs.kit }}
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+
+  test:
+    name: ${{ matrix.name }}
+    needs: [plan, build]
+    if: needs.plan.outputs.matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Check out
+        uses: KitionAI/kition/.github/actions/kit-checkout@main
+        with:
+          kit: ${{ inputs.kit }}
+
+      - name: Get the engine and the build
+        uses: actions/download-artifact@v7
+        with:
+          name: engine
+          path: kition-${{ inputs.kit }}
+
+      - name: Install dependencies
+        env:
+          DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          pnpm --dir "kition-$KIT/web" install --frozen-lockfile
+          if [ "$DIR" != web ]; then pnpm --dir "kition-$KIT/$DIR" install --frozen-lockfile; fi
+
+      - name: Does the kit use Playwright
+        id: playwright
+        working-directory: kition-${{ inputs.kit }}/web
+        run: |
+          version="$(node -p "const p = require('./package.json'); const d = { ...p.dependencies, ...p.devDependencies }; d['@playwright/test'] || d.playwright || ''")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the browsers
+        if: steps.playwright.outputs.version != ''
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      # The runner's default Ubuntu mirror has served the browsers' system packages at under
+      # 100 kB/s while Canonical's own archive was fast.
+      - name: Use the Ubuntu archive for system packages
+        if: steps.playwright.outputs.version != ''
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf 'http://archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://azure.archive.ubuntu.com/ubuntu/\tpriority:2\n' | sudo tee /etc/apt/apt-mirrors.txt
+          fi
+
+      - name: Install the browsers
+        if: steps.playwright.outputs.version != ''
+        timeout-minutes: 20
+        run: pnpm --dir "kition-$KIT/web" exec playwright install --with-deps chromium webkit
+
+      - name: pnpm run ${{ matrix.script }}
+        env:
+          DIR: ${{ matrix.dir }}
+          SCRIPT: ${{ matrix.script }}
+        run: pnpm --dir "kition-$KIT/$DIR" run "$SCRIPT"
+
+      - name: Upload the evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: evidence-${{ matrix.slug }}
+          path: |
+            kition-${{ inputs.kit }}/web/test-results/
+            kition-${{ inputs.kit }}/web/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
