@@ -756,8 +756,9 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   pushes to `ci/**`, on pull requests, by hand, and nightly on `main`. Jobs: `plan`
   (`scripts/kit-ci-plan.mjs` lists one test job per `test`/`test:*` script of `web/` and the
   root, skipping `test:ci`, `test:ci:full` and scripts that only chain other scripts), `build`
-  (the engine and `pnpm build`, shared as the artifact `engine`), `rust` (`cargo xtask ci`, or
-  fmt, clippy and `cargo test --workspace` for kits without xtask), and the test jobs. The
+  (the engine and `pnpm build`, shared as the artifact `engine`), `rust` (fmt, clippy
+  `--keep-going` and `cargo test --workspace --no-fail-fast`, each run to the end so one run
+  reports every failure, then the kit's `cargo xtask ci` when they pass), and the test jobs. The
   checkout (`.github/actions/kit-checkout`) puts kition-sdk, kition-tessera and kition-fonts
   next to the kit, as the kits' scripts expect.
 - **Per kit**: `.github/kit-ci.json` may `exclude` jobs that cannot run on a hosted runner (say

@@ -8,8 +8,8 @@ name: Kit CI
 # - plan: the kit's test jobs (scripts/kit-ci-plan.mjs: one per `test`/`test:*` script).
 # - build: the WebAssembly engine and the editor build, shared with the test jobs as the
 #   artifact `engine`.
-# - rust: `cargo xtask ci` (fmt, clippy, tests, layer and wasm checks), or for kits without
-#   xtask, fmt, clippy and `cargo test --workspace`.
+# - rust: fmt, clippy and `cargo test --workspace`, each run to the end so one run reports every
+#   failure; then, when they pass, the kit's `cargo xtask ci` (its layer, wasm and asset checks).
 # - test: one job per test script, at most `max_parallel` at once (6 unless the kit's
 #   .github/kit-ci.json says otherwise), so a kit's run holds at most 8 of the organization's
 #   concurrent jobs. A failed job uploads its test-results and playwright-report as
@@ -145,19 +145,27 @@ jobs:
           echo "CC_wasm32_unknown_unknown=$llvm/clang" >> "$GITHUB_ENV"
           echo "AR_wasm32_unknown_unknown=$llvm/llvm-ar" >> "$GITHUB_ENV"
 
+      # fmt, clippy and the tests run as separate steps that each finish (--keep-going,
+      # --no-fail-fast), so one run reports every failure; then the kit's own `cargo xtask ci`
+      # adds its other checks (layers, wasm, assets), reusing the build.
+      - name: cargo fmt
+        working-directory: kition-${{ inputs.kit }}
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        if: ${{ !cancelled() }}
+        working-directory: kition-${{ inputs.kit }}
+        run: cargo clippy --workspace --all-targets --keep-going -- -D warnings
+
+      - name: cargo test
+        if: ${{ !cancelled() }}
+        working-directory: kition-${{ inputs.kit }}
+        run: cargo test --workspace --no-fail-fast
+
       - name: cargo xtask ci
         if: needs.plan.outputs.xtask == 'true'
         working-directory: kition-${{ inputs.kit }}
         run: cargo xtask ci
-
-      - name: fmt, clippy and tests
-        if: needs.plan.outputs.xtask != 'true'
-        working-directory: kition-${{ inputs.kit }}
-        run: |
-          set -euo pipefail
-          cargo fmt --all -- --check
-          cargo clippy --workspace --all-targets -- -D warnings
-          cargo test --workspace
 
   test:
     name: ${{ matrix.name }}
