@@ -15,7 +15,8 @@ inputs:
       (scripts/kit-ci-runner-repo.mjs) names the kit's repository here.
     default: ''
   ref:
-    description: The commit to check out (a full SHA). Empty: the commit that started the run.
+    description: >-
+      The commit to check out (a full SHA). Empty: the commit that started the run.
     default: ''
   pnpm-version:
     description: The pnpm version
