@@ -67,17 +67,23 @@ function isDefinedPurpose(purpose: unknown): purpose is KitDefinedGeneratePurpos
   return (GENERATE_PURPOSES as readonly unknown[]).includes(purpose)
 }
 
+/** A kit's own purpose (UI-G4): `<kit>.<name>`, lowercase letters, digits and hyphens. */
+function isKitPurpose(purpose: unknown): purpose is string {
+  return typeof purpose === 'string' && /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(purpose)
+}
+
 /**
  * `host/generate` for a kit (Kit UI protocol section 7j): runs the kit's prompt on the
  * person's model through the runtime, which logs its usage; the kit writes the answer into its
  * document itself. Kition serves the defined purposes, `ai-field` (an AI field's cell) and
- * `rewrite` (text the person selected, rewritten as they asked), and refuses everything else as
- * `not-allowed`: a kit's own purposes (`<kit>.<name>`, which UI-G4 lets a host refuse) have no
- * generic handling in Kition, and `mountKit` already refused any other string.
+ * `rewrite` (text the person selected, rewritten as they asked), and a kit's own purposes
+ * (`<kit>.<name>`, UI-G4), for every kit alike: the same model call, recorded under the purpose
+ * the kit named. `mountKit` already refused a purpose that names another kit; any other string is
+ * `not-allowed`.
  */
 export async function kitionGenerate(params: KitGenerateParams): Promise<KitGenerateResult> {
   const purpose: unknown = params.purpose
-  if (!isDefinedPurpose(purpose)) refuse('not-allowed', `Kition does not generate for ${JSON.stringify(purpose)}`)
+  if (!isDefinedPurpose(purpose) && !isKitPurpose(purpose)) refuse('not-allowed', `Kition does not generate for ${JSON.stringify(purpose)}`)
   if (params.output !== 'text' && params.output !== 'image') refuse('failed', `unknown output ${String(params.output)}`)
   if (!Array.isArray(params.messages) || !params.messages.length) refuse('failed', 'the request has no messages')
   const runtimeModel = await resolveGenerateRuntimeModel(params.output, params.model).catch((error: unknown) => refuse('unavailable', error instanceof Error ? error.message : String(error)))

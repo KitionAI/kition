@@ -28,8 +28,24 @@ use serde_json::{Value, json};
 use crate::chat::{AiGate, require_ai};
 use crate::engine::{AiError, Engine, ImageRequest, Message, MessagePart, RuntimeModel};
 
-/// The purposes a kit may generate for (Kit UI protocol section 7j's defined purposes).
+/// The defined purposes a kit may generate for (Kit UI protocol section 7j).
 const PURPOSES: &[&str] = &["ai-field", "rewrite"];
+
+/// Whether `purpose` is one this host generates for: a defined purpose, or a kit's own
+/// (`<kit>.<name>`: the kit's name, a dot, and lowercase letters, digits and hyphens, UI-G4). The
+/// page's host side already refused a purpose that names another kit than the one asking.
+fn served(purpose: &str) -> bool {
+    let word = |text: &str| {
+        text.starts_with(|c: char| c.is_ascii_lowercase())
+            && text
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    };
+    PURPOSES.contains(&purpose)
+        || purpose
+            .split_once('.')
+            .is_some_and(|(kit, name)| word(kit) && word(name))
+}
 /// The host's instructions for a `rewrite`, put before the kit's own messages. The kit's messages
 /// name the change the person asked for (improve, shorten, expand, change the tone, fix the
 /// spelling, translate) and carry the selected text; the kit shows the answer as a suggestion
@@ -230,7 +246,7 @@ async fn generate(
     JsonBody(request): JsonBody<GenerateRequest>,
 ) -> AppResult<Response> {
     require_ai(&state.ai_gate)?;
-    if !PURPOSES.contains(&request.purpose.as_str()) {
+    if !served(&request.purpose) {
         return Err(refused(
             400,
             "not-allowed",
@@ -411,10 +427,23 @@ mod tests {
     }
 
     #[test]
-    fn serves_the_defined_purposes_only() {
-        assert!(PURPOSES.contains(&"ai-field"));
-        assert!(PURPOSES.contains(&"rewrite"));
-        assert!(!PURPOSES.contains(&"note.outline"));
+    fn serves_the_defined_purposes_and_a_kit_s_own() {
+        assert!(served("ai-field"));
+        assert!(served("rewrite"));
+        assert!(served("note.outline"));
+        assert!(served("table.schema-from-files"));
+        for other in [
+            "",
+            "chat",
+            "Note.outline",
+            "note.",
+            ".outline",
+            "note.out line",
+            "note.a.b",
+            "note/outline",
+        ] {
+            assert!(!served(other), "{other}");
+        }
     }
 
     #[test]

@@ -43,7 +43,7 @@
       "additionalProperties": false,
       "required": ["purpose", "output", "messages"],
       "properties": {
-        "purpose": { "type": "string", "enum": ["ai-field", "rewrite"], "description": "A defined purpose of Kit UI protocol section 7j: ai-field (an AI field's cell) or rewrite (text the person selected, rewritten as they asked). Kition refuses a kit's own purposes (<kit>.<name>) as not-allowed." },
+        "purpose": { "type": "string", "pattern": "^(ai-field|rewrite|[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*)$", "description": "A purpose of Kit UI protocol section 7j: a defined one, ai-field (an AI field's cell) or rewrite (text the person selected, rewritten as they asked), or the asking kit's own (<kit>.<name>, UI-G4), which Kition serves the same way and records under that name. Any other string is not-allowed." },
         "output": { "type": "string", "enum": ["text", "image"] },
         "runtimeModel": { "$ref": "ai-chat.schema.json#/$defs/runtimeModel" },
         "messages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/message" } },

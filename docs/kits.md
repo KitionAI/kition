@@ -346,9 +346,10 @@ items with `primary`.
   with the person's models (`kitGenerate.ts`, `POST /v1/ai/generate`,
   `contracts/runtime/ai-generate.schema.json`) for the defined purposes of
   Kit UI protocol section 7j, `ai-field` and `rewrite` (the runtime
-  puts its own rewrite instructions before the kit's prompt). It refuses a
-  kit's own purposes (`<kit>.<name>`) as `not-allowed`, because Kition has no
-  generic handling for them, and `mountKit` refuses any other string
+  puts its own rewrite instructions before the kit's prompt). It serves a
+  kit's own purposes (`<kit>.<name>`, UI-G4) the same way, for every kit alike,
+  recorded under the purpose the kit named (owner, 2026-11-22), and `mountKit`
+  refuses a purpose that names another kit and any other string
   (UI-G4). It answers `host/action` with its
   own actions (`kitActions.ts`: `settings.open`, which opens Settings where
   the person sets up AI); none is offered to a preview or a read-only

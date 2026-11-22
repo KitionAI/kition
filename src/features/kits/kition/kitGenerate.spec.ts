@@ -52,10 +52,19 @@ describe('kitionGenerate', () => {
     expect(generateForKit.mock.calls[0][0]).toMatchObject({ purpose: 'rewrite', output: 'text' })
   })
 
-  it('refuses a kit\'s own purpose and unknown purposes, and passes the runtime\'s reason on', async () => {
+  it('serves a kit\'s own purpose under the name the kit gave', async () => {
     const { kitionGenerate } = await import('./kitGenerate')
     generateForKit.mockClear()
-    for (const purpose of ['note.outline', 'chat', '']) {
+    generateForKit.mockImplementation(() => Promise.resolve({ text: 'Three columns.', model: 'gpt-test' }))
+    const answer = await kitionGenerate({ purpose: 'table.schema' as 'rewrite', output: 'text', messages: [{ role: 'user', parts: [{ type: 'text', text: 'x' }] }] })
+    expect(answer).toMatchObject({ text: 'Three columns.' })
+    expect(generateForKit.mock.calls[0][0]).toMatchObject({ purpose: 'table.schema', output: 'text' })
+  })
+
+  it('refuses a string that is no purpose, and passes the runtime\'s reason on', async () => {
+    const { kitionGenerate } = await import('./kitGenerate')
+    generateForKit.mockClear()
+    for (const purpose of ['chat', '', 'Table.schema', 'table.', 'table.a.b']) {
       await expect(kitionGenerate({ purpose: purpose as 'rewrite', output: 'text', messages: [{ role: 'user', parts: [{ type: 'text', text: 'x' }] }] })).rejects.toMatchObject({ code: -32000, data: { reason: 'not-allowed' } })
     }
     expect(generateForKit).not.toHaveBeenCalled()

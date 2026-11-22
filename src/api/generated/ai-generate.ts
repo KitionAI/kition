@@ -34,9 +34,9 @@ export type AiGenerateOptions = {
 
 export type AiGenerateRequest = {
   /**
-   * A defined purpose of Kit UI protocol section 7j: ai-field (an AI field's cell) or rewrite (text the person selected, rewritten as they asked). Kition refuses a kit's own purposes (<kit>.<name>) as not-allowed.
+   * A purpose of Kit UI protocol section 7j: a defined one, ai-field (an AI field's cell) or rewrite (text the person selected, rewritten as they asked), or the asking kit's own (<kit>.<name>, UI-G4), which Kition serves the same way and records under that name. Any other string is not-allowed.
    */
-  purpose: "ai-field" | "rewrite"
+  purpose: string
   output: "text" | "image"
   runtimeModel?: AiChatRuntimeModel
   messages: AiGenerateMessage[]

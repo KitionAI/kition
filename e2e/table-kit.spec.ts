@@ -272,7 +272,7 @@ async function generateFromKit(page: Page, purpose: string) {
   }, purpose)
 }
 
-test('Kition serves host/generate for a rewrite of the person’s selection, and refuses a kit’s own purposes', async ({ page, baseURL }) => {
+test('Kition serves host/generate for a rewrite of the person’s selection and for the kit’s own purposes, and refuses another kit’s', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
   const { bytes } = await leadsFixture()
   await configureModel(page)
@@ -281,8 +281,8 @@ test('Kition serves host/generate for a rewrite of the person’s selection, and
     await page.route('**/api/v1/ai/generate', async (route) => {
       const body = route.request().postDataJSON() as Record<string, unknown>
       generated.push(body)
-      // The runtime serves the defined purposes only (contracts/runtime/ai-generate.schema.json).
-      if (body.purpose !== 'ai-field' && body.purpose !== 'rewrite') return fulfillJson(route, { code: 400, message: 'not a purpose', data: { reason: 'not-allowed' } }, 400)
+      // The runtime serves the defined purposes and a kit's own (contracts/runtime/ai-generate.schema.json).
+      if (!/^(ai-field|rewrite|[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*)$/.test(String(body.purpose))) return fulfillJson(route, { code: 400, message: 'not a purpose', data: { reason: 'not-allowed' } }, 400)
       await fulfillJson(route, { code: 200, message: 'success', data: { text: 'Ada wrote the first program.', model: 'gpt-test' } })
     })
   }
@@ -305,12 +305,19 @@ test('Kition serves host/generate for a rewrite of the person’s selection, and
     expect(generated[0]).toMatchObject({ purpose: 'rewrite', output: 'text', runtimeModel: expect.objectContaining({ model_name: 'gpt-test' }) })
     expect(JSON.stringify(generated[0].messages)).toContain('Shorten:')
 
-    // A kit's own purpose has no generic handling in Kition, and another kit's is never allowed (UI-G4).
-    for (const purpose of ['table.summary', 'note.outline', 'chat']) {
+    // The kit's own purpose (UI-G4, `<kit>.<name>`): Kition runs it the same way, under the name the kit gave.
+    const own = await generateFromKit(page, 'table.summary')
+    expect(own.error).toBeUndefined()
+    expect(own.result).toMatchObject({ text: 'Ada wrote the first program.', model: 'gpt-test' })
+    expect(generated).toHaveLength(2)
+    expect(generated[1]).toMatchObject({ purpose: 'table.summary', output: 'text' })
+
+    // Another kit's purpose, and a string that is no purpose, never reach the model (UI-G4).
+    for (const purpose of ['note.outline', 'chat']) {
       const refused = await generateFromKit(page, purpose)
       expect(refused.error).toMatchObject({ code: -32000, data: { reason: 'not-allowed' } })
     }
-    expect(generated).toHaveLength(1)
+    expect(generated).toHaveLength(2)
   } finally {
     await host.dispose()
   }
