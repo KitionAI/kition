@@ -32,7 +32,7 @@ pub struct DocumentResponse {
     pub path: String,
     pub name: String,
     pub content: String,
-    pub format: &'static str,
+    pub format: String,
     pub updated_at: String,
     pub size: u64,
     pub mtime_ms: f64,

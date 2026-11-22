@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { kitCreateExtensions } from '@/features/workspace/components/kits/kitFormats'
+import { kitCreateExtensions } from '@/features/workspace/components/kits/kitEditors'
 import { getWorkspaceItemTitle } from './workspace'
 
 describe('getWorkspaceItemTitle', () => {
@@ -35,7 +35,7 @@ describe('getWorkspaceItemTitle', () => {
     expect(getWorkspaceItemTitle('Movie.KFILM')).toBe('Movie')
   })
 
-  it('drops every extension the kit registry creates (kitFormats.ts), so a renamed kit extension never regresses this', () => {
+  it('drops every extension a kit of this build creates (`creates` in its manifest), so a renamed kit extension never regresses this', () => {
     for (const extension of kitCreateExtensions()) {
       expect(getWorkspaceItemTitle(`Untitled.${extension}`)).toBe('Untitled')
     }

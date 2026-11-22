@@ -3,6 +3,7 @@
  */
 import { getCurrentLocale } from '@/i18n'
 import { type WorkspaceDocument, type WorkspaceDocumentCreateRequest, type WorkspaceDocumentExternalChange, type WorkspaceDocumentFormat, type WorkspaceDocumentListResponse, type WorkspaceDocumentMoveRequest, type WorkspaceDocumentTreeItem, type WorkspaceFolderCreateRequest, type WorkspaceFolderCreateResponse, type WorkspaceFolderMoveRequest, type WorkspaceFolderMoveResponse, getDesktopBridge } from './bridge'
+import { inferWorkspaceItemFormat } from '../workspaceFormats'
 
 const browserWorkspaceStorageKey = 'kition.workspace.documents.v1'
 const browserWorkspaceFolderStorageKey = 'kition.workspace.folders.v1'
@@ -10,25 +11,6 @@ const browserWorkspaceFolderStorageKey = 'kition.workspace.folders.v1'
 type BrowserWorkspaceRecord = {
   content: string
   updated_at: string
-}
-
-function inferWorkspaceDocumentFormat(path: string): WorkspaceDocumentFormat {
-  const lower = path.toLowerCase()
-  if (lower.endsWith('.ktable')) return 'table'
-  if (lower.endsWith('.kboard')) return 'board'
-  if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
-  if (lower.endsWith('.docx')) return 'docx'
-  if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'xlsx'
-  if (lower.endsWith('.pptx') || lower.endsWith('.ppt')) return 'pptx'
-  if (lower.endsWith('.pdf')) return 'pdf'
-  if (lower.endsWith('.csv') || lower.endsWith('.tsv')) return 'csv'
-  if (lower.endsWith('.json')) return 'json'
-  if (lower.endsWith('.txt')) return 'text'
-  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'html'
-  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(lower)) return 'image'
-  if (/\.(mp4|mov|webm)$/i.test(lower)) return 'video'
-  if (/\.(mp3|wav|m4a)$/i.test(lower)) return 'audio'
-  return 'binary'
 }
 
 export function normalizeWorkspaceDocumentPath(path: string) {
@@ -289,7 +271,7 @@ function buildBrowserWorkspaceTree(records: Record<string, BrowserWorkspaceRecor
           type: 'file',
           path: currentPath,
           name: part,
-          format: inferWorkspaceDocumentFormat(currentPath),
+          format: inferWorkspaceItemFormat(currentPath),
           size: record.content.length,
           updated_at: record.updated_at,
         })
@@ -348,7 +330,7 @@ export async function readWorkspaceDocument(path: string, expectedRoot?: string)
     path: normalizedPath,
     name: normalizedPath.split('/').pop() || normalizedPath,
     content: record.content,
-    format: inferWorkspaceDocumentFormat(normalizedPath),
+    format: inferWorkspaceItemFormat(normalizedPath),
     updated_at: record.updated_at,
     size: record.content.length,
   }
@@ -405,7 +387,7 @@ export async function writeWorkspaceDocument(path: string, content: string): Pro
     path: normalizedPath,
     name: normalizedPath.split('/').pop() || normalizedPath,
     content,
-    format: inferWorkspaceDocumentFormat(normalizedPath),
+    format: inferWorkspaceItemFormat(normalizedPath),
     updated_at,
     size: content.length,
   }

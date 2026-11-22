@@ -152,9 +152,11 @@ own interaction tests live in the kition-table repository and run there.
   on npm (`@kition/kit-<kit>-ui`) by the kit repository's Package workflow
   (Kition's reusable `.github/workflows/kit-package.yml`) and pinned in
   `kits/kits.lock.json` by `node scripts/pin-kits.mjs`; packages are never built for publishing on a
-  developer machine. Register a kit in
-  `src/features/workspace/components/kits/kitEditors.ts` and
-  `kits/modules.json`; see `docs/kits.md`.
+  developer machine. Kition's code names no kit
+  (`scripts/check-kit-neutral.mjs`): it reads each kit's `kit.json` from its
+  package (`src/lib/kitCatalog.ts`). A kit is registered only in configuration:
+  `kits/kits.lock.json`, `kits/modules.json` and, for a create menu item,
+  `kits/menu.json`; see `docs/kits.md`.
 - If the upstream app draws something in its own UI, port it into the kit's
   SDK crate as engine overlays or into the kit's editor, never into Kition.
 - `src/features/kits/engine/` loads a kit's engine in the page (Kition makes new

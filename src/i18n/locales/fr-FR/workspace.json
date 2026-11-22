@@ -173,10 +173,6 @@
     "renamed": "Renommé",
     "alreadyInLocation": "Déjà à cet emplacement"
   },
-  "photoKit": {
-    "unavailableTitle": "L’édition Photo n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Photo s’ouvrent dans Kition lorsque le moteur Photo est inclus."
-  },
   "kitEditor": {
     "conflictsTitle": "Certaines modifications n’ont pas pu être fusionnées",
     "conflictsBody_one": "{{count}} modification faite par quelqu’un d’autre au même moment n’a pas pu être fusionnée. Elle est conservée dans le document jusqu’à sa résolution.",
@@ -282,62 +278,8 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "L’édition Film n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Film s’ouvrent dans Kition lorsque le moteur Film est inclus.",
     "editInFilm": "Modifier dans Film",
     "editFailed": "Impossible de créer le projet vidéo"
-  },
-  "vectorKit": {
-    "unavailableTitle": "L’édition Vector n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Vector s’ouvrent dans Kition lorsque le moteur Vector est inclus."
-  },
-  "motionKit": {
-    "unavailableTitle": "L’édition Motion n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Motion s’ouvrent dans Kition lorsque le moteur Motion est inclus."
-  },
-  "layoutKit": {
-    "unavailableTitle": "L’édition Layout n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Layout s’ouvrent dans Kition lorsque le moteur Layout est inclus."
-  },
-  "cadKit": {
-    "unavailableTitle": "L’édition CAD n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers CAD s’ouvrent dans Kition lorsque le moteur CAD est inclus."
-  },
-  "sceneKit": {
-    "unavailableTitle": "L’édition Scene n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Scene s’ouvrent dans Kition lorsque le moteur Scene est inclus."
-  },
-  "designKit": {
-    "unavailableTitle": "L’édition Design n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Design s’ouvrent dans Kition lorsque le moteur Design est inclus."
-  },
-  "slideKit": {
-    "unavailableTitle": "L’édition Slide n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Slide s’ouvrent dans Kition lorsque le moteur Slide est inclus."
-  },
-  "docKit": {
-    "unavailableTitle": "L’édition Doc n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Doc s’ouvrent dans Kition lorsque le moteur Doc est inclus."
-  },
-  "sheetKit": {
-    "unavailableTitle": "L’édition Sheet n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Sheet s’ouvrent dans Kition lorsque le moteur Sheet est inclus."
-  },
-  "pdfKit": {
-    "unavailableTitle": "L’édition PDF n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers PDF s’ouvrent dans Kition lorsque le moteur PDF est inclus."
-  },
-  "tableKit": {
-    "unavailableTitle": "L’édition Table n’est pas disponible dans cette version",
-    "unavailableBody": "Les fichiers Table s’ouvrent dans Kition lorsque le moteur Table est inclus."
-  },
-  "boardKit": {
-    "unavailableTitle": "La modification des tableaux blancs n’est pas disponible dans cette version",
-    "unavailableBody": "Les tableaux blancs s’ouvrent dans Kition lorsque le moteur Board est inclus."
-  },
-  "noteKit": {
-    "unavailableTitle": "La modification des notes n’est pas disponible dans cette version",
-    "unavailableBody": "Les notes s’ouvrent dans Kition lorsque le moteur de notes est inclus."
   },
   "collab": {
     "share": "Partager pour coédition",
@@ -539,9 +481,5 @@
         "description": "Clarify product, design, engineering, and launch ownership across handoffs."
       }
     }
-  },
-  "htmlKit": {
-    "unavailableTitle": "Éditeur HTML indisponible",
-    "unavailableBody": "Compilez le paquet HTML Kit pour modifier des fichiers HTML dans cette version de développement."
   }
 }

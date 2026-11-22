@@ -1,30 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClapperboardIcon as Clapperboard, LoaderCircleIcon as Loader2 } from '@kition/tessera/icons/react'
 import { notify } from '@/lib/notify'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
-import { kitAvailable, kitEditorFor } from '../kits/kitEditors'
+import { kitEditorFor } from '../kits/kitEditors'
 import { createProjectFromClip } from './filmMovies'
 
 /** "Edit in Film" on a video file: a new project beside it with the clip on a sequence, opened. */
 export function EditInFilmButton({ path }: { path: string }) {
   const { t } = useTranslation('workspace')
-  const [available, setAvailable] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    const film = kitEditorFor('film')
-    if (!film) return undefined
-    let current = true
-    void kitAvailable(film).then((yes) => {
-      if (current) setAvailable(yes)
-    })
-    return () => {
-      current = false
-    }
-  }, [])
-
-  if (!available) return null
+  if (!kitEditorFor('film')) return null
   return (
     <button
       type="button"

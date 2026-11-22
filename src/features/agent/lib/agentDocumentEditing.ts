@@ -1,7 +1,5 @@
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import { isBinaryAttachmentMention } from './documentMentions'
-
-const structuredDocumentFormats = new Set<WorkspaceDocumentFormat>(['table'])
+import { isBinaryAttachmentMention, isBinaryKitFile } from './documentMentions'
 
 export function buildAgentDocumentEditingPromptContext(input: {
   activeDocumentPath?: string
@@ -10,8 +8,7 @@ export function buildAgentDocumentEditingPromptContext(input: {
   const path = String(input.activeDocumentPath || '').trim()
   if (
     !path
-    || structuredDocumentFormats.has(input.activeDocumentFormat || 'markdown')
-    || path.toLowerCase().endsWith('.ktable')
+    || isBinaryKitFile(input.activeDocumentFormat, path)
     || isBinaryAttachmentMention(input.activeDocumentFormat, path)
   ) {
     return ''

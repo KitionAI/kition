@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
+import { creatableKits, kitCreateGroups, type KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
 import { KitIcon } from '@/components/KitIcon'
 import { FolderPlusIcon as FolderPlus } from '@kition/tessera/icons/react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
@@ -15,12 +15,6 @@ const ESTIMATED_MENU_HEIGHT = 240
 // The workspace menu: four groups in two columns.
 const ESTIMATED_GROUPED_MENU_WIDTH = 416
 const ESTIMATED_GROUPED_MENU_HEIGHT = 440
-
-/** The workspace menu's groups, by what the new file is for, in menu order. */
-const CREATE_GROUPS: readonly KitCreateGroup[] = ['documents', 'data', 'visual', 'media']
-/** Item order within the groups. Kition's own file types and the kits mix
- *  freely; a kit not listed here goes last in its group. */
-const CREATE_ORDER: readonly string[] = ['note', 'doc', 'pdf', 'layout', 'html', 'table', 'sheet', 'slide', 'board', 'design', 'vector', 'photo', 'cad', 'scene', 'film', 'motion']
 
 type CreateItem = {
   id: string
@@ -71,7 +65,7 @@ export function WorkspaceCreateMenu({
   // Every file type by what it is for, in two columns; Folder last.
   const content: ReactNode = (
     <>
-      {CREATE_GROUPS.map((group) => {
+      {kitCreateGroups().map((group) => {
         const items = createItems.filter((item) => item.group === group)
         if (!items.length) return null
         return (
@@ -142,9 +136,11 @@ function CreateMenuGroup({ label, children }: { label: string; children: ReactNo
   )
 }
 
+/** An item's place in its group: the menu's order (`kits/menu.json`); an item the menu does not list goes last. */
 function createRank(id: string) {
-  const rank = CREATE_ORDER.indexOf(id)
-  return rank === -1 ? CREATE_ORDER.length : rank
+  const order = creatableKits().map((kit) => kit.create.id)
+  const rank = order.indexOf(id)
+  return rank === -1 ? order.length : rank
 }
 
 /** Formats other applications open. Kition's own (`.kslide`, `.klayout`, …) say nothing to a

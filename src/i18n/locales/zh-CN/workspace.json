@@ -173,10 +173,6 @@
     "renamed": "已重命名",
     "alreadyInLocation": "已在当前位置"
   },
-  "photoKit": {
-    "unavailableTitle": "此版本不支持 Photo 编辑",
-    "unavailableBody": "包含 Photo 引擎时，Photo 文件会在 Kition 中打开。"
-  },
   "kitEditor": {
     "conflictsTitle": "部分编辑无法合并",
     "conflictsBody_one": "有 {{count}} 处他人同时进行的编辑无法合并，已保留在文档中，等待处理。",
@@ -282,62 +278,8 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "此版本不支持 Film 编辑",
-    "unavailableBody": "包含 Film 引擎时，Film 文件会在 Kition 中打开。",
     "editInFilm": "在 Film 中编辑",
     "editFailed": "无法创建视频项目"
-  },
-  "vectorKit": {
-    "unavailableTitle": "此版本不支持 Vector 编辑",
-    "unavailableBody": "包含 Vector 引擎时，Vector 文件会在 Kition 中打开。"
-  },
-  "motionKit": {
-    "unavailableTitle": "此版本不支持 Motion 编辑",
-    "unavailableBody": "包含 Motion 引擎时，Motion 文件会在 Kition 中打开。"
-  },
-  "layoutKit": {
-    "unavailableTitle": "此版本不支持 Layout 编辑",
-    "unavailableBody": "包含 Layout 引擎时，Layout 文件会在 Kition 中打开。"
-  },
-  "cadKit": {
-    "unavailableTitle": "此版本不支持 CAD 编辑",
-    "unavailableBody": "包含 CAD 引擎时，CAD 文件会在 Kition 中打开。"
-  },
-  "sceneKit": {
-    "unavailableTitle": "此版本不支持 Scene 编辑",
-    "unavailableBody": "包含 Scene 引擎时，Scene 文件会在 Kition 中打开。"
-  },
-  "designKit": {
-    "unavailableTitle": "此版本不支持 Design 编辑",
-    "unavailableBody": "包含 Design 引擎时，Design 文件会在 Kition 中打开。"
-  },
-  "slideKit": {
-    "unavailableTitle": "此版本不支持 Slide 编辑",
-    "unavailableBody": "包含 Slide 引擎时，Slide 文件会在 Kition 中打开。"
-  },
-  "docKit": {
-    "unavailableTitle": "此版本不支持 Doc 编辑",
-    "unavailableBody": "包含 Doc 引擎时，Doc 文件会在 Kition 中打开。"
-  },
-  "sheetKit": {
-    "unavailableTitle": "此版本不支持 Sheet 编辑",
-    "unavailableBody": "包含 Sheet 引擎时，Sheet 文件会在 Kition 中打开。"
-  },
-  "pdfKit": {
-    "unavailableTitle": "此版本不支持 PDF 编辑",
-    "unavailableBody": "包含 PDF 引擎时，PDF 文件会在 Kition 中打开。"
-  },
-  "tableKit": {
-    "unavailableTitle": "此版本不支持 Table 编辑",
-    "unavailableBody": "包含 Table 引擎时，Table 文件会在 Kition 中打开。"
-  },
-  "boardKit": {
-    "unavailableTitle": "此版本不支持编辑白板",
-    "unavailableBody": "包含白板引擎时，白板文件会在 Kition 中打开。"
-  },
-  "noteKit": {
-    "unavailableTitle": "此版本不支持编辑笔记",
-    "unavailableBody": "包含笔记引擎时，笔记会在 Kition 中打开。"
   },
   "collab": {
     "share": "共享以协同编辑",
@@ -539,9 +481,5 @@
         "description": "明确交接的产品、设计、工程和发布所有权。"
       }
     }
-  },
-  "htmlKit": {
-    "unavailableTitle": "HTML 编辑器不可用",
-    "unavailableBody": "请构建 HTML Kit 包，以便在此开发版本中编辑 HTML 文件。"
   }
 }

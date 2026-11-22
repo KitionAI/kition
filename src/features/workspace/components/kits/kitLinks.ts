@@ -2,7 +2,7 @@ import { WORKSPACE_RELOAD_EVENT } from '@/api/invalidation'
 import { KITION_KIT_HOST, KitRpcError, createKitFile, revealInKit, type KitLinkRef, type KitOpenParams, type KitOpenResult } from '@/features/kits/public'
 import { listWorkspaceDocuments } from '@/services/desktop'
 import { flattenWorkspaceDocumentItems } from '../../lib/workspaceTree'
-import { creatableKits, kitAvailable } from './kitEditors'
+import { creatableKits } from './kitEditors'
 
 /** A workspace path's segments, `.` and `..` resolved; `null` above the root or through a hidden folder (LR2). */
 function workspaceSegments(path: string) {
@@ -86,7 +86,7 @@ export const KITION_LINK_OPENER: KitLinkOpener = {
   create: async (path, kit) => {
     const extension = extensionOf(path)
     const entry = creatableKits().find((candidate) => candidate.create.extension === extension && (!kit || candidate.embedded.kitId === kit))
-    if (!entry || !(await kitAvailable(entry))) return false
+    if (!entry) return false
     await createKitFile(KITION_KIT_HOST, entry.engine, path, entry.create.size)
     window.dispatchEvent(new Event(WORKSPACE_RELOAD_EVENT))
     return true

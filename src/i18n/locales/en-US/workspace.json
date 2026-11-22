@@ -173,10 +173,6 @@
     "renamed": "Renamed",
     "alreadyInLocation": "Already in this location"
   },
-  "photoKit": {
-    "unavailableTitle": "Photo editing is not available in this build",
-    "unavailableBody": "Photo files open in Kition when the Photo engine is included."
-  },
   "kitEditor": {
     "conflictsTitle": "Some edits could not be merged",
     "conflictsBody_one": "{{count}} edit made by someone else at the same time could not be merged. It is kept in the document until it is resolved.",
@@ -282,62 +278,8 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "Film editing is not available in this build",
-    "unavailableBody": "Film files open in Kition when the Film engine is included.",
     "editInFilm": "Edit in Film",
     "editFailed": "Could not start a video project"
-  },
-  "vectorKit": {
-    "unavailableTitle": "Vector editing is not available in this build",
-    "unavailableBody": "Vector files open in Kition when the Vector engine is included."
-  },
-  "motionKit": {
-    "unavailableTitle": "Motion editing is not available in this build",
-    "unavailableBody": "Motion files open in Kition when the Motion engine is included."
-  },
-  "layoutKit": {
-    "unavailableTitle": "Layout editing is not available in this build",
-    "unavailableBody": "Layout files open in Kition when the Layout engine is included."
-  },
-  "cadKit": {
-    "unavailableTitle": "CAD editing is not available in this build",
-    "unavailableBody": "CAD files open in Kition when the CAD engine is included."
-  },
-  "sceneKit": {
-    "unavailableTitle": "Scene editing is not available in this build",
-    "unavailableBody": "Scene files open in Kition when the Scene engine is included."
-  },
-  "designKit": {
-    "unavailableTitle": "Design editing is not available in this build",
-    "unavailableBody": "Design files open in Kition when the Design engine is included."
-  },
-  "slideKit": {
-    "unavailableTitle": "Slide editing is not available in this build",
-    "unavailableBody": "Slide files open in Kition when the Slide engine is included."
-  },
-  "docKit": {
-    "unavailableTitle": "Doc editing is not available in this build",
-    "unavailableBody": "Doc files open in Kition when the Doc engine is included."
-  },
-  "sheetKit": {
-    "unavailableTitle": "Sheet editing is not available in this build",
-    "unavailableBody": "Sheet files open in Kition when the Sheet engine is included."
-  },
-  "pdfKit": {
-    "unavailableTitle": "PDF editing is not available in this build",
-    "unavailableBody": "PDF files open in Kition when the PDF engine is included."
-  },
-  "tableKit": {
-    "unavailableTitle": "Table editing is not available in this build",
-    "unavailableBody": "Table files open in Kition when the Table engine is included."
-  },
-  "boardKit": {
-    "unavailableTitle": "Board editing is not available in this build",
-    "unavailableBody": "Boards open in Kition when the Board engine is included."
-  },
-  "noteKit": {
-    "unavailableTitle": "Note editing is not available in this build",
-    "unavailableBody": "Notes open in Kition when the Note engine is included."
   },
   "collab": {
     "share": "Share for co-editing",
@@ -539,9 +481,5 @@
         "description": "Clarify product, design, engineering, and launch ownership across handoffs."
       }
     }
-  },
-  "htmlKit": {
-    "unavailableTitle": "HTML editor unavailable",
-    "unavailableBody": "Build the HTML kit package to edit HTML files in this development build."
   }
 }

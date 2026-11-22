@@ -1,7 +1,8 @@
+import menu from '../../../../../kits/menu.json'
 import type { KitIconId } from '@/components/KitIcon'
-import type { EmbeddedKit, KitModuleManifest } from '@/features/kits/public'
+import { kitById, kitByName, kitCatalog, type KitCatalogEntry, type KitCreate } from '@/lib/kitCatalog'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import { KIT_CREATE_EXTENSION } from './kitFormats'
+import { kitForWorkspaceFormat } from '@/services/workspaceFormats'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -12,119 +13,70 @@ export type KitEditorProps = {
 }
 
 /**
- * One kit in the workspace: the file format it opens (from the desktop format table,
- * src-tauri/src/workspace/formats.rs) and the kit's package, which release builds always
- * include (`scripts/build-kits.sh`). The package holds the kit's own editor, shown in an
- * iframe (standard 6.1), and its engine, which Kition also uses to make new files.
- * Adding a kit adds one entry here; see docs/kits.md.
+ * One kit in the workspace, from the kit catalog (the manifests of this build's kit packages,
+ * `src/lib/kitCatalog.ts`): the kit's package, which holds its own editor,
+ * shown in an iframe (standard 6.1), and its engine, which Kition also uses to make new files.
+ * No kit is registered here: a kit that ships (`kits/kits.lock.json`) and whose package is in the
+ * build is in the workspace; see docs/kits.md.
  */
-export type KitEditorEntry = {
-  format: WorkspaceDocumentFormat
-  /** The kit's package under `public/kits/<dir>/`. */
-  embedded: EmbeddedKit
-  /** The kit's engine inside its package. */
-  engine: KitModuleManifest
-  /** The `<key>Kit` strings and the kit icon. */
+export type KitEditorEntry = KitCatalogEntry & {
+  /** The `<key>Kit` strings and the kit icon: the kit's name. */
   key: string
   icon: KitIconId
-  /** The file preview shows this format, and keeps showing it in a build without the kit. */
-  preview?: boolean
-  /** A create menu item: an empty document of this size, made by the kit's engine in the page. */
-  create?: KitCreateSpec
 }
 
-export type KitCreateSpec = {
-  /** The menu item's test id is `workspace-create-<id>`. */
-  id: string
-  extension: string
-  /** The new file is `<baseName>.<extension>`, numbered when that exists. */
-  baseName: string
-  size: { width: number; height: number }
+export type KitCreateSpec = KitCreate & {
   /** A key in the workspace strings. */
   label: string
   /** The create menu's group the item is in. */
   group: KitCreateGroup
 }
 
-/** The create menu's groups, by what the new file is for, not by who makes it. */
-export type KitCreateGroup = 'documents' | 'data' | 'visual' | 'media'
+/** The create menu's groups (`kits/menu.json`), by what the new file is for, not by who makes it. */
+export type KitCreateGroup = string
 
-/** A kit packaged by `scripts/build-kit-ui.sh <kit>` into `public/kits/<kit>-ui/`. */
-function kit(name: string, documentClass: string, entry: Omit<KitEditorEntry, 'embedded' | 'engine' | 'key'> & { key?: string }): KitEditorEntry {
-  const dir = `${name}-ui`
-  return {
-    ...entry,
-    key: entry.key ?? name,
-    embedded: { kitId: `kit.${name}`, dir },
-    engine: { kitId: `kit.${name}`, dir: `${dir}/engine`, module: `kition_${name}_kit`, documentClass },
-  }
+function editor(entry: KitCatalogEntry): KitEditorEntry {
+  return { ...entry, key: entry.name, icon: entry.name }
 }
 
-// The create menu orders its items itself (`CREATE_ORDER` in `WorkspaceCreateMenu`).
-const KIT_EDITORS: readonly KitEditorEntry[] = [
-  kit('html', 'HtmlDocument', { format: 'html', icon: 'html', create: { id: 'html', extension: KIT_CREATE_EXTENSION.html, baseName: 'Untitled HTML', size: { width: 640, height: 480 }, label: 'createMenu.format.html', group: 'documents' } }),
-  kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'photo', extension: KIT_CREATE_EXTENSION.photo, baseName: 'Untitled photo', size: { width: 1920, height: 1080 }, label: 'createMenu.format.photo', group: 'visual' } }),
-  kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'vector', extension: KIT_CREATE_EXTENSION.vector, baseName: 'Untitled vector', size: { width: 1920, height: 1080 }, label: 'createMenu.format.vector', group: 'visual' } }),
-  // US Letter, in points.
-  kit('layout', 'LayoutDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: KIT_CREATE_EXTENSION.layout, baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', group: 'documents' } }),
-  kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'film', extension: KIT_CREATE_EXTENSION.film, baseName: 'Untitled film', size: { width: 1920, height: 1080 }, label: 'createMenu.format.film', group: 'media' } }),
-  kit('motion', 'MotionDocument', { format: 'motion', icon: 'motion', create: { id: 'motion', extension: KIT_CREATE_EXTENSION.motion, baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', group: 'media' } }),
-  // A3 in millimetres; the engine starts a metric drawing with those limits.
-  kit('cad', 'CadDocument', { format: 'cad', icon: 'cad', create: { id: 'cad', extension: KIT_CREATE_EXTENSION.cad, baseName: 'Untitled CAD', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', group: 'visual' } }),
-  // US Letter, in points.
-  kit('doc', 'DocDocument', { format: 'docx', icon: 'doc', preview: true, create: { id: 'doc', extension: KIT_CREATE_EXTENSION.doc, baseName: 'Untitled doc', size: { width: 612, height: 792 }, label: 'createMenu.format.doc', group: 'documents' } }),
-  kit('sheet', 'SheetDocument', { format: 'xlsx', icon: 'sheet', preview: true, create: { id: 'sheet', extension: KIT_CREATE_EXTENSION.sheet, baseName: 'Untitled sheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.sheet', group: 'data' } }),
-  kit('slide', 'SlideDocument', { format: 'slide', icon: 'slide', create: { id: 'slide', extension: KIT_CREATE_EXTENSION.slide, baseName: 'Untitled slide', size: { width: 960, height: 540 }, label: 'createMenu.format.slide', group: 'visual' } }),
-  // PowerPoint files open in the Slide kit.
-  kit('slide', 'SlideDocument', { format: 'pptx', icon: 'slide', preview: true }),
-  // US Letter, in points.
-  kit('pdf', 'PdfDocument', { format: 'pdf', icon: 'pdf', preview: true, create: { id: 'pdf', extension: KIT_CREATE_EXTENSION.pdf, baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', group: 'documents' } }),
-  // Kition's host features (the scenario builder) reach a table's records through the kit too.
-  kit('table', 'TableDocument', { format: 'table', icon: 'table', create: { id: 'table', extension: KIT_CREATE_EXTENSION.table, baseName: 'Untitled table', size: { width: 640, height: 420 }, label: 'createMenu.format.table', group: 'data' } }),
-  kit('board', 'BoardDocument', { format: 'board', icon: 'board', create: { id: 'board', extension: KIT_CREATE_EXTENSION.board, baseName: 'Untitled board', size: { width: 1920, height: 1080 }, label: 'createMenu.format.board', group: 'visual' } }),
-  // 3D scenes; the size is the viewport a new scene opens with (the engine starts the default scene).
-  kit('scene', 'SceneDocument', { format: 'scene', icon: 'scene', create: { id: 'scene', extension: KIT_CREATE_EXTENSION.scene, baseName: 'Untitled scene', size: { width: 1280, height: 720 }, label: 'createMenu.format.scene', group: 'visual' } }),
-  // Interface designs; the size is the first frame a new design starts with (kit.json `creates`).
-  kit('design', 'DesignDocument', { format: 'design', icon: 'design', create: { id: 'design', extension: KIT_CREATE_EXTENSION.design, baseName: 'Untitled design', size: { width: 1440, height: 1024 }, label: 'createMenu.format.design', group: 'visual' } }),
-  // Markdown notes (`.md`, `.markdown`); US Letter, in points, for its pages.
-  kit('note', 'NoteDocument', { format: 'markdown', icon: 'note', create: { id: 'note', extension: KIT_CREATE_EXTENSION.note, baseName: 'Untitled note', size: { width: 612, height: 792 }, label: 'createMenu.format.note', group: 'documents' } }),
-]
-
-const availability = new Map<string, Promise<boolean>>()
+/** The create menu's groups, in menu order. */
+export function kitCreateGroups(): KitCreateGroup[] {
+  return menu.create.map((each) => each.group)
+}
 
 /**
- * Whether this build includes the kit's package: its `kit-ui.json` marker, which a missing
- * package cannot fake (the dev server answers unknown paths with the app's page). Release
- * builds always do; a development build has the kits `make kit-uis` built.
+ * Every kit of this build that has a create menu item, in menu order (`kits/menu.json`): the item
+ * makes the first document type the kit's manifest creates.
  */
-export function kitAvailable(entry: KitEditorEntry) {
-  const { dir, kitId } = entry.embedded
-  let known = availability.get(dir)
-  if (!known) {
-    known = fetch(`/kits/${dir}/kit-ui.json`, { cache: 'no-store' })
-      .then(async (response) => response.ok && /json/i.test(response.headers.get('content-type') ?? '') && (await response.json()).kitId === kitId)
-      .catch(() => false)
-    availability.set(dir, known)
-  }
-  return known
+export function creatableKits(): (KitEditorEntry & { create: KitCreateSpec })[] {
+  return menu.create.flatMap(({ group, kits }) =>
+    kits.flatMap((name) => {
+      const entry = kitByName(name)
+      const create = entry?.creates[0]
+      return entry && create ? [{ ...editor(entry), create: { ...create, label: `createMenu.format.${create.id}`, group } }] : []
+    }),
+  )
 }
 
-/** Every kit that offers a create menu item. */
-export function creatableKits() {
-  return KIT_EDITORS.filter((entry): entry is KitEditorEntry & { create: KitCreateSpec } => Boolean(entry.create))
-}
-
+/** The kit whose editor shows files of `format`, when this build has one. */
 export function kitEditorFor(format: WorkspaceDocumentFormat) {
-  return KIT_EDITORS.find((entry) => entry.format === format)
+  const entry = kitForWorkspaceFormat(format)
+  return entry ? editor(entry) : undefined
 }
 
 /** The kit `kitId` as co-editing opens a document shared with this person: its engine, and its file extension. */
 export function sharedKitFor(kitId: string) {
-  const entry = creatableKits().find((candidate) => candidate.embedded.kitId === kitId)
-  return entry ? { engine: entry.engine, extension: entry.create.extension } : null
+  const entry = kitById(kitId)
+  const create = entry?.creates[0]
+  return entry && create ? { engine: entry.engine, extension: create.extension } : null
 }
 
 /** The package of the kit `kitId` (its editor), as the version history shows a kit document's past versions. */
 export function embeddedKitFor(kitId: string) {
-  return KIT_EDITORS.find((entry) => entry.embedded.kitId === kitId)?.embedded ?? null
+  return kitById(kitId)?.embedded ?? null
+}
+
+/** Every extension a kit of this build creates, for a workspace tab title to drop. */
+export function kitCreateExtensions(): string[] {
+  return kitCatalog().flatMap((entry) => entry.creates.map((create) => create.extension))
 }

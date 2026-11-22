@@ -111,7 +111,8 @@ export type WorkspaceDocumentExternalChange = {
   mtimeMs?: number
 }
 
-export type WorkspaceDocumentFormat =
+/** The kinds of file Kition knows itself. `binary` is a file neither Kition nor a kit of this build knows. */
+export type HostDocumentFormat =
   | 'markdown'
   | 'docx'
   | 'xlsx'
@@ -122,20 +123,14 @@ export type WorkspaceDocumentFormat =
   | 'text'
   | 'html'
   | 'image'
-  | 'photo'
-  | 'film'
-  | 'vector'
-  | 'motion'
-  | 'cad'
-  | 'scene'
-  | 'design'
-  | 'slide'
   | 'video'
   | 'audio'
   | 'binary'
-  | 'table'
-  | 'board'
-  | 'layout'
+
+/** A file only a kit knows: the kit's name (its id without `kit.`), from the kit's manifest. */
+export type KitDocumentFormat = string & {}
+
+export type WorkspaceDocumentFormat = HostDocumentFormat | KitDocumentFormat
 
 export type WorkspaceDocumentPathRequest = {
   expected_root?: string

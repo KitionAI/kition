@@ -1,4 +1,98 @@
 //! Which workspace files the desktop lists, opens as text, and saves.
+//!
+//! Kition knows a few kinds of file itself (Markdown, the office and portable formats, images,
+//! media, plain text). Every other kind is a kit's, named by the kit's name (its id without
+//! `kit.`), and is read from the kits' manifests (`install_kits`): no kit's extension is written
+//! here. The renderer infers the same way (`src/services/workspaceFormats.ts`).
+
+use std::collections::HashMap;
+use std::sync::{PoisonError, RwLock};
+
+/// The extensions the kits of this build open, lowercase with the dot, each with its kit's name.
+static KIT_FORMATS: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
+
+/// The extensions a kit manifest (`kit.json`) opens, with the kit's name: those it edits, and
+/// those it only views.
+fn manifest_formats(manifest: &str) -> Option<(String, Vec<String>, Vec<String>)> {
+    let manifest: serde_json::Value = serde_json::from_str(manifest).ok()?;
+    let name = manifest
+        .get("id")?
+        .as_str()?
+        .strip_prefix("kit.")?
+        .to_owned();
+    let (mut edits, mut views) = (Vec::new(), Vec::new());
+    for format in manifest.get("formats")?.as_array()? {
+        let viewed = format.get("role").and_then(serde_json::Value::as_str) == Some("view");
+        let extensions = format
+            .get("extensions")
+            .and_then(serde_json::Value::as_array);
+        for extension in extensions.into_iter().flatten() {
+            if let Some(extension) = extension.as_str() {
+                let extension = format!(
+                    ".{}",
+                    extension.trim_start_matches('.').to_ascii_lowercase()
+                );
+                if viewed {
+                    views.push(extension);
+                } else {
+                    edits.push(extension);
+                }
+            }
+        }
+    }
+    Some((name, edits, views))
+}
+
+/// Makes the kits of `manifests` (each a `kit.json`) the kits whose files the desktop knows. The
+/// first kit that edits an extension gets it; a kit that only views one gets it when none edits it.
+pub fn install_kits<S: AsRef<str>>(manifests: &[S]) {
+    let kits: Vec<_> = manifests
+        .iter()
+        .filter_map(|manifest| manifest_formats(manifest.as_ref()))
+        .collect();
+    let mut formats = HashMap::new();
+    for (name, edits, _) in &kits {
+        for extension in edits {
+            formats
+                .entry(extension.clone())
+                .or_insert_with(|| name.clone());
+        }
+    }
+    for (name, _, views) in &kits {
+        for extension in views {
+            formats
+                .entry(extension.clone())
+                .or_insert_with(|| name.clone());
+        }
+    }
+    *KIT_FORMATS.write().unwrap_or_else(PoisonError::into_inner) = Some(formats);
+}
+
+/// The manifests in a kits folder (`<dir>/<kit>-ui/kit.json`), in folder order.
+pub fn manifests_in(dir: &std::path::Path) -> Vec<String> {
+    let mut folders: Vec<_> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .collect();
+    folders.sort();
+    folders
+        .iter()
+        .filter_map(|folder| std::fs::read_to_string(folder.join("kit.json")).ok())
+        .collect()
+}
+
+/// The name of the kit that opens files of `extension` (lowercase, with the dot).
+fn kit_format(extension: &str) -> Option<String> {
+    #[cfg(test)]
+    tests::install_test_kits();
+    KIT_FORMATS
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_ref()
+        .and_then(|formats| formats.get(extension).cloned())
+}
 
 fn extension(path: &str) -> String {
     let name = path.rsplit(['/', '\\']).next().unwrap_or_default();
@@ -8,8 +102,9 @@ fn extension(path: &str) -> String {
     }
 }
 
-pub fn infer_format(path: &str) -> &'static str {
-    match extension(path).as_str() {
+/// Kition's own format for an extension.
+fn host_format(extension: &str) -> Option<&'static str> {
+    Some(match extension {
         ".md" | ".markdown" => "markdown",
         ".docx" => "docx",
         ".xlsx" | ".xls" => "xlsx",
@@ -20,31 +115,18 @@ pub fn infer_format(path: &str) -> &'static str {
         ".txt" => "text",
         ".html" | ".htm" => "html",
         ".png" | ".jpg" | ".jpeg" | ".gif" | ".webp" | ".svg" => "image",
-        // Layered images, edited in the Photo kit.
-        ".psd" | ".psb" | ".kphoto" => "photo",
-        // Video projects, edited in the Film kit.
-        ".kfilm" => "film",
-        // Vector drawings, edited in the Vector kit.
-        ".kvector" => "vector",
-        // Motion-graphics projects, edited in the Motion kit.
-        ".kmotion" => "motion",
-        // Page layouts, edited in the Layout kit.
-        ".klayout" => "layout",
-        // CAD drawings, edited in the CAD kit.
-        ".dxf" => "cad",
-        // Slide files, edited in the Slide kit (PowerPoint files too, as `pptx`).
-        ".kslide" => "slide",
-        // Tables, edited in the Table kit.
-        ".ktable" => "table",
-        // Boards, edited in the Board kit.
-        ".kboard" => "board",
-        // 3D scenes, edited in the Scene kit.
-        ".kscene" => "scene",
-        // Interface designs, edited in the Design kit.
-        ".kdesign" => "design",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
-        _ => "binary",
+        _ => return None,
+    })
+}
+
+/// Kition's own format for the path, or the name of the kit that opens it, or `binary`.
+pub fn infer_format(path: &str) -> String {
+    let extension = extension(path);
+    match host_format(&extension) {
+        Some(format) => format.to_owned(),
+        None => kit_format(&extension).unwrap_or_else(|| "binary".to_owned()),
     }
 }
 
@@ -65,20 +147,50 @@ pub fn is_text(path: &str) -> bool {
 }
 
 pub fn is_supported(path: &str) -> bool {
-    has_extension(
-        path,
-        &[
-            "md", "markdown", "txt", "csv", "tsv", "json", "html", "htm", "pdf", "docx", "xlsx",
-            "xls", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg", "psd", "psb",
-            "kphoto", "kfilm", "kvector", "kmotion", "klayout", "dxf", "kslide", "ktable",
-            "kboard", "kscene", "kdesign", "mp4", "mov", "webm", "mp3", "wav", "m4a",
-        ],
-    )
+    infer_format(path) != "binary"
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Tests know every kit: the manifests kept for the kit host's tests.
+    pub(super) fn install_test_kits() {
+        static ONCE: std::sync::Once = std::sync::Once::new();
+        ONCE.call_once(|| {
+            let dir = concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../crates/kition-kits/tests/fixtures/kits"
+            );
+            let mut files: Vec<_> = std::fs::read_dir(dir)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|entry| entry.path())
+                .collect();
+            files.sort();
+            let manifests: Vec<String> = files
+                .iter()
+                .filter_map(|file| std::fs::read_to_string(file).ok())
+                .collect();
+            install_kits(&manifests);
+        });
+    }
+
+    #[test]
+    fn reads_a_kit_s_files_from_its_manifest() {
+        let ink = r#"{"id":"kit.ink","formats":[{"extensions":["kink",".INKX"]},{"extensions":["oink","memo"],"role":"view"}]}"#;
+        assert_eq!(
+            manifest_formats(ink),
+            Some((
+                "ink".to_owned(),
+                vec![".kink".to_owned(), ".inkx".to_owned()],
+                vec![".oink".to_owned(), ".memo".to_owned()]
+            ))
+        );
+        assert_eq!(manifest_formats(r#"{"id":"ink","formats":[]}"#), None);
+        assert_eq!(manifest_formats("not json"), None);
+    }
 
     #[test]
     fn classifies_workspace_files() {

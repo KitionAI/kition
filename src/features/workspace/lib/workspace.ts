@@ -8,7 +8,10 @@ import type {
   WorkspaceDocumentFormat,
   WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
-import { kitCreateExtensions } from '@/features/workspace/components/kits/kitFormats'
+import { kitEditingExtension } from '@/lib/kitCatalog'
+import { inferWorkspaceItemFormat, kitForWorkspaceFormat, knownWorkspaceExtensions, workspaceFormatLabel } from '@/services/workspaceFormats'
+
+export { inferWorkspaceItemFormat }
 
 export type WorkspaceMediaKind = 'images' | 'videos'
 
@@ -40,29 +43,6 @@ export type WorkspaceTreeNode = {
 export type WorkspaceTreeDropPosition = 'before' | 'inside' | 'after'
 
 export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', '🗂️', '✅', '🚧', '⭐', '🔖', '🧩', '📌']
-
-/**
- * Formats Kition's own editors (and `inferWorkspaceItemFormat` below) already know, with no kit
- * registry entry: aliases a kit's preview understands but never creates (`pptx`, `xls`, `ppt`,
- * `psb`, `kphoto`), and the native Markdown and media formats.
- */
-const workspaceNonKitExtensions = [
-  'md', 'markdown',
-  'pptx', 'xls', 'ppt', 'psb', 'kphoto',
-  'csv', 'tsv', 'json', 'txt', 'html', 'htm',
-  'png', 'jpe?g', 'gif', 'webp', 'svg',
-  'mp4', 'mov', 'webm', 'mp3', 'wav', 'm4a',
-]
-
-/**
- * Drops a workspace file's extension from its tab title: every format the app knows, kit-owned
- * (from the kit registry's create extensions, `kitEditors.ts`, so a kit's own extension never
- * drifts out of date here) or not (`workspaceNonKitExtensions`).
- */
-const workspaceTitleExtensionPattern = new RegExp(
-  `\\.(${[...new Set([...workspaceNonKitExtensions, ...kitCreateExtensions()])].join('|')})$`,
-  'i',
-)
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -112,78 +92,10 @@ function formatRelativeDateTime(value?: ApiTimestamp | null) {
   })
 }
 
-export function inferWorkspaceItemFormat(path: string, content?: string): WorkspaceDocumentFormat {
-  if (path.toLowerCase().endsWith('.ktable')) return 'table'
-  if (path.toLowerCase().endsWith('.kboard')) return 'board'
-  if (path.toLowerCase().endsWith('.docx')) {
-    return 'docx'
-  }
-  if (/\.(xlsx|xls)$/i.test(path)) {
-    return 'xlsx'
-  }
-  if (/\.(pptx|ppt)$/i.test(path)) {
-    return 'pptx'
-  }
-  if (path.toLowerCase().endsWith('.pdf')) {
-    return 'pdf'
-  }
-  if (/\.(csv|tsv)$/i.test(path)) {
-    return 'csv'
-  }
-  if (path.toLowerCase().endsWith('.json')) {
-    return 'json'
-  }
-  if (path.toLowerCase().endsWith('.txt')) {
-    return 'text'
-  }
-  if (/\.(html|htm)$/i.test(path)) {
-    return 'html'
-  }
-  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(path)) {
-    return 'image'
-  }
-  if (/\.(psd|psb|kphoto)$/i.test(path)) {
-    return 'photo'
-  }
-  if (/\.kfilm$/i.test(path)) {
-    return 'film'
-  }
-  if (/\.kvector$/i.test(path)) {
-    return 'vector'
-  }
-  if (/\.kmotion$/i.test(path)) {
-    return 'motion'
-  }
-  if (/\.klayout$/i.test(path)) {
-    return 'layout'
-  }
-  if (/\.dxf$/i.test(path)) {
-    return 'cad'
-  }
-  if (/\.kslide$/i.test(path)) {
-    return 'slide'
-  }
-  if (/\.kscene$/i.test(path)) {
-    return 'scene'
-  }
-  if (/\.kdesign$/i.test(path)) {
-    return 'design'
-  }
-  if (/\.(mp4|mov|webm)$/i.test(path)) {
-    return 'video'
-  }
-  if (/\.(mp3|wav|m4a)$/i.test(path)) {
-    return 'audio'
-  }
-  if (/\.(md|markdown)$/i.test(path)) {
-    return 'markdown'
-  }
-  // Like the desktop shell (src-tauri/src/workspace/formats.rs): a file of no known kind is no note.
-  return 'binary'
-}
-
+/** Drops a workspace file's extension from its name: any extension Kition or a kit of this build knows. */
 export function getWorkspaceItemTitle(name: string) {
-  return name.replace(workspaceTitleExtensionPattern, '')
+  const dot = name.lastIndexOf('.')
+  return dot > 0 && knownWorkspaceExtensions().includes(name.slice(dot + 1).toLowerCase()) ? name.slice(0, dot) : name
 }
 
 export function renameWorkspaceDocumentPath(path: string, title: string) {
@@ -196,7 +108,9 @@ export function renameWorkspaceDocumentPath(path: string, title: string) {
   // The file keeps its own extension (any file's, not only a note's), unless the new name has it.
   const filename = normalizedPath.split('/').pop() || normalizedPath
   const extension = filename.match(/.(\.[^./]+)$/)?.[1] || ''
-  const fallbackTitle = extension.toLowerCase() === '.kboard' ? 'Untitled board' : 'Untitled note'
+  // An empty name falls back to the name the file's kit gives a new document (`kit.json` `creates[].baseName`).
+  const created = extension.slice(1).toLowerCase()
+  const fallbackTitle = kitEditingExtension(created)?.creates.find((create) => create.extension === created)?.baseName ?? 'Untitled'
   const nextTitle = trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle
   const nextFilename = extension && nextTitle.toLowerCase().endsWith(extension.toLowerCase()) ? nextTitle : `${nextTitle}${extension}`
   const parentPath = normalizedPath.includes('/')
@@ -230,34 +144,7 @@ export type WorkspaceItemIcon = ComponentType<{ className?: string; 'aria-hidden
 
 /** The kit that owns a format; plain files (images, media, text) have none. */
 export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIconId | null {
-  switch (format) {
-    case 'markdown':
-      return 'note'
-    case 'table':
-      return 'table'
-    case 'docx':
-      return 'doc'
-    case 'xlsx':
-    case 'csv':
-      return 'sheet'
-    case 'pptx':
-    case 'slide':
-      return 'slide'
-    case 'pdf':
-    case 'layout':
-    case 'board':
-    case 'photo':
-    case 'film':
-    case 'vector':
-    case 'motion':
-    case 'cad':
-    case 'html':
-    case 'scene':
-    case 'design':
-      return format
-    default:
-      return null
-  }
+  return kitForWorkspaceFormat(format, { views: true })?.name ?? null
 }
 
 export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): WorkspaceItemIcon {
@@ -285,7 +172,6 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
       return 'text-sky-500'
     case 'docx':
       return 'text-blue-600'
-    case 'table':
     case 'xlsx':
     case 'csv':
       return 'text-emerald-500'
@@ -298,18 +184,6 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'html':
       return 'text-orange-600'
     case 'image':
-    case 'photo':
-    case 'film':
-    case 'vector':
-    case 'motion':
-    case 'layout':
-    case 'cad':
-    case 'scene':
-    case 'design':
-      return 'text-violet-500'
-    case 'slide':
-      return 'text-orange-500'
-    case 'board':
       return 'text-violet-500'
     case 'video':
       return 'text-pink-500'
@@ -323,34 +197,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
 }
 
 export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
-  const labels: Record<WorkspaceDocumentFormat, string> = {
-    markdown: 'MD',
-    table: 'Table',
-    docx: 'Doc',
-    xlsx: 'Excel',
-    pptx: 'PPT',
-    pdf: 'PDF',
-    csv: 'CSV',
-    json: 'JSON',
-    text: 'TXT',
-    html: 'HTML',
-    image: 'Image',
-    photo: 'Photo',
-    film: 'Film',
-    vector: 'Vector',
-    motion: 'Motion',
-    cad: 'CAD',
-    scene: 'Scene',
-    design: 'Design',
-    slide: 'Slide',
-    video: 'Video',
-    audio: 'Audio',
-    binary: 'File',
-    board: 'Board',
-    layout: 'Layout',
-  }
-
-  return labels[format || 'markdown']
+  return workspaceFormatLabel(format)
 }
 
 export function isMediaWorkspaceFormat(format?: WorkspaceDocumentFormat) {
@@ -406,7 +253,7 @@ export function isDuplicableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'motion' || format === 'layout' || format === 'cad' || format === 'scene' || format === 'design' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'table' || format === 'board' || format === 'video'
+  return format === 'html' || format === 'markdown' || format === 'image' || format === 'pdf' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'video' || Boolean(kitForWorkspaceFormat(format))
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

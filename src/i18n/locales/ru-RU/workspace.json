@@ -173,10 +173,6 @@
     "renamed": "Переименовано",
     "alreadyInLocation": "Уже находится в этом месте"
   },
-  "photoKit": {
-    "unavailableTitle": "Редактирование Photo недоступно в этой сборке",
-    "unavailableBody": "Файлы Photo открываются в Kition, когда в сборку включён движок Photo."
-  },
   "kitEditor": {
     "conflictsTitle": "Некоторые правки не удалось объединить",
     "conflictsBody_one": "Не удалось объединить правки, сделанные другим человеком одновременно: {{count}}. Они сохранены в документе до разрешения.",
@@ -282,62 +278,8 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "Редактирование Film недоступно в этой сборке",
-    "unavailableBody": "Файлы Film открываются в Kition, когда в сборку включён движок Film.",
     "editInFilm": "Изменить в Film",
     "editFailed": "Не удалось создать видеопроект"
-  },
-  "vectorKit": {
-    "unavailableTitle": "Редактирование Vector недоступно в этой сборке",
-    "unavailableBody": "Файлы Vector открываются в Kition, когда в сборку включён движок Vector."
-  },
-  "motionKit": {
-    "unavailableTitle": "Редактирование Motion недоступно в этой сборке",
-    "unavailableBody": "Файлы Motion открываются в Kition, когда в сборку включён движок Motion."
-  },
-  "layoutKit": {
-    "unavailableTitle": "Редактирование Layout недоступно в этой сборке",
-    "unavailableBody": "Файлы Layout открываются в Kition, когда в сборку включён движок Layout."
-  },
-  "cadKit": {
-    "unavailableTitle": "Редактирование CAD недоступно в этой сборке",
-    "unavailableBody": "Файлы CAD открываются в Kition, когда в сборку включён движок CAD."
-  },
-  "sceneKit": {
-    "unavailableTitle": "Редактирование Scene недоступно в этой сборке",
-    "unavailableBody": "Файлы Scene открываются в Kition, когда в сборку включён движок Scene."
-  },
-  "designKit": {
-    "unavailableTitle": "Редактирование Design недоступно в этой сборке",
-    "unavailableBody": "Файлы Design открываются в Kition, когда в сборку включён движок Design."
-  },
-  "slideKit": {
-    "unavailableTitle": "Редактирование Slide недоступно в этой сборке",
-    "unavailableBody": "Файлы Slide открываются в Kition, когда в сборку включён движок Slide."
-  },
-  "docKit": {
-    "unavailableTitle": "Редактирование Doc недоступно в этой сборке",
-    "unavailableBody": "Файлы Doc открываются в Kition, когда в сборку включён движок Doc."
-  },
-  "sheetKit": {
-    "unavailableTitle": "Редактирование Sheet недоступно в этой сборке",
-    "unavailableBody": "Файлы Sheet открываются в Kition, когда в сборку включён движок Sheet."
-  },
-  "pdfKit": {
-    "unavailableTitle": "Редактирование PDF недоступно в этой сборке",
-    "unavailableBody": "Файлы PDF открываются в Kition, когда в сборку включён движок PDF."
-  },
-  "tableKit": {
-    "unavailableTitle": "Редактирование Table недоступно в этой сборке",
-    "unavailableBody": "Файлы Table открываются в Kition, когда в сборку включён движок Table."
-  },
-  "boardKit": {
-    "unavailableTitle": "Редактирование досок недоступно в этой сборке",
-    "unavailableBody": "Доски открываются в Kition, когда в сборку включён движок Board."
-  },
-  "noteKit": {
-    "unavailableTitle": "Редактирование заметок недоступно в этой сборке",
-    "unavailableBody": "Заметки открываются в Kition, если в сборку входит движок заметок."
   },
   "collab": {
     "share": "Открыть для совместного редактирования",
@@ -539,9 +481,5 @@
         "description": "Clarify product, design, engineering, and launch ownership across handoffs."
       }
     }
-  },
-  "htmlKit": {
-    "unavailableTitle": "Редактор HTML недоступен",
-    "unavailableBody": "Соберите пакет HTML Kit, чтобы редактировать HTML-файлы в этой версии для разработки."
   }
 }

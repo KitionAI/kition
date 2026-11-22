@@ -2,6 +2,8 @@ import type {
   WorkspaceDocumentFormat,
   WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
+import { kitEditingExtension, type KitCatalogEntry } from '@/lib/kitCatalog'
+import { hostFormatExtensions, inferWorkspaceItemFormat, kitForWorkspaceFormat } from '@/services/workspaceFormats'
 import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
 
 export type AgentMentionableDocument = {
@@ -29,9 +31,9 @@ export type AgentMentionSearchInput = {
   contextPaths?: string[]
 }
 
+/** Kition's own formats a turn can mention; every file a kit of this build edits can be mentioned too. */
 const mentionableFormats = new Set<WorkspaceDocumentFormat>([
   'markdown',
-  'table',
   'text',
   'html',
   'json',
@@ -51,7 +53,14 @@ const binaryAttachmentFormats = new Set<WorkspaceDocumentFormat>([
   'xlsx',
 ])
 
-const binaryAttachmentExtensionPattern = /\.(pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i
+/** Kition's own text formats the agent reads with document_read and writes with document_write. */
+const plainTextFormats = new Set<WorkspaceDocumentFormat>(['text', 'html', 'json', 'csv'])
+
+function extensionOf(path: string) {
+  const name = path.split(/[\\/]/).pop() ?? ''
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
+}
 
 export function isBinaryAttachmentMention(
   format: WorkspaceDocumentFormat | undefined,
@@ -60,43 +69,50 @@ export function isBinaryAttachmentMention(
   if (format && binaryAttachmentFormats.has(format)) {
     return true
   }
-  return binaryAttachmentExtensionPattern.test(path)
+  return hostFormatExtensions(binaryAttachmentFormats).includes(extensionOf(path))
 }
 
 /**
- * Files a kit opens, and the agent tools that edit them (`<prefix>_inspect`, `_commands`,
- * `_run`): the runtime's kit definitions (`crates/kition-kits/src/manager.rs`) as the prompt
- * names them.
+ * A file a kit opens, and the agent tools that edit it (`<prefix>_inspect`, `_commands`, `_run`),
+ * as the prompt names them: from the kit's manifest (the kit catalog), as the runtime's kit
+ * definitions are (`crates/kition-kits/src/definitions.rs`).
  */
-const KIT_FILE_KINDS = [
-  { format: 'photo', extensions: /\.(?:psd|psb|kphoto)$/i, prefix: 'photo', kit: 'Photo', one: 'a layered image', many: 'layered images', data: 'image data' },
-  { format: 'film', extensions: /\.kfilm$/i, prefix: 'film', kit: 'Film', one: 'a video project', many: 'video projects', data: 'project data' },
-  { format: 'vector', extensions: /\.kvector$/i, prefix: 'vector', kit: 'Vector', one: 'a vector drawing', many: 'vector drawings', data: 'drawing data' },
-  { format: 'motion', extensions: /\.kmotion$/i, prefix: 'motion', kit: 'Motion', one: 'a motion graphics project', many: 'motion graphics projects', data: 'project data' },
-  { format: 'layout', extensions: /\.klayout$/i, prefix: 'layout', kit: 'Layout', one: 'a page layout', many: 'page layouts', data: 'layout data' },
-  { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
-  { format: 'scene', extensions: /\.kscene$/i, prefix: 'scene', kit: 'Scene', one: 'a 3D scene', many: '3D scenes', data: 'scene data' },
-  { format: 'design', extensions: /\.kdesign$/i, prefix: 'design', kit: 'Design', one: 'an interface design', many: 'interface designs', data: 'design data' },
-  // PowerPoint files stay attachments whose text is extracted; only .kslide files are kit-only.
-  { format: 'slide', extensions: /\.kslide$/i, prefix: 'slide', kit: 'Kition Slide', one: 'a slide file', many: 'slide files', data: 'slide data' },
-  { format: 'table', extensions: /\.ktable$/i, prefix: 'table', kit: 'Table', one: 'a table file', many: 'table files', data: 'table data' },
-  { format: 'board', extensions: /\.kboard$/i, prefix: 'board', kit: 'Board', one: 'a board', many: 'boards', data: 'board data' },
-  // A note is text: read as it is, changed only through the Note kit.
-  { format: 'markdown', extensions: /\.(?:md|markdown)$/i, prefix: 'note', kit: 'Note', one: 'a note', many: 'notes', data: 'note text', text: true },
-] as const
+type KitFileKind = {
+  kit: KitCatalogEntry
+  prefix: string
+  /** `a layered image`. */
+  one: string
+  /** `layered images`. */
+  many: string
+}
 
-type KitFileKind = (typeof KIT_FILE_KINDS)[number]
+function kitFileKindOf(kit: KitCatalogEntry | undefined): KitFileKind | null {
+  if (!kit?.agentPrefix) return null
+  return { kit, prefix: kit.agentPrefix, one: `${/^[aeiou]/i.test(kit.noun) ? 'an' : 'a'} ${kit.noun}`, many: `${kit.noun}s` }
+}
 
-/** The kit that opens a file, by its workspace format or extension. */
+/**
+ * The kit that opens a file, by its workspace format or extension. An office or portable file
+ * Kition attaches to the turn (a PDF, a Word document), and a plain text file the agent writes
+ * itself (HTML, JSON), is no kit file here, whichever kit edits it.
+ */
 function kitFileKind(format: WorkspaceDocumentFormat | undefined, path: string): KitFileKind | null {
-  return KIT_FILE_KINDS.find((kind) => format === kind.format || kind.extensions.test(path)) ?? null
+  const inferred = inferWorkspaceItemFormat(path)
+  if ([format, inferred].some((each) => each && (binaryAttachmentFormats.has(each) || plainTextFormats.has(each)))) return null
+  return kitFileKindOf(kitForWorkspaceFormat(format) ?? kitEditingExtension(extensionOf(path)))
+}
+
+/** The file opens in a kit whose files are not text: the agent edits it only with the kit's tools. */
+export function isBinaryKitFile(format: WorkspaceDocumentFormat | undefined, path: string) {
+  const kind = kitFileKind(format, path)
+  return Boolean(kind && !kind.kit.text)
 }
 
 function kitToolsHint(kind: KitFileKind) {
-  if ('text' in kind && kind.text) {
+  if (kind.kit.text) {
     return `Read it with document_read and change it with ${kind.prefix}_commands and ${kind.prefix}_run; never with document_write or apply_patch.`
   }
-  return `Inspect it with ${kind.prefix}_inspect and edit it with ${kind.prefix}_commands and ${kind.prefix}_run; never use document_read or document_write on it, because it is binary ${kind.data}.`
+  return `Inspect it with ${kind.prefix}_inspect and edit it with ${kind.prefix}_commands and ${kind.prefix}_run; never use document_read or document_write on it, because it is binary ${kind.kit.noun} data.`
 }
 
 export function flattenMentionableWorkspaceDocuments(
@@ -140,7 +156,11 @@ export function isMentionableWorkspaceFormat(
   if (format && mentionableFormats.has(format)) {
     return true
   }
-  return /\.(md|markdown|ktable|txt|html|htm|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i.test(path)
+  return isMentionableExtension(extensionOf(path))
+}
+
+function isMentionableExtension(extension: string) {
+  return hostFormatExtensions(mentionableFormats).includes(extension) || Boolean(kitEditingExtension(extension))
 }
 
 export function extractAgentDocumentMentionTokens(content: string) {
@@ -295,7 +315,8 @@ export function resolveAgentMentionDocumentPath(
 }
 
 function withoutMentionableExtension(value: string) {
-  return value.replace(/\.(?:md|markdown|ktable|txt|html?|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i, '')
+  const extension = extensionOf(value)
+  return extension && isMentionableExtension(extension) ? value.slice(0, -(extension.length + 1)) : value
 }
 
 function scoreMentionDocument(document: AgentMentionableDocument, query: string) {
@@ -443,7 +464,7 @@ export function buildAgentDocumentMentionPromptContext(input: {
     lines.push(`- ${activeDocumentPath}`)
     const activeKit = kitFileKind(input.activeDocumentFormat, activeDocumentPath)
     if (activeKit) {
-      lines.push(`This current document is ${activeKit.one} open in ${activeKit.kit}. ${kitToolsHint(activeKit)}`)
+      lines.push(`This current document is ${activeKit.one} open in ${activeKit.kit.title}. ${kitToolsHint(activeKit)}`)
     } else if (isBinaryAttachmentMention(input.activeDocumentFormat, activeDocumentPath)) {
       lines.push(
         'This current document is attached to the turn. Analyze it before responding; it is implicit context even without an @ mention.',
@@ -479,10 +500,13 @@ export function buildAgentDocumentMentionPromptContext(input: {
       'If the user wants to update one referenced document, write back to that same path with document_write instead of creating a new file.',
     )
   }
-  for (const kind of KIT_FILE_KINDS) {
-    const files = kitFiles.filter((document) => kitFileKind(document.format, document.path) === kind)
-    if (!files.length) continue
-    lines.push(`Referenced ${kind.many} in this turn (open them in ${kind.kit}):`)
+  const kinds = new Map(kitFiles.flatMap((document) => {
+    const kind = kitFileKind(document.format, document.path)
+    return kind ? [[kind.kit.id, kind] as const] : []
+  }))
+  for (const kind of kinds.values()) {
+    const files = kitFiles.filter((document) => kitFileKind(document.format, document.path)?.kit.id === kind.kit.id)
+    lines.push(`Referenced ${kind.many} in this turn (open them in ${kind.kit.title}):`)
     for (const document of files) {
       lines.push(`- ${document.path}`)
     }

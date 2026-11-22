@@ -123,9 +123,16 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             .filter(|_| tauri::is_dev())
             .map(|url| url.origin().ascii_serialization()),
     );
-    desktop
-        .supervisor
-        .set_kit_manifests(kit_manifests(app.asset_resolver()));
+    let manifests = kit_manifests(app.asset_resolver());
+    // What a kit's files are (the workspace's file list) comes from the same manifests. A
+    // development build bundles no kit package: its kits are in this checkout's `public/kits`.
+    if manifests.is_empty() && cfg!(debug_assertions) {
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../public/kits"));
+        workspace::formats::install_kits(&workspace::formats::manifests_in(dir));
+    } else {
+        workspace::formats::install_kits(&manifests);
+    }
+    desktop.supervisor.set_kit_manifests(manifests);
     desktop.restore_workspace();
     // A Kition that takes the store lock over, or loses it, tells the renderer.
     let notices = handle.clone();

@@ -1,0 +1,29 @@
+format: 1
+id: kition.kits.catalog/manifests
+feature: kition.kits.catalog
+intent: >-
+  The renderer knows a kit only from its manifest. The kit catalog reads a kit's package, engine,
+  the extensions it edits and views, what it creates, whether its files are text and how the agent
+  names it from `kit.json`, and leaves out what is not a kit manifest. A file is named by a format
+  of Kition's own (Markdown, the office and portable formats, images, media, plain text) or by the
+  kit that edits or only views its extension; a file of a kit that is not in the build is an
+  unknown file. The kit of a format is the kit of that name, or the kit that edits the format's
+  usual extension. Each kit this build ships edits what its manifest says it creates. The
+  workspace's helpers that used hand-written tables (the title without its extension, the kit
+  icon of a format, the create menu's groups and order) answer as before from the catalog and
+  `kits/menu.json`, and the agent's prompt for an open or mentioned kit file names the kit, its
+  noun and its tools from the manifest.
+layer: gate
+source:
+  kind: synthetic
+  from: src/lib/kitCatalog.ts
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/lib/kitCatalog.spec.ts, src/features/workspace/lib/workspaceTitleExtension.spec.ts, src/features/workspace/lib/workspaceItemIcon.spec.ts, src/features/workspace/components/WorkspaceCreateMenu.spec.tsx, src/features/agent/lib/documentMentions.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-22"

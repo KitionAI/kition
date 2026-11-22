@@ -40,7 +40,7 @@ function parentFolderFromPath(path: string) {
 export function WorkspaceFileViewerPane(props: WorkspaceFileViewerPaneProps) {
   const kit = kitEditorFor(props.format)
   if (kit) {
-    return <KitFilePane kit={kit} path={props.path} active={props.active} onOpenAgent={props.onOpenAgent} preview={<WorkspaceFilePreview {...props} />} />
+    return <KitFilePane kit={kit} path={props.path} active={props.active} onOpenAgent={props.onOpenAgent} />
   }
   return <WorkspaceFilePreview {...props} />
 }

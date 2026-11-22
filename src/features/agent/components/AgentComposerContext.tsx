@@ -1,6 +1,8 @@
 import './AgentComposerContext.css'
-import { BoxIcon as Box, DatabaseIcon as Database, FileCodeCornerIcon as FileCode2, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FolderIcon as Folder, FolderLockIcon as FolderLock, FrameIcon as Frame, PenToolIcon as PenTool, XIcon as X } from '@kition/tessera/icons/react'
+import { DatabaseIcon as Database, FileCodeCornerIcon as FileCode2, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FolderIcon as Folder, FolderLockIcon as FolderLock, XIcon as X } from '@kition/tessera/icons/react'
 import { useTranslation } from 'react-i18next'
+import { kitIconComponent } from '@/components/KitIcon'
+import { kitOwningWorkspacePath } from '@/services/workspaceFormats'
 import type { AgentLocalSource } from '@/api/agent'
 import type { AgentDocumentReference } from './AgentDocumentReferences'
 
@@ -52,12 +54,12 @@ function basename(path: string) { return path.split(/[\\/]/).filter(Boolean).pop
 
 function referenceIcon(document: AgentDocumentReference) {
   if (document.kind === 'folder') return Folder
+  // A file only a kit knows shows the kit's icon.
+  const kit = kitOwningWorkspacePath(document.path)
+  if (kit) return kitIconComponent(kit.name, { small: true })
   const extension = document.path.split('.').pop()?.toLowerCase()
-  if (extension === 'kboard') return PenTool
-  if (extension === 'kscene') return Box
-  if (extension === 'kdesign') return Frame
   if (extension === 'sql') return Database
-  if (/^(ktable|csv|xlsx?|tsv)$/.test(extension || '')) return FileSpreadsheet
+  if (/^(csv|xlsx?|tsv)$/.test(extension || '')) return FileSpreadsheet
   if (/^(png|jpe?g|webp|gif|svg|avif)$/.test(extension || '')) return FileImage
   if (/^(tsx?|jsx?|go|py|rs|java|json|ya?ml|sh|css|html)$/.test(extension || '')) return FileCode2
   return FileText

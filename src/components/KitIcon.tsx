@@ -8,7 +8,8 @@ export const KIT_ICON_IDS = [
   'vector', 'photo', 'motion', 'film', 'pdf', 'cad', 'html', 'scene', 'design',
 ] as const
 
-export type KitIconId = (typeof KIT_ICON_IDS)[number]
+/** A kit's name (its id without `kit.`): its icons are `kit-icons/<name>.svg` and `<name>-small.svg`. */
+export type KitIconId = string
 
 type KitIconImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'>
 

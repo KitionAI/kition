@@ -38,9 +38,8 @@ function getWorkspaceItemStem(name: string) {
 function resolveWorkspaceTreeFormat(
   path: string,
   format?: WorkspaceDocument['format'],
-  content?: string,
 ) {
-  return format || inferWorkspaceItemFormat(path, content)
+  return format || inferWorkspaceItemFormat(path)
 }
 
 export function getChildFolderPathForNode(node: WorkspaceTreeNode) {
@@ -181,7 +180,7 @@ function replaceWorkspaceTreeDocumentItemAtPath(
         ...item,
         path: document.path,
         name: document.name,
-        format: resolveWorkspaceTreeFormat(document.path, document.format, document.content),
+        format: resolveWorkspaceTreeFormat(document.path, document.format),
         size: document.size ?? document.content.length,
         updated_at: document.updated_at,
       }
@@ -210,7 +209,7 @@ export function insertWorkspaceTreeDocumentItem(
     type: 'file',
     path: document.path,
     name: document.name,
-    format: resolveWorkspaceTreeFormat(document.path, document.format, document.content),
+    format: resolveWorkspaceTreeFormat(document.path, document.format),
     size: document.size ?? document.content.length,
     updated_at: document.updated_at,
   }

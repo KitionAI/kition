@@ -1,0 +1,9 @@
+{
+  "$comment": "The create menu's layout: its groups in order, and in each the kits in order, by kit name (the kit id without `kit.`). A kit that ships (kits/kits.lock.json) and is not listed here has no create menu item. What each item creates comes from the kit's manifest (kit.json `creates`).",
+  "create": [
+    { "group": "documents", "kits": ["note", "doc", "pdf", "layout", "html"] },
+    { "group": "data", "kits": ["table", "sheet"] },
+    { "group": "visual", "kits": ["slide", "board", "design", "vector", "photo", "cad", "scene"] },
+    { "group": "media", "kits": ["film", "motion"] }
+  ]
+}

@@ -12,6 +12,15 @@ import '@/i18n'
 
 void i18next.changeLanguage('en-US')
 
+// The kit catalog a build loads from its kit packages before it renders (`loadKitCatalog`): here
+// the manifests of every kit, as the Rust kit host's tests keep them. Every instance of the module
+// gets them, also one a test loads again after `vi.resetModules()`.
+vi.mock('@/lib/kitCatalog', async (importOriginal) => {
+  const catalog = await importOriginal<typeof import('@/lib/kitCatalog')>()
+  catalog.installKitCatalog(Object.values(import.meta.glob<import('@/lib/kitCatalog').KitManifest>('../../crates/kition-kits/tests/fixtures/kits/*.json', { eager: true, import: 'default' })))
+  return catalog
+})
+
 class ResizeObserverMock {
   observe() {}
   unobserve() {}

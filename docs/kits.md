@@ -146,8 +146,14 @@ Kition (this repository)
                                   host, and the Kit AI bridge
   src/features/kits/engine/          loads a kit's engine in the page; Kition makes new files
                                   with it (createKitFile); imports nothing else from Kition
+  src/lib/kitCatalog.ts              the kits of this build, read from each package's kit.json
+                                  before the app renders: package, engine, extensions, creates
+  src/services/workspaceFormats.ts   what a file is: Kition's own formats, else the kit that
+                                  edits or views its extension
   src/features/workspace/components/kits/kitEditors.ts
-                                  the registry: format -> kit package, engine, create menu item
+                                  the catalog as the workspace uses it: the kit of a format,
+                                  the create menu's items (kits/menu.json: groups and order)
+  scripts/check-kit-neutral.mjs      fails when Kition's own code names a kit (pnpm lint)
   scripts/check-kit-module.mjs       checks a built engine against the contract (pnpm check:kit-modules)
   crates/kition-kits/             copied from kition-sdk: kits found from their kit.json,
                                   the KHP agent tools, drafts, grants, kition-kits-mcp
@@ -410,10 +416,15 @@ items with `primary`.
   editor shows View only instead of Undo, Redo, and Save; a kit's own panels
   read it with `useReadOnly()`. When the role changes, `KitFrame` opens the
   kit again in a new iframe, since a kit page answers one handshake.
-- `KIT_EDITORS` in `src/features/workspace/components/kits/kitEditors.ts` maps a format to its kit package.
-  `KitFilePane` shows the package when its `kit-ui.json` is present. A
-  development build without the package shows the file preview for formats
-  the preview shows (`preview: true`: PDF and Office), or a short notice.
+- Kition's code names no kit (`scripts/check-kit-neutral.mjs`, run by
+  `pnpm lint`). The kit catalog (`src/lib/kitCatalog.ts`) reads the `kit.json`
+  of every shipped kit's package (`kits/kits.lock.json` names them) before the
+  app renders; `kitEditorFor` in
+  `src/features/workspace/components/kits/kitEditors.ts` answers the kit that
+  opens a format, and `KitFilePane` shows its package. A development build
+  without a kit's package does not know the kit: a file Kition previews
+  itself (PDF and Office) shows the file preview, and a file only the kit
+  knows is an unknown file.
 - New files (the create menu, Film's "Edit in Film") are made in the page by
   the engine inside the package (`createKitFile`, the `engine` manifest of the
   entry), under an unused name, written through the host.
@@ -1014,9 +1025,11 @@ Kition runtime and desktop:
 
 4. Nothing to register for the agent: the runtime finds the kit from its
    `kit.json` (package, `--kits-dir`, or beside its headless executable).
-5. Map the extensions to a format in `src-tauri/src/workspace/formats.rs`, and
-   mirror it in the renderer's `src/features/workspace/lib/workspace.ts` and
-   the `WorkspaceDocumentFormat` type.
+5. Nothing to map: a file only a kit knows has the kit's name as its format,
+   and both the desktop shell (`src-tauri/src/workspace/formats.rs`) and the
+   renderer (`src/services/workspaceFormats.ts`) read the kit's extensions
+   from its `kit.json` (`formats`: `edit` first, then `view`). Only a kind of
+   file Kition shows itself (an image, a text file) is in their own tables.
 6. Say in `kit.json` how its agent tools read (K21): `agent.describe` (`noun`,
    `fileTypes`, `reports`, `covers`, `queries`, `example`). A kit whose engine
    renders previews itself (KHP A39: `{slide?, target?, scale?, maxSize?}`
@@ -1025,9 +1038,11 @@ Kition runtime and desktop:
    base64 file in `agent.export` (`command`, `data`, and fixed `params` so the
    open editor and the headless kit export the same thing, A26), for every
    extension in `exports`. The draft tools follow `agent.drafts`, query and
-   batch `agent.objectModel` (A35). Add the kit to `KIT_FILE_KINDS` in
-   `src/features/agent/lib/documentMentions.ts`, its manifest to kition-sdk
-   `crates/kition-kits/tests/fixtures/kits/`, and a case to its
+   batch `agent.objectModel` (A35). The renderer's prompt for an open or
+   mentioned kit file reads `agent.prefix` and `agent.describe.noun` from the
+   catalog (`src/features/agent/lib/documentMentions.ts`). Add the kit's
+   manifest to kition-sdk `crates/kition-kits/tests/fixtures/kits/` (the
+   renderer's unit tests install those as their catalog), and a case to its
    `tests/sdk_kits.rs` with a small fixture.
 7. Keep `contracts/runtime/kits.schema.json` in step with any new route or
    detail shape, and regenerate the renderer types.
@@ -1038,17 +1053,17 @@ Kition renderer:
    `KIT_UIS` in the `Makefile`. Then `make kit-ui-<kit>` and
    `pnpm check:kit-modules`, and when it is ready to ship, the kit's
    Package workflow and `node scripts/pin-kits.mjs <kit>` (section 4b).
-9. One entry in `KIT_EDITORS` (`src/features/workspace/components/kits/kitEditors.ts`): format, icon, the
-   engine's document class, `preview: true` for a format the file preview
-   already shows (PDF, Office; the linked-file prompt then keeps
-   `document_read` for its text, `TEXT_EXTRACTED` in
-   `crates/kition-kits/src/tools.rs`; add the format to
-   `isPreviewableWorkspaceFormat`, or it opens in the system app instead of a
-   tab), and `create` when the kit makes new files (id, extension, base name,
-   size, label).
-10. `<kit>Kit.unavailableTitle` and `<kit>Kit.unavailableBody` in all six
-    locales, for development builds without the package.
-11. An e2e spec like `e2e/photo-embedded.spec.ts` on
+9. Nothing to register in the renderer's code: the kit is in the workspace
+   when it is pinned in `kits/kits.lock.json` and its package is in the
+   build. Its `kit.json` says what it opens (`formats`), what it creates
+   (`creates`: id, extension, base name, size) and its engine. For a create
+   menu item, add the kit's name to its group in `kits/menu.json` and
+   `createMenu.format.<creates id>` to the six locales; its icons are
+   `public/kit-icons/<name>.svg` and `<name>-small.svg`. A format the file
+   preview already shows (PDF, Office) keeps `document_read` for its text in
+   the linked-file prompt (`TEXT_EXTRACTED` in
+   `crates/kition-kits/src/tools.rs`).
+10. An e2e spec like `e2e/photo-embedded.spec.ts` on
     `e2e/helpers/embeddedKit.ts`. It makes a real fixture with the package's
     engine in Node and covers open, edit, and save in the kit's editor; it
     skips itself when the package is not built. Add it to `KIT_E2E` in the

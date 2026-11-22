@@ -173,10 +173,6 @@
     "renamed": "Renomeado",
     "alreadyInLocation": "Já está neste local"
   },
-  "photoKit": {
-    "unavailableTitle": "A edição de Photo não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Photo abrem no Kition quando o mecanismo Photo está incluído."
-  },
   "kitEditor": {
     "conflictsTitle": "Algumas edições não puderam ser mescladas",
     "conflictsBody_one": "{{count}} edição feita por outra pessoa ao mesmo tempo não pôde ser mesclada. Ela fica no documento até ser resolvida.",
@@ -282,62 +278,8 @@
     }
   },
   "filmKit": {
-    "unavailableTitle": "A edição de Film não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Film abrem no Kition quando o mecanismo Film está incluído.",
     "editInFilm": "Editar no Film",
     "editFailed": "Não foi possível criar o projeto de vídeo"
-  },
-  "vectorKit": {
-    "unavailableTitle": "A edição de Vector não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Vector abrem no Kition quando o mecanismo Vector está incluído."
-  },
-  "motionKit": {
-    "unavailableTitle": "A edição de Motion não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Motion abrem no Kition quando o mecanismo Motion está incluído."
-  },
-  "layoutKit": {
-    "unavailableTitle": "A edição de Layout não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Layout abrem no Kition quando o mecanismo Layout está incluído."
-  },
-  "cadKit": {
-    "unavailableTitle": "A edição de CAD não está disponível nesta versão",
-    "unavailableBody": "Arquivos do CAD abrem no Kition quando o mecanismo CAD está incluído."
-  },
-  "sceneKit": {
-    "unavailableTitle": "A edição de Scene não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Scene abrem no Kition quando o mecanismo Scene está incluído."
-  },
-  "designKit": {
-    "unavailableTitle": "A edição de Design não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Design abrem no Kition quando o mecanismo Design está incluído."
-  },
-  "slideKit": {
-    "unavailableTitle": "A edição de Slide não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Slide abrem no Kition quando o mecanismo Slide está incluído."
-  },
-  "docKit": {
-    "unavailableTitle": "A edição de Doc não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Doc abrem no Kition quando o mecanismo Doc está incluído."
-  },
-  "sheetKit": {
-    "unavailableTitle": "A edição de Sheet não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Sheet abrem no Kition quando o mecanismo Sheet está incluído."
-  },
-  "pdfKit": {
-    "unavailableTitle": "A edição de PDF não está disponível nesta versão",
-    "unavailableBody": "Arquivos do PDF abrem no Kition quando o mecanismo PDF está incluído."
-  },
-  "tableKit": {
-    "unavailableTitle": "A edição de Table não está disponível nesta versão",
-    "unavailableBody": "Arquivos do Table abrem no Kition quando o mecanismo Table está incluído."
-  },
-  "boardKit": {
-    "unavailableTitle": "A edição de quadros não está disponível nesta versão",
-    "unavailableBody": "Os quadros abrem no Kition quando o mecanismo Board está incluído."
-  },
-  "noteKit": {
-    "unavailableTitle": "A edição de notas não está disponível nesta versão",
-    "unavailableBody": "As notas abrem no Kition quando o mecanismo de notas está incluído."
   },
   "collab": {
     "share": "Compartilhar para coedição",
@@ -539,9 +481,5 @@
         "description": "Clarify product, design, engineering, and launch ownership across handoffs."
       }
     }
-  },
-  "htmlKit": {
-    "unavailableTitle": "Editor HTML indisponível",
-    "unavailableBody": "Compile o pacote HTML Kit para editar arquivos HTML nesta versão de desenvolvimento."
   }
 }

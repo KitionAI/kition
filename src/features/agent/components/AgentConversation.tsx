@@ -1,3 +1,5 @@
+import { kitIconComponent } from '@/components/KitIcon'
+import { kitOwningWorkspacePath } from '@/services/workspaceFormats'
 import { useTranslation } from 'react-i18next'
 import { CheckIcon as Check, ChevronDownIcon as ChevronDown, ChevronRightIcon as ChevronRight, Clock3Icon as Clock3, FileImageIcon as FileImage, FileSpreadsheetIcon as FileSpreadsheet, FileTextIcon as FileText, FileTypeCornerIcon as FileType2, FileVideoCameraIcon as FileVideo2, LoaderCircleIcon as LoaderCircle, PresentationIcon as Presentation, SparklesIcon as Sparkles, Volume2Icon as Volume2, XIcon as X, type IconComponent } from '@kition/tessera/icons/react'
 import { Fragment, useEffect, useState } from 'react'
@@ -482,7 +484,12 @@ function AgentToolImageStrip({ images, onOpenArtifact }: {
 
 function resolveAgentArtifactIcon(path: string): IconComponent {
   const lowerPath = path.toLowerCase()
-  if (/\.(xlsx|xls|csv|tsv|ktable)$/i.test(lowerPath)) {
+  // A file only a kit knows shows the kit's icon.
+  const kit = kitOwningWorkspacePath(path)
+  if (kit) {
+    return kitIconComponent(kit.name, { small: true })
+  }
+  if (/\.(xlsx|xls|csv|tsv)$/i.test(lowerPath)) {
     return FileSpreadsheet
   }
   if (/\.docx$/i.test(lowerPath)) {
