@@ -13,8 +13,9 @@ name: Kit CI
 #   failure; then, when they pass, the kit's `cargo xtask ci` (its layer, wasm and asset checks).
 # - test: one job per test script, at most `max_parallel` at once (6 unless the kit's
 #   .github/kit-ci.json says otherwise), so a kit's run holds at most 8 of the organization's
-#   concurrent jobs. A failed job uploads its test-results and playwright-report as
-#   `evidence-<job>`.
+#   concurrent jobs. A failed job uploads its test-results, playwright-report and runner
+#   diagnostics (kit-ci-diagnostics: memory over time, Playwright's browser log, the kernel log)
+#   as `evidence-<job>`.
 #
 # Text-only path: a push to ci/** or a pull request whose files, against the merge base with main,
 # are all on the text-only list in scripts/kit-ci-plan.mjs (Markdown at the root, directly in
@@ -398,11 +399,175 @@ jobs:
         timeout-minutes: 20
         run: pnpm --dir "kition-$KIT/web" exec playwright install --with-deps chromium webkit
 
+      # Runner diagnostics, for a test that fails without saying why (2026-11: WebKit pages that
+      # closed by themselves mid-test, "Target page, context or browser has been closed", gone on
+      # rerun; nothing told a crash from a kill for memory). While the tests run, nothing reaches
+      # the job log and nothing changes how they run:
+      # - memory.log: one line every 5 s (UTC time, MB used, MB available, MB of swap used, load,
+      #   memory pressure avg10, the three largest processes by RSS), from a background loop this
+      #   step starts and the step after the tests stops;
+      # - pw-browser-<pid>.log: Playwright's browser log (DEBUG=pw:browser: each browser's launch,
+      #   its stderr and stdout, how its process exited), one file per Node.js process through a
+      #   preload in NODE_OPTIONS (Playwright's own DEBUG_FILE would be one file that each process
+      #   truncates). A test command that sets DEBUG or DEBUG_FILE itself keeps them. Playwright's
+      #   is the only debug namespace enabled; Vite adds a request-timing middleware when DEBUG is
+      #   set, which logs only for vite:time.
+      # On failure the job records the runner's state and its kernel log, prints a summary (lines
+      # starting `kit-ci-diag`, which `scripts/kit-ci.sh failures` collects) and uploads the folder
+      # as kit-ci-diagnostics/ in the evidence. A green job uploads and prints none of it.
+      - name: Start the runner diagnostics
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          diag="$RUNNER_TEMP/kit-ci-diagnostics"
+          mkdir -p "$diag"
+          cat > "$diag/pw-browser-log.cjs" <<'EOF'
+          // kit-ci.yml: Playwright's browser log (DEBUG=pw:browser) into a file of this process.
+          const dir = process.env.KIT_CI_PW_LOG_DIR
+          if (dir) {
+            const inherited = process.env.KIT_CI_PW_LOG_FILE
+            if (inherited && process.env.DEBUG_FILE === inherited) delete process.env.DEBUG_FILE
+            delete process.env.KIT_CI_PW_LOG_FILE
+            if (!process.env.DEBUG_FILE && (!process.env.DEBUG || process.env.DEBUG === 'pw:browser')) {
+              const { threadId } = require('node:worker_threads')
+              const file = `${dir}/pw-browser-${process.pid}${threadId ? `-${threadId}` : ''}.log`
+              process.env.DEBUG = 'pw:browser'
+              process.env.DEBUG_FILE = file
+              process.env.KIT_CI_PW_LOG_FILE = file
+            }
+          }
+          EOF
+          cat > "$diag/sampler.sh" <<'EOF'
+          #!/usr/bin/env bash
+          # kit-ci.yml: memory and the largest processes every 5 s, one line each, into $1.
+          while :; do
+            {
+              printf '%s ' "$(date -u +%FT%TZ)"
+              awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} /^SwapTotal:/{st=$2} /^SwapFree:/{sf=$2} END{printf "%d %d %d ", (t-a)/1024, a/1024, (st-sf)/1024}' /proc/meminfo
+              printf '%s %s ' "$(cut -d' ' -f1 /proc/loadavg)" "$(awk '/^some/{sub("avg10=","",$2); print $2}' /proc/pressure/memory 2>/dev/null || echo -)"
+              ps -eo rss=,comm= --sort=-rss | head -n 3 | awk '{n=$2; for (i=3; i<=NF; i++) n=n"_"$i; printf "%s:%dM ", n, $1/1024}'
+              echo
+            } >>"$1" 2>/dev/null
+            sleep 5
+          done
+          EOF
+          {
+            echo "# kit-ci memory samples every 5 s; total_mb=$(awk '/^MemTotal:/{print int($2/1024)}' /proc/meminfo) cpus=$(nproc)"
+            echo "# time used_mb available_mb swap_used_mb load1 psi_some_avg10 largest_processes"
+          } >"$diag/memory.log"
+          # Its own process group (setsid), so the step after the tests stops its `sleep` too.
+          setsid nohup bash "$diag/sampler.sh" "$diag/memory.log" </dev/null >/dev/null 2>&1 &
+          echo "$!" >"$diag/sampler.pid"
+          echo "runner diagnostics: memory every 5 s and Playwright's browser log in $diag (kept on failure)"
+
       - name: pnpm run ${{ matrix.script }}
         env:
           DIR: ${{ matrix.dir }}
           SCRIPT: ${{ matrix.script }}
-        run: pnpm --dir "kition-$KIT/$DIR" run "$SCRIPT"
+        run: |
+          preload="$RUNNER_TEMP/kit-ci-diagnostics/pw-browser-log.cjs"
+          if [ -f "$preload" ]; then
+            export KIT_CI_PW_LOG_DIR="${preload%/*}" NODE_OPTIONS="--require=$preload${NODE_OPTIONS:+ $NODE_OPTIONS}"
+          fi
+          pnpm --dir "kition-$KIT/$DIR" run "$SCRIPT"
+
+      - name: Stop the runner diagnostics
+        if: always()
+        continue-on-error: true
+        run: |
+          pid_file="$RUNNER_TEMP/kit-ci-diagnostics/sampler.pid"
+          if [ -f "$pid_file" ]; then
+            pid="$(cat "$pid_file")"
+            kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+            rm -f "$pid_file"
+          fi
+
+      # The summary lines start with `kit-ci-diag` (scripts/kit-ci.sh failures prints them); the
+      # long outputs are folded groups in the log and files in the evidence's kit-ci-diagnostics/.
+      - name: Record the runner's state and kernel log
+        if: failure()
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          SLUG: ${{ matrix.slug }}
+        run: |
+          # Best effort: no command here may end the step (GitHub's bash runs with -e).
+          set +e
+          diag="$RUNNER_TEMP/kit-ci-diagnostics"
+          mkdir -p "$diag"
+          cd "$diag" || exit 0
+          # A process that loaded Playwright but launched no browser (`playwright install`) leaves an empty log.
+          rm -f sampler.sh pw-browser-log.cjs
+          find . -maxdepth 1 -name 'pw-browser-*.log' -empty -delete
+          {
+            echo "== free -m"; free -m
+            echo "== nproc"; nproc
+            echo "== df -h (workspace, tmp)"; df -h "$GITHUB_WORKSPACE" /tmp "$RUNNER_TEMP"
+            echo "== uptime"; uptime
+            echo "== ps aux --sort=-rss | head -30"; ps aux --sort=-rss | head -30
+            echo "== core dumps"; cat /proc/sys/kernel/core_pattern
+            if command -v coredumpctl >/dev/null; then sudo -n coredumpctl --no-pager list --since=-2h 2>&1 | tail -n 20; fi
+          } >system.txt 2>&1
+          sudo -n dmesg -T >dmesg-full.txt 2>&1 || dmesg -T >dmesg-full.txt 2>&1 || true
+          tail -n 200 dmesg-full.txt >kernel.txt
+          grep -i -E "out of memory|oom-kill|killed process" dmesg-full.txt >kernel-oom.txt || true
+          grep -i -E "segfault|general protection|traps:" dmesg-full.txt >kernel-crash.txt || true
+          rm -f dmesg-full.txt
+          if command -v journalctl >/dev/null; then
+            {
+              echo "== journalctl -k --since -30min"; sudo -n journalctl -k --no-pager --since "-30min" 2>&1 | tail -n 100
+              echo "== journalctl -u systemd-oomd --since -60min"; sudo -n journalctl -u systemd-oomd --no-pager --since "-60min" 2>&1 | tail -n 30
+            } >journal.txt
+          fi
+          group() { echo "::group::$1"; shift; cat "$@" 2>/dev/null; echo "::endgroup::"; }
+          group "Runner state: free -m, nproc, df -h, uptime, ps aux by RSS, core dumps" system.txt
+          group "Kernel log: the last 200 lines of dmesg -T" kernel.txt
+          [ ! -f journal.txt ] || group "Kernel journal (30 min) and systemd-oomd (60 min)" journal.txt
+          if [ -f memory.log ]; then
+            echo "::group::Memory every 5 s (the last 120 samples; all of them in the evidence)"
+            head -n 2 memory.log; tail -n +3 memory.log | tail -n 120
+            echo "::endgroup::"
+          fi
+          browser_logs=(pw-browser-*.log)
+          if [ -e "${browser_logs[0]}" ]; then
+            echo "::group::Playwright browser logs (DEBUG=pw:browser): the last 40 lines of each"
+            for f in "${browser_logs[@]}"; do echo "== $f ($(wc -l <"$f") lines)"; tail -n 40 "$f" | cut -c1-400; done
+            echo "::endgroup::"
+          fi
+          if [ -f memory.log ]; then
+            awk '
+              /^# kit-ci/ { for (i = 1; i <= NF; i++) if ($i ~ /^total_mb=/) total = substr($i, 10) }
+              /^#/ || NF < 3 { next }
+              { n++; top = ""; for (i = 7; i <= NF; i++) top = top " " $i }
+              n == 1 || $2 + 0 > peak { peak = $2 + 0; at = $1; peak_top = top }
+              n == 1 || $3 + 0 < low { low = $3 + 0; low_at = $1 }
+              $4 + 0 > swap { swap = $4 + 0 }
+              END {
+                if (!n) { print "kit-ci-diag memory: no samples"; exit }
+                printf "kit-ci-diag memory: peak %d MB used of %s MB at %s, lowest %d MB available at %s, peak swap %d MB (%d samples); largest then:%s\n", peak, total, at, low, low_at, swap + 0, n, peak_top
+              }' memory.log
+          else
+            echo "kit-ci-diag memory: no samples (the sampler did not start)"
+          fi
+          if [ -s kernel-oom.txt ]; then
+            head -n 20 kernel-oom.txt | sed 's/^/kit-ci-diag oom: /'
+          else
+            echo "kit-ci-diag oom: none (no out-of-memory or killed-process line in the kernel log)"
+          fi
+          if [ -s kernel-crash.txt ]; then
+            head -n 20 kernel-crash.txt | sed 's/^/kit-ci-diag crash: /'
+          else
+            echo "kit-ci-diag crash: none (no segfault, general protection or trap line in the kernel log)"
+          fi
+          if [ -e "${browser_logs[0]}" ]; then
+            grep -h -E "<launched>|<process did exit" "${browser_logs[@]}" | tail -n 12 | cut -c1-300 | sed 's/^/kit-ci-diag browser: /'
+          else
+            echo "kit-ci-diag browser: no Playwright browser log"
+          fi
+          echo "kit-ci-diag files: kit-ci-diagnostics/ in the artifact evidence-$SLUG"
+          dest="$GITHUB_WORKSPACE/kition-$KIT/web/kit-ci-diagnostics"
+          mkdir -p "$dest" && cp -R "$diag/." "$dest/"
+          exit 0
 
       - name: Upload the evidence
         if: failure()
@@ -412,5 +577,6 @@ jobs:
           path: |
             kition-${{ inputs.kit }}/web/test-results/
             kition-${{ inputs.kit }}/web/playwright-report/
+            kition-${{ inputs.kit }}/web/kit-ci-diagnostics/
           retention-days: 7
           if-no-files-found: ignore

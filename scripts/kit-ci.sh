@@ -7,10 +7,15 @@
 #   scripts/kit-ci.sh push <kit> --full   the same, and make sure HEAD gets the full run
 #   scripts/kit-ci.sh wait <kit>      wait for the run of HEAD; exit 0 when it passed
 #   scripts/kit-ci.sh failures <kit>  write $KIT_CI_DIR/<kit>/<run>/summary.txt (each job's result,
-#                                     the lines before each failed job's errors) and download their evidence
+#                                     the lines before each failed job's errors, its runner diagnostics) and download their evidence
 #   scripts/kit-ci.sh land <kit>      fast-forward origin/main to HEAD when its run passed;
 #                                     delete ci/agent (land <kit> --dry-run: check only, push nothing)
 #   scripts/kit-ci.sh status <kit>    print the latest run of HEAD
+#
+# failures: a failed test job of kit-ci.yml prints runner diagnostics, lines starting `kit-ci-diag`
+# (peak memory from its 5-second sampler, the kernel's out-of-memory and crash lines, how
+# Playwright's browsers exited); the summary repeats them under each failed job, and the job's
+# whole log is kept as job-<id>.log. The files are in evidence-<job>/kit-ci-diagnostics/.
 #
 # A change of text only (the list in scripts/kit-ci-plan.mjs, for example a README) gets the
 # text-only run: build, Rust and tests skipped, green in about a minute; wait, status and land say
@@ -349,12 +354,20 @@ case "$command" in
     gh run view "$id" -R "$run_repo" --json jobs \
       -q '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "\(.databaseId)\t\(.name)"' |
       while IFS=$'\t' read -r job name; do
+        log="$dir/job-$job.log"
+        gh api "repos/$run_repo/actions/jobs/$job/logs" 2>/dev/null |
+          perl -pe 's/^\d{4}-\S+Z ?//; s/\e\[[0-9;]*m//g' >"$log" || true
         {
           echo
           echo "==== $name (job $job): the 60 lines before each error ===="
-          gh api "repos/$run_repo/actions/jobs/$job/logs" 2>/dev/null |
-            perl -pe 's/^\d{4}-\S+Z ?//; s/\e\[[0-9;]*m//g' |
-            grep -B 60 '##\[error\]' | tail -n 200
+          grep -B 60 '##\[error\]' "$log" | tail -n 200 || true
+          # kit-ci.yml's runner diagnostics of a failed test job (none in other jobs).
+          diagnostics="$(grep -E '^kit-ci-diag [a-z]+:' "$log" | sed -E 's/^kit-ci-diag //; s#^files: kit-ci-diagnostics/ in the artifact (evidence-[A-Za-z0-9_.-]+)$#files: '"$dir"'/\1/kit-ci-diagnostics/#' || true)"
+          if [ -n "$diagnostics" ]; then
+            echo
+            echo "==== $name (job $job): runner diagnostics (peak memory, out-of-memory kills, crashes, browser exits) ===="
+            echo "$diagnostics"
+          fi
         } >>"$summary"
       done
     gh run download "$id" -R "$run_repo" -D "$dir" -p 'evidence-*' >/dev/null 2>&1 || true

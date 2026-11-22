@@ -13,7 +13,7 @@ const SLUG = 'KitionAI/kition-demo'
 const BASE = '1111111111111111111111111111111111111111'
 const SCRIPT = process.env.KIT_CI_SH ?? join(__dirname, 'kit-ci.sh')
 
-type Job = { name: string; status: string; conclusion: string | null; steps?: unknown[] }
+type Job = { name: string; status: string; conclusion: string | null; steps?: unknown[]; databaseId?: number }
 type Run = {
   databaseId: number
   event: string
@@ -35,6 +35,8 @@ type State = {
   loads?: Record<string, number>
   tested?: Record<string, { repository: string; sha: string }>
   diff?: string
+  jobLogs?: Record<string, string>
+  evidence?: Record<string, Record<string, string>>
 }
 
 const TEXT_ONLY_JOBS: Job[] = [
@@ -96,6 +98,21 @@ if (args[0] === 'run' && args[1] === 'list') {
     .filter((r) => repoOf(r) === repo && (r.workflow ?? 'ci.yml') === (flag('--workflow') ?? 'ci.yml'))
     .filter((r) => !flag('--commit') || r.headSha === flag('--commit'))
     .map((r) => Object.fromEntries(fields.map((f) => [f, r[f]]))))
+} else if (args[0] === 'run' && args[1] === 'view') {
+  const found = state.runs.find((r) => String(r.databaseId) === args[2] && repoOf(r) === flag('-R'))
+  if (!found) { console.error('HTTP 404'); process.exit(1) }
+  out({ jobs: found.jobs })
+} else if (args[0] === 'api' && /\\/actions\\/jobs\\/\\d+\\/logs$/.test(args[1])) {
+  const log = state.jobLogs?.[/(\\d+)\\/logs$/.exec(args[1])[1]]
+  if (log === undefined) { console.error('HTTP 404'); process.exit(1) }
+  process.stdout.write(log)
+} else if (args[0] === 'run' && args[1] === 'download' && flag('-p')) {
+  for (const [artifact, files] of Object.entries(state.evidence ?? {})) {
+    for (const [name, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(flag('-D'), artifact, name)), { recursive: true })
+      fs.writeFileSync(path.join(flag('-D'), artifact, name), text)
+    }
+  }
 } else if (args[0] === 'api') {
   const m = /^repos\\/([^/]+\\/[^/]+)\\/actions\\/runs\\/(\\d+)(\\/jobs.*)?$/.exec(args[1])
   const found = state.runs.find((r) => String(r.databaseId) === m[2] && repoOf(r) === m[1])
@@ -255,6 +272,60 @@ describe('kit-ci.sh', () => {
     expect(pushed.out).toContain('the push started no run of abcdef012345; starting the full run by hand')
     expect(pushed.out).toContain('full run 801 of abcdef012345')
     expect((await state()).log.filter((entry) => entry.startsWith('dispatch'))).toHaveLength(1)
+  })
+
+  it('failures prints the lines before each error and the runner diagnostics of each failed job, and keeps its log', async () => {
+    const at = (line: string) => `2026-11-22T10:15:00.0000000Z ${line}`
+    const testLog = [
+      at('PASS kit.sheet Edit tab'),
+      at('page.click: Target page, context or browser has been closed'),
+      at('##[error]Process completed with exit code 1.'),
+      at('##[group]Run set -uo pipefail'),
+      at('  echo "kit-ci-diag memory: no samples (the sampler did not start)"'),
+      at('##[endgroup]'),
+      at('##[group]Kernel log: the last 200 lines of dmesg -T'),
+      at('[Sun Nov 22 10:14:58 2026] Out of memory: Killed process 4242 (WebKitWebProces)'),
+      at('##[endgroup]'),
+      at('kit-ci-diag memory: peak 15012 MB used of 15995 MB at 2026-11-22T10:14:55Z, lowest 210 MB available at 2026-11-22T10:14:55Z, peak swap 3900 MB (64 samples); largest then: WebKitWebProces:9100M node:700M'),
+      at('kit-ci-diag oom: [Sun Nov 22 10:14:58 2026] Out of memory: Killed process 4242 (WebKitWebProces) total-vm:9GB'),
+      at('kit-ci-diag crash: none (no segfault, general protection or trap line in the kernel log)'),
+      at('kit-ci-diag browser: 2026-11-22T10:14:01.000Z pw:browser <launched> pid=4200'),
+      at('kit-ci-diag files: kit-ci-diagnostics/ in the artifact evidence-test-comments'),
+    ].join('\n')
+    const jobs: Job[] = [
+      { name: 'ci / Plan', status: 'completed', conclusion: 'success', databaseId: 1 },
+      { name: 'ci / Rust', status: 'completed', conclusion: 'failure', databaseId: 2 },
+      { name: 'ci / test:comments', status: 'completed', conclusion: 'failure', databaseId: 3 },
+    ]
+    const { withEnv, root } = await setup({
+      runs: [run(1000, 'push', 1, jobs, 'completed', 'failure')],
+      jobLogs: { '2': [at('error[E0308]: mismatched types'), at('##[error]Process completed with exit code 101.')].join('\n'), '3': testLog },
+      evidence: { 'evidence-test-comments': { 'kit-ci-diagnostics/memory.log': '# kit-ci memory samples\n' } },
+    })
+    const dir = join(root, 'out')
+    const failed = withEnv({ KIT_CI_DIR: dir }, 'failures', 'demo')
+    expect(failed.status).toBe(0)
+    const runDir = join(dir, 'demo', '1000')
+    const summary = await readFile(join(runDir, 'summary.txt'), 'utf8')
+    expect(failed.out).toContain(summary)
+    expect(summary).toContain('failure\tci / test:comments')
+    expect(summary).toContain('==== ci / Rust (job 2): the 60 lines before each error ====\nerror[E0308]: mismatched types\n##[error]Process completed with exit code 101.\n')
+    // Rust prints no diagnostics; the test job's summary lines come after its errors, without the
+    // step's own script lines.
+    expect(summary).not.toContain('ci / Rust (job 2): runner diagnostics')
+    expect(summary).toContain(
+      [
+        '==== ci / test:comments (job 3): runner diagnostics (peak memory, out-of-memory kills, crashes, browser exits) ====',
+        'memory: peak 15012 MB used of 15995 MB at 2026-11-22T10:14:55Z, lowest 210 MB available at 2026-11-22T10:14:55Z, peak swap 3900 MB (64 samples); largest then: WebKitWebProces:9100M node:700M',
+        'oom: [Sun Nov 22 10:14:58 2026] Out of memory: Killed process 4242 (WebKitWebProces) total-vm:9GB',
+        'crash: none (no segfault, general protection or trap line in the kernel log)',
+        'browser: 2026-11-22T10:14:01.000Z pw:browser <launched> pid=4200',
+        `files: ${runDir}/evidence-test-comments/kit-ci-diagnostics/`,
+      ].join('\n'),
+    )
+    expect(summary).not.toContain('no samples (the sampler did not start)')
+    expect(await readFile(join(runDir, 'job-3.log'), 'utf8')).toContain('page.click: Target page, context or browser has been closed')
+    expect(await readFile(join(runDir, 'evidence-test-comments', 'kit-ci-diagnostics', 'memory.log'), 'utf8')).toContain('# kit-ci memory samples')
   })
 
   it('refuses --full on other commands', async () => {

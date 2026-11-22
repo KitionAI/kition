@@ -853,11 +853,23 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   (below) add 20 per pool organization.
 - **The loop** (`scripts/kit-ci.sh <command> <kit>`): commit on `main` locally; `push` sends HEAD
   to `ci/agent` (a newer push cancels the older run); `wait` follows the run with one API request a minute (`KIT_CI_POLL`), since many kits wait at once and the API allows 5000 requests an hour; on failure,
-  `failures` writes the jobs' results, the log lines before each error and the evidence
-  (`test-results`, `playwright-report`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
+  `failures` writes the jobs' results, the log lines before each error, each failed test job's
+  runner diagnostics (below) and log (`job-<id>.log`), and the evidence (`test-results`,
+  `playwright-report`, `kit-ci-diagnostics`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
   `land` fast-forwards `origin/main` to HEAD only when HEAD's run passed, then deletes
   `ci/agent`. `wait`, `status` and `land` say "text-only" for a run of the text-only path. Rerun a flaky-looking failure once with `gh run rerun <run> --failed` before
   changing code. `land <kit> --dry-run` makes every check of `land` and pushes nothing.
+- **Runner diagnostics** (for a test that fails without saying why, such as a WebKit page that
+  closes by itself): while a test job runs, a background loop writes memory, swap, load, memory
+  pressure and the three largest processes every 5 seconds (`memory.log`), and Playwright's
+  browser log (`DEBUG=pw:browser`: launches, the browsers' stderr, how each browser process
+  exited) goes to one file per Node.js process (`pw-browser-<pid>.log`), through a preload in
+  `NODE_OPTIONS`; none of it reaches the job log. When the job fails, it records `free`,
+  `nproc`, `df`, `uptime`, the largest processes, the kernel log (the last 200 lines of `dmesg`,
+  its out-of-memory and crash lines, `journalctl -k` and systemd-oomd), prints them as folded
+  groups and a few `kit-ci-diag` lines (peak memory, the OOM killer's lines, crashes, browser
+  exits), and adds them to the evidence as `kit-ci-diagnostics/`. `failures` repeats the
+  `kit-ci-diag` lines under each failed job. A green job prints and uploads none of it.
 - **Runner pools**: a run counts against the concurrent jobs of the organization that owns the
   repository it runs in, so another organization with one public repository adds 20 jobs. That
   repository (written by `node scripts/kit-ci-runner-repo.mjs <dir>`: no source, a README, the
