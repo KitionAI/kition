@@ -170,35 +170,35 @@
   },
   "table": {
     "scope": "@kition",
-    "version": "0.1.1",
-    "commit": "bf70590fd186cfec16dd3bca7895f35d405d0798",
-    "sdkCommit": "fc636711f3e9224d853977c9b22d00ca49f2383c",
+    "version": "0.1.2",
+    "commit": "7546c008a7f5dd20cb2153fa57f108533d2c594d",
+    "sdkCommit": "9839a7374852ca485e44ca70dfaf203792f74a76",
     "tesseraCommit": "cda93822dfab902bb39aba53c2ddfe93629401ca",
     "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf",
     "editor": {
-      "integrity": "sha512-5+akfvGpOR1dyA2rTTnBWqDwdVg1rwjpspnRDHXZCHjjrj0Vs8bu6MX9gvJYhFrmcqqzdecYm5XcFEkCDZKsyA==",
-      "size": 21725032
+      "integrity": "sha512-BLHGKjQP9I+ieImR115mahwX7BIVvF5bQPkpfbFbOXvP/wZzH0eQ2GeA/S0IYh35XLDRHbzb5hGa9PS73H/wjA==",
+      "size": 21734797
     },
     "platforms": {
       "darwin-arm64": {
-        "integrity": "sha512-KV913SuNb+gIaBkKojVqWKXpn9bEaYFhUcZluKjDx07WTeJTY6qLg5Cs6kCZLLc/CoVvORyzdCDLvsmpbQYPbQ==",
-        "size": 15322179
+        "integrity": "sha512-RXAUysJ9ymQSuBn/VMg9N4yg/gClbf2qZ44HVvICOTojsCc2UMMoOOCkieiq9BOnd7JVOwfJ6cSJauO1PSMj/g==",
+        "size": 15322007
       },
       "darwin-x64": {
-        "integrity": "sha512-1z337wWEZLaEecXJPCQn9+xkYSLzIk60UmsVGIL1pwSwfkw50ku62UroagO3zHXIj3mbVoqASj6+bhYbNkCkNg==",
-        "size": 15980969
+        "integrity": "sha512-dzZIEIziRKNJXwTf0em96YD0VuuOQXKCrx6XDvqc4H13aycj9nEsox/FqEPphpJ0Mrj/GAoM/HSOTMthNlXE9w==",
+        "size": 15980909
       },
       "linux-arm64": {
-        "integrity": "sha512-jpes7woZE6o6+5BsfSJMSsyk29Pcd+XLwNhb38CCGAIs4lfjGdb1GZTswmWUE+e8lHoFzp2K7mVkNB1BS/k9CA==",
-        "size": 14853125
+        "integrity": "sha512-UKOt0JMh5qp9N3okymhqIDn4V1ZQE0OFsvYU9pW++bTMYfX5gWS8rSB1tYY8ZIC6jow0lNR+eL1d+x56OWLN8w==",
+        "size": 14852520
       },
       "linux-x64": {
-        "integrity": "sha512-Z8mAsON4GMgkFOMLjc4ht2SUVMU3Uk5MJ+ZdHg0SNgkF0j27epoOxEUDWK72NF+tJVKkLNzLaqFZ4AH1T7qNvQ==",
-        "size": 15644619
+        "integrity": "sha512-OHn52yNlkFzOVkutEC9UCxMIzn/ldFCo4sbot64RxTXT8ot4T1bZv9TAIXSsv9BekJquw4n+l8x3QyILlPj7qw==",
+        "size": 15644513
       },
       "win32-x64": {
-        "integrity": "sha512-XWKt5g5tpEE1T2WYHmF7iiHUdHJqeuUObMP1wfY/Pf2+T6rItJHhAyE06UFAKZzc4ph5kMOQjRQDEaoyL8blJA==",
-        "size": 15969480
+        "integrity": "sha512-159bxubISKN0nvp/R5eW3cvz6EeTE4U0JIL/9B5DcWC3dig56CONQLo+4aKoHc4kT2S6ys//rIzqAXUSTx15Ow==",
+        "size": 15969456
       }
     }
   },
