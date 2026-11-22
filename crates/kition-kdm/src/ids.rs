@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{KdmError, Result};
 
-/// Ids in a reproducible build: `SOURCE_DATE_EPOCH` set (a showcase sample, a gate case), new
+/// Ids in a reproducible build: `SOURCE_DATE_EPOCH` set (a showcase sample, a gating test), new
 /// document ids, actors and object ids are counted from the epoch instead of drawn at random, so
 /// the same steps save the same bytes. Never on the web: the page has no environment.
 mod reproducible {

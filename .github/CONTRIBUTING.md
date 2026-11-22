@@ -15,7 +15,7 @@ Orca.
 | `crates/` | The Rust runtime: `kition-api` and its feature crates, which the shell runs in-process |
 | `contracts/` | JSON schemas of the interfaces Kition uses: the runtime HTTP API (`contracts/runtime/`), kits, accounts, analytics, and cloud |
 | `kits/` | The kit packages Kition ships, pinned in `kits.lock.json`; the kit module registry; the kit colors |
-| `features.yaml`, `cases/` | The feature catalogue and its gate cases ([docs/quality.md](../docs/quality.md)) |
+| `features.yaml`, `cases/` | The feature catalogue and its gating tests ([docs/quality.md](../docs/quality.md)) |
 | `e2e/` | Playwright black-box tests |
 | `docs/` | Product, contributor, design, and runtime documentation; the README's images and translations (`docs/readme/`) |
 | `public/` | Static assets and onboarding files; kit packages are fetched into `public/kits/` |

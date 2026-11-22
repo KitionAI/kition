@@ -1,7 +1,7 @@
 // Copied from kition-sdk crates/kition-kdm/tests/reproducible_ids.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 //! A document created by the same steps in a reproducible build (`SOURCE_DATE_EPOCH` set, as a
-//! showcase sample or a gate case is built) saves the same bytes: new document ids, actors and
+//! showcase sample or a gating test is built) saves the same bytes: new document ids, actors and
 //! object ids are counted from the epoch instead of drawn at random. Each build runs in a process
 //! of its own: this test starts itself several times.
 

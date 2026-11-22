@@ -206,7 +206,7 @@ test('links a library file where it is (links/pick), places its component, and t
 })
 
 test('lists a linked library file’s styles and colour variables under its name in the style picker', async ({ page, baseURL }) => {
-  // Fails rather than skips without the package: this case is a gate case.
+  // Fails rather than skips without the package: this is a gating test.
   expect(engine.built, missing).toBe(true)
   test.setTimeout(180_000)
   const library = await styledLibraryFixture()

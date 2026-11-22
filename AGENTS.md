@@ -17,7 +17,7 @@
   `#[ignore]`, `.skip`, `.only` or `.todo`, no raised tolerances. kition-sdk's
   `tools/check-expected.mjs` lists every such change for the maintainers.
 - Every bug fix starts with a failing case under `cases/regressions/issue-<n>/`, then the fix.
-- Every new feature adds an entry to `features.yaml` and at least one gate case.
+- Every new feature adds an entry to `features.yaml` and at least one gating test.
 - Put the task id and the case ids in the commit message.
 - Stage only your own files: `git add` them by name; never `git commit -a` or `git add -A`.
   Other sessions may have uncommitted work in the same checkout.

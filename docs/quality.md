@@ -41,7 +41,7 @@ pnpm -s typecheck && pnpm -s lint
 
 Run it before you finish any task; the task is not done until it exits 0. Report the real exit
 code, not the exit code of a wrapper shell. When the gate runner arrives, this section
-names `cargo xtask gate --affected` (the gate cases of the features you touched) as well.
+names `cargo xtask gate --affected` (the gating tests of the features you touched) as well.
 
 Claude Code runs this command through the Stop hook in `.claude/settings.json`
 (`.claude/hooks/quality-gate.sh`). For an emergency bypass in one session only, start it with
@@ -215,7 +215,7 @@ Larger files belong to the corpus.
 ### The 10-minute budget
 
 - Gate inputs are small: a few pages, a few hundred cells, images under 512 × 512, timelines under 3 seconds at 320 × 180. Large files belong to the corpus.
-- Gate cases run in-process by default; the headless executable is exercised by the conformance suite and a few `gate` cases tagged `headless`.
+- Gating tests run in-process by default; the headless executable is exercised by the conformance suite and a few gating tests tagged `headless`.
 - At most about ten `flow` cases per kit are `gate`; the rest are `corpus` (weekly).
 - No `gate` case measures performance against a tight time budget on this shared machine; performance budgets (Q9) use generous limits in `gate` and the real numbers in the weekly report.
 - Film exports in `gate` are a few frames, not a full export.
