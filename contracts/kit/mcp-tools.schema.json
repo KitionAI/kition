@@ -1261,7 +1261,7 @@
       "input": {
         "properties": {
           "path": {
-            "description": "Workspace-relative path of the new file, for example `deck.kslide`.",
+            "description": "Workspace-relative path of the new file, for example `name.<extension>`.",
             "type": "string"
           },
           "size": {

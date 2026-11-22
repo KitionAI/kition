@@ -455,7 +455,7 @@ fn specs_described(kit: &'static KitDefinition, described: Option<&Value>) -> [K
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "path": { "type": "string", "description": "Workspace-relative path of the new file, for example `deck.kslide`." },
+                    "path": { "type": "string", "description": format!("Workspace-relative path of the new file, for example `{}`.", kit.creates.first().map_or_else(|| "name.<extension>".to_owned(), |(extension, _)| format!("{}.{extension}", kit.base_name))) },
                     "size": { "type": "object", "description": "The document size in pixels, for example {\"width\": 1920, \"height\": 1080}.", "properties": { "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 } } }
                 },
                 "required": ["path"]

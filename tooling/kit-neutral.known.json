@@ -4,7 +4,6 @@
     "src/features/scenario/pages/ScenarioBuildPage.tsx": 1,
     "crates/kition-agent/src/prompts.rs": 2,
     "crates/kition-agent/src/tools/documents.rs": 1,
-    "crates/kition-kits/src/tools.rs": 1,
     "crates/kition-tableclient/src/lib.rs": 2,
     "crates/kition-tableclient/src/scenario.rs": 2,
     "crates/kition-workspacestorage/src/storage.rs": 1
