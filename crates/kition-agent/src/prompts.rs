@@ -1,5 +1,17 @@
 //! The system prompt and the per-turn context blocks.
 
+/// What the kits of this build say an agent makes their files for (`kit.json`
+/// `agent.describe.use`), a sentence a kit, each after a space: ``Use a `.ktable` file through the
+/// Table kit for structured, spreadsheet-like results.`` Empty when no kit names a use. The
+/// prompt names no kit of its own.
+pub(crate) fn kit_guidance() -> String {
+    kition_kits::definitions::known()
+        .iter()
+        .filter_map(|kit| kit.guidance())
+        .map(|sentence| format!(" {sentence}"))
+        .collect()
+}
+
 pub fn system_prompt(language: &str) -> String {
     let language = match language.trim() {
         "" => "English",
@@ -8,7 +20,7 @@ pub fn system_prompt(language: &str) -> String {
     [
         "You are the built-in agent inside the Kition document system.",
         "Respond directly and structurally, and prefer output that can be saved as Markdown.",
-        "When the user asks for an article, plan, summary, report, Word document, Excel workbook, or Markdown document, produce complete Markdown first. Generic Agent tools do not create DOCX or XLSX files; use a `.ktable` file through the Table kit when the requested result is structured data.",
+        &format!("When the user asks for an article, plan, summary, report, Word document, Excel workbook, or Markdown document, produce complete Markdown first. Generic Agent tools do not create DOCX or XLSX files.{}", kit_guidance()),
         "If the user wants to continue editing an existing note (a `.md` file), insert paragraphs, improve it, or rewrite it, read it first and change it with note_run (find its commands with note_commands); the person reviews the change as a draft. Other text files (`.txt`) are overwritten with document_write.",
         "If the user asks to place \"these images / previous images / existing images\" into a document, reuse the recent image artifacts already saved by the system (Markdown image links).",
         "When inserting images into Markdown, use Kition workspace-relative paths such as `![Title](<Ideas/assets/image.png>)`; do not use demo-only paths like `../images/...`.",
@@ -84,7 +96,7 @@ pub(crate) fn general_lines() -> Vec<String> {
         "If the user already provided concrete URLs, call web_fetch on those URLs directly before re-searching with web_search.".to_owned(),
         "When the user wants to continue editing, extend, or improve the current/linked note, read it first with document_read and then change it with note_run (find its commands with note_commands). A plain text file (`.txt`) is overwritten with document_write; use apply_patch only for small localized edits to text files that are not notes, whose exact old text appears in a complete recent read. Never build a whole-document exact-match patch from truncated or incomplete content. If a write tool fails, inspect the latest state and retry before finishing.".to_owned(),
         "When inserting images into Markdown, use the workspace-relative path returned by artifacts, or a path relative to the current document directory. Do not use demo-only paths like `../images`.".to_owned(),
-        "When the user asks for a deliverable file, use `.md` for long-form readable text and `.html` for standalone reports or dashboards. Use a `.ktable` file through the Table kit for structured spreadsheet-like results.".to_owned(),
+        format!("When the user asks for a deliverable file, use `.md` for long-form readable text and `.html` for standalone reports or dashboards.{}", kit_guidance()),
         "Do not create or register `.docx`, `.xlsx`, or `.pptx` files with artifact_write, exec_command, or register_artifact. Slides are made and edited through the Slide kit's tools.".to_owned(),
         "When emitting an HTML report or dashboard from document or table content, pass a complete standalone HTML document to artifact_write; embed charts with ECharts or Chart.js via CDN when visualization helps.".to_owned(),
         "When the user gives one or more article URLs and wants to archive/save/scrape them into the workspace, call web_article_save once per URL. Each call produces <folder>/<title>/index.md plus images/. Do not try to combine multiple URLs into one call.".to_owned(),
@@ -175,5 +187,45 @@ mod tests {
         assert!(pane("gallery")[0].contains("Kition media gallery pane"));
         assert_eq!(title_from("intro\n# Report\nbody", "x"), "Report");
         assert_eq!(title_from("no heading", ""), "Agent output");
+    }
+
+    /// The prompt says when to make a kit's file from the kit's manifest, and names no kit itself.
+    #[test]
+    fn the_prompt_says_what_each_kit_is_for_from_its_manifest() {
+        // A kit no build ships.
+        let manifest = serde_json::json!({
+            "khp": "1.0", "id": "kit.ink", "name": "Ink", "version": "0.0.0",
+            "formats": [{ "id": "ink", "extensions": ["kink"], "role": "edit" }],
+            "creates": [{ "id": "ink", "extension": "kink", "baseName": "Untitled ink", "size": { "width": 1, "height": 1 } }],
+            "agent": { "prefix": "ink", "tools": "document", "describe": {
+                "noun": "ink drawing", "fileTypes": ".kink", "reports": "its strokes", "covers": "strokes", "queries": "`stroke`", "example": "stroke.add",
+                "use": "hand-drawn sketches"
+            } }
+        });
+        let Ok(kit) = kition_kits::KitDefinition::from_manifest(&manifest) else {
+            panic!("a kit manifest");
+        };
+        kition_kits::definitions::register([&kit]);
+        let sentence = "Use a `.kink` file through the Ink kit for hand-drawn sketches.";
+        assert!(kit_guidance().contains(sentence));
+        assert!(system_prompt("English").contains(&format!(
+            "do not create DOCX or XLSX files.{}",
+            kit_guidance()
+        )));
+        assert!(
+            general_lines()
+                .iter()
+                .any(|line| line.contains("standalone reports or dashboards.")
+                    && line.contains(sentence))
+        );
+        // Every sentence is a kit's own: nothing about a kit is written here.
+        for sentence in kit_guidance().split(" Use a `.").skip(1) {
+            assert!(
+                kition_kits::definitions::known()
+                    .iter()
+                    .any(|kit| kit.guidance().is_some_and(|own| own.ends_with(sentence))),
+                "{sentence}"
+            );
+        }
     }
 }

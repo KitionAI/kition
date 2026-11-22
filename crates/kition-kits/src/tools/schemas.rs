@@ -36,6 +36,7 @@ static GENERIC: KitDefinition = KitDefinition {
         covers: "the kit's commands",
         queries: "`<keywords>`",
         command: "<command>",
+        use_for: None,
         render: None,
         parts: None,
         export: None,

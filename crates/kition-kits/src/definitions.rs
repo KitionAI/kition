@@ -87,6 +87,10 @@ pub struct KitAgent {
     pub queries: &'static str,
     /// One command id, as an example (`agent.describe.example`).
     pub command: &'static str,
+    /// What an agent makes one of the kit's files for, for example `structured, spreadsheet-like
+    /// results` (`agent.describe.use`); a host's instructions say so ([`KitDefinition::guidance`]).
+    /// `None` when the kit names nothing.
+    pub use_for: Option<&'static str>,
     /// The engine command that renders a preview of one part of a document or of a diagnostic's
     /// target (KHP A39, `agent.render`): `{slide?, target?, scale?, maxSize?}` answers `{png}`,
     /// base64. `None` when the kit has none, and its previews are `view.screenshot`'s.
@@ -274,12 +278,22 @@ impl KitDefinition {
                 covers: leak(covers),
                 queries: leak(queries),
                 command: leak(command),
+                use_for: describe.and_then(|describe| text(describe, "use")).map(leak),
                 render: render.map(leak),
                 parts,
                 export,
             },
         };
         Ok(Box::leak(Box::new(definition)))
+    }
+
+    /// What a host tells an agent about when to make one of the kit's files, from `agent.describe.use`:
+    /// ``Use a `.ktable` file through the Table kit for structured, spreadsheet-like results.`` It
+    /// names the first extension the kit creates. `None` for a kit that names no use or creates
+    /// nothing.
+    pub fn guidance(&self) -> Option<String> {
+        let (extension, _) = self.creates.first()?;
+        Some(format!("Use a `.{extension}` file through the {} kit for {}.", self.name, self.agent.use_for?))
     }
 
     /// The kit's short name, `photo` for `kit.photo`.
@@ -733,6 +747,23 @@ mod tests {
         ]);
         let kit = KitDefinition::from_manifest(&both).unwrap_or_else(|error| panic!("{error}"));
         assert_eq!(kit.views, ["htm", "svg"]);
+    }
+
+    #[test]
+    fn a_kit_says_what_an_agent_makes_its_files_for() {
+        let mut used = manifest();
+        used["agent"]["describe"]["use"] = json!("sample drawings");
+        used["creates"] = json!([{ "id": "sample", "extension": "ksample", "baseName": "Untitled sample", "size": { "width": 1, "height": 1 } }]);
+        let kit = KitDefinition::from_manifest(&used).unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(kit.agent.use_for, Some("sample drawings"));
+        assert_eq!(kit.guidance().as_deref(), Some(format!("Use a `.ksample` file through the {} kit for sample drawings.", kit.name).as_str()));
+        // A kit that names no use, or creates nothing, gives no guidance.
+        let mut silent = used.clone();
+        silent["agent"]["describe"].as_object_mut().unwrap_or_else(|| panic!("describe")).remove("use");
+        assert_eq!(KitDefinition::from_manifest(&silent).unwrap_or_else(|error| panic!("{error}")).guidance(), None);
+        let mut creates_nothing = used;
+        creates_nothing["creates"] = json!([]);
+        assert_eq!(KitDefinition::from_manifest(&creates_nothing).unwrap_or_else(|error| panic!("{error}")).guidance(), None);
     }
 
     #[test]

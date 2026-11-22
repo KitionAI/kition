@@ -43,6 +43,7 @@ static MOCK: KitDefinition = KitDefinition {
         covers: "text edits",
         queries: "`append`",
         command: "text.append",
+        use_for: None,
         render: None,
         parts: None,
         export: None,

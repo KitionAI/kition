@@ -182,7 +182,10 @@ pub async fn artifact_write(run: &Run, input: &Value) -> ToolResult {
             return Err("PPTX files are made and edited through the Slide kit".into());
         }
         "docx" | "xlsx" => {
-            return Err("DOCX and XLSX generation are not supported by generic Agent tools; use Markdown, or a `.ktable` file through the Table kit for structured data".into());
+            return Err(format!(
+                "DOCX and XLSX generation are not supported by generic Agent tools; use Markdown.{}",
+                crate::prompts::kit_guidance()
+            ).into());
         }
         other => {
             return Err(format!(

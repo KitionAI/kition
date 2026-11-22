@@ -515,6 +515,11 @@
             "reports": { "type": "string", "minLength": 1, "description": "What `<prefix>_inspect` reports, for example `its size, color mode, bit depth, and layers`." },
             "covers": { "type": "string", "minLength": 1, "description": "What the commands cover." },
             "queries": { "type": "string", "minLength": 1, "description": "Keywords that find commands, as the tool description shows them, for example `` `brightness` or `new layer` ``." },
+            "use": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What an agent makes one of the kit's files for, for example `structured, spreadsheet-like results`: a host's instructions say `Use a .<extension> file through the <name> kit for <use>.` Omit it for a kit an agent has no reason to pick over plain files."
+            },
             "example": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$", "description": "One command id, the example in the `<prefix>_run` schema." }
           }
         },
