@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 const SHA = 'abcdef0123456789abcdef0123456789abcdef01'
 const SLUG = 'KitionAI/kition-demo'
 
-type Job = { name: string; status: string; conclusion: string | null }
+type Job = { name: string; status: string; conclusion: string | null; steps?: unknown[] }
 type Run = { databaseId: number; event: string; status: string; conclusion: string | null; createdAt: string; headSha: string; jobs: Job[] }
 type State = { runs: Run[]; onPush: Run[]; pushDelay: number; onDispatch: Run[]; log: string[] }
 
@@ -184,6 +184,15 @@ describe('kit-ci.sh', () => {
     expect(pushed.status).toBe(0)
     expect(pushed.out).toContain('run 700 of abcdef012345 is already the full run')
     expect((await state()).log.some((entry) => entry.startsWith('dispatch'))).toBe(false)
+  })
+
+  it('push --full starts the full run when the push run was cancelled before it was planned', async () => {
+    const cancelled: Job[] = ['Plan', 'Build', 'Rust', 'Text only'].map((name) => ({ name: `ci / ${name}`, status: 'completed', conclusion: 'cancelled', steps: name === 'Plan' ? [{}] : [] }))
+    const { sh, state } = await setup({ onPush: [run(900, 'push', 1, cancelled, 'completed', 'cancelled')], onDispatch: [run(901, 'workflow_dispatch', 2, FULL_JOBS)] })
+    const pushed = sh('push', 'demo', '--full')
+    expect(pushed.out).toContain('run 900 of abcdef012345 is pending; starting the full run by hand')
+    expect(pushed.out).toContain('full run 901 of abcdef012345')
+    expect((await state()).log.filter((entry) => entry.startsWith('dispatch'))).toHaveLength(1)
   })
 
   it('KIT_CI_FULL=1 does what --full does, also when the push starts no run', async () => {

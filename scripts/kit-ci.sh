@@ -61,11 +61,14 @@ run_after() {
     -q "map(select(.event == \"$1\" and .databaseId > $2)) | sort_by(.createdAt, .databaseId) | last // empty | .databaseId"
 }
 
-# What a run tests: "text-only" (its Text only job ran), "full" (its Build or Rust job ran), or
-# "pending" (not planned yet). The jobs of the reusable workflow are named "ci / <job>".
+# What a run tests: "text-only" (its Text only job ran), "full" (its Build or Rust job runs or
+# ran), or "pending" (not planned yet). A job is skipped when the plan rules it out, and cancelled
+# without steps when the run was cancelled before it started. The jobs of the reusable workflow
+# are named "ci / <job>".
 run_kind() {
   gh api "repos/$slug/actions/runs/$1/jobs?per_page=100" -q '
-    def ran(name): any(.jobs[]; (.name == name or (.name | endswith("/ " + name))) and .conclusion != "skipped");
+    def ran(name): any(.jobs[]; (.name == name or (.name | endswith("/ " + name)))
+      and .conclusion != "skipped" and (.conclusion != "cancelled" or ((.steps // []) | length) > 0));
     if ran("Text only") then "text-only" elif ran("Build") or ran("Rust") then "full" else "pending" end'
 }
 
