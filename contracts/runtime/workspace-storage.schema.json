@@ -51,14 +51,14 @@
       "additionalProperties": false,
       "required": [
         "documents",
-        "tables",
+        "kit_files",
         "assets",
         "agent_sessions",
         "total_bytes"
       ],
       "properties": {
         "documents": { "type": "integer", "minimum": 0 },
-        "tables": { "type": "integer", "minimum": 0, "description": "Table files (.ktable); the Table kit owns their contents." },
+        "kit_files": { "type": "integer", "minimum": 0, "description": "Files a kit of the build edits, other than notes (documents); the kit owns their contents." },
         "assets": { "type": "integer", "minimum": 0 },
         "agent_sessions": { "type": "integer", "minimum": 0 },
         "total_bytes": { "type": "integer", "minimum": 0 }
@@ -213,7 +213,7 @@
   "x-storage-boundary": {
     "portable": [
       "documents",
-      "tables",
+      "kit files",
       "assets",
       "agent sessions and events",
       "sync state",

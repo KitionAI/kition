@@ -14,6 +14,7 @@ workspace = true
 kition-core = { workspace = true }
 kition-http = { workspace = true }
 kition-kdm = { workspace = true }
+kition-kits = { workspace = true }
 kition-store = { workspace = true }
 kition-workspace = { workspace = true }
 

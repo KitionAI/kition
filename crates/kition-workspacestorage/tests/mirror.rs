@@ -164,6 +164,34 @@ fn older_snapshots_are_not_imported() {
 }
 
 #[test]
+fn classifies_a_file_a_known_kit_edits_and_no_other() {
+    // A kit no build ships: the storage knows kits only from their manifests.
+    let manifest = serde_json::json!({
+        "khp": "1.0", "id": "kit.ink", "name": "Ink", "version": "0.0.0",
+        "formats": [{ "id": "ink", "extensions": ["kink"], "role": "edit" }, { "id": "old", "extensions": ["oink"], "role": "view" }],
+        "agent": { "prefix": "ink", "tools": "document" }
+    });
+    let Ok(kit) = kition_kits::KitDefinition::from_manifest(&manifest) else {
+        panic!("a kit manifest");
+    };
+    kition_kits::definitions::register([&kit]);
+    assert_eq!(classify_path("art/Sketch.KINK"), "kit_file");
+    assert_eq!(
+        classify_path("art/Old.oink"),
+        "",
+        "a file the kit only views"
+    );
+    assert_eq!(classify_path("art/Sketch.unknownkind"), "");
+    assert_eq!(classify_path(".kink"), "");
+    assert_eq!(
+        classify_path(".kition/drafts/Sketch.kink"),
+        "",
+        "Kition's own copies are not the person's files"
+    );
+    assert_eq!(classify_path("notes/Plan.md"), "document");
+}
+
+#[test]
 fn classifies_the_session_log() {
     assert_eq!(
         classify_path(".kition/agents/7/session-events.jsonl"),

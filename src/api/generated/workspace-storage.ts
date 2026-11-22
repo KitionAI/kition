@@ -19,9 +19,9 @@ export type WorkspaceStorageAssetReference = {
 export type WorkspaceStorageSummary = {
   documents: number
   /**
-   * Table files (.ktable); the Table kit owns their contents.
+   * Files a kit of the build edits, other than notes (documents); the kit owns their contents.
    */
-  tables: number
+  kit_files: number
   assets: number
   agent_sessions: number
   total_bytes: number

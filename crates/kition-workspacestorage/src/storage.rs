@@ -23,8 +23,9 @@ static LEGACY_URL: LazyLock<Regex> = LazyLock::new(|| {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Summary {
     pub documents: i64,
-    /// Table files (`.ktable`); the Table kit owns their contents.
-    pub tables: i64,
+    /// Files a kit of this build edits (other than notes, which are `documents`); the kit owns
+    /// their contents.
+    pub kit_files: i64,
     pub assets: i64,
     pub agent_sessions: i64,
     pub total_bytes: i64,
@@ -101,15 +102,27 @@ pub fn classify_path(path: &str) -> &'static str {
         "agent_session"
     } else if lower.starts_with(".kition/agents/") && lower.ends_with("/session-events.jsonl") {
         "agent_session_events"
-    } else if lower.ends_with(".ktable") {
-        "table"
     } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
         "document"
     } else if lower == ".kition/workspace.json" || lower == ".kition/metadata.json" {
         "workspace_metadata"
+    } else if !lower.starts_with(".kition/") && edited_by_a_kit(&lower) {
+        "kit_file"
     } else {
         ""
     }
+}
+
+/// Whether a kit this process knows (from its manifest) edits files of the path's extension.
+fn edited_by_a_kit(lower: &str) -> bool {
+    let name = lower.rsplit('/').next().unwrap_or_default();
+    let Some((stem, extension)) = name.rsplit_once('.') else {
+        return false;
+    };
+    !stem.is_empty()
+        && kition_kits::definitions::known()
+            .iter()
+            .any(|kit| kit.extensions.contains(&extension))
 }
 
 fn sha256_hex(data: &[u8]) -> String {
@@ -182,7 +195,7 @@ impl StateMirror {
                         ));
                     }
                 }
-                "table" => summary.tables += 1,
+                "kit_file" => summary.kit_files += 1,
                 "asset" => {
                     summary.assets += 1;
                     let name = Path::new(&relative)

@@ -3479,6 +3479,7 @@ dependencies = [
  "kition-core",
  "kition-http",
  "kition-kdm",
+ "kition-kits",
  "kition-store",
  "kition-workspace",
  "mime_guess",

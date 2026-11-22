@@ -26,7 +26,7 @@ const status = {
   portable: true,
   summary: {
     documents: 1,
-    tables: 1,
+    kit_files: 1,
     assets: 2,
     agent_sessions: 1,
     total_bytes: 4096,
