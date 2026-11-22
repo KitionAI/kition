@@ -1,0 +1,25 @@
+{
+  "$comment": "The places in Kition's own code that still name a kit, by file (scripts/check-kit-neutral.mjs). The list only shrinks; it ends empty.",
+  "files": {
+    "src/api/kitTables.ts": 1,
+    "src/features/agent/components/AgentComposerContext.tsx": 4,
+    "src/features/agent/components/AgentConversation.tsx": 1,
+    "src/features/agent/lib/agentDocumentEditing.ts": 1,
+    "src/features/agent/lib/documentMentions.ts": 12,
+    "src/features/scenario/pages/ScenarioBuildPage.tsx": 1,
+    "src/features/workspace/components/film/filmMovies.ts": 1,
+    "src/features/workspace/components/kits/kitEditors.ts": 17,
+    "src/features/workspace/components/kits/kitFormats.ts": 9,
+    "src/features/workspace/components/WorkspaceTree.tsx": 1,
+    "src/features/workspace/lib/tableFileChildren.ts": 1,
+    "src/features/workspace/lib/workspace.ts": 12,
+    "src/services/desktopClient/workspaceDocuments.ts": 2,
+    "src-tauri/src/workspace/formats.rs": 20,
+    "crates/kition-agent/src/prompts.rs": 2,
+    "crates/kition-agent/src/tools/documents.rs": 1,
+    "crates/kition-kits/src/tools.rs": 1,
+    "crates/kition-tableclient/src/lib.rs": 2,
+    "crates/kition-tableclient/src/scenario.rs": 2,
+    "crates/kition-workspacestorage/src/storage.rs": 1
+  }
+}
