@@ -39,8 +39,9 @@
 # The kit's checkout is <workspace>/kition-<kit>, where <workspace> is the folder holding this
 # Kition checkout (KITION_WORKSPACE overrides it). Needs an authenticated `gh`. GIT names the git
 # executable (default: git). KIT_CI_DIR defaults to ${TMPDIR:-/tmp}/kit-ci. KIT_CI_BRANCH replaces
-# ci/agent (tests), KIT_CI_POOLS the pool list file, and KIT_CI_POOL=<owner/repo> sends a full run
-# to that pool whatever the load (to try a new pool).
+# ci/agent (tests), KIT_CI_POOLS the pool list file (KIT_CI_POOLS=none: no pools, every run at
+# home, as when the list is empty), and KIT_CI_POOL=<owner/repo> sends a full run to that pool
+# whatever the load (to try a new pool).
 
 set -euo pipefail
 
@@ -136,6 +137,7 @@ pool_note() {
 # list is empty or missing).
 read_pools() {
   if [ -n "${KIT_CI_POOL:-}" ]; then echo "$KIT_CI_POOL"; return; fi
+  [ "$pools_file" != none ] || return 0
   { [ -f "$pools_file" ] && grep -q '"repo"' "$pools_file"; } || return 0
   node -e '
     const file = process.argv[1]
@@ -214,7 +216,7 @@ pool_push() {
   if ! gh workflow run "$kit.yml" -R "$pool" -f sha="$sha" -f ref_note="$slug $branch" >/dev/null; then
     echo "could not start $kit.yml in $pool; the run in $slug tests ${sha:0:12}" >&2
     if [ "$full" = 1 ]; then
-      echo "for the full run at home: KIT_CI_POOLS=/dev/null scripts/kit-ci.sh push $kit --full" >&2
+      echo "for the full run at home: KIT_CI_POOLS=none scripts/kit-ci.sh push $kit --full" >&2
       exit 1
     fi
     exit 0

@@ -883,7 +883,8 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   passed, is named `<kit> <HEAD>` and its artifact `tested` says `KitionAI/kition-<kit>` at HEAD.
   `push --full` sends even a text-only change to the least loaded place.
   `KIT_CI_POOL=<org>/<repo>` sends the run to that pool whatever the load (to try a new one), and
-  `KIT_CI_POOLS=<file>` reads another list (`/dev/null`: none). What stays in each kit's own
+  `KIT_CI_POOLS=<file>` reads another list, and `KIT_CI_POOLS=none` runs everything at home (as
+  an empty list does), for when a pool misbehaves. What stays in each kit's own
   `ci.yml`: the nightly run on `main`, pull requests, the text-only path, and any push run the
   driver does not cancel. `KitionAI/kit-runner` is a test pool inside KitionAI (it adds no jobs;
   it proves the mechanics) and the template for new pools.

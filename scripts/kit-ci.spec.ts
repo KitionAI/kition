@@ -164,7 +164,8 @@ async function setup(state: Partial<State>) {
         KIT_CI_POLL: '0',
         KIT_CI_STEP: '0',
         KIT_CI_FULL: '',
-        KIT_CI_POOLS: '',
+        // No pools unless a case gives a list: the tracked scripts/kit-ci-pools.json must not decide.
+        KIT_CI_POOLS: 'none',
         KIT_CI_POOL: '',
         KIT_CI_BRANCH: '',
         ...env,
@@ -282,12 +283,28 @@ describe('kit-ci.sh with runner pools', () => {
     return { ...kit, sh }
   }
 
-  it('the tracked pool list is empty, and an empty list makes exactly the calls of no list', async () => {
-    expect(JSON.parse(await readFile(join(__dirname, 'kit-ci-pools.json'), 'utf8'))).toEqual({ pools: [] })
-    const { sh, state } = await pools({ onPush: [run(500, 'push', 1, FULL_JOBS)], diff: FULL_DIFF }, [])
-    const pushed = sh('push', 'demo')
-    expect(pushed.out).toBe(`pushed ${SHA.slice(0, 12)} to ${SLUG} ci/agent\n`)
-    expect((await state()).log).toEqual(['push'])
+  it('the tracked pool list names kit-runner repositories of organizations other than KitionAI', async () => {
+    const tracked = JSON.parse(await readFile(join(__dirname, 'kit-ci-pools.json'), 'utf8'))
+    expect(Object.keys(tracked)).toEqual(['pools'])
+    for (const pool of tracked.pools) {
+      expect(Object.keys(pool)).toEqual(['repo'])
+      expect(pool.repo).toMatch(/^[\w.-]+\/kit-runner$/)
+      // A pool in KitionAI itself adds no concurrent jobs (KitionAI/kit-runner is the template).
+      expect(pool.repo.split('/')[0].toLowerCase()).not.toBe('kitionai')
+    }
+    expect(new Set(tracked.pools.map((pool: { repo: string }) => pool.repo.toLowerCase())).size).toBe(tracked.pools.length)
+  })
+
+  it('an empty list, KIT_CI_POOLS=none and a missing list make exactly the calls of no pools', async () => {
+    for (const list of [[], 'none', 'missing']) {
+      const kit = await setup({ onPush: [run(500, 'push', 1, FULL_JOBS)], diff: FULL_DIFF })
+      const file = join(kit.root, 'pools.json')
+      if (Array.isArray(list)) await writeFile(file, JSON.stringify({ pools: list }))
+      const env = { KIT_CI_POOLS: list === 'none' ? 'none' : file }
+      const pushed = kit.withEnv(env, 'push', 'demo')
+      expect(pushed.out).toBe(`pushed ${SHA.slice(0, 12)} to ${SLUG} ci/agent\n`)
+      expect((await kit.state()).log).toEqual(['push'])
+    }
   })
 
   it('sends a full change to the least loaded pool, cancels the home run, and status, wait and land read the pool run', async () => {
