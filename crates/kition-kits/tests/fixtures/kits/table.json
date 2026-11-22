@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.table",
   "name": "Table",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "Apache-2.0",
   "distribution": "default",
   "capabilities": [
@@ -213,7 +213,8 @@
       "reports": "its tables with their fields (names, types, choices, link targets), views (filters, sorts, groups), record counts and first records (ids and values, by the ids the commands take; the rest a page at a time with `table.read`), and its dashboards",
       "covers": "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `table.records.create` adds a record; a new file holds one starter table (table 1, `Table`: title, status, notes) that `table.tables.delete` removes",
       "queries": "`records`, `fields`, or `views`",
-      "example": "table.records.create"
+      "example": "table.records.create",
+      "use": "structured, spreadsheet-like results"
     }
   },
   "headless": {

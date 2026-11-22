@@ -1,5 +1,5 @@
 {
-  "$comment": "The kit packages Kition ships: Release assets of each kit's repository, published by its Package workflow (.github/workflows/kit-package.yml), pinned by scripts/pin-kits.mjs and downloaded by scripts/fetch-kits.mjs (docs/kits.md, section 4b).",
+  "$comment": "The kit packages Kition ships, pinned by scripts/pin-kits.mjs and downloaded by scripts/fetch-kits.mjs (docs/kits.md, section 4b). An npm pin (scope, version, the four build commits, and the npm integrity and tarball size of the editor package and of each platform's headless package) names its packages from the kit and the scope; a Release pin (repository, tag, asset, size, sha256) is a GitHub Release asset of the kit's repository, read until every kit is pinned on npm.",
   "board": {
     "repository": "KitionAI/kition-board",
     "version": "0.1.2",
@@ -169,16 +169,38 @@
     "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf"
   },
   "table": {
-    "repository": "KitionAI/kition-table",
-    "version": "0.5.6",
-    "tag": "package-v0.5.6",
-    "asset": "kition-table-0.5.6.tgz",
-    "size": 22226816,
-    "sha256": "d74e7e463708b86593614fc33f436777ab75bae460c563af4e5c8a76ff0cf4f4",
-    "commit": "c6bc3af3a30115dabbf32ed10642a4d15a31e9d6",
-    "sdkCommit": "9a93cf77b2d7ca9876d9a7b4a8eed30923c845bb",
-    "tesseraCommit": "304c21743543cd29baccf3bda841df3daef378bf",
-    "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf"
+    "scope": "@kition",
+    "version": "0.1.1",
+    "commit": "bf70590fd186cfec16dd3bca7895f35d405d0798",
+    "sdkCommit": "fc636711f3e9224d853977c9b22d00ca49f2383c",
+    "tesseraCommit": "cda93822dfab902bb39aba53c2ddfe93629401ca",
+    "fontsCommit": "66949b770d1132d26284417368e154e8e5ae1acf",
+    "editor": {
+      "integrity": "sha512-5+akfvGpOR1dyA2rTTnBWqDwdVg1rwjpspnRDHXZCHjjrj0Vs8bu6MX9gvJYhFrmcqqzdecYm5XcFEkCDZKsyA==",
+      "size": 21725032
+    },
+    "platforms": {
+      "darwin-arm64": {
+        "integrity": "sha512-KV913SuNb+gIaBkKojVqWKXpn9bEaYFhUcZluKjDx07WTeJTY6qLg5Cs6kCZLLc/CoVvORyzdCDLvsmpbQYPbQ==",
+        "size": 15322179
+      },
+      "darwin-x64": {
+        "integrity": "sha512-1z337wWEZLaEecXJPCQn9+xkYSLzIk60UmsVGIL1pwSwfkw50ku62UroagO3zHXIj3mbVoqASj6+bhYbNkCkNg==",
+        "size": 15980969
+      },
+      "linux-arm64": {
+        "integrity": "sha512-jpes7woZE6o6+5BsfSJMSsyk29Pcd+XLwNhb38CCGAIs4lfjGdb1GZTswmWUE+e8lHoFzp2K7mVkNB1BS/k9CA==",
+        "size": 14853125
+      },
+      "linux-x64": {
+        "integrity": "sha512-Z8mAsON4GMgkFOMLjc4ht2SUVMU3Uk5MJ+ZdHg0SNgkF0j27epoOxEUDWK72NF+tJVKkLNzLaqFZ4AH1T7qNvQ==",
+        "size": 15644619
+      },
+      "win32-x64": {
+        "integrity": "sha512-XWKt5g5tpEE1T2WYHmF7iiHUdHJqeuUObMP1wfY/Pf2+T6rItJHhAyE06UFAKZzc4ph5kMOQjRQDEaoyL8blJA==",
+        "size": 15969480
+      }
+    }
   },
   "vector": {
     "repository": "KitionAI/kition-vector",
