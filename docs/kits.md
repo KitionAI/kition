@@ -829,6 +829,23 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   `@kition/*` packages come from npm through the kit's lockfile). The test jobs set
   `PLAYWRIGHT_NO_UA_PLATFORM=1`: otherwise Playwright's WebKit reports a Mac `navigator.platform`
   on Linux and editors expect Cmd shortcuts where the tests press Ctrl.
+- **Text-only path**: a push to `ci/**` or a pull request whose every changed file (against the
+  merge base with `main`) is on the text-only list skips `build`, `rust` and the tests; a
+  `Text only` job checks instead that the files are UTF-8 text and that `git diff --check` is
+  clean (no conflict markers, no trailing whitespace), and the run ends green in about a minute.
+  The list lives in one place, `scripts/kit-ci-plan.mjs` (`isTextOnlyPath`, with its tests):
+  Markdown at the root, directly in `.github/` and under `docs/`, except `docs/attribution.md`,
+  `docs/parity/`, `docs/features/`, `generated/` and test-like folders (`cases`, `conformance`,
+  `expected`, `fixtures`, `tests`, `testdata`, `samples`, `corpus`, ...); `.claude/`; `LICENSE*`
+  and `NOTICE*` at the root; `.github/CODEOWNERS` and `.github/ISSUE_TEMPLATE/`. Markdown
+  anywhere else is read by some kit's build or tests (crate READMEs compiled in as doctests,
+  `agent/guide.md`, `conformance/*.md`, fixtures), so it takes the full run. So does every
+  other file, a symlink, an empty change (a branch equal to `main`), and the nightly and
+  hand-started runs. A commit that rewords a case's `intent` (a `.yaml` under `cases/`) or a
+  comment in a `.rs` file is not text-only. `scripts/kit-ci.sh push <kit> --full` (or
+  `KIT_CI_FULL=1`) forces the full run of a text-only change: once the push's run is planned
+  text-only, it starts the workflow by hand (`workflow_dispatch`, always full), which cancels
+  the text-only run and, as the newest run of HEAD, is the one `wait`, `status` and `land` read.
 - **Per kit**: `.github/kit-ci.json` may `exclude` jobs that cannot run on a hosted runner (say
   why in the commit) and set `maxParallel` (default 6).
 - **Concurrency**: the organization's plan allows 20 concurrent jobs across all repositories (5 on
@@ -838,7 +855,7 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
   `failures` writes the jobs' results, the log lines before each error and the evidence
   (`test-results`, `playwright-report`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
   `land` fast-forwards `origin/main` to HEAD only when HEAD's run passed, then deletes
-  `ci/agent`. Rerun a flaky-looking failure once with `gh run rerun <run> --failed` before
+  `ci/agent`. `wait`, `status` and `land` say "text-only" for a run of the text-only path. Rerun a flaky-looking failure once with `gh run rerun <run> --failed` before
   changing code.
 
 ## 5. Adding A Kit: Checklist

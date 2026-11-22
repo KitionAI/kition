@@ -5,7 +5,8 @@ name: Kit CI
 # commit to the kit's ci/agent branch, wait, read the failures, land it on main). See docs/kits.md.
 #
 # Jobs:
-# - plan: the kit's test jobs (scripts/kit-ci-plan.mjs: one per `test`/`test:*` script).
+# - plan: the kit's test jobs (scripts/kit-ci-plan.mjs: one per `test`/`test:*` script), and
+#   whether the change is text-only (below).
 # - build: the WebAssembly engine and the editor build, shared with the test jobs as the
 #   artifact `engine`.
 # - rust: fmt, clippy and `cargo test --workspace`, each run to the end so one run reports every
@@ -14,6 +15,14 @@ name: Kit CI
 #   .github/kit-ci.json says otherwise), so a kit's run holds at most 8 of the organization's
 #   concurrent jobs. A failed job uploads its test-results and playwright-report as
 #   `evidence-<job>`.
+#
+# Text-only path: a push to ci/** or a pull request whose files, against the merge base with main,
+# are all on the text-only list in scripts/kit-ci-plan.mjs (Markdown at the root, directly in
+# .github/ and under docs/ outside attribution.md, parity/ and features/; .claude/; LICENSE* and
+# NOTICE* at the root; .github/CODEOWNERS and .github/ISSUE_TEMPLATE/) skips build, rust and test.
+# The `Text only` job checks the files instead (UTF-8 text, `git diff --check`) and the run ends
+# green in about a minute. An empty change, any other file (a case's .yaml, a comment in a .rs),
+# the nightly run and a run started by hand (`scripts/kit-ci.sh push <kit> --full`) take the full run.
 
 on:
   workflow_call:
@@ -40,6 +49,9 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
       max_parallel: ${{ steps.plan.outputs.max_parallel }}
       xtask: ${{ steps.plan.outputs.xtask }}
+      text_only: ${{ steps.plan.outputs.text_only }}
+      base: ${{ steps.base.outputs.base }}
+      head: ${{ steps.base.outputs.head }}
     steps:
       - name: Check out the kit
         uses: actions/checkout@v7
@@ -59,15 +71,82 @@ jobs:
         with:
           node-version: '24'
 
+      # The merge base with main (a push) or with the pull request's base. Nightly and hand-started
+      # runs get none, so they always test everything; so does any failure here.
+      - name: Find the merge base with main
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          base=""
+          head="$SHA"
+          case "$EVENT" in
+            push) base="$(gh api "repos/$REPO/compare/main...$SHA" -q .merge_base_commit.sha)" || base="" ;;
+            pull_request) head="$PR_HEAD"; base="$(gh api "repos/$REPO/compare/$PR_BASE...$PR_HEAD" -q .merge_base_commit.sha)" || base="" ;;
+          esac
+          if [ -n "$base" ] && ! git -C "kition-$KIT" fetch --quiet --no-tags --depth=1 origin "$base" "$head"; then
+            echo "could not fetch $base and $head: full run"
+            base=""
+          fi
+          echo "event $EVENT, base ${base:-none}, head $head"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+
       - name: List the test jobs
         id: plan
+        env:
+          BASE: ${{ steps.base.outputs.base }}
+          HEAD_SHA: ${{ steps.base.outputs.head }}
         run: |
           set -euo pipefail
-          node kition/scripts/kit-ci-plan.mjs "kition-$KIT" --github-output | tee -a "$GITHUB_OUTPUT"
+          args=(--github-output --summary "$GITHUB_STEP_SUMMARY")
+          if [ -n "$BASE" ]; then args+=(--base "$BASE" --head "$HEAD_SHA"); fi
+          node kition/scripts/kit-ci-plan.mjs "kition-$KIT" "${args[@]}" | tee -a "$GITHUB_OUTPUT"
+
+  text:
+    name: Text only
+    needs: plan
+    if: needs.plan.outputs.text_only == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the kit
+        uses: actions/checkout@v7
+        with:
+          path: kition-${{ inputs.kit }}
+
+      - name: Check out Kition's scripts
+        uses: actions/checkout@v7
+        with:
+          repository: KitionAI/kition
+          ref: main
+          path: kition
+          sparse-checkout: scripts
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Check the changed text
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          HEAD_SHA: ${{ needs.plan.outputs.head }}
+        run: |
+          set -euo pipefail
+          git -C "kition-$KIT" fetch --quiet --no-tags --depth=1 origin "$BASE" "$HEAD_SHA"
+          node kition/scripts/kit-ci-plan.mjs "kition-$KIT" --check-text --base "$BASE" --head "$HEAD_SHA" --summary "$GITHUB_STEP_SUMMARY"
 
   build:
     name: Build
     needs: plan
+    if: needs.plan.outputs.text_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -121,6 +200,7 @@ jobs:
   rust:
     name: Rust
     needs: plan
+    if: needs.plan.outputs.text_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -172,7 +252,7 @@ jobs:
   test:
     name: ${{ matrix.name }}
     needs: [plan, build]
-    if: needs.plan.outputs.matrix != '{"include":[]}'
+    if: needs.plan.outputs.text_only != 'true' && needs.plan.outputs.matrix != '{"include":[]}'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
