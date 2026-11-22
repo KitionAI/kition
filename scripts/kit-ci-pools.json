@@ -1,3 +1,8 @@
 {
-  "pools": []
+  "pools": [
+    { "repo": "KitionCIFirst/kit-runner" },
+    { "repo": "KitionCISecond/kit-runner" },
+    { "repo": "KitionCIThird/kit-runner" },
+    { "repo": "KitionCIForth/kit-runner" }
+  ]
 }
