@@ -174,6 +174,8 @@
     "alreadyInLocation": "Ya está en esta ubicación"
   },
   "kitEditor": {
+    "editIn": "Editar en {{kit}}",
+    "editInFailed": "No se pudo crear el proyecto en {{kit}}",
     "conflictsTitle": "Algunas ediciones no se pudieron combinar",
     "conflictsBody_one": "No se pudo combinar {{count}} edición hecha por otra persona al mismo tiempo. Se conserva en el documento hasta que se resuelva.",
     "conflictsBody_other": "No se pudieron combinar {{count}} ediciones hechas por otra persona al mismo tiempo. Se conservan en el documento hasta que se resuelvan.",
@@ -276,10 +278,6 @@
       },
       "cancel": "Cancelar"
     }
-  },
-  "filmKit": {
-    "editInFilm": "Editar en Film",
-    "editFailed": "No se pudo crear el proyecto de vídeo"
   },
   "collab": {
     "share": "Compartir para coedición",

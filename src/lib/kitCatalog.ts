@@ -19,7 +19,11 @@ export type KitManifest = {
   creates?: readonly KitCreate[]
   agent?: { prefix?: string; describe?: { noun?: string } }
   outline?: { command?: string }
+  imports?: readonly KitImport[]
 }
+
+/** Files of other kinds a kit starts a document from (`kit.json` `imports[]`, platform K25). */
+type KitImport = { extensions: readonly string[]; action: string }
 
 /** What a kit creates (`kit.json` `creates[]`): an empty document of `size`, named `<baseName>.<extension>`. */
 export type KitCreate = { id: string; extension: string; baseName: string; size: { width: number; height: number } }
@@ -49,6 +53,8 @@ export type KitCatalogEntry = {
   noun: string
   /** Its documents have an outline (`outline.command`, platform K24): parts the workspace tree lists under a file. */
   outline: boolean
+  /** The files of other kinds it starts a document from, their extensions lowercase without the dot. */
+  imports: readonly KitImport[]
 }
 
 const KIT_ID_PREFIX = 'kit.'
@@ -87,6 +93,7 @@ function kitCatalogEntry(manifest: KitManifest): KitCatalogEntry | null {
     agentPrefix: manifest.agent?.prefix || null,
     noun: manifest.agent?.describe?.noun || manifest.name || name,
     outline: Boolean(manifest.outline?.command),
+    imports: (manifest.imports ?? []).map((each) => ({ action: each.action, extensions: each.extensions.map(normalized) })),
   }
 }
 

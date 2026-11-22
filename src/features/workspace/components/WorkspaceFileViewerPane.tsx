@@ -13,7 +13,7 @@ import {
   getWorkspaceItemTitle,
 } from '@/features/workspace/lib/workspace'
 import { notify } from '@/lib/notify'
-import { EditInFilmButton } from './film/EditInFilmButton'
+import { KitImportButtons } from './kits/KitImportButtons'
 import { KitFilePane } from './kits/KitFilePane'
 import { kitEditorFor } from './kits/kitEditors'
 
@@ -110,7 +110,7 @@ function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneP
             <span className="workspace-file-viewer__format-chip">{label}</span>
           </div>
           <div className="workspace-file-viewer__actions">
-            {format === 'video' ? <EditInFilmButton path={path} /> : null}
+            <KitImportButtons path={path} />
             <button
               type="button"
               className="workspace-file-viewer__action"

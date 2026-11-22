@@ -495,6 +495,18 @@ through the Kit AI bridge when an editor has the file open, so the edit
 arrives live, and through the headless `kition-table` otherwise. Its writes
 carry a `system:<feature>` origin and never join the person's undo.
 
+### A project from another file
+
+A kit says in its manifest which files of other kinds it starts a document
+from (`kit.json` `imports`, platform K25). The file preview offers "Edit in
+<kit>" on a file for every kit of the build that declares `project-from-clip`
+for its extension (`KitImportButtons`): a new document of the kit beside the
+file, named after it, with the file on a sequence
+(`src/features/workspace/components/kits/kitImports.ts` runs the action's two
+commands, `file.import` and `file.newSequenceFromClip`, in the new document's
+engine). Nothing here names a kit; the Film kit is the one that declares it
+today.
+
 ### A file's outline in the workspace tree
 
 A kit whose documents have parts names the engine command that lists them in

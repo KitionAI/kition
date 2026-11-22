@@ -1,0 +1,25 @@
+format: 1
+id: kition.kits.imports/project-from-clip
+feature: kition.kits.imports
+intent: >-
+  The file preview offers "Edit in <kit>" on a file for every kit of the build whose manifest
+  declares `project-from-clip` for the file's extension (kit.json imports, platform K25), and for
+  no other file; Kition names no kit. The kit catalog reads `imports` from the manifest. Starting
+  the project makes the kit's new document (its first `creates` entry, with its size) beside the
+  file, named after it, and runs `file.import` with the file's name alone, then
+  `file.newSequenceFromClip` with the items the import answered. When the import answers no
+  items, the project fails saying the file could not be imported, and no sequence is made.
+layer: gate
+source:
+  kind: synthetic
+  from: src/features/workspace/components/kits/kitImports.ts
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/workspace/components/kits/kitImports.spec.ts, src/lib/kitCatalog.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-22"

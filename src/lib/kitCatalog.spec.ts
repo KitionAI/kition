@@ -50,10 +50,13 @@ describe('the kit catalog', () => {
       agentPrefix: 'ink',
       noun: 'ink drawing',
       outline: false,
+      imports: [],
     })
     expect(kitByName('memo')).toMatchObject({ id: 'kit.memo', text: true, agentPrefix: null, noun: 'Memo', creates: [], outline: false })
     installKitCatalog([{ ...MEMO, outline: { command: 'memo.outline' } }])
     expect(kitByName('memo')?.outline).toBe(true)
+    installKitCatalog([{ ...MEMO, imports: [{ extensions: ['.WAV', 'mp3'], action: 'project-from-clip' }] }])
+    expect(kitByName('memo')?.imports).toEqual([{ extensions: ['wav', 'mp3'], action: 'project-from-clip' }])
   })
 
   it('finds the kit that edits an extension, and a kit that views it only when none edits it', () => {
