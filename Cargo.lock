@@ -3155,7 +3155,6 @@ dependencies = [
  "kition-kits",
  "kition-kits-http",
  "kition-store",
- "kition-tableclient",
  "kition-workspace",
  "kition-workspacestorage",
  "reqwest 0.12.28",
@@ -3424,26 +3423,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "kition-tableclient"
-version = "0.0.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "futures",
- "http",
- "kition-ai",
- "kition-core",
- "kition-http",
- "kition-kits",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
  "tokio",
  "tracing",
 ]

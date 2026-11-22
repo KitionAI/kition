@@ -17,7 +17,7 @@ function refuse(reason: string, message: string): never {
  * preferred image model for images, and the active provider's model for text. The kit's
  * preference is a hint only (UI-G2): a model the person has not set up is never used.
  */
-export async function resolveGenerateRuntimeModel(output: 'text' | 'image', preference?: string): Promise<RuntimeWritingModel | undefined> {
+async function resolveGenerateRuntimeModel(output: 'text' | 'image', preference?: string): Promise<RuntimeWritingModel | undefined> {
   const named = preference?.match(/^desktop:([^:]+):(.+)$/)
   let settings = await loadDesktopSettings()
   const providerKind = (named?.[1] || settings.models.activeProvider) as DesktopProviderKind

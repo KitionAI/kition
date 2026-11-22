@@ -50,9 +50,6 @@ const CommandPalette = lazy(() =>
 const PortalProfileDialog = lazy(() =>
   import('@/app/PortalAccountControl').then((module) => ({ default: module.PortalProfileDialog })),
 )
-const ScenarioRoute = lazy(() =>
-  import('@/features/scenario/pages/ScenarioRoute').then((module) => ({ default: module.ScenarioRoute })),
-)
 const DesktopSettingsPage = lazy(() =>
   import('@/features/settings/DesktopSettingsPage').then((module) => ({ default: module.DesktopSettingsPage })),
 )
@@ -66,7 +63,6 @@ export function AppShell() {
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey>('general')
   const [commandOpen, setCommandOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [scenarioOpen, setScenarioOpen] = useState(false)
   const [desktopPlatform, setDesktopPlatform] = useState<string | null>(null)
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined)
   const [runtimeLabel, setRuntimeLabel] = useState<'local-runtime' | 'dev-runtime' | ''>('')
@@ -431,7 +427,6 @@ export function AppShell() {
   // The URL is the source of truth for the full-screen views. Applying a
   // parsed location keeps the four view states consistent with each other.
   const applyAppLocation = useCallback((location: AppLocation) => {
-    setScenarioOpen(location.view === 'scenario')
     if (location.view === 'settings') {
       openSettings(location.section)
     } else {
@@ -471,11 +466,6 @@ export function AppShell() {
   useGlobalShortcuts({
     open_settings: () => openSettings(),
   })
-
-  const closeScenarioRoute = useCallback(() => {
-    setScenarioOpen(false)
-    leaveAppView('scenario')
-  }, [])
 
   useShortcut('Mod+K', () => setCommandOpen(true))
   // Inside a kit editor Cmd+K is the kit's own; the kit forwards Cmd+. (KitFrame's HOST_SHORTCUTS).
@@ -654,16 +644,6 @@ export function AppShell() {
           onStartLocal={startLocalOnboarding}
           onSkip={skipOnboarding}
         />
-      ) : null}
-      {scenarioOpen ? (
-        <div
-          className="fixed inset-0 z-[60] overflow-hidden bg-background animate-fade-in"
-          data-testid="scenario-route-overlay"
-        >
-          <Suspense fallback={null}>
-            <ScenarioRoute onExit={closeScenarioRoute} />
-          </Suspense>
-        </div>
       ) : null}
       {settingsModalOpen ? (
         <Suspense fallback={null}>

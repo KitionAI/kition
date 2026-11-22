@@ -146,24 +146,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/agent/components/BuildProgressCard.tsx",
-    "to": "src/features/scenario/types.ts",
-    "unresolvedTo": "@/features/scenario/types",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/agent/hooks/useWorkspaceAgent.ts",
     "to": "src/features/analytics/lib/productAnalytics.ts",
     "unresolvedTo": "@/features/analytics/lib/productAnalytics",
@@ -271,23 +253,6 @@
     "from": "src/features/onboarding/components/FirstRunActivationPanel.tsx",
     "to": "src/features/account/lib/accountState.ts",
     "unresolvedTo": "@/features/account/lib/accountState",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/scenario/pages/ScenarioBuildPage.tsx",
-    "to": "src/features/agent/components/BuildProgressCard.tsx",
-    "unresolvedTo": "@/features/agent/components/BuildProgressCard",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

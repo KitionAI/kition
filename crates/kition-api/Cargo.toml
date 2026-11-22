@@ -22,7 +22,6 @@ kition-ai = { workspace = true }
 kition-kits = { workspace = true }
 kition-kits-http = { workspace = true }
 kition-core = { workspace = true }
-kition-tableclient = { workspace = true }
 kition-desktop = { workspace = true }
 kition-http = { workspace = true }
 kition-kdm = { workspace = true }

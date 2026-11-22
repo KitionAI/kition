@@ -16,13 +16,9 @@
 // `tests`, `__tests__` and `fixtures`, and a Rust file from its `#[cfg(test)]` line on), nor are
 // comment lines, the locale files and generated code.
 //
-// The places that name a kit today are listed in tooling/kit-neutral.known.json with their
-// counts. The list only shrinks: a file with more matches than listed, or a file that is not
-// listed, fails; a file with fewer fails too, until the list is rewritten with --update.
+// A match fails the check: read the kit's manifest instead (docs/kits.md).
 //
-//   node scripts/check-kit-neutral.mjs            check
-//   node scripts/check-kit-neutral.mjs --update   rewrite the list (it may only shrink)
-//   node scripts/check-kit-neutral.mjs --list     print every match
+//   node scripts/check-kit-neutral.mjs
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -63,20 +59,6 @@ export function matchesIn(file, text, pattern) {
   return found
 }
 
-/** What differs between the counts found and the counts listed, as messages; empty when equal. */
-export function compare(found, known) {
-  const problems = []
-  for (const [file, count] of Object.entries(found)) {
-    const listed = known[file] ?? 0
-    if (count > listed) problems.push(`${file}: ${count} ${count === 1 ? 'place names' : 'places name'} a kit (${listed} listed). Read the kit's manifest instead; see docs/kits.md.`)
-    else if (count < listed) problems.push(`${file}: ${count} left of ${listed} listed. Run \`node scripts/check-kit-neutral.mjs --update\`.`)
-  }
-  for (const file of Object.keys(known)) {
-    if (!(file in found)) problems.push(`${file}: none left of ${known[file]} listed. Run \`node scripts/check-kit-neutral.mjs --update\`.`)
-  }
-  return problems.sort()
-}
-
 function sourceFiles(root) {
   const roots = ['src', 'src-tauri/src']
   const crates = path.join(root, 'crates')
@@ -100,36 +82,16 @@ function sourceFiles(root) {
 
 function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-  const knownPath = path.join(root, 'tooling/kit-neutral.known.json')
   const pattern = kitPattern(kitNames(JSON.parse(fs.readFileSync(path.join(root, 'kits/kits.lock.json'), 'utf8'))))
-  const found = {}
+  let found = 0
   for (const file of sourceFiles(root)) {
-    const matches = matchesIn(file, fs.readFileSync(path.join(root, file), 'utf8'), pattern)
-    if (!matches.length) continue
-    found[file] = matches.length
-    if (process.argv.includes('--list')) {
-      for (const match of matches) console.log(`${file}:${match.line}: ${match.text}`)
+    for (const match of matchesIn(file, fs.readFileSync(path.join(root, file), 'utf8'), pattern)) {
+      found += 1
+      console.error(`${file}:${match.line}: ${match.text} names a kit. Read the kit's manifest instead; see docs/kits.md.`)
     }
   }
-  const known = fs.existsSync(knownPath) ? JSON.parse(fs.readFileSync(knownPath, 'utf8')).files : {}
-  const total = Object.values(found).reduce((sum, count) => sum + count, 0)
-  if (process.argv.includes('--update')) {
-    const grown = Object.entries(found).filter(([file, count]) => fs.existsSync(knownPath) && count > (known[file] ?? 0))
-    if (grown.length) {
-      for (const [file, count] of grown) console.error(`${file}: ${count} places name a kit (${known[file] ?? 0} listed); the list only shrinks.`)
-      process.exit(1)
-    }
-    const comment = 'The places in Kition\'s own code that still name a kit, by file (scripts/check-kit-neutral.mjs). The list only shrinks; it ends empty.'
-    fs.writeFileSync(knownPath, `${JSON.stringify({ $comment: comment, files: found }, null, 2)}\n`)
-    console.log(`kit-neutral: listed ${total} places in ${Object.keys(found).length} files`)
-    return
-  }
-  const problems = compare(found, known)
-  if (problems.length) {
-    for (const problem of problems) console.error(problem)
-    process.exit(1)
-  }
-  console.log(`kit-neutral: ok (${total} listed places in ${Object.keys(found).length} files still name a kit)`)
+  if (found) process.exit(1)
+  console.log('kit-neutral: ok (no place in Kition\'s own code names a kit)')
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()

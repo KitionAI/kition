@@ -62,10 +62,7 @@ vi.mock('@/services/desktop', () => ({
   readWorkspaceDocument: mocks.readWorkspaceDocument,
   writeWorkspaceDocument: mocks.writeWorkspaceDocument,
   openWorkspaceWindow: mocks.openWorkspaceWindow,
-  // Shell pulls in ScenarioRoute → TableEditor → @/api/dataDocuments,
-  // which calls getApiBaseURL() at module-evaluation time. With
-  // vi.resetModules() we need to surface enough of the desktop module
-  // surface for that import chain to evaluate without ReferenceError.
+  // Modules the shell imports read the API base at module-evaluation time.
   getApiBaseURL: () => 'http://localhost:3000',
   resolveApiURL: (path: string) => `http://localhost:3000${path}`,
 }))

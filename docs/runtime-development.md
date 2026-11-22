@@ -28,7 +28,6 @@ runtime crates.
 | `kition-store` | The SQLite database, schema, and migrations. |
 | `kition-ai` | Model providers (OpenAI Responses and Anthropic Messages), streaming, retries, and image generation. |
 | `kition-agent` | Agent sessions, the streamed agent turn, its tools, the execution policy, and MCP servers. |
-| `kition-tableclient` | The host table client: the scenario builder (`POST /v1/scenarios/build`) writes a new `.ktable` file through the Table kit (`kit.table`), by the Kit AI bridge when an editor has the file open and by the headless `kition-table` otherwise. Kition has no table engine of its own. It is the one crate that names a kit, and it goes when the scenario builder moves into the Table kit (`scripts/check-kit-neutral.mjs` lists it). |
 | `kition-time` | Millisecond timestamps, without runtime dependencies (re-exported by `kition-core`). |
 | Other crates | Desktop features and workspace storage. |
 

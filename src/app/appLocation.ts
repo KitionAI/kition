@@ -8,7 +8,6 @@ import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage
 export type AppLocation =
   | { view: 'documents' }
   | { view: 'settings'; section: SettingsSectionKey }
-  | { view: 'scenario' }
 
 export type AppView = AppLocation['view']
 
@@ -49,7 +48,6 @@ export function normalizeAppPathname(pathname: string): string {
   if (
     pathname === DEFAULT_APP_PATHNAME
     || pathname === '/settings'
-    || pathname === '/scenario'
   ) {
     return pathname
   }
@@ -58,7 +56,6 @@ export function normalizeAppPathname(pathname: string): string {
 
 export function parseAppLocation(input: { pathname: string; search: string; state: unknown }): AppLocation {
   const pathname = normalizeAppPathname(input.pathname)
-  if (pathname === '/scenario') return { view: 'scenario' }
   if (pathname === '/settings') {
     return { view: 'settings', section: resolveSettingsSection(new URLSearchParams(input.search).get('section')) }
   }
@@ -70,8 +67,6 @@ export function appLocationPathname(location: AppLocation): string {
   switch (location.view) {
     case 'settings':
       return '/settings'
-    case 'scenario':
-      return '/scenario'
     default:
       return DEFAULT_APP_PATHNAME
   }

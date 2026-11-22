@@ -490,11 +490,10 @@ items with `primary`.
 `kit.table` (`KitionAI/kition-table`, package `public/kits/table-ui`) is a
 normal kit: `.ktable` files open in its own editor in `KitFrame`, and its
 engine and editor live in its repository. Kition has no table engine or
-table editor of its own. One host feature, the scenario builder, still writes
-tables itself, through the host table client, `crates/kition-tableclient`:
-through the Kit AI bridge when an editor has the file open, so the edit
-arrives live, and through the headless `kition-table` otherwise. Its writes
-carry a `system:<feature>` origin and never join the person's undo.
+table editor of its own, and no feature that writes tables itself: a table
+from files (one record a file, with AI fields) is the kit's own "New table from
+files" (kition-table `web/src/fromFiles.ts`), which asks Kition only for the
+model calls (`host/generate`).
 
 ### A project from another file
 

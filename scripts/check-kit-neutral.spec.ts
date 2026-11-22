@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error: a plain Node script without type declarations.
-import { compare, isChecked, kitNames, kitPattern, matchesIn } from './check-kit-neutral.mjs'
+import { isChecked, kitNames, kitPattern, matchesIn } from './check-kit-neutral.mjs'
 
 const pattern = () => kitPattern(kitNames({ $comment: 'The kits.', table: {}, film: {}, pdf: {} }))
 const found = (file: string, text: string) => matchesIn(file, text, pattern()).map((match: { line: number; text: string }) => `${match.line}:${match.text}`)
@@ -34,20 +34,5 @@ describe('check-kit-neutral', () => {
     for (const file of ['src/a.spec.ts', 'src/test/contracts.ts', 'src-tauri/src/workspace/docstore/tests.rs', 'crates/a/src/gate_tests.rs', 'src/i18n/locales/en-US/workspace.ts', 'src/api/generated/kits.ts', 'src/app/styles.css']) {
       expect(isChecked(file), file).toBe(false)
     }
-  })
-
-  it('fails a file that names a kit more often than listed, or that is not listed', () => {
-    expect(compare({ 'src/a.ts': 2, 'src/b.ts': 1 }, { 'src/a.ts': 1 })).toEqual([
-      "src/a.ts: 2 places name a kit (1 listed). Read the kit's manifest instead; see docs/kits.md.",
-      "src/b.ts: 1 place names a kit (0 listed). Read the kit's manifest instead; see docs/kits.md.",
-    ])
-  })
-
-  it('fails a list that is longer than the code, so the list only shrinks', () => {
-    expect(compare({ 'src/a.ts': 1 }, { 'src/a.ts': 3, 'src/gone.ts': 2 })).toEqual([
-      'src/a.ts: 1 left of 3 listed. Run `node scripts/check-kit-neutral.mjs --update`.',
-      'src/gone.ts: none left of 2 listed. Run `node scripts/check-kit-neutral.mjs --update`.',
-    ])
-    expect(compare({ 'src/a.ts': 1 }, { 'src/a.ts': 1 })).toEqual([])
   })
 })

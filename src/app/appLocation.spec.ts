@@ -42,13 +42,13 @@ describe('parseAppLocation', () => {
   it('sends unknown and root paths to the documents workspace', () => {
     expect(parseAppLocation({ pathname: '/', search: '', state: null })).toEqual({ view: 'documents' })
     expect(parseAppLocation({ pathname: '/image', search: '?section=models', state: null })).toEqual({ view: 'documents' })
-    expect(parseAppLocation({ pathname: '/scenario', search: '', state: null })).toEqual({ view: 'scenario' })
+    expect(parseAppLocation({ pathname: '/scenario', search: '', state: null })).toEqual({ view: 'documents' })
   })
 })
 
 describe('appLocationPathname', () => {
   it('round-trips each view', () => {
-    for (const pathname of ['/documents', '/settings', '/scenario']) {
+    for (const pathname of ['/documents', '/settings']) {
       expect(appLocationPathname(parseAppLocation({ pathname, search: '', state: null }))).toBe(pathname)
     }
   })
@@ -57,7 +57,7 @@ describe('appLocationPathname', () => {
 describe('leaveAppView', () => {
   it('returns to the documents workspace only when the URL names that view', () => {
     window.history.replaceState({ keep: true }, '', '/settings?section=models')
-    leaveAppView('scenario')
+    leaveAppView('documents')
     expect(window.location.pathname).toBe('/settings')
     leaveAppView('settings')
     expect(window.location.pathname).toBe('/documents')

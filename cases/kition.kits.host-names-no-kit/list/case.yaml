@@ -7,9 +7,8 @@ intent: >-
   kit's own extension as a word (`ktable`), and a kit's engine (`kition_table_kit`, a quoted
   `TableDocument`). It leaves alone other words (`table`), another library's type of the same name
   (PdfDocument), comment lines, tests (spec files, test folders, a Rust file from its
-  `#[cfg(test)]` line on), the locale files and generated code. A file that names a kit more often
-  than the list says, or that the list does not hold, fails; so does a list longer than the code,
-  so the list only shrinks. Then the check itself runs on this repository and passes.
+  `#[cfg(test)]` line on), the locale files and generated code. Any match fails the check. Then
+  the check itself runs on this repository and passes: no place in Kition's own code names a kit.
 layer: gate
 source:
   kind: synthetic

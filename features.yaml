@@ -366,14 +366,6 @@ features:
       - regressions/issue-notices-license-texts
       - regressions/issue-notices-loro-repository
     since: "2026-10-31"
-  - id: kition.kits.table-host
-    title: The scenario builder writes table files through the Table kit's commands
-    dimension: [function, data-safety]
-    priority: P1
-    status: has
-    paths: [crates/kition-tableclient/**]
-    cases: [regressions/issue-attachment-mime-type]
-    since: "2026-11-05"
   - id: kition.agent.tool-policy
     title: The agent's shell runs read-only commands without asking only inside the workspace, and its URL tools (web_fetch, web_article_save, save_image_asset) reach only sites the person named without asking
     dimension: [security, ai]
@@ -521,30 +513,26 @@ features:
       - regressions/issue-ai-field-no-model-action
     since: "2026-11-06"
   - id: kition.onboarding.ai-scenarios
-    title: The onboarding agent and extraction scenarios stay bound to the open file and write nothing unasked
+    title: The onboarding agent scenario stays bound to the open file and writes nothing unasked
     dimension: [ai, data-safety, security]
     priority: P0
     status: has
     paths:
-      - crates/kition-tableclient/src/scenario.rs
       - crates/kition-agent/src/catalog.rs
       - e2e/table-agent-document-flow.spec.ts
-    gap: The agent scenarios run on a mocked agent stream, so they test the binding and what the page writes, not what a real model chooses; the receipt extraction test needs the Table kit's headless program (sibling kition-table build or KITION_KIT_TABLE_BINARY) and skips without it.
+    gap: The agent scenario runs on a mocked agent stream, so it tests the binding and what the page writes, not what a real model chooses. The receipt extraction scenario (AI-SCENE-005) is the Table kit's since 2026-11-22 (kition-table, table.from-files/receipts): Kition has no scenario builder of its own.
     cases:
       - kition.onboarding.ai-scenarios/agent-document
-      - kition.onboarding.ai-scenarios/receipt-extraction
-      - regressions/issue-scenario-cancel-partial
     since: "2026-11-06"
   - id: kition.kits.host-names-no-kit
-    title: Kition's own code names no kit (its id, its own extension, its engine); the places that still do are listed, and the list only shrinks
+    title: Kition's own code names no kit (its id, its own extension, its engine)
     dimension: [platform]
     priority: P1
-    status: partial
+    status: has
     paths:
       - scripts/check-kit-neutral.mjs
       - scripts/check-kit-neutral.spec.ts
-      - tooling/kit-neutral.known.json
-    gap: 5 places in 3 files still name a kit (the scenario builder and the host table client) (tooling/kit-neutral.known.json); the check does not find a kit's engine command named in host code, or a kit named only by its format word.
+    gap: The check does not find a kit's engine command named in host code, a kit named only by its format word, or a kit named in the agent prompt's prose (note_run, the Slide kit).
     cases:
       - kition.kits.host-names-no-kit/list
     since: "2026-11-22"

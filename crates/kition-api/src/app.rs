@@ -28,8 +28,6 @@ pub struct Deps {
     pub ai: kition_ai::engine::Engine,
     /// Kits for this workspace; they stop when the runtime restarts.
     pub kits: kition_kits::KitManager,
-    /// The host table client: how the scenario builder writes a table file, through the Table kit.
-    pub table_client: kition_tableclient::TableClient,
 }
 
 impl Deps {
@@ -104,9 +102,7 @@ pub fn build_deps(mut config: AppConfig) -> AppResult<Deps> {
         },
     );
     write_token_file(&config, &upload_dir, workspace_dir.as_deref())?;
-    let table_client = kition_tableclient::TableClient::new(kits.clone());
     Ok(Deps {
-        table_client,
         kits,
         portal,
         ai,
@@ -161,18 +157,6 @@ pub fn router(deps: &Deps) -> Router {
         agent,
         ai_gate: deps.ai_gate(),
     }));
-    let api = if deps.workspace_dir.is_some() {
-        api.merge(kition_tableclient::scenario::router(
-            kition_tableclient::scenario::ScenarioState {
-                auth: deps.auth(),
-                tables: deps.table_client.clone(),
-                engine: deps.ai.clone(),
-                ai_gate: deps.ai_gate(),
-            },
-        ))
-    } else {
-        api
-    };
     // Workspace storage needs a workspace directory; without one its routes are not mounted.
     let assets = deps
         .workspace_dir
