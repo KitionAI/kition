@@ -33,6 +33,21 @@ jobs:
         run: python3 scripts/check-branding.py
       - name: Check for blanked comment blocks
         run: python3 scripts/check-blank-comment-blocks.py
+      # Every kit's CI and every runner pool read kit-ci.yml and the kit-checkout action from main.
+      # actionlint checks the workflows; `pnpm run lint` (the verify job, and the Stop hook) runs
+      # scripts/check-workflows.mjs, which also checks the actions' metadata. Shellcheck and
+      # pyflakes stay off, as on a developer's machine without them.
+      - name: Lint the workflows (actionlint)
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
 
   verify:
     name: Verify public client

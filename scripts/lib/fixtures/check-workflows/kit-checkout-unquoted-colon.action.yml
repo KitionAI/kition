@@ -1,0 +1,73 @@
+name: Kit checkout
+description: >-
+  Checks out a kit (the calling repository's commit, or `repository` at `ref` for a runner-pool
+  run) as kition-<kit>, with kition-sdk,
+  kition-tessera and kition-fonts side by side as the kit's scripts and tests expect
+  (../kition-*), and sets up pnpm and Node.js. Used by .github/workflows/kit-ci.yml.
+
+inputs:
+  kit:
+    description: The kit's name, for example photo
+    required: true
+  repository:
+    description: >-
+      The kit repository to check out (owner/name). Empty: the calling repository. A runner pool
+      (scripts/kit-ci-runner-repo.mjs) names the kit's repository here.
+    default: ''
+  ref:
+    description: The commit to check out (a full SHA). Empty: the commit that started the run.
+    default: ''
+  pnpm-version:
+    description: The pnpm version
+    default: 10.34.9
+  node-version:
+    description: The Node.js version
+    default: '24'
+  pnpm-cache:
+    description: >-
+      Cache pnpm's store ('true' or 'false'). Turn it off in jobs that never run pnpm install: the
+      cache's post-job step fails when the store does not exist.
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Check out the kit
+      uses: actions/checkout@v7
+      with:
+        repository: ${{ inputs.repository || github.repository }}
+        ref: ${{ inputs.ref }}
+        path: kition-${{ inputs.kit }}
+
+    - name: Check out kition-sdk
+      uses: actions/checkout@v7
+      with:
+        repository: KitionAI/kition-sdk
+        ref: main
+        path: kition-sdk
+
+    - name: Check out kition-tessera
+      uses: actions/checkout@v7
+      with:
+        repository: KitionAI/kition-tessera
+        ref: main
+        path: kition-tessera
+
+    - name: Check out kition-fonts
+      uses: actions/checkout@v7
+      with:
+        repository: KitionAI/kition-fonts
+        ref: main
+        path: kition-fonts
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v6
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.pnpm-cache == 'true' && 'pnpm' || '' }}
+        cache-dependency-path: kition-${{ inputs.kit }}/**/pnpm-lock.yaml

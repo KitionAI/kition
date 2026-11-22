@@ -901,6 +901,67 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
      `KIT_CI_POOL=<org>/kit-runner scripts/kit-ci.sh push <kit>`.
   A pool runs `kit-ci.yml` and the kit-checkout action at `main` here, so a broken push to Kition's
   `main` breaks every pool's runs as it breaks every kit's.
+- **Before pushing a change to the kit CI files** (`.github/workflows/kit-ci.yml`,
+  `.github/actions/`, `scripts/kit-ci*`): every kit and every pool reads them from `main` the
+  moment the push lands, and nothing tries them first. On 2026-11-21 an unquoted `: ` in an
+  input's description made `action.yml` invalid YAML, and for about three minutes every kit's
+  build, Rust and test jobs failed with "Failed to load .../kit-checkout/action.yml"; actionlint
+  had passed, as it lints workflows, not action metadata. So run `node scripts/check-workflows.mjs`
+  (part of `pnpm lint`, hence of the Stop hook and of CI's verify job) and `actionlint` (CI's
+  repository-guards job runs 1.7.12) before the push. The check parses every
+  `.github/workflows/*.yml` and `.github/actions/**/action.yml` strictly (no duplicate keys, no
+  tabs, no syntax errors, with the line); requires a composite action's `name`, `description`,
+  `runs.using: composite`, `shell` on every `run` step and a string `description` on every input;
+  and checks that every `inputs.X` an expression reads is declared, that every use of one of
+  this repository's actions or reusable workflows names one that exists and passes every
+  required input and no undeclared one, and the same for the callers of `kit-ci.yml` written
+  here (`scripts/kit-ci-install.mjs` for the kits, `scripts/kit-ci-runner-repo.mjs` for the
+  pools). `--caller <file>` adds a caller from another checkout, for example
+  `--caller ../kition-html/.github/workflows/ci.yml`. After the push, watch the next kit run that
+  starts (`gh run list -R KitionAI/kition-<kit>` or a pool's `kit-runner`) get past its checkout
+  steps.
+- **Proposed, not in use: a `kit-ci-stable` ref.** Kits and pools would call
+  `kit-ci.yml@kit-ci-stable` instead of `@main`, and a ref moves there only after the files
+  loaded on GitHub, so a broken push to `main` reaches no kit. The owner decides; until then
+  everything reads `main`.
+  - *The ref*: a branch `kit-ci-stable` in KitionAI/kition (a branch, so it moves with a
+    fast-forward and keeps its history; tags are not meant to move).
+  - *What moves it*: a workflow `.github/workflows/kit-ci-stable.yml` on pushes to `main` that
+    touch `.github/workflows/kit-ci.yml`, `.github/actions/**`, `scripts/kit-ci*` or itself (and by
+    hand), one run at a time (`concurrency: kit-ci-stable`, not cancelled). Its jobs, with
+    `contents: read`: `node scripts/check-workflows.mjs` and actionlint; a canary that runs
+    `uses: ./.github/actions/kit-checkout` with `kit: html`, `repository: KitionAI/kition-html`
+    and `pnpm-cache: 'false'` (proves the action loads on GitHub, about a minute); and a canary
+    that calls `uses: ./.github/workflows/kit-ci.yml` for html at its `main` with a new input
+    `plan-only: true`, which skips build, Rust and the tests (proves the workflow loads and the
+    plan runs, about a minute). Then one job with `contents: write`, and only that job, moves the
+    ref to the run's commit with a fast-forward only:
+    `gh api -X PATCH repos/KitionAI/kition/git/refs/heads/kit-ci-stable -f sha=$GITHUB_SHA -F force=false`
+    (it fails rather than move the ref backwards or sideways). It skips the move while the
+    repository variable `KIT_CI_STABLE_FREEZE` is `1`. It does not wait for this repository's own
+    CI (the app's e2e and desktop jobs), whose failures say nothing about the kit CI files and
+    would hold back kit CI fixes.
+  - *What reads it*: `kit-ci.yml` itself takes the kit-checkout action at
+    `KitionAI/kition/.github/actions/kit-checkout@kit-ci-stable` and checks out Kition's scripts
+    at `ref: kit-ci-stable`, so the workflow, the action and the plan script always come from the
+    same commit; `scripts/kit-ci-install.mjs` and `scripts/kit-ci-runner-repo.mjs` write
+    `@kit-ci-stable`, and the 16 kits' `ci.yml` and the 4 pools' `kit-runner` are written again
+    and pushed once. `scripts/check-workflows.mjs` then also requires every reference to
+    Kition's kit CI files on `main` to say `@kit-ci-stable`.
+  - *Rolling back*: set `KIT_CI_STABLE_FREEZE=1`
+    (`gh variable set KIT_CI_STABLE_FREEZE -R KitionAI/kition -b 1`), move the ref back to the last
+    good commit (`gh api -X PATCH repos/KitionAI/kition/git/refs/heads/kit-ci-stable -f sha=<good> -F force=true`),
+    fix `main`, then delete the variable. Runs already started keep what they loaded; new runs
+    read the old files at once.
+  - *Trying a change before it is stable*: push the change to a Kition branch
+    `kit-ci-try/<topic>` whose `kit-ci.yml` names the action and the scripts at
+    `kit-ci-try/<topic>` instead of `kit-ci-stable`; in one kit, push a branch `ci/try-<topic>`
+    (not `ci/agent`, so `kit-ci.sh` and `land` ignore it) whose `ci.yml` calls
+    `kit-ci.yml@kit-ci-try/<topic>`, and read its run with `gh run list -R KitionAI/kition-<kit> -b ci/try-<topic>`;
+    delete both branches after. A pool cannot try a change (`uses:` takes no expression, so a
+    dispatch input cannot pick the workflow's ref); pool runs read only `kit-ci-stable`. Then land
+    the change on `main` with the refs back at `kit-ci-stable`; the stable workflow moves the ref
+    within minutes.
 
 ## 5. Adding A Kit: Checklist
 
