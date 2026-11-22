@@ -849,14 +849,57 @@ developer's machine only compiles (fmt, `cargo check -p` on the touched crates, 
 - **Per kit**: `.github/kit-ci.json` may `exclude` jobs that cannot run on a hosted runner (say
   why in the commit) and set `maxParallel` (default 6).
 - **Concurrency**: the organization's plan allows 20 concurrent jobs across all repositories (5 on
-  macOS). One kit's run holds at most 8 (build, rust, 6 tests); further runs queue.
+  macOS). One kit's run holds at most 8 (build, rust, 6 tests); further runs queue. Runner pools
+  (below) add 20 per pool organization.
 - **The loop** (`scripts/kit-ci.sh <command> <kit>`): commit on `main` locally; `push` sends HEAD
   to `ci/agent` (a newer push cancels the older run); `wait` follows the run with one API request a minute (`KIT_CI_POLL`), since many kits wait at once and the API allows 5000 requests an hour; on failure,
   `failures` writes the jobs' results, the log lines before each error and the evidence
   (`test-results`, `playwright-report`) under `$TMPDIR/kit-ci/<kit>/<run>/`; fix and push again;
   `land` fast-forwards `origin/main` to HEAD only when HEAD's run passed, then deletes
   `ci/agent`. `wait`, `status` and `land` say "text-only" for a run of the text-only path. Rerun a flaky-looking failure once with `gh run rerun <run> --failed` before
-  changing code.
+  changing code. `land <kit> --dry-run` makes every check of `land` and pushes nothing.
+- **Runner pools**: a run counts against the concurrent jobs of the organization that owns the
+  repository it runs in, so another organization with one public repository adds 20 jobs. That
+  repository (written by `node scripts/kit-ci-runner-repo.mjs <dir>`: no source, a README, the
+  LICENSE, and one `.github/workflows/<kit>.yml` per kit) has workflows started by hand with the
+  input `sha`; each is named `<kit> <sha>`, cancels the older run of the same kit, and calls
+  `kit-ci.yml@main` here with `repository: KitionAI/kition-<kit>` and `ref: <sha>`, so it tests
+  the kit's commit on the pool's runners. A pool run reads only public repositories, so it needs
+  no secret and no KitionAI permission; it is always a full run, its Rust caches carry the kit's
+  name (one pool repository holds all 16 kits' caches), and its artifacts, the failure evidence
+  included, live in the pool repository. Every run, at home or in a pool, names what it tested:
+  the plan job's log line `kit-ci-tested <repository>@<sha>`, the summary's first heading and the
+  artifact `tested` (`tested.json`). `scripts/kit-ci-pools.json` lists the pools
+  (`{ "pools": [{ "repo": "<org>/<repo>" }] }`); while it is empty, `kit-ci.sh` does exactly what
+  is described above. With pools, `push` still pushes HEAD to `ci/agent`; a text-only change
+  (decided locally with `scripts/kit-ci-plan.mjs` against the merge base with `origin/main`)
+  stays at home, where the kit's own run is the text-only path. Otherwise it counts the queued
+  and running runs of the KitionAI kit repositories (home) and of each pool, one `gh run list`
+  each, and picks the least loaded (home on a tie). For a pool it dispatches `<kit>.yml` with
+  `sha=<HEAD>`, finds the run by its name, records it in the kit's `.git/kit-ci-run.json`, then
+  cancels the kit's own run of the push and the previous pool run, so HEAD is tested once.
+  `wait`, `status` and `failures` read the recorded run while it is of HEAD (else the kit's own
+  runs), and each says which repository's run it reads. `land` lands a pool run only when it
+  passed, is named `<kit> <HEAD>` and its artifact `tested` says `KitionAI/kition-<kit>` at HEAD.
+  `push --full` sends even a text-only change to the least loaded place.
+  `KIT_CI_POOL=<org>/<repo>` sends the run to that pool whatever the load (to try a new one), and
+  `KIT_CI_POOLS=<file>` reads another list (`/dev/null`: none). What stays in each kit's own
+  `ci.yml`: the nightly run on `main`, pull requests, the text-only path, and any push run the
+  driver does not cancel. `KitionAI/kit-runner` is a test pool inside KitionAI (it adds no jobs;
+  it proves the mechanics) and the template for new pools.
+- **Adding a pool** (the owner):
+  1. Create the organization (GitHub Free) and in it a public repository, for example
+     `gh repo create <org>/kit-runner --public --description "CI runners for the public Kition kits (no source lives here)"`.
+  2. `node scripts/kit-ci-runner-repo.mjs <dir>`, then in `<dir>`: `git init -b main`,
+     `git add -A`, commit, `git push git@github.com:<org>/kit-runner.git main`.
+  3. In the repository's Settings, Actions, General: Actions enabled and "Allow all actions and
+     reusable workflows" (or
+     `gh api -X PUT repos/<org>/kit-runner/actions/permissions -F enabled=true -f allowed_actions=all`).
+  4. Add `{ "repo": "<org>/kit-runner" }` to `pools` in `scripts/kit-ci-pools.json` and land it.
+     Nothing else: no secret, no token, no change in the kit repositories. To try the pool first:
+     `KIT_CI_POOL=<org>/kit-runner scripts/kit-ci.sh push <kit>`.
+  A pool runs `kit-ci.yml` and the kit-checkout action at `main` here, so a broken push to Kition's
+  `main` breaks every pool's runs as it breaks every kit's.
 
 ## 5. Adding A Kit: Checklist
 

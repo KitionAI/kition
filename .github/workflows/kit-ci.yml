@@ -23,6 +23,23 @@ name: Kit CI
 # The `Text only` job checks the files instead (UTF-8 text, `git diff --check`) and the run ends
 # green in about a minute. An empty change, any other file (a case's .yaml, a comment in a .rs),
 # the nightly run and a run started by hand (`scripts/kit-ci.sh push <kit> --full`) take the full run.
+#
+# Runner pools. GitHub Free gives an organization 20 concurrent jobs, and a run counts against the
+# organization that owns the repository it runs in. A runner pool is another organization with one
+# public repository written by scripts/kit-ci-runner-repo.mjs: one workflow per kit
+# (`on: workflow_dispatch` with the input `sha`) that calls this workflow with
+# `repository: KitionAI/kition-<kit>` and `ref: <sha>`, so the jobs run on the pool's 20 and test
+# the kit's commit. Without those inputs (every kit's own ci.yml) this workflow tests the calling
+# repository's commit, as before. A pool run is always a full run: scripts/kit-ci.sh decides
+# text-only on the developer's machine and keeps such a change at home. Everything a pool run reads
+# is public (the kit, kition-sdk, kition-tessera, kition-fonts, this workflow and the kit-checkout
+# action at main), so the pool repository's own GITHUB_TOKEN is enough: no step needs a secret or a
+# KitionAI permission. Every run names what it tested: the line `kit-ci-tested <repository>@<sha>`
+# in the plan job's log, the summary's first heading, and the artifact `tested` (tested.json:
+# repository, sha, kit), which `scripts/kit-ci.sh land` checks before it lands a pool run.
+# The Rust caches of a pool run carry the kit's name (a pool repository holds all 16 kits' caches);
+# artifacts belong to their run, so their names need none. scripts/kit-ci.sh, docs/kits.md and
+# scripts/kit-ci-pools.json say how the driver picks a pool and how to add one.
 
 on:
   workflow_call:
@@ -31,12 +48,28 @@ on:
         description: The kit's name, for example photo (its repository is kition-<kit>)
         required: true
         type: string
+      repository:
+        description: >-
+          The kit repository to test (owner/name). Empty: the calling repository. A runner pool
+          sets it to KitionAI/kition-<kit>, with `ref`.
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: >-
+          The commit to test, a full 40-character SHA; needed with `repository`. Empty: the commit
+          that started the run.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 env:
   KIT: ${{ inputs.kit }}
+  # The repository under test: the calling one, or the kit a runner pool names.
+  KIT_REPOSITORY: ${{ inputs.repository || github.repository }}
   WASM_PACK_VERSION: v0.13.1
 
 # Ubuntu 24.04: Playwright 1.59 has no browsers for ubuntu-latest (26.04).
@@ -53,10 +86,49 @@ jobs:
       base: ${{ steps.base.outputs.base }}
       head: ${{ steps.base.outputs.head }}
     steps:
+      - name: Check the inputs
+        env:
+          INPUT_REPOSITORY: ${{ inputs.repository }}
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_REF" ] && ! [[ "$INPUT_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::ref must be a full commit SHA (40 lowercase hex characters), not '$INPUT_REF'"
+            exit 1
+          fi
+          if [ -n "$INPUT_REPOSITORY" ] && [ -z "$INPUT_REF" ]; then
+            echo "::error::a run for another repository ($INPUT_REPOSITORY) needs ref, the commit to test"
+            exit 1
+          fi
+
       - name: Check out the kit
         uses: actions/checkout@v7
         with:
+          repository: ${{ inputs.repository || github.repository }}
+          ref: ${{ inputs.ref }}
           path: kition-${{ inputs.kit }}
+
+      # What this run tests, in three places: a log line, the summary's first heading, and the
+      # artifact `tested` that scripts/kit-ci.sh land checks for a runner-pool run.
+      - name: Name the commit under test
+        run: |
+          set -euo pipefail
+          tested="$(git -C "kition-$KIT" rev-parse HEAD)"
+          echo "kit-ci-tested $KIT_REPOSITORY@$tested"
+          echo "### Testing [$KIT_REPOSITORY@${tested:0:12}]($GITHUB_SERVER_URL/$KIT_REPOSITORY/commit/$tested)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run in \`$GITHUB_REPOSITORY\` for the commit \`$tested\` of \`$KIT_REPOSITORY\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "$RUNNER_TEMP/tested"
+          printf '{"repository":"%s","sha":"%s","kit":"%s","run":"%s/%s"}\n' "$KIT_REPOSITORY" "$tested" "$KIT" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/tested/tested.json"
+
+      - name: Upload the proof of what was tested
+        uses: actions/upload-artifact@v7
+        with:
+          name: tested
+          path: ${{ runner.temp }}/tested/tested.json
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Check out Kition's scripts
         uses: actions/checkout@v7
@@ -72,14 +144,15 @@ jobs:
           node-version: '24'
 
       # The merge base with main (a push) or with the pull request's base. Nightly and hand-started
-      # runs get none, so they always test everything; so does any failure here.
+      # runs get none, so they always test everything; so does a runner-pool run (another
+      # repository: the driver decided text-only before it dispatched) and any failure here.
       - name: Find the merge base with main
         id: base
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          EVENT: ${{ inputs.repository == '' && github.event_name || 'runner-pool' }}
+          REPO: ${{ inputs.repository || github.repository }}
+          SHA: ${{ inputs.ref || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -119,6 +192,8 @@ jobs:
       - name: Check out the kit
         uses: actions/checkout@v7
         with:
+          repository: ${{ inputs.repository || github.repository }}
+          ref: ${{ inputs.ref }}
           path: kition-${{ inputs.kit }}
 
       - name: Check out Kition's scripts
@@ -154,16 +229,21 @@ jobs:
         uses: KitionAI/kition/.github/actions/kit-checkout@main
         with:
           kit: ${{ inputs.kit }}
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
+      # A runner pool's repository holds all 16 kits' caches, so its keys carry the kit's name
+      # (else one kit could restore another's target/); a kit's own repository keeps its keys.
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: kition-${{ inputs.kit }} -> target
+          key: ${{ inputs.repository != '' && inputs.kit || '' }}
 
       - name: Setup wasm-pack
         run: curl -fsSL https://github.com/rustwasm/wasm-pack/releases/download/${WASM_PACK_VERSION}/wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar -xz --strip-components=1 -C "$HOME/.cargo/bin" "wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl/wasm-pack"
@@ -208,6 +288,8 @@ jobs:
         uses: KitionAI/kition/.github/actions/kit-checkout@main
         with:
           kit: ${{ inputs.kit }}
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
           pnpm-cache: 'false'
 
       - name: Setup Rust
@@ -216,10 +298,13 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
+      # A runner pool's repository holds all 16 kits' caches, so its keys carry the kit's name
+      # (else one kit could restore another's target/); a kit's own repository keeps its keys.
       - name: Cache Rust builds
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: kition-${{ inputs.kit }} -> target
+          key: ${{ inputs.repository != '' && inputs.kit || '' }}
 
       - name: Use LLVM for wasm32 C code
         run: |
@@ -268,6 +353,8 @@ jobs:
         uses: KitionAI/kition/.github/actions/kit-checkout@main
         with:
           kit: ${{ inputs.kit }}
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
 
       - name: Get the engine and the build
         uses: actions/download-artifact@v7

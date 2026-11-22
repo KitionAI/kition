@@ -1,6 +1,7 @@
 name: Kit checkout
 description: >-
-  Checks out a kit (the calling repository's commit) as kition-<kit>, with kition-sdk,
+  Checks out a kit (the calling repository's commit, or `repository` at `ref` for a runner-pool
+  run) as kition-<kit>, with kition-sdk,
   kition-tessera and kition-fonts side by side as the kit's scripts and tests expect
   (../kition-*), and sets up pnpm and Node.js. Used by .github/workflows/kit-ci.yml.
 
@@ -8,6 +9,14 @@ inputs:
   kit:
     description: The kit's name, for example photo
     required: true
+  repository:
+    description: >-
+      The kit repository to check out (owner/name). Empty: the calling repository. A runner pool
+      (scripts/kit-ci-runner-repo.mjs) names the kit's repository here.
+    default: ''
+  ref:
+    description: The commit to check out (a full SHA). Empty: the commit that started the run.
+    default: ''
   pnpm-version:
     description: The pnpm version
     default: 10.34.9
@@ -26,6 +35,8 @@ runs:
     - name: Check out the kit
       uses: actions/checkout@v7
       with:
+        repository: ${{ inputs.repository || github.repository }}
+        ref: ${{ inputs.ref }}
         path: kition-${{ inputs.kit }}
 
     - name: Check out kition-sdk
